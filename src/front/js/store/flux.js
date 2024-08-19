@@ -2,6 +2,8 @@ const getState = ({ getStore, getActions, setStore }) => {
 	return {
 		store: {
 			message: null,
+			currentUser: null,
+			isLoged: false,
 		},
 		actions: {
 			getMessage: async () => {
@@ -16,6 +18,7 @@ const getState = ({ getStore, getActions, setStore }) => {
 				setStore({ message: data.message })
 				return data;
 			},
+			setIsLoged: (isLogin) => {setStore({ isLoged: isLogin })}
 		}
 	};
 };
