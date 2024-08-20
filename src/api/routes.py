@@ -158,3 +158,50 @@ def handle_user(user_id):
         db.session.commit()
         response_body['message'] = f'Usuario {user_id} eliminado'
         return response_body, 200
+
+@api.route('/ingredient/<int:ingredient_id>', methods=['GET', 'PUT', 'DELETE'])
+def handle_ingredient(ingredient_id):
+    response_body = {}
+    if request.method == 'GET':
+        row = db.session.execute(db.select(Ingredient).where(Ingredient.id == ingredient_id)).scalar()
+        if not row:
+            response_body['results'] = {}
+            response_body['message'] = f'Ingredient {ingredient_id} not exist'
+            return response_body, 404
+        response_body['results'] = row.serialize()
+        response_body['message'] = f'Ingredient {ingredient_id} recieved'
+        return response_body, 200
+    if request.method == 'PUT':
+        # obtengo los datos JSON del request
+        data = request.get_json()
+        # buscar el usuario por id
+        ingredient = db.session.execute(db.select(Ingredient).where(Ingredient.id == ingredient_id)).scalar()
+        if not ingredient:
+            response_body['results'] = {}
+            response_body['message'] = f'Ingredient {ingredient_id} not exist'
+            return response_body, 404
+        # cuando lo encuentre, tomamos los datos (data.get()) y actualizando los campos del usuario que hemos encontrado en la base de datos. 
+        # Si algún campo no está en los datos de la solicitud, mantenemos el valor actual de ese campo en el usuario.
+        ingredient.name = data.get('name', ingredient.name )
+        ingredient.energy = data.get('energy', ingredient.energy)
+        ingredient.protein = data.get('firstname', ingredient.protein)
+        ingredient.carbohydrates = data.get('carbohydrates', ingredient.carbohydrates)
+        ingredient.fat = data.get('fat', ingredient.fat)
+        ingredient.sugar = data.get('sugar', ingredient.sugar)
+        ingredient.license_object_url = data.get('license_object_url', ingredient.license_object_url)
+        db.session.commit()
+        response_body['results'] = ingredient.serialize()
+        response_body['message'] = f'Ingredient {ingredient_id} updated'
+        return response_body, 200
+    if request.method == 'DELETE':
+        # Obtenemos la instancia del usuario a eliminar
+        ingredient = db.session.execute(db.select(Ingredient).where(Ingredient.id == ingredient_id)).scalar()
+        if not ingredient:
+            response_body['results'] = {}
+            response_body['message'] = f'Ingredient {ingredient_id} not exist'
+            return response_body, 404
+        # instancia para la eliminación
+        db.session.delete(ingredient)
+        db.session.commit()
+        response_body['message'] = f'Ingredient {ingredient_id} deleted'
+        return response_body, 200

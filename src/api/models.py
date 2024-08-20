@@ -190,10 +190,10 @@ class Ingredients(db.Model):
         return {
             "id": self.id,
             "name": self.name,
-            "kcal": self.kcal,
+            "energy": self.energy,
             "proteins": self.proteins,
             "carbohydrates": self.carbohydrates,
-            "fats": self.fats,
+            "fat": self.fat,
             "sugar": self.sugar,
     }
 
