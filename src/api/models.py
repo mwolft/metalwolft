@@ -8,7 +8,7 @@ class Users(db.Model):
     __tablename__ = "users"
     id = db.Column(db.Integer, primary_key=True)
     password = db.Column(db.String(100), nullable=False)
-    alias = db.Column(db.String(10), unique=True)
+    alias = db.Column(db.String(10), unique=True, nullable=True)
     firstname = db.Column(db.String(30))
     lastname = db.Column(db.String(30))
     gender = db.Column(db.String(20))
@@ -18,8 +18,7 @@ class Users(db.Model):
     height = db.Column(db.Integer)
     weight = db.Column(db.Integer)
     is_active = db.Column(db.Boolean, default=True)
-    rol = db.Column(db.Enum('user', 'admin', 'trainer', name='rol_enum'))
-    roles = db.relationship('Roles', secondary='user_roles', back_populates='users')
+    rol = db.Column(db.Enum('user', 'admin', 'trainer', name="rol"))
     rutines = db.relationship('Rutines', backref='user', lazy=True)
     user_recipes = db.relationship('UserRecipes', backref='user', lazy=True)
     user_ingredients = db.relationship('UserIngredients', backref='user', lazy=True)
@@ -60,16 +59,16 @@ class Exercises(db.Model):
         return f'<Exercise {self.id}: {self.name}>'
 
     def serialize(self):
-    return {
-        "id": self.id,
-        "name": self.name,
-        "description": self.description,
-        "rutine_id": self.rutine_id,
-        "equipments": self.equipments,
-        "muscles": self.muscles,
-        "variations_origin": self.variations_origin,
-        "variations_to": self.variations_to,
-    }
+        return {
+            "id": self.id,
+            "name": self.name,
+            "description": self.description,
+            "rutine_id": self.rutine_id,
+            "equipments": self.equipments,
+            "muscles": self.muscles,
+            "variations_origin": self.variations_origin,
+            "variations_to": self.variations_to,
+        }
 
 
 class Muscles(db.Model):
@@ -257,7 +256,7 @@ class TemplatePrompts(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     body_prompt = db.Column(db.Text, unique=True, nullable=False)
     suggest = db.Column(db.Text)
-    type = db.Column(db.Enum('Nutrition', 'exercise', name='prompt_type_enum'))
+    prompt_type = db.Column(db.Enum('nutrition', 'exercise', name="prompt_type"))
     date = db.Column(db.DateTime)
     author_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     is_active = db.Column(db.Boolean, default=True)
