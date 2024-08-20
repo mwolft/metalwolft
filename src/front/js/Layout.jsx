@@ -9,6 +9,10 @@ import { Footer } from "./component/Footer.jsx";
 // Custom pages
 import { Home } from "./pages/Home.jsx";
 import { Error404 } from "./pages/Error404.jsx";
+import { Login } from "./pages/Login.jsx";
+import { Alert } from "./component/Alert.jsx";
+import { SignUp } from "./pages/SignUp.jsx";
+import { Dashboard } from "./pages/Dashboard.jsx";
 
 
 // Create your first component
@@ -23,9 +27,13 @@ const Layout = () => {
             <BrowserRouter basename={basename}>
                 <ScrollToTop>
                     <Navbar />
+                    <Alert />
                     <Routes>
                         <Route element={<Home />} path="/" />
                         <Route element={<Error404/>} path='*'/>
+                        <Route element={<Login />} path='/login' />
+                        <Route element={<SignUp />} path='/sign-up' /> 
+                        <Route element={<Dashboard />} path='/dashboard' />
                     </Routes>
                     <Footer />
                 </ScrollToTop>
