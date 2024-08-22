@@ -28,20 +28,18 @@ class Users(db.Model):
         return f'<User {self.id}: {self.alias}>'
 
     def serialize(self):
-        return {
-            "id": self.id,
-            "firstname": self.firstname,
-            "lastname": self.lastname,
-            "email": self.email,
-            "is_active": self.is_active,
-            "alias": self.alias,
-            "gender": self.gender,
-            "phone": self.phone,
-            "birth": self.birth,
-            "height": self.height,
-            "weight": self.weight,
-            "rol": self.rol,
-    }
+        return {"id": self.id,
+                "firstname": self.firstname,
+                "lastname": self.lastname,
+                "email": self.email,
+                "is_active": self.is_active,
+                "alias": self.alias,
+                "gender": self.gender,
+                "phone": self.phone,
+                "birth": self.birth,
+                "height": self.height,
+                "weight": self.weight,
+                "rol": self.rol}
 
 
 class Exercises(db.Model):
@@ -59,16 +57,14 @@ class Exercises(db.Model):
         return f'<Exercise {self.id}: {self.name}>'
 
     def serialize(self):
-        return {
-            "id": self.id,
-            "name": self.name,
-            "description": self.description,
-            "rutine_id": self.rutine_id,
-            "equipments": self.equipments,
-            "muscles": self.muscles,
-            "variations_origin": self.variations_origin,
-            "variations_to": self.variations_to,
-        }
+        return {"id": self.id,
+                "name": self.name,
+                "description": self.description,
+                "rutine_id": self.rutine_id,
+                "equipments": self.equipments,
+                "muscles": self.muscles,
+                "variations_origin": self.variations_origin,
+                "variations_to": self.variations_to}
 
 
 class Muscles(db.Model):
@@ -80,10 +76,8 @@ class Muscles(db.Model):
         return f'<Muscle {self.id}: {self.name}>'
 
     def serialize(self):
-        return {
-            "id": self.id,
-            "name": self.name,
-    }
+        return {"id": self.id,
+                "name": self.name}
 
 
 class ExerciseEquipments(db.Model):
@@ -96,11 +90,9 @@ class ExerciseEquipments(db.Model):
         return f'<ExerciseEquipments {self.id}: Exercise {self.excercise_id} Equipment {self.equipment_id}>'
 
     def serialize(self):
-        return {
-            "id": self.id,
-            "excercise_id": self.excercise_id,
-            "equipment_id": self.equipment_id,
-    }
+        return {"id": self.id,
+                "excercise_id": self.excercise_id,
+                "equipment_id": self.equipment_id}
 
 
 class ExerciseMuscles(db.Model):
@@ -113,11 +105,9 @@ class ExerciseMuscles(db.Model):
         return f'<ExerciseMuscles {self.id}: Exercise {self.excercise_id} Muscle {self.muscle_id}>'
 
     def serialize(self):
-        return {
-            "id": self.id,
-            "excercise_id": self.excercise_id,
-            "muscle_id": self.muscle_id,
-    }
+        return {"id": self.id,
+                "excercise_id": self.excercise_id,
+                "muscle_id": self.muscle_id,}
 
 
 class Equipments(db.Model):
@@ -129,10 +119,8 @@ class Equipments(db.Model):
         return f'<Equipment {self.id}: {self.name}>'
 
     def serialize(self):
-        return {
-            "id": self.id,
-            "name": self.name,
-    }
+        return {"id": self.id,
+                "name": self.name}
 
 
 class Variations(db.Model):
@@ -145,11 +133,9 @@ class Variations(db.Model):
         return f'<Variations {self.id}: Origin {self.exercise_origin} -> To {self.exercise_to}>'
 
     def serialize(self):
-        return {
-            "id": self.id,
-            "exercise_origin": self.exercise_origin,
-            "exercise_to": self.exercise_to,
-    }
+        return {"id": self.id,
+                "exercise_origin": self.exercise_origin,
+                "exercise_to": self.exercise_to}
 
 
 class Rutines(db.Model):
@@ -164,20 +150,18 @@ class Rutines(db.Model):
         return f'<Rutine {self.id}>'
 
     def serialize(self):
-        return {
-            "id": self.id,
-            "user_id": self.user_id,
-            "prompt": self.prompt,
-            "date": self.date,
-            "exercises": self.exercises,
-    }
+        return {"id": self.id,
+                "user_id": self.user_id,
+                "prompt": self.prompt,
+                "date": self.date,
+                "exercises": self.exercises}
 
 
 class Ingredients(db.Model):
     __tablename__ = "ingredients"
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(200), unique=True, nullable=False)
-    kcal = db.Column(db.Integer, nullable=False)
+    energy = db.Column(db.Integer, nullable=False)
     proteins = db.Column(db.Integer, nullable=False)
     carbohydrates = db.Column(db.Integer, nullable=False)
     fats = db.Column(db.Integer, nullable=False)
@@ -187,15 +171,13 @@ class Ingredients(db.Model):
         return f'<Ingredient {self.id}: {self.name}>'
 
     def serialize(self):
-        return {
-            "id": self.id,
-            "name": self.name,
-            "energy": self.energy,
-            "proteins": self.proteins,
-            "carbohydrates": self.carbohydrates,
-            "fat": self.fat,
-            "sugar": self.sugar,
-    }
+        return {"id": self.id,
+                "name": self.name,
+                "energy": self.energy,
+                "proteins": self.proteins,
+                "carbohydrates": self.carbohydrates,
+                "fats": self.fats,
+                "sugar": self.sugar}
 
 
 class Recipes(db.Model):
@@ -208,11 +190,9 @@ class Recipes(db.Model):
         return f'<Recipe {self.id}: {self.name}>'
 
     def serialize(self):
-        return {
-            "id": self.id,
-            "ingredient_id": self.ingredient_id,
-            "name": self.name,
-    }
+        return {"id": self.id,
+                "ingredient_id": self.ingredient_id,
+                "name": self.name}
 
 
 class UserRecipes(db.Model):
@@ -226,12 +206,10 @@ class UserRecipes(db.Model):
         return f'<UserRecipes {self.id}: User {self.user_id} Recipe {self.recipe_id}>'
 
     def serialize(self):
-        return {
-            "id": self.id,
-            "recipe_id": self.recipe_id,
-            "user_id": self.user_id,
-            "prompt": self.prompt,
-    }
+        return {"id": self.id,
+                "recipe_id": self.recipe_id,
+                "user_id": self.user_id,
+                "prompt": self.prompt,}
 
 
 class UserIngredients(db.Model):
@@ -244,11 +222,9 @@ class UserIngredients(db.Model):
         return f'<UserIngredients {self.id}: User {self.user_id} Ingredient {self.ingredient_id}>'
 
     def serialize(self):
-        return {
-            "id": self.id,
-            "ingredient_id": self.ingredient_id,
-            "user_id": self.user_id,
-    }
+        return {"id": self.id,
+                "ingredient_id": self.ingredient_id,
+                "user_id": self.user_id}
 
 
 class TemplatePrompts(db.Model):
@@ -267,14 +243,12 @@ class TemplatePrompts(db.Model):
         return f'<TemplatePrompt {self.id}: {self.title}>'
 
     def serialize(self):
-        return {
-            "id": self.id,
-            "body_prompt": self.body_prompt,
-            "suggest": self.suggest,
-            "type": self.type,
-            "date": self.date,
-            "author_id": self.author_id,
-            "is_active": self.is_active,
-            "title": self.title,
-            "description": self.description,
-    }
+        return {"id": self.id,
+                "body_prompt": self.body_prompt,
+                "suggest": self.suggest,
+                "type": self.type,
+                "date": self.date,
+                "author_id": self.author_id,
+                "is_active": self.is_active,
+                "title": self.title,
+                "description": self.description}
