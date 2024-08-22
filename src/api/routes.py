@@ -180,6 +180,7 @@ def handle_edit_ingredient(ingredient_id):
         response_body['message'] = f'Ingredient {ingredient_id} deleted'
         return response_body, 200
 
+
 @api.route('/ingredients', methods=['GET'])
 def handle_ingredients():
     response_body = {}
@@ -229,5 +230,3 @@ def handle_add_ingredients():
         response_body['message'] = "Ingredient added succesfully"
         response_body['results'] = row.serialize()
         return response_body, 200
-
-        
