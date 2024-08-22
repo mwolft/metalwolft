@@ -1,8 +1,8 @@
 """empty message
 
-Revision ID: f805ce59042b
+Revision ID: aca1104e3b69
 Revises: 
-Create Date: 2024-08-20 17:48:00.115653
+Create Date: 2024-08-22 18:08:40.421454
 
 """
 from alembic import op
@@ -10,7 +10,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision = 'f805ce59042b'
+revision = 'aca1104e3b69'
 down_revision = None
 branch_labels = None
 depends_on = None
@@ -27,7 +27,7 @@ def upgrade():
     op.create_table('ingredients',
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('name', sa.String(length=200), nullable=False),
-    sa.Column('kcal', sa.Integer(), nullable=False),
+    sa.Column('energy', sa.Integer(), nullable=False),
     sa.Column('proteins', sa.Integer(), nullable=False),
     sa.Column('carbohydrates', sa.Integer(), nullable=False),
     sa.Column('fats', sa.Integer(), nullable=False),
@@ -47,10 +47,10 @@ def upgrade():
     sa.Column('alias', sa.String(length=10), nullable=True),
     sa.Column('firstname', sa.String(length=30), nullable=True),
     sa.Column('lastname', sa.String(length=30), nullable=True),
-    sa.Column('gender', sa.String(length=20), nullable=True),
+    sa.Column('gender', sa.Enum('Male', 'Female', name='gender'), nullable=True),
     sa.Column('phone', sa.Integer(), nullable=True),
     sa.Column('email', sa.String(length=50), nullable=False),
-    sa.Column('birth', sa.Integer(), nullable=True),
+    sa.Column('birth', sa.Date(), nullable=True),
     sa.Column('height', sa.Integer(), nullable=True),
     sa.Column('weight', sa.Integer(), nullable=True),
     sa.Column('is_active', sa.Boolean(), nullable=True),
