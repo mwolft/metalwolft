@@ -1,8 +1,8 @@
 """empty message
 
-Revision ID: aca1104e3b69
+Revision ID: 7141e64f72f6
 Revises: 
-Create Date: 2024-08-22 18:08:40.421454
+Create Date: 2024-08-24 10:41:52.213669
 
 """
 from alembic import op
@@ -10,7 +10,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision = 'aca1104e3b69'
+revision = '7141e64f72f6'
 down_revision = None
 branch_labels = None
 depends_on = None
@@ -27,11 +27,12 @@ def upgrade():
     op.create_table('ingredients',
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('name', sa.String(length=200), nullable=False),
-    sa.Column('energy', sa.Integer(), nullable=False),
-    sa.Column('proteins', sa.Integer(), nullable=False),
-    sa.Column('carbohydrates', sa.Integer(), nullable=False),
-    sa.Column('fats', sa.Integer(), nullable=False),
-    sa.Column('sugar', sa.Integer(), nullable=False),
+    sa.Column('type', sa.String(length=200), nullable=False),
+    sa.Column('calories', sa.Float(), nullable=False),
+    sa.Column('proteins', sa.Float(), nullable=False),
+    sa.Column('carbs', sa.Float(), nullable=False),
+    sa.Column('fat', sa.Float(), nullable=False),
+    sa.Column('sugar', sa.Float(), nullable=False),
     sa.PrimaryKeyConstraint('id'),
     sa.UniqueConstraint('name')
     )
