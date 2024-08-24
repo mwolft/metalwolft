@@ -161,11 +161,12 @@ class Ingredients(db.Model):
     __tablename__ = "ingredients"
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(200), unique=True, nullable=False)
-    energy = db.Column(db.Integer, nullable=False)
-    proteins = db.Column(db.Integer, nullable=False)
-    carbohydrates = db.Column(db.Integer, nullable=False)
-    fats = db.Column(db.Integer, nullable=False)
-    sugar = db.Column(db.Integer, nullable=False)
+    type = db.Column(db.String(200), nullable=False)
+    calories = db.Column(db.Float, nullable=False)
+    proteins = db.Column(db.Float, nullable=False)
+    carbs = db.Column(db.Float, nullable=False)
+    fat = db.Column(db.Float, nullable=False)
+    sugar = db.Column(db.Float, nullable=False)
 
     def __repr__(self):
         return f'<Ingredient {self.id}: {self.name}>'
@@ -173,10 +174,10 @@ class Ingredients(db.Model):
     def serialize(self):
         return {"id": self.id,
                 "name": self.name,
-                "energy": self.energy,
+                "calories": self.calories,
                 "proteins": self.proteins,
-                "carbohydrates": self.carbohydrates,
-                "fats": self.fats,
+                "carbs": self.carbs,
+                "fat": self.fat,
                 "sugar": self.sugar}
 
 

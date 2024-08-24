@@ -8,7 +8,7 @@ from api.models import db, Users, Ingredients
 from flask_jwt_extended import create_access_token
 from flask_jwt_extended import jwt_required
 from flask_jwt_extended import get_jwt_identity
-
+import json
 
 api = Blueprint('api', __name__)
 CORS(api)
@@ -126,7 +126,7 @@ def handle_user(user_id):
         return response_body, 200
 
 
-@api.route('/ingredients/<int:ingredient_id>', methods=['GET'])
+@api.route('/exercise/<int:ingredient_id>', methods=['GET'])
 def handle_ingredient(ingredient_id):
      response_body = {}
      if request.method == 'GET':
@@ -140,48 +140,48 @@ def handle_ingredient(ingredient_id):
          return response_body, 200
 
 
-@api.route('/ingredients/<int:ingredient_id>', methods=['PUT', 'DELETE'])
-@jwt_required()
-def handle_edit_ingredient(ingredient_id):
-    response_body = {}
-    current_user = get_jwt_identity()    
-    if request.method == 'PUT':
-        if (current_user.rol == "user"):
-            response_body['message'] = 'Authorization denied'
-            return response_body, 401
-        data = request.get_json()
-        ingredient = db.session.execute(db.select(Ingredients).where(Ingredients.id == ingredient_id)).scalar()
-        if not ingredient:
-            response_body['results'] = {}
-            response_body['message'] = f'Ingredient {ingredient_id} not exist'
-            return response_body, 404
-        ingredient.name = data.get('name', ingredient.name )
-        ingredient.energy = data.get('energy', ingredient.energy)
-        ingredient.proteins = data.get('proteins', ingredient.proteins)
-        ingredient.carbohydrates = data.get('carbohydrates', ingredient.carbohydrates)
-        ingredient.fats = data.get('fats', ingredient.fats)
-        ingredient.sugar = data.get('sugar', ingredient.sugar)
-        # ingredient.license_object_url = data.get('license_object_url', ingredient.license_object_url)
-        db.session.commit()
-        response_body['results'] = ingredient.serialize()
-        response_body['message'] = f'Ingredient {ingredient_id} updated'
-        return response_body, 200
-    if request.method == 'DELETE':
-        if (current_user.rol == "user"):
-            response_body['message'] = 'Authorization denied'
-            return response_body, 401
-        ingredient = db.session.execute(db.select(Ingredients).where(Ingredients.id == ingredient_id)).scalar()
-        if not ingredient:
-            response_body['results'] = {}
-            response_body['message'] = f'Ingredient {ingredient_id} not exist'
-            return response_body, 404
-        db.session.delete(ingredient)
-        db.session.commit()
-        response_body['message'] = f'Ingredient {ingredient_id} deleted'
-        return response_body, 200
+# @api.route('/exercise/<int:ingredient_id>', methods=['PUT', 'DELETE'])
+# @jwt_required()
+# def handle_edit_ingredient(ingredient_id):
+#     response_body = {}
+#     current_user = get_jwt_identity()    
+#     if request.method == 'PUT':
+#         if (current_user.rol == "user"):
+#             response_body['message'] = 'Authorization denied'
+#             return response_body, 401
+#         data = request.get_json()
+#         ingredient = db.session.execute(db.select(Ingredients).where(Ingredients.id == ingredient_id)).scalar()
+#         if not ingredient:
+#             response_body['results'] = {}
+#             response_body['message'] = f'Ingredient {ingredient_id} not exist'
+#             return response_body, 404
+#         ingredient.name = data.get('name', ingredient.name )
+#         ingredient.energy = data.get('energy', ingredient.energy)
+#         ingredient.proteins = data.get('proteins', ingredient.proteins)
+#         ingredient.carbohydrates = data.get('carbohydrates', ingredient.carbohydrates)
+#         ingredient.fats = data.get('fats', ingredient.fats)
+#         ingredient.sugar = data.get('sugar', ingredient.sugar)
+#         # ingredient.license_object_url = data.get('license_object_url', ingredient.license_object_url)
+#         db.session.commit()
+#         response_body['results'] = ingredient.serialize()
+#         response_body['message'] = f'Ingredient {ingredient_id} updated'
+#         return response_body, 200
+#     if request.method == 'DELETE':
+#         if (current_user.rol == "user"):
+#             response_body['message'] = 'Authorization denied'
+#             return response_body, 401
+#         ingredient = db.session.execute(db.select(Ingredients).where(Ingredients.id == ingredient_id)).scalar()
+#         if not ingredient:
+#             response_body['results'] = {}
+#             response_body['message'] = f'Ingredient {ingredient_id} not exist'
+#             return response_body, 404
+#         db.session.delete(ingredient)
+#         db.session.commit()
+#         response_body['message'] = f'Ingredient {ingredient_id} deleted'
+#         return response_body, 200
 
 
-@api.route('/ingredients', methods=['GET'])
+@api.route('/exercise', methods=['GET'])
 def handle_ingredients():
     response_body = {}
     if request.method == 'GET':
@@ -194,7 +194,7 @@ def handle_ingredients():
         return response_body, 200
 
 
-@api.route('/ingredients', methods=['POST'])
+@api.route('/exercise', methods=['POST'])
 @jwt_required()
 def handle_add_ingredients():
     response_body = {}
@@ -229,4 +229,64 @@ def handle_add_ingredients():
         db.session.commit()
         response_body['message'] = "Ingredient added succesfully"
         response_body['results'] = row.serialize()
+        return response_body, 200
+
+
+@api.route('/temp-load-ingredients', methods=['GET'])
+def load_ingredient():
+    with open('src/api/Ingredients.json') as json_file:
+        data = json.load(json_file)
+    for row in data['ingredients']:
+            ingredients = Ingredients()
+            ingredients.calories = 1.0  # TODO: revisar esto
+            ingredients.type = row['type']
+            ingredients.name = row['name']
+            ingredients.proteins = row['protein']
+            ingredients.fat = row['fat']
+            ingredients.carbs = row['carbs']
+            ingredients.sugar = row['sugar']
+            db.session.add(ingredients)
+            db.session.commit()
+    return jsonify(data), 200
+
+@api.route('/ingredients/<int:ingredient_id>', methods=['PUT', 'DELETE'])
+@jwt_required()
+def handle_edit_ingredient(ingredient_id):
+    # with open('src/api/Ingredients.json') as json_file:
+    #     data = json.load(json_file)
+    response_body = {}
+    current_user = get_jwt_identity()
+    if request.method == 'PUT':
+        if (current_user["rol"] == "user"):
+            response_body['message'] = 'Authorization denied'
+            return response_body, 401
+        data = request.get_json()
+        ingredient = db.session.execute(db.select(Ingredients).where(Ingredients.id == ingredient_id)).scalar()
+        if not ingredient:
+            response_body['results'] = {}
+            response_body['message'] = f'Ingredient {ingredient_id} not exist'
+            return response_body, 404
+        ingredient.name = data.get('name', ingredient.name)
+        ingredient.type = data.get('type', ingredient.type)
+        ingredient.calories = data.get('calories', ingredient.calories)
+        ingredient.proteins = data.get('proteins', ingredient.proteins)
+        ingredient.carbs = data.get('carbs', ingredient.carbs)
+        ingredient.fat = data.get('fat', ingredient.fat)
+        ingredient.sugar = data.get('sugar', ingredient.sugar)
+        db.session.commit()
+        response_body['results'] = ingredient.serialize()
+        response_body['message'] = f'Ingredient {ingredient_id} updated'
+        return response_body, 200
+    if request.method == 'DELETE':
+        if (current_user["rol"] == "user"):
+            response_body['message'] = 'Authorization denied'
+            return response_body, 401
+        ingredient = db.session.execute(db.select(Ingredients).where(Ingredients.id == ingredient_id)).scalar()
+        if not ingredient:
+            response_body['results'] = {}
+            response_body['message'] = f'Ingredient {ingredient_id} not exist'
+            return response_body, 404
+        db.session.delete(ingredient)
+        db.session.commit()
+        response_body['message'] = f'Ingredient {ingredient_id} deleted'
         return response_body, 200
