@@ -4,11 +4,12 @@ This module takes care of starting the API Server, Loading the DB and Adding the
 from flask import Flask, request, jsonify, url_for, Blueprint
 from api.utils import generate_sitemap, APIException
 from flask_cors import CORS
-from api.models import db, Users, Ingredients
+from api.models import db, Users, Ingredients, Exercises, Muscles, Equipments
 from flask_jwt_extended import create_access_token
 from flask_jwt_extended import jwt_required
 from flask_jwt_extended import get_jwt_identity
 import json
+import requests
 
 api = Blueprint('api', __name__)
 CORS(api)
@@ -249,11 +250,10 @@ def load_ingredient():
             db.session.commit()
     return jsonify(data), 200
 
+
 @api.route('/ingredients/<int:ingredient_id>', methods=['PUT', 'DELETE'])
 @jwt_required()
 def handle_edit_ingredient(ingredient_id):
-    # with open('src/api/Ingredients.json') as json_file:
-    #     data = json.load(json_file)
     response_body = {}
     current_user = get_jwt_identity()
     if request.method == 'PUT':
@@ -290,3 +290,58 @@ def handle_edit_ingredient(ingredient_id):
         db.session.commit()
         response_body['message'] = f'Ingredient {ingredient_id} deleted'
         return response_body, 200
+
+
+@api.route('/load-exercises', methods=['GET'])
+def load_data_exercise_from_api():
+    response_body = {}
+    url = 'https://wger.de/api/v2/exercise/?limit=20&offset=20'
+    response = requests.get(url)
+    if response.status_code == 200:
+        data = response.json()
+        response_body['results'] = data['results']
+        for row in data['results']:
+            existing_exercise = db.session.execute(db.select(Exercises).where(Exercises.name == row['name'])).scalar()
+            if not existing_exercise:
+                exercises = Exercises()
+                exercises.name = row['name']
+                exercises.description = row['description']
+                db.session.add(exercises)
+                db.session.commit()
+    return response_body, 200
+
+
+@api.route('/load-muscles', methods=['GET'])
+def load_data_muscles_from_api():
+    response_body = {}
+    url = 'https://wger.de/api/v2/muscle/'
+    response = requests.get(url)
+    if response.status_code == 200:
+        data = response.json()
+        response_body['results'] = data['results']
+        for row in data['results']:
+            existing_muscle = db.session.execute(db.select(Muscles).where(Muscles.name == row['name'])).scalar()
+            if not existing_muscle:
+                muscles = Muscles()
+                muscles.name = row['name']
+                db.session.add(muscles)
+                db.session.commit()
+    return response_body, 200
+
+
+@api.route('/load-equipment', methods=['GET'])
+def load_data_equipments_from_api():
+    response_body = {}
+    url = 'https://wger.de/api/v2/equipment/'
+    response = requests.get(url)
+    if response.status_code == 200:
+        data = response.json()
+        response_body['results'] = data['results']
+        for row in data['results']:
+            existing_equipment = db.session.execute(db.select(Equipments).where(Equipments.name == row['name'])).scalar()
+            if not existing_equipment:
+                equipment = Equipments()
+                equipment.name = row['name']
+                db.session.add(equipment)
+                db.session.commit()
+    return response_body, 200
