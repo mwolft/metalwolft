@@ -1,7 +1,25 @@
-/*
-    home.css: This website contains selectors only used in home.css
+.background-image {
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    height: 55rem;
+}
 
-    All pages share the styles on index.css but you should create 
-    one more css for each page that will contain the selected used 
-    on that page only (the ones not reused in other pages).
-*/
+.background-image .row {
+    color: rgb(255, 255, 255);
+    
+}
+h1 {
+    font-size: 9vw;
+    font-family: "Anton", sans-serif;
+    font-weight: 400;
+    font-style: italic;
+}
+.navbar {
+    background-color: rgba(255, 228, 51, .35);
+    width: 100%;
+}
+.btn {
+    font-family: "Anton", sans-serif;
+    color: black;
+}
