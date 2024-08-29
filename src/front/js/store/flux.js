@@ -22,7 +22,16 @@ const getState = ({ getStore, getActions, setStore }) => {
 				return data;
 		},
 			setCurrentUser: (user) => {setStore({ currentUser: user })},
-			setIsLoged: (isLogin) => {setStore({ isLoged: isLogin })},
+			setIsLoged: (isLogin) => {
+				if (isLogin){
+					setStore({ isLoged: true })
+				} else {
+					setStore({ isLoged: false })
+					localStorage.removeItem("token")
+					localStorage.removeItem("user")
+				}
+					
+			},
             setAlert: (newAlert) => {setStore({ alert: newAlert })}
 		}
 	};
