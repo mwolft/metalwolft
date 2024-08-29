@@ -4,15 +4,107 @@ This module takes care of starting the API Server, Loading the DB and Adding the
 from flask import Flask, request, jsonify, url_for, Blueprint
 from api.utils import generate_sitemap, APIException
 from flask_cors import CORS
-from api.models import db, Users, Ingredients, Exercises, Muscles, Equipments
-from flask_jwt_extended import create_access_token
-from flask_jwt_extended import jwt_required
-from flask_jwt_extended import get_jwt_identity
+from api.models import db, Users, Ingredients, Recipes, Exercises, Muscles, Equipments, Favorites
+from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity
+from groq import Groq
+from dotenv import load_dotenv
 import json
+import os
 import requests
 
+load_dotenv()
+
 api = Blueprint('api', __name__)
-CORS(api)
+
+client = Groq(
+    api_key=os.environ.get("GROQ_API_KEY"),
+)
+
+@api.route('/generate-recipe', methods=['GET'])
+#  @jwt_required()
+def generate_recipe():
+    response_body = {}
+    # Get the list of ingredient IDs from the query parameters
+    ingredient_ids = request.args.get('ingredient_ids')
+    if not ingredient_ids:
+        response_body['message'] = 'No ingredient IDs provided'
+        return jsonify(response_body), 400
+    # Convert the string of IDs into a list of integers
+    ingredient_ids = list(map(int, ingredient_ids.split(',')))
+    # Fetch ingredient details from the database
+    ingredients = db.session.execute(
+        db.select(Ingredients).where(Ingredients.id.in_(ingredient_ids))
+    ).scalars().all()
+    if not ingredients:
+        response_body['message'] = 'No valid ingredients found'
+        return jsonify(response_body), 404
+    # Create a list of ingredient names
+    ingredient_names = [ingredient.name for ingredient in ingredients]
+    # Structure of the prompt for recipe
+    prompt = (f"Create a healthy recipe using the following ingredients: {', '.join(ingredient_names)}. "
+              f"The recipe should be nutritious and balanced. Include the total nutritional information: proteins, calories, and fats "
+              f"And return the response in json ")
+    try:
+        # Use Groq to generate a recipe based on the ingredients
+        chat_completion = client.chat.completions.create(
+            messages=[{"role": "system", "content": "You are a helpful trainer"},
+                      {"role": "user", "content": prompt}],
+            model="llama3-8b-8192",)
+        generated_text = chat_completion.choices[0].message.content
+        response_body['ingredients'] = [ingredient.serialize() for ingredient in ingredients]
+        response_body['generated_recipe'] = generated_text
+        response_body['message'] = 'Healthy recipe generated successfully'
+        return jsonify(response_body), 200
+    except Exception as e:
+        response_body['message'] = f'An error occurred while generating the recipe: {str(e)}'
+        return jsonify(response_body), 500
+
+
+@api.route('/generate-exercise-routine', methods=['POST'])
+# @jwt_required()
+def generate_exercise_routine():
+    response_body = {}
+    data = request.json
+    # Extract parameters from request body
+    days = data.get('days', None)
+    hours_per_day = data.get('hours_per_day', None)
+    target_muscles = data.get('target_muscles', None)
+    # Validate parameters
+    if not days or not hours_per_day or not target_muscles:
+        response_body['message'] = 'Days, hours per day, and target muscles are required'
+        return jsonify(response_body), 400
+    # Fetch exercises that target the specified muscles
+    exercises = db.session.execute(
+        db.select(Exercises).where(Exercises.muscle.in_(target_muscles))
+    ).scalars().all()
+    if not exercises:
+        response_body['message'] = 'No exercises found for the specified muscles'
+        return jsonify(response_body), 404 
+    # Create a prompt for the routine generation
+    prompt = (f"Generate a workout routine based on the following parameters: "
+              f"Days available: {days}, "
+              f"Hours available per day: {hours_per_day}, "
+              f"Targeted muscles: {', '.join(target_muscles)}. "
+              f"Provide a balanced routine that fits within the specified days and hours, "
+              f"and includes a variety of exercises to target the mentioned muscles. "
+              f"Return the routine in JSON format.")  
+    try:
+        # Use Groq to generate a workout routine based on the parameters
+        chat_completion = client.chat.completions.create(
+            messages=[{"role": "system", "content": "You are a fitness coach"},
+                      {"role": "user", "content": prompt}],
+            model="llama3-8b-8192",)
+        generated_text = chat_completion.choices[0].message.content
+        response_body['parameters'] = {
+            'days': days,
+            'hours_per_day': hours_per_day,
+            'target_muscles': target_muscles}
+        response_body['generated_routine'] = generated_text
+        response_body['message'] = 'Workout routine generated successfully'
+        return jsonify(response_body), 200
+    except Exception as e:
+        response_body['message'] = f'An error occurred while generating the routine: {str(e)}'
+        return jsonify(response_body), 500
 
 
 @api.route('/hello', methods=['GET'])
@@ -141,47 +233,6 @@ def handle_ingredient(ingredient_id):
          return response_body, 200
 
 
-# @api.route('/exercise/<int:ingredient_id>', methods=['PUT', 'DELETE'])
-# @jwt_required()
-# def handle_edit_ingredient(ingredient_id):
-#     response_body = {}
-#     current_user = get_jwt_identity()    
-#     if request.method == 'PUT':
-#         if (current_user.rol == "user"):
-#             response_body['message'] = 'Authorization denied'
-#             return response_body, 401
-#         data = request.get_json()
-#         ingredient = db.session.execute(db.select(Ingredients).where(Ingredients.id == ingredient_id)).scalar()
-#         if not ingredient:
-#             response_body['results'] = {}
-#             response_body['message'] = f'Ingredient {ingredient_id} not exist'
-#             return response_body, 404
-#         ingredient.name = data.get('name', ingredient.name )
-#         ingredient.energy = data.get('energy', ingredient.energy)
-#         ingredient.proteins = data.get('proteins', ingredient.proteins)
-#         ingredient.carbohydrates = data.get('carbohydrates', ingredient.carbohydrates)
-#         ingredient.fats = data.get('fats', ingredient.fats)
-#         ingredient.sugar = data.get('sugar', ingredient.sugar)
-#         # ingredient.license_object_url = data.get('license_object_url', ingredient.license_object_url)
-#         db.session.commit()
-#         response_body['results'] = ingredient.serialize()
-#         response_body['message'] = f'Ingredient {ingredient_id} updated'
-#         return response_body, 200
-#     if request.method == 'DELETE':
-#         if (current_user.rol == "user"):
-#             response_body['message'] = 'Authorization denied'
-#             return response_body, 401
-#         ingredient = db.session.execute(db.select(Ingredients).where(Ingredients.id == ingredient_id)).scalar()
-#         if not ingredient:
-#             response_body['results'] = {}
-#             response_body['message'] = f'Ingredient {ingredient_id} not exist'
-#             return response_body, 404
-#         db.session.delete(ingredient)
-#         db.session.commit()
-#         response_body['message'] = f'Ingredient {ingredient_id} deleted'
-#         return response_body, 200
-
-
 @api.route('/exercise', methods=['GET'])
 def handle_ingredients():
     response_body = {}
@@ -207,7 +258,7 @@ def handle_add_ingredients():
         data = request.json
         name = data.get('name', None)
         kcal = data.get('kcal', None)
-        proteins = data.get('proteins, None')
+        proteins = data.get('proteins', None)
         carbohydrates = data.get('carbohydrates', None)
         fats = data.get('fats', None)
         sugar = data.get('sugar', None)
@@ -345,3 +396,38 @@ def load_data_equipments_from_api():
                 db.session.add(equipment)
                 db.session.commit()
     return response_body, 200
+
+
+# Route to add a favorite recipe
+@api.route('/add_favorite', methods=['POST'])
+def add_favorite():
+    data = request.get_json()
+    user_id = data.get('user_id')
+    recipe_id = data.get('recipe_id')
+    if not user_id or not recipe_id:
+        return jsonify({"error": "User ID and Recipe ID are required"}), 400
+    # Check if the favorite already exists
+    favorite = Favorites.query.filter_by(user_id=user_id, recipe_id=recipe_id).first()
+    if favorite:
+        return jsonify({"message": "Recipe already added to favorites"}), 200
+    # Add the favorite
+    new_favorite = Favorites(user_id=user_id, recipe_id=recipe_id)
+    db.session.add(new_favorite)
+    db.session.commit()
+    return jsonify({"message": "Recipe added to favorites successfully"}), 201
+
+
+# Route to remove a favorite recipe
+@api.route('/remove_favorite', methods=['POST'])
+def remove_favorite():
+    data = request.get_json()
+    user_id = data.get('user_id')
+    recipe_id = data.get('recipe_id')
+    if not user_id or not recipe_id:
+        return jsonify({"error": "User ID and Recipe ID are required"}), 400
+    favorite = Favorites.query.filter_by(user_id=user_id, recipe_id=recipe_id).first()
+    if not favorite:
+        return jsonify({"message": "Favorite not found"}), 404
+    db.session.delete(favorite)
+    db.session.commit()
+    return jsonify({"message": "Recipe removed from favorites successfully"}), 200
