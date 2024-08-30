@@ -19,7 +19,7 @@ export const MainNavbar = () => {
         actions.setIsLoged(false);
     };
     return (
-        <div>
+        <div className="main-navbar mb-auto p-2">
             <Navbar className="navbar-expand-l">
                 <Container>
                     <Navbar.Brand>
