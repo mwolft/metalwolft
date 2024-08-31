@@ -12,20 +12,23 @@ class Users(db.Model):
     firstname = db.Column(db.String(30))
     lastname = db.Column(db.String(30))
     gender = db.Column(db.Enum('Male', 'Female', name='gender'), nullable=True)
-    phone = db.Column(db.String(20))  # Changed from Integer to String for phone numbers
-    email = db.Column(db.String(50), unique=True, nullable=False)
+    phone = db.Column(db.String(20))  # String is appropriate for phone numbers
+    email = db.Column(db.String(50), unique=True, nullable=False, index=True)
     birth = db.Column(db.Date, nullable=True)
     height = db.Column(db.Integer)
     weight = db.Column(db.Integer)
     is_active = db.Column(db.Boolean, default=True)
     rol = db.Column(db.Enum('user', 'admin', 'trainer', name="rol"))
+    location = db.Column(db.String(100), nullable=True)
     rutines = db.relationship('Rutines', backref='user', lazy=True)
     user_recipes = db.relationship('UserRecipes', backref='user', lazy=True)
     user_ingredients = db.relationship('UserIngredients', backref='user', lazy=True)
     template_prompts = db.relationship('TemplatePrompts', backref='author', lazy=True)
     favorites = db.relationship('Favorites', backref='user', lazy=True)
+
     def __repr__(self):
         return f'<User {self.id}: {self.alias}>'
+
     def serialize(self):
         return {"id": self.id,
                 "firstname": self.firstname,
@@ -39,6 +42,7 @@ class Users(db.Model):
                 "height": self.height,
                 "weight": self.weight,
                 "rol": self.rol,
+                "location": self.location,
                 "favorites": [favorite.recipe.serialize() for favorite in self.favorites]}
 
 

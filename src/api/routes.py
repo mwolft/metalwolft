@@ -63,46 +63,60 @@ def generate_recipe():
 @api.route('/generate-exercise-routine', methods=['POST'])
 # @jwt_required()
 def generate_exercise_routine():
-    response_body = {}
+    response_body = {} 
+    # Get user input from the request body
     data = request.json
-    # Extract parameters from request body
     days = data.get('days', None)
     hours_per_day = data.get('hours_per_day', None)
     target_muscles = data.get('target_muscles', None)
-    # Validate parameters
-    if not days or not hours_per_day or not target_muscles:
-        response_body['message'] = 'Days, hours per day, and target muscles are required'
+    level = data.get('level', None)   
+    # Validate user input
+    if not days or not hours_per_day or not target_muscles or not level:
+        response_body['message'] = 'Days, hours per day, target muscles, and level are required'
         return jsonify(response_body), 400
-    # Fetch exercises that target the specified muscles
-    exercises = db.session.execute(
-        db.select(Exercises).where(Exercises.muscle.in_(target_muscles))
-    ).scalars().all()
-    if not exercises:
-        response_body['message'] = 'No exercises found for the specified muscles'
-        return jsonify(response_body), 404 
-    # Create a prompt for the routine generation
-    prompt = (f"Generate a workout routine based on the following parameters: "
-              f"Days available: {days}, "
-              f"Hours available per day: {hours_per_day}, "
-              f"Targeted muscles: {', '.join(target_muscles)}. "
-              f"Provide a balanced routine that fits within the specified days and hours, "
-              f"and includes a variety of exercises to target the mentioned muscles. "
-              f"Return the routine in JSON format.")  
+    valid_levels = ['beginner', 'intermediate', 'advanced']
+    if level.lower() not in valid_levels:
+        response_body['message'] = f'Invalid level. Valid options are: {", ".join(valid_levels)}'
+        return jsonify(response_body), 400
+    # Normalize muscle names to plural form
+    muscle_mapping = {'chest': 'chest',
+                      'back': 'back',
+                      'bicep': 'biceps',
+                      'biceps': 'biceps',
+                      'tricep': 'triceps',
+                      'triceps': 'triceps',
+                      'shoulder': 'shoulders',
+                      'shoulders': 'shoulders',
+                      'leg': 'legs',
+                      'legs': 'legs'}
+    normalized_muscles = [muscle_mapping.get(muscle.lower(), None) for muscle in target_muscles]   
+    # Ensure all target muscles are valid
+    if None in normalized_muscles:
+        response_body['message'] = 'Invalid muscle names. Valid options are: chest, back, biceps, triceps, shoulders, legs'
+        return jsonify(response_body), 400  
+    # Create the prompt for the exercise routine
+    prompt = (f"Create a {level.lower()} workout routine for a person who has {days} days available for exercise and can work out {hours_per_day} hours per day. "
+              f"The routine should focus on the following muscles: {', '.join(normalized_muscles)}. "
+              f"Ensure the routine is balanced, includes warm-ups and cool-downs, and provides variety in exercises. "
+              f"And return the response in JSON format.")
     try:
-        # Use Groq to generate a workout routine based on the parameters
+        # Use the Groq client to generate an exercise routine
         chat_completion = client.chat.completions.create(
-            messages=[{"role": "system", "content": "You are a fitness coach"},
+            messages=[{"role": "system", "content": "You are a helpful fitness coach"},
                       {"role": "user", "content": prompt}],
             model="llama3-8b-8192",)
+        # Extract the generated text from the response
         generated_text = chat_completion.choices[0].message.content
-        response_body['parameters'] = {
-            'days': days,
-            'hours_per_day': hours_per_day,
-            'target_muscles': target_muscles}
+        # Prepare the response body
+        response_body['parameters'] = {'days': days,
+                                       'hours_per_day': hours_per_day,
+                                       'target_muscles': normalized_muscles,
+                                       'level': level}
         response_body['generated_routine'] = generated_text
         response_body['message'] = 'Workout routine generated successfully'
         return jsonify(response_body), 200
     except Exception as e:
+        app.logger.error(f"An error occurred while generating the routine: {e}")
         response_body['message'] = f'An error occurred while generating the routine: {str(e)}'
         return jsonify(response_body), 500
 
