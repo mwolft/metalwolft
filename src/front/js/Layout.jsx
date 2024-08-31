@@ -4,7 +4,6 @@ import injectContext from "./store/appContext.js";
 // Custom components
 import ScrollToTop from "./component/ScrollToTop.jsx";
 import { BackendURL } from "./component/BackendURL.jsx";
-import { Navbar } from "./component/Navbar.jsx";
 import { Footer } from "./component/Footer.jsx";
 // Custom pages
 import { Home } from "./pages/Home.jsx";
@@ -26,7 +25,6 @@ const Layout = () => {
         <div>
             <BrowserRouter basename={basename}>
                 <ScrollToTop>
-                    <Navbar />
                     <Alert />
                     <Routes>
                         <Route element={<Home />} path="/" />
