@@ -15,10 +15,7 @@ h1 {
     font-weight: 400;
     font-style: italic;
 }
-.main-navbar {
-    background-color: rgba(255, 228, 51, .35);
-    width: 100%;
-}
+
 .btn {
     font-family: "Anton", sans-serif;
     color: black;

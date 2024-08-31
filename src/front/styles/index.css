@@ -1,3 +1,7 @@
 /* 
     General Styles used on every website (Don't Repeat Yourself)
-*/
+*/.estilo-navbar {
+    position: fixed;
+    background-color: rgba(255, 228, 51, .35);
+    width: 100%;
+}

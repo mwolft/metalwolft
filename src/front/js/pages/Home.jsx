@@ -6,7 +6,6 @@ import { MainNavbar } from "../component/MainNavbar.jsx";
 export const Home = () => {
     return (
         <header className="container-fluid d-flex align-items-start flex-column text-center background-image p-0" style={{backgroundImage: `url(${fitnessImage})`}}>
-            <MainNavbar />     
             <div className="row py-5 my-5 p-2 m-auto">
                 <div className="col-lg-12 col-md-12">
                     <h1>ES FÁCIL SER FIT</h1>
