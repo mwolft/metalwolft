@@ -4,7 +4,7 @@ This module takes care of starting the API Server, Loading the DB and Adding the
 from flask import Flask, request, jsonify, url_for, Blueprint
 from api.utils import generate_sitemap, APIException
 from flask_cors import CORS
-from api.models import db, Users, Ingredients, Recipes, Exercises, Muscles, Equipments, Favorites
+from api.models import db, Users, Ingredients, Recipes, Exercises, Muscles, Equipments, FavoriteRecipes, FavoriteRoutines, FavoriteExercises
 from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity
 from groq import Groq
 from dotenv import load_dotenv
@@ -445,3 +445,25 @@ def remove_favorite():
     db.session.delete(favorite)
     db.session.commit()
     return jsonify({"message": "Recipe removed from favorites successfully"}), 200
+
+
+@api.route('/add_favorite_exercise', methods=['POST'])
+@jwt_required()
+def add_favorite_exercise():
+    response_body = {}
+    data = request.get_json()
+    user_id = get_jwt_identity().get('user_id')  # Get the current user's ID from the JWT token
+    exercise_id = data.get('exercise_id')
+    if not exercise_id:
+        return jsonify({"error": "Exercise ID is required"}), 400
+    exercise = Exercises.query.get(exercise_id)
+    if not exercise:
+        return jsonify({"error": "Exercise not found"}), 404
+    # Check if the exercise is already favorited
+    favorite = FavoriteExercises.query.filter_by(user_id=user_id, exercise_id=exercise_id).first()
+    if favorite:
+        return jsonify({"message": "Exercise already added to favorites"}), 200
+    new_favorite = FavoriteExercises(user_id=user_id, exercise_id=exercise_id)
+    db.session.add(new_favorite)
+    db.session.commit()
+    return jsonify({"message": "Exercise added to favorites successfully", "favorite": new_favorite.serialize()}), 201
