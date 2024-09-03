@@ -19,7 +19,7 @@ export const MainNavbar = () => {
         actions.setIsLoged(false);
     };
     return (
-        <Navbar expand="lg" className="estilo-navbar" data-bs-theme="dark">
+        <Navbar expand="lg" className="estilo-navbar" data-bs-theme="light">
             <Container fluid>
                 <Navbar.Brand as={Link} to="/"> <img src={logoweb} alt="Logo" width="100" height="30" className="d-inline-block align-top" />
                 </Navbar.Brand>

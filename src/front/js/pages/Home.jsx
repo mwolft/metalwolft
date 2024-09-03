@@ -1,19 +1,45 @@
-import React from "react";
+import React, { useEffect } from "react";
 import fitnessImage from "../../img/fitness.jpg";
 import "../../styles/home.css";
-import { MainNavbar } from "../component/MainNavbar.jsx";
+import { BodyHomeMain } from "../component/BodyHomeMain.jsx";
+import { BodyHomeSecondary } from "../component/BodyHomeSecondary.jsx";
 
 export const Home = () => {
+    useEffect(() => {
+        const handleScroll = () => {
+            const sections = document.querySelectorAll(".section");
+            sections.forEach(section => {
+                const sectionTop = section.getBoundingClientRect().top;
+                if (sectionTop < window.innerHeight - 150) {
+                    section.classList.add("section-visible");
+                } else {
+                    section.classList.remove("section-visible");
+                }
+            });
+        };
+        window.addEventListener("scroll", handleScroll);
+        return () => window.removeEventListener("scroll", handleScroll);
+    }, []);
+
     return (
-        <header className="container-fluid d-flex align-items-start flex-column text-center background-image p-0" style={{backgroundImage: `url(${fitnessImage})`}}>
-            <div className="row py-5 my-5 p-2 m-auto">
-                <div className="col-lg-12 col-md-12">
-                    <h1>ES FÁCIL SER FIT</h1>
-                    <p>
-                        <a href="#" className="btn btn-warning btn-lg px-5">Registrate</a>
-                    </p>
+        <div>
+            <header className="container-fluid d-flex align-items-end text-center background-image" style={{backgroundImage: `url(${fitnessImage})`}}>
+                <div className="row py-5 my-5 m-auto">
+                    <div className="col-lg-12 col-md-12">
+                        <h1>ES FÁCIL SER FIT</h1>
+                        <p>
+                            <a href="#" className="btn btn-color-yellow btn-lg px-5">Regístrate</a>
+                        </p>
+                    </div>
                 </div>
-            </div>
-        </header>
+            </header>
+            <section className="section">
+                <BodyHomeMain />
+            </section>
+            <section className="section">
+                <BodyHomeSecondary />
+            </section>
+        </div>
     );
 };
+

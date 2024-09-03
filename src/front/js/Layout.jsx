@@ -12,7 +12,9 @@ import { Login } from "./pages/Login.jsx";
 import { Alert } from "./component/Alert.jsx";
 import { SignUp } from "./pages/SignUp.jsx";
 import { Dashboard } from "./pages/Dashboard.jsx";
-
+import { MainNavbar } from "./component/MainNavbar.jsx"
+import { BodyHomeMain } from "./component/BodyHomeMain.jsx";
+import { BodyHomeSecondary } from "./component/BodyHomeSecondary.jsx";
 
 // Create your first component
 const Layout = () => {
@@ -26,12 +28,15 @@ const Layout = () => {
             <BrowserRouter basename={basename}>
                 <ScrollToTop>
                     <Alert />
+                    <MainNavbar />
                     <Routes>
                         <Route element={<Home />} path="/" />
                         <Route element={<Error404/>} path='*'/>
                         <Route element={<Login />} path='/login' />
                         <Route element={<SignUp />} path='/sign-up' /> 
                         <Route element={<Dashboard />} path='/dashboard' />
+                        <Route element={<BodyHomeMain />} path='/body-home-main' />
+                        <Route element={<BodyHomeSecondary />} path='/body-home-secondary' />
                     </Routes>
                     <Footer />
                 </ScrollToTop>
@@ -41,3 +46,4 @@ const Layout = () => {
 };
 
 export default injectContext(Layout);
+
