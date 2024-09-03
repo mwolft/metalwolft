@@ -21,29 +21,22 @@ client = Groq(
 )
 
 @api.route('/generate-recipe', methods=['GET'])
-#  @jwt_required()
 def generate_recipe():
     response_body = {}
-    # Get the list of ingredient IDs from the query parameters
-    ingredient_ids = request.args.get('ingredient_ids')
-    if not ingredient_ids:
-        response_body['message'] = 'No ingredient IDs provided'
+
+    # Get the list of ingredient names from the query parameters
+    ingredient_names = request.args.get('ingredient_names')
+    if not ingredient_names:
+        response_body['message'] = 'No ingredient names provided'
         return jsonify(response_body), 400
-    # Convert the string of IDs into a list of integers
-    ingredient_ids = list(map(int, ingredient_ids.split(',')))
-    # Fetch ingredient details from the database
-    ingredients = db.session.execute(
-        db.select(Ingredients).where(Ingredients.id.in_(ingredient_ids))
-    ).scalars().all()
-    if not ingredients:
-        response_body['message'] = 'No valid ingredients found'
-        return jsonify(response_body), 404
-    # Create a list of ingredient names
-    ingredient_names = [ingredient.name for ingredient in ingredients]
+
+    # Split the ingredient names into a list
+    ingredient_list = [name.strip() for name in ingredient_names.split(',')]
+
     # Structure of the prompt for recipe
-    prompt = (f"Create a healthy recipe using the following ingredients: {', '.join(ingredient_names)}. "
-              f"The recipe should be nutritious and balanced. Include the total nutritional information: proteins, calories, and fats "
-              f"And return the response in json ")
+    prompt = (f"Create a healthy recipe using the following ingredients: {', '.join(ingredient_list)}. "
+              f"The recipe should be nutritious and balanced. Include the total nutritional information: proteins, calories, and fats.")
+
     try:
         # Use Groq to generate a recipe based on the ingredients
         chat_completion = client.chat.completions.create(
@@ -51,7 +44,7 @@ def generate_recipe():
                       {"role": "user", "content": prompt}],
             model="llama3-8b-8192",)
         generated_text = chat_completion.choices[0].message.content
-        response_body['ingredients'] = [ingredient.serialize() for ingredient in ingredients]
+
         response_body['generated_recipe'] = generated_text
         response_body['message'] = 'Healthy recipe generated successfully'
         return jsonify(response_body), 200
@@ -97,8 +90,7 @@ def generate_exercise_routine():
     # Create the prompt for the exercise routine
     prompt = (f"Create a {level.lower()} workout routine for a person who has {days} days available for exercise and can work out {hours_per_day} hours per day. "
               f"The routine should focus on the following muscles: {', '.join(normalized_muscles)}. "
-              f"Ensure the routine is balanced, includes warm-ups and cool-downs, and provides variety in exercises. "
-              f"And return the response in JSON format.")
+              f"Ensure the routine is balanced, includes warm-ups and cool-downs, and provides variety in exercises. ")
     try:
         # Use the Groq client to generate an exercise routine
         chat_completion = client.chat.completions.create(
@@ -233,20 +225,6 @@ def handle_user(user_id):
         return response_body, 200
 
 
-@api.route('/exercise/<int:ingredient_id>', methods=['GET'])
-def handle_ingredient(ingredient_id):
-     response_body = {}
-     if request.method == 'GET':
-         row = db.session.execute(db.select(Ingredients).where(Ingredients.id == ingredient_id)).scalar()
-         if not row:
-             response_body['results'] = {}
-             response_body['message'] = f'Ingredient {ingredient_id} not exist'
-             return response_body, 404
-         response_body['results'] = row.serialize()
-         response_body['message'] = f'Ingredient {ingredient_id} recieved'
-         return response_body, 200
-
-
 @api.route('/exercise', methods=['GET'])
 def handle_ingredients():
     response_body = {}
@@ -257,44 +235,6 @@ def handle_ingredients():
             results.append(row.serialize())
         response_body['results'] = results
         response_body['message'] = "Ingredient list"
-        return response_body, 200
-
-
-@api.route('/exercise', methods=['POST'])
-@jwt_required()
-def handle_add_ingredients():
-    response_body = {}
-    current_user = get_jwt_identity()    
-    if request.method == 'POST':
-        if (current_user.rol == "user"):
-            response_body['message'] = 'Authorization denied'
-            return response_body, 401
-        data = request.json
-        name = data.get('name', None)
-        kcal = data.get('kcal', None)
-        proteins = data.get('proteins', None)
-        carbohydrates = data.get('carbohydrates', None)
-        fats = data.get('fats', None)
-        sugar = data.get('sugar', None)
-        if not name:
-            response_body['message'] = 'Missing ingredient name'
-            response_body['results'] = {}
-            return response_body, 400
-        ingredient_name_exist = db.session.execute(db.select(Ingredients).where(Ingredients.name == name)).scalar()
-        if ingredient_name_exist:
-            response_body['message'] = 'Ingredient already exist'
-            response_body['results'] = {}
-            return response_body, 404
-        row = Ingredients(name = data['name'],
-                         energy = data['energy'],
-                         proteins = data['proteins'],
-                         carbohydrates = data['carbohydrates'],
-                         fats = data['fats'],
-                         sugar = data['sugar'])
-        db.session.add(row)
-        db.session.commit()
-        response_body['message'] = "Ingredient added succesfully"
-        response_body['results'] = row.serialize()
         return response_body, 200
 
 
@@ -314,6 +254,14 @@ def load_ingredient():
             db.session.add(ingredients)
             db.session.commit()
     return jsonify(data), 200
+
+
+@api.route('/ingredients', methods=['GET'])
+def get_ingredients():
+    # Fetch all ingredients from the database
+    ingredients = db.session.query(Ingredients).all()
+    # Serialize the ingredients and return them as JSON
+    return jsonify([ingredient.serialize() for ingredient in ingredients]), 200
 
 
 @api.route('/ingredients/<int:ingredient_id>', methods=['PUT', 'DELETE'])
