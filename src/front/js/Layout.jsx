@@ -14,7 +14,6 @@ import { Login } from "./pages/Login.jsx";
 import { Alert } from "./component/Alert.jsx";
 import { SignUp } from "./pages/SignUp.jsx";
 import { Dashboard } from "./pages/Dashboard.jsx";
-import { MainNavbar } from "./component/MainNavbar.jsx"
 import { BodyHomeMain } from "./component/BodyHomeMain.jsx";
 import { BodyHomeSecondary } from "./component/BodyHomeSecondary.jsx";
 import { GenerateRecipes } from "./pages/GenerateRecipes.jsx";
@@ -31,8 +30,8 @@ const Layout = () => {
         <div>
             <BrowserRouter basename={basename}>
                 <ScrollToTop>
-                    <Alert />
                     <MainNavbar />
+                    <Alert />
                     <Routes>
                         <Route element={<Home />} path="/" />
                         <Route element={<Error404/>} path='*'/>

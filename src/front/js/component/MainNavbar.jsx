@@ -21,7 +21,7 @@ export const MainNavbar = () => {
     };
 
     return (
-        <Navbar expand="lg" className="estilo-navbar" data-bs-theme="light">
+        <Navbar expand="lg" className="estilo-navbar fixed-top" data-bs-theme="light">
             <Container fluid>
                 <Navbar.Brand as={Link} to="/"> 
                     <img src={logoweb} alt="Logo" width="100" height="30" className="d-inline-block align-top" />
@@ -29,7 +29,6 @@ export const MainNavbar = () => {
                 <Navbar.Toggle aria-controls="basic-navbar-nav" />
                 <Navbar.Collapse id="basic-navbar-nav">
                     <Nav className="me-auto">
-BMIcalculator
                         <Nav.Link as={Link} to="/">Trainer</Nav.Link>
                         <Nav.Link as={Link} to="/bmr-calculator">BMR Calculator</Nav.Link>
 
@@ -37,7 +36,6 @@ BMIcalculator
                             <NavDropdown.Item as={Link} to="/generate-recipes">Generate Recipes</NavDropdown.Item>
                             <NavDropdown.Item as={Link} to="/generate-routines">Generate Routines</NavDropdown.Item>
                         </NavDropdown>
-develop
                         <Nav.Link as={Link} to="/category">Ejercicios</Nav.Link>
                         <Nav.Link as={Link} to="/category">Nutrición</Nav.Link>
                     </Nav>
@@ -49,7 +47,10 @@ develop
                                 <NavDropdown.Item onClick={handleLogout}>Cerrar sesión</NavDropdown.Item>
                             </NavDropdown>
                         ) : (
-                            <Button variant="outline-dark" onClick={() => navigate("/login")}><i className="fa-solid fa-user"></i></Button>
+                            <>
+                                <Button variant="outline-dark mx-1" onClick={() => navigate("/sign-up")}><i class="fa-solid fa-user-plus"></i></Button>
+                                <Button variant="outline-dark mx-1" onClick={() => navigate("/login")}><i class="fa-solid fa-right-to-bracket"></i></Button>
+                            </>
                         )}
                     </Nav>
                 </Navbar.Collapse>

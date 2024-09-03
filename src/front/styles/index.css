@@ -5,7 +5,6 @@
     font-family: "Anton", sans-serif;
 }
 .estilo-navbar {
-    position: fixed;
     background-color: rgba(255, 228, 51);
     width: 100%;
     z-index: 1;
