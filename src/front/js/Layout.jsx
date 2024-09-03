@@ -5,6 +5,8 @@ import injectContext from "./store/appContext.js";
 import ScrollToTop from "./component/ScrollToTop.jsx";
 import { BackendURL } from "./component/BackendURL.jsx";
 import { Footer } from "./component/Footer.jsx";
+import { MainNavbar } from "./component/MainNavbar.jsx";
+import { BmrCalculator } from "./component/BmrCalculator.jsx";
 // Custom pages
 import { Home } from "./pages/Home.jsx";
 import { Error404 } from "./pages/Error404.jsx";
@@ -15,6 +17,8 @@ import { Dashboard } from "./pages/Dashboard.jsx";
 import { MainNavbar } from "./component/MainNavbar.jsx"
 import { BodyHomeMain } from "./component/BodyHomeMain.jsx";
 import { BodyHomeSecondary } from "./component/BodyHomeSecondary.jsx";
+import { GenerateRecipes } from "./pages/GenerateRecipes.jsx";
+import { GenerateRoutines } from "./pages/GenerateRoutines.jsx";
 
 // Create your first component
 const Layout = () => {
@@ -32,8 +36,11 @@ const Layout = () => {
                     <Routes>
                         <Route element={<Home />} path="/" />
                         <Route element={<Error404/>} path='*'/>
+                        <Route element={<BmrCalculator />} path="/bmr-calculator" />
                         <Route element={<Login />} path='/login' />
-                        <Route element={<SignUp />} path='/sign-up' /> 
+                        <Route element={<SignUp />} path='/sign-up' />
+                        <Route element={<GenerateRecipes />} path="/generate-recipes" />
+                        <Route element={<GenerateRoutines />} path="/generate-routines" />
                         <Route element={<Dashboard />} path='/dashboard' />
                         <Route element={<BodyHomeMain />} path='/body-home-main' />
                         <Route element={<BodyHomeSecondary />} path='/body-home-secondary' />

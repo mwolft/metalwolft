@@ -4,35 +4,89 @@ const getState = ({ getStore, getActions, setStore }) => {
 			message: null,
 			currentUser: null,
 			isLoged: false,
-			alert: {visible: false, back: 'danger', text: 'Mensaje del back'}
+			alert: { visible: false, back: 'danger', text: 'Mensaje del back' },
+			generatedRecipe: null,
+			generatedRoutine: null,
+			error: null,
+			loading: false
 		},
 		actions: {
-            getMessage: async () => {
+			getMessage: async () => {
 				const options = {
-					headers: {'Content-Type' : 'application/json'},
+					headers: { 'Content-Type': 'application/json' },
 					method: 'GET'
+				};
+				try {
+					const response = await fetch(`${process.env.BACKEND_URL}/api/hello`, options);
+					if (!response.ok) throw new Error("Error loading message from backend");
+
+					const data = await response.json();
+					setStore({ message: data.message });
+					return data;
+				} catch (error) {
+					console.log(error);
 				}
-				const response = await fetch(process.env.BACKEND_URL + "/api/hello", options);
-				if (!response.ok) {
-					console.log("Error loading message from backend", error);
-					return
-				}
-				const data = await response.json();
-				setStore({ message: data.message });
-				return data;
-		},
-			setCurrentUser: (user) => {setStore({ currentUser: user })},
-			setIsLoged: (isLogin) => {
-				if (isLogin){
-					setStore({ isLoged: true })
-				} else {
-					setStore({ isLoged: false })
-					localStorage.removeItem("token")
-					localStorage.removeItem("user")
-				}
-					
 			},
-            setAlert: (newAlert) => {setStore({ alert: newAlert })}
+
+			setCurrentUser: (user) => {
+				setStore({ currentUser: user });
+			},
+
+			setIsLoged: (isLogin) => {
+				if (isLogin) {
+					setStore({ isLoged: true });
+				} else {
+					setStore({ isLoged: false });
+					localStorage.removeItem("token");
+					localStorage.removeItem("user");
+				}
+			},
+
+			setAlert: (newAlert) => {
+				setStore({ alert: newAlert });
+			},
+
+			generateRoutine: async (routineData) => {
+				setStore({ loading: true, generatedRoutine: null, error: null });
+				const url = `${process.env.BACKEND_URL}/api/generate-exercise-routine`;
+				try {
+					const response = await fetch(url, {
+						method: 'POST',
+						headers: {
+							'Content-Type': 'application/json',
+						},
+						body: JSON.stringify(routineData)
+					});
+					if (!response.ok) throw new Error('Failed to generate routine');
+					const data = await response.json();
+					setStore({ generatedRoutine: data.generated_routine, error: null, loading: false });
+				} catch (error) {
+					setStore({ error: error.message, loading: false });
+				}
+			},
+
+			// Action to generate a recipe
+			generateRecipe: async (ingredientNames) => {
+				setStore({ loading: true, generatedRecipe: null, error: null });
+				const url = `${process.env.BACKEND_URL}/api/generate-recipe?ingredient_names=${encodeURIComponent(ingredientNames)}`;
+				try {
+					const response = await fetch(url, {
+						method: 'GET',
+						headers: {
+							'Content-Type': 'application/json',
+						},
+					});
+					if (!response.ok) throw new Error('Failed to generate recipe');
+					const data = await response.json();
+					setStore({ generatedRecipe: data.generated_recipe, error: null, loading: false });
+				} catch (error) {
+					setStore({ error: error.message, loading: false });
+				}
+			},
+
+			clearError: () => {
+				setStore({ error: null, loading: false });
+			}
 		}
 	};
 };
