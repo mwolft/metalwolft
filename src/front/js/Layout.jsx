@@ -6,7 +6,9 @@ import ScrollToTop from "./component/ScrollToTop.jsx";
 import { BackendURL } from "./component/BackendURL.jsx";
 import { Footer } from "./component/Footer.jsx";
 import { MainNavbar } from "./component/MainNavbar.jsx";
+BMIcalculator
 import { BmrCalculator } from "./component/BmrCalculator.jsx";
+develop
 // Custom pages
 import { Home } from "./pages/Home.jsx";
 import { Error404 } from "./pages/Error404.jsx";
@@ -14,6 +16,8 @@ import { Login } from "./pages/Login.jsx";
 import { Alert } from "./component/Alert.jsx";
 import { SignUp } from "./pages/SignUp.jsx";
 import { Dashboard } from "./pages/Dashboard.jsx";
+import { GenerateRecipes } from "./pages/GenerateRecipes.jsx";
+import { GenerateRoutines } from "./pages/GenerateRoutines.jsx";
 
 
 // Create your first component
@@ -34,7 +38,9 @@ const Layout = () => {
                         <Route element={<Error404/>} path='*'/>
                         <Route element={<BmrCalculator />} path="/bmr-calculator" />
                         <Route element={<Login />} path='/login' />
-                        <Route element={<SignUp />} path='/sign-up' /> 
+                        <Route element={<SignUp />} path='/sign-up' />
+                        <Route element={<GenerateRecipes />} path="/generate-recipes" />
+                        <Route element={<GenerateRoutines />} path="/generate-routines" />
                         <Route element={<Dashboard />} path='/dashboard' />
                     </Routes>
                     <Footer />

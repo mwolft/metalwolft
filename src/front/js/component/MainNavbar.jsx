@@ -12,28 +12,38 @@ import { Link } from "react-router-dom";
 
 
 export const MainNavbar = () => {
-    const { store, actions } = useContext(Context)
+    const { store, actions } = useContext(Context);
     const { isLoggedIn, setIsLoggedIn } = useState(false);
-    const navigate = useNavigate()
+    const navigate = useNavigate();
+
     const handleLogout = () => {
         actions.setIsLoged(false);
     };
+
     return (
         <Navbar expand="lg" className="estilo-navbar" data-bs-theme="dark">
             <Container fluid>
-                <Navbar.Brand as={Link} to="/"> <img src={logoweb} alt="Logo" width="100" height="30" className="d-inline-block align-top" />
+                <Navbar.Brand as={Link} to="/"> 
+                    <img src={logoweb} alt="Logo" width="100" height="30" className="d-inline-block align-top" />
                 </Navbar.Brand>
                 <Navbar.Toggle aria-controls="basic-navbar-nav" />
                 <Navbar.Collapse id="basic-navbar-nav">
                     <Nav className="me-auto">
+BMIcalculator
                         <Nav.Link as={Link} to="/">Trainer</Nav.Link>
                         <Nav.Link as={Link} to="/bmr-calculator">BMR Calculator</Nav.Link>
+
+                        <NavDropdown title="TrAIner" id="trainer-nav-dropdown">
+                            <NavDropdown.Item as={Link} to="/generate-recipes">Generate Recipes</NavDropdown.Item>
+                            <NavDropdown.Item as={Link} to="/generate-routines">Generate Routines</NavDropdown.Item>
+                        </NavDropdown>
+develop
                         <Nav.Link as={Link} to="/category">Ejercicios</Nav.Link>
                         <Nav.Link as={Link} to="/category">Nutrición</Nav.Link>
                     </Nav>
                     <Nav className="ms-auto">
                         {store.isLoged ? (
-                            <NavDropdown title={<i className="fa-solid fa-user"></i>} id="basic-nav-dropdown" align="end">
+                            <NavDropdown title={<i className="fa-solid fa-user"></i>} id="user-nav-dropdown" align="end">
                                 <NavDropdown.Item href="#perfil">Perfil</NavDropdown.Item>
                                 <NavDropdown.Divider />
                                 <NavDropdown.Item onClick={handleLogout}>Cerrar sesión</NavDropdown.Item>
