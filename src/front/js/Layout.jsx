@@ -5,6 +5,8 @@ import injectContext from "./store/appContext.js";
 import ScrollToTop from "./component/ScrollToTop.jsx";
 import { BackendURL } from "./component/BackendURL.jsx";
 import { Footer } from "./component/Footer.jsx";
+import { MainNavbar } from "./component/MainNavbar.jsx";
+import { BmrCalculator } from "./component/BmrCalculator.jsx";
 // Custom pages
 import { Home } from "./pages/Home.jsx";
 import { Error404 } from "./pages/Error404.jsx";
@@ -26,9 +28,11 @@ const Layout = () => {
             <BrowserRouter basename={basename}>
                 <ScrollToTop>
                     <Alert />
+                    <MainNavbar />
                     <Routes>
                         <Route element={<Home />} path="/" />
                         <Route element={<Error404/>} path='*'/>
+                        <Route element={<BmrCalculator />} path="/bmr-calculator" />
                         <Route element={<Login />} path='/login' />
                         <Route element={<SignUp />} path='/sign-up' /> 
                         <Route element={<Dashboard />} path='/dashboard' />

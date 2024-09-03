@@ -27,6 +27,7 @@ export const MainNavbar = () => {
                 <Navbar.Collapse id="basic-navbar-nav">
                     <Nav className="me-auto">
                         <Nav.Link as={Link} to="/">Trainer</Nav.Link>
+                        <Nav.Link as={Link} to="/bmr-calculator">BMR Calculator</Nav.Link>
                         <Nav.Link as={Link} to="/category">Ejercicios</Nav.Link>
                         <Nav.Link as={Link} to="/category">Nutrición</Nav.Link>
                     </Nav>
