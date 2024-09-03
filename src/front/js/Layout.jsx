@@ -6,9 +6,7 @@ import ScrollToTop from "./component/ScrollToTop.jsx";
 import { BackendURL } from "./component/BackendURL.jsx";
 import { Footer } from "./component/Footer.jsx";
 import { MainNavbar } from "./component/MainNavbar.jsx";
-BMIcalculator
 import { BmrCalculator } from "./component/BmrCalculator.jsx";
-develop
 // Custom pages
 import { Home } from "./pages/Home.jsx";
 import { Error404 } from "./pages/Error404.jsx";
@@ -16,9 +14,11 @@ import { Login } from "./pages/Login.jsx";
 import { Alert } from "./component/Alert.jsx";
 import { SignUp } from "./pages/SignUp.jsx";
 import { Dashboard } from "./pages/Dashboard.jsx";
+import { MainNavbar } from "./component/MainNavbar.jsx"
+import { BodyHomeMain } from "./component/BodyHomeMain.jsx";
+import { BodyHomeSecondary } from "./component/BodyHomeSecondary.jsx";
 import { GenerateRecipes } from "./pages/GenerateRecipes.jsx";
 import { GenerateRoutines } from "./pages/GenerateRoutines.jsx";
-
 
 // Create your first component
 const Layout = () => {
@@ -42,6 +42,8 @@ const Layout = () => {
                         <Route element={<GenerateRecipes />} path="/generate-recipes" />
                         <Route element={<GenerateRoutines />} path="/generate-routines" />
                         <Route element={<Dashboard />} path='/dashboard' />
+                        <Route element={<BodyHomeMain />} path='/body-home-main' />
+                        <Route element={<BodyHomeSecondary />} path='/body-home-secondary' />
                     </Routes>
                     <Footer />
                 </ScrollToTop>
@@ -51,3 +53,4 @@ const Layout = () => {
 };
 
 export default injectContext(Layout);
+
