@@ -4,7 +4,7 @@ This module takes care of starting the API Server, Loading the DB and Adding the
 from flask import Flask, request, jsonify, url_for, Blueprint
 from api.utils import generate_sitemap, APIException
 from flask_cors import CORS
-from api.models import db, Users, Ingredients, Recipes, Exercises, Muscles, Equipments, FavoriteRecipes, FavoriteRoutines, FavoriteExercises
+from api.models import db, Users, Ingredients, Recipes, Exercises, Muscles, Equipments, Routines, Recipes, FavoriteRecipes, FavoriteRoutines, FavoriteExercises
 from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity
 from groq import Groq
 from dotenv import load_dotenv
@@ -16,36 +16,32 @@ load_dotenv()
 
 api = Blueprint('api', __name__)
 
-client = Groq(
-    api_key=os.environ.get("GROQ_API_KEY"),
+client = Groq(api_key=os.environ.get("GROQ_API_KEY"),
 )
 
 @api.route('/generate-recipe', methods=['GET'])
 def generate_recipe():
     response_body = {}
-
-    # Get the list of ingredient names from the query parameters
     ingredient_names = request.args.get('ingredient_names')
     if not ingredient_names:
         response_body['message'] = 'No ingredient names provided'
         return jsonify(response_body), 400
-
-    # Split the ingredient names into a list
     ingredient_list = [name.strip() for name in ingredient_names.split(',')]
-
-    # Structure of the prompt for recipe
     prompt = (f"Create a healthy recipe using the following ingredients: {', '.join(ingredient_list)}. "
-              f"The recipe should be nutritious and balanced. Include the total nutritional information: proteins, calories, and fats.")
-
+              f"The recipe should be nutritious and balanced. Include the total nutritional information: proteins, calories, and fats."
+              f"Response with (Sorry this is not an ingredient) if the user sends anything not related to ingredients and nutrition.")
     try:
-        # Use Groq to generate a recipe based on the ingredients
         chat_completion = client.chat.completions.create(
             messages=[{"role": "system", "content": "You are a helpful trainer"},
                       {"role": "user", "content": prompt}],
             model="llama3-8b-8192",)
         generated_text = chat_completion.choices[0].message.content
-
+        ingredients_text = ", ".join(ingredient_list)
+        recipe = Recipes(name="Generated Recipe", ingredients_text=ingredients_text)
+        db.session.add(recipe)
+        db.session.commit()
         response_body['generated_recipe'] = generated_text
+        response_body['recipe_id'] = recipe.id 
         response_body['message'] = 'Healthy recipe generated successfully'
         return jsonify(response_body), 200
     except Exception as e:
@@ -54,16 +50,15 @@ def generate_recipe():
 
 
 @api.route('/generate-exercise-routine', methods=['POST'])
-# @jwt_required()
+@jwt_required() 
 def generate_exercise_routine():
-    response_body = {} 
-    # Get user input from the request body
+    response_body = {}
+    user_id = get_jwt_identity()['user_id'] 
     data = request.json
     days = data.get('days', None)
     hours_per_day = data.get('hours_per_day', None)
     target_muscles = data.get('target_muscles', None)
-    level = data.get('level', None)   
-    # Validate user input
+    level = data.get('level', None)
     if not days or not hours_per_day or not target_muscles or not level:
         response_body['message'] = 'Days, hours per day, target muscles, and level are required'
         return jsonify(response_body), 400
@@ -71,45 +66,31 @@ def generate_exercise_routine():
     if level.lower() not in valid_levels:
         response_body['message'] = f'Invalid level. Valid options are: {", ".join(valid_levels)}'
         return jsonify(response_body), 400
-    # Normalize muscle names to plural form
-    muscle_mapping = {'chest': 'chest',
-                      'back': 'back',
-                      'bicep': 'biceps',
-                      'biceps': 'biceps',
-                      'tricep': 'triceps',
-                      'triceps': 'triceps',
-                      'shoulder': 'shoulders',
-                      'shoulders': 'shoulders',
-                      'leg': 'legs',
-                      'legs': 'legs'}
-    normalized_muscles = [muscle_mapping.get(muscle.lower(), None) for muscle in target_muscles]   
-    # Ensure all target muscles are valid
+    muscle_mapping = {'chest': 'chest', 'back': 'back', 'bicep': 'biceps', 'biceps': 'biceps',
+                      'tricep': 'triceps', 'triceps': 'triceps', 'shoulder': 'shoulders', 'shoulders': 'shoulders',
+                      'leg': 'legs', 'legs': 'legs'}
+    normalized_muscles = [muscle_mapping.get(muscle.lower(), None) for muscle in target_muscles]
     if None in normalized_muscles:
         response_body['message'] = 'Invalid muscle names. Valid options are: chest, back, biceps, triceps, shoulders, legs'
-        return jsonify(response_body), 400  
-    # Create the prompt for the exercise routine
-    prompt = (f"Create a {level.lower()} workout routine for a person who has {days} days available for exercise and can work out {hours_per_day} hours per day. "
-              f"The routine should focus on the following muscles: {', '.join(normalized_muscles)}. "
-              f"Ensure the routine is balanced, includes warm-ups and cool-downs, and provides variety in exercises. ")
+        return jsonify(response_body), 400
+    prompt = (f"Create a {level.lower()} workout routine for a person who has {days} days available and can work out {hours_per_day} hours per day. "
+              f"The routine should focus on these muscles: {', '.join(normalized_muscles)}. "
+              f"Include warm-ups and variety in exercises.")
     try:
-        # Use the Groq client to generate an exercise routine
         chat_completion = client.chat.completions.create(
             messages=[{"role": "system", "content": "You are a helpful fitness coach"},
                       {"role": "user", "content": prompt}],
             model="llama3-8b-8192",)
-        # Extract the generated text from the response
         generated_text = chat_completion.choices[0].message.content
-        # Prepare the response body
-        response_body['parameters'] = {'days': days,
-                                       'hours_per_day': hours_per_day,
-                                       'target_muscles': normalized_muscles,
-                                       'level': level}
+        routine = Routines(user_id=user_id, prompt=generated_text)
+        db.session.add(routine)
+        db.session.commit()
         response_body['generated_routine'] = generated_text
+        response_body['routine_id'] = routine.id  # Include dynamic routine ID
         response_body['message'] = 'Workout routine generated successfully'
         return jsonify(response_body), 200
     except Exception as e:
-        app.logger.error(f"An error occurred while generating the routine: {e}")
-        response_body['message'] = f'An error occurred while generating the routine: {str(e)}'
+        response_body['message'] = f'Error generating routine: {str(e)}'
         return jsonify(response_body), 500
 
 
@@ -158,17 +139,20 @@ def signup():
     response_body = {}
     email = request.json.get("email", None)
     password = request.json.get("password", None)
+    # Check if the user already exists with the provided email
+    existing_user = db.session.execute(db.select(Users).where(Users.email == email)).scalar()
+    if existing_user:
+        response_body['message'] = 'User with this email already exists'
+        return response_body, 409 
     user = Users()
     user.email = email
     user.password = password
     user.rol = "user"
     db.session.add(user)
     db.session.commit()
-    access_token = create_access_token(identity={'email': user.email,
-                                                 'user_id': user.id,
-                                                 'rol': user.rol}) 
+    access_token = create_access_token(identity={'email': user.email, 'user_id': user.id, 'rol': user.rol})
     response_body['results'] = user.serialize()
-    response_body['message'] = 'User registrado y logeado'
+    response_body['message'] = 'User registered and logged in'
     response_body['access_token'] = access_token
     return response_body, 201
 
@@ -258,9 +242,7 @@ def load_ingredient():
 
 @api.route('/ingredients', methods=['GET'])
 def get_ingredients():
-    # Fetch all ingredients from the database
     ingredients = db.session.query(Ingredients).all()
-    # Serialize the ingredients and return them as JSON
     return jsonify([ingredient.serialize() for ingredient in ingredients]), 200
 
 
@@ -360,58 +342,66 @@ def load_data_equipments_from_api():
     return response_body, 200
 
 
-# Route to add a favorite recipe
-@api.route('/add_favorite', methods=['POST'])
-def add_favorite():
+@api.route('/favorite-routine', methods=['POST'])
+@jwt_required()
+def favorite_routine():
+    user_id = get_jwt_identity()['user_id']
     data = request.get_json()
-    user_id = data.get('user_id')
+    routine_id = data.get('routine_id')
+    if not routine_id:
+        return jsonify({"message": "Routine ID is required"}), 400
+    routine = Routines.query.get(routine_id)
+    if not routine:
+        return jsonify({"message": "Routine not found"}), 404
+    favorite = FavoriteRoutines(user_id=user_id, routine_id=routine_id)
+    db.session.add(favorite)
+    db.session.commit()
+    return jsonify({"message": "Routine added to favorites successfully"}), 201
+
+
+@api.route('/favorites', methods=['GET'])
+@jwt_required()
+def get_favorites():
+    user_id = get_jwt_identity()['user_id']
+    favorite_recipes = FavoriteRecipes.query.filter_by(user_id=user_id).all()
+    favorite_routines = FavoriteRoutines.query.filter_by(user_id=user_id).all()
+    return jsonify({
+        "recipes": [fav.recipe_id for fav in favorite_recipes],
+        "routines": [fav.routine_id for fav in favorite_routines]
+    }), 200
+
+
+@api.route('/favorite-recipe', methods=['POST'])
+@jwt_required()
+def favorite_recipe():
+    user_id = get_jwt_identity()['user_id']
+    data = request.get_json() 
+    # Ensure recipe_id is provided
     recipe_id = data.get('recipe_id')
-    if not user_id or not recipe_id:
-        return jsonify({"error": "User ID and Recipe ID are required"}), 400
-    # Check if the favorite already exists
-    favorite = Favorites.query.filter_by(user_id=user_id, recipe_id=recipe_id).first()
+    if not recipe_id:
+        return jsonify({"message": "Recipe ID is required"}), 400
+    # Check if the recipe exists
+    recipe = Recipes.query.get(recipe_id)
+    if not recipe:
+        return jsonify({"message": "Recipe not found"}), 404
+    # Check if the recipe is already in the user's favorites
+    favorite = FavoriteRecipes.query.filter_by(user_id=user_id, recipe_id=recipe_id).first()
     if favorite:
-        return jsonify({"message": "Recipe already added to favorites"}), 200
-    # Add the favorite
-    new_favorite = Favorites(user_id=user_id, recipe_id=recipe_id)
-    db.session.add(new_favorite)
+        return jsonify({"message": "Recipe already in favorites"}), 400
+    # Create a new favorite recipe entry
+    favorite = FavoriteRecipes(user_id=user_id, recipe_id=recipe_id)
+    db.session.add(favorite)
     db.session.commit()
     return jsonify({"message": "Recipe added to favorites successfully"}), 201
 
 
-# Route to remove a favorite recipe
-@api.route('/remove_favorite', methods=['POST'])
-def remove_favorite():
-    data = request.get_json()
-    user_id = data.get('user_id')
-    recipe_id = data.get('recipe_id')
-    if not user_id or not recipe_id:
-        return jsonify({"error": "User ID and Recipe ID are required"}), 400
-    favorite = Favorites.query.filter_by(user_id=user_id, recipe_id=recipe_id).first()
+@api.route('/favorite-routine/<int:routine_id>', methods=['DELETE'])
+@jwt_required() 
+def delete_favorite_routine(routine_id):
+    user_id = get_jwt_identity()['user_id']
+    favorite = FavoriteRoutines.query.filter_by(user_id=user_id, routine_id=routine_id).first()
     if not favorite:
-        return jsonify({"message": "Favorite not found"}), 404
+        return jsonify({"message": "Favorite routine not found"}), 404
     db.session.delete(favorite)
     db.session.commit()
-    return jsonify({"message": "Recipe removed from favorites successfully"}), 200
-
-
-@api.route('/add_favorite_exercise', methods=['POST'])
-@jwt_required()
-def add_favorite_exercise():
-    response_body = {}
-    data = request.get_json()
-    user_id = get_jwt_identity().get('user_id')  # Get the current user's ID from the JWT token
-    exercise_id = data.get('exercise_id')
-    if not exercise_id:
-        return jsonify({"error": "Exercise ID is required"}), 400
-    exercise = Exercises.query.get(exercise_id)
-    if not exercise:
-        return jsonify({"error": "Exercise not found"}), 404
-    # Check if the exercise is already favorited
-    favorite = FavoriteExercises.query.filter_by(user_id=user_id, exercise_id=exercise_id).first()
-    if favorite:
-        return jsonify({"message": "Exercise already added to favorites"}), 200
-    new_favorite = FavoriteExercises(user_id=user_id, exercise_id=exercise_id)
-    db.session.add(new_favorite)
-    db.session.commit()
-    return jsonify({"message": "Exercise added to favorites successfully", "favorite": new_favorite.serialize()}), 201
+    return jsonify({"message": "Routine removed from favorites successfully"}), 200
