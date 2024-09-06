@@ -2,7 +2,7 @@
     General Styles used on every website (Don't Repeat Yourself)
 */
 * {
-    font-family: "Anton", sans-serif;
+    font-family: "Dosis", sans-serif;
 }
 .estilo-navbar {
     background-color: rgba(255, 228, 51);

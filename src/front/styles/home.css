@@ -23,6 +23,7 @@ body {
     color: rgb(255, 255, 255);
 }
 h1 {
+    font-family: "Anton", sans-serif;
     font-size: 9vw;
     font-weight: 400;
     font-style: italic;
@@ -41,6 +42,7 @@ h1 {
     padding: 0px;
 }
 .cover-card {
+    font-family: "Anton", sans-serif;
     transition: background-color 0.5s;
     border-radius: 15% 15% 0 0;
     background-color: rgba(12, 15, 17, 0.5);
@@ -49,9 +51,9 @@ h1 {
     width: 100%;
     color: rgb(255, 255, 255);
     font-size: 1.8vw;
-    font-family: "Anton", sans-serif;
 }
 .cover-card:hover::after {
+    font-family: "Anton", sans-serif;
     content: attr(data-hover-content);
     font-size: 1.2vw;
 }

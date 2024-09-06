@@ -47,7 +47,7 @@ export const Login = () => {
     actions.setIsLoged(true)
     actions.setAlert({visible: true, back: 'info', text: data.message})
     // Me voy al dashboard
-    navigate('/dashboard')
+    navigate('/profile')
   };
 
 

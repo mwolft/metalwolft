@@ -18,6 +18,7 @@ import { BodyHomeMain } from "./component/BodyHomeMain.jsx";
 import { BodyHomeSecondary } from "./component/BodyHomeSecondary.jsx";
 import { GenerateRecipes } from "./pages/GenerateRecipes.jsx";
 import { GenerateRoutines } from "./pages/GenerateRoutines.jsx";
+import { Profile } from "./pages/Profile.jsx";
 
 // Create your first component
 const Layout = () => {
@@ -43,6 +44,7 @@ const Layout = () => {
                         <Route element={<Dashboard />} path='/dashboard' />
                         <Route element={<BodyHomeMain />} path='/body-home-main' />
                         <Route element={<BodyHomeSecondary />} path='/body-home-secondary' />
+                        <Route element={<Profile />} path='/Profile' />
                     </Routes>
                     <Footer />
                 </ScrollToTop>
