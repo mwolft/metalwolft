@@ -2,14 +2,16 @@ import React, { useContext, useEffect, useState } from "react";
 import { Context } from "../store/appContext.js";
 import "../../styles/profile.css";
 import Button from 'react-bootstrap/Button';
+import { useNavigate } from "react-router-dom";
 
 export const Profile = () => {
-    const { store, actions } = useContext(Context);  // Desestructuramos las actions y store
+    const { store, actions } = useContext(Context);
+    const navigate = useNavigate();
     const [formData, setFormData] = useState({
         weight: store.currentUser ? store.currentUser.weight || '' : '',
         height: store.currentUser ? store.currentUser.height || '' : '',
-        age: store.currentUser ? store.currentUser.age || '' : '',
-        sex: store.currentUser ? store.currentUser.sex || 'male' : 'male', // Por defecto 'male'
+        age: store.currentUser ? store.currentUser.age || '' : '',  
+        sex: store.currentUser ? store.currentUser.sex || 'male' : 'male',
         bmr: null,
         calories: null
     });
@@ -17,6 +19,20 @@ export const Profile = () => {
     const handleInputChange = (e) => {
         const { name, value } = e.target;
         setFormData({ ...formData, [name]: value });
+    };
+
+    const handleSave = async () => {
+        const updatedData = {
+            height: formData.height,
+            weight: formData.weight,
+            age: formData.age  
+        };
+        const response = await actions.updateUserProfile(store.currentUser.id, updatedData);
+        if (response.ok) {
+            alert("Perfil actualizado correctamente.");
+        } else {
+            alert("Error al actualizar el perfil.");
+        }
     };
 
     const calculateBMR = () => {
@@ -66,7 +82,7 @@ export const Profile = () => {
 
     return (
         !store.currentUser ?
-            <h1>Cargando...</h1>
+            navigate("/login")
             :
             <div className="wrapper bg-white" style={{ marginTop: '55px' }}>
                 <nav id="sidebar" className="pt-5">
@@ -88,73 +104,40 @@ export const Profile = () => {
                     <h1 className="h1-profile text-center">{store.currentUser.firstname} {store.currentUser.lastname}</h1>
                     <div className="row">
                         <div className="col-12 col-sm-12 col-md-12 col-lg-6 d-flex align-items-center justify-content-center">
-                            <div className="cards-dashboard d-flex flex-column justify-content-center align-items-center" style={{ width: '100%', height: '96%' }}>
+                            <div className="cards-dashboard-profile d-flex justify-content-evenly align-items-center" style={{ width: '100%', height: '96%' }}>
                                 <i className="fa-solid fa-user fa-8x py-2"></i>
                                 <form>
                                     <div className="mb-3">
                                         <label className="form-label">Peso (kg):</label>
-                                        <input
-                                            type="number"
-                                            name="weight"
-                                            className="form-control"
+                                        <input type="number" name="weight" className="form-control"
                                             value={formData.weight}
-                                            onChange={handleInputChange}
-                                        />
-                                    </div>
-                                    <div className="mb-3">
+                                            onChange={handleInputChange} />
                                         <label className="form-label">Altura (cm):</label>
-                                        <input
-                                            type="number"
-                                            name="height"
-                                            className="form-control"
+                                        <input type="number" name="height" className="form-control"
                                             value={formData.height}
-                                            onChange={handleInputChange}
-                                        />
-                                    </div>
-                                    <div className="mb-3">
+                                            onChange={handleInputChange} />
                                         <label className="form-label">Edad:</label>
-                                        <input
-                                            type="number"
-                                            name="age"
-                                            className="form-control"
+                                        <input type="number" name="age" className="form-control"
                                             value={formData.age}
-                                            onChange={handleInputChange}
-                                        />
+                                            onChange={handleInputChange} />
                                     </div>
-                                    <div className="mb-3">
-                                        <label className="form-label">Sexo:</label>
-                                        <select
-                                            name="sex"
-                                            className="form-control"
-                                            value={formData.sex}
-                                            onChange={handleInputChange}
-                                        >
-                                            <option value="male">Hombre</option>
-                                            <option value="female">Mujer</option>
-                                        </select>
-                                    </div>
+                                    <Button className="btn-profile btn-primary mx-1" onClick={calculateBMR}>
+                                        Calcular IMC
+                                    </Button>
+                                    <Button className="btn-profile btn-success" onClick={handleSave}>
+                                        Guardar 
+                                    </Button>
                                 </form>
-                                <Button className="btn-profile" variant="primary" onClick={calculateBMR}>
-                                    Calcular IMC
-                                </Button>
                             </div>
                         </div>
                         <div className="col-12 col-sm-12 col-md-12 col-lg-6">
                             <div className="row">
                                 <div className="col-12">
                                     <div className="cards-dashboard">
-                                        <p className="p-profile">DIETA OBJETIVO</p>
+                                        <p className="p-profile">CALORÍAS MÍNIMAS RECOMENDADAS</p>
                                         {formData.bmr && (
-                                            <div>
-                                                <p className="p-profile">BMR: {formData.bmr} kcal/día</p>
-                                                <p className="p-profile">Calorías necesarias (Sedentario): {formData.calories.Sedentary} kcal</p>
-                                                <p className="p-profile">Calorías necesarias (Ligeramente activo): {formData.calories["Lightly active"]} kcal</p>
-                                                <p className="p-profile">Calorías necesarias (Moderadamente activo): {formData.calories["Moderately active"]} kcal</p>
-                                                <p className="p-profile">Calorías necesarias (Muy activo): {formData.calories["Highly active"]} kcal</p>
-                                                <p className="p-profile">Calorías necesarias (Super atlético): {formData.calories["Super athletic"]} kcal</p>
-                                            </div>
+                                            <h3 className="h3-profile">{formData.bmr}<p className="p-profile py-0"> KCAL</p></h3>
                                         )}
-                                        <h3 className="h3-profile">2205<p className="p-profile py-0"> KCAL</p></h3>
                                         <i className="fa-solid fa-flag-checkered fa-3x d-flex justify-content-center"></i>
                                     </div>
                                 </div>
@@ -210,5 +193,6 @@ export const Profile = () => {
                 </div>
             </div>
     );
-}
+};
+
 

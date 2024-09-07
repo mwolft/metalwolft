@@ -12,7 +12,7 @@ class Users(db.Model):
     gender = db.Column(db.Enum('Male', 'Female', name='gender'), nullable=True)
     phone = db.Column(db.String(20))  # String is appropriate for phone numbers
     email = db.Column(db.String(50), unique=True, nullable=False, index=True)
-    birth = db.Column(db.Date, nullable=True)
+    age = db.Column(db.Integer)
     height = db.Column(db.Integer)
     weight = db.Column(db.Integer)
     is_active = db.Column(db.Boolean, default=True)
@@ -38,7 +38,7 @@ class Users(db.Model):
                 "alias": self.alias,
                 "gender": self.gender,
                 "phone": self.phone,
-                "birth": self.birth,
+                "age": self.age,
                 "height": self.height,
                 "weight": self.weight,
                 "rol": self.rol,

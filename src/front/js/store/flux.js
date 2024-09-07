@@ -31,7 +31,27 @@ const getState = ({ getStore, getActions, setStore }) => {
 			setCurrentUser: (user) => {
 				setStore({ currentUser: user });
 			},
+			updateUserProfile: async (userId, updatedData) => {
+                const store = getStore();
+                try {
+                    const response = await fetch(`${process.env.BACKEND_URL}/users/${userId}`, {
+                        method: 'PUT',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            Authorization: `Bearer ${localStorage.getItem("token")}` 
+                        },
+                        body: JSON.stringify(updatedData)
+                    });
+                    if (!response.ok) throw new Error("Error al actualizar el perfil");
 
+                    const data = await response.json();
+                    setStore({ currentUser: data.user }); 
+                    return { ok: true };
+                } catch (error) {
+                    console.error("Error en updateUserProfile: ", error);
+                    return { ok: false };
+                }
+            },
 			setIsLoged: (isLogin) => {
 				if (isLogin) {
 					setStore({ isLoged: true });

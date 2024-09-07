@@ -41,7 +41,7 @@ export const SignUp = () => {
     actions.setIsLoged(true);
     actions.setCurrentUser(data.results);
     actions.setAlert({visible: true, back: 'info', text: data.message})
-    navigate('/dashboard')
+    navigate('/profile')
   };
 
 

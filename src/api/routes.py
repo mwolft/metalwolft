@@ -187,8 +187,12 @@ def handle_users():
 
 
 @api.route('/users/<int:user_id>', methods=['GET', 'PUT', 'DELETE'])
+# @jwt_required()  
 def handle_user(user_id):
     response_body = {}
+    # current_user = get_jwt_identity()  
+    if current_user['user_id'] != user_id:
+        return jsonify({"message": "No autorizado para modificar este perfil"}), 403
     if request.method == 'GET':
         row = db.session.execute(db.select(Users).where(Users.id == user_id)).scalar()
         if not row:
@@ -196,7 +200,7 @@ def handle_user(user_id):
             response_body['message'] = f'No existe el usuario {user_id}'
             return response_body, 404
         response_body['results'] = row.serialize()
-        response_body['message'] = f'recibí el GET request {user_id}'
+        response_body['message'] = f'Datos del usuario {user_id} obtenidos correctamente'
         return response_body, 200
     if request.method == 'PUT':
         data = request.get_json()
@@ -209,9 +213,12 @@ def handle_user(user_id):
         user.email = data.get('email', user.email)
         user.firstname = data.get('firstname', user.firstname)
         user.lastname = data.get('lastname', user.lastname)
-        db.session.commit()
+        user.height = data.get('height', user.height)  
+        user.weight = data.get('weight', user.weight)  
+        user.age = data.get('age', user.age) 
+        db.session.commit()  
         response_body['results'] = user.serialize()
-        response_body['message'] = f'Usuario {user_id} actualizado'
+        response_body['message'] = f'Usuario {user_id} actualizado exitosamente'
         return response_body, 200
     if request.method == 'DELETE':
         user = db.session.execute(db.select(Users).where(Users.id == user_id)).scalar()
@@ -221,7 +228,7 @@ def handle_user(user_id):
             return response_body, 404
         db.session.delete(user)
         db.session.commit()
-        response_body['message'] = f'Usuario {user_id} eliminado'
+        response_body['message'] = f'Usuario {user_id} eliminado correctamente'
         return response_body, 200
 
 
