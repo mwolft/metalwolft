@@ -23,35 +23,46 @@ export const GenerateRecipes = () => {
     };
 
     return (
-        <div className="container my-5">
-            <h2>Generate a Healthy Recipe</h2>
-            <div className="mb-3">
-                <input
-                    type="text"
-                    className="form-control"
-                    placeholder="Enter ingredients, e.g., chicken, broccoli, rice"
-                    value={ingredientNames}
-                    onChange={(e) => setIngredientNames(e.target.value)}
-                />
-                <button onClick={handleGenerateRecipe} className="btn btn-primary mt-3">
-                    {loading ? "Generating..." : "Generate Recipe"}
-                </button>
+        <div style={{ backgroundColor: '#d3d3d3', height: 'auto' }}>
+            <div className='row'>
+                <div className='container mt-5'>
+                </div>
+                <div className="container my-5">
+                    <div className='text-center mx-3'>
+                        <h2 style={{ color: 'black' }}>Generate a Healthy Recipe</h2>
+                    </div>
+                    <div className="mx-3">
+                        <input
+                            type="text"
+                            className="form-control"
+                            placeholder="Enter ingredients, e.g., chicken, broccoli, rice"
+                            value={ingredientNames}
+                            onChange={(e) => setIngredientNames(e.target.value)}
+                        />
+                        <button onClick={handleGenerateRecipe} className="btn btn-warning mt-3">
+                            {loading ? "Generating..." : "Generate Recipe"}
+                        </button>
+                    </div>
+                    {store.generatedRecipe && (
+                        <div className="d-flex justify-content-center"> {/* Centering the recipe container */}
+                            <div className="alert mt-3" style={{ backgroundColor: '#FFFACD', color: 'black', maxWidth: '800px', width: '100%' }}> {/* Light yellow background and container with max width */}
+                                <h3 className="text-center">Generated Recipe</h3> {/* Centered title */}
+                                <div className="recipe-container" dangerouslySetInnerHTML={{ __html: formatRecipe(store.generatedRecipe) }} />
+                                <button onClick={handleSaveToFavorites} className="btn btn-warning mt-3 w-100">Save to Favorites</button> {/* Full width button */}
+                            </div>
+                        </div>
+                    )}
+                    {store.error && (
+                        <div className="alert alert-danger mt-3">
+                            {store.error}
+                        </div>
+                    )}
+                </div>
             </div>
-            {store.generatedRecipe && (
-                <div className="alert alert-success mt-3">
-                    <h3>Generated Recipe</h3>
-                    <div className="recipe-container" dangerouslySetInnerHTML={{ __html: formatRecipe(store.generatedRecipe) }} />
-                    <button onClick={handleSaveToFavorites} className="btn btn-warning mt-3">Save to Favorites</button>
-                </div>
-            )}
-            {store.error && (
-                <div className="alert alert-danger mt-3">
-                    {store.error}
-                </div>
-            )}
         </div>
     );
 };
+
 // Function to format the recipe
 const formatRecipe = (recipe) => {
     return recipe
