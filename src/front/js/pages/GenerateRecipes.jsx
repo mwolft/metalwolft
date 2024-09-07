@@ -4,9 +4,22 @@ import { Context } from '../store/appContext';
 export const GenerateRecipes = () => {
     const { store, actions } = useContext(Context);
     const [ingredientNames, setIngredientNames] = useState('');
+    const [loading, setLoading] = useState(false);
 
-    const handleGenerateRecipe = () => {
-        actions.generateRecipe(ingredientNames);
+    // Function to generate recipe
+    const handleGenerateRecipe = async () => {
+        setLoading(true);
+        await actions.generateRecipe(ingredientNames);
+        setLoading(false);
+    };
+
+    // Function to save recipe to favorites
+    const handleSaveToFavorites = async () => {
+        if (store.generatedRecipe && store.recipeId) {
+            await actions.addFavoriteRecipe(store.recipeId);  // Save to favorites
+            alert("Recipe added to favorites!");  // Simple feedback
+        }
+        console.log(store.recipeId);
     };
 
     return (
@@ -20,12 +33,15 @@ export const GenerateRecipes = () => {
                     value={ingredientNames}
                     onChange={(e) => setIngredientNames(e.target.value)}
                 />
-                <button onClick={handleGenerateRecipe} className="btn btn-primary mt-3">Generate Recipe</button>
+                <button onClick={handleGenerateRecipe} className="btn btn-primary mt-3">
+                    {loading ? "Generating..." : "Generate Recipe"}
+                </button>
             </div>
             {store.generatedRecipe && (
                 <div className="alert alert-success mt-3">
                     <h3>Generated Recipe</h3>
                     <div className="recipe-container" dangerouslySetInnerHTML={{ __html: formatRecipe(store.generatedRecipe) }} />
+                    <button onClick={handleSaveToFavorites} className="btn btn-warning mt-3">Save to Favorites</button>
                 </div>
             )}
             {store.error && (
@@ -36,7 +52,6 @@ export const GenerateRecipes = () => {
         </div>
     );
 };
-
 // Function to format the recipe
 const formatRecipe = (recipe) => {
     return recipe
