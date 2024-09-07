@@ -17,8 +17,6 @@ import { Error404 } from "./pages/Error404.jsx";
 import { Login } from "./pages/Login.jsx";
 import { SignUp } from "./pages/SignUp.jsx";
 import { Dashboard } from "./pages/Dashboard.jsx";
-import { BodyHomeMain } from "./component/BodyHomeMain.jsx";
-import { BodyHomeSecondary } from "./component/BodyHomeSecondary.jsx";
 import { Trainers } from './pages/Trainers.jsx';
 import { GenerateRecipes } from "./pages/GenerateRecipes.jsx";
 import { GenerateRoutines } from "./pages/GenerateRoutines.jsx";
