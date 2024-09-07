@@ -3,8 +3,11 @@ import fitnessImage from "../../img/fitness.jpg";
 import "../../styles/home.css";
 import { BodyHomeMain } from "../component/BodyHomeMain.jsx";
 import { BodyHomeSecondary } from "../component/BodyHomeSecondary.jsx";
+import { useNavigate } from "react-router-dom";
 
 export const Home = () => {
+    const navigate = useNavigate();
+
     useEffect(() => {
         const handleScroll = () => {
             const sections = document.querySelectorAll(".section");
@@ -21,14 +24,21 @@ export const Home = () => {
         return () => window.removeEventListener("scroll", handleScroll);
     }, []);
 
+    
+    const handleSignUp = () => {
+        navigate("/sign-up"); 
+    };
+
     return (
         <div>
             <header className="container-fluid d-flex align-items-end text-center background-image" style={{backgroundImage: `url(${fitnessImage})`}}>
-                <div className="row py-5 my-5 m-auto">
+                <div className="row py-5 m-auto">
                     <div className="col-lg-12 col-md-12">
                         <h1>ES FÁCIL SER FIT</h1>
                         <p>
-                            <a href="#" className="btn btn-color-yellow btn-lg px-5">Regístrate</a>
+                            <button className="btn btn-color-yellow btn-lg px-5" onClick={handleSignUp}>
+                                Regístrate
+                            </button>
                         </p>
                     </div>
                 </div>
@@ -42,4 +52,5 @@ export const Home = () => {
         </div>
     );
 };
+
 

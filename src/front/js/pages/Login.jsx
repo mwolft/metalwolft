@@ -37,6 +37,14 @@ export const Login = () => {
       return
     }
     const data = await response.json()
+    // Almaceno los datos en localStorage y en flux (store)
+    localStorage.setItem("token", data.access_token);
+    localStorage.setItem("user", JSON.stringify(data.results));
+    actions.setCurrentUser(data.results);
+    actions.setIsLoged(true)
+    actions.setAlert({visible: true, back: 'info', text: data.message})
+    // Me voy al dashboard
+    navigate('/profile')
     console.log(data);
     if (isLogin) {
       localStorage.setItem('token', data.access_token)

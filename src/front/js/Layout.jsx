@@ -14,11 +14,11 @@ import { Login } from "./pages/Login.jsx";
 import { Alert } from "./component/Alert.jsx";
 import { SignUp } from "./pages/SignUp.jsx";
 import { Dashboard } from "./pages/Dashboard.jsx";
-import { MainNavbar } from "./component/MainNavbar.jsx"
 import { BodyHomeMain } from "./component/BodyHomeMain.jsx";
 import { BodyHomeSecondary } from "./component/BodyHomeSecondary.jsx";
 import { GenerateRecipes } from "./pages/GenerateRecipes.jsx";
 import { GenerateRoutines } from "./pages/GenerateRoutines.jsx";
+import { Profile } from "./pages/Profile.jsx";
 
 // Create your first component
 const Layout = () => {
@@ -31,8 +31,8 @@ const Layout = () => {
         <div>
             <BrowserRouter basename={basename}>
                 <ScrollToTop>
-                    <Alert />
                     <MainNavbar />
+                    <Alert />
                     <Routes>
                         <Route element={<Home />} path="/" />
                         <Route element={<Error404/>} path='*'/>
@@ -44,6 +44,7 @@ const Layout = () => {
                         <Route element={<Dashboard />} path='/dashboard' />
                         <Route element={<BodyHomeMain />} path='/body-home-main' />
                         <Route element={<BodyHomeSecondary />} path='/body-home-secondary' />
+                        <Route element={<Profile />} path='/Profile' />
                     </Routes>
                     <Footer />
                 </ScrollToTop>
