@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 
 export const BmrCalculator = () => {
     const [sex, setSex] = useState('male');
@@ -7,8 +8,7 @@ export const BmrCalculator = () => {
     const [weight, setWeight] = useState('');
     const [heightUnit, setHeightUnit] = useState('cm');
     const [weightUnit, setWeightUnit] = useState('kg');
-    const [bmr, setBmr] = useState(null);
-    const [calories, setCalories] = useState(null);
+    const navigate = useNavigate();
 
     const handleConvert = () => {
         let heightInCm = heightUnit === 'feet' ? height * 30.48 : height;
@@ -22,8 +22,6 @@ export const BmrCalculator = () => {
             calculatedBMR = 447.593 + (9.247 * weightInKg) + (3.098 * heightInCm) - (4.330 * age);
         }
 
-        setBmr(calculatedBMR.toFixed(2));
-
         const calorieNeeds = {
             BMR: calculatedBMR.toFixed(2), // BMR itself
             Sedentary: (calculatedBMR * 1.2).toFixed(0),
@@ -33,13 +31,12 @@ export const BmrCalculator = () => {
             "Super athletic": (calculatedBMR * 1.9).toFixed(0)
         };
 
-        setCalories(calorieNeeds);
+        // Redirige a la página de perfil con los resultados
+        navigate('/profile', { state: { calorieNeeds } });
     };
 
     return (
         <div className="row mt-5">
-            <div className="container mt-5">
-            </div>
             <div className="container mt-5">
                 <div className="card p-4 bg-dark text-light">
                     <h2 className="mb-4 text-center text-warning">BMR Calculator</h2>
@@ -122,29 +119,7 @@ export const BmrCalculator = () => {
                     <button className="btn btn-warning btn-block mt-4" onClick={handleConvert}>
                         Convert
                     </button>
-                    {bmr && (
-                        <div className="mt-4">
-                            <h4 className="text-center text-warning">Your BMR: {bmr} kcal/day</h4>
-                            <table className="table mt-3 table-dark table-striped border-warning">
-                                <thead>
-                                    <tr>
-                                        <th className="text-warning">Activity Level</th>
-                                        <th className="text-warning">Calories</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {Object.keys(calories).map((level, index) => (
-                                        <tr key={index}>
-                                            <td>{level}</td>
-                                            <td>{calories[level]}</td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
-                    )}
                 </div>
-
             </div>
         </div>
     );
