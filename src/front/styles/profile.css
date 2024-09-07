@@ -1,0 +1,133 @@
+.h1-profile{
+    font-size: 2.2rem;
+    display: flex;
+    justify-content: center; 
+    background-color:  rgba(255, 228, 51);
+    border-radius: 0.3rem;
+    margin-top: 1rem;
+    padding: 0.7rem;
+}
+.p-profile {
+    font-family: "Dosis", sans-serif;
+    font-optical-sizing: auto;
+    font-weight: 600;
+    font-style: normal;
+    font-size: 1.2rem;
+    display: flex;
+    justify-content: center;
+}
+.h3-profile {
+    font-size: 2.6rem;
+    padding-top: .4rem;
+    padding-bottom: .4rem;
+    display: flex;
+    justify-content: center;
+}
+
+.cards-dashboard {
+    background-color: rgba(128, 128, 128, 0.1);
+    margin: 0.3rem;
+    padding: 1.8rem;
+    border-radius: 0.3rem;
+}
+.cards-dashboard-dark {
+    background-color: rgba(128, 128, 128, 0.4);
+    margin: 0.3rem;
+    padding: 1.8rem;
+    border-radius: 0.3rem;
+}
+.cards-dashboard:hover, .cards-dashboard-dark:hover{
+    transition: transform 0.3s ease;
+    transform: scale(0.97);
+}
+.photo{
+    background-color: aqua;
+    width: 30%;
+    height: auto;
+}
+.btn-profile{
+    font-family: "Dosis", sans-serif;
+    font-optical-sizing: auto;
+    font-weight: 600;
+    font-style: italic;
+    font-size: 1rem;
+}
+ /* --- SIDEBAR */
+ li{
+    list-style:none
+ }
+ a, a:hover, a:focus{
+    color: inherit;
+    text-decoration: none;
+    transition: all 0.3s;
+ }
+.wrapper{
+    display: flex;
+    text-decoration: none;
+    transition: all 0.3s;
+}
+#sidebar{
+    min-width: 250px;
+    max-width: 250px;
+    background: grey;
+    color: white;
+    transition: all 0.3s;
+}
+#sidebar .active{
+    margin-left: -250px;
+}
+#sidebar{
+    padding: 20px;
+    background-color: grey;
+}
+#sidebar ul.components{
+    padding: 20px 0;
+    border-bottom: 1px solid white;
+}
+#sidebar ul p{
+    columns: #fff;
+    padding: 10px;
+}
+#sidebar ul li a{
+    padding: 10px;
+    font-size: 1.1em;
+    display: block;
+}
+#sidebar ul li a:hover{
+    color: black;
+    background-color: white;
+    border-radius: 0.2rem;
+}
+a[data-toggle="collapse"]{
+    position: relative;
+}
+#content{
+    width: 100%;
+    padding: 20px;
+    min-height: 100vh;
+    transition: all 0.3s;
+}
+@media (max-width: 768px) {
+    #sidebar{
+        margin-left: -250px;
+    }
+    #sidebar.active{
+        margin-left: 0;
+    }
+    #sidebarCollapse {
+        display: block; /* Muestra el botón en pantallas pequeñas */
+    }
+
+    #sidebar {
+        margin-left: -250px; /* Colapsa el sidebar por defecto en pantallas pequeñas */
+    }
+
+    #sidebar.active {
+        margin-left: 0; /* Expande el sidebar cuando se hace clic en el botón */
+    }
+}
+@media (min-width: 769px) {
+    #sidebarCollapse {
+        display: none; /* Oculta el botón en pantallas grandes */
+    }
+}
