@@ -37,13 +37,12 @@ const Layout = () => {
                     <Alert />
                     <Routes>
                         <Route element={<Home />} path="/" />
-                        <Route element={<Home />} path="/" />
                         <Route element={<Error404/>} path='*'/>
                         <Route element={<BmrCalculator />} path="/bmr-calculator" />
                         <Route element={<Trainers />} path="/trainers" />
                         <Route element={<FormTrainer />} path="/become-a-trainer" />
                         <Route element={<Login />} path='/login' />
-                        <Route element={<SignUp />} path='/sign-up' />
+                        {/* <Route element={<SignUp />} path='/sign-up' /> */}
                         <Route element={<GenerateRecipes />} path="/generate-recipes" />
                         <Route element={<GenerateRoutines />} path="/generate-routines" />
                         <Route element={<Dashboard />} path='/dashboard' />

@@ -9,6 +9,7 @@ import { Button } from "react-bootstrap";
 import { useNavigate } from "react-router-dom";
 import { Context } from "../store/appContext";
 import { Link } from "react-router-dom";
+import '../../styles/MainNavbar.css';
 
 
 export const MainNavbar = () => {
