@@ -2,20 +2,24 @@ import React from "react";
 import { BrowserRouter, Route, Routes } from "react-router-dom";
 import injectContext from "./store/appContext.js";
 // Custom components
+import { Alert } from "./component/Alert.jsx";
 import ScrollToTop from "./component/ScrollToTop.jsx";
 import { BackendURL } from "./component/BackendURL.jsx";
 import { Footer } from "./component/Footer.jsx";
 import { MainNavbar } from "./component/MainNavbar.jsx";
 import { BmrCalculator } from "./component/BmrCalculator.jsx";
+import { FormTrainer } from "./component/FormTrainer.jsx";
+import { BodyHomeMain } from "./component/BodyHomeMain.jsx";
+import { BodyHomeSecondary } from "./component/BodyHomeSecondary.jsx";
 // Custom pages
 import { Home } from "./pages/Home.jsx";
 import { Error404 } from "./pages/Error404.jsx";
 import { Login } from "./pages/Login.jsx";
-import { Alert } from "./component/Alert.jsx";
 import { SignUp } from "./pages/SignUp.jsx";
 import { Dashboard } from "./pages/Dashboard.jsx";
 import { BodyHomeMain } from "./component/BodyHomeMain.jsx";
 import { BodyHomeSecondary } from "./component/BodyHomeSecondary.jsx";
+import { Trainers } from './pages/Trainers.jsx';
 import { GenerateRecipes } from "./pages/GenerateRecipes.jsx";
 import { GenerateRoutines } from "./pages/GenerateRoutines.jsx";
 import { Profile } from "./pages/Profile.jsx";
@@ -35,8 +39,11 @@ const Layout = () => {
                     <Alert />
                     <Routes>
                         <Route element={<Home />} path="/" />
+                        <Route element={<Home />} path="/" />
                         <Route element={<Error404/>} path='*'/>
                         <Route element={<BmrCalculator />} path="/bmr-calculator" />
+                        <Route element={<Trainers />} path="/trainers" />
+                        <Route element={<FormTrainer />} path="/become-a-trainer" />
                         <Route element={<Login />} path='/login' />
                         <Route element={<SignUp />} path='/sign-up' />
                         <Route element={<GenerateRecipes />} path="/generate-recipes" />
