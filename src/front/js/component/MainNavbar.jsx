@@ -29,9 +29,8 @@ export const MainNavbar = () => {
                 <Navbar.Toggle aria-controls="basic-navbar-nav" />
                 <Navbar.Collapse id="basic-navbar-nav">
                     <Nav className="me-auto">
-                        <Nav.Link as={Link} to="/">Trainer</Nav.Link>
+                        <Nav.Link as={Link} to="/trainers">Trainers</Nav.Link>
                         <Nav.Link as={Link} to="/bmr-calculator">BMR Calculator</Nav.Link>
-
                         <NavDropdown title="TrAIner" id="trainer-nav-dropdown">
                             <NavDropdown.Item as={Link} to="/generate-recipes">Generate Recipes</NavDropdown.Item>
                             <NavDropdown.Item as={Link} to="/generate-routines">Generate Routines</NavDropdown.Item>

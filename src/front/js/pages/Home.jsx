@@ -26,7 +26,7 @@ export const Home = () => {
 
     
     const handleSignUp = () => {
-        navigate("/sign-up"); 
+        navigate("/login"); 
     };
 
     return (

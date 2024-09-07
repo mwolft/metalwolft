@@ -6,7 +6,7 @@ import { useNavigate } from "react-router-dom";
 export const BodyHomeSecondary = () => {
     const navigate = useNavigate();
     const handleSignUp = () => {
-        navigate("/sign-up"); 
+        navigate("/login"); 
     };
 
     return (
