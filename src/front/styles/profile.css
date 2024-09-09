@@ -1,39 +1,56 @@
 .h1-profile{
-    font-size: 2.2rem;
+    font-size: 1.8rem;
     display: flex;
-    justify-content: center; 
-    background-color:  rgba(255, 228, 51);
-    border-radius: 0.3rem;
+    justify-content: start; 
     margin-top: 1rem;
-    padding: 0.7rem;
 }
 .p-profile {
     font-family: "Dosis", sans-serif;
     font-optical-sizing: auto;
     font-weight: 600;
     font-style: normal;
-    font-size: 1.2rem;
+    font-size: 1rem;
+    display: flex;
+    justify-content: center;
+}
+.p-profile-info {
+    font-family: "Dosis", sans-serif;
+    font-optical-sizing: auto;
+    font-weight: 600;
+    font-style: normal;
+    font-size: 1rem;
+    display: flex;
+    justify-content: center;
+}
+.p-profile-title {
+    font-family: "Dosis", sans-serif;
+    font-optical-sizing: auto;
+    font-weight: 600;
+    font-style: normal;
+    font-size: 1.5rem;
     display: flex;
     justify-content: center;
 }
 .h3-profile {
-    font-size: 2.6rem;
+    font-size: 2.4rem;
     padding-top: .4rem;
     padding-bottom: .4rem;
     display: flex;
     justify-content: center;
 }
-
+.profile-list{
+    padding-left: 0 !important;
+}
 .cards-dashboard {
     background-color: rgba(128, 128, 128, 0.1);
     margin: 0.3rem;
-    padding: 1.8rem;
+    padding: 1rem;
     border-radius: 0.3rem;
 }
 .cards-dashboard-dark {
     background-color: rgba(128, 128, 128, 0.4);
     margin: 0.3rem;
-    padding: 1.8rem;
+    padding: 1rem;
     border-radius: 0.3rem;
 }
 .cards-dashboard-profile{

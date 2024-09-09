@@ -187,10 +187,10 @@ def handle_users():
 
 
 @api.route('/users/<int:user_id>', methods=['GET', 'PUT', 'DELETE'])
-# @jwt_required()  
+@jwt_required()  
 def handle_user(user_id):
     response_body = {}
-    # current_user = get_jwt_identity()  
+    current_user = get_jwt_identity()  
     if current_user['user_id'] != user_id:
         return jsonify({"message": "No autorizado para modificar este perfil"}), 403
     if request.method == 'GET':
