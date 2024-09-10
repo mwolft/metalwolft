@@ -80,7 +80,7 @@ export const Login = () => {
   };
 
   return (
-    <Container className="auth-container d-flex justify-content-center align-items-center">
+    <Container className="auth-container d-flex justify-content-center align-items-center" style={{ marginTop: '100px' }}>
       <div className="auth-box p-5">
         <Row className="text-center mb-3">
           <Col>
