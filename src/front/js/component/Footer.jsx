@@ -4,7 +4,7 @@ import '/workspaces/sp72-final-project-g2/src/front/styles/Footer.css'; // AsegÃ
 
 export const Footer = () => {
   return (
-    <footer className="footer-custom">
+    <footer className="footer-custom mt-auto">
       <Container fluid>
         <Row className="text-center py-4">
           <Col>
