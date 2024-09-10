@@ -1,0 +1,52 @@
+/* Reset body margins and paddings */
+body, html {
+    margin: 0;
+    padding: 0;
+}
+
+/* Styling for the main navbar */
+.estilo-navbar {
+    position: fixed;          /* Make the navbar stick to the top */
+    top: 0;                   /* Position it at the top */
+    width: 100%;              /* Make sure it spans the full width of the page */
+    z-index: 1000;            /* Ensure it stays above other elements */
+    background-color: #FFD700; /* You can adjust the background color as needed */
+    box-shadow: 0 4px 2px -2px gray; /* Optional: Adds a shadow effect for better visibility */
+    margin: 0;                /* Remove any default margin */
+    padding: 10px 0;          /* Adjust padding as needed */
+}
+
+.navbar-brand img {
+    max-height: 40px;         /* Restrict the logo size to avoid overflow */
+    margin-right: 20px;       /* Add space after the logo */
+}
+
+.nav-link {
+    color: #000;              /* Adjust text color */
+    font-weight: bold;        /* Make the text bold */
+    padding: 10px 15px;       /* Adjust spacing for better look */
+    text-decoration: none;    /* Remove underline from links */
+}
+
+.nav-link:hover {
+    color: #FF4500;           /* Add hover effect */
+    text-decoration: underline;
+}
+
+.navbar-collapse {
+    justify-content: space-between; /* Adjust content alignment */
+}
+
+.navbar-toggler {
+    border-color: #000;       /* Style the navbar toggle button */
+}
+
+button.btn-outline-dark i {
+    font-size: 1.5rem;        /* Adjust the size of the user icon */
+}
+
+/* Adjust the dropdown menu */
+#user-nav-dropdown .dropdown-menu {
+    right: 0;                 /* Align the dropdown menu to the right */
+    left: auto;               /* Prevent default left alignment */
+}

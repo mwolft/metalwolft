@@ -1,6 +1,7 @@
 import React, { useState, useContext } from 'react';
 import { Context } from '../store/appContext';
 import Select from 'react-select';
+import '../../styles/Recipe.css';
 
 export const GenerateRoutines = () => {
     const { store, actions } = useContext(Context);
@@ -64,59 +65,71 @@ export const GenerateRoutines = () => {
     };
 
     return (
-        <div className="container my-5">
-            <h2>Generate an Exercise Routine</h2>
-            <div className="mb-3">
-                <Select
-                    isMulti
-                    options={daysOptions}
-                    value={routineData.days}
-                    onChange={(selectedOptions) => setRoutineData({ ...routineData, days: selectedOptions })}
-                    className="mb-2"
-                    placeholder="Select days"
-                />
+        <div style={{ backgroundColor: '#d3d3d3', height: 'auto' }}>
+            <div className='row'>
+                <div className='container mt-5'>
+                </div>
+                <div className="container my-5">
+                    <div className='text-center mx-3'>
+                        <h2 style={{ color: 'black' }}>Generate an Exercise Routine</h2>
+                    </div>
+                    <div className="mx-3">
+                        <Select
+                            isMulti
+                            options={daysOptions}
+                            value={routineData.days}
+                            onChange={(selectedOptions) => setRoutineData({ ...routineData, days: selectedOptions })}
+                            className="mb-2"
+                            placeholder="Select days"
+                        />
 
-                <input
-                    type="text"
-                    className="form-control mb-2"
-                    placeholder="Hours per day"
-                    value={routineData.hours_per_day}
-                    onChange={(e) => setRoutineData({ ...routineData, hours_per_day: e.target.value })}
-                />
-                
-                <Select
-                    isMulti
-                    options={muscles}
-                    value={routineData.target_muscles}
-                    onChange={(selectedOptions) => setRoutineData({ ...routineData, target_muscles: selectedOptions })}
-                    className="mb-2"
-                    placeholder="Select target muscles"
-                />
+                        <input
+                            type="text"
+                            className="form-control mb-2"
+                            placeholder="Hours per day"
+                            value={routineData.hours_per_day}
+                            onChange={(e) => setRoutineData({ ...routineData, hours_per_day: e.target.value })}
+                        />
 
-                <Select
-                    options={levels}
-                    value={levels.find(option => option.value === routineData.level)}
-                    onChange={(selectedOption) => setRoutineData({ ...routineData, level: selectedOption.value })}
-                    className="mb-2"
-                    placeholder="Select level"
-                />
-                
-                <button onClick={handleGenerateRoutine} className="btn btn-primary mt-3">
-                    {loading ? "Generating..." : "Generate Routine"}
-                </button>
+                        <Select
+                            isMulti
+                            options={muscles}
+                            value={routineData.target_muscles}
+                            onChange={(selectedOptions) => setRoutineData({ ...routineData, target_muscles: selectedOptions })}
+                            className="mb-2"
+                            placeholder="Select target muscles"
+                        />
+
+                        <Select
+                            options={levels}
+                            value={levels.find(option => option.value === routineData.level)}
+                            onChange={(selectedOption) => setRoutineData({ ...routineData, level: selectedOption.value })}
+                            className="mb-2"
+                            placeholder="Select level"
+                        />
+
+                        <button onClick={handleGenerateRoutine} className="btn btn-warning mt-3">
+                            {loading ? "Generating..." : "Generate Routine"}
+                        </button>
+                    </div>
+
+                    {store.generatedRoutine && (
+                        <div className="d-flex justify-content-center">
+                            <div className="alert mt-3" style={{ backgroundColor: '#FFFACD', color: 'black', maxWidth: '800px', width: '100%' }}>
+                                <h3 className="text-center">Generated Routine</h3>
+                                <div className="routine-content" dangerouslySetInnerHTML={{ __html: formatRoutine(store.generatedRoutine) }} />
+                                <button onClick={handleSaveToFavorites} className="btn btn-warning mt-3 w-100">Save to Favorites</button>
+                            </div>
+                        </div>
+                    )}
+
+                    {store.error && (
+                        <div className="alert alert-danger mt-3">
+                            {store.error}
+                        </div>
+                    )}
+                </div>
             </div>
-            {store.generatedRoutine && (
-                <div className="alert alert-success mt-3">
-                    <h3>Generated Routine</h3>
-                    <div className="routine-content" dangerouslySetInnerHTML={{ __html: formatRoutine(store.generatedRoutine) }} />
-                    <button onClick={handleSaveToFavorites} className="btn btn-warning mt-3">Save to Favorites</button>
-                </div>
-            )}
-            {store.error && (
-                <div className="alert alert-danger mt-3">
-                    {store.error}
-                </div>
-            )}
         </div>
     );
 };

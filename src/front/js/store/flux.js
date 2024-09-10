@@ -82,7 +82,7 @@ const getState = ({ getStore, getActions, setStore }) => {
                         },
                         body: JSON.stringify(routineData)
                     });
-                    if (!response.ok) throw new Error('Failed to generate routine');
+                    if (!response.ok) throw new Error(response);
                     const data = await response.json();
                     setStore({ generatedRoutine: data.generated_routine, routineId: data.routine_id, error: null, loading: false });
                 } catch (error) {

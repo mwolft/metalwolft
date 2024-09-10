@@ -29,7 +29,8 @@ def generate_recipe():
     ingredient_list = [name.strip() for name in ingredient_names.split(',')]
     prompt = (f"Create a healthy recipe using the following ingredients: {', '.join(ingredient_list)}. "
               f"The recipe should be nutritious and balanced. Include the total nutritional information: proteins, calories, and fats."
-              f"Response with (Sorry this is not an ingredient) if the user sends anything not related to ingredients and nutrition.")
+              f"Response with (Sorry this is not an ingredient) if the user sends anything not related to ingredients and nutrition."
+              f"the response should not have this /\*\*(.*?)\*\*/g it has to be well presented for the viewers")
     try:
         chat_completion = client.chat.completions.create(
             messages=[{"role": "system", "content": "You are a helpful trainer"},

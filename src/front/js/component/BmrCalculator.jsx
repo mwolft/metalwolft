@@ -9,6 +9,8 @@ export const BmrCalculator = () => {
     const [heightUnit, setHeightUnit] = useState('cm');
     const [weightUnit, setWeightUnit] = useState('kg');
     const navigate = useNavigate();
+    const [bmr, setBmr] = useState(null);
+    const [calories, setCalories] = useState(null);
 
     const handleConvert = () => {
         let heightInCm = heightUnit === 'feet' ? height * 30.48 : height;
@@ -22,8 +24,10 @@ export const BmrCalculator = () => {
             calculatedBMR = 447.593 + (9.247 * weightInKg) + (3.098 * heightInCm) - (4.330 * age);
         }
 
+        setBmr(calculatedBMR.toFixed(2));
+
         const calorieNeeds = {
-            BMR: calculatedBMR.toFixed(2), // BMR itself
+            BMR: calculatedBMR.toFixed(2),
             Sedentary: (calculatedBMR * 1.2).toFixed(0),
             "Lightly active": (calculatedBMR * 1.375).toFixed(0),
             "Moderately active": (calculatedBMR * 1.55).toFixed(0),
@@ -31,7 +35,6 @@ export const BmrCalculator = () => {
             "Super athletic": (calculatedBMR * 1.9).toFixed(0)
         };
 
-        // Redirige a la página de perfil con los resultados
         navigate('/profile', { state: { calorieNeeds } });
     };
 
