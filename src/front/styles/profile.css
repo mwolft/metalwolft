@@ -1,8 +1,9 @@
 .h1-profile{
-    font-size: 1.8rem;
-    display: flex;
-    justify-content: start; 
-    margin-top: 1rem;
+    font-family: "Anton", sans-serif;
+    font-size: 2rem;
+    font-weight: 200;
+    margin-top: 0.5rem;
+    margin-bottom: 0.5rem;
 }
 .p-profile {
     font-family: "Dosis", sans-serif;
@@ -15,12 +16,10 @@
 }
 .p-profile-info {
     font-family: "Dosis", sans-serif;
-    font-optical-sizing: auto;
     font-weight: 600;
     font-style: normal;
     font-size: 1rem;
     display: flex;
-    justify-content: center;
 }
 .p-profile-title {
     font-family: "Dosis", sans-serif;
@@ -41,13 +40,24 @@
 .profile-list{
     padding-left: 0 !important;
 }
+.choose-activity {
+    font-size: 0.75rem;
+    cursor: pointer;
+    color: #007bff;
+    text-decoration: underline;
+}
+.choose-activity:hover {
+    color: #0056b3; 
+}
 .cards-dashboard {
+    min-height: 250px;
     background-color: rgba(128, 128, 128, 0.1);
     margin: 0.3rem;
     padding: 1rem;
     border-radius: 0.3rem;
 }
 .cards-dashboard-dark {
+    min-height: 250px;
     background-color: rgba(128, 128, 128, 0.4);
     margin: 0.3rem;
     padding: 1rem;
@@ -92,16 +102,13 @@
 #sidebar{
     min-width: 250px;
     max-width: 250px;
-    background: grey;
+    background-color: grey;
     color: white;
     transition: all 0.3s;
+    padding: 20px;
 }
 #sidebar .active{
     margin-left: -250px;
-}
-#sidebar{
-    padding: 20px;
-    background-color: grey;
 }
 #sidebar ul.components{
     padding: 20px 0;
@@ -138,19 +145,19 @@ a[data-toggle="collapse"]{
         margin-left: 0;
     }
     #sidebarCollapse {
-        display: block; /* Muestra el botón en pantallas pequeñas */
+        display: block; 
     }
 
     #sidebar {
-        margin-left: -250px; /* Colapsa el sidebar por defecto en pantallas pequeñas */
+        margin-left: -250px; 
     }
 
     #sidebar.active {
-        margin-left: 0; /* Expande el sidebar cuando se hace clic en el botón */
+        margin-left: 0; 
     }
 }
 @media (min-width: 769px) {
     #sidebarCollapse {
-        display: none; /* Oculta el botón en pantallas grandes */
+        display: none; 
     }
 }
