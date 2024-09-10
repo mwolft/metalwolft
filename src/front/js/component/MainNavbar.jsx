@@ -37,7 +37,7 @@ export const MainNavbar = () => {
                             <NavDropdown.Item as={Link} to="/generate-recipes">Generate Recipes</NavDropdown.Item>
                             <NavDropdown.Item as={Link} to="/generate-routines">Generate Routines</NavDropdown.Item>
                         </NavDropdown>
-                        <Nav.Link as={Link} to="/category">Ejercicios</Nav.Link>
+                        <Nav.Link as={Link} to="/exercises">Ejercicios</Nav.Link>
                         <Nav.Link as={Link} to="/category">Nutrición</Nav.Link>
                     </Nav>
                     <Nav className="ms-auto">

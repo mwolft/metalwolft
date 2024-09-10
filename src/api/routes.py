@@ -4,7 +4,7 @@ This module takes care of starting the API Server, Loading the DB and Adding the
 from flask import Flask, request, jsonify, url_for, Blueprint
 from api.utils import generate_sitemap, APIException
 from flask_cors import CORS
-from api.models import db, Users, Ingredients, Recipes, Exercises, Muscles, Equipments, Routines, Recipes, FavoriteRecipes, FavoriteRoutines, FavoriteExercises
+from api.models import db, Users, Ingredients, Recipes, Exercises, ExerciseMuscles, Muscles, Equipments, Routines, Recipes, FavoriteRecipes, FavoriteRoutines, FavoriteExercises
 from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity
 from groq import Groq
 from dotenv import load_dotenv
@@ -216,17 +216,48 @@ def handle_user(user_id):
         return response_body, 200
 
 
-@api.route('/exercise', methods=['GET'])
-def handle_ingredients():
-    response_body = {}
-    if request.method == 'GET':
-        rows = db.session.execute(db.select(Ingredients)).scalars()
-        results = []
-        for row in rows:
-            results.append(row.serialize())
-        response_body['results'] = results
-        response_body['message'] = "Ingredient list"
-        return response_body, 200
+@api.route('/upload-exercises', methods=['POST'])
+def upload_exercises():
+    try:
+        exercises_file_path = os.path.join(os.path.dirname(__file__), 'Exercises.json')
+        with open(exercises_file_path, 'r') as file:
+            exercises_data = json.load(file)
+        for exercise in exercises_data:
+            existing_exercise = db.session.query(Exercises).filter_by(name=exercise['name']).first()
+            if existing_exercise:
+                print(f"Exercise '{exercise['name']}' already exists. Skipping insertion.")
+                continue 
+            new_exercise = Exercises(name=exercise['name'],
+                                     description=exercise['description'],
+                                     image_url=exercise.get('image_url', None))
+            db.session.add(new_exercise)
+            db.session.flush()
+            muscle_names = exercise.get('muscle_group', [])
+            for muscle_name in muscle_names:
+                muscle = db.session.query(Muscles).filter_by(name=muscle_name).first()
+                if muscle:
+                    exercise_muscle = ExerciseMuscles(exercise_id=new_exercise.id, muscle_id=muscle.id)
+                    db.session.add(exercise_muscle)
+        db.session.commit()
+        return jsonify({"message": "Exercises uploaded successfully"}), 201
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"error": str(e)}), 500
+
+
+@api.route('/exercises', methods=['GET'])
+def get_exercise():
+    muscle_group_filter = request.args.get('muscle_group')
+    EXERCISES_JSON_PATH = os.path.join(os.path.dirname(__file__), 'Exercises.json')
+    with open(EXERCISES_JSON_PATH) as file:
+        exercises_data = json.load(file)
+    if muscle_group_filter:
+        filtered_exercises = [
+            exercise for exercise in exercises_data
+            if muscle_group_filter.lower() == exercise.get('muscle_group', '').lower()
+        ]
+        return jsonify(filtered_exercises), 200
+    return jsonify(exercises_data), 200
 
 
 @api.route('/temp-load-ingredients', methods=['GET'])
@@ -235,7 +266,7 @@ def load_ingredient():
         data = json.load(json_file)
     for row in data['ingredients']:
             ingredients = Ingredients()
-            ingredients.calories = 1.0  # TODO: revisar esto
+            ingredients.calories = 1.0 
             ingredients.type = row['type']
             ingredients.name = row['name']
             ingredients.proteins = row['protein']
@@ -301,16 +332,43 @@ def load_data_exercise_from_api():
     response = requests.get(url)
     if response.status_code == 200:
         data = response.json()
-        response_body['results'] = data['results']
+        response_body['results'] = data['results']  
         for row in data['results']:
             existing_exercise = db.session.execute(db.select(Exercises).where(Exercises.name == row['name'])).scalar()
             if not existing_exercise:
-                exercises = Exercises()
-                exercises.name = row['name']
-                exercises.description = row['description']
-                db.session.add(exercises)
+                new_exercise = Exercises()
+                new_exercise.name = row['name']
+                new_exercise.description = row['description']
+                db.session.add(new_exercise)
                 db.session.commit()
+                print(f"Added exercise: {new_exercise.name}")
+                if 'muscles' in row:
+                    for muscle_id in row['muscles']:
+                        existing_muscle = db.session.query(Muscles).filter_by(id=muscle_id).first()
+                        if existing_muscle:
+                            print(f"Associating {new_exercise.name} with muscle {existing_muscle.name}")
+                            exercise_muscle = ExerciseMuscles(exercise_id=new_exercise.id, muscle_id=existing_muscle.id)
+                            db.session.add(exercise_muscle)
+                db.session.commit() 
+            else:
+                print(f"Exercise {row['name']} already exists")
     return response_body, 200
+
+
+@api.route('/get-all-exercises', methods=['GET'])
+def get_all_exercises():
+    exercises = db.session.query(Exercises).all()
+    return jsonify([exercise.serialize() for exercise in exercises]), 200
+
+
+@api.route('/get-all-exercise-muscles', methods=['GET'])
+def get_all_exercise_muscles():
+    exercise_muscles = db.session.query(ExerciseMuscles).all()
+    muscles = db.session.query(Muscles).all()
+    return jsonify({
+        "exercise_muscles": [em.serialize() for em in exercise_muscles],
+        "muscles": [muscle.serialize() for muscle in muscles]
+    }), 200
 
 
 @api.route('/load-muscles', methods=['GET'])
@@ -321,12 +379,13 @@ def load_data_muscles_from_api():
     if response.status_code == 200:
         data = response.json()
         response_body['results'] = data['results']
+        
         for row in data['results']:
-            existing_muscle = db.session.execute(db.select(Muscles).where(Muscles.name == row['name'])).scalar()
+            existing_muscle = db.session.query(Muscles).filter_by(name=row['name']).first()
             if not existing_muscle:
-                muscles = Muscles()
-                muscles.name = row['name']
-                db.session.add(muscles)
+                # Add new muscle
+                muscle = Muscles(name=row['name'])
+                db.session.add(muscle)
                 db.session.commit()
     return response_body, 200
 

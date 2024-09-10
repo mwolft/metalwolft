@@ -19,6 +19,7 @@ import { Login } from "./pages/Login.jsx";
 import { SignUp } from "./pages/SignUp.jsx";
 import { Dashboard } from "./pages/Dashboard.jsx";
 import { Trainers } from './pages/Trainers.jsx';
+import { Exercise } from './pages/Exercise.jsx';
 import { GenerateRecipes } from "./pages/GenerateRecipes.jsx";
 import { GenerateRoutines } from "./pages/GenerateRoutines.jsx";
 import { Profile } from "./pages/Profile.jsx";
@@ -44,12 +45,13 @@ const Layout = () => {
                         <Route element={<Trainers />} path="/trainers" />
                         <Route element={<FormTrainer />} path="/become-a-trainer" />
                         <Route element={<Login />} path='/login' />
-                        {/* <Route element={<SignUp />} path='/sign-up' /> */}
+                        <Route element={<SignUp />} path='/sign-up' />
                         <Route element={<GenerateRecipes />} path="/generate-recipes" />
                         <Route element={<GenerateRoutines />} path="/generate-routines" />
                         <Route element={<Dashboard />} path='/dashboard' />
                         <Route element={<BodyHomeMain />} path='/body-home-main' />
                         <Route element={<BodyHomeSecondary />} path='/body-home-secondary' />
+                        <Route element={<Exercise />} path="/exercises" />
                         <Route element={<Sidebar />} path='/Sidebar' />
                         <Route element={<Profile />} path='/Profile' />
                         <Route element={<Routines />} path='/routines' />
