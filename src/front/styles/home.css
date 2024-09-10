@@ -1,7 +1,128 @@
-/*
-    home.css: This website contains selectors only used in home.css
+html {
+    scroll-behavior: smooth;
+}
+body {
+    background-color: rgba(12,15,17,255);
+}
+.section {
+    opacity: 0;
+    transform: translateY(100px);
+    transition: opacity 1s ease-out, transform 1s ease-out;
+}
+.section-visible {
+    opacity: 1;
+    transform: translateY(0);
+}
+.background-image {
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    height: 55rem;
+}
+.background-image .row {
+    color: rgb(255, 255, 255);
+}
+h1 {
+    font-family: "Anton", sans-serif;
+    font-size: 9vw;
+    font-weight: 400;
+    font-style: italic;
+}
+.btn {
+    color: black;
+}
+.card {
+    border-color: inherit;
+}
+.card-img-overlay {
+    display: flex;
+    justify-content: center; 
+    text-align: center;
+    align-items: end;
+    padding: 0px;
+}
+.cover-card {
+    font-family: "Anton", sans-serif;
+    transition: background-color 0.5s;
+    border-radius: 15% 15% 0 0;
+    background-color: rgba(12, 15, 17, 0.5);
+    padding-top: 4vw;
+    padding-bottom: 4vw;
+    width: 100%;
+    color: rgb(255, 255, 255);
+    font-size: 1.8vw;
+}
+.cover-card:hover::after {
+    font-family: "Anton", sans-serif;
+    content: attr(data-hover-content);
+    font-size: 1.2vw;
+}
+.cover-card:hover {
+    background-color: rgba(255, 255, 255, 0.8);
+    color: rgba(50, 50, 50, 1);
+}
+.card-title {
+    font-size: 2.4vw;
+}
+.card-text {
+    font-size: 1.8vw;
+}
+h2 {
+    font-size: 5vh;
+    color: white;
+}
+p {
+    font-size: 3vh;
+}
+.body-secondary {
+    color: white;
+}
+@media (max-width: 767px) {
+    .row {
+        flex-direction: column; 
+    }
+    .card-title {
+        font-size: 11vw;
+    }
+    .card-text {
+        font-size: 5vw;
+    }
+    .cover-card {
+        font-size: 6vw;
+    }
+    .cover-card:hover::after {
+        font-size: 5vw;
+    }
+}
+@media (min-width: 768px) and (max-width: 991px) {
+    .card-title {
+        font-size: 4vw;
+    }
+    .card-text {
+        font-size: 4vw;
+    }
 
-    All pages share the styles on index.css but you should create 
-    one more css for each page that will contain the selected used 
-    on that page only (the ones not reused in other pages).
-*/
+    .cover-card {
+        font-size: 2.5vw;
+    }
+
+    .cover-card:hover::after {
+        font-size: 2.5vw;
+    }
+}
+@media (min-width: 992px) {
+    .card-title {
+        font-size: 2.5vw;
+    }
+    .card-text {
+        font-size: 2.5vw;
+    }
+
+    .cover-card {
+        font-size: 2vw;
+    }
+
+    .cover-card:hover::after {
+        font-size: 1.4vw;
+    }
+}
