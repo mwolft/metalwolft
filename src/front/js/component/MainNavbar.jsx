@@ -49,8 +49,7 @@ export const MainNavbar = () => {
                             </NavDropdown>
                         ) : (
                             <>
-                                <Button variant="outline-dark mx-1" onClick={() => navigate("/sign-up")}><i className="fa-solid fa-user-plus"></i></Button>
-                                <Button variant="outline-dark mx-1" onClick={() => navigate("/login")}><i className="fa-solid fa-right-to-bracket"></i></Button>
+                                <Button variant="outline-dark mx-1" onClick={() => navigate("/login")}><i className="fa-solid fa-user-plus"></i></Button>
                             </>
                         )}
                     </Nav>
