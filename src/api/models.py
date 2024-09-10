@@ -18,6 +18,7 @@ class Users(db.Model):
     is_active = db.Column(db.Boolean, default=True)
     rol = db.Column(db.Enum('user', 'admin', 'trainer', name="rol"))
     location = db.Column(db.String(100), nullable=True)
+    
     routines = db.relationship('Routines', backref='user', lazy=True, cascade="all, delete-orphan")
     user_recipes = db.relationship('UserRecipes', backref='user', lazy=True, cascade="all, delete-orphan")
     user_ingredients = db.relationship('UserIngredients', backref='user', lazy=True, cascade="all, delete-orphan")
@@ -30,22 +31,24 @@ class Users(db.Model):
         return f'<User {self.id}: {self.alias}>'
 
     def serialize(self):
-        return {"id": self.id,
-                "firstname": self.firstname,
-                "lastname": self.lastname,
-                "email": self.email,
-                "is_active": self.is_active,
-                "alias": self.alias,
-                "gender": self.gender,
-                "phone": self.phone,
-                "birth": self.birth,
-                "height": self.height,
-                "weight": self.weight,
-                "rol": self.rol,
-                "location": self.location,
-                "favorite_recipes": [favorite_recipe.serialize() for favorite_recipe in self.favorite_recipes],
-                "favorite_routines": [favorite_routine.serialize() for favorite_routine in self.favorite_routines],
-                "favorite_exercises": [favorite_exercise.serialize() for favorite_exercise in self.favorite_exercises]}
+        return {
+            "id": self.id,
+            "firstname": self.firstname,
+            "lastname": self.lastname,
+            "email": self.email,
+            "is_active": self.is_active,
+            "alias": self.alias,
+            "gender": self.gender,
+            "phone": self.phone,
+            "birth": self.birth,
+            "height": self.height,
+            "weight": self.weight,
+            "rol": self.rol,
+            "location": self.location,
+            "favorite_recipes": [favorite_recipe.serialize() for favorite_recipe in self.favorite_recipes],
+            "favorite_routines": [favorite_routine.serialize() for favorite_routine in self.favorite_routines],
+            "favorite_exercises": [favorite_exercise.serialize() for favorite_exercise in self.favorite_exercises]
+        }
 
 
 class Exercises(db.Model):
@@ -53,7 +56,10 @@ class Exercises(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(50), unique=True, nullable=False)
     description = db.Column(db.Text)
+    image_url = db.Column(db.String(255))
     routine_id = db.Column(db.Integer, db.ForeignKey('routines.id'), nullable=True)
+    
+    # Relationships
     equipments = db.relationship('ExerciseEquipments', backref='exercise', lazy=True, cascade="all, delete-orphan")
     muscles = db.relationship('ExerciseMuscles', backref='exercise', lazy=True, cascade="all, delete-orphan")
     variations_origin = db.relationship('Variations', foreign_keys='Variations.exercise_origin', backref='origin_exercise', lazy=True, cascade="all, delete-orphan")
@@ -64,15 +70,19 @@ class Exercises(db.Model):
         return f'<Exercise {self.id}: {self.name}>'
 
     def serialize(self):
-        return {"id": self.id,
-                "name": self.name,
-                "description": self.description,
-                "routine_id": self.routine_id,
-                "equipments": [equipment.serialize() for equipment in self.equipments],
-                "muscles": [muscle.serialize() for muscle in self.muscles],
-                "variations_origin": [variation.serialize() for variation in self.variations_origin],
-                "variations_to": [variation.serialize() for variation in self.variations_to],
-                "favorited_by": [favorite.user_id for favorite in self.favorited_by]}
+        return {
+            "id": self.id,
+            "name": self.name,
+            "description": self.description,
+            "image_url": self.image_url,
+            "routine_id": self.routine_id,
+            "equipments": [equipment.serialize() for equipment in self.equipments],
+            # Proper serialization of muscles
+            "muscles": [muscle_rel.muscle.serialize() for muscle_rel in self.muscles],
+            "variations_origin": [variation.serialize() for variation in self.variations_origin],
+            "variations_to": [variation.serialize() for variation in self.variations_to],
+            "favorited_by": [favorite.user_id for favorite in self.favorited_by]
+        }
 
 
 class Muscles(db.Model):
@@ -84,7 +94,29 @@ class Muscles(db.Model):
         return f'<Muscle {self.id}: {self.name}>'
 
     def serialize(self):
-        return {"id": self.id, "name": self.name}
+        return {
+            "id": self.id,
+            "name": self.name
+        }
+
+
+class ExerciseMuscles(db.Model):
+    __tablename__ = "exercise_muscles"
+    
+    exercise_id = db.Column(db.Integer, db.ForeignKey('exercises.id'), primary_key=True)
+    muscle_id = db.Column(db.Integer, db.ForeignKey('muscles.id'), primary_key=True)
+
+    # Define relationships to Muscles
+    muscle = db.relationship('Muscles', backref='exercise_muscles')
+
+    def __repr__(self):
+        return f'<ExerciseMuscles Exercise {self.exercise_id} Muscle {self.muscle_id}>'
+
+    def serialize(self):
+        return {
+            "exercise_id": self.exercise_id,
+            "muscle_id": self.muscle_id
+        }
 
 
 class ExerciseEquipments(db.Model):
@@ -97,24 +129,11 @@ class ExerciseEquipments(db.Model):
         return f'<ExerciseEquipments {self.id}: Exercise {self.exercise_id} Equipment {self.equipment_id}>'
 
     def serialize(self):
-        return {"id": self.id,
-                "exercise_id": self.exercise_id,
-                "equipment_id": self.equipment_id}
-
-
-class ExerciseMuscles(db.Model):
-    __tablename__ = "exercise_muscles"
-    id = db.Column(db.Integer, primary_key=True)
-    exercise_id = db.Column(db.Integer, db.ForeignKey('exercises.id'), nullable=False)
-    muscle_id = db.Column(db.Integer, db.ForeignKey('muscles.id'), nullable=False)
-
-    def __repr__(self):
-        return f'<ExerciseMuscles {self.id}: Exercise {self.exercise_id} Muscle {self.muscle_id}>'
-
-    def serialize(self):
-        return {"id": self.id,
-                "exercise_id": self.exercise_id,
-                "muscle_id": self.muscle_id}
+        return {
+            "id": self.id,
+            "exercise_id": self.exercise_id,
+            "equipment_id": self.equipment_id
+        }
 
 
 class Equipments(db.Model):
@@ -126,7 +145,10 @@ class Equipments(db.Model):
         return f'<Equipment {self.id}: {self.name}>'
 
     def serialize(self):
-        return {"id": self.id, "name": self.name}
+        return {
+            "id": self.id, 
+            "name": self.name
+        }
 
 
 class Variations(db.Model):
@@ -139,9 +161,11 @@ class Variations(db.Model):
         return f'<Variations {self.id}: Origin {self.exercise_origin} -> To {self.exercise_to}>'
 
     def serialize(self):
-        return {"id": self.id,
-                "exercise_origin": self.exercise_origin,
-                "exercise_to": self.exercise_to}
+        return {
+            "id": self.id,
+            "exercise_origin": self.exercise_origin,
+            "exercise_to": self.exercise_to
+        }
 
 
 class Routines(db.Model):
@@ -150,17 +174,20 @@ class Routines(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     prompt = db.Column(db.Text)
     date = db.Column(db.DateTime)
+    
     exercises = db.relationship('Exercises', backref='routine', lazy=True, cascade="all, delete-orphan")
 
     def __repr__(self):
         return f'<Routine {self.id}>'
 
     def serialize(self):
-        return {"id": self.id,
-                "user_id": self.user_id,
-                "prompt": self.prompt,
-                "date": self.date,
-                "exercises": [exercise.serialize() for exercise in self.exercises]}
+        return {
+            "id": self.id,
+            "user_id": self.user_id,
+            "prompt": self.prompt,
+            "date": self.date,
+            "exercises": [exercise.serialize() for exercise in self.exercises]
+        }
 
 
 class Ingredients(db.Model):
@@ -178,14 +205,16 @@ class Ingredients(db.Model):
         return f'<Ingredient {self.id}: {self.name}>'
 
     def serialize(self):
-        return {"id": self.id,
-                "name": self.name,
-                "type": self.type,
-                "calories": self.calories,
-                "proteins": self.proteins,
-                "carbs": self.carbs,
-                "fat": self.fat,
-                "sugar": self.sugar}
+        return {
+            "id": self.id,
+            "name": self.name,
+            "type": self.type,
+            "calories": self.calories,
+            "proteins": self.proteins,
+            "carbs": self.carbs,
+            "fat": self.fat,
+            "sugar": self.sugar
+        }
 
 
 class Recipes(db.Model):
@@ -193,16 +222,19 @@ class Recipes(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100))
     ingredients_text = db.Column(db.Text)  # Add this field for storing ingredients as plain text
+
     favorited_by = db.relationship('FavoriteRecipes', backref='recipe', lazy=True, cascade="all, delete-orphan")
 
     def __repr__(self):
         return f'<Recipe {self.id}: {self.name}>'
 
     def serialize(self):
-        return {"id": self.id,
-                "name": self.name,
-                "ingredients_text": self.ingredients_text,
-                "favorited_by": [favorite.user_id for favorite in self.favorited_by]}
+        return {
+            "id": self.id,
+            "name": self.name,
+            "ingredients_text": self.ingredients_text,
+            "favorited_by": [favorite.user_id for favorite in self.favorited_by]
+        }
 
 
 class UserRecipes(db.Model):
@@ -216,10 +248,12 @@ class UserRecipes(db.Model):
         return f'<UserRecipes {self.id}: User {self.user_id} Recipe {self.recipe_id}>'
 
     def serialize(self):
-        return {"id": self.id,
-                "recipe_id": self.recipe_id,
-                "user_id": self.user_id,
-                "prompt": self.prompt}
+        return {
+            "id": self.id,
+            "recipe_id": self.recipe_id,
+            "user_id": self.user_id,
+            "prompt": self.prompt
+        }
 
 
 class UserIngredients(db.Model):
@@ -232,9 +266,11 @@ class UserIngredients(db.Model):
         return f'<UserIngredients {self.id}: User {self.user_id} Ingredient {self.ingredient_id}>'
 
     def serialize(self):
-        return {"id": self.id,
-                "ingredient_id": self.ingredient_id,
-                "user_id": self.user_id}
+        return {
+            "id": self.id,
+            "ingredient_id": self.ingredient_id,
+            "user_id": self.user_id
+        }
 
 
 class TemplatePrompts(db.Model):
@@ -253,30 +289,34 @@ class TemplatePrompts(db.Model):
         return f'<TemplatePrompt {self.id}: {self.title}>'
 
     def serialize(self):
-        return {"id": self.id,
-                "body_prompt": self.body_prompt,
-                "suggest": self.suggest,
-                "prompt_type": self.prompt_type,
-                "date": self.date,
-                "author_id": self.author_id,
-                "is_active": self.is_active,
-                "title": self.title,
-                "description": self.description}
+        return {
+            "id": self.id,
+            "body_prompt": self.body_prompt,
+            "suggest": self.suggest,
+            "prompt_type": self.prompt_type,
+            "date": self.date,
+            "author_id": self.author_id,
+            "is_active": self.is_active,
+            "title": self.title,
+            "description": self.description
+        }
 
 
 class FavoriteRecipes(db.Model):
-   __tablename__ = "favorite_recipes"
-   id = db.Column(db.Integer, primary_key=True)
-   user_id = db.Column(db.Integer, db.ForeignKey('users.id', ondelete="CASCADE"), nullable=False)
-   recipe_id = db.Column(db.Integer, db.ForeignKey('recipes.id', ondelete="CASCADE"), nullable=False)
+    __tablename__ = "favorite_recipes"
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id', ondelete="CASCADE"), nullable=False)
+    recipe_id = db.Column(db.Integer, db.ForeignKey('recipes.id', ondelete="CASCADE"), nullable=False)
 
-   def __repr__(self):
-       return f'<FavoriteRecipe {self.id}: User {self.user_id} Recipe {self.recipe_id}>'
+    def __repr__(self):
+        return f'<FavoriteRecipe {self.id}: User {self.user_id} Recipe {self.recipe_id}>'
 
-   def serialize(self):
-       return {"id": self.id,
-               "user_id": self.user_id,
-               "recipe_id": self.recipe_id}
+    def serialize(self):
+        return {
+            "id": self.id,
+            "user_id": self.user_id,
+            "recipe_id": self.recipe_id
+        }
 
 
 class FavoriteRoutines(db.Model):
@@ -289,9 +329,11 @@ class FavoriteRoutines(db.Model):
         return f'<FavoriteRoutine {self.id}: User {self.user_id} Routine {self.routine_id}>'
 
     def serialize(self):
-        return {"id": self.id,
-                "user_id": self.user_id,
-                "routine_id": self.routine_id}
+        return {
+            "id": self.id,
+            "user_id": self.user_id,
+            "routine_id": self.routine_id
+        }
 
 
 class FavoriteExercises(db.Model):
