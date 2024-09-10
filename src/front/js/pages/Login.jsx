@@ -30,14 +30,14 @@ export const Login = () => {
       const response = await fetch(uri, options);
       if (!response.ok) {
         console.log('Error: ', response.status, response.statusText);
-        if (response.status === 401) {
-          const data = await response.json();
+        if (response.status == 401) {
           let alert = {
             visible: true,
             back: 'danger',
             text: 'Usuario no encontrado'
           };
           actions.setAlert(alert);
+          setIsLogin(false)
         }
         return;
       }
@@ -47,7 +47,7 @@ export const Login = () => {
       actions.setCurrentUser(data.results);
       actions.setIsLoged(true);
       actions.setAlert({ visible: true, back: 'info', text: data.message });
-      navigate('/'); 
+      navigate('/profile'); 
     } else {
       if (password !== confirmPassword) {
         actions.setAlert({ visible: true, back: 'danger', text: 'Las contraseñas no coinciden' });
