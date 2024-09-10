@@ -19,6 +19,7 @@ export const MainNavbar = () => {
 
     const handleLogout = () => {
         actions.setIsLoged(false);
+        navigate("/"); // Redirigir a la página de inicio después de cerrar sesión
     };
 
     return (
@@ -42,7 +43,7 @@ export const MainNavbar = () => {
                     <Nav className="ms-auto">
                         {store.isLoged ? (
                             <NavDropdown title={<i className="fa-solid fa-user"></i>} id="user-nav-dropdown" align="end">
-                                <NavDropdown.Item href="#perfil">Perfil</NavDropdown.Item>
+                                <NavDropdown.Item as={Link} to="/profile">Perfil</NavDropdown.Item> {/* Aquí cambia */}
                                 <NavDropdown.Divider />
                                 <NavDropdown.Item onClick={handleLogout}>Cerrar sesión</NavDropdown.Item>
                             </NavDropdown>

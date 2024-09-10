@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 
 export const BmrCalculator = () => {
     const [sex, setSex] = useState('male');
@@ -7,6 +8,7 @@ export const BmrCalculator = () => {
     const [weight, setWeight] = useState('');
     const [heightUnit, setHeightUnit] = useState('cm');
     const [weightUnit, setWeightUnit] = useState('kg');
+    const navigate = useNavigate();
     const [bmr, setBmr] = useState(null);
     const [calories, setCalories] = useState(null);
 
@@ -33,116 +35,93 @@ export const BmrCalculator = () => {
             "Super athletic": (calculatedBMR * 1.9).toFixed(0)
         };
 
-        setCalories(calorieNeeds);
+        navigate('/profile', { state: { calorieNeeds } });
     };
 
     return (
-        <div style={{ backgroundColor: '#d3d3d3', height: 'auto' }}>
-            <div className="row">
-                <div className="container mt-5"></div>
-                <div className="container d-flex justify-content-center my-5">
-                    <div className="card p-3" style={{ backgroundColor: '#FFFACD', color: 'black', maxWidth: '1200px', width: '100%' }}>
-                        <h2 className="mb-4 text-center text-black">BMR Calculator</h2>
-                        <div className="d-flex justify-content-between mb-3">
-                            <button
-                                className={`btn ${sex === 'male' ? 'btn-warning' : 'btn-outline-warning'} flex-fill me-2`}
-                                onClick={() => setSex('male')}
-                            >
-                                Male
-                            </button>
-                            <button
-                                className={`btn ${sex === 'female' ? 'btn-warning' : 'btn-outline-warning'} flex-fill`}
-                                onClick={() => setSex('female')}
-                            >
-                                Female
-                            </button>
-                        </div>
-                        <div className="form-group mb-3">
-                            <label className="text-black">Age:</label>
+        <div className="row mt-5">
+            <div className="container mt-5">
+                <div className="card p-4 bg-dark text-light">
+                    <h2 className="mb-4 text-center text-warning">BMR Calculator</h2>
+                    <div className="d-flex justify-content-between mb-3">
+                        <button
+                            className={`btn ${sex === 'male' ? 'btn-warning' : 'btn-outline-warning'} flex-fill`}
+                            onClick={() => setSex('male')}
+                        >
+                            Male
+                        </button>
+                        <button
+                            className={`btn ${sex === 'female' ? 'btn-warning' : 'btn-outline-warning'} flex-fill mx-2`}
+                            onClick={() => setSex('female')}
+                        >
+                            Female
+                        </button>
+                    </div>
+                    <div className="form-group mb-3">
+                        <label className="text-warning">Age:</label>
+                        <input
+                            type="number"
+                            className="form-control bg-dark text-light border-warning"
+                            value={age}
+                            onChange={(e) => setAge(e.target.value)}
+                            placeholder="Enter your age"
+                        />
+                    </div>
+                    <div className="form-group mb-3">
+                        <label className="text-warning">Height:</label>
+                        <div className="d-flex">
                             <input
                                 type="number"
-                                className="form-control border-warning"
-                                value={age}
-                                onChange={(e) => setAge(e.target.value)}
-                                placeholder="Enter your age"
+                                className="form-control bg-dark text-light border-warning"
+                                value={height}
+                                onChange={(e) => setHeight(e.target.value)}
+                                placeholder="Enter your height"
                             />
-                        </div>
-                        <div className="form-group mb-3">
-                            <label className="text-black">Height:</label>
-                            <div className="d-flex">
-                                <input
-                                    type="number"
-                                    className="form-control border-warning me-2"
-                                    value={height}
-                                    onChange={(e) => setHeight(e.target.value)}
-                                    placeholder="Enter your height"
-                                />
-                                <div className="btn-group ml-2" style={{ width: '150px' }}> 
-                                    <button
-                                        className={`btn ${heightUnit === 'cm' ? 'btn-warning' : 'btn-outline-warning'} w-50`} 
-                                        onClick={() => setHeightUnit('cm')}
-                                    >
-                                        cm
-                                    </button>
-                                    <button
-                                        className={`btn ${heightUnit === 'feet' ? 'btn-warning' : 'btn-outline-warning'} w-50`}
-                                        onClick={() => setHeightUnit('feet')}
-                                    >
-                                        Feet
-                                    </button>
-                                </div>
+                            <div className="btn-group ml-2">
+                                <button
+                                    className={`btn ${heightUnit === 'cm' ? 'btn-warning' : 'btn-outline-warning'}`}
+                                    onClick={() => setHeightUnit('cm')}
+                                >
+                                    cm
+                                </button>
+                                <button
+                                    className={`btn ${heightUnit === 'feet' ? 'btn-warning' : 'btn-outline-warning'}`}
+                                    onClick={() => setHeightUnit('feet')}
+                                >
+                                    Feet
+                                </button>
                             </div>
                         </div>
-                        <div className="form-group mb-3">
-                            <label className="text-black">Weight:</label>
-                            <div className="d-flex">
-                                <input
-                                    type="number"
-                                    className="form-control border-warning me-2"
-                                    value={weight}
-                                    onChange={(e) => setWeight(e.target.value)}
-                                    placeholder="Enter your weight"
-                                />
-                                <div className="btn-group ml-2" style={{ width: '150px' }}>
-                                    <button
-                                        className={`btn ${weightUnit === 'kg' ? 'btn-warning' : 'btn-outline-warning'} w-50`}
-                                    >
-                                        kg
-                                    </button>
-                                    <button
-                                        className={`btn ${weightUnit === 'lbs' ? 'btn-warning' : 'btn-outline-warning'} w-50`}
-                                        onClick={() => setWeightUnit('lbs')}
-                                    >
-                                        lbs
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                        <button className="btn btn-warning btn-block mt-4" onClick={handleConvert}>
-                            Convert
-                        </button>
-                        {bmr && (
-                            <div className="mt-4">
-                                <h4 className="text-center text-black">Your BMR: {bmr} kcal/day</h4>
-                                <table className="table mt-3 table-striped border-warning">
-                                    <thead>
-                                        <tr>
-                                            <th className="text-black">Activity Level</th>
-                                            <th className="text-black">Calories</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {Object.keys(calories).map((level, index) => (
-                                            <tr key={index}>
-                                                <td>{level}</td>
-                                                <td>{calories[level]}</td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                            </div>
-                        )}
                     </div>
+                    <div className="form-group mb-3">
+                        <label className="text-warning">Weight:</label>
+                        <div className="d-flex">
+                            <input
+                                type="number"
+                                className="form-control bg-dark text-light border-warning"
+                                value={weight}
+                                onChange={(e) => setWeight(e.target.value)}
+                                placeholder="Enter your weight"
+                            />
+                            <div className="btn-group ml-2">
+                                <button
+                                    className={`btn ${weightUnit === 'kg' ? 'btn-warning' : 'btn-outline-warning'}`}
+                                    onClick={() => setWeightUnit('kg')}
+                                >
+                                    kg
+                                </button>
+                                <button
+                                    className={`btn ${weightUnit === 'lbs' ? 'btn-warning' : 'btn-outline-warning'}`}
+                                    onClick={() => setWeightUnit('lbs')}
+                                >
+                                    lbs
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <button className="btn btn-warning btn-block mt-4" onClick={handleConvert}>
+                        Convert
+                    </button>
                 </div>
             </div>
         </div>
