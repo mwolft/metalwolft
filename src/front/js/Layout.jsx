@@ -8,6 +8,7 @@ import { BackendURL } from "./component/BackendURL.jsx";
 import { Footer } from "./component/Footer.jsx";
 import { MainNavbar } from "./component/MainNavbar.jsx";
 import { BmrCalculator } from "./component/BmrCalculator.jsx";
+import { Sidebar } from "./component/Sidebar.jsx";
 import { FormTrainer } from "./component/FormTrainer.jsx";
 import { BodyHomeMain } from "./component/BodyHomeMain.jsx";
 import { BodyHomeSecondary } from "./component/BodyHomeSecondary.jsx";
@@ -22,6 +23,8 @@ import { Exercise } from './pages/Exercise.jsx';
 import { GenerateRecipes } from "./pages/GenerateRecipes.jsx";
 import { GenerateRoutines } from "./pages/GenerateRoutines.jsx";
 import { Profile } from "./pages/Profile.jsx";
+import { Routines } from "./pages/Routines.jsx";
+import { NutritionPlan } from "./pages/NutritionPlan.jsx";
 
 // Create your first component
 const Layout = () => {
@@ -31,11 +34,10 @@ const Layout = () => {
     if(!process.env.BACKEND_URL || process.env.BACKEND_URL == "") return <BackendURL/ >;
 
     return (
-        <div>
+        <div className="d-flex flex-column min-vh-100">
             <BrowserRouter basename={basename}>
                 <ScrollToTop>
                     <MainNavbar />
-                    <Alert />
                     <Routes>
                         <Route element={<Home />} path="/" />
                         <Route element={<Error404/>} path='*'/>
@@ -50,7 +52,10 @@ const Layout = () => {
                         <Route element={<BodyHomeMain />} path='/body-home-main' />
                         <Route element={<BodyHomeSecondary />} path='/body-home-secondary' />
                         <Route element={<Exercise />} path="/exercises" />
+                        <Route element={<Sidebar />} path='/Sidebar' />
                         <Route element={<Profile />} path='/Profile' />
+                        <Route element={<Routines />} path='/routines' />
+                        <Route element={<NutritionPlan />} path='/nutrition-plan' />
                     </Routes>
                     <Footer />
                 </ScrollToTop>

@@ -31,19 +31,39 @@ const getState = ({ getStore, getActions, setStore }) => {
                 }
             },
 
-            setCurrentUser: (user) => {
-                setStore({ currentUser: user });
-            },
+			setCurrentUser: (user) => {
+				setStore({ currentUser: user });
+			},
+			updateUserProfile: async (userId, updatedData) => {
+                const store = getStore();
+                try {
+                    const response = await fetch(`${process.env.BACKEND_URL}/api/users/${userId}`, {
+                        method: 'PUT',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            Authorization: `Bearer ${localStorage.getItem("token")}` 
+                        },
+                        body: JSON.stringify(updatedData)
+                    });
+                    if (!response.ok) throw new Error("Error al actualizar el perfil");
 
-            setIsLoged: (isLogin) => {
-                if (isLogin) {
-                    setStore({ isLoged: true });
-                } else {
-                    setStore({ isLoged: false });
-                    localStorage.removeItem("token");
-                    localStorage.removeItem("user");
+                    const data = await response.json();
+                    setStore({ currentUser: data.results }); 
+                    return { ok: true };
+                } catch (error) {
+                    console.error("Error en updateUserProfile: ", error);
+                    return { ok: false };
                 }
             },
+			setIsLoged: (isLogin) => {
+				if (isLogin) {
+					setStore({ isLoged: true });
+				} else {
+					setStore({ isLoged: false });
+					localStorage.removeItem("token");
+					localStorage.removeItem("user");
+				}
+			},
 
             setAlert: (newAlert) => {
                 setStore({ alert: newAlert });

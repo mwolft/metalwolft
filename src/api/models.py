@@ -12,7 +12,7 @@ class Users(db.Model):
     gender = db.Column(db.Enum('Male', 'Female', name='gender'), nullable=True)
     phone = db.Column(db.String(20))  # String is appropriate for phone numbers
     email = db.Column(db.String(50), unique=True, nullable=False, index=True)
-    birth = db.Column(db.Date, nullable=True)
+    age = db.Column(db.Integer)
     height = db.Column(db.Integer)
     weight = db.Column(db.Integer)
     is_active = db.Column(db.Boolean, default=True)
@@ -49,6 +49,22 @@ class Users(db.Model):
             "favorite_routines": [favorite_routine.serialize() for favorite_routine in self.favorite_routines],
             "favorite_exercises": [favorite_exercise.serialize() for favorite_exercise in self.favorite_exercises]
         }
+        return {"id": self.id,
+                "firstname": self.firstname,
+                "lastname": self.lastname,
+                "email": self.email,
+                "is_active": self.is_active,
+                "alias": self.alias,
+                "gender": self.gender,
+                "phone": self.phone,
+                "age": self.age,
+                "height": self.height,
+                "weight": self.weight,
+                "rol": self.rol,
+                "location": self.location,
+                "favorite_recipes": [favorite_recipe.serialize() for favorite_recipe in self.favorite_recipes],
+                "favorite_routines": [favorite_routine.serialize() for favorite_routine in self.favorite_routines],
+                "favorite_exercises": [favorite_exercise.serialize() for favorite_exercise in self.favorite_exercises]}
 
 
 class Exercises(db.Model):
