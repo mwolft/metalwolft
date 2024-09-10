@@ -191,8 +191,8 @@ class Ingredients(db.Model):
 class Recipes(db.Model):
     __tablename__ = "recipes"
     id = db.Column(db.Integer, primary_key=True)
-    ingredient_id = db.Column(db.Integer, db.ForeignKey('ingredients.id'), nullable=False)
     name = db.Column(db.String(100))
+    ingredients_text = db.Column(db.Text)  # Add this field for storing ingredients as plain text
     favorited_by = db.relationship('FavoriteRecipes', backref='recipe', lazy=True, cascade="all, delete-orphan")
 
     def __repr__(self):
@@ -200,8 +200,8 @@ class Recipes(db.Model):
 
     def serialize(self):
         return {"id": self.id,
-                "ingredient_id": self.ingredient_id,
                 "name": self.name,
+                "ingredients_text": self.ingredients_text,
                 "favorited_by": [favorite.user_id for favorite in self.favorited_by]}
 
 

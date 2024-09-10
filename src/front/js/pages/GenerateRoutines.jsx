@@ -10,6 +10,7 @@ export const GenerateRoutines = () => {
         target_muscles: [],
         level: ''
     });
+    const [loading, setLoading] = useState(false);
 
     const daysOptions = [
         { value: "Monday", label: "Monday" },
@@ -36,12 +37,29 @@ export const GenerateRoutines = () => {
         { value: "advanced", label: "Advanced" }
     ];
 
-    const handleGenerateRoutine = () => {
+    const handleGenerateRoutine = async () => {
         actions.clearError();
-        actions.generateRoutine({
+        setLoading(true);
+        await actions.generateRoutine({
             ...routineData,
             days: routineData.days.map(option => option.value),
             target_muscles: routineData.target_muscles.map(option => option.value)
+        });
+        setLoading(false);
+    };
+
+    const handleSaveToFavorites = () => {
+        if (!store.currentUser) {
+            alert("Please log in to save this routine to your favorites.");
+            return;
+        }
+
+        actions.addFavoriteRoutine({
+            routine: store.generatedRoutine,
+            days: routineData.days.map(option => option.value).join(", "),
+            hours_per_day: routineData.hours_per_day,
+            level: routineData.level,
+            target_muscles: routineData.target_muscles.map(option => option.value).join(", ")
         });
     };
 
@@ -83,12 +101,15 @@ export const GenerateRoutines = () => {
                     placeholder="Select level"
                 />
                 
-                <button onClick={handleGenerateRoutine} className="btn btn-primary mt-3">Generate Routine</button>
+                <button onClick={handleGenerateRoutine} className="btn btn-primary mt-3">
+                    {loading ? "Generating..." : "Generate Routine"}
+                </button>
             </div>
             {store.generatedRoutine && (
                 <div className="alert alert-success mt-3">
                     <h3>Generated Routine</h3>
                     <div className="routine-content" dangerouslySetInnerHTML={{ __html: formatRoutine(store.generatedRoutine) }} />
+                    <button onClick={handleSaveToFavorites} className="btn btn-warning mt-3">Save to Favorites</button>
                 </div>
             )}
             {store.error && (
