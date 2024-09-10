@@ -1,6 +1,38 @@
+
+.main-content {
+  flex: 1;
+}
+
 .footer-custom {
+  background-color: #ffea00;
+  color: black;
+  margin-top: 5px;
+  text-align: center;
+  padding: 10px 0;
+}
+
+.footer-title {
+  font-weight: bold;
+  font-size: 1.2rem;
+  text-transform: uppercase;
+}
+
+p {
+  font-size: 1rem;
+  margin: 0;
+  font-family: "Dosis", sans-serif;
+}
+
+.text-center {
+  text-align: center;
+}
+
+
+
+/* .footer-custom {
     background-color: #ffea00;
     color: black;
+    margin-top: 5px;
   }
   
   .footer-title {
@@ -18,4 +50,4 @@
   .text-center {
     text-align: center;
   }
-  
+   */
