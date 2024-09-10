@@ -209,7 +209,6 @@ def handle_user(user_id):
             response_body['results'] = {}
             response_body['message'] = f'No existe el usuario {user_id}'
             return response_body, 404
-        user.username = data.get('username', user.username)
         user.email = data.get('email', user.email)
         user.firstname = data.get('firstname', user.firstname)
         user.lastname = data.get('lastname', user.lastname)

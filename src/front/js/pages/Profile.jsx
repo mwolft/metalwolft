@@ -98,7 +98,7 @@ export const Profile = () => {
                                         </div>
                                     </div>
                                     <Button type="submit" className="btn-profile btn-success mb-2 text-white">
-                                        Guardar
+                                        Actualizar
                                     </Button>
                                 </form>
                             </div>
