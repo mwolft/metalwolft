@@ -1,56 +1,27 @@
-import React, { useEffect } from "react";
-import fitnessImage from "../../img/fitness.jpg";
+import React, { useContext } from "react";
+import { Context } from "../store/appContext.js";
+import rigoImageUrl from "../../img/rigo-baby.jpg";
 import "../../styles/home.css";
-import { BodyHomeMain } from "../component/BodyHomeMain.jsx";
-import { BodyHomeSecondary } from "../component/BodyHomeSecondary.jsx";
-import { useNavigate } from "react-router-dom";
+
 
 export const Home = () => {
-    const navigate = useNavigate();
+	const { store, actions } = useContext(Context);
 
-    useEffect(() => {
-        const handleScroll = () => {
-            const sections = document.querySelectorAll(".section");
-            sections.forEach(section => {
-                const sectionTop = section.getBoundingClientRect().top;
-                if (sectionTop < window.innerHeight - 150) {
-                    section.classList.add("section-visible");
-                } else {
-                    section.classList.remove("section-visible");
-                }
-            });
-        };
-        window.addEventListener("scroll", handleScroll);
-        return () => window.removeEventListener("scroll", handleScroll);
-    }, []);
-
-    
-    const handleSignUp = () => {
-        navigate("/login"); 
-    };
-
-    return (
-        <div>
-            <header className="container-fluid d-flex align-items-end text-center background-image" style={{backgroundImage: `url(${fitnessImage})`}}>
-                <div className="row py-5 m-auto">
-                    <div className="col-lg-12 col-md-12">
-                        <h1>ES FÁCIL SER FIT</h1>
-                        <p>
-                            <button className="btn btn-color-yellow btn-lg px-5" onClick={handleSignUp}>
-                                Regístrate
-                            </button>
-                        </p>
-                    </div>
-                </div>
-            </header>
-            <section className="section">
-                <BodyHomeMain />
-            </section>
-            <section className="section">
-                <BodyHomeSecondary />
-            </section>
-        </div>
-    );
+	return (
+		<div className="text-center mt-5">
+			<h1>Hello Rigo!!</h1>
+			<p>
+				<img src={rigoImageUrl} />
+			</p>
+			<div className="alert alert-info">
+				{store.message || "Loading message from the backend (make sure your python backend is running)..."}
+			</div>
+			<p>
+				This boilerplate comes with lots of documentation:{" "}
+				<a href="https://start.4geeksacademy.com/starters/react-flask">
+					Read documentation
+				</a>
+			</p>
+		</div>
+	);
 };
-
-
