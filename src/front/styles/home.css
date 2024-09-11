@@ -19,10 +19,8 @@ body {
     background-repeat: no-repeat;
     height: 55rem;
 }
-.background-image .row {
+.h1-home {
     color: rgb(255, 255, 255);
-}
-h1 {
     font-family: "Anton", sans-serif;
     font-size: 9vw;
     font-weight: 400;
@@ -39,7 +37,7 @@ h1 {
     justify-content: center; 
     text-align: center;
     align-items: end;
-    padding: 0px;
+    padding: 0px !important;
 }
 .cover-card {
     font-family: "Anton", sans-serif;

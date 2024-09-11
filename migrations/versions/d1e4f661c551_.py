@@ -1,8 +1,8 @@
 """empty message
 
-Revision ID: cdf1808d43ea
+Revision ID: d1e4f661c551
 Revises: 
-Create Date: 2024-09-07 16:43:43.581931
+Create Date: 2024-09-11 07:30:23.722377
 
 """
 from alembic import op
@@ -10,7 +10,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision = 'cdf1808d43ea'
+revision = 'd1e4f661c551'
 down_revision = None
 branch_labels = None
 depends_on = None
@@ -42,6 +42,12 @@ def upgrade():
     sa.PrimaryKeyConstraint('id'),
     sa.UniqueConstraint('name')
     )
+    op.create_table('recipes',
+    sa.Column('id', sa.Integer(), nullable=False),
+    sa.Column('name', sa.String(length=100), nullable=True),
+    sa.Column('ingredients_text', sa.Text(), nullable=True),
+    sa.PrimaryKeyConstraint('id')
+    )
     op.create_table('users',
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('password', sa.String(length=100), nullable=False),
@@ -63,11 +69,12 @@ def upgrade():
     with op.batch_alter_table('users', schema=None) as batch_op:
         batch_op.create_index(batch_op.f('ix_users_email'), ['email'], unique=True)
 
-    op.create_table('recipes',
+    op.create_table('favorite_recipes',
     sa.Column('id', sa.Integer(), nullable=False),
-    sa.Column('ingredient_id', sa.Integer(), nullable=False),
-    sa.Column('name', sa.String(length=100), nullable=True),
-    sa.ForeignKeyConstraint(['ingredient_id'], ['ingredients.id'], ),
+    sa.Column('user_id', sa.Integer(), nullable=False),
+    sa.Column('recipe_id', sa.Integer(), nullable=False),
+    sa.ForeignKeyConstraint(['recipe_id'], ['recipes.id'], ondelete='CASCADE'),
+    sa.ForeignKeyConstraint(['user_id'], ['users.id'], ondelete='CASCADE'),
     sa.PrimaryKeyConstraint('id')
     )
     op.create_table('routines',
@@ -100,31 +107,6 @@ def upgrade():
     sa.ForeignKeyConstraint(['user_id'], ['users.id'], ),
     sa.PrimaryKeyConstraint('id')
     )
-    op.create_table('exercises',
-    sa.Column('id', sa.Integer(), nullable=False),
-    sa.Column('name', sa.String(length=50), nullable=False),
-    sa.Column('description', sa.Text(), nullable=True),
-    sa.Column('routine_id', sa.Integer(), nullable=True),
-    sa.ForeignKeyConstraint(['routine_id'], ['routines.id'], ),
-    sa.PrimaryKeyConstraint('id'),
-    sa.UniqueConstraint('name')
-    )
-    op.create_table('favorite_recipes',
-    sa.Column('id', sa.Integer(), nullable=False),
-    sa.Column('user_id', sa.Integer(), nullable=False),
-    sa.Column('recipe_id', sa.Integer(), nullable=False),
-    sa.ForeignKeyConstraint(['recipe_id'], ['recipes.id'], ondelete='CASCADE'),
-    sa.ForeignKeyConstraint(['user_id'], ['users.id'], ondelete='CASCADE'),
-    sa.PrimaryKeyConstraint('id')
-    )
-    op.create_table('favorite_routines',
-    sa.Column('id', sa.Integer(), nullable=False),
-    sa.Column('user_id', sa.Integer(), nullable=False),
-    sa.Column('routine_id', sa.Integer(), nullable=False),
-    sa.ForeignKeyConstraint(['routine_id'], ['routines.id'], ondelete='CASCADE'),
-    sa.ForeignKeyConstraint(['user_id'], ['users.id'], ondelete='CASCADE'),
-    sa.PrimaryKeyConstraint('id')
-    )
     op.create_table('user_recipes',
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('recipe_id', sa.Integer(), nullable=False),
@@ -132,6 +114,24 @@ def upgrade():
     sa.Column('prompt', sa.Text(), nullable=True),
     sa.ForeignKeyConstraint(['recipe_id'], ['recipes.id'], ),
     sa.ForeignKeyConstraint(['user_id'], ['users.id'], ),
+    sa.PrimaryKeyConstraint('id')
+    )
+    op.create_table('exercises',
+    sa.Column('id', sa.Integer(), nullable=False),
+    sa.Column('name', sa.String(length=50), nullable=False),
+    sa.Column('description', sa.Text(), nullable=True),
+    sa.Column('image_url', sa.String(length=255), nullable=True),
+    sa.Column('routine_id', sa.Integer(), nullable=True),
+    sa.ForeignKeyConstraint(['routine_id'], ['routines.id'], ),
+    sa.PrimaryKeyConstraint('id'),
+    sa.UniqueConstraint('name')
+    )
+    op.create_table('favorite_routines',
+    sa.Column('id', sa.Integer(), nullable=False),
+    sa.Column('user_id', sa.Integer(), nullable=False),
+    sa.Column('routine_id', sa.Integer(), nullable=False),
+    sa.ForeignKeyConstraint(['routine_id'], ['routines.id'], ondelete='CASCADE'),
+    sa.ForeignKeyConstraint(['user_id'], ['users.id'], ondelete='CASCADE'),
     sa.PrimaryKeyConstraint('id')
     )
     op.create_table('exercise_equipments',
@@ -143,12 +143,11 @@ def upgrade():
     sa.PrimaryKeyConstraint('id')
     )
     op.create_table('exercise_muscles',
-    sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('exercise_id', sa.Integer(), nullable=False),
     sa.Column('muscle_id', sa.Integer(), nullable=False),
     sa.ForeignKeyConstraint(['exercise_id'], ['exercises.id'], ),
     sa.ForeignKeyConstraint(['muscle_id'], ['muscles.id'], ),
-    sa.PrimaryKeyConstraint('id')
+    sa.PrimaryKeyConstraint('exercise_id', 'muscle_id')
     )
     op.create_table('favorite_exercises',
     sa.Column('id', sa.Integer(), nullable=False),
@@ -175,18 +174,18 @@ def downgrade():
     op.drop_table('favorite_exercises')
     op.drop_table('exercise_muscles')
     op.drop_table('exercise_equipments')
-    op.drop_table('user_recipes')
     op.drop_table('favorite_routines')
-    op.drop_table('favorite_recipes')
     op.drop_table('exercises')
+    op.drop_table('user_recipes')
     op.drop_table('user_ingredients')
     op.drop_table('template_prompts')
     op.drop_table('routines')
-    op.drop_table('recipes')
+    op.drop_table('favorite_recipes')
     with op.batch_alter_table('users', schema=None) as batch_op:
         batch_op.drop_index(batch_op.f('ix_users_email'))
 
     op.drop_table('users')
+    op.drop_table('recipes')
     op.drop_table('muscles')
     op.drop_table('ingredients')
     op.drop_table('equipments')

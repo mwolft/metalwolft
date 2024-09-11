@@ -21,7 +21,7 @@ export const BodyHomeSecondary = () => {
                         </button>
                     </p>
                 </div>
-                <div className="col-12 col-sm-12 col-md-12 col-lg-6 col-xl-6 d-flex justify-content-center">
+                <div className="col-12 col-sm-12 col-md-12 col-lg-6 col-xl-6 d-flex justify-content-center mb-5">
                     <img className="img-secondary img-fluid" src={imageBodySecondary} alt="" />
                 </div>
             </div>

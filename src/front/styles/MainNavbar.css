@@ -22,7 +22,7 @@ body, html {
 }
 
 .nav-link {
-    color: #000;              /* Adjust text color */
+    color: #000 !important;              /* Adjust text color */
     font-weight: bold;        /* Make the text bold */
     padding: 10px 15px;       /* Adjust spacing for better look */
     text-decoration: none;    /* Remove underline from links */
