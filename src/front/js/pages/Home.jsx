@@ -28,7 +28,6 @@ export const Home = () => {
     const handleSignUp = () => {
         navigate("/login"); 
     };
-
     return (
         <div>
             <header className="container-fluid d-flex align-items-end text-center background-image" style={{backgroundImage: `url(${fitnessImage})`}}>
@@ -52,5 +51,3 @@ export const Home = () => {
         </div>
     );
 };
-
-
