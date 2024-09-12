@@ -16,7 +16,6 @@ import { BodyHomeSecondary } from "./component/BodyHomeSecondary.jsx";
 import { Home } from "./pages/Home.jsx";
 import { Error404 } from "./pages/Error404.jsx";
 import { Login } from "./pages/Login.jsx";
-import { SignUp } from "./pages/SignUp.jsx";
 import { Dashboard } from "./pages/Dashboard.jsx";
 import { Trainers } from './pages/Trainers.jsx';
 import { Exercise } from './pages/Exercise.jsx';
@@ -45,7 +44,6 @@ const Layout = () => {
                         <Route element={<Trainers />} path="/trainers" />
                         <Route element={<FormTrainer />} path="/become-a-trainer" />
                         <Route element={<Login />} path='/login' />
-                        <Route element={<SignUp />} path='/sign-up' />
                         <Route element={<GenerateRecipes />} path="/generate-recipes" />
                         <Route element={<GenerateRoutines />} path="/generate-routines" />
                         <Route element={<Dashboard />} path='/dashboard' />

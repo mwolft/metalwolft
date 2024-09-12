@@ -40,7 +40,7 @@ class Users(db.Model):
             "alias": self.alias,
             "gender": self.gender,
             "phone": self.phone,
-            "age": self.birth,
+            "age": self.age,
             "height": self.height,
             "weight": self.weight,
             "rol": self.rol,

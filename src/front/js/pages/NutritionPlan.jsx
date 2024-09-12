@@ -60,9 +60,9 @@ export const NutritionPlan = () => {
     const handleActivitySelection = (calories) => {
         const totalCalories = parseInt(calories);
 
-        const protein = (totalCalories * 0.3 / 4).toFixed(2); 
-        const carbs = (totalCalories * 0.4 / 4).toFixed(2);   
-        const fats = (totalCalories * 0.3 / 9).toFixed(2);    
+        const protein = (totalCalories * 0.3 / 4).toFixed(2);
+        const carbs = (totalCalories * 0.4 / 4).toFixed(2);
+        const fats = (totalCalories * 0.3 / 9).toFixed(2);
 
         setFormData({
             ...formData,
@@ -78,7 +78,7 @@ export const NutritionPlan = () => {
         !store.currentUser ?
             navigate("/login")
             :
-            <div className="wrapper bg-white" style={{ marginTop: '55px' }}>
+            <div className="wrapper bg-dark text-white" style={{ marginTop: '55px' }}>
                 <Sidebar />
                 <div id="content" className="m-auto">
                     <nav className="navbar navbar-expand-lg">
@@ -105,16 +105,21 @@ export const NutritionPlan = () => {
                             </select>
                         </div>
                         <Button className="text-white btn btn-outline-primary btn-sm mx-1 mt-3" onClick={calculateBMR}>
-                            Calcular 
+                            Calcular
                         </Button>
                     </form>
                     {formData.bmr && (
                         <div className="mt-4">
                             <div className="row">
+                                <div className="col-12">
+                                    <div className="alert alert-info" role="alert">
+                                        Elige la cantidad de actividad física que vas a realizar para obtener los macronutrientes recomendados para tu objetivo.
+                                    </div>
+                                </div>
                                 <div className="col-12 col-sm-12 col-md-6 col-lg-6 col-xl-6">
                                     <div className="cards-dashboard">
                                         <p className="p-profile-title">TASA METABÓLICA BASAL</p>
-                                        <p className="p-profile-info">Cantidad de calorías que su cuerpo necesita para realizar funciones básicas en reposo. , tales como respirar, parpadear, filtrar la sangre, regular la temperatura del cuerpo o sintetizar hormonas.</p>
+                                        <p className="p-profile-info">Cantidad de calorías que su cuerpo necesita para realizar funciones básicas en reposo, tales como respirar, parpadear, filtrar la sangre, regular la temperatura del cuerpo o sintetizar hormonas.</p>
                                         <h3 className="h3-profile">{formData.bmr} <p className="p-profile py-0"> KCAL</p></h3>
                                     </div>
                                 </div>
@@ -161,6 +166,11 @@ export const NutritionPlan = () => {
                                 </div>
                             </div>
                             <div className="row mt-4">
+                                <div className="col-12">
+                                    <div className="alert alert-info" role="alert">
+                                        Resultado: cantidad de macronutrientes (carbohidratos, proteínas y grasas) que te permiten optimizar tu rendimiento y resultados según la cantidad de actividad física y objetivo (pérdida de peso, mantenimiento o ganancia muscular).
+                                    </div>
+                                </div>
                                 <div className="col-12 col-sm-12 col-md-6 col-lg-6 col-xl-6">
                                     <div className="cards-dashboard">
                                         <p className="p-profile-title">PROTEINAS</p>

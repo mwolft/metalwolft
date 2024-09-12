@@ -75,7 +75,7 @@ export const Login = () => {
       actions.setCurrentUser(data.results);
       actions.setIsLoged(true);
       actions.setAlert({ visible: true, back: 'info', text: data.message });
-      navigate('/'); 
+      navigate('/profile'); 
     }
   };
 
