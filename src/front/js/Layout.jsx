@@ -16,7 +16,6 @@ import { BodyHomeSecondary } from "./component/BodyHomeSecondary.jsx";
 import { Home } from "./pages/Home.jsx";
 import { Error404 } from "./pages/Error404.jsx";
 import { Login } from "./pages/Login.jsx";
-import { SignUp } from "./pages/SignUp.jsx";
 import { Dashboard } from "./pages/Dashboard.jsx";
 import { Trainers } from './pages/Trainers.jsx';
 import { Exercise } from './pages/Exercise.jsx';
@@ -34,7 +33,7 @@ const Layout = () => {
     if(!process.env.BACKEND_URL || process.env.BACKEND_URL == "") return <BackendURL/ >;
 
     return (
-        <div className="d-flex flex-column min-vh-100">
+        <div className="d-flex flex-column min-vh-100 bg-dark">
             <BrowserRouter basename={basename}>
                 <ScrollToTop>
                     <MainNavbar />

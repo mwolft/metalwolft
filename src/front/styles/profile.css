@@ -46,6 +46,9 @@
     color: #007bff;
     text-decoration: underline;
 }
+.li-profile {
+    font-weight: 200;
+}
 .choose-activity:hover {
     color: #0056b3; 
 }
@@ -103,7 +106,6 @@
     min-width: 250px;
     max-width: 250px;
     background-color: grey;
-    color: white;
     transition: all 0.3s;
     padding: 20px;
 }
@@ -119,6 +121,8 @@
     padding: 10px;
 }
 #sidebar ul li a{
+    color: white;
+    text-decoration: none;
     padding: 10px;
     font-size: 1.1em;
     display: block;

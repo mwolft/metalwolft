@@ -2,14 +2,15 @@
     General Styles used on every website (Don't Repeat Yourself)
 */
 * {
-    font-family: "Dosis", sans-serif;
+    font-family: "Doris", sans-serif;
+    font-weight: 200;
 }
 .estilo-navbar {
     background-color: rgba(255, 228, 51);
     width: 100%;
     z-index: 1;
 }
-.btn-color-yellow {
+p .btn-color-yellow {
     background-color: rgba(255, 228, 51);
 }
 .square-box {

@@ -34,7 +34,7 @@ export const Home = () => {
             <header className="container-fluid d-flex align-items-end text-center background-image" style={{backgroundImage: `url(${fitnessImage})`}}>
                 <div className="row py-5 m-auto">
                     <div className="col-lg-12 col-md-12">
-                        <h1>ES FÁCIL SER FIT</h1>
+                        <h1 className="h1-home">ES FÁCIL SER FIT</h1>
                         <p>
                             <button className="btn btn-color-yellow btn-lg px-5" onClick={handleSignUp}>
                                 Regístrate

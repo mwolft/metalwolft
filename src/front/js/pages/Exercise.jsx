@@ -58,7 +58,7 @@ export const Exercise = () => {
   ], []);
 
   return (
-    <div className="container-fluid bg-secondary py-5">
+    <div className="container-fluid bg-secondary py-5" style={{ marginTop: '100px' }}>
       <h2 className="text-center mb-4 text-white">SELECCIONA UN GRUPO MUSCULAR</h2>
       <div className="d-flex justify-content-center flex-wrap mb-4">
         {muscleGroups.map(muscle => (
