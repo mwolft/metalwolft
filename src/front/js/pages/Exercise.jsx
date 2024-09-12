@@ -14,10 +14,9 @@ export const Exercise = () => {
     }
   }, [selectedMuscle]);
 
-  // Function to fetch exercises for a specific muscle group
   const fetchExercises = async (muscleGroup) => {
     setLoading(true);
-    setError(null); // Reset error before fetching
+    setError(null);
     try {
       const response = await fetch(`${process.env.BACKEND_URL}/api/exercises?muscle_group=${muscleGroup}`, {
         headers: {
@@ -26,7 +25,6 @@ export const Exercise = () => {
         },
       });
 
-      // If response is not OK, throw an error
       if (!response.ok) {
         throw new Error(`Failed to fetch exercises for ${muscleGroup}. Status: ${response.status}`);
       }
@@ -34,60 +32,58 @@ export const Exercise = () => {
       const data = await response.json();
       setExercises(data);
 
-      // Only show an error for specific muscle groups and subcategories
       const showErrorForMuscles = [
-        'chest', 'back', 'shoulders', 'biceps', 'triceps', 
-        'quads', 'hamstrings', 'calves', 'glutes'
+        'pecho', 'espalda', 'hombros', 'biceps', 'triceps',
+        'cuadriceps', 'femorales', 'pantorrillas', 'gluteos'
       ];
-      
+
       if (data.length === 0 && showErrorForMuscles.includes(muscleGroup)) {
         setError(`No exercises found for ${muscleGroup}.`);
       }
     } catch (error) {
       console.error('Error fetching exercises:', error);
-      setError(error.message); // Only set error for failed requests, not empty data
+      setError(error.message);
     } finally {
       setLoading(false);
     }
   };
 
-  // List of main muscle groups
   const muscleGroups = useMemo(() => [
-    'chest', 'back', 'shoulders', 'biceps', 'triceps', 'legs'
+    'pecho', 'espalda', 'hombros', 'biceps', 'triceps', 'piernas'
   ], []);
 
   // List of sub-categories for legs
   const legMuscleGroups = useMemo(() => [
-    'quads', 'hamstrings', 'calves', 'glutes'
+    'cuadriceps', 'femorales', 'pantorrillas', 'gluteos'
   ], []);
 
   return (
     <div className="container-fluid bg-secondary py-5">
-      <h2 className="text-center mb-4 text-white">Select a Muscle Group</h2>
+      <h2 className="text-center mb-4 text-white">SELECCIONA UN GRUPO MUSCULAR</h2>
       <div className="d-flex justify-content-center flex-wrap mb-4">
         {muscleGroups.map(muscle => (
-          <button 
-            key={muscle} 
-            className="btn btn-warning m-2" 
+          <button
+            key={muscle}
+            className="btn btn-warning m-2"
             onClick={() => setSelectedMuscle(muscle)}
           >
-            {muscle.charAt(0).toUpperCase() + muscle.slice(1)}
+            {muscle.toUpperCase()}
           </button>
         ))}
       </div>
 
       {/* Sub-category for Legs */}
-      {selectedMuscle === 'legs' && (
+      {selectedMuscle === 'piernas' && (
         <div className="text-center mb-4">
-          <h3 className="text-white">Select a Leg Sub-Category</h3>
+          <h3 className="text-white">SELECCIONA LA SUB-CATEGORÍA</h3>
           <div className="d-flex justify-content-center flex-wrap">
             {legMuscleGroups.map(subMuscle => (
-              <button 
-                key={subMuscle} 
-                className="btn btn-warning m-2" 
+              <button
+                key={subMuscle}
+                className="btn btn-warning m-2"
                 onClick={() => setSelectedMuscle(subMuscle)}
               >
-                {subMuscle.charAt(0).toUpperCase() + subMuscle.slice(1)}
+                {subMuscle.toUpperCase()}
               </button>
             ))}
           </div>
@@ -103,15 +99,24 @@ export const Exercise = () => {
       {/* Display exercises if no error */}
       {!loading && !error && exercises.length > 0 && (
         <div className="container">
-          <h3 className="text-center text-white">Exercises for {selectedMuscle === 'legs' ? 'Legs - ' : ''}{selectedMuscle.charAt(0).toUpperCase() + selectedMuscle.slice(1)}</h3>
+          <h3 className="text-center text-white">Ejercicios para {selectedMuscle === 'piernas' ? 'Piernas - ' : ''}{selectedMuscle.toUpperCase()}</h3>
           <div className="row">
             {exercises.map(exercise => (
               <div key={exercise.name} className="col-lg-4 col-md-6 col-sm-12 mb-4">
-                <div className="card h-100">
-                  <img src={exercise.image_url || '/path/to/placeholder.jpg'} className="card-img-top" alt={exercise.name} />
-                  <div className="card-body">
+                <div className="card h-100 d-flex flex-column justify-content-between">
+                  <div>
+                    <img
+                      src={exercise.image_url || '/path/to/placeholder.jpg'}
+                      className="card-img-top"
+                      alt={exercise.name}
+                      style={{ height: '200px', objectFit: 'contain' }}  // Use 'contain' to prevent cutting the image
+                    />
+                  </div>
+                  <div className="card-body d-flex flex-column justify-content-end">
                     <h5 className="card-title">{exercise.name}</h5>
-                    <p className="card-text" style={{ fontSize: '0.9rem' }}>{exercise.description}</p>
+                    <p className="card-text" style={{ fontSize: '0.9rem' }}>
+                      {exercise.description}
+                    </p>
                   </div>
                 </div>
               </div>
@@ -122,7 +127,7 @@ export const Exercise = () => {
 
       {/* Message for when no muscle is selected */}
       {!loading && !selectedMuscle && (
-        <p className="text-center text-white">Please select a muscle group to view exercises.</p>
+        <p className="text-center text-white">CADA GRUPO MUSCULAR CONTIENE EJERCICIOS CON IMÁGENES EXPLICATIVAS.</p>
       )}
     </div>
   );
