@@ -199,7 +199,8 @@ def handle_user(user_id):
         user.lastname = data.get('lastname', user.lastname)
         user.height = data.get('height', user.height)  
         user.weight = data.get('weight', user.weight)  
-        user.age = data.get('age', user.age) 
+        user.age = data.get('age', user.age)
+        user.location = data.get('location', user.location) 
         db.session.commit()  
         response_body['results'] = user.serialize()
         response_body['message'] = f'Usuario {user_id} actualizado exitosamente'
