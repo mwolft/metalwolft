@@ -75,12 +75,12 @@ export const Login = () => {
       actions.setCurrentUser(data.results);
       actions.setIsLoged(true);
       actions.setAlert({ visible: true, back: 'info', text: data.message });
-      navigate('/profile'); 
+      navigate('/'); 
     }
   };
 
   return (
-    <Container className="auth-container d-flex justify-content-center align-items-center" style={{ marginTop: '100px' }}>
+    <Container className="auth-container d-flex justify-content-center align-items-center">
       <div className="auth-box p-5">
         <Row className="text-center mb-3">
           <Col>

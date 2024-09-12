@@ -1,6 +1,45 @@
 /* 
     General Styles used on every website (Don't Repeat Yourself)
 */
+
+  
+  .auth-box {
+    background-color: rgba(255, 255, 0, 0.75); /* Ajusta la opacidad del fondo amarillo */
+    border-radius: 15px;
+    max-width: 400px;
+    width: 100%;
+  }
+  
+  .auth-toggle {
+    cursor: pointer;
+    font-weight: bold;
+    color: black;
+    padding-bottom: 5px;
+    border-bottom: 2px solid transparent;
+    display: inline-block;
+  }
+  
+  .auth-toggle.active {
+    border-color: black;
+  }
+  
+  .auth-submit-button {
+    background-color: white;
+    border: none;
+    color: black;
+    font-size: 24px;
+    border-radius: 50%;
+    width: 60px;
+    height: 60px;
+    display: inline-flex;
+    justify-content: center;
+    align-items: center;
+  }
+  
+  .arrow {
+    font-size: 1.5rem;
+  }
+  
 * {
     font-family: "Doris", sans-serif;
     font-weight: 200;
