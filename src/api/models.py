@@ -1,9 +1,10 @@
 from flask_sqlalchemy import SQLAlchemy
 
+
 db = SQLAlchemy()
 
+
 class Users(db.Model):
-    __tablename__ = "users"
     id = db.Column(db.Integer, primary_key=True)
     password = db.Column(db.String(100), nullable=False)
     alias = db.Column(db.String(10), unique=True, nullable=True)
@@ -28,7 +29,7 @@ class Users(db.Model):
     favorite_exercises = db.relationship('FavoriteExercises', backref='user', lazy=True, cascade="all, delete-orphan")
 
     def __repr__(self):
-        return f'<User {self.id}: {self.alias}>'
+        return f'<User {self.id} - {self.email}>'
 
     def serialize(self):
         return {
@@ -49,23 +50,6 @@ class Users(db.Model):
             "favorite_routines": [favorite_routine.serialize() for favorite_routine in self.favorite_routines],
             "favorite_exercises": [favorite_exercise.serialize() for favorite_exercise in self.favorite_exercises]
         }
-        return {"id": self.id,
-                "firstname": self.firstname,
-                "lastname": self.lastname,
-                "email": self.email,
-                "is_active": self.is_active,
-                "alias": self.alias,
-                "gender": self.gender,
-                "phone": self.phone,
-                "age": self.age,
-                "height": self.height,
-                "weight": self.weight,
-                "rol": self.rol,
-                "location": self.location,
-                "favorite_recipes": [favorite_recipe.serialize() for favorite_recipe in self.favorite_recipes],
-                "favorite_routines": [favorite_routine.serialize() for favorite_routine in self.favorite_routines],
-                "favorite_exercises": [favorite_exercise.serialize() for favorite_exercise in self.favorite_exercises]}
-
 
 class Exercises(db.Model):
     __tablename__ = "exercises"
