@@ -26,7 +26,7 @@ export const MainNavbar = () => {
         <Navbar expand="lg" className="estilo-navbar fixed-top text-uppercase" data-bs-theme="light">
             <Container fluid>
                 <Navbar.Brand as={Link} to="/"> 
-                    <img src={logoweb} alt="Logo" width="100" height="30" className="d-inline-block align-top" />
+                    <img src={logoweb} alt="Logo" className="d-inline-block align-top" />
                 </Navbar.Brand>
                 <Navbar.Toggle aria-controls="basic-navbar-nav" />
                 <Navbar.Collapse id="basic-navbar-nav">
