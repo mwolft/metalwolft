@@ -4,17 +4,17 @@
 }
 
 .estilo-navbar {
-  background-color: rgba(255, 255, 0);
+  background-color: rgba(255, 193, 7);
   width: 100%;
   z-index: 1;
 }
 
 p .btn-color-yellow {
-  background-color: rgba(255, 255, 0);
+  background-color: rgba(255, 193, 7);
 }
 
 p .btn-color-yellow:hover {
-  background-color: rgbrgba(255, 255, 0);
+  background-color: rgb(144, 144, 2);
   color: white;
 }
  /* --- LOGIN */
@@ -28,7 +28,7 @@ p .btn-color-yellow:hover {
 .square-box {
   margin-top: 5px;
   margin-bottom: 5px;
-  background-color: rgba(255, 228, 51, .35);
+  background-color: rgba(255, 193, 7);
   padding: 20px;
   border: 1px solid rgba(255, 228, 51, .35);
   border-radius: 10px;
@@ -44,7 +44,7 @@ p .btn-color-yellow:hover {
 }
 
 .auth-box {
-  background-color: rgba(255, 255, 0, 0.75);
+  background-color: rgba(255, 193, 7);
   border-radius: 15px;
   max-width: 400px;
   width: 100%;

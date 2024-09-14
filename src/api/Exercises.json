@@ -1,662 +1,662 @@
 [
     {
-        "name": "Flat Barbell Bench Press",
-        "description": "The flat bench press is a compound movement that targets the chest, shoulders, and triceps. It's performed by lying on a bench and pressing a barbell upward from chest level.",
-        "image_url": "https://example.com/flat-barbell-bench-press.png",
-        "muscle_group": "chest"
+        "name": "Press de banca con barra",
+        "description": "El press de banca plano es un movimiento compuesto que trabaja el pecho, los hombros y los tríceps. Se realiza acostado en un banco y presionando una barra hacia arriba desde el nivel del pecho.",
+        "image_url": "https://i.pinimg.com/originals/51/1f/75/511f758a1ef6d337f075b820c4cc49de.gif",
+        "muscle_group": "pecho"
     },
     {
-        "name": "Incline Dumbbell Press",
-        "description": "An incline dumbbell press emphasizes the upper chest. It's performed by lying on an incline bench and pressing dumbbells upward from shoulder level.",
-        "image_url": "https://example.com/incline-dumbbell-press.png",
-        "muscle_group": "chest"
+        "name": "Press inclinado con mancuernas",
+        "description": "El press inclinado con mancuernas enfatiza la parte superior del pecho. Se realiza acostado en un banco inclinado y presionando las mancuernas hacia arriba desde el nivel de los hombros.",
+        "image_url": "https://i.pinimg.com/originals/f4/72/94/f47294c0af7d4dc0e55b83a6ce56167b.gif",
+        "muscle_group": "pecho"
     },
     {
-        "name": "Decline Bench Press",
-        "description": "The decline bench press focuses on the lower part of the chest. It is performed by lying on a decline bench and pressing a barbell upward.",
-        "image_url": "https://example.com/decline-bench-press.png",
-        "muscle_group": "chest"
+        "name": "Press de banca declinado",
+        "description": "El press de banca declinado se enfoca en la parte inferior del pecho. Se realiza acostado en un banco declinado y presionando una barra hacia arriba.",
+        "image_url": "https://www.inspireusafoundation.org/wp-content/uploads/2023/07/barbell-decline-bench-press.gif",
+        "muscle_group": "pecho"
     },
     {
-        "name": "Chest Fly",
-        "description": "Chest fly is performed by lying on a flat bench and using dumbbells to make a wide arc motion. It stretches and contracts the chest muscles.",
-        "image_url": "https://example.com/chest-fly.png",
-        "muscle_group": "chest"
+        "name": "Aperturas de pecho",
+        "description": "Las aperturas de pecho se realizan acostado en un banco plano y usando mancuernas para hacer un movimiento en arco amplio. Estira y contrae los músculos del pecho.",
+        "image_url": "https://miro.medium.com/v2/resize:fit:1256/0*fKpof9V0PsO8zQ_3",
+        "muscle_group": "pecho"
     },
     {
-        "name": "Push-Ups",
-        "description": "Push-ups are a bodyweight exercise that targets the chest, triceps, and shoulders. Start in a plank position and lower yourself to the ground, then push up.",
-        "image_url": "https://example.com/push-ups.png",
-        "muscle_group": "chest"
+        "name": "Flexiones",
+        "description": "Las flexiones son un ejercicio con peso corporal que trabaja el pecho, los tríceps y los hombros. Comienza en una posición de plancha, baja el cuerpo al suelo y luego empuja hacia arriba.",
+        "image_url": "https://hips.hearstapps.com/hmg-prod/images/766/fitgif-friday-pushup-slider-thumbnail-override-1515520802.gif",
+        "muscle_group": "pecho"
     },
     {
-        "name": "Cable Crossover",
-        "description": "Cable crossovers isolate the chest by pulling cables from a high position downwards in a crossover motion, focusing on the inner chest muscles.",
-        "image_url": "https://example.com/cable-crossover.png",
-        "muscle_group": "chest"
+        "name": "Cruces de cable",
+        "description": "Los cruces de cable aíslan el pecho tirando de los cables desde una posición alta hacia abajo en un movimiento cruzado, enfocándose en los músculos internos del pecho.",
+        "image_url": "https://i0.wp.com/www.inspireusafoundation.org/wp-content/uploads/2021/10/cable-cross-over.gif?ssl=1",
+        "muscle_group": "pecho"
     },
     {
-        "name": "Dips (Chest Version)",
-        "description": "Chest dips involve leaning forward while performing dips on parallel bars, engaging the lower chest muscles.",
-        "image_url": "https://example.com/chest-dips.png",
-        "muscle_group": "chest"
+        "name": "Fondos (Versión para pecho)",
+        "description": "Los fondos para pecho implican inclinarse hacia adelante mientras se realizan en barras paralelas, activando los músculos inferiores del pecho.",
+        "image_url": "https://i.pinimg.com/originals/e2/11/c0/e211c072359ab64765f561dc6e44856c.gif",
+        "muscle_group": "pecho"
     },
     {
-        "name": "Incline Bench Press",
-        "description": "Incline bench presses target the upper chest. The bench is set at a 30-45 degree angle, and the barbell or dumbbells are pressed from chest level.",
-        "image_url": "https://example.com/incline-bench-press.png",
-        "muscle_group": "chest"
+        "name": "Press de banca inclinado",
+        "description": "El press de banca inclinado se enfoca en la parte superior del pecho. El banco se coloca en un ángulo de 30-45 grados, y la barra o las mancuernas se presionan desde el nivel del pecho.",
+        "image_url": "https://newlife.com.cy/wp-content/uploads/2019/11/00471301-Barbell-Incline-Bench-Press_Chest_360.gif",
+        "muscle_group": "pecho"
     },
     {
-        "name": "Machine Chest Press",
-        "description": "Machine chest presses allow for controlled pressing of weights to target the chest muscles without the need for balancing free weights.",
-        "image_url": "https://example.com/machine-chest-press.png",
-        "muscle_group": "chest"
+        "name": "Press de pecho en máquina",
+        "description": "El press de pecho en máquina permite presionar pesos de manera controlada para trabajar los músculos del pecho sin necesidad de equilibrar pesas libres.",
+        "image_url": "https://www.inspireusafoundation.org/wp-content/uploads/2022/05/chest-press-machine.gif",
+        "muscle_group": "pecho"
     },
     {
-        "name": "Pec Deck Machine",
-        "description": "The pec deck machine isolates the chest muscles by moving the arms together in a butterfly-like motion while seated.",
-        "image_url": "https://example.com/pec-deck.png",
-        "muscle_group": "chest"
+        "name": "Máquina de mariposa (Pec Deck)",
+        "description": "La máquina pec deck aísla los músculos del pecho moviendo los brazos juntos en un movimiento similar al de una mariposa mientras estás sentado.",
+        "image_url": "https://www.inspireusafoundation.org/wp-content/uploads/2022/07/pec-deck.gif",
+        "muscle_group": "pecho"
     },
     {
-        "name": "Dumbbell Pullover",
-        "description": "The dumbbell pullover is performed by lying on a bench and moving a dumbbell from overhead to above the chest, targeting the chest and lats.",
-        "image_url": "https://example.com/dumbbell-pullover.png",
-        "muscle_group": "chest"
+        "name": "Pull-over con mancuerna",
+        "description": "El pull-over con mancuerna se realiza acostado en un banco y moviendo una mancuerna desde encima de la cabeza hasta encima del pecho, trabajando el pecho y los dorsales.",
+        "image_url": "https://burnfit.io/wp-content/uploads/2023/11/DB_PULLOVER.gif",
+        "muscle_group": "pecho"
     },
     {
-        "name": "Close-Grip Bench Press",
-        "description": "The close-grip bench press targets the inner chest and triceps. It's performed by pressing a barbell from chest level with a narrow grip.",
-        "image_url": "https://example.com/close-grip-bench-press.png",
-        "muscle_group": "chest"
+        "name": "Press de banca con agarre cerrado",
+        "description": "El press de banca con agarre cerrado se enfoca en la parte interna del pecho y los tríceps. Se realiza presionando una barra desde el nivel del pecho con un agarre estrecho.",
+        "image_url": "https://liftmanual.com/wp-content/uploads/2023/04/ez-bar-close-grip-bench-press.gif",
+        "muscle_group": "pecho"
     },
     {
-        "name": "Landmine Chest Press",
-        "description": "The landmine chest press is performed by pressing a barbell anchored in a landmine attachment at a 45-degree angle. It targets the chest and shoulders.",
-        "image_url": "https://example.com/landmine-chest-press.png",
-        "muscle_group": "chest"
+        "name": "Press de pecho con barra en landmine",
+        "description": "El press de pecho en landmine se realiza presionando una barra fijada en un soporte a un ángulo de 45 grados. Trabaja el pecho y los hombros.",
+        "image_url": "https://cdn.shopify.com/s/files/1/0250/0362/2496/files/321.gif?v=1644650162",
+        "muscle_group": "pecho"
     },
     {
-        "name": "Svend Press",
-        "description": "The Svend press involves pressing a weight plate forward while squeezing the chest muscles. It's a great exercise for activating the inner chest.",
-        "image_url": "https://example.com/svend-press.png",
-        "muscle_group": "chest"
+        "name": "Press Svend",
+        "description": "El press Svend implica presionar un disco de peso hacia adelante mientras aprietas los músculos del pecho. Es un excelente ejercicio para activar la parte interna del pecho.",
+        "image_url": "https://www.inspireusafoundation.org/wp-content/uploads/2023/03/svend-press.gif",
+        "muscle_group": "pecho"
     },
     {
-        "name": "Floor Press",
-        "description": "The floor press is a partial range bench press done while lying on the floor. It limits the range of motion and emphasizes the chest and triceps.",
-        "image_url": "https://example.com/floor-press.png",
-        "muscle_group": "chest"
+        "name": "Press en el suelo",
+        "description": "El press en el suelo es una variación del press de banca con un rango de movimiento parcial, realizado acostado en el suelo. Limita el rango de movimiento y enfatiza el pecho y los tríceps.",
+        "image_url": "https://cdn.shopify.com/s/files/1/1950/1891/files/Floor_Press_5bd3f195-57f4-4c45-9f0d-15f8f084a8ce.gif?v=1586844505",
+        "muscle_group": "pecho"
     },
     {
-        "name": "Resistance Band Chest Press",
-        "description": "A chest press using resistance bands simulates the movement of a traditional press while maintaining tension throughout the range of motion.",
-        "image_url": "https://example.com/resistance-band-chest-press.png",
-        "muscle_group": "chest"
+        "name": "Press de pecho con banda de resistencia",
+        "description": "Un press de pecho con bandas de resistencia simula el movimiento de un press tradicional mientras mantiene la tensión durante todo el rango de movimiento.",
+        "image_url": "https://gymbeam.cz/blog/wp-content/uploads/2021/10/08-Tlaky-s-gumou-na-hrudnik_2.gif",
+        "muscle_group": "pecho"
     },
     {
-        "name": "Standing Cable Chest Press",
-        "description": "The standing cable chest press is done using cables in a standing position, allowing for greater activation of stabilizing muscles.",
-        "image_url": "https://example.com/standing-cable-chest-press.png",
-        "muscle_group": "chest"
+        "name": "Press de pecho con cables de pie",
+        "description": "El press de pecho con cables de pie se realiza usando cables en una posición de pie, permitiendo una mayor activación de los músculos estabilizadores.",
+        "image_url": "https://i.pinimg.com/originals/00/87/d5/0087d50eb6e70c12460c6d63b551fb88.gif",
+        "muscle_group": "pecho"
     },
     {
-        "name": "Smith Machine Bench Press",
-        "description": "A Smith machine bench press offers guided movement, allowing you to safely target the chest muscles without worrying about balance.",
-        "image_url": "https://example.com/smith-machine-bench-press.png",
-        "muscle_group": "chest"
+        "name": "Press de banca en máquina Smith",
+        "description": "El press de banca en máquina Smith ofrece un movimiento guiado, permitiendo trabajar los músculos del pecho de manera segura sin preocuparse por el equilibrio.",
+        "image_url": "https://cdn.shopify.com/s/files/1/0250/0362/2496/files/image3_ae508933-3ae2-4946-9221-37f1c3c9690e_480x480.gif?v=1664478870",
+        "muscle_group": "pecho"
     },
     {
-        "name": "Plate Pinch Press",
-        "description": "The plate pinch press involves holding a weight plate between your palms and pressing it forward while squeezing your chest.",
-        "image_url": "https://example.com/plate-pinch-press.png",
-        "muscle_group": "chest"
+        "name": "Press con disco",
+        "description": "El press con disco implica sostener un disco de peso entre las palmas de las manos y presionarlo hacia adelante mientras aprietas el pecho.",
+        "image_url": "https://hips.hearstapps.com/menshealth-uk/main/assets/61-Plate-press.gif",
+        "muscle_group": "pecho"
     },
     {
-        "name": "Suspension Trainer Chest Press",
-        "description": "Using a suspension trainer (like TRX), you perform a chest press by leaning into the straps and pressing your body weight away from the handles.",
-        "image_url": "https://example.com/suspension-chest-press.png",
-        "muscle_group": "chest"
+        "name": "Press de pecho con entrenador de suspensión",
+        "description": "Usando un entrenador de suspensión (como TRX), se realiza un press de pecho inclinándose hacia las correas y presionando tu propio peso lejos de las asas.",
+        "image_url": "https://i.pinimg.com/originals/4b/5e/d1/4b5ed1bd55233ca4297352ecff4c54e4.gif",
+        "muscle_group": "pecho"
     },
     {
-        "name": "Deadlift",
-        "description": "A compound movement that works the entire posterior chain, including the back, glutes, and hamstrings. It involves lifting a barbell from the ground to hip level.",
-        "image_url": "https://example.com/deadlift.png",
-        "muscle_group": "back"
+        "name": "Peso muerto",
+        "description": "Un movimiento compuesto que trabaja toda la cadena posterior, incluyendo la espalda, glúteos y femorales. Implica levantar una barra desde el suelo hasta el nivel de la cadera.",
+        "image_url": "https://i.pinimg.com/originals/c6/0d/1a/c60d1a369ed66aad251d5c04d433484c.gif",
+        "muscle_group": "espalda"
     },
     {
-        "name": "Pull-Up",
-        "description": "A bodyweight exercise that targets the upper back, lats, and biceps. Performed by pulling yourself up until your chin passes the bar.",
-        "image_url": "https://example.com/pull-up.png",
-        "muscle_group": "back"
+        "name": "Dominadas",
+        "description": "Un ejercicio con peso corporal que trabaja la parte superior de la espalda, los dorsales y los bíceps. Se realiza al tirar de ti mismo hacia arriba hasta que la barbilla pase la barra.",
+        "image_url": "https://tunturi.org/Blogs/2022/09-pull-up.gif",
+        "muscle_group": "espalda"
     },
     {
-        "name": "Bent-Over Barbell Row",
-        "description": "A classic back exercise that targets the lats, rhomboids, and lower back. Performed by pulling a barbell towards your torso while bent over at the hips.",
-        "image_url": "https://example.com/bent-over-barbell-row.png",
-        "muscle_group": "back"
+        "name": "Remo con barra inclinado",
+        "description": "Un ejercicio clásico para la espalda que trabaja los dorsales, romboides y la parte inferior de la espalda. Se realiza tirando de una barra hacia el torso mientras se está inclinado en las caderas.",
+        "image_url": "https://tiu-assets.s3-us-west-2.amazonaws.com/2018/12/Chyna-Barbell-Bent-Over-Row.gif",
+        "muscle_group": "espalda"
     },
     {
-        "name": "Lat Pulldown",
-        "description": "This exercise focuses on the latissimus dorsi muscles by pulling a bar down towards the chest while seated.",
-        "image_url": "https://example.com/lat-pulldown.png",
-        "muscle_group": "back"
+        "name": "Jalón al pecho",
+        "description": "Este ejercicio se enfoca en los músculos del dorsal ancho tirando de una barra hacia el pecho mientras estás sentado.",
+        "image_url": "https://www.inspireusafoundation.org/wp-content/uploads/2022/08/wide-grip-lat-pulldown.gif",
+        "muscle_group": "espalda"
     },
     {
-        "name": "Single-Arm Dumbbell Row",
-        "description": "Performed by pulling a dumbbell towards your torso with one arm at a time while bent over a bench. It targets the lats and middle back.",
-        "image_url": "https://example.com/single-arm-dumbbell-row.png",
-        "muscle_group": "back"
+        "name": "Remo con mancuerna a una mano",
+        "description": "Se realiza tirando de una mancuerna hacia el torso con un brazo a la vez mientras estás inclinado sobre un banco. Trabaja los dorsales y la parte media de la espalda.",
+        "image_url": "https://i.pinimg.com/originals/2e/1d/11/2e1d11bc46aa8a0fb1d42fa9e97bbf9e.gif",
+        "muscle_group": "espalda"
     },
     {
-        "name": "Seated Cable Row",
-        "description": "Using a cable machine, this movement targets the middle back. Pull the handles towards your torso while sitting with legs extended.",
-        "image_url": "https://example.com/seated-cable-row.png",
-        "muscle_group": "back"
+        "name": "Remo con cable sentado",
+        "description": "Usando una máquina de cable, este movimiento trabaja la parte media de la espalda. Tira de las asas hacia el torso mientras estás sentado con las piernas extendidas.",
+        "image_url": "https://hips.hearstapps.com/hmg-prod/images/766/fitgif9-22-tnoverride-1506088802.gif",
+        "muscle_group": "espalda"
     },
     {
-        "name": "T-Bar Row",
-        "description": "A variation of the row using a T-bar machine, focusing on the middle back and lats. Performed by pulling a handle towards your torso while bent at the hips.",
-        "image_url": "https://example.com/t-bar-row.png",
-        "muscle_group": "back"
+        "name": "Remo con barra en T",
+        "description": "Una variación del remo usando una máquina de barra en T, enfocada en la parte media de la espalda y los dorsales. Se realiza tirando de un asa hacia el torso mientras estás inclinado en las caderas.",
+        "image_url": "https://cdn.jefit.com/assets/img/exercises/gifs/1311.gif",
+        "muscle_group": "espalda"
     },
     {
-        "name": "Reverse Fly",
-        "description": "Targets the rear deltoids and upper back muscles. Its performed by moving dumbbells outward in a wide arc while bending at the hips.",
-        "image_url": "https://example.com/reverse-fly.png",
-        "muscle_group": "back"
+        "name": "Apertura inversa",
+        "description": "Trabaja los deltoides posteriores y los músculos de la parte superior de la espalda. Se realiza moviendo las mancuernas hacia afuera en un arco amplio mientras te inclinas en las caderas.",
+        "image_url": "https://hips.hearstapps.com/hmg-prod/images/workouts/2016/03/dumbbellreversefly-1456949026.gif",
+        "muscle_group": "espalda"
     },
     {
-        "name": "Good Morning",
-        "description": "Primarily a lower back exercise, the good morning involves bending at the hips while keeping a barbell on your shoulders, then returning to an upright position.",
-        "image_url": "https://example.com/good-morning.png",
-        "muscle_group": "back"
+        "name": "Buenos días",
+        "description": "Principalmente un ejercicio para la parte baja de la espalda, el ejercicio de buenos días implica inclinarse en las caderas mientras mantienes una barra sobre los hombros, y luego regresar a una posición erguida.",
+        "image_url": "https://www.inspireusafoundation.org/wp-content/uploads/2022/06/barbell-romanian-deadlift-movement.gif",
+        "muscle_group": "espalda"
     },
     {
-        "name": "Romanian Deadlift",
-        "description": "This variation of the deadlift targets the hamstrings and lower back by keeping the legs more extended while lifting and lowering a barbell.",
-        "image_url": "https://example.com/romanian-deadlift.png",
-        "muscle_group": "back"
+        "name": "Peso muerto rumano",
+        "description": "Esta variación del peso muerto trabaja los femorales y la parte baja de la espalda manteniendo las piernas más extendidas mientras levantas y bajas una barra.",
+        "image_url": "https://i.pinimg.com/originals/37/0f/5a/370f5af5a35d5a12fb5d6e42ecf55552.gif",
+        "muscle_group": "espalda"
     },
     {
-        "name": "Inverted Row",
-        "description": "A bodyweight exercise performed by hanging from a bar and pulling your chest towards it. It targets the upper and middle back.",
-        "image_url": "https://example.com/inverted-row.png",
-        "muscle_group": "back"
+        "name": "Remo invertido",
+        "description": "Un ejercicio con peso corporal realizado colgándote de una barra y tirando de tu pecho hacia ella. Trabaja la parte superior y media de la espalda.",
+        "image_url": "https://i0.wp.com/www.strengthlog.com/wp-content/uploads/2020/12/Inverted-row.gif?resize=600%2C600&ssl=1",
+        "muscle_group": "espalda"
     },
     {
-        "name": "Face Pull",
-        "description": "A cable exercise that targets the rear delts and upper back. Pull the cable towards your face while keeping your elbows high.",
-        "image_url": "https://example.com/face-pull.png",
-        "muscle_group": "back"
+        "name": "Jalón al rostro",
+        "description": "Un ejercicio con cable que trabaja los deltoides posteriores y la parte superior de la espalda. Tira del cable hacia tu rostro mientras mantienes los codos elevados.",
+        "image_url": "https://cdn.jefit.com/assets/img/exercises/gifs/874.gif",
+        "muscle_group": "espalda"
     },
     {
-        "name": "Shrug",
-        "description": "Primarily a trap exercise, shrugs involve lifting the shoulders while holding dumbbells or a barbell, focusing on the upper back.",
-        "image_url": "https://example.com/shrug.png",
-        "muscle_group": "back"
+        "name": "Encogimiento de hombros",
+        "description": "Principalmente un ejercicio para los trapecios, los encogimientos de hombros implican levantar los hombros mientras sostienes mancuernas o una barra, enfocándose en la parte superior de la espalda.",
+        "image_url": "https://fitnessprogramer.com/wp-content/uploads/2021/04/Dumbbell-Shrug.gif",
+        "muscle_group": "espalda"
     },
     {
-        "name": "Yates Row",
-        "description": "A variation of the barbell row with a more upright posture, emphasizing the traps and rhomboids.",
-        "image_url": "https://example.com/yates-row.png",
-        "muscle_group": "back"
+        "name": "Remo Yates",
+        "description": "Una variación del remo con barra con una postura más erguida, enfatizando los trapecios y los romboides.",
+        "image_url": "https://newlife.com.cy/wp-content/uploads/2018/12/24671301-Barbell-Reverse-Grip-Bent-Over-Row-female_Back_360.gif",
+        "muscle_group": "espalda"
     },
     {
-        "name": "Chest-Supported Row",
-        "description": "This row variation uses a chest-supported bench to prevent lower back strain while rowing dumbbells or a barbell.",
-        "image_url": "https://example.com/chest-supported-row.png",
-        "muscle_group": "back"
+        "name": "Remo con soporte para el pecho",
+        "description": "Esta variación del remo utiliza un banco con soporte para el pecho para evitar la tensión en la parte baja de la espalda mientras remas con mancuernas o una barra.",
+        "image_url": "https://i.pinimg.com/originals/87/62/93/876293382695252ab4eca9a71d1c30bd.gif",
+        "muscle_group": "espalda"
     },
     {
-        "name": "Dumbbell Pullover (Back Focus)",
-        "description": "While this exercise can target the chest, a back-focused variation emphasizes stretching and contracting the lats.",
-        "image_url": "https://example.com/dumbbell-pullover-back.png",
-        "muscle_group": "back"
+        "name": "Pull-over con mancuerna (enfoque en la espalda)",
+        "description": "Aunque este ejercicio puede trabajar el pecho, una variación enfocada en la espalda enfatiza el estiramiento y la contracción de los dorsales.",
+        "image_url": "https://burnfit.io/wp-content/uploads/2023/11/DB_PULLOVER.gif",
+        "muscle_group": "espalda"
     },
     {
-        "name": "Wide-Grip Pull-Up",
-        "description": "A pull-up variation with a wide grip, focusing more on the outer lats and upper back muscles.",
-        "image_url": "https://example.com/wide-grip-pull-up.png",
-        "muscle_group": "back"
+        "name": "Dominadas con agarre amplio",
+        "description": "Una variación de las dominadas con un agarre amplio, enfocándose más en los dorsales exteriores y los músculos de la parte superior de la espalda.",
+        "image_url": "https://www.inspireusafoundation.org/wp-content/uploads/2022/10/pull-up.gif",
+        "muscle_group": "espalda"
     },
     {
-        "name": "Pendlay Row",
-        "description": "A strict row variation where the barbell rests on the ground between each rep, emphasizing the lats and lower back.",
-        "image_url": "https://example.com/pendlay-row.png",
-        "muscle_group": "back"
+        "name": "Remo Pendlay",
+        "description": "Una variación estricta del remo donde la barra descansa en el suelo entre cada repetición, enfatizando los dorsales y la parte baja de la espalda.",
+        "image_url": "https://images.ctfassets.net/8urtyqugdt2l/14EIYUa2jBdtBsDBR3qi0v/e839082ddac6ded0cf0fa62739069313/how_to_pendlay_row.gif",
+        "muscle_group": "espalda"
     },
     {
-        "name": "Rack Pull",
-        "description": "A partial deadlift movement that focuses on the upper and middle back. The barbell is pulled from a raised position, such as on blocks or a rack.",
-        "image_url": "https://example.com/rack-pull.png",
-        "muscle_group": "back"
+        "name": "Peso muerto parcial",
+        "description": "Un movimiento parcial de peso muerto que se enfoca en la parte superior y media de la espalda. La barra se tira desde una posición elevada, como sobre bloques o en un rack.",
+        "image_url": "https://barbend.com/wp-content/uploads/2023/05/rack-pull-barbend-movement-gif-masters.gif",
+        "muscle_group": "espalda"
     },
     {
-        "name": "Landmine Row",
-        "description": "Using a landmine attachment, this row variation allows for a deep range of motion and targets the middle back and lats.",
-        "image_url": "https://example.com/landmine-row.png",
-        "muscle_group": "back"
+        "name": "Remo con barra en landmine",
+        "description": "Usando un accesorio landmine, esta variación del remo permite un rango de movimiento profundo y se enfoca en la parte media de la espalda y los dorsales.",
+        "image_url": "https://barbend.com/wp-content/uploads/2021/04/meadows-row-barbend-movement-gif-masters-1.gif",
+        "muscle_group": "espalda"
     },
     {
-        "name": "Overhead Barbell Press",
-        "description": "A fundamental shoulder exercise that targets the deltoids and triceps. Performed by pressing a barbell overhead from shoulder level.",
-        "image_url": "https://example.com/overhead-barbell-press.png",
-        "muscle_group": "shoulders"
+        "name": "Press militar con barra",
+        "description": "Un ejercicio fundamental para los hombros que trabaja los deltoides y tríceps. Se realiza presionando una barra por encima de la cabeza desde el nivel de los hombros.",
+        "image_url": "https://i.pinimg.com/originals/73/e4/69/73e4695a396f86b7de776cb38c36c084.gif",
+        "muscle_group": "hombros"
     },
     {
-        "name": "Arnold Press",
-        "description": "A variation of the shoulder press that involves a rotational movement to target all three heads of the deltoid.",
-        "image_url": "https://example.com/arnold-press.png",
-        "muscle_group": "shoulders"
+        "name": "Press Arnold",
+        "description": "Una variación del press de hombros que implica un movimiento rotacional para trabajar las tres cabezas del deltoides.",
+        "image_url": "https://www.inspireusafoundation.org/wp-content/uploads/2022/04/arnold-presses.gif",
+        "muscle_group": "hombros"
     },
     {
-        "name": "Lateral Raise",
-        "description": "Targets the medial deltoid, performed by raising dumbbells out to the side to shoulder height.",
-        "image_url": "https://example.com/lateral-raise.png",
-        "muscle_group": "shoulders"
+        "name": "Elevación lateral",
+        "description": "Trabaja el deltoides medial, se realiza levantando mancuernas hacia los lados a la altura de los hombros.",
+        "image_url": "https://hips.hearstapps.com/hmg-prod/images/workouts/2016/03/lateralraise-1456955524.gif",
+        "muscle_group": "hombros"
     },
     {
-        "name": "Front Raise",
-        "description": "Focuses on the anterior deltoid by raising dumbbells in front of you to shoulder level.",
-        "image_url": "https://example.com/front-raise.png",
-        "muscle_group": "shoulders"
+        "name": "Elevación frontal",
+        "description": "Se enfoca en el deltoides anterior levantando mancuernas frente a ti hasta el nivel de los hombros.",
+        "image_url": "https://newlife.com.cy/wp-content/uploads/2019/11/22331301-Dumbbell-Front-Raise-female_Shoulders_360-4.gif",
+        "muscle_group": "hombros"
     },
     {
-        "name": "Dumbbell Shoulder Press",
-        "description": "A classic shoulder exercise where you press dumbbells overhead to target all heads of the deltoids.",
-        "image_url": "https://example.com/dumbbell-shoulder-press.png",
-        "muscle_group": "shoulders"
+        "name": "Press de hombros con mancuernas",
+        "description": "Un ejercicio clásico para los hombros donde se presionan mancuernas por encima de la cabeza para trabajar todas las cabezas del deltoides.",
+        "image_url": "https://i.pinimg.com/originals/2e/43/e0/2e43e04410c77c1824e132bc852979fe.gif",
+        "muscle_group": "hombros"
     },
     {
-        "name": "Machine Shoulder Press",
-        "description": "Performed on a machine for stability, it targets the deltoids and triceps while minimizing lower body engagement.",
-        "image_url": "https://example.com/machine-shoulder-press.png",
-        "muscle_group": "shoulders"
+        "name": "Press de hombros en máquina",
+        "description": "Realizado en una máquina para mayor estabilidad, trabaja los deltoides y tríceps mientras minimiza el uso del tren inferior.",
+        "image_url": "https://149874912.v2.pressablecdn.com/wp-content/uploads/2020/03/machine-shoulder-press.gif",
+        "muscle_group": "hombros"
     },
     {
-        "name": "Reverse Pec Deck Fly",
-        "description": "Targets the rear deltoids and upper back by pulling the handles of the pec deck machine backwards.",
-        "image_url": "https://example.com/reverse-pec-deck-fly.png",
-        "muscle_group": "shoulders"
+        "name": "Apertura inversa en pec deck",
+        "description": "Trabaja los deltoides posteriores y la parte superior de la espalda tirando de los mangos de la máquina pec deck hacia atrás.",
+        "image_url": "https://barbend.com/wp-content/uploads/2022/11/reverse-flye-on-peck-deck.gif",
+        "muscle_group": "hombros"
     },
     {
-        "name": "Face Pull",
-        "description": "A cable exercise targeting the rear deltoids and upper back by pulling the cable towards your face with elbows flared.",
-        "image_url": "https://example.com/face-pull.png",
-        "muscle_group": "shoulders"
+        "name": "Jalón al rostro",
+        "description": "Un ejercicio con cable que trabaja los deltoides posteriores y la parte superior de la espalda tirando del cable hacia tu rostro con los codos abiertos.",
+        "image_url": "https://cdn.jefit.com/assets/img/exercises/gifs/874.gif",
+        "muscle_group": "hombros"
     },
     {
-        "name": "Upright Row",
-        "description": "Performed by pulling a barbell or dumbbells up towards your chin, this exercise targets the traps and shoulders.",
-        "image_url": "https://example.com/upright-row.png",
-        "muscle_group": "shoulders"
+        "name": "Remo vertical",
+        "description": "Se realiza tirando de una barra o mancuernas hacia el mentón, este ejercicio trabaja los trapecios y los hombros.",
+        "image_url": "https://miro.medium.com/v2/resize:fit:864/1*b65d0PhFVK-JQsCqXG2K9g.gif",
+        "muscle_group": "hombros"
     },
     {
-        "name": "Cable Lateral Raise",
-        "description": "A variation of the lateral raise using a cable machine for constant tension on the medial deltoid.",
-        "image_url": "https://example.com/cable-lateral-raise.png",
-        "muscle_group": "shoulders"
+        "name": "Elevación lateral con cable",
+        "description": "Una variación de la elevación lateral usando una máquina de cables para mantener la tensión constante en el deltoides medial.",
+        "image_url": "https://i0.wp.com/www.strengthlog.com/wp-content/uploads/2020/03/cable-lateral-raise.gif?resize=600%2C600&ssl=1",
+        "muscle_group": "hombros"
     },
     {
-        "name": "Landmine Press",
-        "description": "A unique pressing movement where a barbell is pressed at an angle, focusing on the anterior deltoids.",
-        "image_url": "https://example.com/landmine-press.png",
-        "muscle_group": "shoulders"
+        "name": "Press con barra en landmine",
+        "description": "Un movimiento de presión único donde se presiona una barra en un ángulo, enfocándose en los deltoides anteriores.",
+        "image_url": "https://images.ctfassets.net/8urtyqugdt2l/7fiDD6dJGw6AdxOQPH0PiS/b9b58ebc250e582210276223726de070/standing-landmine-press-02.gif",
+        "muscle_group": "hombros"
     },
     {
-        "name": "Bus Driver",
-        "description": "A rotational shoulder exercise using a plate, designed to target the deltoids and improve shoulder stability.",
-        "image_url": "https://example.com/bus-driver.png",
-        "muscle_group": "shoulders"
+        "name": "Conductor de autobús",
+        "description": "Un ejercicio rotacional para los hombros usando un disco, diseñado para trabajar los deltoides y mejorar la estabilidad del hombro.",
+        "image_url": "https://gymbeam.cz/blog/wp-content/uploads/2023/03/bus-driver.gif",
+        "muscle_group": "hombros"
     },
     {
-        "name": "Seated Dumbbell Press",
-        "description": "Similar to the standing version, but seated for added stability, focusing on all heads of the deltoid.",
-        "image_url": "https://example.com/seated-dumbbell-press.png",
-        "muscle_group": "shoulders"
+        "name": "Press con mancuernas sentado",
+        "description": "Similar a la versión de pie, pero sentado para mayor estabilidad, enfocándose en todas las cabezas del deltoides.",
+        "image_url": "https://newlife.com.cy/wp-content/uploads/2019/02/22371301-Dumbbell-Seated-Shoulder-Press-female_Shoulders_360.gif",
+        "muscle_group": "hombros"
     },
     {
-        "name": "Dumbbell Shrug",
-        "description": "Primarily a trap exercise, shrugs target the upper shoulders and neck by lifting the shoulders while holding dumbbells.",
-        "image_url": "https://example.com/dumbbell-shrug.png",
-        "muscle_group": "shoulders"
+        "name": "Encogimiento de hombros con mancuernas",
+        "description": "Principalmente un ejercicio para los trapecios, los encogimientos de hombros trabajan la parte superior de los hombros y el cuello al levantar los hombros mientras sostienes mancuernas.",
+        "image_url": "https://cdn.shopify.com/s/files/1/0250/0362/2496/files/1361.gif?v=1644921141",
+        "muscle_group": "hombros"
     },
     {
-        "name": "Cable Front Raise",
-        "description": "Using a cable machine, this exercise focuses on the anterior deltoid with constant tension throughout the movement.",
-        "image_url": "https://example.com/cable-front-raise.png",
-        "muscle_group": "shoulders"
+        "name": "Elevación frontal con cable",
+        "description": "Usando una máquina de cables, este ejercicio se enfoca en el deltoides anterior con tensión constante durante todo el movimiento.",
+        "image_url": "https://newlife.com.cy/wp-content/uploads/2019/11/01621301-Cable-Front-Raise_Shoulders_360.gif",
+        "muscle_group": "hombros"
     },
     {
-        "name": "Behind-the-Neck Press",
-        "description": "A shoulder press variation performed by lowering the barbell behind the head. It targets the deltoids but requires good shoulder mobility.",
-        "image_url": "https://example.com/behind-the-neck-press.png",
-        "muscle_group": "shoulders"
+        "name": "Press tras nuca",
+        "description": "Una variación del press de hombros realizada bajando la barra detrás de la cabeza. Trabaja los deltoides pero requiere buena movilidad en los hombros.",
+        "image_url": "https://fitnessprogramer.com/wp-content/uploads/2021/05/Seated-Behind-the-Neck-Press.gif",
+        "muscle_group": "hombros"
     },
     {
-        "name": "Single-Arm Dumbbell Press",
-        "description": "A unilateral version of the dumbbell press, focusing on one shoulder at a time for added core and shoulder stability.",
-        "image_url": "https://example.com/single-arm-dumbbell-press.png",
-        "muscle_group": "shoulders"
+        "name": "Press con mancuerna a una mano",
+        "description": "Una versión unilateral del press con mancuernas, enfocándose en un hombro a la vez para mayor estabilidad del núcleo y del hombro.",
+        "image_url": "https://i.pinimg.com/originals/d8/03/50/d80350c686ea43cf31397589efa47e06.gif",
+        "muscle_group": "hombros"
     },
     {
-        "name": "Cable Reverse Fly",
-        "description": "Using a cable machine, this exercise targets the rear delts and upper back by pulling the handles outward in a reverse fly motion.",
-        "image_url": "https://example.com/cable-reverse-fly.png",
-        "muscle_group": "shoulders"
+        "name": "Apertura inversa con cable",
+        "description": "Usando una máquina de cables, este ejercicio trabaja los deltoides posteriores y la parte superior de la espalda al tirar de los mangos hacia afuera en un movimiento de apertura inversa.",
+        "image_url": "https://i0.wp.com/www.strengthlog.com/wp-content/uploads/2023/08/Reverse-cable-fly.gif?resize=600%2C600&ssl=1",
+        "muscle_group": "hombros"
     },
     {
-        "name": "Incline Dumbbell Raise",
-        "description": "Performed on an incline bench, this movement targets the front deltoid by raising the dumbbells in front of you.",
-        "image_url": "https://example.com/incline-dumbbell-raise.png",
-        "muscle_group": "shoulders"
+        "name": "Elevación con mancuernas en banco inclinado",
+        "description": "Realizado en un banco inclinado, este movimiento se enfoca en el deltoides frontal al levantar las mancuernas frente a ti.",
+        "image_url": "https://barbend.com/wp-content/uploads/2023/05/y-raise-barbend-movement-gif-masters.gif",
+        "muscle_group": "hombros"
     },
     {
-        "name": "Overhead Kettlebell Press",
-        "description": "A shoulder press variation using kettlebells, focusing on the deltoids and stabilizer muscles due to the unique grip.",
-        "image_url": "https://example.com/overhead-kettlebell-press.png",
-        "muscle_group": "shoulders"
+        "name": "Press con kettlebell por encima de la cabeza",
+        "description": "Una variación del press de hombros usando kettlebells, enfocándose en los deltoides y los músculos estabilizadores debido al agarre único.",
+        "image_url": "https://homeworkouts.org/wp-content/uploads/anim-kettlebell-arnold-press.gif",
+        "muscle_group": "hombros"
     },
     {
-        "name": "Barbell Curl",
-        "description": "The classic bicep-building exercise performed by curling a barbell up towards your chest, focusing on the biceps brachii.",
-        "image_url": "https://example.com/barbell-curl.png",
+        "name": "Curl con barra",
+        "description": "El ejercicio clásico para construir bíceps, realizado levantando una barra hacia tu pecho, enfocándose en el bíceps braquial.",
+        "image_url": "https://images.ctfassets.net/8urtyqugdt2l/6Upxd3Fxf5jzr21Pi5lGWS/046d039fc6fe0a90edb00d4def561953/how_to_ez_barbell_curl_exercise.gif",
         "muscle_group": "biceps"
     },
     {
-        "name": "Dumbbell Curl",
-        "description": "A basic bicep exercise performed with dumbbells to focus on each arm independently.",
-        "image_url": "https://example.com/dumbbell-curl.png",
+        "name": "Curl con mancuernas",
+        "description": "Un ejercicio básico para bíceps realizado con mancuernas para trabajar cada brazo de manera independiente.",
+        "image_url": "https://i.pinimg.com/originals/8c/53/27/8c532774e4e1c524576bf1fb829ad895.gif",
         "muscle_group": "biceps"
     },
     {
-        "name": "Hammer Curl",
-        "description": "A variation of the bicep curl where you hold the dumbbells with a neutral grip, targeting the brachialis and brachioradialis muscles.",
-        "image_url": "https://example.com/hammer-curl.png",
+        "name": "Curl martillo",
+        "description": "Una variación del curl de bíceps donde sostienes las mancuernas con un agarre neutral, trabajando los músculos braquial y braquiorradial.",
+        "image_url": "https://hips.hearstapps.com/hmg-prod/images/workouts/2016/03/hammercurl-1456956209.gif",
         "muscle_group": "biceps"
     },
     {
-        "name": "Preacher Curl",
-        "description": "Performed on a preacher bench, this exercise isolates the biceps by limiting the movement of your shoulders.",
-        "image_url": "https://example.com/preacher-curl.png",
+        "name": "Curl en predicador",
+        "description": "Realizado en un banco predicador, este ejercicio aísla los bíceps limitando el movimiento de los hombros.",
+        "image_url": "https://www.inspireusafoundation.org/wp-content/uploads/2022/03/ez-bar-preacher-curl.gif",
         "muscle_group": "biceps"
     },
     {
-        "name": "Concentration Curl",
-        "description": "An isolation exercise that focuses on the peak of the bicep by curling a dumbbell with your elbow braced against your thigh.",
-        "image_url": "https://example.com/concentration-curl.png",
+        "name": "Curl de concentración",
+        "description": "Un ejercicio de aislamiento que se enfoca en el pico del bíceps al levantar una mancuerna con el codo apoyado en el muslo.",
+        "image_url": "https://cdn.shopify.com/s/files/1/0250/0362/2496/files/642.gif?v=1644814383",
         "muscle_group": "biceps"
     },
     {
-        "name": "Incline Dumbbell Curl",
-        "description": "Performed on an incline bench, this exercise emphasizes the stretch at the bottom of the movement, targeting the long head of the biceps.",
-        "image_url": "https://example.com/incline-dumbbell-curl.png",
+        "name": "Curl inclinado con mancuernas",
+        "description": "Realizado en un banco inclinado, este ejercicio enfatiza el estiramiento en la parte inferior del movimiento, trabajando la cabeza larga del bíceps.",
+        "image_url": "https://www.inspireusafoundation.org/wp-content/uploads/2023/02/dumbbell-incline-hammer-curl.gif",
         "muscle_group": "biceps"
     },
     {
-        "name": "Cable Curl",
-        "description": "Performed using a cable machine for constant tension throughout the range of motion, targeting the biceps.",
-        "image_url": "https://example.com/cable-curl.png",
+        "name": "Curl con cable",
+        "description": "Realizado usando una máquina de cables para mantener tensión constante durante todo el rango de movimiento, enfocándose en los bíceps.",
+        "image_url": "https://i.pinimg.com/originals/f1/52/16/f15216ce06438b9ee776941c4f74dc6e.gif",
         "muscle_group": "biceps"
     },
     {
-        "name": "EZ Bar Curl",
-        "description": "A bicep curl performed with an EZ bar to reduce strain on the wrists, focusing on both heads of the biceps.",
-        "image_url": "https://example.com/ez-bar-curl.png",
+        "name": "Curl con barra EZ",
+        "description": "Un curl de bíceps realizado con una barra EZ para reducir la tensión en las muñecas, enfocándose en ambas cabezas del bíceps.",
+        "image_url": "https://newlife.com.cy/wp-content/uploads/2019/11/22381301-EZ-Barbell-Curl-female_Upper-Arms_360.gif",
         "muscle_group": "biceps"
     },
     {
-        "name": "Spider Curl",
-        "description": "Performed by curling a barbell or dumbbells while lying face down on an incline bench, this exercise isolates the biceps.",
-        "image_url": "https://example.com/spider-curl.png",
+        "name": "Curl araña",
+        "description": "Realizado levantando una barra o mancuernas mientras estás acostado boca abajo en un banco inclinado, este ejercicio aísla los bíceps.",
+        "image_url": "https://i.pinimg.com/originals/c7/5d/16/c75d16bd98c94bd01f828de94bd945b5.gif",
         "muscle_group": "biceps"
     },
     {
-        "name": "Zottman Curl",
-        "description": "A combination curl that targets both the biceps and forearms by rotating from a standard curl to a reverse curl at the top of the movement.",
-        "image_url": "https://example.com/zottman-curl.png",
+        "name": "Curl Zottman",
+        "description": "Un curl combinado que trabaja tanto los bíceps como los antebrazos al rotar de un curl estándar a un curl inverso en la parte superior del movimiento.",
+        "image_url": "https://i.pinimg.com/originals/4b/e4/68/4be46841032506b311d43b8d49c6a58a.gif",
         "muscle_group": "biceps"
     },
     {
-        "name": "Tricep Dips",
-        "description": "A bodyweight exercise that targets the triceps by lowering and raising your body using parallel bars or a bench.",
-        "image_url": "https://example.com/tricep-dips.png",
+        "name": "Fondos de tríceps",
+        "description": "Un ejercicio con peso corporal que trabaja los tríceps bajando y levantando el cuerpo usando barras paralelas o un banco.",
+        "image_url": "https://cdn.shopify.com/s/files/1/0449/8453/3153/files/parallel_bars.gif?v=1722412029",
         "muscle_group": "triceps"
     },
     {
-        "name": "Skull Crushers",
-        "description": "Performed by lowering a barbell or dumbbells towards your forehead while lying down, this exercise isolates the triceps.",
-        "image_url": "https://example.com/skull-crushers.png",
+        "name": "Rompecráneos",
+        "description": "Se realiza bajando una barra o mancuernas hacia la frente mientras estás acostado, este ejercicio aísla los tríceps.",
+        "image_url": "https://www.lifetime60day.com/wp-content/uploads/2017/10/Skull-Crusher.gif",
         "muscle_group": "triceps"
     },
     {
-        "name": "Tricep Pushdown",
-        "description": "Performed using a cable machine, this exercise focuses on the triceps by pushing the bar or rope attachment downwards.",
-        "image_url": "https://example.com/tricep-pushdown.png",
+        "name": "Extensión de tríceps en polea",
+        "description": "Realizado usando una máquina de cable, este ejercicio se enfoca en los tríceps empujando hacia abajo la barra o el accesorio de cuerda.",
+        "image_url": "https://i.pinimg.com/originals/40/35/26/403526f6e4c1107d7fb20839edf6fcf9.gif",
         "muscle_group": "triceps"
     },
     {
-        "name": "Close-Grip Bench Press",
-        "description": "A variation of the bench press that emphasizes the triceps by using a narrow grip.",
-        "image_url": "https://example.com/close-grip-bench-press.png",
+        "name": "Press de banca con agarre cerrado",
+        "description": "Una variación del press de banca que enfatiza los tríceps al usar un agarre estrecho.",
+        "image_url": "https://liftmanual.com/wp-content/uploads/2023/04/ez-bar-close-grip-bench-press.gif",
         "muscle_group": "triceps"
     },
     {
-        "name": "Overhead Tricep Extension",
-        "description": "Performed by extending a dumbbell or barbell overhead to target the long head of the triceps.",
-        "image_url": "https://example.com/overhead-tricep-extension.png",
+        "name": "Extensión de tríceps por encima de la cabeza",
+        "description": "Realizado extendiendo una mancuerna o barra por encima de la cabeza para trabajar la cabeza larga del tríceps.",
+        "image_url": "https://hips.hearstapps.com/hmg-prod/images/workouts/2016/03/dumbbelloverheadtricepsextension-1456956005.gif",
         "muscle_group": "triceps"
     },
     {
-        "name": "Cable Overhead Tricep Extension",
-        "description": "A cable variation of the overhead tricep extension, providing constant tension throughout the movement.",
-        "image_url": "https://example.com/cable-overhead-tricep-extension.png",
+        "name": "Extensión de tríceps con cable por encima de la cabeza",
+        "description": "Una variación con cable de la extensión de tríceps por encima de la cabeza, proporcionando tensión constante durante el movimiento.",
+        "image_url": "https://149874912.v2.pressablecdn.com/wp-content/uploads/2020/04/cable-rope-overhead-triceps-extension.gif",
         "muscle_group": "triceps"
     },
     {
-        "name": "Kickbacks",
-        "description": "Performed by extending dumbbells behind you while bent over, focusing on the triceps.",
-        "image_url": "https://example.com/tricep-kickbacks.png",
+        "name": "Patadas de tríceps",
+        "description": "Se realiza extendiendo las mancuernas detrás de ti mientras estás inclinado, enfocándose en los tríceps.",
+        "image_url": "https://i0.wp.com/post.healthline.com/wp-content/uploads/2019/05/HonoredFamousIbex-size_restricted.gif?w=1155&h=840",
         "muscle_group": "triceps"
     },
     {
-        "name": "Rope Tricep Extension",
-        "description": "Using a rope attachment on a cable machine, this exercise targets the triceps by pulling the rope apart at the bottom of the movement.",
-        "image_url": "https://example.com/rope-tricep-extension.png",
+        "name": "Extensión de tríceps con cuerda",
+        "description": "Usando un accesorio de cuerda en una máquina de cable, este ejercicio trabaja los tríceps tirando de la cuerda hacia afuera al final del movimiento.",
+        "image_url": "https://cdn.shopify.com/s/files/1/0250/0362/2496/files/15555.gif?v=1644988576",
         "muscle_group": "triceps"
     },
     {
-        "name": "Diamond Push-Ups",
-        "description": "A push-up variation where your hands are placed close together to form a diamond shape, emphasizing the triceps.",
-        "image_url": "https://example.com/diamond-push-ups.png",
+        "name": "Flexiones diamante",
+        "description": "Una variación de las flexiones donde las manos se colocan juntas formando un diamante, enfatizando los tríceps.",
+        "image_url": "https://www.lifetime60day.com/wp-content/uploads/2017/11/Diamond-Push-Up.gif",
         "muscle_group": "triceps"
     },
     {
-        "name": "Bench Dip",
-        "description": "A bodyweight exercise where you dip between two benches to target the triceps, shoulders, and chest.",
-        "image_url": "https://example.com/bench-dip.png",
+        "name": "Fondos entre bancos",
+        "description": "Un ejercicio con peso corporal donde bajas entre dos bancos para trabajar los tríceps, los hombros y el pecho.",
+        "image_url": "https://media.post.rvohealth.io/wp-content/uploads/2023/08/ObviousSpecificHermitcrab-size_restricted.gif",
         "muscle_group": "triceps"
     },
     {
-        "name": "Barbell Back Squat",
-        "description": "The classic squat that targets the quadriceps by lowering and raising a barbell placed on your upper back.",
-        "image_url": "https://example.com/barbell-back-squat.png",
-        "muscle_group": "quads"
+        "name": "Sentadilla trasera con barra",
+        "description": "La sentadilla clásica que trabaja los cuádriceps al bajar y levantar una barra colocada en la parte superior de tu espalda.",
+        "image_url": "https://tiu-assets.s3-us-west-2.amazonaws.com/2018/12/Chyna-Barbell-Back-Squat.gif",
+        "muscle_group": "cuadriceps"
     },
     {
-        "name": "Front Squat",
-        "description": "Performed by holding the barbell in front of your body on your shoulders, targeting the quads more than a back squat.",
-        "image_url": "https://example.com/front-squat.png",
-        "muscle_group": "quads"
+        "name": "Sentadilla frontal",
+        "description": "Realizada sosteniendo la barra frente a tu cuerpo sobre los hombros, enfocándose más en los cuádriceps que la sentadilla trasera.",
+        "image_url": "https://newlife.com.cy/wp-content/uploads/2019/12/27281301-StrongMan-Front-Chest-Squat_Weightlifting_360.gif",
+        "muscle_group": "cuadriceps"
     },
     {
-        "name": "Leg Press",
-        "description": "A machine exercise where you push a weighted platform away from you, focusing on the quadriceps.",
-        "image_url": "https://example.com/leg-press.png",
-        "muscle_group": "quads"
+        "name": "Prensa de pierna",
+        "description": "Un ejercicio en máquina donde empujas una plataforma con peso lejos de ti, enfocándose en los cuádriceps.",
+        "image_url": "https://www.inspireusafoundation.org/wp-content/uploads/2022/10/leg-press.gif",
+        "muscle_group": "cuadriceps"
     },
     {
-        "name": "Lunges",
-        "description": "A dynamic leg exercise that targets the quads, performed by stepping forward and lowering your body with each leg.",
-        "image_url": "https://example.com/lunges.png",
-        "muscle_group": "quads"
+        "name": "Zancadas",
+        "description": "Un ejercicio dinámico para las piernas que trabaja los cuádriceps, realizado dando un paso adelante y bajando el cuerpo con cada pierna.",
+        "image_url": "https://bod-blog-assets.prod.cd.beachbodyondemand.com/bod-blog/wp-content/uploads/2022/07/27151327/lunges-600-walking-lunge.gif",
+        "muscle_group": "cuadriceps"
     },
     {
-        "name": "Bulgarian Split Squat",
-        "description": "A unilateral leg exercise where one leg is elevated behind you on a bench, focusing on quad strength and balance.",
-        "image_url": "https://example.com/bulgarian-split-squat.png",
-        "muscle_group": "quads"
+        "name": "Sentadilla búlgara dividida",
+        "description": "Un ejercicio unilateral para las piernas donde una pierna se eleva detrás de ti en un banco, enfocándose en la fuerza y el equilibrio de los cuádriceps.",
+        "image_url": "https://hips.hearstapps.com/hmg-prod/images/workouts/2016/03/dumbbellbulgariangobletsplitsquat-1457046602.gif",
+        "muscle_group": "cuadriceps"
     },
     {
-        "name": "Leg Extension",
-        "description": "Performed on a leg extension machine, this isolation exercise focuses directly on the quadriceps by extending the knees.",
-        "image_url": "https://example.com/leg-extension.png",
-        "muscle_group": "quads"
+        "name": "Extensión de pierna",
+        "description": "Realizado en una máquina de extensión de piernas, este ejercicio de aislamiento se enfoca directamente en los cuádriceps al extender las rodillas.",
+        "image_url": "https://hips.hearstapps.com/hmg-prod/images/766/fitgif9-29-tnoverride-1515519049.gif",
+        "muscle_group": "cuadriceps"
     },
     {
-        "name": "Step-Ups",
-        "description": "Performed by stepping onto a bench or platform with a dumbbell or barbell, this exercise targets the quads.",
-        "image_url": "https://example.com/step-ups.png",
-        "muscle_group": "quads"
+        "name": "Subidas al banco",
+        "description": "Realizado subiendo a un banco o plataforma con una mancuerna o barra, este ejercicio trabaja los cuádriceps.",
+        "image_url": "https://i.pinimg.com/originals/e1/78/1e/e1781ea0e14eb1a746892236d5e1d689.gif",
+        "muscle_group": "cuadriceps"
     },
     {
-        "name": "Goblet Squat",
-        "description": "A squat variation performed by holding a dumbbell or kettlebell at chest level, targeting the quads.",
-        "image_url": "https://example.com/goblet-squat.png",
-        "muscle_group": "quads"
+        "name": "Sentadilla copa",
+        "description": "Una variación de sentadilla realizada sosteniendo una mancuerna o kettlebell a la altura del pecho, enfocándose en los cuádriceps.",
+        "image_url": "https://hips.hearstapps.com/hmg-prod/images/workouts/2016/03/gobletsquat-1457030891.gif",
+        "muscle_group": "cuadriceps"
     },
     {
-        "name": "Sissy Squat",
-        "description": "An advanced bodyweight squat that isolates the quads by leaning back while keeping your hips extended.",
-        "image_url": "https://example.com/sissy-squat.png",
-        "muscle_group": "quads"
+        "name": "Sentadilla sissy",
+        "description": "Una sentadilla avanzada con peso corporal que aísla los cuádriceps al inclinarte hacia atrás mientras mantienes las caderas extendidas.",
+        "image_url": "https://bodyweighttrainingarena.com/wp-content/uploads/2022/06/Sissy-Squat.gif",
+        "muscle_group": "cuadriceps"
     },
     {
-        "name": "Wall Sit",
-        "description": "A static exercise where you sit against a wall in a squat position, holding the tension in the quads for as long as possible.",
-        "image_url": "https://example.com/wall-sit.png",
-        "muscle_group": "quads"
+        "name": "Sentadilla isométrica en pared",
+        "description": "Un ejercicio estático donde te sientas contra una pared en posición de sentadilla, manteniendo la tensión en los cuádriceps el mayor tiempo posible.",
+        "image_url": "https://static.vecteezy.com/system/resources/thumbnails/023/226/073/small_2x/man-doing-wall-sit-exercise-flat-vector.jpg",
+        "muscle_group": "cuadriceps"
     },
     {
-        "name": "Romanian Deadlift",
-        "description": "A deadlift variation that targets the hamstrings by keeping the legs slightly bent while lowering the barbell.",
-        "image_url": "https://example.com/romanian-deadlift.png",
-        "muscle_group": "hamstrings"
+        "name": "Peso muerto rumano",
+        "description": "Una variación del peso muerto que se enfoca en los femorales manteniendo las piernas ligeramente dobladas mientras bajas la barra.",
+        "image_url": "https://i.pinimg.com/originals/37/0f/5a/370f5af5a35d5a12fb5d6e42ecf55552.gif",
+        "muscle_group": "femorales"
     },
     {
-        "name": "Leg Curl",
-        "description": "An isolation machine exercise that targets the hamstrings by curling your legs towards your glutes.",
-        "image_url": "https://example.com/leg-curl.png",
-        "muscle_group": "hamstrings"
+        "name": "Curl de pierna",
+        "description": "Un ejercicio de aislamiento en máquina que trabaja los femorales al doblar las piernas hacia los glúteos.",
+        "image_url": "https://i.pinimg.com/originals/2b/3a/b7/2b3ab7bafec66c5bfac7efd6053c2d82.gif",
+        "muscle_group": "femorales"
     },
     {
-        "name": "Stiff-Leg Deadlift",
-        "description": "A deadlift variation where the legs remain straight, targeting the hamstrings and lower back.",
-        "image_url": "https://example.com/stiff-leg-deadlift.png",
-        "muscle_group": "hamstrings"
+        "name": "Peso muerto con piernas rígidas",
+        "description": "Una variación del peso muerto donde las piernas permanecen rectas, trabajando los femorales y la parte baja de la espalda.",
+        "image_url": "https://www.inspireusafoundation.org/wp-content/uploads/2022/11/straight-leg-deadlift.gif",
+        "muscle_group": "femorales"
     },
     {
-        "name": "Glute-Ham Raise",
-        "description": "An exercise performed on a glute-ham developer (GHD), focusing on the hamstrings as you lift your body.",
-        "image_url": "https://example.com/glute-ham-raise.png",
-        "muscle_group": "hamstrings"
+        "name": "Elevación glúteo-isquiotibial",
+        "description": "Un ejercicio realizado en un desarrollador de glúteo-isquiotibial (GHD), enfocándose en los femorales mientras levantas el cuerpo.",
+        "image_url": "https://media.post.rvohealth.io/wp-content/uploads/sites/2/2021/08/GRT-10.01.NordicCurl.gif",
+        "muscle_group": "femorales"
     },
     {
-        "name": "Good Mornings",
-        "description": "A hip-hinge movement that targets the hamstrings and lower back by bending forward with a barbell on your back.",
-        "image_url": "https://example.com/good-mornings.png",
-        "muscle_group": "hamstrings"
+        "name": "Buenos días",
+        "description": "Un movimiento de bisagra de cadera que trabaja los femorales y la parte baja de la espalda al inclinarse hacia adelante con una barra sobre la espalda.",
+        "image_url": "https://www.inspireusafoundation.org/wp-content/uploads/2022/06/barbell-romanian-deadlift-movement.gif",
+        "muscle_group": "femorales"
     },
     {
-        "name": "Kettlebell Swing",
-        "description": "A dynamic exercise that targets the hamstrings and glutes through explosive hip extensions with a kettlebell.",
-        "image_url": "https://example.com/kettlebell-swing.png",
-        "muscle_group": "hamstrings"
+        "name": "Swing con kettlebell",
+        "description": "Un ejercicio dinámico que trabaja los femorales y glúteos mediante extensiones explosivas de cadera con una kettlebell.",
+        "image_url": "https://jerseystrong.com/wp-content/uploads/2020/09/Kettlebell-Swing_GIF.gif",
+        "muscle_group": "femorales"
     },
     {
-        "name": "Single-Leg Romanian Deadlift",
-        "description": "A unilateral exercise where one leg is raised behind you while the other supports your weight, targeting the hamstrings.",
-        "image_url": "https://example.com/single-leg-rdl.png",
-        "muscle_group": "hamstrings"
+        "name": "Peso muerto rumano a una pierna",
+        "description": "Un ejercicio unilateral donde una pierna se eleva detrás de ti mientras la otra soporta tu peso, trabajando los femorales.",
+        "image_url": "https://media1.popsugar-assets.com/files/thumbor/G7a19fuBrloTGGi1Ewn23IElsmk/fit-in/2048xorig/filters:format_auto-!!-:strip_icc-!!-/2021/03/24/956/n/1922729/f7e675427ce8f132_IMB_alPSEs/i/Single-Leg-Romanian-Deadlift.GIF",
+        "muscle_group": "femorales"
     },
     {
-        "name": "Cable Pull-Through",
-        "description": "Performed by pulling a cable between your legs from behind, this exercise targets the hamstrings and glutes.",
-        "image_url": "https://example.com/cable-pull-through.png",
-        "muscle_group": "hamstrings"
+        "name": "Tirón de cable entre piernas",
+        "description": "Realizado tirando de un cable entre las piernas desde atrás, este ejercicio trabaja los femorales y glúteos.",
+        "image_url": "https://i0.wp.com/www.strengthlog.com/wp-content/uploads/2020/04/cable-pull-through.gif?fit=600%2C600&ssl=1",
+        "muscle_group": "femorales"
     },
     {
-        "name": "Nordic Hamstring Curl",
-        "description": "An advanced bodyweight exercise where you control the lowering phase of the hamstring curl on the ground.",
-        "image_url": "https://example.com/nordic-hamstring-curl.png",
-        "muscle_group": "hamstrings"
+        "name": "Curl nórdico de femorales",
+        "description": "Un ejercicio avanzado con peso corporal donde controlas la fase de descenso del curl de femorales en el suelo.",
+        "image_url": "https://media.post.rvohealth.io/wp-content/uploads/sites/2/2021/08/GRT-10.01.NordicCurl.gif",
+        "muscle_group": "femorales"
     },
     {
-        "name": "Reverse Hyperextension",
-        "description": "Performed on a reverse hyper machine, this exercise targets the hamstrings and lower back by extending your legs behind you.",
-        "image_url": "https://example.com/reverse-hyperextension.png",
-        "muscle_group": "hamstrings"
+        "name": "Hiperextensión inversa",
+        "description": "Realizado en una máquina de hiperextensión inversa, este ejercicio trabaja los femorales y la parte baja de la espalda al extender las piernas hacia atrás.",
+        "image_url": "https://www.inspireusafoundation.org/wp-content/uploads/2022/04/weighted-hyperextension.gif",
+        "muscle_group": "femorales"
     },
     {
-        "name": "Hip Thrust",
-        "description": "A glute-focused exercise performed by driving your hips upward with a barbell resting across your hips.",
-        "image_url": "https://example.com/hip-thrust.png",
-        "muscle_group": "glutes"
+        "name": "Elevación de cadera",
+        "description": "Un ejercicio enfocado en los glúteos realizado al impulsar tus caderas hacia arriba con una barra descansando sobre ellas.",
+        "image_url": "https://cdn.shopify.com/s/files/1/2678/2664/files/ezgif.com-video-to-gif-21.gif?v=1595558283",
+        "muscle_group": "gluteos"
     },
     {
-        "name": "Glute Bridge",
-        "description": "A bodyweight or weighted exercise where you raise your hips off the ground, focusing on the glutes.",
-        "image_url": "https://example.com/glute-bridge.png",
-        "muscle_group": "glutes"
+        "name": "Puente de glúteos",
+        "description": "Un ejercicio con peso corporal o con peso adicional donde elevas tus caderas del suelo, enfocándote en los glúteos.",
+        "image_url": "https://cdn.shopify.com/s/files/1/2678/2664/files/ezgif.com-video-to-gif-28.gif?v=1605503163",
+        "muscle_group": "gluteos"
     },
     {
-        "name": "Cable Kickbacks",
-        "description": "A cable machine exercise where you extend your leg behind you, targeting the glutes.",
-        "image_url": "https://example.com/cable-kickbacks.png",
-        "muscle_group": "glutes"
+        "name": "Patadas en cable",
+        "description": "Un ejercicio en máquina de cable donde extiendes la pierna hacia atrás, trabajando los glúteos.",
+        "image_url": "https://www.inspireusafoundation.org/wp-content/uploads/2022/01/cable-donkey-kickback-movement.gif",
+        "muscle_group": "gluteos"
     },
     {
-        "name": "Step-Ups",
-        "description": "Performed by stepping onto a bench or platform, this exercise targets both the quads and glutes.",
-        "image_url": "https://example.com/step-ups-glutes.png",
-        "muscle_group": "glutes"
+        "name": "Subidas al banco",
+        "description": "Realizado subiendo a un banco o plataforma, este ejercicio trabaja tanto los cuádriceps como los glúteos.",
+        "image_url": "https://i.pinimg.com/originals/e1/78/1e/e1781ea0e14eb1a746892236d5e1d689.gif",
+        "muscle_group": "gluteos"
     },
     {
-        "name": "Bulgarian Split Squat",
-        "description": "A unilateral leg exercise where one leg is elevated behind you, targeting the quads and glutes.",
-        "image_url": "https://example.com/bulgarian-split-squat-glutes.png",
-        "muscle_group": "glutes"
+        "name": "Sentadilla búlgara dividida",
+        "description": "Un ejercicio unilateral de pierna donde una pierna se eleva detrás de ti, trabajando los cuádriceps y glúteos.",
+        "image_url": "https://hips.hearstapps.com/hmg-prod/images/workouts/2016/03/dumbbellbulgariangobletsplitsquat-1457046602.gif",
+        "muscle_group": "gluteos"
     },
     {
-        "name": "Standing Calf Raise",
-        "description": "Performed on a standing calf raise machine, this exercise targets the gastrocnemius muscle by raising onto your toes.",
-        "image_url": "https://example.com/standing-calf-raise.png",
-        "muscle_group": "calves"
+        "name": "Elevación de gemelos de pie",
+        "description": "Realizado en una máquina de elevación de gemelos de pie, este ejercicio trabaja el músculo gastrocnemio al elevarte sobre los dedos de los pies.",
+        "image_url": "https://www.fitnessschemas.nl/images/voorbeeldoefeningen/Standing%20Machine%20Calf%20Raise.gif",
+        "muscle_group": "pantorrillas"
     },
     {
-        "name": "Seated Calf Raise",
-        "description": "A calf isolation exercise performed while seated, targeting the soleus muscle of the calves.",
-        "image_url": "https://example.com/seated-calf-raise.png",
-        "muscle_group": "calves"
+        "name": "Elevación de gemelos sentado",
+        "description": "Un ejercicio de aislamiento para los gemelos realizado sentado, enfocándose en el músculo sóleo de las pantorrillas.",
+        "image_url": "https://fitnessvolt.com/wp-content/uploads/2023/09/seated-calf-raise.gif",
+        "muscle_group": "pantorrillas"
     },
     {
-        "name": "Donkey Calf Raise",
-        "description": "An advanced calf raise performed by leaning forward with your hips hinged and raising your heels.",
-        "image_url": "https://example.com/donkey-calf-raise.png",
-        "muscle_group": "calves"
+        "name": "Elevación de gemelos de burro",
+        "description": "Una elevación de gemelos avanzada realizada inclinándote hacia adelante con las caderas flexionadas y levantando los talones.",
+        "image_url": "https://www.inspireusafoundation.org/wp-content/uploads/2023/03/donkey-calf-raise.gif",
+        "muscle_group": "pantorrillas"
     },
     {
-        "name": "Calf Press on Leg Press Machine",
-        "description": "Performed on a leg press machine by pushing through your toes, this exercise targets the calves.",
-        "image_url": "https://example.com/calf-press-leg-press.png",
-        "muscle_group": "calves"
+        "name": "Prensa de gemelos en máquina de prensa de piernas",
+        "description": "Realizado en una máquina de prensa de piernas empujando con los dedos de los pies, este ejercicio trabaja las pantorrillas.",
+        "image_url": "https://www.inspireusafoundation.org/wp-content/uploads/2022/09/leg-press-calf-raise.gif",
+        "muscle_group": "pantorrillas"
     },
     {
-        "name": "Single-Leg Calf Raise",
-        "description": "A unilateral calf exercise where you raise your body onto the toes of one leg at a time.",
-        "image_url": "https://example.com/single-leg-calf-raise.png",
-        "muscle_group": "calves"
+        "name": "Elevación de gemelos a una pierna",
+        "description": "Un ejercicio unilateral de gemelos donde te elevas sobre los dedos de un pie a la vez.",
+        "image_url": "https://www.fitnessschemas.nl/images/voorbeeldoefeningen/Single%20Leg%20DB%20Calf%20Raise.gif",
+        "muscle_group": "pantorrillas"
     }
 ]

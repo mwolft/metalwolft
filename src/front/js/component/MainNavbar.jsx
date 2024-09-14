@@ -34,11 +34,10 @@ export const MainNavbar = () => {
                         <Nav.Link as={Link} to="/trainers">Trainers</Nav.Link>
                         <Nav.Link as={Link} to="/bmr-calculator">BMR Calculator</Nav.Link>
                         <NavDropdown title="TrAIner" id="trainer-nav-dropdown">
-                            <NavDropdown.Item as={Link} to="/generate-recipes">Generate Recipes</NavDropdown.Item>
-                            <NavDropdown.Item as={Link} to="/generate-routines">Generate Routines</NavDropdown.Item>
+                            <NavDropdown.Item as={Link} to="/generate-recipes">Generar Receta</NavDropdown.Item>
+                            <NavDropdown.Item as={Link} to="/generate-routines">Generar Rutina</NavDropdown.Item>
                         </NavDropdown>
                         <Nav.Link as={Link} to="/exercises">Ejercicios</Nav.Link>
-                        <Nav.Link as={Link} to="/category">Nutrición</Nav.Link>
                     </Nav>
                     <Nav className="ms-auto">
                         {store.isLoged ? (

@@ -10,7 +10,7 @@ body, html {
     top: 0;                   /* Position it at the top */
     width: 100%;              /* Make sure it spans the full width of the page */
     z-index: 1000;            /* Ensure it stays above other elements */
-    background-color: rgba(255, 255, 0, 100); /* You can adjust the background color as needed */
+    background-color: rgba(255, 193, 7); /* You can adjust the background color as needed */
     margin: 0;                /* Remove any default margin */
     padding: 10px 0;          /* Adjust padding as needed */
 }
