@@ -52,7 +52,7 @@ def generate_recipe():
 
 
 @api.route('/generate-exercise-routine', methods=['POST'])
-#  @jwt_required() 
+@jwt_required() 
 def generate_exercise_routine():
     response_body = {}
     user_id = get_jwt_identity()['user_id'] 

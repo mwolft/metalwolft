@@ -75,135 +75,139 @@ export const BmrCalculator = () => {
     };
 
     return (
-        <div className="row mt-5">
-            <div className="container mt-5">
-                <div className="card p-4 bg-dark text-light">
-                    <h2 className="mb-4 text-center text-warning">CALCULADORA BMR</h2>
-                    <div className="d-flex justify-content-between mb-3">
-                        <button
-                            className={`btn ${sex === 'male' ? 'btn-warning' : 'btn-outline-warning'} flex-fill`}
-                            onClick={() => setSex('male')}
-                        >
-                            Hombre
-                        </button>
-                        <button
-                            className={`btn ${sex === 'female' ? 'btn-warning' : 'btn-outline-warning'} flex-fill ms-2`}
-                            onClick={() => setSex('female')}
-                        >
-                            Mujer
-                        </button>
-                    </div>
-                    <div className="form-group mb-3">
-                        <label className="text-warning">Edad:</label>
-                        <input
-                            type="number"
-                            className="form-control bg-dark text-light border-warning"
-                            value={age}
-                            onChange={handleAgeChange}
-                            placeholder="Introduce tu edad"
-                        />
-                    </div>
-                    <div className="form-group mb-3">
-                        <label className="text-warning">Altura:</label>
-                        <div className="d-flex">
+        <div className="container-fluid" style={{ backgroundColor: '#D3D3D3', minHeight: '100vh', paddingTop: '30px', paddingBottom: '30px' }}>
+            <br />
+            <div className="row justify-content-center mt-5">
+                <div className="col-12 col-md-8 col-lg-6">
+                    <div className="card p-4 bg-dark text-light">
+                        
+                        <h2 className="mb-5 text-center text-warning">CALCULADORA BMR</h2>
+                        <div className="d-flex justify-content-between mb-3">
+                            <button
+                                className={`btn ${sex === 'male' ? 'btn-warning' : 'btn-outline-warning'} flex-fill`}
+                                onClick={() => setSex('male')}
+                            >
+                                Hombre
+                            </button>
+                            <button
+                                className={`btn ${sex === 'female' ? 'btn-warning' : 'btn-outline-warning'} flex-fill ms-2`}
+                                onClick={() => setSex('female')}
+                            >
+                                Mujer
+                            </button>
+                        </div>
+                        <div className="form-group mb-3">
+                            <label className="text-warning">Edad:</label>
                             <input
                                 type="number"
                                 className="form-control bg-dark text-light border-warning"
-                                value={height}
-                                onChange={handleHeightChange}
-                                placeholder="Introduce tu altura"
-                                min="0"
+                                value={age}
+                                onChange={handleAgeChange}
+                                placeholder="Introduce tu edad"
                             />
-                            <div className="btn-group ml-2 ms-2">
-                                <button
-                                    className={`btn ${heightUnit === 'cm' ? 'btn-warning' : 'btn-outline-warning'}`}
-                                    onClick={() => setHeightUnit('cm')}
-                                    style={{ width: '75px' }}
-                                >
-                                    cm
-                                </button>
-                                <button
-                                    className={`btn ${heightUnit === 'feet' ? 'btn-warning' : 'btn-outline-warning'}`}
-                                    onClick={() => setHeightUnit('feet')}
-                                    style={{ width: '75px' }}
-                                >
-                                    Pies
-                                </button>
+                        </div>
+                        <div className="form-group mb-3">
+                            <label className="text-warning">Altura:</label>
+                            <div className="d-flex">
+                                <input
+                                    type="number"
+                                    className="form-control bg-dark text-light border-warning"
+                                    value={height}
+                                    onChange={handleHeightChange}
+                                    placeholder="Introduce tu altura"
+                                    min="0"
+                                />
+                                <div className="btn-group ml-2 ms-2">
+                                    <button
+                                        className={`btn ${heightUnit === 'cm' ? 'btn-warning' : 'btn-outline-warning'}`}
+                                        onClick={() => setHeightUnit('cm')}
+                                        style={{ width: '75px' }}
+                                    >
+                                        cm
+                                    </button>
+                                    <button
+                                        className={`btn ${heightUnit === 'feet' ? 'btn-warning' : 'btn-outline-warning'}`}
+                                        onClick={() => setHeightUnit('feet')}
+                                        style={{ width: '75px' }}
+                                    >
+                                        Pies
+                                    </button>
+                                </div>
                             </div>
                         </div>
-                    </div>
-                    <div className="form-group mb-3">
-                        <label className="text-warning">Peso:</label>
-                        <div className="d-flex">
-                            <input
-                                type="number"
-                                className="form-control bg-dark text-light border-warning"
-                                value={weight}
-                                onChange={handleWeightChange}
-                                placeholder="Introduce tu peso"
-                                min="0"
-                            />
-                            <div className="btn-group ml-2 ms-2">
-                                <button
-                                    className={`btn ${weightUnit === 'kg' ? 'btn-warning' : 'btn-outline-warning'}`}
-                                    onClick={() => setWeightUnit('kg')}
-                                    style={{ width: '75px' }}
-                                >
-                                    kg
-                                </button>
-                                <button
-                                    className={`btn ${weightUnit === 'lbs' ? 'btn-warning' : 'btn-outline-warning'}`}
-                                    onClick={() => setWeightUnit('lbs')}
-                                    style={{ width: '75px' }}
-                                >
-                                    lbs
-                                </button>
+                        <div className="form-group mb-3">
+                            <label className="text-warning">Peso:</label>
+                            <div className="d-flex">
+                                <input
+                                    type="number"
+                                    className="form-control bg-dark text-light border-warning"
+                                    value={weight}
+                                    onChange={handleWeightChange}
+                                    placeholder="Introduce tu peso"
+                                    min="0"
+                                />
+                                <div className="btn-group ml-2 ms-2">
+                                    <button
+                                        className={`btn ${weightUnit === 'kg' ? 'btn-warning' : 'btn-outline-warning'}`}
+                                        onClick={() => setWeightUnit('kg')}
+                                        style={{ width: '75px' }}
+                                    >
+                                        kg
+                                    </button>
+                                    <button
+                                        className={`btn ${weightUnit === 'lbs' ? 'btn-warning' : 'btn-outline-warning'}`}
+                                        onClick={() => setWeightUnit('lbs')}
+                                        style={{ width: '75px' }}
+                                    >
+                                        lbs
+                                    </button>
+                                </div>
                             </div>
                         </div>
-                    </div>
-                    <button className="btn btn-warning btn-block mt-4" onClick={handleConvert}>
-                        Convertir
-                    </button>
+                        <button className="btn btn-warning btn-block mt-4" onClick={handleConvert}>
+                            Convertir
+                        </button>
 
-                    {bmr && calories && (
-                        <div className="mt-4">
-                            <h4 className="text-warning text-center">Resultados:</h4>
-                            <table className="table table-dark table-bordered text-center" style={{ borderColor: 'yellow', backgroundColor: 'black' }}>
-                                <thead>
-                                    <tr style={{ color: 'yellow', borderColor: 'yellow' }}>
-                                        <th>Tipo</th>
-                                        <th>Calorías (kcal/día)</th>
-                                    </tr>
-                                </thead>
-                                <tbody style={{ color: 'yellow', borderColor: 'yellow' }}>
-                                    <tr>
-                                        <td>BMR (Tasa Metabólica Basal)</td>
-                                        <td>{bmr}</td>
-                                    </tr>
-                                    <tr>
-                                        <td>Sedentario</td>
-                                        <td>{calories["Sedentario"]}</td>
-                                    </tr>
-                                    <tr>
-                                        <td>Ligeramente activo</td>
-                                        <td>{calories["Ligeramente activo"]}</td>
-                                    </tr>
-                                    <tr>
-                                        <td>Moderadamente activo</td>
-                                        <td>{calories["Moderadamente activo"]}</td>
-                                    </tr>
-                                    <tr>
-                                        <td>Muy activo</td>
-                                        <td>{calories["Muy activo"]}</td>
-                                    </tr>
-                                    <tr>
-                                        <td>Súper atlético</td>
-                                        <td>{calories["Súper atlético"]}</td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
-                    )}
+                        {bmr && calories && (
+                            <div className="mt-4">
+                                <h4 className="text-warning text-center">Resultados:</h4>
+                                <table className="table table-dark table-bordered text-center">
+                                    <thead>
+                                        <tr>
+                                            <th>Tipo</th>
+                                            <th>Calorías (kcal/día)</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td>BMR (Tasa Metabólica Basal)</td>
+                                            <td>{bmr}</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Sedentario</td>
+                                            <td>{calories["Sedentario"]}</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Ligeramente activo</td>
+                                            <td>{calories["Ligeramente activo"]}</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Moderadamente activo</td>
+                                            <td>{calories["Moderadamente activo"]}</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Muy activo</td>
+                                            <td>{calories["Muy activo"]}</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Súper atlético</td>
+                                            <td>{calories["Súper atlético"]}</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        )}
+                    </div>
                 </div>
             </div>
         </div>
