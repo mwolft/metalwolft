@@ -1,71 +1,87 @@
-/* 
-    General Styles used on every website (Don't Repeat Yourself)
-*/
-
-  
-  .auth-box {
-    background-color: rgba(255, 255, 0, 0.75); /* Ajusta la opacidad del fondo amarillo */
-    border-radius: 15px;
-    max-width: 400px;
-    width: 100%;
-  }
-  
-  .auth-toggle {
-    cursor: pointer;
-    font-weight: bold;
-    color: black;
-    padding-bottom: 5px;
-    border-bottom: 2px solid transparent;
-    display: inline-block;
-  }
-  
-  .auth-toggle.active {
-    border-color: black;
-  }
-  
-  .auth-submit-button {
-    background-color: white;
-    border: none;
-    color: black;
-    font-size: 24px;
-    border-radius: 50%;
-    width: 60px;
-    height: 60px;
-    display: inline-flex;
-    justify-content: center;
-    align-items: center;
-  }
-  
-  .arrow {
-    font-size: 1.5rem;
-  }
-  
 * {
-    font-family: "Doris", sans-serif;
-    font-weight: 200;
+  font-family: "Doris", sans-serif;
+  font-weight: 300;
 }
+
 .estilo-navbar {
-    background-color: rgba(255, 228, 51);
-    width: 100%;
-    z-index: 1;
+  background-color: rgba(255, 193, 7);
+  width: 100%;
+  z-index: 1;
 }
+
 p .btn-color-yellow {
-    background-color: rgba(255, 228, 51);
+  background-color: rgba(255, 193, 7);
 }
+
+p .btn-color-yellow:hover {
+  background-color: rgb(144, 144, 2);
+  color: white;
+}
+ /* --- LOGIN */
+.col h2{
+  color: black;
+  font-family: "Doris", sans-serif;
+  font-weight: 600;
+  font-size: 1.3rem;
+  padding: 1rem 1rem 0.2rem 1rem;
+ }
 .square-box {
-    margin-top: 5px;
-    margin-bottom: 5px;
-    background-color: rgba(255, 228, 51, .35);
-    padding: 20px;
-    border: 1px solid rgba(255, 228, 51, .35);
-    border-radius: 10px;
-    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-  }
-  
-  .stylebtn{
-    margin-top: 5px;
-    font-size: 18px;
-    border-radius: 50%;
-    width: 50px;
-    height: 50px;
-  }
+  margin-top: 5px;
+  margin-bottom: 5px;
+  background-color: rgba(255, 193, 7);
+  padding: 20px;
+  border: 1px solid rgba(255, 228, 51, .35);
+  border-radius: 10px;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+}
+
+.stylebtn {
+  margin-top: 5px;
+  font-size: 18px;
+  border-radius: 50%;
+  width: 50px;
+  height: 50px;
+}
+
+.auth-box {
+  background-color: rgba(255, 193, 7);
+  border-radius: 15px;
+  max-width: 400px;
+  width: 100%;
+}
+
+.loginbtn{
+  background-color: white;
+  border: 0;
+  border-radius: 0.3rem;
+}
+
+.auth-toggle {
+  cursor: pointer;
+  font-weight: bold;
+  color: black;
+  padding-bottom: 5px;
+  border-bottom: 2px solid transparent;
+  display: inline-block;
+}
+
+.auth-toggle.active {
+  border-color: black;
+}
+
+.auth-submit-button {
+  background-color: white;
+  border: none;
+  color: black;
+  font-size: 24px;
+  border-radius: 50%;
+  width: 60px;
+  height: 60px;
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.arrow {
+  font-size: 1.5rem;
+}

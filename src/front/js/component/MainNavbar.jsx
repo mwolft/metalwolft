@@ -26,7 +26,7 @@ export const MainNavbar = () => {
         <Navbar expand="lg" className="estilo-navbar fixed-top text-uppercase" data-bs-theme="light">
             <Container fluid>
                 <Navbar.Brand as={Link} to="/"> 
-                    <img src={logoweb} alt="Logo" width="100" height="30" className="d-inline-block align-top" />
+                    <img src={logoweb} alt="Logo" className="d-inline-block align-top" />
                 </Navbar.Brand>
                 <Navbar.Toggle aria-controls="basic-navbar-nav" />
                 <Navbar.Collapse id="basic-navbar-nav">
@@ -34,11 +34,10 @@ export const MainNavbar = () => {
                         <Nav.Link as={Link} to="/trainers">Trainers</Nav.Link>
                         <Nav.Link as={Link} to="/bmr-calculator">BMR Calculator</Nav.Link>
                         <NavDropdown title="TrAIner" id="trainer-nav-dropdown">
-                            <NavDropdown.Item as={Link} to="/generate-recipes">Generate Recipes</NavDropdown.Item>
-                            <NavDropdown.Item as={Link} to="/generate-routines">Generate Routines</NavDropdown.Item>
+                            <NavDropdown.Item as={Link} to="/generate-recipes">Generar Receta</NavDropdown.Item>
+                            <NavDropdown.Item as={Link} to="/generate-routines">Generar Rutina</NavDropdown.Item>
                         </NavDropdown>
                         <Nav.Link as={Link} to="/exercises">Ejercicios</Nav.Link>
-                        <Nav.Link as={Link} to="/category">Nutrición</Nav.Link>
                     </Nav>
                     <Nav className="ms-auto">
                         {store.isLoged ? (

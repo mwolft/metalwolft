@@ -9,33 +9,39 @@ export const GenerateRoutines = () => {
         days: [],
         hours_per_day: '',
         target_muscles: [],
-        level: ''
+        level: '',
+        gender: ''
     });
     const [loading, setLoading] = useState(false);
 
     const daysOptions = [
-        { value: "Monday", label: "Monday" },
-        { value: "Tuesday", label: "Tuesday" },
-        { value: "Wednesday", label: "Wednesday" },
-        { value: "Thursday", label: "Thursday" },
-        { value: "Friday", label: "Friday" },
-        { value: "Saturday", label: "Saturday" },
-        { value: "Sunday", label: "Sunday" }
+        { value: "Monday", label: "Lunes" },
+        { value: "Tuesday", label: "Martes" },
+        { value: "Wednesday", label: "Miércoles" },
+        { value: "Thursday", label: "Jueves" },
+        { value: "Friday", label: "Viernes" },
+        { value: "Saturday", label: "Sábado" },
+        { value: "Sunday", label: "Domingo" }
     ];
 
     const muscles = [
-        { value: "chest", label: "Chest" },
-        { value: "back", label: "Back" },
-        { value: "biceps", label: "Biceps" },
-        { value: "triceps", label: "Triceps" },
-        { value: "shoulders", label: "Shoulders" },
-        { value: "legs", label: "Legs" }
+        { value: "chest", label: "Pecho" },
+        { value: "back", label: "Espalda" },
+        { value: "biceps", label: "Bíceps" },
+        { value: "triceps", label: "Tríceps" },
+        { value: "shoulders", label: "Hombros" },
+        { value: "legs", label: "Piernas" }
     ];
 
     const levels = [
-        { value: "beginner", label: "Beginner" },
-        { value: "intermediate", label: "Intermediate" },
-        { value: "advanced", label: "Advanced" }
+        { value: "beginner", label: "Principiante" },
+        { value: "intermediate", label: "Intermedio" },
+        { value: "advanced", label: "Avanzado" }
+    ];
+
+    const genderOptions = [
+        { value: "male", label: "Hombre" },
+        { value: "female", label: "Mujer" }
     ];
 
     const handleGenerateRoutine = async () => {
@@ -51,7 +57,7 @@ export const GenerateRoutines = () => {
 
     const handleSaveToFavorites = () => {
         if (!store.currentUser) {
-            alert("Please log in to save this routine to your favorites.");
+            alert("Por favor, inicie sesión para guardar esta rutina en sus favoritos.");
             return;
         }
 
@@ -60,8 +66,27 @@ export const GenerateRoutines = () => {
             days: routineData.days.map(option => option.value).join(", "),
             hours_per_day: routineData.hours_per_day,
             level: routineData.level,
+            gender: routineData.gender,  // Include gender in favorites data
             target_muscles: routineData.target_muscles.map(option => option.value).join(", ")
         });
+    };
+
+    const handleHoursChange = (e) => {
+        let value = e.target.value;
+        value = value.replace(/[^\d.]/g, '');
+
+        if (value === '') {
+            setRoutineData({ ...routineData, hours_per_day: '' });
+        } else {
+            const numericValue = parseFloat(value);
+            if (numericValue < 0) {
+                setRoutineData({ ...routineData, hours_per_day: '0' });
+            } else if (numericValue > 24) {
+                setRoutineData({ ...routineData, hours_per_day: '24' });
+            } else {
+                setRoutineData({ ...routineData, hours_per_day: value });
+            }
+        }
     };
 
     return (
@@ -71,7 +96,7 @@ export const GenerateRoutines = () => {
                 </div>
                 <div className="container my-5">
                     <div className='text-center mx-3'>
-                        <h2 style={{ color: 'black' }}>Generate an Exercise Routine</h2>
+                        <h2 style={{ color: 'black' }}>GENERE SU RUTINA DE EJERCICIO</h2>
                     </div>
                     <div className="mx-3">
                         <Select
@@ -80,15 +105,15 @@ export const GenerateRoutines = () => {
                             value={routineData.days}
                             onChange={(selectedOptions) => setRoutineData({ ...routineData, days: selectedOptions })}
                             className="mb-2"
-                            placeholder="Select days"
+                            placeholder="Seleccione los días"
                         />
 
                         <input
                             type="text"
                             className="form-control mb-2"
-                            placeholder="Hours per day"
+                            placeholder="Horas por día"
                             value={routineData.hours_per_day}
-                            onChange={(e) => setRoutineData({ ...routineData, hours_per_day: e.target.value })}
+                            onChange={handleHoursChange}
                         />
 
                         <Select
@@ -97,7 +122,7 @@ export const GenerateRoutines = () => {
                             value={routineData.target_muscles}
                             onChange={(selectedOptions) => setRoutineData({ ...routineData, target_muscles: selectedOptions })}
                             className="mb-2"
-                            placeholder="Select target muscles"
+                            placeholder="Seleccione los músculos objetivo"
                         />
 
                         <Select
@@ -105,20 +130,29 @@ export const GenerateRoutines = () => {
                             value={levels.find(option => option.value === routineData.level)}
                             onChange={(selectedOption) => setRoutineData({ ...routineData, level: selectedOption.value })}
                             className="mb-2"
-                            placeholder="Select level"
+                            placeholder="Seleccione el nivel"
+                        />
+
+                        {/* Gender dropdown */}
+                        <Select
+                            options={genderOptions}
+                            value={genderOptions.find(option => option.value === routineData.gender)}
+                            onChange={(selectedOption) => setRoutineData({ ...routineData, gender: selectedOption.value })}
+                            className="mb-2"
+                            placeholder="Seleccione el género"
                         />
 
                         <button onClick={handleGenerateRoutine} className="btn btn-warning mt-3">
-                            {loading ? "Generating..." : "Generate Routine"}
+                            {loading ? "Generando..." : "Generar Rutina"}
                         </button>
                     </div>
 
                     {store.generatedRoutine && (
                         <div className="d-flex justify-content-center">
                             <div className="alert mt-3" style={{ backgroundColor: '#FFFACD', color: 'black', maxWidth: '800px', width: '100%' }}>
-                                <h3 className="text-center">Generated Routine</h3>
+                                <h3 className="text-center">Rutina Generada</h3>
                                 <div className="routine-content" dangerouslySetInnerHTML={{ __html: formatRoutine(store.generatedRoutine) }} />
-                                <button onClick={handleSaveToFavorites} className="btn btn-warning mt-3 w-100">Save to Favorites</button>
+                                <button onClick={handleSaveToFavorites} className="btn btn-warning mt-3 w-100">Guardar en Favoritos</button>
                             </div>
                         </div>
                     )}

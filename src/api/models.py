@@ -18,7 +18,6 @@ class Users(db.Model):
     is_active = db.Column(db.Boolean, default=True)
     rol = db.Column(db.Enum('user', 'admin', 'trainer', name="rol"))
     location = db.Column(db.String(100), nullable=True)
-    
     routines = db.relationship('Routines', backref='user', lazy=True, cascade="all, delete-orphan")
     user_recipes = db.relationship('UserRecipes', backref='user', lazy=True, cascade="all, delete-orphan")
     user_ingredients = db.relationship('UserIngredients', backref='user', lazy=True, cascade="all, delete-orphan")
@@ -49,22 +48,6 @@ class Users(db.Model):
             "favorite_routines": [favorite_routine.serialize() for favorite_routine in self.favorite_routines],
             "favorite_exercises": [favorite_exercise.serialize() for favorite_exercise in self.favorite_exercises]
         }
-        return {"id": self.id,
-                "firstname": self.firstname,
-                "lastname": self.lastname,
-                "email": self.email,
-                "is_active": self.is_active,
-                "alias": self.alias,
-                "gender": self.gender,
-                "phone": self.phone,
-                "age": self.age,
-                "height": self.height,
-                "weight": self.weight,
-                "rol": self.rol,
-                "location": self.location,
-                "favorite_recipes": [favorite_recipe.serialize() for favorite_recipe in self.favorite_recipes],
-                "favorite_routines": [favorite_routine.serialize() for favorite_routine in self.favorite_routines],
-                "favorite_exercises": [favorite_exercise.serialize() for favorite_exercise in self.favorite_exercises]}
 
 
 class Exercises(db.Model):
@@ -74,8 +57,6 @@ class Exercises(db.Model):
     description = db.Column(db.Text)
     image_url = db.Column(db.String(255))
     routine_id = db.Column(db.Integer, db.ForeignKey('routines.id'), nullable=True)
-    
-    # Relationships
     equipments = db.relationship('ExerciseEquipments', backref='exercise', lazy=True, cascade="all, delete-orphan")
     muscles = db.relationship('ExerciseMuscles', backref='exercise', lazy=True, cascade="all, delete-orphan")
     variations_origin = db.relationship('Variations', foreign_keys='Variations.exercise_origin', backref='origin_exercise', lazy=True, cascade="all, delete-orphan")
@@ -121,8 +102,6 @@ class ExerciseMuscles(db.Model):
     
     exercise_id = db.Column(db.Integer, db.ForeignKey('exercises.id'), primary_key=True)
     muscle_id = db.Column(db.Integer, db.ForeignKey('muscles.id'), primary_key=True)
-
-    # Define relationships to Muscles
     muscle = db.relationship('Muscles', backref='exercise_muscles')
 
     def __repr__(self):
@@ -190,7 +169,6 @@ class Routines(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     prompt = db.Column(db.Text)
     date = db.Column(db.DateTime)
-    
     exercises = db.relationship('Exercises', backref='routine', lazy=True, cascade="all, delete-orphan")
 
     def __repr__(self):
@@ -238,7 +216,6 @@ class Recipes(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100))
     ingredients_text = db.Column(db.Text)  # Add this field for storing ingredients as plain text
-
     favorited_by = db.relationship('FavoriteRecipes', backref='recipe', lazy=True, cascade="all, delete-orphan")
 
     def __repr__(self):
