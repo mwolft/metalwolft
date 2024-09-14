@@ -8,11 +8,47 @@ export const BmrCalculator = () => {
     const [weight, setWeight] = useState('');
     const [heightUnit, setHeightUnit] = useState('cm');
     const [weightUnit, setWeightUnit] = useState('kg');
-    const navigate = useNavigate();
     const [bmr, setBmr] = useState(null);
     const [calories, setCalories] = useState(null);
+    const navigate = useNavigate();
+
+    const handleAgeChange = (e) => {
+        let inputAge = parseInt(e.target.value);
+        if (inputAge > 90) inputAge = 90;
+        if (inputAge < 1) inputAge = 1;
+        setAge(inputAge);
+    };
+
+    const handleWeightChange = (e) => {
+        let inputWeight = parseFloat(e.target.value);
+        if (weightUnit === 'lbs') {
+            const maxWeightInLbs = 500 * 2.20462;
+            if (inputWeight > maxWeightInLbs) inputWeight = maxWeightInLbs;
+            if (inputWeight < 1) inputWeight = 1;
+        } else {
+            if (inputWeight > 500) inputWeight = 500;
+            if (inputWeight < 1) inputWeight = 1;
+        }
+        setWeight(inputWeight);
+    };
+
+    const handleHeightChange = (e) => {
+        let inputHeight = parseFloat(e.target.value);
+        if (heightUnit === 'feet') {
+            if (inputHeight > 9.84) inputHeight = 9.84;
+        } else {
+            if (inputHeight > 300) inputHeight = 300;
+        }
+        if (inputHeight < 0) inputHeight = 0;
+        setHeight(inputHeight);
+    };
 
     const handleConvert = () => {
+        if (height <= 0) {
+            alert("Por favor, introduce una altura válida.");
+            return;
+        }
+
         let heightInCm = heightUnit === 'feet' ? height * 30.48 : height;
         let weightInKg = weightUnit === 'lbs' ? weight * 0.453592 : weight;
 
@@ -28,91 +64,97 @@ export const BmrCalculator = () => {
 
         const calorieNeeds = {
             BMR: calculatedBMR.toFixed(2),
-            Sedentary: (calculatedBMR * 1.2).toFixed(0),
-            "Lightly active": (calculatedBMR * 1.375).toFixed(0),
-            "Moderately active": (calculatedBMR * 1.55).toFixed(0),
-            "Highly active": (calculatedBMR * 1.725).toFixed(0),
-            "Super athletic": (calculatedBMR * 1.9).toFixed(0)
+            "Sedentario": (calculatedBMR * 1.2).toFixed(0),
+            "Ligeramente activo": (calculatedBMR * 1.375).toFixed(0),
+            "Moderadamente activo": (calculatedBMR * 1.55).toFixed(0),
+            "Muy activo": (calculatedBMR * 1.725).toFixed(0),
+            "Súper atlético": (calculatedBMR * 1.9).toFixed(0)
         };
 
-        navigate('/profile', { state: { calorieNeeds } });
+        setCalories(calorieNeeds);
     };
 
     return (
         <div className="row mt-5">
             <div className="container mt-5">
                 <div className="card p-4 bg-dark text-light">
-                    <h2 className="mb-4 text-center text-warning">BMR Calculator</h2>
+                    <h2 className="mb-4 text-center text-warning">CALCULADORA BMR</h2>
                     <div className="d-flex justify-content-between mb-3">
                         <button
                             className={`btn ${sex === 'male' ? 'btn-warning' : 'btn-outline-warning'} flex-fill`}
                             onClick={() => setSex('male')}
                         >
-                            Male
+                            Hombre
                         </button>
                         <button
-                            className={`btn ${sex === 'female' ? 'btn-warning' : 'btn-outline-warning'} flex-fill mx-2`}
+                            className={`btn ${sex === 'female' ? 'btn-warning' : 'btn-outline-warning'} flex-fill ms-2`}
                             onClick={() => setSex('female')}
                         >
-                            Female
+                            Mujer
                         </button>
                     </div>
                     <div className="form-group mb-3">
-                        <label className="text-warning">Age:</label>
+                        <label className="text-warning">Edad:</label>
                         <input
                             type="number"
                             className="form-control bg-dark text-light border-warning"
                             value={age}
-                            onChange={(e) => setAge(e.target.value)}
-                            placeholder="Enter your age"
+                            onChange={handleAgeChange}
+                            placeholder="Introduce tu edad"
                         />
                     </div>
                     <div className="form-group mb-3">
-                        <label className="text-warning">Height:</label>
+                        <label className="text-warning">Altura:</label>
                         <div className="d-flex">
                             <input
                                 type="number"
                                 className="form-control bg-dark text-light border-warning"
                                 value={height}
-                                onChange={(e) => setHeight(e.target.value)}
-                                placeholder="Enter your height"
+                                onChange={handleHeightChange}
+                                placeholder="Introduce tu altura"
+                                min="0"
                             />
-                            <div className="btn-group ml-2">
+                            <div className="btn-group ml-2 ms-2">
                                 <button
                                     className={`btn ${heightUnit === 'cm' ? 'btn-warning' : 'btn-outline-warning'}`}
                                     onClick={() => setHeightUnit('cm')}
+                                    style={{ width: '75px' }}
                                 >
                                     cm
                                 </button>
                                 <button
                                     className={`btn ${heightUnit === 'feet' ? 'btn-warning' : 'btn-outline-warning'}`}
                                     onClick={() => setHeightUnit('feet')}
+                                    style={{ width: '75px' }}
                                 >
-                                    Feet
+                                    Pies
                                 </button>
                             </div>
                         </div>
                     </div>
                     <div className="form-group mb-3">
-                        <label className="text-warning">Weight:</label>
+                        <label className="text-warning">Peso:</label>
                         <div className="d-flex">
                             <input
                                 type="number"
                                 className="form-control bg-dark text-light border-warning"
                                 value={weight}
-                                onChange={(e) => setWeight(e.target.value)}
-                                placeholder="Enter your weight"
+                                onChange={handleWeightChange}
+                                placeholder="Introduce tu peso"
+                                min="0"
                             />
-                            <div className="btn-group ml-2">
+                            <div className="btn-group ml-2 ms-2">
                                 <button
                                     className={`btn ${weightUnit === 'kg' ? 'btn-warning' : 'btn-outline-warning'}`}
                                     onClick={() => setWeightUnit('kg')}
+                                    style={{ width: '75px' }}
                                 >
                                     kg
                                 </button>
                                 <button
                                     className={`btn ${weightUnit === 'lbs' ? 'btn-warning' : 'btn-outline-warning'}`}
                                     onClick={() => setWeightUnit('lbs')}
+                                    style={{ width: '75px' }}
                                 >
                                     lbs
                                 </button>
@@ -120,8 +162,48 @@ export const BmrCalculator = () => {
                         </div>
                     </div>
                     <button className="btn btn-warning btn-block mt-4" onClick={handleConvert}>
-                        Convert
+                        Convertir
                     </button>
+
+                    {bmr && calories && (
+                        <div className="mt-4">
+                            <h4 className="text-warning text-center">Resultados:</h4>
+                            <table className="table table-dark table-bordered text-center" style={{ borderColor: 'yellow', backgroundColor: 'black' }}>
+                                <thead>
+                                    <tr style={{ color: 'yellow', borderColor: 'yellow' }}>
+                                        <th>Tipo</th>
+                                        <th>Calorías (kcal/día)</th>
+                                    </tr>
+                                </thead>
+                                <tbody style={{ color: 'yellow', borderColor: 'yellow' }}>
+                                    <tr>
+                                        <td>BMR (Tasa Metabólica Basal)</td>
+                                        <td>{bmr}</td>
+                                    </tr>
+                                    <tr>
+                                        <td>Sedentario</td>
+                                        <td>{calories["Sedentario"]}</td>
+                                    </tr>
+                                    <tr>
+                                        <td>Ligeramente activo</td>
+                                        <td>{calories["Ligeramente activo"]}</td>
+                                    </tr>
+                                    <tr>
+                                        <td>Moderadamente activo</td>
+                                        <td>{calories["Moderadamente activo"]}</td>
+                                    </tr>
+                                    <tr>
+                                        <td>Muy activo</td>
+                                        <td>{calories["Muy activo"]}</td>
+                                    </tr>
+                                    <tr>
+                                        <td>Súper atlético</td>
+                                        <td>{calories["Súper atlético"]}</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    )}
                 </div>
             </div>
         </div>

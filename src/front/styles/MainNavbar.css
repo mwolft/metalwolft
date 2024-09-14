@@ -10,15 +10,15 @@ body, html {
     top: 0;                   /* Position it at the top */
     width: 100%;              /* Make sure it spans the full width of the page */
     z-index: 1000;            /* Ensure it stays above other elements */
-    background-color: #FFD700; /* You can adjust the background color as needed */
-    box-shadow: 0 4px 2px -2px gray; /* Optional: Adds a shadow effect for better visibility */
+    background-color: rgba(255, 193, 7); /* You can adjust the background color as needed */
     margin: 0;                /* Remove any default margin */
     padding: 10px 0;          /* Adjust padding as needed */
 }
 
 .navbar-brand img {
-    max-height: 40px;         /* Restrict the logo size to avoid overflow */
+    max-height: 3rem;         /* Restrict the logo size to avoid overflow */
     margin-right: 20px;       /* Add space after the logo */
+    padding-left: 1rem;
 }
 
 .nav-link {

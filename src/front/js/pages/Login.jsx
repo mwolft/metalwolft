@@ -75,19 +75,19 @@ export const Login = () => {
       actions.setCurrentUser(data.results);
       actions.setIsLoged(true);
       actions.setAlert({ visible: true, back: 'info', text: data.message });
-      navigate('/'); 
+      navigate('/profile'); 
     }
   };
 
   return (
-    <Container className="auth-container d-flex justify-content-center align-items-center">
+    <Container className="auth-container d-flex justify-content-center align-items-center" style={{ marginTop: '120px' }}>
       <div className="auth-box p-5">
-        <Row className="text-center mb-3">
-          <Col>
+        <Row className="text-center mb-5">
+          <Col className="d-flex justify-content-center align-items-center">
             <button className="loginbtn">
               <h2
                 className={`auth-toggle ${isLogin ? 'active' : ''}`} onClick={() => setIsLogin(true)}>
-                LOGIN
+                Entrar
               </h2>
             </button>
           </Col>
@@ -95,7 +95,7 @@ export const Login = () => {
             <button className="loginbtn">
               <h2
                 className={`auth-toggle ${!isLogin ? 'active' : ''}`} onClick={() => setIsLogin(false)}>
-                SIGNUP
+                Registrarse
               </h2>
             </button>
           </Col>
