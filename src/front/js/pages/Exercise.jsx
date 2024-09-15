@@ -58,13 +58,14 @@ export const Exercise = () => {
   ], []);
 
   return (
-    <div className="container-fluid bg-secondary py-5"  style={{ marginTop: '120px' }}>
-      <h2 className="text-center mb-4 text-white">SELECCIONA UN GRUPO MUSCULAR</h2>
+    <div className="container-fluid" style={{ backgroundColor: '#D3D3D3', minHeight: '100vh', paddingTop: '50px', paddingBottom: '50px' }}>
+      <br />
+      <h2 className="text-center my-5 display-4">SELECCIONA UN GRUPO MUSCULAR</h2>
       <div className="d-flex justify-content-center flex-wrap mb-4">
         {muscleGroups.map(muscle => (
           <button
             key={muscle}
-            className="btn btn-warning m-2"
+            className="btn btn-warning m-2 px-4 py-2"
             onClick={() => setSelectedMuscle(muscle)}
           >
             {muscle.toUpperCase()}
@@ -75,12 +76,12 @@ export const Exercise = () => {
       {/* Sub-category for Legs */}
       {selectedMuscle === 'piernas' && (
         <div className="text-center mb-4">
-          <h3 className="text-white">SELECCIONA LA SUB-CATEGORÍA</h3>
+          <h3 className="display-6">SELECCIONA LA SUB-CATEGORÍA</h3>
           <div className="d-flex justify-content-center flex-wrap">
             {legMuscleGroups.map(subMuscle => (
               <button
                 key={subMuscle}
-                className="btn btn-warning m-2"
+                className="btn btn-warning m-2 px-4 py-2"
                 onClick={() => setSelectedMuscle(subMuscle)}
               >
                 {subMuscle.toUpperCase()}
@@ -91,7 +92,7 @@ export const Exercise = () => {
       )}
 
       {/* Display loading status */}
-      {loading && <div className="text-center"><div className="spinner-border text-light" role="status"><span className="sr-only">Loading...</span></div></div>}
+      {loading && <div className="text-center"><div className="spinner-border text-dark" role="status"><span className="sr-only">Loading...</span></div></div>}
 
       {/* Display error message for specified muscles */}
       {error && <p className="text-danger text-center">{error}</p>}
@@ -99,7 +100,7 @@ export const Exercise = () => {
       {/* Display exercises if no error */}
       {!loading && !error && exercises.length > 0 && (
         <div className="container">
-          <h3 className="text-center text-white">Ejercicios para {selectedMuscle === 'piernas' ? 'Piernas - ' : ''}{selectedMuscle.toUpperCase()}</h3>
+          <h3 className="text-center display-6">Ejercicios para {selectedMuscle === 'piernas' ? 'Piernas - ' : ''}{selectedMuscle.toUpperCase()}</h3>
           <div className="row">
             {exercises.map(exercise => (
               <div key={exercise.name} className="col-lg-4 col-md-6 col-sm-12 mb-4">
@@ -107,14 +108,14 @@ export const Exercise = () => {
                   <div>
                     <img
                       src={exercise.image_url || '/path/to/placeholder.jpg'}
-                      className="card-img-top"
+                      className="card-img-top img-fluid"  // Ensures responsiveness of image
                       alt={exercise.name}
                       style={{ height: '200px', objectFit: 'contain' }}  // Use 'contain' to prevent cutting the image
                     />
                   </div>
                   <div className="card-body d-flex flex-column justify-content-end">
                     <h5 className="card-title">{exercise.name}</h5>
-                    <p className="card-text" style={{ fontSize: '0.9rem' }}>
+                    <p className="card-text" style={{ fontSize: '1.1rem' }}> {/* Adjusted font size for the description */}
                       {exercise.description}
                     </p>
                   </div>
@@ -125,9 +126,8 @@ export const Exercise = () => {
         </div>
       )}
 
-      {/* Message for when no muscle is selected */}
       {!loading && !selectedMuscle && (
-        <p className="text-center text-white">CADA GRUPO MUSCULAR CONTIENE EJERCICIOS CON IMÁGENES EXPLICATIVAS.</p>
+        <p className="text-center">CADA GRUPO MUSCULAR CONTIENE EJERCICIOS CON IMÁGENES EXPLICATIVAS.</p>
       )}
     </div>
   );
