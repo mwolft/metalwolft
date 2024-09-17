@@ -155,7 +155,6 @@ export const GenerateRoutines = () => {
                         <div className="alert bg-warning-subtle text-dark p-4">
                             <h3 className="text-center">Rutina Generada</h3>
                             <div className="routine-content" dangerouslySetInnerHTML={{ __html: formatRoutine(store.generatedRoutine) }} />
-                            <button onClick={handleSaveToFavorites} className="btn btn-warning mt-3 w-100">Guardar en Favoritos</button>
                         </div>
                     </div>
                 </div>

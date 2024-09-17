@@ -46,9 +46,6 @@ export const GenerateRecipes = () => {
                         <div className="alert mt-3 recipe-container bg-warning-subtle text-dark p-4">
                             <h3 className="text-center mb-3">Receta Generada</h3>
                             <div dangerouslySetInnerHTML={{ __html: formatRecipe(store.generatedRecipe) }} />
-                            <button onClick={handleSaveToFavorites} className="btn btn-warning mt-3 w-100">
-                                Guardar en Favoritos
-                            </button>
                         </div>
                     </div>
                 </div>
