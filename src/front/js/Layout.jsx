@@ -54,6 +54,7 @@ const Layout = () => {
                         <Route element={<Profile />} path='/Profile' />
                         <Route element={<Routines />} path='/routines' />
                         <Route element={<NutritionPlan />} path='/nutrition-plan' />
+                        <Route element={<FormTrainer />} path='/form-trainer' />
                     </Routes>
                     <Footer />
                 </ScrollToTop>

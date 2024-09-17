@@ -27,7 +27,7 @@ export const FormTrainer = () => {
     };
 
     return (
-        <div style={{ backgroundColor: '#d3d3d3', minHeight: '100vh', paddingTop: '50px' }}>
+        <div style={{ backgroundColor: '#d3d3d3', minHeight: '100vh', paddingTop: '150px' }}>
             <Container>
                 <h2 className="text-center mb-4" style={{ color: 'black' }}>Become a Trainer</h2>
                 <Form onSubmit={handleSubmit} style={{ backgroundColor: '#FFFACD', padding: '20px', borderRadius: '10px' }}>
