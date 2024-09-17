@@ -107,7 +107,7 @@ export const Profile = () => {
                         <div className="col-12 col-sm-12 col-md-4 col-lg-4 col-xl-3">
                             <div className="d-flex flex-column align-items-center text-center mt-5">
                                 <span>¿Eres entrenador?</span>
-                                <Button className="mt-1" variant="link" as={Link} to="/nutrition-plan">
+                                <Button className="mt-1" variant="link" as={Link} to="/form-trainer">
                                     Contáctanos
                                 </Button>
                             </div>
