@@ -107,7 +107,7 @@ export const Trainers = () => {
             <div className='container mt-5'>
             </div>
             <Container className="py-5">
-                <h2 className="text-center mb-4" style={{ color: 'black' }}>Nuestros Entrenadores</h2>
+                <h2 className="text-center mb-4" style={{ color: 'black' }}>NUESTROS ENTRENADORES</h2>
                 <Row>
                     {trainers.map((trainer) => (
                         <Col xs={12} md={6} lg={4} key={trainer.id} className="mb-4">
