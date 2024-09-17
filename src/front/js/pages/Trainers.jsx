@@ -1,5 +1,17 @@
 import React from 'react';
 import { Card, Button, Container, Row, Col } from 'react-bootstrap';
+import Trainer01 from '../../img/trainers_img/Trainer-01.webp';
+import Trainer02 from '../../img/trainers_img/Trainer-02.webp';
+import Trainer03 from '../../img/trainers_img/Trainer-03.webp';
+import Trainer04 from '../../img/trainers_img/Trainer-04.webp';
+import Trainer05 from '../../img/trainers_img/Trainer-05.webp';
+import Trainer06 from '../../img/trainers_img/Trainer-06.webp';
+import Trainer07 from '../../img/trainers_img/Trainer-07.webp';
+import Trainer08 from '../../img/trainers_img/Trainer-08.webp';
+import Trainer09 from '../../img/trainers_img/Trainer-09.webp';
+import Trainer10 from '../../img/trainers_img/Trainer-10.webp';
+import Trainer11 from '../../img/trainers_img/Trainer-11.webp';
+import Trainer12 from '../../img/trainers_img/Trainer-12.webp';
 
 const trainers = [
     {
@@ -7,56 +19,56 @@ const trainers = [
         name: 'Juan Pérez',
         location: 'Madrid, España',
         specialty: 'Nutricionista',
-        image: 'https://randomuser.me/api/portraits/men/30.jpg',
+        image: Trainer01,
     },
     {
         id: 2,
         name: 'Ana Martínez',
         location: 'Barcelona, España',
         specialty: 'Especialista en Ejercicio',
-        image: 'https://randomuser.me/api/portraits/women/17.jpg',
+        image: Trainer02,
     },
     {
         id: 3,
         name: 'Miguel Sánchez',
         location: 'Valencia, España',
         specialty: 'Nutricionista - Entrenador de Fuerza y Acondicionamiento',
-        image: 'https://randomuser.me/api/portraits/men/22.jpg',
+        image: Trainer03,
     },
     {
         id: 4,
         name: 'Sara López',
         location: 'Sevilla, España',
         specialty: 'Nutricionista',
-        image: 'https://randomuser.me/api/portraits/women/31.jpg',
+        image: Trainer04,
     },
     {
         id: 5,
         name: 'Cristóbal Gómez',
         location: 'Bilbao, España',
         specialty: 'Especialista en Glúteos',
-        image: 'https://randomuser.me/api/portraits/men/39.jpg',
+        image: Trainer05,
     },
     {
         id: 6,
         name: 'Emilia Rodríguez',
         location: 'Málaga, España',
         specialty: 'Nutricionista - Instructor de Yoga',
-        image: 'https://randomuser.me/api/portraits/women/91.jpg',
+        image: Trainer06,
     },
     {
         id: 7,
         name: 'Miguel Hernández',
         location: 'Zaragoza, España',
         specialty: 'Nutricionista',
-        image: 'https://randomuser.me/api/portraits/men/64.jpg',
+        image: Trainer07,
     },
     {
         id: 8,
         name: 'Olivia García',
         location: 'Granada, España',
         specialty: 'Instructora de Pilates',
-        image: 'https://randomuser.me/api/portraits/women/4.jpg',
+        image: Trainer08,
     },
     {
         id: 9,
@@ -64,28 +76,28 @@ const trainers = [
         email: 'david.fernandez@example.com',
         location: 'Alicante, España',
         specialty: 'Nutricionista - Instructor de Kickboxing',
-        image: 'https://randomuser.me/api/portraits/men/5.jpg',
+        image: Trainer09,
     },
     {
         id: 10,
         name: 'Sofía Blanco',
         location: 'Vigo, España',
         specialty: 'Nutricionista',
-        image: 'https://randomuser.me/api/portraits/women/69.jpg',
+        image: Trainer10,
     },
     {
         id: 11,
         name: 'Liam Martínez',
         location: 'Madrid, España',
         specialty: 'Director de Fitness',
-        image: 'https://randomuser.me/api/portraits/men/45.jpg',
+        image: Trainer11,
     },
     {
         id: 12,
         name: 'Isabela Verde',
         location: 'Sevilla, España',
         specialty: 'Nutricionista - Instructor de Transformación Física',
-        image: 'https://randomuser.me/api/portraits/women/55.jpg',
+        image: Trainer12,
     }
 ];
 
