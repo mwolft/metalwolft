@@ -27,7 +27,7 @@ const getState = ({ getStore, getActions, setStore }) => {
                     setStore({ message: data.message });
                     return data;
                 } catch (error) {
-                    console.log(error);
+                    setStore({ error: error.message });
                 }
             },
 
@@ -51,7 +51,7 @@ const getState = ({ getStore, getActions, setStore }) => {
                     setStore({ currentUser: data.results }); 
                     return { ok: true };
                 } catch (error) {
-                    console.error("Error en updateUserProfile: ", error);
+                    setStore({ error: error.message });
                     return { ok: false };
                 }
             },
@@ -82,7 +82,7 @@ const getState = ({ getStore, getActions, setStore }) => {
                         },
                         body: JSON.stringify(routineData)
                     });
-                    if (!response.ok) throw new Error(response);
+                    if (!response.ok) throw new Error('Registrate para poder acceder al trAIner');
                     const data = await response.json();
                     setStore({ generatedRoutine: data.generated_routine, routineId: data.routine_id, error: null, loading: false });
                 } catch (error) {
@@ -92,6 +92,10 @@ const getState = ({ getStore, getActions, setStore }) => {
 
             // Generate a recipe
             generateRecipe: async (ingredientNames) => {
+                if (!ingredientNames.trim()) {
+                    setStore({ error: 'Tienes que agregar al menos un ingrediente', loading: false });
+                    return;
+                }
                 setStore({ loading: true, generatedRecipe: null, recipeId: null, error: null });
                 const url = `${process.env.BACKEND_URL}/api/generate-recipe?ingredient_names=${encodeURIComponent(ingredientNames)}`;
                 try {
@@ -99,12 +103,12 @@ const getState = ({ getStore, getActions, setStore }) => {
                         method: 'GET',
                         headers: {
                             'Content-Type': 'application/json',
-                            'Authorization': `Bearer ${localStorage.getItem('token')}` // Ensure token is passed for secured route
+                            'Authorization': `Bearer ${localStorage.getItem('token')}`
                         },
                     });
-                    if (!response.ok) throw new Error('Failed to generate recipe');
+                    if (!response.ok) throw new Error('Registrate para poder acceder al trAIner');
                     const data = await response.json();
-                    setStore({ generatedRecipe: data.generated_recipe, recipeId: data.recipe_id, error: null, loading: false });
+                    setStore({ generatedRecipe: data.generated_recipe, recipeId: data.recipe_id, error: null, loading: false }); 
                 } catch (error) {
                     setStore({ error: error.message, loading: false });
                 }
