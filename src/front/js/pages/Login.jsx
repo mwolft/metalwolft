@@ -47,7 +47,7 @@ export const Login = () => {
       actions.setCurrentUser(data.results);
       actions.setIsLoged(true);
       actions.setAlert({ visible: true, back: 'info', text: data.message });
-      navigate('/profile'); 
+      navigate('/profile');
     } else {
       if (password !== confirmPassword) {
         actions.setAlert({ visible: true, back: 'danger', text: 'Las contraseñas no coinciden' });
@@ -75,24 +75,22 @@ export const Login = () => {
       actions.setCurrentUser(data.results);
       actions.setIsLoged(true);
       actions.setAlert({ visible: true, back: 'info', text: data.message });
-      navigate('/profile'); 
+      navigate('/profile');
     }
   };
 
   return (
-    <Container className="auth-container d-flex justify-content-center align-items-center" style={{ marginTop: '120px' }}>
+    <Container className="auth-container d-flex justify-content-center align-items-center" style={{ marginTop: '120px', marginBottom: '120px' }}>
       <div className="auth-box p-5">
-        <Row className="text-center mb-5">
-          <Col className="d-flex justify-content-center align-items-center">
-            <button className="loginbtn">
+        <Row className="text-center mb-5 d-flex justify-content-center">
+          <Col className="d-flex justify-content-center align-items-center flex-row">
+            <button className="loginbtn mx-1"> 
               <h2
                 className={`auth-toggle ${isLogin ? 'active' : ''}`} onClick={() => setIsLogin(true)}>
                 Entrar
               </h2>
             </button>
-          </Col>
-          <Col>
-            <button className="loginbtn">
+            <button className="loginbtn mx-1"> 
               <h2
                 className={`auth-toggle ${!isLogin ? 'active' : ''}`} onClick={() => setIsLogin(false)}>
                 Registrarse

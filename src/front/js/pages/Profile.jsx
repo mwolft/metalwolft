@@ -121,56 +121,64 @@ export const Profile = () => {
                     </Modal.Header>
                     <Modal.Body>
                         <form>
-                            <div className="mb-3">
-                                <label className="form-label">Nombre:</label>
-                                <input type="text" name="firstname" className="form-control"
-                                    value={formData.firstname}
-                                    onChange={handleInputChange} />
+                            <div className="mb-3 row">
+                                <div className="col-12 col-sm-12 col-md-6 col-lg-6 col-xl-6">
+                                    <label className="form-label">Nombre:</label>
+                                    <input type="text" name="firstname" className="form-control"
+                                        value={formData.firstname}
+                                        onChange={handleInputChange} />
+                                </div>
+                                <div className="col-12 col-sm-12 col-md-6 col-lg-6 col-xl-6">
+                                    <label className="form-label">Apellidos:</label>
+                                    <input type="text" name="lastname" className="form-control"
+                                        value={formData.lastname}
+                                        onChange={handleInputChange} />
+                                </div>
                             </div>
-                            <div className="mb-3">
-                                <label className="form-label">Apellidos:</label>
-                                <input type="text" name="lastname" className="form-control"
-                                    value={formData.lastname}
-                                    onChange={handleInputChange} />
+                            <div className="mb-3 row">
+                                <div className="col-12 col-sm-12 col-md-6 col-lg-6 col-xl-6">
+                                    <label className="form-label">Teléfono:</label>
+                                    <input type="tel" name="phone" className="form-control"
+                                        value={formData.phone}
+                                        onChange={handleInputChange} />
+                                </div>
+                                <div className="col-12 col-sm-12 col-md-6 col-lg-6 col-xl-6">
+                                    <label className="form-label">Localización:</label>
+                                    <input type="text" name="location" className="form-control"
+                                        value={formData.location}
+                                        onChange={handleInputChange} />
+                                </div>
                             </div>
-                            <div className="mb-3">
-                                <label className="form-label">Teléfono:</label>
-                                <input type="tel" name="phone" className="form-control"
-                                    value={formData.phone}
-                                    onChange={handleInputChange} />
+                            <div className="mb-3 row">
+                                <div className="col-12 col-sm-12 col-md-6 col-lg-6 col-xl-6">
+                                    <label className="form-label">Peso (kg):</label>
+                                    <input type="number" name="weight" className="form-control"
+                                        value={formData.weight}
+                                        onChange={handleInputChange} />
+                                </div>
+                                <div className="col-12 col-sm-12 col-md-6 col-lg-6 col-xl-6">
+                                    <label className="form-label">Altura (cm):</label>
+                                    <input type="number" name="height" className="form-control"
+                                        value={formData.height}
+                                        onChange={handleInputChange} />
+                                </div>
                             </div>
-                            <div className="mb-3">
-                                <label className="form-label">Localización:</label>
-                                <input type="text" name="location" className="form-control"
-                                    value={formData.location}
-                                    onChange={handleInputChange} />
-                            </div>
-                            <div className="mb-3">
-                                <label className="form-label">Peso (kg):</label>
-                                <input type="number" name="weight" className="form-control"
-                                    value={formData.weight}
-                                    onChange={handleInputChange} />
-                            </div>
-                            <div className="mb-3">
-                                <label className="form-label">Altura (cm):</label>
-                                <input type="number" name="height" className="form-control"
-                                    value={formData.height}
-                                    onChange={handleInputChange} />
-                            </div>
-                            <div className="mb-3">
-                                <label className="form-label">Edad:</label>
-                                <input type="number" name="age" className="form-control"
-                                    value={formData.age}
-                                    onChange={handleInputChange} />
-                            </div>
-                            <div className="mb-3">
-                                <label className="form-label">Sexo:</label>
-                                <select name="sex" className="form-control"
-                                    value={formData.sex}
-                                    onChange={handleInputChange}>
-                                    <option value="male">Masculino</option>
-                                    <option value="female">Femenino</option>
-                                </select>
+                            <div className="mb-3 row">
+                                <div className="col-12 col-sm-12 col-md-6 col-lg-6 col-xl-6">
+                                    <label className="form-label">Edad:</label>
+                                    <input type="number" name="age" className="form-control"
+                                        value={formData.age}
+                                        onChange={handleInputChange} />
+                                </div>
+                                <div className="col-12 col-sm-12 col-md-6 col-lg-6 col-xl-6">
+                                    <label className="form-label">Sexo:</label>
+                                    <select name="sex" className="form-control"
+                                        value={formData.sex}
+                                        onChange={handleInputChange}>
+                                        <option value="male">Masculino</option>
+                                        <option value="female">Femenino</option>
+                                    </select>
+                                </div>
                             </div>
                         </form>
                     </Modal.Body>

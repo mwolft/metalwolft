@@ -13,7 +13,7 @@ export const Home = () => {
             const sections = document.querySelectorAll(".section");
             sections.forEach(section => {
                 const sectionTop = section.getBoundingClientRect().top;
-                if (sectionTop < window.innerHeight - 150) {
+                if (sectionTop < window.innerHeight - 40) {
                     section.classList.add("section-visible");
                 } else {
                     section.classList.remove("section-visible");
