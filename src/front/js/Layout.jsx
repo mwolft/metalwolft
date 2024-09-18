@@ -35,7 +35,7 @@ const Layout = () => {
     return (
         <div className="d-flex flex-column min-vh-100 bg-dark">
             <BrowserRouter basename={basename}>
-                <ScrollToTop>
+                <ScrollToTop />
                     <MainNavbar />
                     <Routes>
                         <Route element={<Home />} path="/" />
@@ -57,7 +57,6 @@ const Layout = () => {
                         <Route element={<FormTrainer />} path='/form-trainer' />
                     </Routes>
                     <Footer />
-                </ScrollToTop>
             </BrowserRouter>
         </div>
     );

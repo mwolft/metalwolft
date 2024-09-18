@@ -40,17 +40,35 @@
 .profile-list{
     padding-left: 0 !important;
 }
+.profile-list li{
+    margin-top: 0.2rem;
+    font-family: "Dosis", sans-serif;
+    font-weight: 200;
+    font-style: normal;
+    font-size: 0.8rem !important;
+}
+.alert-info{
+    background-color: rgba(255, 193, 7, 0.25) !important;
+    border-style: none !important;
+    color: white !important;
+    display: flex;
+    justify-content: center;
+}
 .choose-activity {
+    text-decoration: none;
+    background-color: rgba(255, 193, 7);
+    border-radius: 3px;
     font-size: 0.75rem;
     cursor: pointer;
-    color: #007bff;
-    text-decoration: underline;
+    color: #ffffff;
+    padding: 0.1rem;
 }
 .li-profile {
     font-weight: 200;
 }
 .choose-activity:hover {
-    color: #0056b3; 
+    background-color: #fff;
+    color: black; 
 }
 .cards-dashboard {
     min-height: 250px;
