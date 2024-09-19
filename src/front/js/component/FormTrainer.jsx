@@ -23,19 +23,19 @@ export const FormTrainer = () => {
         e.preventDefault();
         // Form submission logic here
         console.log(formData);
-        alert('Form submitted successfully!');
+        alert('¡Formulario enviado con éxito!');
     };
 
     return (
-        <div style={{ backgroundColor: '#d3d3d3', minHeight: '100vh', paddingTop: '50px' }}>
+        <div style={{ backgroundColor: '#d3d3d3', minHeight: '100vh', paddingTop: '150px' }}>
             <Container>
-                <h2 className="text-center mb-4" style={{ color: 'black' }}>Become a Trainer</h2>
+                <h2 className="text-center mb-4" style={{ color: 'black' }}>CONVIERTETE EN ENTRENADOR</h2>
                 <Form onSubmit={handleSubmit} style={{ backgroundColor: '#FFFACD', padding: '20px', borderRadius: '10px' }}>
                     <Form.Group className="mb-3">
-                        <Form.Label style={{ color: 'black' }}>Full Name</Form.Label>
+                        <Form.Label style={{ color: 'black' }}>Nombre Completo</Form.Label>
                         <Form.Control 
                             type="text" 
-                            placeholder="Enter your full name" 
+                            placeholder="Ingresa tu nombre completo" 
                             name="name" 
                             value={formData.name} 
                             onChange={handleChange} 
@@ -44,10 +44,10 @@ export const FormTrainer = () => {
                     </Form.Group>
 
                     <Form.Group className="mb-3">
-                        <Form.Label style={{ color: 'black' }}>Email</Form.Label>
+                        <Form.Label style={{ color: 'black' }}>Correo Electrónico</Form.Label>
                         <Form.Control 
                             type="email" 
-                            placeholder="Enter your email" 
+                            placeholder="Ingresa tu correo electrónico" 
                             name="email" 
                             value={formData.email} 
                             onChange={handleChange} 
@@ -56,10 +56,10 @@ export const FormTrainer = () => {
                     </Form.Group>
 
                     <Form.Group className="mb-3">
-                        <Form.Label style={{ color: 'black' }}>Location</Form.Label>
+                        <Form.Label style={{ color: 'black' }}>Ubicación</Form.Label>
                         <Form.Control 
                             type="text" 
-                            placeholder="Enter your location (City, Country)" 
+                            placeholder="Ingresa tu ubicación (Ciudad, País)" 
                             name="location" 
                             value={formData.location} 
                             onChange={handleChange} 
@@ -68,7 +68,7 @@ export const FormTrainer = () => {
                     </Form.Group>
 
                     <Form.Group className="mb-3">
-                        <Form.Label style={{ color: 'black' }}>Specialty</Form.Label>
+                        <Form.Label style={{ color: 'black' }}>Especialidad</Form.Label>
                         <Form.Control 
                             as="select" 
                             name="specialty" 
@@ -76,15 +76,15 @@ export const FormTrainer = () => {
                             onChange={handleChange} 
                             required
                         >
-                            <option value="">Select your specialty</option>
-                            <option value="Nutritionist">Nutritionist</option>
-                            <option value="Trainer">Trainer</option>
-                            <option value="Nutritionist - Trainer">Nutritionist - Trainer</option>
+                            <option value="">Selecciona tu especialidad</option>
+                            <option value="Nutritionist">Nutricionista</option>
+                            <option value="Trainer">Entrenador</option>
+                            <option value="Nutritionist - Trainer">Nutricionista - Entrenador</option>
                         </Form.Control>
                     </Form.Group>
 
                     <Form.Group className="mb-3">
-                        <Form.Label style={{ color: 'black' }}>Attach Certificate</Form.Label>
+                        <Form.Label style={{ color: 'black' }}>Adjuntar Certificado</Form.Label>
                         <Form.Control 
                             type="file" 
                             accept=".pdf, .jpg, .png" 
@@ -92,13 +92,13 @@ export const FormTrainer = () => {
                             required 
                         />
                         <Form.Text className="text-muted">
-                            Attach your certification file (PDF, JPG, PNG)
+                            Adjunta tu certificado (PDF, JPG, PNG)
                         </Form.Text>
                     </Form.Group>
 
                     <div className="d-grid">
                         <Button variant="warning" type="submit" style={{ color: 'black' }}>
-                            Submit Application
+                            Enviar Solicitud
                         </Button>
                     </div>
                 </Form>

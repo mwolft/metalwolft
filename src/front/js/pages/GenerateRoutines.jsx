@@ -1,7 +1,7 @@
 import React, { useState, useContext } from 'react';
 import { Context } from '../store/appContext';
 import Select from 'react-select';
-import '../../styles/Recipe.css';
+import 'bootstrap/dist/css/bootstrap.min.css';  // Ensure Bootstrap is imported
 
 export const GenerateRoutines = () => {
     const { store, actions } = useContext(Context);
@@ -66,13 +66,18 @@ export const GenerateRoutines = () => {
             days: routineData.days.map(option => option.value).join(", "),
             hours_per_day: routineData.hours_per_day,
             level: routineData.level,
-            gender: routineData.gender,  // Include gender in favorites data
+            gender: routineData.gender,
             target_muscles: routineData.target_muscles.map(option => option.value).join(", ")
         });
     };
 
     const handleHoursChange = (e) => {
         let value = e.target.value;
+
+        // Replace commas with periods for decimal notation
+        value = value.replace(/,/g, '.');
+
+        // Remove any non-numeric and non-decimal characters
         value = value.replace(/[^\d.]/g, '');
 
         if (value === '') {
@@ -90,80 +95,80 @@ export const GenerateRoutines = () => {
     };
 
     return (
-        <div style={{ backgroundColor: '#d3d3d3', height: 'auto' }}>
-            <div className='row'>
-                <div className='container mt-5'>
-                </div>
-                <div className="container my-5">
-                    <div className='text-center mx-3'>
-                        <h2 style={{ color: 'black' }}>GENERE SU RUTINA DE EJERCICIO</h2>
-                    </div>
-                    <div className="mx-3">
-                        <Select
-                            isMulti
-                            options={daysOptions}
-                            value={routineData.days}
-                            onChange={(selectedOptions) => setRoutineData({ ...routineData, days: selectedOptions })}
-                            className="mb-2"
-                            placeholder="Seleccione los días"
-                        />
+        <div className="container-fluid" style={{ backgroundColor: '#D3D3D3', minHeight: '100vh', paddingTop: '50px', paddingBottom: '50px' }}>
+            <div className="row justify-content-center">
+                <div className="col-12 col-sm-10 col-md-8 col-lg-6">
+                    <br />
+                    <h2 className="text-center my-5">GENERE SU RUTINA DE EJERCICIO</h2>
 
-                        <input
-                            type="text"
-                            className="form-control mb-2"
-                            placeholder="Horas por día"
-                            value={routineData.hours_per_day}
-                            onChange={handleHoursChange}
-                        />
+                    <Select
+                        isMulti
+                        options={daysOptions}
+                        value={routineData.days}
+                        onChange={(selectedOptions) => setRoutineData({ ...routineData, days: selectedOptions })}
+                        className="mb-2"
+                        placeholder="Seleccione los días"
+                    />
 
-                        <Select
-                            isMulti
-                            options={muscles}
-                            value={routineData.target_muscles}
-                            onChange={(selectedOptions) => setRoutineData({ ...routineData, target_muscles: selectedOptions })}
-                            className="mb-2"
-                            placeholder="Seleccione los músculos objetivo"
-                        />
+                    <input
+                        type="text"
+                        className="form-control mb-2"
+                        placeholder="Horas por día"
+                        value={routineData.hours_per_day}
+                        onChange={handleHoursChange}
+                    />
 
-                        <Select
-                            options={levels}
-                            value={levels.find(option => option.value === routineData.level)}
-                            onChange={(selectedOption) => setRoutineData({ ...routineData, level: selectedOption.value })}
-                            className="mb-2"
-                            placeholder="Seleccione el nivel"
-                        />
+                    <Select
+                        isMulti
+                        options={muscles}
+                        value={routineData.target_muscles}
+                        onChange={(selectedOptions) => setRoutineData({ ...routineData, target_muscles: selectedOptions })}
+                        className="mb-2"
+                        placeholder="Seleccione los músculos objetivo"
+                    />
 
-                        {/* Gender dropdown */}
-                        <Select
-                            options={genderOptions}
-                            value={genderOptions.find(option => option.value === routineData.gender)}
-                            onChange={(selectedOption) => setRoutineData({ ...routineData, gender: selectedOption.value })}
-                            className="mb-2"
-                            placeholder="Seleccione el género"
-                        />
+                    <Select
+                        options={levels}
+                        value={levels.find(option => option.value === routineData.level)}
+                        onChange={(selectedOption) => setRoutineData({ ...routineData, level: selectedOption.value })}
+                        className="mb-2"
+                        placeholder="Seleccione el nivel"
+                    />
 
-                        <button onClick={handleGenerateRoutine} className="btn btn-warning mt-3">
-                            {loading ? "Generando..." : "Generar Rutina"}
-                        </button>
-                    </div>
+                    <Select
+                        options={genderOptions}
+                        value={genderOptions.find(option => option.value === routineData.gender)}
+                        onChange={(selectedOption) => setRoutineData({ ...routineData, gender: selectedOption.value })}
+                        className="mb-2"
+                        placeholder="Seleccione el género"
+                    />
 
-                    {store.generatedRoutine && (
-                        <div className="d-flex justify-content-center">
-                            <div className="alert mt-3" style={{ backgroundColor: '#FFFACD', color: 'black', maxWidth: '800px', width: '100%' }}>
-                                <h3 className="text-center">Rutina Generada</h3>
-                                <div className="routine-content" dangerouslySetInnerHTML={{ __html: formatRoutine(store.generatedRoutine) }} />
-                                <button onClick={handleSaveToFavorites} className="btn btn-warning mt-3 w-100">Guardar en Favoritos</button>
-                            </div>
-                        </div>
-                    )}
-
-                    {store.error && (
-                        <div className="alert alert-danger mt-3">
-                            {store.error}
-                        </div>
-                    )}
+                    <button onClick={handleGenerateRoutine} className="btn btn-warning mt-3 w-100">
+                        {loading ? "Generando..." : "Generar Rutina"}
+                    </button>
                 </div>
             </div>
+
+            {store.generatedRoutine && (
+                <div className="row justify-content-center mt-4">
+                    <div className="col-12 col-sm-10 col-md-8 col-lg-6">
+                        <div className="alert bg-warning-subtle text-dark p-4">
+                            <h3 className="text-center">Rutina Generada</h3>
+                            <div className="routine-content" dangerouslySetInnerHTML={{ __html: formatRoutine(store.generatedRoutine) }} />
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {store.error && (
+                <div className="row justify-content-center mt-3">
+                    <div className="col-12 col-sm-10 col-md-8 col-lg-6">
+                        <div className="alert alert-danger">
+                            {store.error}
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

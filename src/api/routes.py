@@ -19,7 +19,9 @@ api = Blueprint('api', __name__)
 client = Groq(api_key=os.environ.get("GROQ_API_KEY"),
 )
 
+
 @api.route('/generate-recipe', methods=['GET'])
+@jwt_required() 
 def generate_recipe():
     response_body = {}
     ingredient_names = request.args.get('ingredient_names')
@@ -52,7 +54,7 @@ def generate_recipe():
 
 
 @api.route('/generate-exercise-routine', methods=['POST'])
-#  @jwt_required() 
+@jwt_required() 
 def generate_exercise_routine():
     response_body = {}
     user_id = get_jwt_identity()['user_id'] 
@@ -78,6 +80,7 @@ def generate_exercise_routine():
     prompt = (f"Create a {level.lower()} workout routine for a person who has {days} days available and can work out {hours_per_day} hours per day. "
               f"The routine should focus on these muscles: {', '.join(normalized_muscles)}. "
               f"Include warm-ups and variety in exercises."
+              f"Dont respond with nalgas only use gluteos."
               f"If the user select female instead masculine and if the user select legs the routine should be more focused for on legs and glutes and the first day should be legs."
               f"The result should be in spanish.")
     try:
@@ -203,6 +206,7 @@ def handle_user(user_id):
         user.height = data.get('height', user.height)  
         user.weight = data.get('weight', user.weight)  
         user.age = data.get('age', user.age) 
+        user.location = data.get('location', user.location) 
         db.session.commit()  
         response_body['results'] = user.serialize()
         response_body['message'] = f'Usuario {user_id} actualizado exitosamente'
