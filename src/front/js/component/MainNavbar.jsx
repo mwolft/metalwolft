@@ -8,7 +8,7 @@ import { Button } from "react-bootstrap";
 import { useNavigate } from "react-router-dom";
 import { Context } from "../store/appContext";
 import { Link } from "react-router-dom";
-import '../../styles/mainNavbar.css';
+import '../../styles/navbar.css';
 
 export const MainNavbar = () => {
     const { store, actions } = useContext(Context);
