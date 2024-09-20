@@ -1,12 +1,8 @@
 * {
-  font-family: "Doris", sans-serif;
-  font-weight: 300;
-}
-
-.estilo-navbar {
-  background-color: rgba(255, 193, 7);
-  width: 100%;
-  z-index: 1;
+  font-family: "Roboto", sans-serif;
+  font-size: 0.95rem;
+  font-weight: 400;
+  font-style: normal;
 }
 
 p .btn-color-yellow {

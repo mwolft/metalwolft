@@ -6,18 +6,13 @@ from api.utils import generate_sitemap, APIException
 from flask_cors import CORS
 from api.models import db, Users, Ingredients, Recipes, Exercises, ExerciseMuscles, Muscles, Equipments, Routines, Recipes, FavoriteRecipes, FavoriteRoutines, FavoriteExercises
 from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity
-from groq import Groq
 from dotenv import load_dotenv
 import json
 import os
 import requests
 
-load_dotenv()
 
 api = Blueprint('api', __name__)
-
-client = Groq(api_key=os.environ.get("GROQ_API_KEY"),
-)
 
 
 @api.route('/generate-recipe', methods=['GET'])

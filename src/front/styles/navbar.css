@@ -1,0 +1,51 @@
+/* Reset body margins and paddings */
+body, html {
+    margin: 0;
+    padding: 0;
+}
+
+.estilo-navbar {
+    position: fixed;          
+    top: 0;                  
+    width: 100%;              
+    z-index: 1000;            
+    background-color: white; 
+    margin: 0;                
+    padding: 5px 0;        
+}
+
+.navbar-brand img {
+    max-height: 3rem;         
+    margin-right: 20px;       
+    padding-left: 3rem;
+}
+
+.nav-link {
+    font-weight: 500; 
+    font-size: 0.9rem;
+    color: #000 !important;       
+    padding: 1rem;  
+    margin-left: 1.3rem;     
+    text-decoration: none;    
+}
+
+.nav-link:hover {
+    color: #ff324d !important; 
+}
+
+.navbar-collapse {
+    justify-content: space-between; 
+}
+
+.navbar-toggler {
+    border-color: #000;     
+}
+
+button.btn-outline-dark i {
+    font-size: 1.5rem;        
+}
+
+#user-nav-dropdown .dropdown-menu {
+    right: 0;                 
+    left: auto;               
+}
