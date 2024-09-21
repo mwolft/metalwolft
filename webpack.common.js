@@ -20,19 +20,26 @@ module.exports = {
           use: ['babel-loader']
         },
         {
-          test: /\.(css|scss)$/, use: [{
+          test: /\.(css|scss)$/, 
+          use: [{
               loader: "style-loader" // creates style nodes from JS strings
           }, {
               loader: "css-loader" // translates CSS into CommonJS
           }]
         }, //css only files
         {
-          test: /\.(png|svg|jpg|gif|jpeg|webp)$/, use: {
+          test: /\.(png|svg|jpg|gif|jpeg|webp|avif)$/i,  // Añadí soporte para avif aquí
+          use: {
             loader: 'file-loader',
-            options: { name: '[name].[ext]' }
+            options: { 
+              name: '[name].[ext]' 
+            }
           }
         }, //for images
-        { test: /\.woff($|\?)|\.woff2($|\?)|\.ttf($|\?)|\.eot($|\?)|\.svg($|\?)/, use: ['file-loader'] } //for fonts
+        { 
+          test: /\.woff($|\?)|\.woff2($|\?)|\.ttf($|\?)|\.eot($|\?)|\.svg($|\?)/, 
+          use: ['file-loader'] 
+        } //for fonts
     ]
   },
   resolve: {
