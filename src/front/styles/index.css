@@ -5,6 +5,28 @@
   font-style: normal;
 }
 
+/* -----START BTN ----- */
+.btn-style {
+  font-size: 0.9rem;
+  text-transform: uppercase;
+  background: rgba(0, 0, 0, 0); 
+  color: white;
+  border: 1px solid #ff324d; 
+  padding: 6px 20px; 
+  border-radius: 12px; 
+  cursor: pointer; 
+}
+
+.btn-style:hover {
+  background: #ff324d; 
+  color: white;
+  border: 1px solid #ff324d; 
+  padding: 6px 20px; 
+  border-radius: 12px; 
+  cursor: pointer; 
+}
+/* -----END BTN ----- */
+
 p .btn-color-yellow {
   background-color: rgba(255, 193, 7);
 }
