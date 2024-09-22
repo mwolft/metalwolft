@@ -51,6 +51,17 @@ body {
     font-weight: 600;
 }
 /* -----END MAINHOME ----- */
+/* ----- START SECONDARYNHOME ----- */
+.card{
+    border-radius: 0;
+    border: 0;
+}
+.card-img-overlay{
+    background-color: rgba(0, 0, 0, 0.25);
+    width: 55%;
+    height: 70%;
+}
+/* -----END SECONDARYNHOME ----- */
 /* ----- START DESIGN MEDIA QUERIES ----- */
 /* ----- Pantallas pequeñas (móviles) ----- */
   @media (max-width: 575px) {
