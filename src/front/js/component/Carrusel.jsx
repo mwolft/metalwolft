@@ -18,9 +18,10 @@ export const Carrusel = () => {
             <Carousel.Item>
                 <div className="carrusel-background" style={{ backgroundImage: `url(${valladosCarrusel})` }}/>
                 <Carousel.Caption>
-                    <h5>First slide label</h5>
-                    <p>Nulla vitae elit libero, a pharetra augue mollis interdum.</p>
-                    <div className="my-3">
+                    <p className="p-carrusel">Nuevos diseños</p>
+                    <h6 className="h6-carrusel">Vallados Metálicos</h6>
+                    <p className="p-carrusel">Explora nuestra selección de vallas metálicas diseñadas para combinar seguridad y elegancia en tu hogar. Encuentra el estilo perfecto para ti.</p>
+                    <div className="my-5">
                         <Button className="btn-style">Explorar</Button>{' '}
                     </div>
                 </Carousel.Caption>
@@ -28,9 +29,9 @@ export const Carrusel = () => {
             <Carousel.Item>
                 <div className="carrusel-background" style={{ backgroundImage: `url(${rejasCarrusel})` }}/>
                 <Carousel.Caption>
-                    <h5>Second slide label</h5>
-                    <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit.</p>
-                    <div className="my-3">
+                    <p className="p-carrusel">Diseños exclusivos</p>
+                    <h6 className="h6-carrusel">Rejas para Ventanas</h6>
+                    <div className="my-5">
                         <Button className="btn-style">Ir a categoria</Button>{' '}
                     </div>
                 </Carousel.Caption>
@@ -38,9 +39,9 @@ export const Carrusel = () => {
             <Carousel.Item>
                 <div className="carrusel-background" style={{ backgroundImage: `url(${correderasCarrusel})` }}/>
                 <Carousel.Caption>
-                    <h5>Third slide label</h5>
-                    <p>Praesent commodo cursus magna, vel scelerisque nisl consectetur.</p>
-                    <div className="my-3">
+                    <p className="p-carrusel">Consigue descuentos!</p>
+                    <h6 className="h6-carrusel">Puertas Correderas Exteriores</h6>
+                    <div className="my-5">
                         <Button className="btn-style">Ver catálogo</Button>{' '}
                     </div>
                 </Carousel.Caption>

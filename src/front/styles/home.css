@@ -11,17 +11,64 @@ body {
     background-size: cover;
     background-position: center;
     background-repeat: no-repeat;
-    height: 500px; /* Ajustar la altura */
+    height: 550px; 
     width: 100%;
 }
 .carousel-caption{
     margin-bottom: 4rem;
+    text-align: left;
 }
-
-@media (max-width: 767px) {
-    .carrusel-background {
-        height: 350px; /* Ajustar la altura en pantallas más pequeñas */
-    }
+.h6-carrusel{
+   margin-bottom: 1.2rem;
 }
-
+.p-carrusel{
+    margin-bottom: 1.2rem;
+}
+.carousel-indicators [data-bs-target] {
+    background-color: #fff; 
+  }
+  .carousel-indicators .active {
+    background-color: #ff324d; 
+  }
 /* -----END CARRUSEL ----- */
+/* ----- START DESIGN MEDIA QUERIES ----- */
+/* ----- Pantallas pequeñas (móviles) ----- */
+  @media (max-width: 575px) {
+    .h6-carrusel{
+        font-size: 3rem; 
+    }
+    .p-carrusel{
+        font-size: 1.1rem; 
+    }
+  }
+  /* ----- Pantallas medianas (tabletas) ----- */
+  @media (min-width: 576px) and (max-width: 767px) {
+    .h6-carrusel{
+        font-size: 3rem; 
+    }
+    .p-carrusel{
+        font-size: 1.2rem; 
+    }
+  }
+  /* ----- Pantallas grandes (escritorios y laptops) ----- */
+  @media (min-width: 768px) {
+    .carrusel-background {
+        height: 550px; 
+    }
+    .h6-carrusel{
+        font-size: 3.7rem; 
+    }
+    .p-carrusel{
+        font-size: 1.6rem; 
+    }
+  }
+  /* ----- Pantallas muy grandes (desktops grandes) ----- */
+  @media (min-width: 1200px) {
+    .h6-carrusel{
+        font-size: 3.7rem; 
+    }
+    .p-carrusel{
+        font-size: 1.6rem; 
+    }
+  }
+  
