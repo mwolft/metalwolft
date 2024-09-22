@@ -1,59 +1,15 @@
 import React from "react";
-import Card from 'react-bootstrap/Card';
-import nutritionImage from "../../img/home-nutrition.jpg";
-import exerciseImage from "../../img/home-exercise.jpg";
-import equipmentImage from "../../img/home-equipment.jpg";
-import { useNavigate } from "react-router-dom";
 
 export const BodyHomeMain = () => {
-    const navigate = useNavigate();
-
-    const handleNavigate = (path) => {
-        navigate(path); 
-    };
 
     return (
         <div className="container my-5">
-            <hr className="text-write"></hr>
-            <div className="row">
-                <div className="mt-5 col-card col-12 col-md-6 col-lg-4">
-                    <Card>
-                        <Card.Img src={equipmentImage} alt="Card image" />
-                        <Card.ImgOverlay style={{ cursor: "pointer" }} className="img-fluid" onClick={() => handleNavigate('/generate-routines')}>
-                            <div data-hover-content="Obtén los mejores ejercicios" className="cover-card">
-                                <Card.Title>TrAIner</Card.Title>
-                                <Card.Text>
-                                    EJERCICIOS
-                                </Card.Text>
-                            </div>
-                        </Card.ImgOverlay>
-                    </Card>
+            <div className="row d-flex flex-column">
+                <div className="mt-2 mx-2 col-12 col-sm-12 col-md-10 col-lg-7 col-xl-6">
+                    <h1 className="h1-home">CARPINTERÍA METÁLICA EN <span className="span-home">CIUDAD REAL</span> TU HERRERO SOLDADOR DE CONFIANZA.</h1>
                 </div>
-                <div className="mt-5 col-card col-12 col-md-6 col-lg-4">
-                    <Card>
-                        <Card.Img src={nutritionImage} alt="Card image" />
-                        <Card.ImgOverlay style={{ cursor: "pointer" }} className="img-fluid" onClick={() => handleNavigate('/generate-recipes')}>
-                            <div data-hover-content="Obtén planes de nutrición" className="cover-card">
-                                <Card.Title>trAIner</Card.Title>
-                                <Card.Text>
-                                    NUTRICIÓN
-                                </Card.Text>
-                            </div>
-                        </Card.ImgOverlay>
-                    </Card>
-                </div>
-                <div className="mt-5 col-card col-12 col-md-6 col-lg-4">
-                    <Card>
-                        <Card.Img src={exerciseImage} alt="Card image" />
-                        <Card.ImgOverlay style={{ cursor: "pointer" }} className="img-fluid" onClick={() => handleNavigate('/bmr-calculator')}>
-                            <div data-hover-content="Obtén contactos con profesionales" className="cover-card">
-                                <Card.Title>Contacto</Card.Title>
-                                <Card.Text>
-                                    ENTRENADORES
-                                </Card.Text>
-                            </div>
-                        </Card.ImgOverlay>
-                    </Card>
+                <div className="mt-2 mx-3 col-3 col-sm-3 col-md-2 col-lg-1 col-xl-1">
+                    <hr className="hr-home"></hr>
                 </div>
             </div>
         </div>
