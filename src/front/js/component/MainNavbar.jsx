@@ -1,5 +1,5 @@
 import React, { useContext, useState } from "react";
-import logoweb from "../../img/LogoWeb.png";
+import logoweb from "../../img/herrero-soldador-en-ciudad-real.png";
 import Container from 'react-bootstrap/Container';
 import Nav from 'react-bootstrap/Nav';
 import Navbar from 'react-bootstrap/Navbar';
@@ -34,13 +34,14 @@ export const MainNavbar = () => {
                 <Navbar.Toggle aria-controls="basic-navbar-nav" onClick={handleToggle} />
                 <Navbar.Collapse id="basic-navbar-nav">
                     <Nav className="me-auto" onSelect={handleSelect}>
-                        <Nav.Link as={Link} to="/trainers" onClick={handleSelect}>Trainers</Nav.Link>
-                        <Nav.Link as={Link} to="/bmr-calculator" onClick={handleSelect}>BMR Calculator</Nav.Link>
-                        <NavDropdown title="TrAIner" id="trainer-nav-dropdown">
+                        <Nav.Link as={Link} to="/" onClick={handleSelect}>Inicio</Nav.Link>
+                        <NavDropdown title="Productos" id="trainer-nav-dropdown">
                             <NavDropdown.Item as={Link} to="/generate-recipes" onClick={handleSelect}>Generar Receta</NavDropdown.Item>
                             <NavDropdown.Item as={Link} to="/generate-routines" onClick={handleSelect}>Generar Rutina</NavDropdown.Item>
                         </NavDropdown>
-                        <Nav.Link as={Link} to="/exercises" onClick={handleSelect}>Ejercicios</Nav.Link>
+                        <Nav.Link as={Link} to="/bmr-calculator" onClick={handleSelect}>Blog</Nav.Link>
+                        <Nav.Link as={Link} to="/exercises" onClick={handleSelect}>Contácto</Nav.Link>
+                        <Nav.Link as={Link} to="/bmr-calculator" onClick={handleSelect}>Sobre nosotros</Nav.Link>
                     </Nav>
                     <Nav className="ms-auto" onSelect={handleSelect}>
                         {store.isLoged ? (

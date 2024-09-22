@@ -1,6 +1,8 @@
 import React, { useEffect } from "react";
 import fitnessImage from "../../img/fitness.jpg";
+import "../../styles/index.css";
 import "../../styles/home.css";
+import { Carrusel } from "../component/Carrusel.jsx";
 import { BodyHomeMain } from "../component/BodyHomeMain.jsx";
 import { BodyHomeSecondary } from "../component/BodyHomeSecondary.jsx";
 import { useNavigate } from "react-router-dom";
@@ -31,18 +33,7 @@ export const Home = () => {
 
     return (
         <div>
-            <header className="container-fluid d-flex align-items-end text-center background-image" style={{backgroundImage: `url(${fitnessImage})`}}>
-                <div className="row py-5 m-auto">
-                    <div className="col-lg-12 col-md-12">
-                        <h1 className="h1-home">ES FÁCIL SER FIT</h1>
-                        <p>
-                            <button className="btn btn-color-yellow btn-lg px-5" onClick={handleSignUp}>
-                                Regístrate
-                            </button>
-                        </p>
-                    </div>
-                </div>
-            </header>
+            <Carrusel />
             <section className="section">
                 <BodyHomeMain />
             </section>

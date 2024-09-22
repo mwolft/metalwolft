@@ -1,126 +1,105 @@
 html {
     scroll-behavior: smooth;
 }
+
 body {
     background-color: rgba(12,15,17,255);
 }
-.section {
-    opacity: 0;
-    transform: translateY(100px);
-    transition: opacity 1s ease-out, transform 1s ease-out;
-}
-.section-visible {
-    opacity: 1;
-    transform: translateY(0);
-}
-.background-image {
+
+/* -----START CARRUSEL ----- */
+.carrusel-background {
     background-size: cover;
     background-position: center;
     background-repeat: no-repeat;
-    height: 55rem;
-}
-.h1-home {
-    color: rgb(255, 255, 255);
-    font-family: "Anton", sans-serif;
-    font-size: 9vw;
-    font-weight: 400;
-    font-style: italic;
-}
-.btn {
-    color: black;
-}
-.card {
-    border-color: inherit;
-}
-.card-img-overlay {
-    display: flex;
-    justify-content: center; 
-    text-align: center;
-    align-items: end;
-    padding: 0px !important;
-}
-.cover-card {
-    font-family: "Anton", sans-serif;
-    transition: background-color 0.5s;
-    border-radius: 15% 15% 0 0;
-    background-color: rgba(12, 15, 17, 0.5);
-    padding-top: 4vw;
-    padding-bottom: 4vw;
+    height: 550px; 
     width: 100%;
-    color: rgb(255, 255, 255);
-    font-size: 1.8vw;
 }
-.cover-card:hover::after {
-    font-family: "Anton", sans-serif;
-    content: attr(data-hover-content);
-    font-size: 1.2vw;
+.carousel-caption{
+    margin-bottom: 4rem;
+    text-align: left;
 }
-.cover-card:hover {
-    background-color: rgba(255, 255, 255, 0.8);
-    color: rgba(50, 50, 50, 1);
+.h6-carrusel{
+   margin-bottom: 1.2rem;
 }
-.card-title {
-    font-size: 2.4vw;
+.p-carrusel{
+    margin-bottom: 1.2rem;
 }
-.card-text {
-    font-size: 1.8vw;
+.carousel-indicators [data-bs-target] {
+    background-color: #fff; 
+  }
+  .carousel-indicators .active {
+    background-color: #ff324d; 
+  }
+/* -----END CARRUSEL ----- */
+/* ----- START MAINHOME ----- */
+.h1-home{
+    margin-top: 2rem;
+    font-size: 2.7rem;
+    font-weight: 600;
 }
-h2 {
-    font-size: 5vh;
-    color: white;
+.hr-home{
+    margin-top: .3rem;
+    color: #ff324d;
+    padding: 1px;
+    opacity: .8;
+    border-radius: 50%;
 }
-p {
-    font-size: 3vh;
+.span-home{
+    font-size: 2.7rem;
+    color: #ff324d;
+    margin-bottom: .5rem;
+    font-weight: 600;
 }
-.body-secondary {
-    color: white;
+/* -----END MAINHOME ----- */
+/* ----- START SECONDARYNHOME ----- */
+.card{
+    border-radius: 0;
+    border: 0;
 }
-@media (max-width: 767px) {
-    .row {
-        flex-direction: column; 
-    }
-    .card-title {
-        font-size: 11vw;
-    }
-    .card-text {
-        font-size: 5vw;
-    }
-    .cover-card {
-        font-size: 6vw;
-    }
-    .cover-card:hover::after {
-        font-size: 5vw;
-    }
+.card-img-overlay{
+    background-color: rgba(0, 0, 0, 0.25);
+    width: 55%;
+    height: 70%;
 }
-@media (min-width: 768px) and (max-width: 991px) {
-    .card-title {
-        font-size: 4vw;
+/* -----END SECONDARYNHOME ----- */
+/* ----- START DESIGN MEDIA QUERIES ----- */
+/* ----- Pantallas pequeñas (móviles) ----- */
+  @media (max-width: 575px) {
+    .h6-carrusel{
+        font-size: 3rem; 
     }
-    .card-text {
-        font-size: 4vw;
+    .p-carrusel{
+        font-size: 1.1rem; 
     }
-
-    .cover-card {
-        font-size: 2.5vw;
+  }
+  /* ----- Pantallas medianas (tabletas) ----- */
+  @media (min-width: 576px) and (max-width: 767px) {
+    .h6-carrusel{
+        font-size: 3rem; 
     }
-
-    .cover-card:hover::after {
-        font-size: 2.5vw;
+    .p-carrusel{
+        font-size: 1.2rem; 
     }
-}
-@media (min-width: 992px) {
-    .card-title {
-        font-size: 2.5vw;
+  }
+  /* ----- Pantallas grandes (escritorios y laptops) ----- */
+  @media (min-width: 768px) {
+    .carrusel-background {
+        height: 550px; 
     }
-    .card-text {
-        font-size: 2.5vw;
+    .h6-carrusel{
+        font-size: 3.7rem; 
     }
-
-    .cover-card {
-        font-size: 2vw;
+    .p-carrusel{
+        font-size: 1.6rem; 
     }
-
-    .cover-card:hover::after {
-        font-size: 1.4vw;
+  }
+  /* ----- Pantallas muy grandes (desktops grandes) ----- */
+  @media (min-width: 1200px) {
+    .h6-carrusel{
+        font-size: 3.7rem; 
     }
-}
+    .p-carrusel{
+        font-size: 1.6rem; 
+    }
+  }
+  

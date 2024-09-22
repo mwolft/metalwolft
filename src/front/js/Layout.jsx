@@ -10,6 +10,7 @@ import { MainNavbar } from "./component/MainNavbar.jsx";
 import { Sidebar } from "./component/Sidebar.jsx";
 import { BodyHomeMain } from "./component/BodyHomeMain.jsx";
 import { BodyHomeSecondary } from "./component/BodyHomeSecondary.jsx";
+import { Carrusel } from "./component/Carrusel.jsx";
 // Custom pages
 import { Home } from "./pages/Home.jsx";
 import { Error404 } from "./pages/Error404.jsx";
@@ -24,12 +25,13 @@ const Layout = () => {
     if(!process.env.BACKEND_URL || process.env.BACKEND_URL == "") return <BackendURL/ >;
 
     return (
-        <div className="d-flex flex-column min-vh-100 bg-dark">
+        <div className="d-flex flex-column min-vh-100 bg-light">
             <BrowserRouter basename={basename}>
                 <ScrollToTop />
                     <MainNavbar />
                     <Routes>
                         <Route element={<Home />} path="/" />
+                        <Route element={<Carrusel />} path='/carrusel' />
                         <Route element={<Error404/>} path='*'/>
                         <Route element={<Login />} path='/login' />
                         <Route element={<BodyHomeMain />} path='/body-home-main' />
