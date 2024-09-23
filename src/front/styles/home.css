@@ -57,7 +57,8 @@ body {
     border: 0;
 }
 .card-img-overlay{
-    background-color: rgba(255, 255, 255, 0.25);
+    background-color: rgba(74, 74, 74, 0.55);
+    ;
     width: 55%;
     height: 70%;
 }
@@ -66,8 +67,12 @@ body {
 .home-info {
     margin-top: 100px;
     margin-bottom: 100px;
+    cursor: pointer;
 }
-
+.home-about-us{
+    margin-top: 100px;
+    margin-bottom: 100px;
+}
 .info-icon {
     color: #ff324d;
 }
