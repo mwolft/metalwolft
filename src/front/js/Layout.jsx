@@ -10,6 +10,7 @@ import { MainNavbar } from "./component/MainNavbar.jsx";
 import { Sidebar } from "./component/Sidebar.jsx";
 import { BodyHomeMain } from "./component/BodyHomeMain.jsx";
 import { BodyHomeSecondary } from "./component/BodyHomeSecondary.jsx";
+import { BodyHomeTertiary } from "./component/BodyHomeTertiary.jsx";
 import { Carrusel } from "./component/Carrusel.jsx";
 // Custom pages
 import { Home } from "./pages/Home.jsx";
@@ -36,6 +37,7 @@ const Layout = () => {
                         <Route element={<Login />} path='/login' />
                         <Route element={<BodyHomeMain />} path='/body-home-main' />
                         <Route element={<BodyHomeSecondary />} path='/body-home-secondary' />
+                        <Route element={<BodyHomeTertiary />} path='/body-home-tertiary' />
                         <Route element={<Sidebar />} path='/Sidebar' />
                         <Route element={<Profile />} path='/Profile' />
                     </Routes>

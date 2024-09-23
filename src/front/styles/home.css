@@ -57,11 +57,65 @@ body {
     border: 0;
 }
 .card-img-overlay{
-    background-color: rgba(0, 0, 0, 0.25);
+    background-color: rgba(255, 255, 255, 0.25);
     width: 55%;
     height: 70%;
 }
 /* -----END SECONDARYNHOME ----- */
+/* ----- START THIRDHOME ----- */
+.home-info {
+    margin-top: 100px;
+    margin-bottom: 100px;
+}
+
+.info-icon {
+    color: #ff324d;
+}
+
+.info-h3 {
+    font-size: 1.1rem;
+    margin-top: 10px;
+}
+
+.info-p {
+    font-size: 1rem;
+    color: #747474;
+    font-weight: 400;
+}
+
+.bg-info-icon {
+    display: inline-block;
+    border-radius: 50%; 
+    padding: 14px; 
+    border: 1px solid #ff324d; 
+    width: 70px; 
+    height: 70px; 
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    transition: background-color 0.3s ease; 
+}
+
+.home-info-card {
+    width: auto;
+    height: 15rem;
+    box-shadow: 0 0 10px rgba(6, 6, 6, 0.15);
+    border-radius: 10px;
+    transition: transform 0.3s ease; 
+}
+
+.home-info-card:hover {
+    transform: scale(0.95);
+}
+
+.home-info-card:hover .bg-info-icon {
+    background-color: #ff324d; 
+}
+
+.home-info-card:hover .info-icon {
+    color: white; 
+}
+/* ----- END THIRDHOME ----- */
 /* ----- START DESIGN MEDIA QUERIES ----- */
 /* ----- Pantallas pequeñas (móviles) ----- */
   @media (max-width: 575px) {
