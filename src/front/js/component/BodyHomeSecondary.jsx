@@ -17,7 +17,7 @@ export const BodyHomeSecondary = () => {
     return (
         <div className="container my-5">
             <div className="row">
-                <div className="col-12 col-sm-12 col-md-5 col-lg-5 col-xl-5" mt-2>
+                <div className="col-12 col-sm-12 col-md-5 col-lg-5 col-xl-5 mt-2">
                     <Card className="text-white" style={{ height: '300px' }}>
                         <div
                             style={{

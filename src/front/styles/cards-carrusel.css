@@ -1,0 +1,16 @@
+.owl-theme .owl-dots .owl-dot span {
+    width: 10px;
+    height: 10px;
+    margin: 5px 7px;
+    background: transparent !important; 
+    border: 1px solid #ff324d; 
+    display: block;
+    -webkit-backface-visibility: visible;
+    transition: all 200ms ease;
+    border-radius: 50%; 
+}
+
+.owl-theme .owl-dots .owl-dot.active span {
+    background: #ff324d !important; 
+    border: 1px solid #ff324d; 
+}
