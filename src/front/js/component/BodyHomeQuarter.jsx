@@ -23,7 +23,7 @@ export const BodyHomeQuarter = () => {
                         A lo largo de los años, nuestra experiencia nos ha posicionado para superar consistentemente las expectativas en la industria. Orgullosos de nuestra evolución, nos dedicamos a la fabricación de productos de alta calidad en acero y aluminio, caracterizados por su durabilidad, funcionalidad y diseño. Nuestra presencia en Ciudad Real nos facilita el servir a un amplio espectro de clientes, entregando soluciones metálicas que destacan en el mercado.
                     </p>
                 </div>
-                <div className="col-12 col-sm-12 col-md-6 col-lg-5 col-xl-5" mt-2>
+                <div className="col-12 col-sm-12 col-md-6 col-lg-5 col-xl-5 mt-2">
                     <Card className="bg-light" style={{ height: '100%' }}>
                         <Figure>
                             <div style={{ backgroundImage: `url(${herreroHome})`, backgroundSize: 'cover', backgroundPosition: 'center', height: '400px' }}></div>

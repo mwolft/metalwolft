@@ -1,5 +1,4 @@
 import React, { useEffect } from "react";
-import fitnessImage from "../../img/fitness.jpg";
 import "../../styles/index.css";
 import "../../styles/home.css";
 import { Carrusel } from "../component/Carrusel.jsx";
@@ -8,6 +7,7 @@ import { BodyHomeSecondary } from "../component/BodyHomeSecondary.jsx";
 import { useNavigate } from "react-router-dom";
 import { BodyHomeTertiary } from "../component/BodyHomeTertiary.jsx";
 import { BodyHomeQuarter } from "../component/BodyHomeQuarter.jsx";
+import { CardsCarrusel } from "../component/CardsCarrusel.jsx";
 
 export const Home = () => {
     const navigate = useNavigate();
@@ -47,6 +47,9 @@ export const Home = () => {
             </section>
             <section className="section">
                 <BodyHomeQuarter />
+            </section>
+            <section className="section">
+                <CardsCarrusel />
             </section>
         </div>
     );
