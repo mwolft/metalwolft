@@ -1,3 +1,22 @@
+.card-carrusel {
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15); 
+    border-radius: 4px; 
+    overflow: hidden; 
+    transition: transform 0.3s ease;
+    background-color: #f8f9fa; 
+}
+
+.item {
+    padding: 1rem;
+    margin-bottom: 2rem;
+}
+
+.card-body-carrusel-info {
+    padding: 1rem;
+}
+.card-text-carrusel{
+    margin-bottom: 0;
+}
 .owl-theme .owl-dots .owl-dot span {
     width: 10px;
     height: 10px;
@@ -13,4 +32,33 @@
 .owl-theme .owl-dots .owl-dot.active span {
     background: #ff324d !important; 
     border: 1px solid #ff324d; 
+}
+
+.current-price {
+    color: #ff324d;
+    font-size: 1rem;
+    font-weight: bold;
+    letter-spacing: -0.3px;
+    margin-right: 10px;
+}
+
+.discounted-price {
+    font-size: .7rem;
+    text-decoration: line-through;
+    color: #7a7a7a;
+    margin-right: 10px;
+}
+
+.discount-percent {
+    font-size: .7rem;
+    color: #28a745; 
+}
+
+.rating {
+    margin-bottom: 25px;
+    margin-top: 2px; 
+}
+
+.fa {
+    color: #ff324d; 
 }
