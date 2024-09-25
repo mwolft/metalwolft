@@ -23,7 +23,7 @@ export const MainNavbar = () => {
 
     const handleToggle = () => setExpanded(!expanded); // interructor de abrir y cerrar el menu
 
-    const handleSelect = () => setExpanded(false); // cierra el menu al hacer clickç
+    const handleSelect = () => setExpanded(false); // cierra el menu al hacer click
 
     return (
         <Navbar expand="lg" className="estilo-navbar fixed-top text-uppercase" data-bs-theme="light" expanded={expanded}>
@@ -36,7 +36,7 @@ export const MainNavbar = () => {
                     <Nav className="me-auto" onSelect={handleSelect}>
                         <Nav.Link as={Link} to="/" onClick={handleSelect}>Inicio</Nav.Link>
                         <NavDropdown title="Productos" id="trainer-nav-dropdown">
-                            <NavDropdown.Item as={Link} to="/generate-recipes" onClick={handleSelect}>Generar Receta</NavDropdown.Item>
+                            <NavDropdown.Item as={Link} to="/rejas-para-ventanas" onClick={handleSelect}>Rejas para ventanas</NavDropdown.Item>
                             <NavDropdown.Item as={Link} to="/generate-routines" onClick={handleSelect}>Generar Rutina</NavDropdown.Item>
                         </NavDropdown>
                         <Nav.Link as={Link} to="/bmr-calculator" onClick={handleSelect}>Blog</Nav.Link>

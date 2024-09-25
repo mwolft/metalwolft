@@ -14,12 +14,14 @@ import { BodyHomeTertiary } from "./component/BodyHomeTertiary.jsx";
 import { BodyHomeQuarter } from "./component/BodyHomeQuarter.jsx";
 import { CardsCarrusel } from "./component/CardsCarrusel.jsx";
 import { Carrusel } from "./component/Carrusel.jsx";
+import { Breadcrumb } from "./component/Breadcrumb.jsx";;
 // Custom pages
 import { Home } from "./pages/Home.jsx";
 import { Error404 } from "./pages/Error404.jsx";
 import { Login } from "./pages/Login.jsx";
 import { Profile } from "./pages/Profile.jsx";
-
+// Custom categories
+import { RejasParaVentanas } from "./pages/categories/RejasParaVentanas.jsx";
 // Create your first component
 const Layout = () => {
     // The basename is used when your project is published in a subdirectory and not in the root of the domain
@@ -44,6 +46,8 @@ const Layout = () => {
                         <Route element={<CardsCarrusel />} path="/cards-carrusel" />
                         <Route element={<Sidebar />} path='/Sidebar' />
                         <Route element={<Profile />} path='/Profile' />
+                        <Route element={<Breadcrumb />} path='/breadcrumb' />
+                        <Route element={<RejasParaVentanas />} path='/rejas-para-ventanas' />
                     </Routes>
                     <Footer />
             </BrowserRouter>
