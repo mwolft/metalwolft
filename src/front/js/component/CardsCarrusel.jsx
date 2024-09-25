@@ -6,7 +6,6 @@ import 'owl.carousel/dist/assets/owl.carousel.css';
 import 'owl.carousel/dist/assets/owl.theme.default.css';
 import albanyImage from "../../img/cards-carrusel/rejas-para-ventanas.avif";
 import Rating from 'react-rating'; 
-import "../../styles/home.css";
 
 export const CardsCarrusel = () => {
     const options = {
