@@ -14,7 +14,7 @@ export const Carrusel = () => {
     };
 
     return (
-        <Carousel data-bs-theme="dark"  style={{ marginTop: '65px' }}>
+        <Carousel data-bs-theme="dark" style={{ marginTop: '65px' }}>
             <Carousel.Item>
                 <div className="carrusel-background" style={{ backgroundImage: `url(${valladosCarrusel})` }}/>
                 <Carousel.Caption>
