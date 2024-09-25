@@ -6,6 +6,8 @@ import rejasHome from "../../img/home/body-home/rejas-para-ventanas-sencillas-y-
 import correderasHome from "../../img/home/body-home/puertas-correderas-automaticas-en-ciudad-real.avif";
 import valladosHome from "../../img/home/body-home/vallados-metalicos-exteriores-en-ciudad-real.avif";
 import peatonalesHome from "../../img/home/body-home/puertas-peatonales-en-ciudad-real.avif";
+import correderasInterioresHome from "../../img/home/body-home/puertas-correderas-interiores.avif";
+import cerramientoCocinaHome from "../../img/home/body-home/cerramiento-de-cocina-con-cristal.jpg";
 import { useNavigate } from "react-router-dom";
 
 export const BodyHomeSecondary = () => {
@@ -19,19 +21,16 @@ export const BodyHomeSecondary = () => {
             <div className="row">
                 <div className="col-12 col-sm-12 col-md-5 col-lg-5 col-xl-5 mt-2">
                     <Card className="text-white" style={{ height: '300px' }}>
-                        <div
-                            style={{
+                        <div style={{
                                 backgroundImage: `url(${rejasHome})`,
                                 backgroundSize: 'cover',
                                 backgroundPosition: 'center',
-                                height: '100%'
-                            }}
-                        >
+                                height: '100%'}}>
                             <Card.ImgOverlay className="m-3">
                                 <h2 className="h2-home">Rejas para Ventanas</h2>
                                 <p className="p-home">Diseño Moderno</p>
                                 <div className="my-5">
-                                    <Button className="btn-style-background-color">Explorar</Button>{' '}
+                                    <Button className="btn-style-background-color">Ir</Button>{' '}
                                 </div>
                             </Card.ImgOverlay>
                         </div>
@@ -39,19 +38,16 @@ export const BodyHomeSecondary = () => {
                 </div>
                 <div className="col-12 col-sm-12 col-md-7 col-lg-7 col-xl-7 mt-2">
                     <Card className="text-white" style={{ height: '300px' }}>
-                        <div
-                            style={{
+                        <div style={{
                                 backgroundImage: `url(${correderasHome})`,
                                 backgroundSize: 'cover',
                                 backgroundPosition: 'center',
-                                height: '100%'
-                            }}
-                        >
+                                height: '100%'}}>
                             <Card.ImgOverlay className="m-3">
                                 <h2 className="h2-home">Correderas Exteriores</h2>
                                 <p className="p-home">Automáticas</p>
                                 <div className="my-5">
-                                    <Button className="btn-style-background-color">Explorar</Button>{' '}
+                                    <Button className="btn-style-background-color">Descubrir</Button>{' '}
                                 </div>
                             </Card.ImgOverlay>
                         </div>
@@ -59,19 +55,16 @@ export const BodyHomeSecondary = () => {
                 </div>
                 <div className="col-12 col-sm-12 col-md-7 col-lg-7 col-xl-7 mt-2">
                     <Card className="text-white" style={{ height: '300px' }}>
-                        <div
-                            style={{
+                        <div style={{
                                 backgroundImage: `url(${valladosHome})`,
                                 backgroundSize: 'cover',
                                 backgroundPosition: 'center',
-                                height: '100%'
-                            }}
-                        >
+                                height: '100%'}}>
                             <Card.ImgOverlay className="m-3">
                                 <h2 className="h2-home">Vallados Metálicos</h2>
                                 <p className="p-home">Diseño innovador</p>
                                 <div className="my-5">
-                                    <Button className="btn-style-background-color">Explorar</Button>{' '}
+                                    <Button className="btn-style-background-color">Más</Button>{' '}
                                 </div>
                             </Card.ImgOverlay>
                         </div>
@@ -79,19 +72,50 @@ export const BodyHomeSecondary = () => {
                 </div>
                 <div className="col-12 col-sm-12 col-md-5 col-lg-5 col-xl-5 mt-2">
                     <Card className="text-white" style={{ height: '300px' }}>
-                        <div
-                            style={{
+                        <div style={{
                                 backgroundImage: `url(${peatonalesHome})`,
                                 backgroundSize: 'cover',
                                 backgroundPosition: 'center',
-                                height: '100%'
-                            }}
-                        >
+                                height: '100%'}}>
                             <Card.ImgOverlay className="m-3">
                                 <h2 className="h2-home">Puertas Peatonales</h2>
                                 <p className="p-home">A la Vanguardia</p>
                                 <div className="my-5">
+                                    <Button className="btn-style-background-color">Ver</Button>{' '}
+                                </div>
+                            </Card.ImgOverlay>
+                        </div>
+                    </Card>
+                </div>
+                <div className="col-12 col-sm-12 col-md-5 col-lg-5 col-xl-5 mt-2">
+                    <Card className="text-white" style={{ height: '300px' }}>
+                        <div style={{
+                                backgroundImage: `url(${correderasInterioresHome})`,
+                                backgroundSize: 'cover',
+                                backgroundPosition: 'center',
+                                height: '100%'}}>
+                            <Card.ImgOverlay className="m-3">
+                                <h2 className="h2-home">Puertas Correderas Interiores</h2>
+                                <p className="p-home">Con estilo</p>
+                                <div className="my-5">
                                     <Button className="btn-style-background-color">Explorar</Button>{' '}
+                                </div>
+                            </Card.ImgOverlay>
+                        </div>
+                    </Card>
+                </div>
+                <div className="col-12 col-sm-12 col-md-7 col-lg-7 col-xl-7 mt-2">
+                    <Card className="text-white" style={{ height: '300px' }}>
+                        <div style={{
+                                backgroundImage: `url(${cerramientoCocinaHome})`,
+                                backgroundSize: 'cover',
+                                backgroundPosition: 'center',
+                                height: '100%'}}>
+                            <Card.ImgOverlay className="m-3">
+                                <h2 className="h2-home">Cerramientos de Cocina</h2>
+                                <p className="p-home">Tendencias</p>
+                                <div className="my-5">
+                                    <Button className="btn-style-background-color">Investigar</Button>{' '}
                                 </div>
                             </Card.ImgOverlay>
                         </div>
