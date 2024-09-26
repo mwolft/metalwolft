@@ -16,6 +16,7 @@ import { CardsCarrusel } from "./component/CardsCarrusel.jsx";
 import { Carrusel } from "./component/Carrusel.jsx";
 import { Breadcrumb } from "./component/Breadcrumb.jsx";
 import { Product } from "./component/Product.jsx";
+import { AsideCategories } from "./component/AsideCategories.jsx";
 // Custom pages
 import { Home } from "./pages/Home.jsx";
 import { Error404 } from "./pages/Error404.jsx";
@@ -48,6 +49,7 @@ const Layout = () => {
                         <Route element={<CardsCarrusel />} path="/cards-carrusel" />
                         <Route element={<Sidebar />} path='/Sidebar' />
                         <Route element={<Profile />} path='/Profile' />
+                        <Route element={<AsideCategories />} path="/aside-categories" />
                         <Route element={<Breadcrumb />} path='/breadcrumb' />
                         <Route element={<RejasParaVentanas />} path='/rejas-para-ventanas' />
                     </Routes>
