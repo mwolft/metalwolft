@@ -47,7 +47,7 @@ export const Login = () => {
       actions.setCurrentUser(data.results);
       actions.setIsLoged(true);
       actions.setAlert({ visible: true, back: 'info', text: data.message });
-      navigate('/profile');
+      navigate('/');
     } else {
       if (password !== confirmPassword) {
         actions.setAlert({ visible: true, back: 'danger', text: 'Las contraseñas no coinciden' });
@@ -75,7 +75,7 @@ export const Login = () => {
       actions.setCurrentUser(data.results);
       actions.setIsLoged(true);
       actions.setAlert({ visible: true, back: 'info', text: data.message });
-      navigate('/profile');
+      navigate('/');
     }
   };
 
