@@ -1,8 +1,8 @@
 """empty message
 
-Revision ID: dfa732a15f57
+Revision ID: a6dc6b2572fb
 Revises: 
-Create Date: 2024-09-27 10:56:32.930873
+Create Date: 2024-09-28 07:32:09.995053
 
 """
 from alembic import op
@@ -10,7 +10,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision = 'dfa732a15f57'
+revision = 'a6dc6b2572fb'
 down_revision = None
 branch_labels = None
 depends_on = None
@@ -58,6 +58,10 @@ def upgrade():
     sa.Column('categoria_id', sa.Integer(), nullable=False),
     sa.Column('imagen', sa.String(length=200), nullable=True),
     sa.Column('stock', sa.Integer(), nullable=False),
+    sa.Column('alto', sa.Float(), nullable=False),
+    sa.Column('ancho', sa.Float(), nullable=False),
+    sa.Column('anclaje', sa.Enum('pared', 'suelo', 'mixto', name='anclaje_enum'), nullable=False),
+    sa.Column('color', sa.String(length=50), nullable=False),
     sa.ForeignKeyConstraint(['categoria_id'], ['categories.id'], ),
     sa.PrimaryKeyConstraint('id')
     )
@@ -74,6 +78,10 @@ def upgrade():
     sa.Column('order_id', sa.Integer(), nullable=False),
     sa.Column('product_id', sa.Integer(), nullable=False),
     sa.Column('quantity', sa.Integer(), nullable=False),
+    sa.Column('alto', sa.Float(), nullable=False),
+    sa.Column('ancho', sa.Float(), nullable=False),
+    sa.Column('anclaje', sa.Enum('pared', 'suelo', 'mixto', name='anclaje_enum'), nullable=False),
+    sa.Column('color', sa.String(length=50), nullable=False),
     sa.ForeignKeyConstraint(['order_id'], ['orders.id'], ),
     sa.ForeignKeyConstraint(['product_id'], ['products.id'], ),
     sa.PrimaryKeyConstraint('id')

@@ -1,10 +1,7 @@
-"""
-This module takes care of starting the API Server, Loading the DB and Adding the endpoints
-"""
 from flask import Flask, request, jsonify, url_for, Blueprint
 from api.utils import generate_sitemap, APIException
 from flask_cors import CORS
-from api.models import db, Users, Orders, OrderDetails
+from api.models import db, Users, Products, Orders, OrderDetails 
 from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity
 from dotenv import load_dotenv
 import json
@@ -58,93 +55,101 @@ def signup():
     data = request.json
     email = data.get('email')
     password = data.get('password')
+    firstname = data.get('firstname')
+    lastname = data.get('lastname')
+    shipping_address = data.get('shipping_address')
+    shipping_city = data.get('shipping_city')
+    shipping_postal_code = data.get('shipping_postal_code')
+    billing_address = data.get('billing_address')
+    billing_city = data.get('billing_city')
+    billing_postal_code = data.get('billing_postal_code')
+    CIF = data.get('CIF')
 
     if not email or not password:
         return jsonify({"message": "Email and password are required!"}), 400
 
-    # Verifica si el usuario ya existe
-    existing_user = db.session.execute(db.select(Users).where(Users.email == email)).scalar()
-    if existing_user:
-        return jsonify({"message": "User already exists!"}), 409
-
     new_user = Users(
         email=email,
         password=password,
-        rol='user',  # Asigna un rol predeterminado
-        is_active=True  # Si tienes un campo 'is_active'
+        firstname=firstname,
+        lastname=lastname,
+        rol='usuario',  # Establecer rol por defecto como 'usuario'
+        shipping_address=shipping_address,
+        shipping_city=shipping_city,
+        shipping_postal_code=shipping_postal_code,
+        billing_address=billing_address,
+        billing_city=billing_city,
+        billing_postal_code=billing_postal_code,
+        CIF=CIF
     )
-    
     db.session.add(new_user)
     db.session.commit()
-    
-    return jsonify({"message": "User created successfully!"}), 201
+
+    return jsonify(new_user.serialize()), 201
 
 
 @api.route('/users', methods=['GET'])
-def handle_users():
-    response_body = {}
-    if request.method == 'GET':
-        rows = db.session.execute(db.select(Users)).scalars()
-        results = []
-        for row in rows:
-            results.append(row.serialize())
-        response_body['results'] = results
-        response_body['message'] = "Lista de usuarios"
-        return response_body, 200
+@jwt_required()
+def get_users():
+    users = Users.query.all()
+    return jsonify([user.serialize() for user in users]), 200
 
 
-@api.route('/users/<int:user_id>', methods=['GET', 'PUT', 'DELETE'])
-@jwt_required()  
-def handle_user(user_id):
-    response_body = {}
-    current_user = get_jwt_identity()  
-    if current_user['user_id'] != user_id:
-        return jsonify({"message": "No autorizado para modificar este perfil"}), 403
+@api.route('/users/<int:user_id>', methods=['PUT'])
+@jwt_required()
+def update_user(user_id):
+    data = request.json
+    user = Users.query.get(user_id)
+    
+    if not user:
+        return jsonify({"message": "User not found!"}), 404
 
-    if request.method == 'GET':
-        row = db.session.execute(db.select(Users).where(Users.id == user_id)).scalar()
-        if not row:
-            response_body['results'] = {}
-            response_body['message'] = f'No existe el usuario {user_id}'
-            return response_body, 404
-        response_body['results'] = row.serialize()
-        response_body['message'] = f'Datos del usuario {user_id} obtenidos correctamente'
-        return response_body, 200
+    user.firstname = data.get('firstname', user.firstname)
+    user.lastname = data.get('lastname', user.lastname)
+    user.shipping_address = data.get('shipping_address', user.shipping_address)
+    user.shipping_city = data.get('shipping_city', user.shipping_city)
+    user.shipping_postal_code = data.get('shipping_postal_code', user.shipping_postal_code)
+    user.billing_address = data.get('billing_address', user.billing_address)
+    user.billing_city = data.get('billing_city', user.billing_city)
+    user.billing_postal_code = data.get('billing_postal_code', user.billing_postal_code)
+    user.CIF = data.get('CIF', user.CIF)
 
-    if request.method == 'PUT':
-        data = request.get_json()
-        user = db.session.execute(db.select(Users).where(Users.id == user_id)).scalar()
-        if not user:
-            response_body['results'] = {}
-            response_body['message'] = f'No existe el usuario {user_id}'
-            return response_body, 404
-        
-        user.email = data.get('email', user.email)
-        user.firstname = data.get('firstname', user.firstname)
-        user.lastname = data.get('lastname', user.lastname)
-        user.shipping_address = data.get('shipping_address', user.shipping_address)
-        user.shipping_city = data.get('shipping_city', user.shipping_city)
-        user.shipping_postal_code = data.get('shipping_postal_code', user.shipping_postal_code)
-        user.billing_address = data.get('billing_address', user.billing_address)
-        user.billing_city = data.get('billing_city', user.billing_city)
-        user.billing_postal_code = data.get('billing_postal_code', user.billing_postal_code)
-        user.CIF = data.get('CIF', user.CIF)
-        
-        db.session.commit()  
-        response_body['results'] = user.serialize()
-        response_body['message'] = f'Usuario {user_id} actualizado exitosamente'
-        return response_body, 200
+    db.session.commit()
+    return jsonify(user.serialize()), 200
 
-    if request.method == 'DELETE':
-        user = db.session.execute(db.select(Users).where(Users.id == user_id)).scalar()
-        if not user:
-            response_body['results'] = {}
-            response_body['message'] = f'No existe el usuario {user_id}'
-            return response_body, 404
-        db.session.delete(user)
-        db.session.commit()
-        response_body['message'] = f'Usuario {user_id} eliminado correctamente'
-        return response_body, 200
+
+@api.route('/users/<int:user_id>', methods=['DELETE'])
+@jwt_required()
+def delete_user(user_id):
+    user = Users.query.get(user_id)
+    
+    if not user:
+        return jsonify({"message": "User not found!"}), 404
+
+    db.session.delete(user)
+    db.session.commit()
+    return jsonify({"message": "User deleted!"}), 200
+    
+
+@api.route('/products', methods=['POST'])
+def add_product():
+    data = request.get_json()
+    new_product = Products(
+        nombre=data['nombre'],
+        descripcion=data['descripcion'],
+        precio=data['precio'],
+        categoria_id=data['categoria_id'],
+        imagen=data.get('imagen', None),
+        stock=data['stock'],
+        alto=data['alto'],
+        ancho=data['ancho'],
+        anclaje=data['anclaje'],
+        color=data['color']
+    )
+    db.session.add(new_product)
+    db.session.commit()
+
+    return jsonify({"message": "Product created successfully.", "product": new_product.serialize()}), 201
 
 
 @api.route('/orders', methods=['GET', 'POST'])
@@ -188,6 +193,25 @@ def handle_order(order_id):
         db.session.commit()
         response_body['message'] = 'Order deleted successfully.'
         return response_body, 200
+    
+
+@api.route('/orderdetails', methods=['POST'])
+@jwt_required()
+def add_order_detail():
+    data = request.get_json()
+    new_order_detail = OrderDetails(
+        order_id=data['order_id'],
+        product_id=data['product_id'],
+        quantity=data['quantity'],
+        alto=data['alto'],
+        ancho=data['ancho'],
+        anclaje=data['anclaje'],
+        color=data['color']
+    )
+    db.session.add(new_order_detail)
+    db.session.commit()
+
+    return jsonify({"message": "Order detail added successfully.", "order_detail": new_order_detail.serialize()}), 201
 
 
 @api.route('/orderdetails/<int:order_id>', methods=['GET', 'POST', 'DELETE'])
