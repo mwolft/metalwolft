@@ -5,6 +5,10 @@ from sqlalchemy import Enum
 db = SQLAlchemy()
 
 
+from flask_sqlalchemy import SQLAlchemy
+
+db = SQLAlchemy()
+
 class Users(db.Model):
     __tablename__ = 'users'
     id = db.Column(db.Integer, primary_key=True)
@@ -13,7 +17,7 @@ class Users(db.Model):
     firstname = db.Column(db.String(100), nullable=True)
     lastname = db.Column(db.String(100), nullable=True)
     is_active = db.Column(db.Boolean, default=True)
-    rol = db.Column(db.String(50), nullable=False)
+    is_admin = db.Column(db.Boolean, default=False)  # Nuevo campo para indicar si el usuario es administrador
     shipping_address = db.Column(db.String(200), nullable=True)
     shipping_city = db.Column(db.String(100), nullable=True)
     shipping_postal_code = db.Column(db.String(20), nullable=True)
@@ -32,7 +36,7 @@ class Users(db.Model):
             "lastname": self.lastname,
             "is_active": self.is_active,
             "email": self.email,
-            "rol": self.rol,
+            "is_admin": self.is_admin,  # Incluir el campo en la serialización
             "shipping_address": self.shipping_address,
             "shipping_city": self.shipping_city,
             "shipping_postal_code": self.shipping_postal_code,
@@ -41,6 +45,7 @@ class Users(db.Model):
             "billing_postal_code": self.billing_postal_code,
             "CIF": self.CIF,
         }
+
 
 
 class Products(db.Model):

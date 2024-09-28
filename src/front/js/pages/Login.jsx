@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { Row, Col, Container } from "react-bootstrap";
 
 export const Login = () => {
-  const { store, actions } = useContext(Context);
+  const { actions } = useContext(Context);
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -17,65 +17,61 @@ export const Login = () => {
 
   const handleSubmit = async (event) => {
     event.preventDefault();
+
+    const dataToSend = { email, password };
+    let uri, options;
+
     if (isLogin) {
-      const dataToSend = { email, password };
-      const uri = process.env.BACKEND_URL + '/api/login';
-      const options = {
-        method: 'POST',
-        body: JSON.stringify(dataToSend),
-        headers: {
-          'Content-Type': 'application/json'
-        }
-      };
-      const response = await fetch(uri, options);
-      if (!response.ok) {
-        console.log('Error: ', response.status, response.statusText);
-        if (response.status == 401) {
-          let alert = {
-            visible: true,
-            back: 'danger',
-            text: 'Usuario no encontrado'
-          };
-          actions.setAlert(alert);
-          setIsLogin(false)
-        }
-        return;
-      }
-      const data = await response.json();
-      localStorage.setItem("token", data.access_token);
-      localStorage.setItem("user", JSON.stringify(data.results));
-      actions.setCurrentUser(data.results);
-      actions.setIsLoged(true);
-      actions.setAlert({ visible: true, back: 'info', text: data.message });
-      navigate('/');
+      // Configuración para iniciar sesión
+      uri = process.env.BACKEND_URL + '/api/login';
     } else {
+      // Verificación de contraseñas coincidentes para el registro
       if (password !== confirmPassword) {
         actions.setAlert({ visible: true, back: 'danger', text: 'Las contraseñas no coinciden' });
         return;
       }
-      const dataToSend = { email, password };
-      const uri = process.env.BACKEND_URL + '/api/signup';
-      const options = {
-        method: 'POST',
-        body: JSON.stringify(dataToSend),
-        headers: {
-          'Content-Type': 'application/json'
-        }
-      };
+      // Configuración para registrarse
+      uri = process.env.BACKEND_URL + '/api/signup';
+    }
+
+    options = {
+      method: 'POST',
+      body: JSON.stringify(dataToSend),
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    };
+
+    try {
       const response = await fetch(uri, options);
+      const data = await response.json();
+
       if (!response.ok) {
-        console.log('Error: ', response.status, response.statusText);
-        const data = await response.json();
-        actions.setAlert({ visible: true, back: 'danger', text: data.message });
+        console.error('Error: ', response.status, response.statusText);
+        actions.setAlert({ visible: true, back: 'danger', text: data.message || 'Error al procesar la solicitud' });
         return;
       }
-      const data = await response.json();
-      localStorage.setItem("token", data.access_token);
-      localStorage.setItem("user", JSON.stringify(data.results));
-      actions.setCurrentUser(data.results);
-      actions.setIsLoged(true);
-      actions.setAlert({ visible: true, back: 'info', text: data.message });
-      navigate('/');
+
+      if (data.access_token && data.results) {
+        // Guardar el token y el usuario en localStorage solo si se recibe la respuesta correcta
+        localStorage.setItem("token", data.access_token);
+        localStorage.setItem("user", JSON.stringify(data.results));
+        actions.setCurrentUser(data.results);
+        actions.setIsLoged(true);
+        actions.setAlert({ visible: true, back: 'info', text: data.message || 'Inicio de sesión exitoso' });
+
+        // Redirigir dependiendo del rol
+        if (data.results.is_admin) {
+          navigate("/admin");
+        } else {
+          navigate("/");
+        }
+      } else {
+        actions.setAlert({ visible: true, back: 'danger', text: 'Datos incompletos en la respuesta del servidor' });
+      }
+    } catch (error) {
+      console.error('Error en el manejo del inicio de sesión:', error);
+      actions.setAlert({ visible: true, back: 'danger', text: 'Error inesperado, intenta más tarde' });
     }
   };
 
