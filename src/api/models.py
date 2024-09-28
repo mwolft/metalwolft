@@ -1,6 +1,7 @@
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import Enum
 
+
 db = SQLAlchemy()
 
 
@@ -21,7 +22,6 @@ class Users(db.Model):
     billing_postal_code = db.Column(db.String(20), nullable=True)
     CIF = db.Column(db.String(20), nullable=True)
 
-
     def __repr__(self):
         return f'<User {self.id}: {self.firstname} {self.lastname}>'
 
@@ -31,7 +31,7 @@ class Users(db.Model):
             "firstname": self.firstname,
             "lastname": self.lastname,
             "is_active": self.is_active,
-            "email": self.email,  # Campo email agregado a la serialización
+            "email": self.email,
             "rol": self.rol,
             "shipping_address": self.shipping_address,
             "shipping_city": self.shipping_city,
@@ -52,6 +52,11 @@ class Products(db.Model):
     categoria_id = db.Column(db.Integer, db.ForeignKey('categories.id'), nullable=False)
     imagen = db.Column(db.String(200), nullable=True)
     stock = db.Column(db.Integer, nullable=False, default=0)
+    
+    alto = db.Column(db.Float, nullable=False)  # Tamaño - Alto
+    ancho = db.Column(db.Float, nullable=False)  # Tamaño - Ancho
+    anclaje = db.Column(db.Enum('pared', 'suelo', 'mixto', name='anclaje_enum'), nullable=False)  # Tipo de anclaje
+    color = db.Column(db.String(50), nullable=False)  # Color
 
     def __repr__(self):
         return f'<Product {self.id}: {self.nombre}>'
@@ -64,7 +69,11 @@ class Products(db.Model):
             "precio": self.precio,
             "categoria_id": self.categoria_id,
             "imagen": self.imagen,
-            "stock": self.stock
+            "stock": self.stock,
+            "alto": self.alto,
+            "ancho": self.ancho,
+            "anclaje": self.anclaje,
+            "color": self.color,
         }
 
 
@@ -113,6 +122,11 @@ class OrderDetails(db.Model):
     product_id = db.Column(db.Integer, db.ForeignKey('products.id'), nullable=False)
     quantity = db.Column(db.Integer, nullable=False)
 
+    alto = db.Column(db.Float, nullable=False)
+    ancho = db.Column(db.Float, nullable=False)
+    anclaje = db.Column(db.Enum('pared', 'suelo', 'mixto', name='anclaje_enum'), nullable=False)
+    color = db.Column(db.String(50), nullable=False)
+
     order = db.relationship('Orders', backref='order_details', lazy=True)
     product = db.relationship('Products', backref='order_details', lazy=True)
 
@@ -125,6 +139,10 @@ class OrderDetails(db.Model):
             "order_id": self.order_id,
             "product_id": self.product_id,
             "quantity": self.quantity,
+            "alto": self.alto,
+            "ancho": self.ancho,
+            "anclaje": self.anclaje,
+            "color": self.color
         }
 
 
