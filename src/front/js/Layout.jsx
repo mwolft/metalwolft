@@ -22,42 +22,42 @@ import { Home } from "./pages/Home.jsx";
 import { Error404 } from "./pages/Error404.jsx";
 import { Login } from "./pages/Login.jsx";
 import { Profile } from "./pages/Profile.jsx";
+import AdminPanel from "./pages/AdminPanel.jsx";  
 // Custom categories
 import { RejasParaVentanas } from "./pages/categories/RejasParaVentanas.jsx";
+
 // Create your first component
 const Layout = () => {
-    // The basename is used when your project is published in a subdirectory and not in the root of the domain
-    // you can set the basename on the .env file located at the root of this project, E.g: BASENAME=/react-hello-webapp/
     const basename = process.env.BASENAME || "";
-    if(!process.env.BACKEND_URL || process.env.BACKEND_URL == "") return <BackendURL/ >;
+    if (!process.env.BACKEND_URL || process.env.BACKEND_URL === "") return <BackendURL />;
 
     return (
         <div className="d-flex flex-column min-vh-100 bg-white">
             <BrowserRouter basename={basename}>
                 <ScrollToTop />
-                    <MainNavbar />
-                    <Routes>
-                        <Route element={<Home />} path="/" />
-                        <Route element={<Carrusel />} path='/carrusel' />
-                        <Route element={<Error404/>} path='*'/>
-                        <Route element={<Login />} path='/login' />
-                        <Route element={<BodyHomeMain />} path='/body-home-main' />
-                        <Route element={<BodyHomeSecondary />} path='/body-home-secondary' />
-                        <Route element={<BodyHomeTertiary />} path='/body-home-tertiary' />
-                        <Route element={<BodyHomeQuarter />} path='/body-home-quarter' />
-                        <Route element={<Product />} path='/product' />
-                        <Route element={<CardsCarrusel />} path="/cards-carrusel" />
-                        <Route element={<Sidebar />} path='/Sidebar' />
-                        <Route element={<Profile />} path='/Profile' />
-                        <Route element={<AsideCategories />} path="/aside-categories" />
-                        <Route element={<Breadcrumb />} path='/breadcrumb' />
-                        <Route element={<RejasParaVentanas />} path='/rejas-para-ventanas' />
-                    </Routes>
-                    <Footer />
+                <MainNavbar />
+                <Routes>
+                    <Route element={<Home />} path="/" />
+                    <Route element={<Carrusel />} path="/carrusel" />
+                    <Route element={<Error404 />} path="*" />
+                    <Route element={<Login />} path="/login" />
+                    <Route element={<AdminPanel />} path="/admin/*" /> 
+                    <Route element={<BodyHomeMain />} path="/body-home-main" />
+                    <Route element={<BodyHomeSecondary />} path="/body-home-secondary" />
+                    <Route element={<BodyHomeTertiary />} path="/body-home-tertiary" />
+                    <Route element={<BodyHomeQuarter />} path="/body-home-quarter" />
+                    <Route element={<Product />} path="/product" />
+                    <Route element={<CardsCarrusel />} path="/cards-carrusel" />
+                    <Route element={<Sidebar />} path="/Sidebar" />
+                    <Route element={<Profile />} path="/profile" />
+                    <Route element={<AsideCategories />} path="/aside-categories" />
+                    <Route element={<Breadcrumb />} path="/breadcrumb" />
+                    <Route element={<RejasParaVentanas />} path="/rejas-para-ventanas" />
+                </Routes>
+                <Footer />
             </BrowserRouter>
         </div>
     );
 };
 
 export default injectContext(Layout);
-

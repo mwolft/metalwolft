@@ -16,7 +16,6 @@ def handle_hello():
     response_body['message'] = "Hello! I'm a message that came from the backend, check the network tab on the google inspector and you will see the GET request"
     return response_body, 200
 
-
 @api.route("/login", methods=["POST"])
 def login():
     response_body = {}
@@ -29,26 +28,11 @@ def login():
         return response_body, 401
     access_token = create_access_token(identity={'email': user.email, 
                                                  'user_id': user.id,
-                                                 "rol": user.rol})
+                                                 "is_admin": user.is_admin})
     response_body['results'] = user.serialize()
     response_body['message'] = 'Bienvenido'
     response_body['access_token'] = access_token
     return response_body, 201
-
-
-@api.route("/protected", methods=["GET"])
-@jwt_required()
-def protected():
-    response_body = {}
-    current_user = get_jwt_identity()  
-    if current_user:
-        response_body['message'] = f'Access granted {current_user["email"]}'
-        response_body['results'] = current_user
-        return response_body, 200
-    response_body['message'] = f'Access denied'
-    response_body['results'] = {}
-    return response_body, 403
-
 
 @api.route('/signup', methods=['POST'])
 def signup():
@@ -73,7 +57,7 @@ def signup():
         password=password,
         firstname=firstname,
         lastname=lastname,
-        rol='usuario',  # Establecer rol por defecto como 'usuario'
+        is_admin=False,  # Asigna is_admin como False por defecto
         shipping_address=shipping_address,
         shipping_city=shipping_city,
         shipping_postal_code=shipping_postal_code,
@@ -87,52 +71,91 @@ def signup():
 
     return jsonify(new_user.serialize()), 201
 
-
 @api.route('/users', methods=['GET'])
 @jwt_required()
 def get_users():
+    current_user = get_jwt_identity()
+    if not current_user.get("is_admin"):
+        return jsonify({"message": "Access forbidden: Admins only"}), 403
+
     users = Users.query.all()
     return jsonify([user.serialize() for user in users]), 200
 
+@api.route('/users', methods=['POST'])
+@jwt_required()
+def create_user():
+    current_user = get_jwt_identity()
+    if not current_user.get("is_admin"):
+        return jsonify({"message": "Access forbidden: Admins only"}), 403
+
+    data = request.json
+    new_user = Users(
+        email=data.get('email'),
+        password=data.get('password'),
+        firstname=data.get('firstname'),
+        lastname=data.get('lastname'),
+        is_admin=data.get('is_admin', False)
+    )
+    db.session.add(new_user)
+    db.session.commit()
+
+    return jsonify(new_user.serialize()), 201
+
+@api.route('/users/<int:user_id>', methods=['GET'])
+@jwt_required()
+def get_user(user_id):
+    current_user = get_jwt_identity()
+    if not current_user.get("is_admin"):
+        return jsonify({"message": "Access forbidden: Admins only"}), 403
+
+    user = Users.query.get(user_id)
+    if not user:
+        return jsonify({"message": "User not found"}), 404
+
+    return jsonify(user.serialize()), 200
 
 @api.route('/users/<int:user_id>', methods=['PUT'])
 @jwt_required()
 def update_user(user_id):
-    data = request.json
+    current_user = get_jwt_identity()
+    if not current_user.get("is_admin"):
+        return jsonify({"message": "Access forbidden: Admins only"}), 403
+
     user = Users.query.get(user_id)
-    
     if not user:
         return jsonify({"message": "User not found!"}), 404
 
+    data = request.json
     user.firstname = data.get('firstname', user.firstname)
     user.lastname = data.get('lastname', user.lastname)
-    user.shipping_address = data.get('shipping_address', user.shipping_address)
-    user.shipping_city = data.get('shipping_city', user.shipping_city)
-    user.shipping_postal_code = data.get('shipping_postal_code', user.shipping_postal_code)
-    user.billing_address = data.get('billing_address', user.billing_address)
-    user.billing_city = data.get('billing_city', user.billing_city)
-    user.billing_postal_code = data.get('billing_postal_code', user.billing_postal_code)
-    user.CIF = data.get('CIF', user.CIF)
+    user.email = data.get('email', user.email)
+    user.is_admin = data.get('is_admin', user.is_admin)
 
     db.session.commit()
     return jsonify(user.serialize()), 200
 
-
 @api.route('/users/<int:user_id>', methods=['DELETE'])
 @jwt_required()
 def delete_user(user_id):
+    current_user = get_jwt_identity()
+    if not current_user.get("is_admin"):
+        return jsonify({"message": "Access forbidden: Admins only"}), 403
+
     user = Users.query.get(user_id)
-    
     if not user:
         return jsonify({"message": "User not found!"}), 404
 
     db.session.delete(user)
     db.session.commit()
     return jsonify({"message": "User deleted!"}), 200
-    
 
 @api.route('/products', methods=['POST'])
+@jwt_required()
 def add_product():
+    current_user = get_jwt_identity()
+    if not current_user.get("is_admin"):
+        return jsonify({"message": "Access forbidden: Admins only"}), 403
+
     data = request.get_json()
     new_product = Products(
         nombre=data['nombre'],
@@ -151,7 +174,7 @@ def add_product():
 
     return jsonify({"message": "Product created successfully.", "product": new_product.serialize()}), 201
 
-
+# Mantén las rutas existentes para pedidos y detalles de pedidos, como en tu archivo original
 @api.route('/orders', methods=['GET', 'POST'])
 @jwt_required()
 def handle_orders():

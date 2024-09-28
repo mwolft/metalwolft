@@ -45,11 +45,18 @@ export const MainNavbar = () => {
                     </Nav>
                     <Nav className="ms-auto" onSelect={handleSelect}>
                         {store.isLoged ? (
-                            <NavDropdown title={<i className="fa-solid fa-user"></i>} id="user-nav-dropdown" align="end">
-                                <NavDropdown.Item as={Link} to="/profile" onClick={handleSelect}>Perfil</NavDropdown.Item>
-                                <NavDropdown.Divider />
-                                <NavDropdown.Item onClick={handleLogout}>Cerrar sesión</NavDropdown.Item>
-                            </NavDropdown>
+                            <>
+                                {store.currentUser && store.currentUser.is_admin && (
+                                    <Nav.Link as={Link} to="/admin" onClick={handleSelect}>
+                                        Administración
+                                    </Nav.Link>
+                                )}
+                                <NavDropdown title={<i className="fa-solid fa-user"></i>} id="user-nav-dropdown" align="end">
+                                    <NavDropdown.Item as={Link} to="/profile" onClick={handleSelect}>Perfil</NavDropdown.Item>
+                                    <NavDropdown.Divider />
+                                    <NavDropdown.Item onClick={handleLogout}>Cerrar sesión</NavDropdown.Item>
+                                </NavDropdown>
+                            </>
                         ) : (
                             <Button variant="outline-dark mx-1" onClick={() => { setExpanded(false); navigate("/login"); }}>
                                 <i className="fa-solid fa-user-plus"></i>

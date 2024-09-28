@@ -4,6 +4,7 @@ const getState = ({ getStore, getActions, setStore }) => {
             message: null,
             currentUser: null,
             isLoged: false,
+            isAdmin: false,  // Nuevo campo para indicar si el usuario es administrador
             alert: { visible: false, back: 'danger', text: 'Mensaje del back' },
             generatedRecipe: null,
             recipeId: null,  // Added to store the generated recipe ID
@@ -31,10 +32,14 @@ const getState = ({ getStore, getActions, setStore }) => {
                 }
             },
 
-			setCurrentUser: (user) => {
-				setStore({ currentUser: user });
-			},
-			updateUserProfile: async (userId, updatedData) => {
+            setCurrentUser: (user) => {
+                setStore({
+                    currentUser: user,
+                    isAdmin: user?.is_admin || false // Actualizar el estado de administrador según el usuario
+                });
+            },
+
+            updateUserProfile: async (userId, updatedData) => {
                 const store = getStore();
                 try {
                     const response = await fetch(`${process.env.BACKEND_URL}/api/users/${userId}`, {
@@ -48,22 +53,27 @@ const getState = ({ getStore, getActions, setStore }) => {
                     if (!response.ok) throw new Error("Error al actualizar el perfil");
 
                     const data = await response.json();
-                    setStore({ currentUser: data.results }); 
+                    setStore({ currentUser: data.results });
                     return { ok: true };
                 } catch (error) {
                     setStore({ error: error.message });
                     return { ok: false };
                 }
             },
-			setIsLoged: (isLogin) => {
-				if (isLogin) {
-					setStore({ isLoged: true });
-				} else {
-					setStore({ isLoged: false });
-					localStorage.removeItem("token");
-					localStorage.removeItem("user");
-				}
-			},
+
+            setIsLoged: (isLogin) => {
+                if (isLogin) {
+                    setStore({ isLoged: true });
+                } else {
+                    setStore({ isLoged: false, isAdmin: false });  // Restablecer isAdmin al cerrar sesión
+                    localStorage.removeItem("token");
+                    localStorage.removeItem("user");
+                }
+            },
+
+            setIsAdmin: (isAdmin) => {
+                setStore({ isAdmin });
+            },
 
             setAlert: (newAlert) => {
                 setStore({ alert: newAlert });
