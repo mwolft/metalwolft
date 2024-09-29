@@ -53,14 +53,8 @@ class Products(db.Model):
     nombre = db.Column(db.String(100), nullable=False)
     descripcion = db.Column(db.Text, nullable=False)
     precio = db.Column(db.Float, nullable=False)
-    categoria_id = db.Column(db.Integer, db.ForeignKey('categories.id'), nullable=True)  # Hacer que sea opcional
+    categoria_id = db.Column(db.Integer, db.ForeignKey('categories.id'), nullable=True)
     imagen = db.Column(db.String(200), nullable=True)
-    stock = db.Column(db.Integer, nullable=False, default=0)
-    alto = db.Column(db.Float, nullable=True)  # Cambiar a opcional
-    ancho = db.Column(db.Float, nullable=True)  # Cambiar a opcional
-    anclaje = db.Column(db.Enum('pared', 'suelo', 'mixto', name='anclaje_enum'), nullable=True)  # Cambiar a opcional
-    color = db.Column(db.String(50), nullable=True)  # Cambiar a opcional
-
 
     def __repr__(self):
         return f'<Product {self.id}: {self.nombre}>'
@@ -73,11 +67,6 @@ class Products(db.Model):
             "precio": self.precio,
             "categoria_id": self.categoria_id,
             "imagen": self.imagen,
-            "stock": self.stock,
-            "alto": self.alto,
-            "ancho": self.ancho,
-            "anclaje": self.anclaje,
-            "color": self.color,
         }
 
 
@@ -126,17 +115,13 @@ class OrderDetails(db.Model):
     order_id = db.Column(db.Integer, db.ForeignKey('orders.id'), nullable=False)
     product_id = db.Column(db.Integer, db.ForeignKey('products.id'), nullable=False)
     quantity = db.Column(db.Integer, nullable=False)
-
-    alto = db.Column(db.Float, nullable=False)
-    ancho = db.Column(db.Float, nullable=False)
-    anclaje = db.Column(db.Enum('pared', 'suelo', 'mixto', name='anclaje_enum'), nullable=False)
-    color = db.Column(db.String(50), nullable=False)
-
-    order = db.relationship('Orders', backref='order_details', lazy=True)
-    product = db.relationship('Products', backref='order_details', lazy=True)
+    alto = db.Column(db.Float, nullable=True)  # Tamaño - Alto (opcional)
+    ancho = db.Column(db.Float, nullable=True)  # Tamaño - Ancho (opcional)
+    anclaje = db.Column(db.Enum('pared', 'suelo', 'mixto', name='anclaje_enum'), nullable=True)  # Tipo de anclaje (opcional)
+    color = db.Column(db.String(50), nullable=True)  # Color (opcional)
 
     def __repr__(self):
-        return f'<OrderDetail {self.id} for Order {self.order_id}>'
+        return f'<OrderDetail {self.id}: Order {self.order_id} - Product {self.product_id}>'
 
     def serialize(self):
         return {
@@ -147,7 +132,7 @@ class OrderDetails(db.Model):
             "alto": self.alto,
             "ancho": self.ancho,
             "anclaje": self.anclaje,
-            "color": self.color
+            "color": self.color,
         }
 
 
