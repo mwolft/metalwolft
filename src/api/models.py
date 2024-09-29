@@ -47,21 +47,20 @@ class Users(db.Model):
         }
 
 
-
 class Products(db.Model):
     __tablename__ = "products"
     id = db.Column(db.Integer, primary_key=True)
     nombre = db.Column(db.String(100), nullable=False)
     descripcion = db.Column(db.Text, nullable=False)
     precio = db.Column(db.Float, nullable=False)
-    categoria_id = db.Column(db.Integer, db.ForeignKey('categories.id'), nullable=False)
+    categoria_id = db.Column(db.Integer, db.ForeignKey('categories.id'), nullable=True)  # Hacer que sea opcional
     imagen = db.Column(db.String(200), nullable=True)
     stock = db.Column(db.Integer, nullable=False, default=0)
-    
-    alto = db.Column(db.Float, nullable=False)  # Tamaño - Alto
-    ancho = db.Column(db.Float, nullable=False)  # Tamaño - Ancho
-    anclaje = db.Column(db.Enum('pared', 'suelo', 'mixto', name='anclaje_enum'), nullable=False)  # Tipo de anclaje
-    color = db.Column(db.String(50), nullable=False)  # Color
+    alto = db.Column(db.Float, nullable=True)  # Cambiar a opcional
+    ancho = db.Column(db.Float, nullable=True)  # Cambiar a opcional
+    anclaje = db.Column(db.Enum('pared', 'suelo', 'mixto', name='anclaje_enum'), nullable=True)  # Cambiar a opcional
+    color = db.Column(db.String(50), nullable=True)  # Cambiar a opcional
+
 
     def __repr__(self):
         return f'<Product {self.id}: {self.nombre}>'
@@ -87,6 +86,7 @@ class Categories(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     nombre = db.Column(db.String(100), nullable=False)
     descripcion = db.Column(db.Text, nullable=True)
+    products = db.relationship('Products', backref='categoria', lazy=True)
 
     def __repr__(self):
         return f'<Category {self.id}: {self.nombre}>'
