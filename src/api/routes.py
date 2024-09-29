@@ -1,14 +1,17 @@
 from flask import Flask, request, jsonify, url_for, Blueprint
 from api.utils import generate_sitemap, APIException
 from flask_cors import CORS
-from api.models import db, Users, Products, Orders, OrderDetails 
+from api.models import db, Users, Products, Orders, OrderDetails
 from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity
 from dotenv import load_dotenv
 import json
 import os
 import requests
 
+# Definir el blueprint
 api = Blueprint('api', __name__)
+CORS(api, resources={r"/*": {"origins": "*"}})
+
 
 @api.route('/hello', methods=['GET'])
 def handle_hello():
@@ -71,6 +74,8 @@ def signup():
 
     return jsonify(new_user.serialize()), 201
 
+
+# Obtener todos los usuarios (GET)
 @api.route('/users', methods=['GET'])
 @jwt_required()
 def get_users():
@@ -79,8 +84,14 @@ def get_users():
         return jsonify({"message": "Access forbidden: Admins only"}), 403
 
     users = Users.query.all()
-    return jsonify([user.serialize() for user in users]), 200
+    total_count = len(users)
 
+    response = jsonify([user.serialize() for user in users])
+    response.headers['X-Total-Count'] = total_count
+    response.headers['Access-Control-Expose-Headers'] = 'X-Total-Count'
+    return response, 200
+
+# Crear un usuario (POST)
 @api.route('/users', methods=['POST'])
 @jwt_required()
 def create_user():
@@ -101,6 +112,7 @@ def create_user():
 
     return jsonify(new_user.serialize()), 201
 
+# Obtener un usuario específico (GET)
 @api.route('/users/<int:user_id>', methods=['GET'])
 @jwt_required()
 def get_user(user_id):
@@ -114,6 +126,7 @@ def get_user(user_id):
 
     return jsonify(user.serialize()), 200
 
+# Actualizar un usuario específico (PUT)
 @api.route('/users/<int:user_id>', methods=['PUT'])
 @jwt_required()
 def update_user(user_id):
@@ -134,6 +147,7 @@ def update_user(user_id):
     db.session.commit()
     return jsonify(user.serialize()), 200
 
+# Eliminar un usuario específico (DELETE)
 @api.route('/users/<int:user_id>', methods=['DELETE'])
 @jwt_required()
 def delete_user(user_id):
@@ -148,6 +162,7 @@ def delete_user(user_id):
     db.session.delete(user)
     db.session.commit()
     return jsonify({"message": "User deleted!"}), 200
+
 
 @api.route('/products', methods=['POST'])
 @jwt_required()
