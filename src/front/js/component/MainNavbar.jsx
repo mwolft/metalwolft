@@ -12,18 +12,17 @@ import '../../styles/navbar.css';
 
 export const MainNavbar = () => {
     const { store, actions } = useContext(Context);
-    const [expanded, setExpanded] = useState(false); // controla el estado del nav
+    const [expanded, setExpanded] = useState(false);
     const navigate = useNavigate();
 
     const handleLogout = () => {
         actions.setIsLoged(false);
-        setExpanded(false); // cierra el nav al salir
-        navigate("/"); // y redirige a la home
+        setExpanded(false);
+        navigate("/"); // Redirige a la home después del logout
     };
 
-    const handleToggle = () => setExpanded(!expanded); // interructor de abrir y cerrar el menu
-
-    const handleSelect = () => setExpanded(false); // cierra el menu al hacer click
+    const handleToggle = () => setExpanded(!expanded); // Alterna el estado de expandir/cerrar el menú
+    const handleSelect = () => setExpanded(false); // Cierra el menú al hacer clic
 
     return (
         <Navbar expand="lg" className="estilo-navbar fixed-top text-uppercase" data-bs-theme="light" expanded={expanded}>
@@ -46,7 +45,7 @@ export const MainNavbar = () => {
                     <Nav className="ms-auto" onSelect={handleSelect}>
                         {store.isLoged ? (
                             <>
-                                {store.currentUser && store.currentUser.is_admin && (
+                                {store.currentUser?.is_admin && (
                                     <Nav.Link as={Link} to="/admin" onClick={handleSelect}>
                                         Administración
                                     </Nav.Link>
