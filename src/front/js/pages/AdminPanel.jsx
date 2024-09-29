@@ -3,10 +3,12 @@ import { Admin, Resource } from "react-admin";
 import jsonServerProvider from "ra-data-json-server";
 import { fetchUtils } from 'ra-core';
 import { useNavigate } from "react-router-dom";
-import { UserList } from "../component/admin/users/users.js";
-import { ProductList } from "../component/admin/products/products.js";
-import { OrderList } from "../component/admin/orders/orders.js";
+import { UserList, UserEdit, UserCreate } from "../component/admin/users/users.js";
+import { ProductList, ProductEdit, ProductCreate } from "../component/admin/products/products.js";
+import { OrderList, OrderEdit, OrderCreate } from "../component/admin/orders/orders.js";
 import { authProvider } from "../authProvider.js";
+import { FaUser, FaBoxOpen, FaShoppingCart } from 'react-icons/fa';
+import '../../styles/admin-panel.css'; 
 
 // Crear una función de cliente personalizado para agregar el token al header de cada solicitud
 const httpClient = (url, options = {}) => {
@@ -43,17 +45,46 @@ const AdminPanel = () => {
   }
 
   return (
-    <div style={{ marginTop: '100px' }}>
-      <Admin
-        dataProvider={dataProvider}
-        authProvider={authProvider}
-        title="Admin Panel"
-        basename="/admin"
-      >
-        <Resource name="users" list={UserList} />
-        <Resource name="products" list={ProductList} />
-        <Resource name="orders" list={OrderList} />
-      </Admin>
+    <div className="admin-container" style={{ marginTop: '85px', paddingBottom: '50px' }}>
+      <div className="admin-row">
+        <div className="admin-column">
+          <div className="admin-box">
+            <div className="admin-header">
+              <h3 className="text-center">Admin Panel</h3>
+            </div>
+            <div className="admin-body">
+              <Admin
+                dataProvider={dataProvider}
+                authProvider={authProvider}
+                title="Admin Panel"
+                basename="/admin"
+              >
+                <Resource
+                  name="users"
+                  list={UserList}
+                  edit={UserEdit}
+                  create={UserCreate}
+                  icon={() => <FaUser size={24} />}
+                />
+                <Resource
+                  name="products"
+                  list={ProductList}
+                  edit={ProductEdit}
+                  create={ProductCreate}
+                  icon={() => <FaBoxOpen size={24} />}
+                />
+                <Resource
+                  name="orders"
+                  list={OrderList}
+                  edit={OrderEdit}
+                  create={OrderCreate}
+                  icon={() => <FaShoppingCart size={24} />}
+                />
+              </Admin>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   );
 };

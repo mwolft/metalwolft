@@ -304,3 +304,22 @@ def handle_order(order_id):
         response = jsonify({"message": "Order deleted successfully."})
         response.headers['Access-Control-Allow-Origin'] = '*'
         return response, 200
+
+
+@api.route('/orderdetails', methods=['POST'])
+@jwt_required()
+def add_order_detail():
+    data = request.get_json()
+    new_order_detail = OrderDetails(
+        order_id=data['order_id'],
+        product_id=data['product_id'],
+        quantity=data['quantity'],
+        alto=data.get('alto'),  # Opcional
+        ancho=data.get('ancho'),  # Opcional
+        anclaje=data.get('anclaje'),  # Opcional
+        color=data.get('color')  # Opcional
+    )
+    db.session.add(new_order_detail)
+    db.session.commit()
+
+    return jsonify({"message": "Order detail added successfully.", "order_detail": new_order_detail.serialize()}), 201

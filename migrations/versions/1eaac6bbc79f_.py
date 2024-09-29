@@ -1,8 +1,8 @@
 """empty message
 
-Revision ID: e577a15f93bd
+Revision ID: 1eaac6bbc79f
 Revises: 
-Create Date: 2024-09-29 14:19:47.994864
+Create Date: 2024-09-29 16:10:39.172398
 
 """
 from alembic import op
@@ -10,7 +10,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision = 'e577a15f93bd'
+revision = '1eaac6bbc79f'
 down_revision = None
 branch_labels = None
 depends_on = None
@@ -55,13 +55,8 @@ def upgrade():
     sa.Column('nombre', sa.String(length=100), nullable=False),
     sa.Column('descripcion', sa.Text(), nullable=False),
     sa.Column('precio', sa.Float(), nullable=False),
-    sa.Column('categoria_id', sa.Integer(), nullable=False),
+    sa.Column('categoria_id', sa.Integer(), nullable=True),
     sa.Column('imagen', sa.String(length=200), nullable=True),
-    sa.Column('stock', sa.Integer(), nullable=False),
-    sa.Column('alto', sa.Float(), nullable=True),
-    sa.Column('ancho', sa.Float(), nullable=True),
-    sa.Column('anclaje', sa.Enum('pared', 'suelo', 'mixto', name='anclaje_enum'), nullable=True),
-    sa.Column('color', sa.String(length=50), nullable=True),
     sa.ForeignKeyConstraint(['categoria_id'], ['categories.id'], ),
     sa.PrimaryKeyConstraint('id')
     )
@@ -78,10 +73,10 @@ def upgrade():
     sa.Column('order_id', sa.Integer(), nullable=False),
     sa.Column('product_id', sa.Integer(), nullable=False),
     sa.Column('quantity', sa.Integer(), nullable=False),
-    sa.Column('alto', sa.Float(), nullable=False),
-    sa.Column('ancho', sa.Float(), nullable=False),
-    sa.Column('anclaje', sa.Enum('pared', 'suelo', 'mixto', name='anclaje_enum'), nullable=False),
-    sa.Column('color', sa.String(length=50), nullable=False),
+    sa.Column('alto', sa.Float(), nullable=True),
+    sa.Column('ancho', sa.Float(), nullable=True),
+    sa.Column('anclaje', sa.Enum('pared', 'suelo', 'mixto', name='anclaje_enum'), nullable=True),
+    sa.Column('color', sa.String(length=50), nullable=True),
     sa.ForeignKeyConstraint(['order_id'], ['orders.id'], ),
     sa.ForeignKeyConstraint(['product_id'], ['products.id'], ),
     sa.PrimaryKeyConstraint('id')
