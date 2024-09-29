@@ -147,6 +147,18 @@ def delete_user(user_id):
     response.headers['Access-Control-Allow-Origin'] = '*'
     return response, 200
 
+
+@api.route('/categories', methods=['GET'])
+def get_categories():
+    categories = Categories.query.all()
+    total_count = len(categories)
+
+    response = jsonify([category.serialize() for category in categories])
+    response.headers['X-Total-Count'] = total_count
+    response.headers['Access-Control-Expose-Headers'] = 'X-Total-Count'
+    return response, 200
+
+
 # Obtener todos los productos (GET)
 @api.route('/products', methods=['GET'])
 @jwt_required()
@@ -164,7 +176,6 @@ def get_products():
     response.headers['Access-Control-Allow-Origin'] = '*'
     return response, 200
 
-# Crear un producto (POST)
 @api.route('/products', methods=['POST'])
 @jwt_required()
 def add_product():
@@ -173,24 +184,32 @@ def add_product():
         return jsonify({"message": "Access forbidden: Admins only"}), 403
 
     data = request.get_json()
+    # Obtener una categoría predeterminada si no se proporciona
+    categoria_id = data.get('categoria_id')
+    if not categoria_id:
+        default_category = Categories.query.first()  # Escoge la primera categoría o una predeterminada específica
+        if default_category:
+            categoria_id = default_category.id
+        else:
+            return jsonify({"message": "No hay una categoría disponible. Debe crear al menos una categoría."}), 400
+
     new_product = Products(
         nombre=data['nombre'],
         descripcion=data['descripcion'],
         precio=data['precio'],
-        categoria_id=data['categoria_id'],
+        categoria_id=categoria_id,
         imagen=data.get('imagen', None),
-        stock=data['stock'],
-        alto=data['alto'],
-        ancho=data['ancho'],
-        anclaje=data['anclaje'],
-        color=data['color']
+        stock=data.get('stock', 0),
+        alto=data.get('alto'),
+        ancho=data.get('ancho'),
+        anclaje=data.get('anclaje'),
+        color=data.get('color')
     )
     db.session.add(new_product)
     db.session.commit()
 
-    response = jsonify({"message": "Product created successfully.", "product": new_product.serialize()})
-    response.headers['Access-Control-Allow-Origin'] = '*'
-    return response, 201
+    return jsonify({"message": "Product created successfully.", "product": new_product.serialize()}), 201
+
 
 # Obtener, actualizar o eliminar un producto específico
 @api.route('/products/<int:product_id>', methods=['GET', 'PUT', 'DELETE'])
