@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from "react";
 import getState from "./flux.js";
 
-// Don't change, here is where we initialize our context, by default it's just going to be null.
+// Inicializamos nuestro contexto, por defecto será null.
 export const Context = React.createContext(null);
 
-// This function injects the global store to any view/component where you want to use it
+// Esta función inyecta el store global a cualquier vista/componente donde se necesite usar.
 const injectContext = PassedComponent => {
     const StoreWrapper = props => {
-        // This will be passed as the context value
+        // Este será el valor que se pasa como contexto.
         const [state, setState] = useState(
             getState({
                 getStore: () => state.store,
@@ -21,16 +21,13 @@ const injectContext = PassedComponent => {
         );
 
         useEffect(() => {
-            state.actions.getMessage();  // Calling this function from the flux.js actions
+            state.actions.getMessage();  // Llama a esta función desde las acciones de flux.
 
-            // Check if the user is already logged in by checking localStorage
+            // Revisa si el usuario ya está logueado comprobando el localStorage.
             const storedUser = localStorage.getItem('user');
             const token = localStorage.getItem('token');
 
-            console.log("Token from localStorage:", token);
-            console.log("User from localStorage:", storedUser);
-
-            // Parse only if token and user are valid
+            // Parseamos solo si el token y el usuario son válidos.
             if (token && storedUser && storedUser !== 'undefined') {
                 try {
                     const user = JSON.parse(storedUser);
@@ -40,10 +37,8 @@ const injectContext = PassedComponent => {
                         state.actions.setIsAdmin(user.is_admin);
                     }
                 } catch (error) {
-                    console.error("Error parsing user data from localStorage:", error);
+                    console.error("Error al parsear los datos del usuario desde localStorage:", error);
                 }
-            } else {
-                console.warn("No valid user data found in localStorage or user is 'undefined'.");
             }
         }, []);
 
