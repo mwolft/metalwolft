@@ -1,7 +1,7 @@
 import React from "react";
 import { List, Datagrid, TextField, EditButton, DeleteButton, Edit, SimpleForm, TextInput, NumberInput, Create } from "react-admin";
 
-// Lista de pedidos: muestra todos los pedidos
+// Lista de pedidos
 export const OrderList = (props) => (
   <List {...props}>
     <Datagrid>
