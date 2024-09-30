@@ -50,16 +50,16 @@ export const MainNavbar = () => {
                                         Administración
                                     </Nav.Link>
                                 )}
-                                <NavDropdown title={<i className="fa-solid fa-user"></i>} id="user-nav-dropdown" align="end">
-                                    <NavDropdown.Item as={Link} to="/profile" onClick={handleSelect}>Perfil</NavDropdown.Item>
-                                    <NavDropdown.Divider />
-                                    <NavDropdown.Item onClick={handleLogout}>Cerrar sesión</NavDropdown.Item>
-                                </NavDropdown>
+                                <Nav.Link onClick={handleLogout} className="d-flex align-items-center">
+                                    <i className="fa-solid fa-right-to-bracket fa-lg me-2"></i>
+                                    <p className="small mb-0">Salir</p>
+                                </Nav.Link>
                             </>
                         ) : (
-                            <Button variant="outline-dark mx-1" onClick={() => { setExpanded(false); navigate("/login"); }}>
-                                <i className="fa-solid fa-user-plus"></i>
-                            </Button>
+                            <Nav.Link onClick={() => { setExpanded(false); navigate("/login"); }} className="d-flex align-items-center">
+                                <i className="fa-solid fa-user-plus fa-lg me-2"></i>
+                                <p className="small mb-0"></p>
+                            </Nav.Link>
                         )}
                     </Nav>
                 </Navbar.Collapse>
