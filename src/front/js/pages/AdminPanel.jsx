@@ -62,28 +62,28 @@ const AdminPanel = () => {
             list={UserList}
             edit={UserEdit}
             create={UserCreate}
-            icon={() => <FaUser size={24} />}
+            icon={() => <FaUser size={19} />}
           />
           <Resource
             name="products"
             list={ProductList}
             edit={ProductEdit}
             create={ProductCreate}
-            icon={() => <FaBoxOpen size={24} />}
+            icon={() => <FaBoxOpen size={19} />}
           />
           <Resource
             name="orders"
             list={OrderList}
             edit={OrderEdit}
             create={OrderCreate}
-            icon={() => <FaShoppingCart size={24} />}
+            icon={() => <FaShoppingCart size={19} />}
           />
           <Resource
             name="product_images"
             list={ProductImagesList}
             edit={ProductImagesEdit}
             create={ProductImagesCreate}
-            icon={() => <FaImages size={24} />}
+            icon={() => <FaImages size={19} />}
           />
         </Admin>
       </div>
