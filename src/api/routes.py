@@ -313,6 +313,25 @@ def add_product_images(product_id):
         return jsonify({"message": "An error occurred while adding images.", "error": str(e)}), 500
 
 
+@api.route('/product_images', methods=['GET'])
+@jwt_required()
+def get_product_images():
+    current_user = get_jwt_identity()
+    if not current_user.get("is_admin"):
+        return jsonify({"message": "Access forbidden: Admins only"}), 403
+
+    # Obtener todas las imágenes de productos
+    product_images = ProductImages.query.all()
+    total_count = len(product_images)
+
+    # Preparar la respuesta con las imágenes serializadas
+    response = jsonify([image.serialize() for image in product_images])
+    response.headers['X-Total-Count'] = total_count
+    response.headers['Access-Control-Expose-Headers'] = 'X-Total-Count, Authorization'
+    response.headers['Access-Control-Allow-Origin'] = '*'
+    return response, 200
+
+
 @api.route('/orders', methods=['GET', 'POST'])
 @jwt_required()
 def handle_orders():
