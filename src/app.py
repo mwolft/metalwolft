@@ -17,7 +17,7 @@ app = Flask(__name__)
 app.url_map.strict_slashes = False
 
 
-CORS(app, resources={r"/*": {"origins": "*"}}, supports_credentials=True)
+CORS(app, resources={r"/*": {"origins": "*"}}, supports_credentials=True, allow_headers=["Content-Type", "Authorization"])
 
 
 # Database configuration

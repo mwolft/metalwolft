@@ -14,47 +14,112 @@ def handle_hello():
     return jsonify({"message": "Hello! I'm a message from the backend"}), 200
 
 
-@api.route("/login", methods=["POST"])
+@api.route("/login", methods=["OPTIONS", "POST"])
 def login():
+    if request.method == "OPTIONS":
+        # Manejar el preflight de CORS
+        response = jsonify({"message": "Preflight request successful"})
+        response.headers.add("Access-Control-Allow-Origin", "*")
+        response.headers.add("Access-Control-Allow-Headers", "Content-Type, Authorization")
+        response.headers.add("Access-Control-Allow-Methods", "POST, OPTIONS")
+        return response, 200
+
+    # Lógica de inicio de sesión
     data = request.json
-    email = data.get("email")
-    password = data.get("password")
+    email = data.get("email", None)
+    password = data.get("password", None)
 
     user = db.session.execute(db.select(Users).where(Users.email == email)).scalar()
     if not user or not bcrypt.checkpw(password.encode('utf-8'), user.password.encode('utf-8')):
-        return jsonify({'message': 'Authorization denied'}), 401
+        response_body = {'message': 'Authorization denied'}
+        response = jsonify(response_body)
+        response.headers.add("Access-Control-Allow-Origin", "*")
+        return response, 401
 
-    access_token = create_access_token(identity={'email': user.email, 'user_id': user.id, 'is_admin': user.is_admin})
-    response = {
+    # Crear el token JWT con los datos del usuario
+    access_token = create_access_token(identity={
+        'email': user.email,
+        'user_id': user.id,
+        'is_admin': user.is_admin
+    })
+
+    response_body = {
         'results': user.serialize(),
         'message': 'Bienvenido',
         'access_token': access_token
     }
-    return jsonify(response), 201
-
-
-@api.route('/signup', methods=['POST'])
-def signup():
-    # Lógica para el registro de usuario
-    data = request.json
-    if not data.get('email') or not data.get('password'):
-        return jsonify({"message": "Email and password are required!"}), 400
-
-    hashed_password = bcrypt.hashpw(data.get('password').encode('utf-8'), bcrypt.gensalt())
-    new_user = Users(
-        email=data.get('email'),
-        password=hashed_password,
-        firstname=data.get('firstname'),
-        lastname=data.get('lastname'),
-        is_admin=False
-    )
-    db.session.add(new_user)
-    db.session.commit()
-
-    response = jsonify(new_user.serialize())
+    response = jsonify(response_body)
     response.headers.add("Access-Control-Allow-Origin", "*")
     return response, 201
 
+
+@api.route("/protected", methods=["GET"])
+@jwt_required()
+def protected():
+    response_body = {}
+    current_user = get_jwt_identity()
+    if current_user and current_user["rol"] == "admin":
+        response_body['message'] = f'Access granted {current_user["email"]}'
+        response_body['results'] = current_user
+        return response_body, 200
+
+    response_body['message'] = f'Access denied'
+    response_body['results'] = {}
+    return response_body, 403
+
+
+@api.route("/signup", methods=["OPTIONS", "POST"])
+def signup():
+    if request.method == "OPTIONS":
+        # Manejar el preflight de CORS
+        response = jsonify({"message": "Preflight request successful"})
+        response.headers.add("Access-Control-Allow-Origin", "*")
+        response.headers.add("Access-Control-Allow-Headers", "Content-Type, Authorization")
+        response.headers.add("Access-Control-Allow-Methods", "POST, OPTIONS")
+        return response, 200
+
+    # Lógica de registro de usuario
+    data = request.json
+    email = data.get("email", None)
+    password = data.get("password", None)
+    rol = data.get("rol", "user")
+
+    # Verificar si el usuario ya existe
+    existing_user = db.session.execute(db.select(Users).where(Users.email == email)).scalar()
+    if existing_user:
+        response_body = {'message': 'User with this email already exists'}
+        response = jsonify(response_body)
+        response.headers.add("Access-Control-Allow-Origin", "*")
+        return response, 409
+
+    # Encriptar la contraseña
+    hashed_password = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt())
+
+    # Crear nuevo usuario
+    user = Users()
+    user.email = email
+    user.password = hashed_password.decode('utf-8')
+    user.is_admin = True if rol == "admin" else False
+
+    # Guardar en la base de datos
+    db.session.add(user)
+    db.session.commit()
+
+    # Crear el token JWT
+    access_token = create_access_token(identity={
+        'email': user.email,
+        'user_id': user.id,
+        'is_admin': user.is_admin
+    })
+
+    response_body = {
+        'results': user.serialize(),
+        'message': 'User registered and logged in',
+        'access_token': access_token
+    }
+    response = jsonify(response_body)
+    response.headers.add("Access-Control-Allow-Origin", "*")
+    return response, 201
 
 
 @api.route('/users', methods=['GET'])

@@ -31,14 +31,12 @@ const getState = ({ getStore, getActions, setStore }) => {
                     setStore({ error: error.message });
                 }
             },
-
             setCurrentUser: (user) => {
                 setStore({
                     currentUser: user,
                     isAdmin: user?.is_admin || false // Actualizar el estado de administrador según el usuario
                 });
             },
-
             updateUserProfile: async (userId, updatedData) => {
                 const store = getStore();
                 try {
