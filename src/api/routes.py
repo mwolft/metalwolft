@@ -1,13 +1,12 @@
 from flask import Flask, request, jsonify, Blueprint
 from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity
 from api.utils import generate_sitemap, APIException
-from flask_cors import CORS
 from api.models import db, Users, Products, ProductImages, Categories, Orders, OrderDetails, Favorites
 from sqlalchemy.exc import SQLAlchemyError
+import bcrypt
 
 
 api = Blueprint('api', __name__)
-CORS(api, resources={r"/*": {"origins": "*"}})  
 
 
 @api.route('/hello', methods=['GET'])
@@ -20,8 +19,9 @@ def login():
     data = request.json
     email = data.get("email")
     password = data.get("password")
-    user = db.session.execute(db.select(Users).where(Users.email == email, Users.password == password)).scalar()
-    if not user:
+
+    user = db.session.execute(db.select(Users).where(Users.email == email)).scalar()
+    if not user or not bcrypt.checkpw(password.encode('utf-8'), user.password.encode('utf-8')):
         return jsonify({'message': 'Authorization denied'}), 401
 
     access_token = create_access_token(identity={'email': user.email, 'user_id': user.id, 'is_admin': user.is_admin})
@@ -35,27 +35,26 @@ def login():
 
 @api.route('/signup', methods=['POST'])
 def signup():
+    # Lógica para el registro de usuario
     data = request.json
     if not data.get('email') or not data.get('password'):
         return jsonify({"message": "Email and password are required!"}), 400
 
+    hashed_password = bcrypt.hashpw(data.get('password').encode('utf-8'), bcrypt.gensalt())
     new_user = Users(
         email=data.get('email'),
-        password=data.get('password'),
+        password=hashed_password,
         firstname=data.get('firstname'),
         lastname=data.get('lastname'),
-        is_admin=False,
-        shipping_address=data.get('shipping_address'),
-        shipping_city=data.get('shipping_city'),
-        shipping_postal_code=data.get('shipping_postal_code'),
-        billing_address=data.get('billing_address'),
-        billing_city=data.get('billing_city'),
-        billing_postal_code=data.get('billing_postal_code'),
-        CIF=data.get('CIF')
+        is_admin=False
     )
     db.session.add(new_user)
     db.session.commit()
-    return jsonify(new_user.serialize()), 201
+
+    response = jsonify(new_user.serialize())
+    response.headers.add("Access-Control-Allow-Origin", "*")
+    return response, 201
+
 
 
 @api.route('/users', methods=['GET'])

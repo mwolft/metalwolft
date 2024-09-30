@@ -1,7 +1,7 @@
 import React, { useContext, useState } from "react";
 import { Context } from '../store/appContext.js';
 import { useNavigate } from "react-router-dom";
-import { Row, Col, Container } from "react-bootstrap";
+import { Row, Col, Container, Form, Button } from "react-bootstrap";
 
 export const Login = () => {
   const { actions } = useContext(Context);
@@ -11,29 +11,26 @@ export const Login = () => {
   const [confirmPassword, setConfirmPassword] = useState("");
   const navigate = useNavigate();
 
-  const handleEmail = (event) => { setEmail(event.target.value); };
-  const handlePassword = (event) => { setPassword(event.target.value); };
-  const handleConfirmPassword = (event) => { setConfirmPassword(event.target.value); };
+  const handleEmail = (event) => setEmail(event.target.value);
+  const handlePassword = (event) => setPassword(event.target.value);
+  const handleConfirmPassword = (event) => setConfirmPassword(event.target.value);
 
   const handleSubmit = async (event) => {
     event.preventDefault();
-
+  
     const dataToSend = { email, password };
     let uri, options;
-
+  
     if (isLogin) {
-      // Configuración para iniciar sesión
       uri = process.env.BACKEND_URL + '/api/login';
     } else {
-      // Verificación de contraseñas coincidentes para el registro
       if (password !== confirmPassword) {
         actions.setAlert({ visible: true, back: 'danger', text: 'Las contraseñas no coinciden' });
         return;
       }
-      // Configuración para registrarse
       uri = process.env.BACKEND_URL + '/api/signup';
     }
-
+  
     options = {
       method: 'POST',
       body: JSON.stringify(dataToSend),
@@ -41,26 +38,31 @@ export const Login = () => {
         'Content-Type': 'application/json'
       }
     };
-
+  
     try {
       const response = await fetch(uri, options);
       const data = await response.json();
-
+  
       if (!response.ok) {
         console.error('Error: ', response.status, response.statusText);
-        actions.setAlert({ visible: true, back: 'danger', text: data.message || 'Error al procesar la solicitud' });
+        
+        // Manejo específico de error 401
+        if (response.status === 401 && isLogin) {
+          actions.setAlert({ visible: true, back: 'danger', text: 'Usuario no encontrado. Regístrate para continuar.' });
+          setIsLogin(false); // Cambia al modo de registro automáticamente
+        } else {
+          actions.setAlert({ visible: true, back: 'danger', text: data.message || 'Error al procesar la solicitud' });
+        }
         return;
       }
-
+  
       if (data.access_token && data.results) {
-        // Guardar el token y el usuario en localStorage solo si se recibe la respuesta correcta
         localStorage.setItem("token", data.access_token);
         localStorage.setItem("user", JSON.stringify(data.results));
         actions.setCurrentUser(data.results);
         actions.setIsLoged(true);
         actions.setAlert({ visible: true, back: 'info', text: data.message || 'Inicio de sesión exitoso' });
-
-        // Redirigir dependiendo del rol
+  
         if (data.results.is_admin) {
           navigate("/admin");
         } else {
@@ -74,68 +76,58 @@ export const Login = () => {
       actions.setAlert({ visible: true, back: 'danger', text: 'Error inesperado, intenta más tarde' });
     }
   };
+  
 
   return (
-    <Container className="auth-container d-flex justify-content-center align-items-center" style={{ marginTop: '120px', marginBottom: '120px' }}>
-      <div className="auth-box p-5">
-        <Row className="text-center mb-5 d-flex justify-content-center">
-          <Col className="d-flex justify-content-center align-items-center flex-row">
-            <button className="loginbtn mx-1"> 
-              <h2
-                className={`auth-toggle ${isLogin ? 'active' : ''}`} onClick={() => setIsLogin(true)}>
-                Entrar
-              </h2>
-            </button>
-            <button className="loginbtn mx-1"> 
-              <h2
-                className={`auth-toggle ${!isLogin ? 'active' : ''}`} onClick={() => setIsLogin(false)}>
-                Registrarse
-              </h2>
-            </button>
+    <Container className="d-flex justify-content-center align-items-center" style={{ marginTop: '120px', marginBottom: '120px' }}>
+      <div className="p-4" style={{ maxWidth: '400px', width: '100%', backgroundColor: 'white', borderRadius: '10px', boxShadow: '0px 0px 10px rgba(0,0,0,0.1)' }}>
+        <Row className="text-center mb-4">
+          <Col>
+            <Button variant="link" className={`auth-toggle ${isLogin ? 'active' : ''}`} onClick={() => setIsLogin(true)}>
+              Iniciar sesión
+            </Button>
+            <Button variant="link" className={`auth-toggle ${!isLogin ? 'active' : ''}`} onClick={() => setIsLogin(false)}>
+              Registrarse
+            </Button>
           </Col>
         </Row>
-        <form onSubmit={handleSubmit}>
-          <div className="form-group mt-3 h6">
-            <label htmlFor="email" className="mb-1">Correo electrónico:</label>
-            <input
+        <Form onSubmit={handleSubmit}>
+          <Form.Group className="mb-3" controlId="formBasicEmail">
+            <Form.Label>Correo electrónico:</Form.Label>
+            <Form.Control
               type="email"
-              className="form-control"
-              id="email"
               value={email}
               onChange={handleEmail}
               required
+              placeholder="Ingresa tu correo"
             />
-          </div>
-          <div className="form-group mt-3 h6">
-            <label htmlFor="password" className="mb-1">Contraseña:</label>
-            <input
+          </Form.Group>
+          <Form.Group className="mb-3" controlId="formBasicPassword">
+            <Form.Label>Contraseña:</Form.Label>
+            <Form.Control
               type="password"
-              className="form-control"
-              id="password"
               value={password}
               onChange={handlePassword}
               required
+              placeholder="Ingresa tu contraseña"
             />
-          </div>
+          </Form.Group>
           {!isLogin && (
-            <div className="form-group mt-3 h6">
-              <label htmlFor="confirmPassword" className="mb-1">Confirmar Contraseña:</label>
-              <input
+            <Form.Group className="mb-3" controlId="formConfirmPassword">
+              <Form.Label>Confirmar contraseña:</Form.Label>
+              <Form.Control
                 type="password"
-                className="form-control"
-                id="confirmPassword"
                 value={confirmPassword}
                 onChange={handleConfirmPassword}
                 required
+                placeholder="Confirma tu contraseña"
               />
-            </div>
+            </Form.Group>
           )}
-          <div className="container d-flex justify-content-center">
-            <button className="stylebtn" variant="primary" type="submit">
-              <i className="fa-solid fa-arrow-right"></i>
-            </button>
-          </div>
-        </form>
+          <Button variant="primary" type="submit" className="w-100">
+            {isLogin ? 'Iniciar sesión' : 'Registrarse'}
+          </Button>
+        </Form>
       </div>
     </Container>
   );

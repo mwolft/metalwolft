@@ -16,8 +16,9 @@ static_file_dir = os.path.join(os.path.dirname(os.path.realpath(__file__)), '../
 app = Flask(__name__)
 app.url_map.strict_slashes = False
 
-# Enable CORS for the app
-CORS(app)  # This will allow CORS for all routes
+
+CORS(app, resources={r"/*": {"origins": "*"}}, supports_credentials=True)
+
 
 # Database configuration
 db_url = os.getenv("DATABASE_URL")
