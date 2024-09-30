@@ -31,7 +31,7 @@ def login():
 
     user = db.session.execute(db.select(Users).where(Users.email == email)).scalar()
     if not user or not bcrypt.checkpw(password.encode('utf-8'), user.password.encode('utf-8')):
-        response_body = {'message': 'Authorization denied'}
+        response_body = {'message': 'Correo o contraseña incorrectos'}
         response = jsonify(response_body)
         response.headers.add("Access-Control-Allow-Origin", "*")
         return response, 401
@@ -63,7 +63,7 @@ def protected():
         response_body['results'] = current_user
         return response_body, 200
 
-    response_body['message'] = f'Access denied'
+    response_body['message'] = f'Acceso denegado'
     response_body['results'] = {}
     return response_body, 403
 
@@ -87,7 +87,7 @@ def signup():
     # Verificar si el usuario ya existe
     existing_user = db.session.execute(db.select(Users).where(Users.email == email)).scalar()
     if existing_user:
-        response_body = {'message': 'User with this email already exists'}
+        response_body = {'message': 'Ya existe un usuario registrado con este correo'}
         response = jsonify(response_body)
         response.headers.add("Access-Control-Allow-Origin", "*")
         return response, 409
@@ -114,7 +114,7 @@ def signup():
 
     response_body = {
         'results': user.serialize(),
-        'message': 'User registered and logged in',
+        'message': 'Usuario registrado',
         'access_token': access_token
     }
     response = jsonify(response_body)

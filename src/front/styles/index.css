@@ -87,68 +87,57 @@ p .btn-color-yellow:hover {
   background-color: rgb(190, 190, 185);
   color: white;
 }
- /* --- LOGIN */
 
-.square-box {
-  margin-top: 5px;
-  margin-bottom: 5px;
-  background-color: rgba(255, 193, 7);
-  padding: 20px;
-  border: 1px solid rgba(255, 228, 51, .35);
-  border-radius: 10px;
-  box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+ /* --- LOGIN */
+ .auth-box {
+  background-color: #dddddd; /* Fondo blanco */
+  border-radius: 15px; /* Bordes redondeados */
+  box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.1); /* Sombra suave */
+  max-width: 450px; /* Limitar el ancho máximo */
+  width: 100%;
+  padding: 30px; /* Espaciado interno */
+}
+form{
+  padding-left: 25px;
+  padding-right: 25px;
+}
+.auth-header {
+  color: #007bff; /* Color primario de Bootstrap */
+  font-weight: bold;
+  font-size: 24px; /* Tamaño más grande */
 }
 
 .stylebtn {
-  margin-top: 5px;
-  font-size: 18px;
-  border-radius: 50%;
-  width: 50px;
-  height: 50px;
-}
-
-.auth-box {
-  background-color: rgba(255, 193, 7);
-  border-radius: 15px;
-  max-width: 400px;
-  width: 100%;
-}
-
-.loginbtn{
-  background-color: white;
-  border: 0;
-  border-radius: 0.3rem;
-}
-
-.auth-toggle {
-  cursor: pointer;
+  background-color: #007bff; /* Azul principal */
+  border: none; /* Sin borde */
+  color: white; /* Texto blanco */
+  padding: 10px 20px; /* Espaciado interno */
   font-weight: bold;
-  color: black;
-  padding-bottom: 5px;
-  border-bottom: 2px solid transparent;
-  display: inline-block;
+  border-radius: 50px; /* Bordes redondeados */
+  transition: all 0.3s ease; /* Animación suave */
+
+  /* Ajuste del ancho del botón */
+  width: 200px;
 }
 
-.auth-toggle.active {
-  border-color: black;
+.stylebtn:hover {
+  background-color: #0056b3; /* Azul más oscuro */
+  transform: translateY(-2px); /* Levantar el botón al hacer hover */
 }
 
-.auth-submit-button {
-  background-color: white;
-  border: none;
-  color: black;
-  font-size: 24px;
-  border-radius: 50%;
-  width: 60px;
-  height: 60px;
-  display: inline-flex;
-  justify-content: center;
-  align-items: center;
+.form-control {
+  padding: 5px; /* Añadir espaciado interno */
+  border-radius: 10px; /* Bordes redondeados */
+  border: 1px solid #ced4da; /* Color del borde más claro */
 }
 
-.arrow {
-  font-size: 1.5rem;
+.form-control:focus {
+  border-color: #007bff; /* Cambiar color del borde al enfocar */
+  box-shadow: 0 0 5px rgba(0, 123, 255, 0.5); /* Añadir un pequeño resplandor al enfocar */
 }
+
+
+
 /* ----- START DESIGN MEDIA QUERIES ----- */
 /* ----- Pantallas pequeñas (móviles) ----- */
 @media (max-width: 575px) {
