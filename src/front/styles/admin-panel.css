@@ -19,17 +19,17 @@
   text-align: center;
 }
 
+.RaSidebar-fixed a {
+  margin-top: 5px;
+  margin-left: 10px;
+  border-radius: 15px;
+}
 .RaSidebar-fixed a:hover {
   background-color: #ff324d !important;
   color: white !important;
-  border-radius: 5px;
 }
 
 .RaSidebar-fixed a:hover .MuiListItemIcon-root {
   color: white !important;
   border-radius: 5px;
-}
-
-.RaSidebar-fixed .MuiListItemIcon-root {
-  transition: color 0.5s ease;
 }
