@@ -1,32 +1,33 @@
-.admin-container {
-    width: 1000px; /* Ajusta este valor al tamaño que prefieras */
-    margin: auto;
-    padding: 20px;
-  }
-  
-  .admin-row {
-    display: flex;
-    justify-content: center;
-  }
-  
-  .admin-column {
-    width: 100%;
-  }
-  
-  .admin-box {
-    border-radius: 8px;
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-    overflow: hidden;
-  }
-  
-  .admin-header {
-    background-color: #ff324d;
-    padding: 20px;
-    color: white;
-    text-align: center;
-  }
-  
-  .admin-body {
-    padding: 20px;
-  }
-  
+.admin-header {
+  background-color: #ff324d;
+  padding: 20px;
+  color: white;
+  text-align: center;
+}
+
+.custom-header {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 3rem;
+}
+
+.custom-header h4 {
+  margin-bottom: 0;
+  font-size: 1.2rem;
+}
+
+.custom-layout {
+  background-color: #ff324db0;
+  color: white;
+}
+.RaSidebar-fixed {
+  width: 50px !important;  
+  transition: all 0.3s ease-in-out; 
+}
+.RaLayout-content{ 
+  margin-left: 30px !important;
+}
+.layout {
+  padding: 30px;
+}
