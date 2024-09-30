@@ -27,8 +27,8 @@ class ProductAdminView(ModelView):
 
 def setup_admin(app):
     app.secret_key = os.environ.get('FLASK_APP_KEY', 'sample key')
-    app.config['FLASK_ADMIN_SWATCH'] = 'darkly'  # Dark theme, for light theme use 'cerulean'
-    admin = Admin(app, name='4Geeks Admin', template_mode='bootstrap3')
+    app.config['FLASK_ADMIN_SWATCH'] = 'sandstone'  
+    admin = Admin(app, name='MetalWolft.com', template_mode='bootstrap3')
     
     # Agregar vistas personalizadas para los modelos
     admin.add_view(ModelView(Users, db.session))

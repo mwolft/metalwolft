@@ -1,33 +1,35 @@
+.MuiAppBar-positionFixed {
+  position: static !important;
+  background-color: #000000 !important;
+}
+
+.RaLayout-appFrame{
+  margin-top: 0px !important;
+}
+
+.RaLayout-content{ 
+  margin-left: 2px !important;
+}
+
 .admin-header {
   background-color: #ff324d;
-  padding: 20px;
+  padding: 2px;
+  margin-bottom: 0px !important;
   color: white;
   text-align: center;
 }
 
-.custom-header {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 3rem;
+.RaSidebar-fixed a:hover {
+  background-color: #ff324d !important;
+  color: white !important;
+  border-radius: 5px;
 }
 
-.custom-header h4 {
-  margin-bottom: 0;
-  font-size: 1.2rem;
+.RaSidebar-fixed a:hover .MuiListItemIcon-root {
+  color: white !important;
+  border-radius: 5px;
 }
 
-.custom-layout {
-  background-color: #ff324db0;
-  color: white;
-}
-.RaSidebar-fixed {
-  width: 50px !important;  
-  transition: all 0.3s ease-in-out; 
-}
-.RaLayout-content{ 
-  margin-left: 30px !important;
-}
-.layout {
-  padding: 30px;
+.RaSidebar-fixed .MuiListItemIcon-root {
+  transition: color 0.5s ease;
 }

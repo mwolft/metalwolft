@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { Admin, Resource, Layout } from "react-admin";
 import jsonServerProvider from "ra-data-json-server";
 import { fetchUtils } from 'ra-core';
-import { useNavigate, useLocation } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { UserList, UserEdit, UserCreate } from "../component/admin/users/users.js";
 import { ProductList, ProductEdit, ProductCreate } from "../component/admin/products/products.js";
 import { OrderList, OrderEdit, OrderCreate } from "../component/admin/orders/orders.js";
@@ -26,31 +26,6 @@ const httpClient = (url, options = {}) => {
 // Data Provider con cliente HTTP personalizado
 const dataProvider = jsonServerProvider(process.env.REACT_APP_BACKEND_URL + "/api", httpClient);
 
-// Layout personalizado para mostrar un título dinámico
-const CustomLayout = (props) => {
-  const location = useLocation();
-  let title = '';
-
-  if (location.pathname.includes("/users")) {
-    title = "Usuarios";
-  } else if (location.pathname.includes("/products")) {
-    title = "Productos";
-  } else if (location.pathname.includes("/orders")) {
-    title = "Pedidos";
-  } else if (location.pathname.includes("/product_images")) {
-    title = "Imágenes de Productos";
-  }
-
-  return (
-    <div className="custom-layout">
-      <div className="custom-header">
-        <h4>{title}</h4>
-      </div>
-      <Layout {...props} />
-    </div>
-  );
-};
-
 const AdminPanel = () => {
   const navigate = useNavigate();
   const [hasAccess, setHasAccess] = useState(false);
@@ -71,9 +46,9 @@ const AdminPanel = () => {
   }
 
   return (
-    <div className="admin-box" style={{ marginTop: '85px', paddingBottom: '35px' }}>
+    <div className="admin-box" style={{ marginTop: '65px', paddingBottom: '35px' }}>
       <div className="admin-header">
-        <h3 className="text-center pt-1">PANEL DE ADMINISTRACIÓN</h3>
+        <h3 className="text-center pt-2">PANEL DE ADMINISTRACIÓN</h3>
       </div>
       <div className="admin-body">
         <Admin
@@ -81,7 +56,6 @@ const AdminPanel = () => {
           authProvider={authProvider}
           title="Admin Panel"
           basename="/admin"
-          layout={CustomLayout}
         >
           <Resource
             name="users"
