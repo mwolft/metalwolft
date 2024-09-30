@@ -6,6 +6,7 @@ import { Row, Col, Container, Button, Form } from "react-bootstrap";
 export const Login = () => {
   const { actions } = useContext(Context);
   const [isLogin, setIsLogin] = useState(true);
+  const [isForgotPassword, setIsForgotPassword] = useState(false); // Estado para manejar la vista de restablecer contraseña
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -16,9 +17,34 @@ export const Login = () => {
   const handlePassword = (event) => { setPassword(event.target.value); };
   const handleConfirmPassword = (event) => { setConfirmPassword(event.target.value); };
 
+  const validatePassword = (password) => {
+    const minLength = 6;
+    const maxLength = 20;
+    const hasLetter = /[a-zA-Z]/.test(password);
+
+    if (password.length < minLength) {
+      return 'La contraseña debe tener al menos 6 caracteres.';
+    }
+    if (password.length > maxLength) {
+      return 'La contraseña no debe tener más de 20 caracteres.';
+    }
+    if (!hasLetter) {
+      return 'La contraseña debe contener al menos una letra.';
+    }
+    return '';
+  };
+
   const handleSubmit = async (event) => {
     event.preventDefault();
     setErrorMessage(""); // Reiniciar el mensaje de error al intentar nuevamente
+
+    if (!isLogin) {
+      const passwordError = validatePassword(password);
+      if (passwordError) {
+        setErrorMessage(passwordError);
+        return;
+      }
+    }
 
     const dataToSend = { email, password };
     let uri, options;
@@ -82,63 +108,119 @@ export const Login = () => {
     setErrorMessage(""); // Reiniciar el mensaje de error al cambiar entre login y registro
   };
 
+  const handleForgotPassword = (event) => {
+    event.preventDefault();
+    setIsForgotPassword(true);
+    setErrorMessage("");
+  };
+
+  const handleCancelForgotPassword = () => {
+    setIsForgotPassword(false);
+    setEmail("");
+    setErrorMessage("");
+  };
+
+  const handleForgotPasswordSubmit = async (event) => {
+    event.preventDefault();
+    // Lógica para enviar un correo electrónico de restablecimiento de contraseña
+    // Aquí podrías hacer una solicitud al backend para enviar un email de restablecimiento
+    console.log("Solicitud para restablecer la contraseña enviada a:", email);
+    setErrorMessage("Te hemos enviado un correo para restablecer tu contraseña, si el email está registrado.");
+  };
+
   return (
     <Container className="auth-container d-flex justify-content-center align-items-center" style={{ marginTop: '120px', marginBottom: '120px' }}>
       <div className="auth-box p-3">
         <Row className="text-center mb-3 d-flex justify-content-center">
           <Col>
-            <h4>{isLogin ? "INICIAR SESIÓN" : "REGÍSTRATE"}</h4>
+            <h4>{isForgotPassword ? "Restablecer tu contraseña" : isLogin ? "INICIAR SESIÓN" : "REGÍSTRATE"}</h4>
           </Col>
         </Row>
-        <Form onSubmit={handleSubmit}>
-          <Form.Group className="mt-2">
-            <Form.Label>Email:</Form.Label>
-            <Form.Control
-              type="email"
-              value={email}
-              onChange={handleEmail}
-              required
-            />
-          </Form.Group>
-          <Form.Group className="mt-2">
-            <Form.Label>Contraseña:</Form.Label>
-            <Form.Control
-              type="password"
-              value={password}
-              onChange={handlePassword}
-              required
-            />
-            {errorMessage && (
-              <Form.Text className="text-danger">{errorMessage}</Form.Text>
-            )}
-          </Form.Group>
-          {!isLogin && (
+        {isForgotPassword ? (
+          <>
+            <p className="text-center">Te enviaremos un correo electrónico para restablecer tu contraseña.</p>
+            <Form onSubmit={handleForgotPasswordSubmit}>
+              <Form.Group className="mt-2">
+                <Form.Label>Email:</Form.Label>
+                <Form.Control
+                  type="email"
+                  value={email}
+                  onChange={handleEmail}
+                  required
+                />
+              </Form.Group>
+              <div className="container d-flex justify-content-center mt-3">
+                <Button className="me-2" variant="secondary" onClick={handleCancelForgotPassword}>
+                  Cancelar
+                </Button>
+                <Button variant="primary" type="submit">
+                  Enviar
+                </Button>
+              </div>
+            </Form>
+          </>
+        ) : (
+          <Form onSubmit={handleSubmit}>
             <Form.Group className="mt-2">
-              <Form.Label>Confirmar Contraseña:</Form.Label>
+              <Form.Label>Email:</Form.Label>
               <Form.Control
-                type="password"
-                value={confirmPassword}
-                onChange={handleConfirmPassword}
+                type="email"
+                value={email}
+                onChange={handleEmail}
                 required
               />
             </Form.Group>
-          )}
-          <div className="container d-flex justify-content-center mt-3">
-            <Button className="stylebtn" variant="primary" type="submit">
-              {isLogin ? "Iniciar sesión" : "Registrarse"}
-            </Button>
-          </div>
-        </Form>
-        <Row className="mt-4 text-center">
-          <Col>
-            <span>
-              {isLogin ? "¿Nuevo Usuario? " : "¿Ya dispone de una cuenta? "}
-              <a href="#" onClick={handleToggleForm} className="text-primary text-decoration-underline">
-                {isLogin ? "Crear cuenta" : "Ingresar"}
-              </a>
-            </span>
-          </Col>
-        </Row>
+            <Form.Group className="mt-2">
+              <Form.Label>Contraseña:</Form.Label>
+              <Form.Control
+                type="password"
+                value={password}
+                onChange={handlePassword}
+                required
+              />
+              {errorMessage && (
+                <Form.Text className="text-danger">{errorMessage}</Form.Text>
+              )}
+            </Form.Group>
+            {!isLogin && (
+              <Form.Group className="mt-2">
+                <Form.Label>Confirmar Contraseña:</Form.Label>
+                <Form.Control
+                  type="password"
+                  value={confirmPassword}
+                  onChange={handleConfirmPassword}
+                  required
+                />
+              </Form.Group>
+            )}
+            <div className="container d-flex justify-content-center mt-3">
+              <Button className="stylebtn" variant="primary" type="submit">
+                {isLogin ? "Iniciar sesión" : "Registrarse"}
+              </Button>
+            </div>
+          </Form>
+        )}
+        {!isForgotPassword && (
+          <>
+            <Row className="mt-4 text-center">
+              <Col>
+                <span>
+                  {isLogin ? "¿Nuevo Usuario? " : "¿Ya dispone de una cuenta? "}
+                  <a href="#" onClick={handleToggleForm} className="text-primary text-decoration-underline">
+                    {isLogin ? "Crear cuenta" : "Ingresar"}
+                  </a>
+                </span>
+              </Col>
+            </Row>
+            <Row className="mt-2 text-center">
+              <Col>
+                <a href="#" onClick={handleForgotPassword} className="text-primary text-decoration-underline">
+                  ¿Olvidaste tu contraseña?
+                </a>
+              </Col>
+            </Row>
+          </>
+        )}
       </div>
     </Container>
   );
