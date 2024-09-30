@@ -5,10 +5,6 @@ from sqlalchemy import Enum
 db = SQLAlchemy()
 
 
-from flask_sqlalchemy import SQLAlchemy
-
-db = SQLAlchemy()
-
 class Users(db.Model):
     __tablename__ = 'users'
     id = db.Column(db.Integer, primary_key=True)
@@ -55,6 +51,7 @@ class Products(db.Model):
     precio = db.Column(db.Float, nullable=False)
     categoria_id = db.Column(db.Integer, db.ForeignKey('categories.id'), nullable=True)
     imagen = db.Column(db.String(200), nullable=True)
+    images = db.relationship('ProductImages', backref='product', lazy=True)
 
     def __repr__(self):
         return f'<Product {self.id}: {self.nombre}>'
@@ -67,6 +64,34 @@ class Products(db.Model):
             "precio": self.precio,
             "categoria_id": self.categoria_id,
             "imagen": self.imagen,
+        }
+
+    def serialize_with_images(self):
+        return {
+            "id": self.id,
+            "nombre": self.nombre,
+            "descripcion": self.descripcion,
+            "precio": self.precio,
+            "categoria_id": self.categoria_id,
+            "imagen": self.imagen,
+            "images": [image.serialize() for image in self.images]
+        }
+
+
+class ProductImages(db.Model):
+    __tablename__ = "product_images"
+    id = db.Column(db.Integer, primary_key=True)
+    product_id = db.Column(db.Integer, db.ForeignKey('products.id'), nullable=False)
+    image_url = db.Column(db.String(255), nullable=False)
+
+    def __repr__(self):
+        return f'<ProductImage {self.id}: {self.image_url}>'
+
+    def serialize(self):
+        return {
+            "id": self.id,
+            "product_id": self.product_id,
+            "image_url": self.image_url,
         }
 
 

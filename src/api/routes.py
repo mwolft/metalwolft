@@ -1,16 +1,19 @@
 from flask import Flask, request, jsonify, Blueprint
+from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity
 from api.utils import generate_sitemap, APIException
 from flask_cors import CORS
-from api.models import db, Users, Products, Orders, OrderDetails
-from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity
+from api.models import db, Users, Products, ProductImages, Categories, Orders, OrderDetails, Favorites
+from sqlalchemy.exc import SQLAlchemyError
 
-# Definir el blueprint
+
 api = Blueprint('api', __name__)
-CORS(api, resources={r"/*": {"origins": "*"}})  # Aplicar CORS al blueprint
+CORS(api, resources={r"/*": {"origins": "*"}})  
+
 
 @api.route('/hello', methods=['GET'])
 def handle_hello():
     return jsonify({"message": "Hello! I'm a message from the backend"}), 200
+
 
 @api.route("/login", methods=["POST"])
 def login():
@@ -28,6 +31,7 @@ def login():
         'access_token': access_token
     }
     return jsonify(response), 201
+
 
 @api.route('/signup', methods=['POST'])
 def signup():
@@ -53,7 +57,7 @@ def signup():
     db.session.commit()
     return jsonify(new_user.serialize()), 201
 
-# Obtener todos los usuarios (GET)
+
 @api.route('/users', methods=['GET'])
 @jwt_required()
 def get_users():
@@ -70,7 +74,7 @@ def get_users():
     response.headers['Access-Control-Allow-Origin'] = '*'
     return response, 200
 
-# Crear un usuario (POST)
+
 @api.route('/users', methods=['POST'])
 @jwt_required()
 def create_user():
@@ -90,7 +94,7 @@ def create_user():
     db.session.commit()
     return jsonify(new_user.serialize()), 201
 
-# Obtener un usuario específico (GET)
+
 @api.route('/users/<int:user_id>', methods=['GET'])
 @jwt_required()
 def get_user(user_id):
@@ -106,7 +110,7 @@ def get_user(user_id):
     response.headers['Access-Control-Allow-Origin'] = '*'
     return response, 200
 
-# Actualizar un usuario específico (PUT)
+
 @api.route('/users/<int:user_id>', methods=['PUT'])
 @jwt_required()
 def update_user(user_id):
@@ -129,7 +133,7 @@ def update_user(user_id):
     response.headers['Access-Control-Allow-Origin'] = '*'
     return response, 200
 
-# Eliminar un usuario específico (DELETE)
+
 @api.route('/users/<int:user_id>', methods=['DELETE'])
 @jwt_required()
 def delete_user(user_id):
@@ -159,62 +163,127 @@ def get_categories():
     return response, 200
 
 
-# Obtener todos los productos (GET)
-@api.route('/products', methods=['GET'])
+# Rutas para manejar productos
+@api.route('/products', methods=['GET', 'POST'])
 @jwt_required()
-def get_products():
+def handle_products():
     current_user = get_jwt_identity()
-    if not current_user.get("is_admin"):
-        return jsonify({"message": "Access forbidden: Admins only"}), 403
 
-    products = Products.query.all()
-    total_count = len(products)
+    if request.method == 'GET':
+        # Obtener todos los productos
+        products = Products.query.all()
+        total_count = len(products)
+        response = jsonify([product.serialize_with_images() for product in products])
+        response.headers['X-Total-Count'] = str(total_count)
+        response.headers['Access-Control-Expose-Headers'] = 'X-Total-Count, Authorization'
+        response.headers['Access-Control-Allow-Origin'] = '*'
+        return response, 200
 
-    response = jsonify([product.serialize() for product in products])
-    response.headers['X-Total-Count'] = total_count
-    response.headers['Access-Control-Expose-Headers'] = 'X-Total-Count'
-    response.headers['Access-Control-Allow-Origin'] = '*'
-    return response, 200
+    elif request.method == 'POST':
+        # Solo los administradores pueden crear productos
+        if not current_user.get("is_admin"):
+            return jsonify({"message": "Access forbidden: Admins only"}), 403
 
-@api.route('/products', methods=['POST'])
-@jwt_required()
-def add_product():
-    current_user = get_jwt_identity()
-    if not current_user.get("is_admin"):
-        return jsonify({"message": "Access forbidden: Admins only"}), 403
+        data = request.json
+        try:
+            # Crear el nuevo producto
+            new_product = Products(
+                nombre=data.get('nombre'),
+                descripcion=data.get('descripcion'),
+                precio=data.get('precio'),
+                categoria_id=data.get('categoria_id'),
+                imagen=data.get('imagen')
+            )
+            db.session.add(new_product)
+            db.session.flush()  # Para obtener el ID del producto antes de confirmar
 
-    data = request.get_json()
-    # Obtener una categoría predeterminada si no se proporciona
-    categoria_id = data.get('categoria_id')
-    if not categoria_id:
-        default_category = Categories.query.first()  # Escoge la primera categoría o una predeterminada específica
-        if default_category:
-            categoria_id = default_category.id
-        else:
-            return jsonify({"message": "No hay una categoría disponible. Debe crear al menos una categoría."}), 400
+            # Agregar imágenes adicionales si se proporcionan
+            images_urls = data.get('images', [])
+            for image_url in images_urls:
+                new_image = ProductImages(product_id=new_product.id, image_url=image_url)
+                db.session.add(new_image)
 
-    new_product = Products(
-        nombre=data['nombre'],
-        descripcion=data['descripcion'],
-        precio=data['precio'],
-        categoria_id=categoria_id,
-        imagen=data.get('imagen', None),
-        stock=data.get('stock', 0),
-        alto=data.get('alto'),
-        ancho=data.get('ancho'),
-        anclaje=data.get('anclaje'),
-        color=data.get('color')
-    )
-    db.session.add(new_product)
-    db.session.commit()
+            db.session.commit()
+            response = jsonify(new_product.serialize_with_images())
+            response.headers['Access-Control-Allow-Origin'] = '*'
+            response.headers['Access-Control-Expose-Headers'] = 'Authorization'
+            return response, 201
 
-    return jsonify({"message": "Product created successfully.", "product": new_product.serialize()}), 201
+        except SQLAlchemyError as e:
+            db.session.rollback()
+            return jsonify({"message": "An error occurred while creating the product.", "error": str(e)}), 500
 
-
-# Obtener, actualizar o eliminar un producto específico
+# Rutas para manejar un producto específico
 @api.route('/products/<int:product_id>', methods=['GET', 'PUT', 'DELETE'])
 @jwt_required()
 def handle_product(product_id):
+    current_user = get_jwt_identity()
+    product = Products.query.get(product_id)
+
+    if not product:
+        return jsonify({"message": "Product not found"}), 404
+
+    if request.method == 'GET':
+        response = jsonify(product.serialize_with_images())
+        response.headers['Access-Control-Allow-Origin'] = '*'
+        response.headers['Access-Control-Expose-Headers'] = 'Authorization'
+        return response, 200
+
+    elif request.method == 'PUT':
+        # Solo los administradores pueden actualizar productos
+        if not current_user.get("is_admin"):
+            return jsonify({"message": "Access forbidden: Admins only"}), 403
+
+        data = request.json
+        try:
+            # Actualizar los detalles del producto
+            product.nombre = data.get('nombre', product.nombre)
+            product.descripcion = data.get('descripcion', product.descripcion)
+            product.precio = data.get('precio', product.precio)
+            product.categoria_id = data.get('categoria_id', product.categoria_id)
+            product.imagen = data.get('imagen', product.imagen)
+
+            # Actualizar las imágenes adicionales si se proporcionan
+            if 'images' in data:
+                images_urls = data.get('images', [])
+                # Borrar imágenes anteriores
+                ProductImages.query.filter_by(product_id=product_id).delete()
+                # Añadir nuevas imágenes
+                for image_url in images_urls:
+                    new_image = ProductImages(product_id=product_id, image_url=image_url)
+                    db.session.add(new_image)
+
+            db.session.commit()
+            response = jsonify(product.serialize_with_images())
+            response.headers['Access-Control-Allow-Origin'] = '*'
+            response.headers['Access-Control-Expose-Headers'] = 'Authorization'
+            return response, 200
+
+        except SQLAlchemyError as e:
+            db.session.rollback()
+            return jsonify({"message": "An error occurred while updating the product.", "error": str(e)}), 500
+
+    elif request.method == 'DELETE':
+        # Solo los administradores pueden eliminar productos
+        if not current_user.get("is_admin"):
+            return jsonify({"message": "Access forbidden: Admins only"}), 403
+
+        try:
+            db.session.delete(product)
+            db.session.commit()
+            response = jsonify({"message": "Product deleted successfully."})
+            response.headers['Access-Control-Allow-Origin'] = '*'
+            response.headers['Access-Control-Expose-Headers'] = 'Authorization'
+            return response, 200
+
+        except SQLAlchemyError as e:
+            db.session.rollback()
+            return jsonify({"message": "An error occurred while deleting the product.", "error": str(e)}), 500
+
+# Ruta para agregar imágenes adicionales a un producto específico
+@api.route('/products/<int:product_id>/images', methods=['POST'])
+@jwt_required()
+def add_product_images(product_id):
     current_user = get_jwt_identity()
     if not current_user.get("is_admin"):
         return jsonify({"message": "Access forbidden: Admins only"}), 403
@@ -223,37 +292,27 @@ def handle_product(product_id):
     if not product:
         return jsonify({"message": "Product not found"}), 404
 
-    if request.method == 'GET':
-        response = jsonify(product.serialize())
-        response.headers['Access-Control-Allow-Origin'] = '*'
-        return response, 200
+    data = request.get_json()
+    image_urls = data.get('images', [])
+    if not isinstance(image_urls, list) or not all(isinstance(url, str) for url in image_urls):
+        return jsonify({"message": "Invalid images format. Expected a list of URLs."}), 400
 
-    if request.method == 'PUT':
-        data = request.json
-        product.nombre = data.get('nombre', product.nombre)
-        product.descripcion = data.get('descripcion', product.descripcion)
-        product.precio = data.get('precio', product.precio)
-        product.categoria_id = data.get('categoria_id', product.categoria_id)
-        product.imagen = data.get('imagen', product.imagen)
-        product.stock = data.get('stock', product.stock)
-        product.alto = data.get('alto', product.alto)
-        product.ancho = data.get('ancho', product.ancho)
-        product.anclaje = data.get('anclaje', product.anclaje)
-        product.color = data.get('color', product.color)
+    try:
+        for image_url in image_urls:
+            new_image = ProductImages(product_id=product_id, image_url=image_url)
+            db.session.add(new_image)
 
         db.session.commit()
-        response = jsonify(product.serialize())
+        response = jsonify({"message": "Images added successfully.", "product": product.serialize_with_images()})
         response.headers['Access-Control-Allow-Origin'] = '*'
-        return response, 200
+        response.headers['Access-Control-Expose-Headers'] = 'Authorization'
+        return response, 201
 
-    if request.method == 'DELETE':
-        db.session.delete(product)
-        db.session.commit()
-        response = jsonify({"message": "Product deleted successfully."})
-        response.headers['Access-Control-Allow-Origin'] = '*'
-        return response, 200
+    except SQLAlchemyError as e:
+        db.session.rollback()
+        return jsonify({"message": "An error occurred while adding images.", "error": str(e)}), 500
 
-# Obtener todos los pedidos (GET)
+
 @api.route('/orders', methods=['GET', 'POST'])
 @jwt_required()
 def handle_orders():
@@ -283,7 +342,7 @@ def handle_orders():
         response.headers['Access-Control-Allow-Origin'] = '*'
         return response, 201
 
-# Obtener, actualizar o eliminar un pedido específico
+
 @api.route('/orders/<int:order_id>', methods=['GET', 'DELETE'])
 @jwt_required()
 def handle_order(order_id):
