@@ -9,6 +9,8 @@ export const OrderList = (props) => (
       <TextField source="user_id" label="ID del Usuario" />
       <NumberField source="total_amount" label="Monto Total" />
       <DateField source="order_date" label="Fecha de Orden" />
+      <TextField source="invoice_number" label="Número de Factura" />
+      <TextField source="locator" label="Localizador" />
       <EditButton />
       <DeleteButton />
     </Datagrid>
@@ -23,6 +25,8 @@ export const OrderEdit = (props) => (
       <TextInput source="user_id" label="ID del Usuario" />
       <NumberInput source="total_amount" label="Monto Total" />
       <TextInput source="order_date" label="Fecha de Orden" />
+      <TextInput source="invoice_number" label="Número de Factura" disabled />
+      <TextInput source="locator" label="Localizador" disabled />
     </SimpleForm>
   </Edit>
 );
@@ -34,6 +38,8 @@ export const OrderCreate = (props) => (
       <TextInput source="user_id" label="ID del Usuario" />
       <NumberInput source="total_amount" label="Monto Total" />
       <TextInput source="order_date" label="Fecha de Orden" />
+      <TextInput source="invoice_number" label="Número de Factura" disabled />
+      <TextInput source="locator" label="Localizador" disabled />
     </SimpleForm>
   </Create>
 );
