@@ -400,31 +400,43 @@ def get_product_images():
 @jwt_required()
 def handle_orders():
     current_user = get_jwt_identity()
-    
+
     if request.method == 'GET':
+        # Obtener todas las órdenes del usuario actual
         orders = db.session.execute(db.select(Orders).where(Orders.user_id == current_user['user_id'])).scalars()
         results = [order.serialize() for order in orders]
         total_count = len(results)
 
         response = jsonify(results)
-        response.headers['X-Total-Count'] = total_count
+        response.headers['X-Total-Count'] = str(total_count)
         response.headers['Access-Control-Expose-Headers'] = 'X-Total-Count'
         response.headers['Access-Control-Allow-Origin'] = '*'
         return response, 200
-    
+
     if request.method == 'POST':
+        # Crear nueva orden
         data = request.get_json()
-        new_order = Orders(user_id=current_user['user_id'], total_amount=data['total_amount'])
-        db.session.add(new_order)
-        db.session.commit()
+        try:
+            new_order = Orders(
+                user_id=current_user['user_id'],
+                total_amount=data['total_amount'],
+                invoice_number=Orders.generate_invoice_number(),
+                locator=Orders.generate_locator()
+            )
+            db.session.add(new_order)
+            db.session.commit()
 
-        response = jsonify({
-            'message': 'Order created successfully.',
-            'order': new_order.serialize()
-        })
-        response.headers['Access-Control-Allow-Origin'] = '*'
-        return response, 201
+            response = jsonify({
+                'message': 'Order created successfully.',
+                'order': new_order.serialize()
+            })
+            response.headers['Access-Control-Allow-Origin'] = '*'
+            response.headers['Access-Control-Expose-Headers'] = 'X-Total-Count'
+            return response, 201
 
+        except SQLAlchemyError as e:
+            db.session.rollback()
+            return jsonify({"message": "An error occurred while creating the order.", "error": str(e)}), 500
 
 @api.route('/orders/<int:order_id>', methods=['GET', 'DELETE'])
 @jwt_required()
@@ -438,30 +450,65 @@ def handle_order(order_id):
     if request.method == 'GET':
         response = jsonify(order.serialize())
         response.headers['Access-Control-Allow-Origin'] = '*'
+        response.headers['Access-Control-Expose-Headers'] = 'X-Total-Count'
         return response, 200
 
     if request.method == 'DELETE':
-        db.session.delete(order)
-        db.session.commit()
-        response = jsonify({"message": "Order deleted successfully."})
-        response.headers['Access-Control-Allow-Origin'] = '*'
-        return response, 200
+        try:
+            db.session.delete(order)
+            db.session.commit()
+            response = jsonify({"message": "Order deleted successfully."})
+            response.headers['Access-Control-Allow-Origin'] = '*'
+            response.headers['Access-Control-Expose-Headers'] = 'X-Total-Count'
+            return response, 200
 
+        except SQLAlchemyError as e:
+            db.session.rollback()
+            return jsonify({"message": "An error occurred while deleting the order.", "error": str(e)}), 500
 
 @api.route('/orderdetails', methods=['POST'])
 @jwt_required()
 def add_order_detail():
     data = request.get_json()
-    new_order_detail = OrderDetails(
-        order_id=data['order_id'],
-        product_id=data['product_id'],
-        quantity=data['quantity'],
-        alto=data.get('alto'),  # Opcional
-        ancho=data.get('ancho'),  # Opcional
-        anclaje=data.get('anclaje'),  # Opcional
-        color=data.get('color')  # Opcional
-    )
-    db.session.add(new_order_detail)
-    db.session.commit()
+    try:
+        new_order_detail = OrderDetails(
+            order_id=data['order_id'],
+            product_id=data['product_id'],
+            quantity=data['quantity'],
+            alto=data.get('alto'),  # Opcional
+            ancho=data.get('ancho'),  # Opcional
+            anclaje=data.get('anclaje'),  # Opcional
+            color=data.get('color')  # Opcional
+        )
+        db.session.add(new_order_detail)
+        db.session.commit()
 
-    return jsonify({"message": "Order detail added successfully.", "order_detail": new_order_detail.serialize()}), 201
+        response = jsonify({
+            "message": "Order detail added successfully.",
+            "order_detail": new_order_detail.serialize()
+        })
+        response.headers['Access-Control-Allow-Origin'] = '*'
+        response.headers['Access-Control-Expose-Headers'] = 'X-Total-Count'
+        return response, 201
+
+    except SQLAlchemyError as e:
+        db.session.rollback()
+        return jsonify({"message": "An error occurred while adding the order detail.", "error": str(e)}), 500
+
+@api.route('/orderdetails', methods=['GET'])
+@jwt_required()
+def get_order_details():
+    current_user = get_jwt_identity()
+    if not current_user.get("is_admin"):
+        return jsonify({"message": "Access forbidden: Admins only"}), 403
+
+    # Obtener todos los detalles de pedidos
+    order_details = db.session.execute(db.select(OrderDetails)).scalars()
+    results = [detail.serialize() for detail in order_details]
+    total_count = len(results)
+
+    response = jsonify(results)
+    response.headers['X-Total-Count'] = str(total_count)
+    response.headers['Access-Control-Expose-Headers'] = 'X-Total-Count'
+    response.headers['Access-Control-Allow-Origin'] = '*'
+    return response, 200

@@ -1,9 +1,9 @@
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import Enum
-
+import random
+import string
 
 db = SQLAlchemy()
-
 
 class Users(db.Model):
     __tablename__ = 'users'
@@ -119,8 +119,11 @@ class Orders(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     order_date = db.Column(db.DateTime, default=db.func.current_timestamp())
     total_amount = db.Column(db.Float, nullable=False)
+    invoice_number = db.Column(db.String(50), nullable=False, unique=True)  # Número de factura
+    locator = db.Column(db.String(10), nullable=False, unique=True)  # Localizador único
 
     user = db.relationship('Users', backref='orders', lazy=True)
+    order_details = db.relationship('OrderDetails', backref='order', lazy=True)  # Relación con OrderDetails
 
     def __repr__(self):
         return f'<Order {self.id} by User {self.user_id}>'
@@ -131,7 +134,22 @@ class Orders(db.Model):
             "user_id": self.user_id,
             "order_date": self.order_date,
             "total_amount": self.total_amount,
+            "invoice_number": self.invoice_number,
+            "locator": self.locator,
+            "order_details": [detail.serialize() for detail in self.order_details]  # Serializar detalles del pedido
         }
+
+    @staticmethod
+    def generate_invoice_number():
+        from datetime import datetime
+        now = datetime.now()
+        return f"{now.strftime('%b').upper()}-{now.year}-{random.randint(1, 999):03}"
+
+    @staticmethod
+    def generate_locator():
+        letters = ''.join(random.choices(string.ascii_uppercase, k=2))
+        numbers = ''.join(random.choices(string.digits, k=4))
+        return f"{letters}{numbers}"
 
 
 class OrderDetails(db.Model):
@@ -144,6 +162,8 @@ class OrderDetails(db.Model):
     ancho = db.Column(db.Float, nullable=True)  # Tamaño - Ancho (opcional)
     anclaje = db.Column(db.Enum('pared', 'suelo', 'mixto', name='anclaje_enum'), nullable=True)  # Tipo de anclaje (opcional)
     color = db.Column(db.String(50), nullable=True)  # Color (opcional)
+
+    product = db.relationship('Products', backref='order_details', lazy=True)  # Relación con productos
 
     def __repr__(self):
         return f'<OrderDetail {self.id}: Order {self.order_id} - Product {self.product_id}>'

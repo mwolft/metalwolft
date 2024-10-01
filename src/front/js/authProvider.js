@@ -35,7 +35,7 @@ export const authProvider = {
       return Promise.resolve();
     } else {
       console.warn("User is not authenticated or not authorized.");
-      return Promise.reject({ redirectTo: '/login' });  // Aseguramos que la redirección sea clara
+      return Promise.reject({ redirectTo: '/login' });
     }
   },
   checkError: (error) => {
@@ -43,6 +43,7 @@ export const authProvider = {
     console.log("checkError executed. Status:", status);
     if (status === 401 || status === 403) {
       localStorage.removeItem('token');
+      localStorage.removeItem('user');
       return Promise.reject({ redirectTo: '/login' });
     }
     return Promise.resolve();
@@ -56,4 +57,17 @@ export const authProvider = {
       return Promise.resolve();
     }
   },
+  getIdentity: () => {
+    try {
+      const user = JSON.parse(localStorage.getItem('user'));
+      console.log("getIdentity executed. User:", user);
+      return Promise.resolve({
+        id: user.user_id,
+        fullName: user.firstname + " " + user.lastname,
+      });
+    } catch (error) {
+      console.error("Error getting user identity:", error);
+      return Promise.reject(error);
+    }
+  }
 };

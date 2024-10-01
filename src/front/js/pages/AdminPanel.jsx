@@ -7,8 +7,9 @@ import { UserList, UserEdit, UserCreate } from "../component/admin/users/users.j
 import { ProductList, ProductEdit, ProductCreate } from "../component/admin/products/products.js";
 import { OrderList, OrderEdit, OrderCreate } from "../component/admin/orders/orders.js";
 import { ProductImagesList, ProductImagesEdit, ProductImagesCreate } from "../component/admin/products/productImages.js";
+import { OrderDetailsList, OrderDetailsEdit, OrderDetailsCreate } from "../component/admin/orderDetails/orderDetails.js";
 import { authProvider } from "../authProvider.js";
-import { FaUser, FaBoxOpen, FaShoppingCart, FaImages } from 'react-icons/fa';
+import { FaUser, FaBoxOpen, FaShoppingCart, FaImages, FaClipboardList } from 'react-icons/fa';
 import '../../styles/admin-panel.css';
 
 // Crear una función de cliente personalizado para agregar el token al header de cada solicitud
@@ -84,6 +85,13 @@ const AdminPanel = () => {
             edit={ProductImagesEdit}
             create={ProductImagesCreate}
             icon={() => <FaImages size={19} />}
+          />
+          <Resource
+            name="orderdetails"
+            list={OrderDetailsList}
+            edit={OrderDetailsEdit}
+            create={OrderDetailsCreate}
+            icon={() => <FaClipboardList size={19} />}
           />
         </Admin>
       </div>
