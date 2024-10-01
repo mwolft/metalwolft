@@ -13,7 +13,9 @@ const getState = ({ getStore, getActions, setStore }) => {
             favoriteRecipes: [],
             favoriteRoutines: [],
             error: null,
-            loading: false
+            loading: false,
+            orders: [],  // Agregar campo para almacenar órdenes
+            orderDetails: []  // Agregar campo para almacenar detalles de órdenes
         },
         actions: {
             getMessage: async () => {
@@ -44,7 +46,7 @@ const getState = ({ getStore, getActions, setStore }) => {
                         method: 'PUT',
                         headers: {
                             'Content-Type': 'application/json',
-                            Authorization: `Bearer ${localStorage.getItem("token")}` 
+                            Authorization: `Bearer ${localStorage.getItem("token")}`
                         },
                         body: JSON.stringify(updatedData)
                     });
@@ -58,7 +60,6 @@ const getState = ({ getStore, getActions, setStore }) => {
                     return { ok: false };
                 }
             },
-
             setIsLoged: (isLogin) => {
                 if (isLogin) {
                     setStore({ isLoged: true });
@@ -68,14 +69,51 @@ const getState = ({ getStore, getActions, setStore }) => {
                     localStorage.removeItem("user");
                 }
             },
-
             setIsAdmin: (isAdmin) => {
                 setStore({ isAdmin });
             },
-
             setAlert: (newAlert) => {
                 setStore({ alert: newAlert });
-            }
+            },
+            fetchOrders: async () => {
+                const store = getStore();
+                try {
+                    const response = await fetch(`${process.env.BACKEND_URL}/api/orders`, {
+                        method: 'GET',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            Authorization: `Bearer ${localStorage.getItem("token")}`
+                        }
+                    });
+                    if (!response.ok) throw new Error("Error al obtener las órdenes");
+
+                    const data = await response.json();
+                    setStore({ orders: data });
+                    return { ok: true };
+                } catch (error) {
+                    setStore({ error: error.message });
+                    return { ok: false };
+                }
+            },
+            fetchOrderDetails: async () => {
+                try {
+                    const response = await fetch(`${process.env.BACKEND_URL}/api/orderdetails`, {
+                        method: 'GET',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            Authorization: `Bearer ${localStorage.getItem("token")}`
+                        }
+                    });
+                    if (!response.ok) throw new Error("Error al obtener los detalles de las órdenes");
+
+                    const data = await response.json();
+                    setStore({ orderDetails: data });
+                    return { ok: true };
+                } catch (error) {
+                    setStore({ error: error.message });
+                    return { ok: false };
+                }
+            },
         }
     };
 };
