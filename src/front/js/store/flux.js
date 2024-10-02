@@ -4,18 +4,19 @@ const getState = ({ getStore, getActions, setStore }) => {
             message: null,
             currentUser: null,
             isLoged: false,
-            isAdmin: false,  // Nuevo campo para indicar si el usuario es administrador
+            isAdmin: false,  // Campo para indicar si el usuario es administrador
             alert: { visible: false, back: 'danger', text: 'Mensaje del back' },
             generatedRecipe: null,
-            recipeId: null,  // Added to store the generated recipe ID
+            recipeId: null,  // ID de receta generada
             generatedRoutine: null,
-            routineId: null,  // Added to store the generated routine ID
+            routineId: null,  // ID de rutina generada
             favoriteRecipes: [],
             favoriteRoutines: [],
             error: null,
             loading: false,
-            orders: [],  // Agregar campo para almacenar órdenes
-            orderDetails: []  // Agregar campo para almacenar detalles de órdenes
+            orders: [],  // Lista de órdenes
+            orderDetails: [],  // Lista de detalles de órdenes
+            products: []  // Lista de productos
         },
         actions: {
             getMessage: async () => {
@@ -36,11 +37,11 @@ const getState = ({ getStore, getActions, setStore }) => {
             setCurrentUser: (user) => {
                 setStore({
                     currentUser: user,
-                    isAdmin: user?.is_admin || false // Actualizar el estado de administrador según el usuario
+                    isAdmin: user?.is_admin || false  // Actualizar el estado de administrador según el usuario
                 });
             },
             updateUserProfile: async (userId, updatedData) => {
-                const store = getStore();
+                const store = getStore(); // Corrección: Agregar esta línea para obtener el estado actual
                 try {
                     const response = await fetch(`${process.env.BACKEND_URL}/api/users/${userId}`, {
                         method: 'PUT',
@@ -64,7 +65,7 @@ const getState = ({ getStore, getActions, setStore }) => {
                 if (isLogin) {
                     setStore({ isLoged: true });
                 } else {
-                    setStore({ isLoged: false, isAdmin: false });  // Restablecer isAdmin al cerrar sesión
+                    setStore({ isLoged: false, isAdmin: false });
                     localStorage.removeItem("token");
                     localStorage.removeItem("user");
                 }
@@ -76,7 +77,7 @@ const getState = ({ getStore, getActions, setStore }) => {
                 setStore({ alert: newAlert });
             },
             fetchOrders: async () => {
-                const store = getStore();
+                const store = getStore(); // Corrección: Agregar esta línea para obtener el estado actual
                 try {
                     const response = await fetch(`${process.env.BACKEND_URL}/api/orders`, {
                         method: 'GET',
@@ -96,6 +97,7 @@ const getState = ({ getStore, getActions, setStore }) => {
                 }
             },
             fetchOrderDetails: async () => {
+                const store = getStore(); // Corrección: Agregar esta línea para obtener el estado actual
                 try {
                     const response = await fetch(`${process.env.BACKEND_URL}/api/orderdetails`, {
                         method: 'GET',
@@ -114,6 +116,24 @@ const getState = ({ getStore, getActions, setStore }) => {
                     return { ok: false };
                 }
             },
+            fetchProducts: async () => {
+                const store = getStore(); // Corrección: Agregar esta línea para obtener el estado actual
+                try {
+                    const response = await fetch(`${process.env.BACKEND_URL}/api/products`, {
+                        method: 'GET',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            Authorization: `Bearer ${localStorage.getItem("token")}`
+                        }
+                    });
+                    if (!response.ok) throw new Error("Error al obtener productos");
+
+                    const data = await response.json();
+                    setStore({ products: data });
+                } catch (error) {
+                    setStore({ error: error.message });
+                }
+            }
         }
     };
 };
