@@ -349,32 +349,51 @@ def handle_product(product_id):
 @jwt_required()
 def add_product_images(product_id):
     current_user = get_jwt_identity()
+    # Solo los administradores pueden agregar imágenes
     if not current_user.get("is_admin"):
         return jsonify({"message": "Access forbidden: Admins only"}), 403
 
+    # Obtener el producto por ID
     product = Products.query.get(product_id)
     if not product:
         return jsonify({"message": "Product not found"}), 404
 
+    # Obtener las URLs de las imágenes desde la solicitud
     data = request.get_json()
     image_urls = data.get('images', [])
+    
+    # Verificar que las URLs sean una lista de cadenas de texto válidas
     if not isinstance(image_urls, list) or not all(isinstance(url, str) for url in image_urls):
         return jsonify({"message": "Invalid images format. Expected a list of URLs."}), 400
 
     try:
+        # Añadir cada imagen a la base de datos
         for image_url in image_urls:
             new_image = ProductImages(product_id=product_id, image_url=image_url)
             db.session.add(new_image)
 
+        # Confirmar los cambios en la base de datos
         db.session.commit()
+
+        # Devolver el producto con las nuevas imágenes
         response = jsonify({"message": "Images added successfully.", "product": product.serialize_with_images()})
         response.headers['Access-Control-Allow-Origin'] = '*'
         response.headers['Access-Control-Expose-Headers'] = 'Authorization'
         return response, 201
 
     except SQLAlchemyError as e:
+        # Manejar errores y revertir la transacción si ocurre un problema
         db.session.rollback()
         return jsonify({"message": "An error occurred while adding images.", "error": str(e)}), 500
+
+
+@api.route('/products/<int:product_id>', methods=['GET'])
+def get_product_with_images(product_id):
+    product = Products.query.get(product_id)
+    if not product:
+        return jsonify({"message": "Product not found"}), 404
+
+    return jsonify(product.serialize_with_images()), 200
 
 
 @api.route('/product_images', methods=['GET'])

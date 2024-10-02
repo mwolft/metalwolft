@@ -23,13 +23,17 @@ export const RejasParaVentanas = () => {
                         <AsideCategories />
                     </div>
                     <div className="col-12 col-lg-9 col-xl-9 order-1 order-sm-1 order-md-1 order-lg-2 order-xl-2">
-                        {store.products.length > 0 ? (
-                            store.products.map((product, index) => (
-                                <Product key={index} product={product} />
-                            ))
-                        ) : (
-                            <p>No hay productos disponibles en esta categoría.</p>
-                        )}
+                        <div className="row">
+                            {store.products.length > 0 ? (
+                                store.products.map((product, index) => (
+                                    <div key={index} className="col-6 col-sm-6 col-md-4 col-lg-4 col-xl-4 mb-4 d-flex">
+                                        <Product product={product} className="w-100" />
+                                    </div>
+                                ))
+                            ) : (
+                                <p>No hay productos disponibles en esta categoría.</p>
+                            )}
+                        </div>
                     </div>
                 </div>
             </div>
