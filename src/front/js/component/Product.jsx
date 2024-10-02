@@ -6,7 +6,7 @@ import Card from 'react-bootstrap/Card';
 
 export const Product = ({ product }) => {
     return (
-        <div className="col-12 col-md-6 col-lg-4 col-xl-4">
+        <div className="col">
             <Card className="px-2 my-3" style={{ width: 'auto' }}>
                 <Card.Img variant="top" src={product.imagen} />
                 <Card.Body>
