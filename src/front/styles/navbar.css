@@ -48,4 +48,17 @@ button.btn-outline-dark i {
     right: 0;                 
     left: auto;               
 }
+
+.favorites-badge {
+    top: -10px;  /* Ajusta este valor para mover hacia arriba o hacia abajo */
+    left: 15px;  /* Ajusta este valor para mover a la izquierda o a la derecha */
+    position: absolute;
+    transform: translate(20%, 60%);
+    font-size: 0.8rem;  /* Tamaño del contador */
+    width: 20px;
+    height: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
 /* ----- END NAVBAR ----- */

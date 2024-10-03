@@ -6,10 +6,12 @@ import Card from 'react-bootstrap/Card';
 import Modal from 'react-bootstrap/Modal';
 import Carousel from 'react-bootstrap/Carousel';
 import { Context } from "../store/appContext";
+import { Notification } from './Notification.jsx' ;
 
 export const Product = ({ product }) => {
     const [showModal, setShowModal] = useState(false);
     const [currentIndex, setCurrentIndex] = useState(0);
+    const [notification, setNotification] = useState(null); // Estado para controlar la notificación
     const { store, actions } = useContext(Context);
 
     const handleShow = () => setShowModal(true);
@@ -23,13 +25,13 @@ export const Product = ({ product }) => {
         if (store.isLoged) {
             if (actions.isFavorite(product)) {
                 actions.removeFavorite(product.id);
-                alert('Producto eliminado de favoritos');
+                setNotification("Producto eliminado de favoritos");
             } else {
                 actions.addFavorite(product);
-                alert('Producto añadido a favoritos');
+                setNotification("Producto añadido a favoritos");
             }
         } else {
-            alert('Debe registrarse para añadir favoritos');
+            setNotification("Debe registrarse para añadir favoritos");
         }
     };
 
@@ -122,6 +124,15 @@ export const Product = ({ product }) => {
                     </Button>
                 </Modal.Footer>
             </Modal>
+
+            {/* Notificación */}
+            {notification && (
+                <Notification
+                    message={notification}
+                    duration={3000} // Duración de 3 segundos
+                    onClose={() => setNotification(null)}
+                />
+            )}
         </>
     );
 };

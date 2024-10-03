@@ -15,7 +15,7 @@ export const MainNavbar = () => {
     const navigate = useNavigate();
 
     const handleLogout = () => {
-        actions.setIsLoged(false);
+        actions.setIsLoged(false); // Desloguea al usuario y vacía los favoritos
         setExpanded(false);
         navigate("/"); // Redirige a la home después del logout
     };
@@ -51,8 +51,8 @@ export const MainNavbar = () => {
                     </Nav>
                     <Nav className="ms-auto" onSelect={handleSelect}>
                         <Nav.Link onClick={handleFavoritesClick} className="d-flex align-items-center position-relative">
-                            <i className="fa-regular fa-heart fa-lg me-2"></i>
-                            <span className="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">
+                            <i className="fa-regular fa-heart fa-lg"></i>
+                            <span className="position-absolute badge rounded-pill bg-danger favorites-badge">
                                 {store.favorites ? store.favorites.length : 0}
                                 <span className="visually-hidden">favoritos</span>
                             </span>

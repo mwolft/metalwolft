@@ -16,6 +16,7 @@ import { CardsCarrusel } from "./component/CardsCarrusel.jsx";
 import { Carrusel } from "./component/Carrusel.jsx";
 import { Breadcrumb } from "./component/Breadcrumb.jsx";
 import { Product } from "./component/Product.jsx";
+import { Notification } from "./component/Notification.jsx";
 import { AsideCategories } from "./component/AsideCategories.jsx";
 
 // Custom pages
@@ -49,6 +50,7 @@ const Layout = () => {
                     <Route path="/body-home-quarter" element={<BodyHomeQuarter />} />
                     <Route path="/product" element={<Product />} />
                     <Route path="/favoritos" element={<Favoritos />} />
+                    <Route path="/notification" element={<Notification />} />
                     <Route path="/cards-carrusel" element={<CardsCarrusel />} />
                     <Route path="/sidebar" element={<Sidebar />} />
                     <Route path="/profile" element={<Profile />} />
