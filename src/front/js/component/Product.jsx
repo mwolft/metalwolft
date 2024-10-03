@@ -1,4 +1,4 @@
-import React, { useState, useContext } from 'react'; 
+import React, { useState, useContext } from 'react';
 import "../../styles/cards-carrusel.css";
 import Button from 'react-bootstrap/Button';
 import Rating from 'react-rating';
@@ -6,12 +6,12 @@ import Card from 'react-bootstrap/Card';
 import Modal from 'react-bootstrap/Modal';
 import Carousel from 'react-bootstrap/Carousel';
 import { Context } from "../store/appContext";
-import { Notification } from './Notification.jsx' ;
+import { Notification } from "./Notification.jsx";
 
 export const Product = ({ product }) => {
     const [showModal, setShowModal] = useState(false);
     const [currentIndex, setCurrentIndex] = useState(0);
-    const [notification, setNotification] = useState(null); // Estado para controlar la notificación
+    const [notification, setNotification] = useState(null); // Estado para la notificación
     const { store, actions } = useContext(Context);
 
     const handleShow = () => setShowModal(true);
@@ -76,7 +76,9 @@ export const Product = ({ product }) => {
             {/* Modal */}
             <Modal show={showModal} onHide={handleClose} size="lg">
                 <Modal.Header closeButton>
-                    <Modal.Title>{product.nombre}</Modal.Title>
+                    <Modal.Title className="d-flex align-items-center">
+                        {product.nombre}
+                    </Modal.Title>
                 </Modal.Header>
                 <Modal.Body>
                     <Carousel activeIndex={currentIndex} onSelect={handleSelect}>
@@ -119,6 +121,9 @@ export const Product = ({ product }) => {
                     </div>
                 </Modal.Body>
                 <Modal.Footer>
+                    <i className={`fa-regular fa-heart ms-3 ${actions.isFavorite(product) ? 'fa-solid' : ''}`}
+                        onClick={handleFavorite}
+                        style={{ cursor: 'pointer', color: 'red', fontSize: '1.5rem' }}></i>
                     <Button className="btn-style-background-color">
                         Añadir al carrito
                     </Button>
