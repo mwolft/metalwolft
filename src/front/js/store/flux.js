@@ -14,9 +14,10 @@ const getState = ({ getStore, getActions, setStore }) => {
             favoriteRoutines: [],
             error: null,
             loading: false,
-            orders: [],  // Lista de órdenes
-            orderDetails: [],  // Lista de detalles de órdenes
-            products: []  // Lista de productos
+            products: [],  
+            favorites: [],
+            orders: [],  
+            orderDetails: []  
         },
         actions: {
             getMessage: async () => {
@@ -133,6 +134,22 @@ const getState = ({ getStore, getActions, setStore }) => {
                 } catch (error) {
                     setStore({ error: error.message });
                 }
+            },
+            addFavorite: (product) => {
+                const store = getStore();
+                setStore({ favorites: [...store.favorites, product] });
+            },
+
+            // Eliminar un producto de favoritos
+            removeFavorite: (productId) => {
+                const store = getStore();
+                setStore({ favorites: store.favorites.filter(product => product.id !== productId) });
+            },
+
+            // Verificar si un producto está en favoritos
+            isFavorite: (product) => {
+                const store = getStore();
+                return store.favorites.some(favorite => favorite.id === product.id);
             }
         }
     };

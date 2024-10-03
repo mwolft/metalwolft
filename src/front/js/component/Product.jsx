@@ -1,14 +1,16 @@
-import React, { useState } from 'react';
+import React, { useState, useContext } from 'react'; 
 import "../../styles/cards-carrusel.css";
 import Button from 'react-bootstrap/Button';
 import Rating from 'react-rating';
 import Card from 'react-bootstrap/Card';
 import Modal from 'react-bootstrap/Modal';
 import Carousel from 'react-bootstrap/Carousel';
+import { Context } from "../store/appContext";
 
 export const Product = ({ product }) => {
     const [showModal, setShowModal] = useState(false);
     const [currentIndex, setCurrentIndex] = useState(0);
+    const { store, actions } = useContext(Context);
 
     const handleShow = () => setShowModal(true);
     const handleClose = () => setShowModal(false);
@@ -17,9 +19,23 @@ export const Product = ({ product }) => {
         setCurrentIndex(selectedIndex);
     };
 
+    const handleFavorite = () => {
+        if (store.isLoged) {
+            if (actions.isFavorite(product)) {
+                actions.removeFavorite(product.id);
+                alert('Producto eliminado de favoritos');
+            } else {
+                actions.addFavorite(product);
+                alert('Producto añadido a favoritos');
+            }
+        } else {
+            alert('Debe registrarse para añadir favoritos');
+        }
+    };
+
     const allImages = [
-        { image_url: product.imagen }, // Incluimos la imagen principal
-        ...product.images.filter(image => image.image_url !== product.imagen), // Imágenes adicionales sin duplicar la principal
+        { image_url: product.imagen },
+        ...product.images.filter(image => image.image_url !== product.imagen),
     ];
 
     return (
@@ -41,10 +57,15 @@ export const Product = ({ product }) => {
                                 readonly
                             />
                         </div>
-                        <div className="my-1">
+                        <div className="my-1 d-flex justify-content-between align-items-center">
                             <Button className="btn-style-background-color" onClick={handleShow}>
                                 Ver más
                             </Button>
+                            <i
+                                className={`fa-regular fa-heart ${actions.isFavorite(product) ? 'fa-solid' : ''}`}
+                                onClick={handleFavorite}
+                                style={{ cursor: 'pointer', color: 'red', fontSize: '1.5rem' }}
+                            ></i>
                         </div>
                     </Card.Body>
                 </Card>
@@ -56,7 +77,6 @@ export const Product = ({ product }) => {
                     <Modal.Title>{product.nombre}</Modal.Title>
                 </Modal.Header>
                 <Modal.Body>
-                    {/* Carrusel con imágenes */}
                     <Carousel activeIndex={currentIndex} onSelect={handleSelect}>
                         {allImages.map((image, index) => (
                             <Carousel.Item key={index}>
@@ -69,7 +89,6 @@ export const Product = ({ product }) => {
                         ))}
                     </Carousel>
 
-                    {/* Miniaturas debajo del carrusel */}
                     <div className="thumbnail-gallery d-flex justify-content-center mt-3">
                         {allImages.map((image, index) => (
                             <img
@@ -83,7 +102,6 @@ export const Product = ({ product }) => {
                         ))}
                     </div>
 
-                    {/* Detalles del producto */}
                     <div className="product-details mt-4">
                         <h5>Precio: {product.precio} €/m²</h5>
                         <p>{product.descripcion}</p>
