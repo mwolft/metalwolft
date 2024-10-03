@@ -4,7 +4,6 @@ import Container from 'react-bootstrap/Container';
 import Nav from 'react-bootstrap/Nav';
 import Navbar from 'react-bootstrap/Navbar';
 import NavDropdown from 'react-bootstrap/NavDropdown';
-import { Button } from "react-bootstrap";
 import { useNavigate } from "react-router-dom";
 import { Context } from "../store/appContext";
 import { Link } from "react-router-dom";
@@ -21,8 +20,16 @@ export const MainNavbar = () => {
         navigate("/"); // Redirige a la home después del logout
     };
 
-    const handleToggle = () => setExpanded(!expanded); // Alterna el estado de expandir/cerrar el menú
-    const handleSelect = () => setExpanded(false); // Cierra el menú al hacer clic
+    const handleToggle = () => setExpanded(!expanded);
+    const handleSelect = () => setExpanded(false);
+
+    const handleFavoritesClick = () => {
+        if (store.isLoged) {
+            navigate('/favoritos');
+        } else {
+            alert('Debe registrarse para ver los favoritos');
+        }
+    };
 
     return (
         <Navbar expand="lg" className="estilo-navbar fixed-top text-uppercase" data-bs-theme="light" expanded={expanded}>
@@ -43,6 +50,13 @@ export const MainNavbar = () => {
                         <Nav.Link as={Link} to="/bmr-calculator" onClick={handleSelect}>Sobre nosotros</Nav.Link>
                     </Nav>
                     <Nav className="ms-auto" onSelect={handleSelect}>
+                        <Nav.Link onClick={handleFavoritesClick} className="d-flex align-items-center position-relative">
+                            <i className="fa-regular fa-heart fa-lg me-2"></i>
+                            <span className="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">
+                                {store.favorites ? store.favorites.length : 0}
+                                <span className="visually-hidden">favoritos</span>
+                            </span>
+                        </Nav.Link>
                         {store.isLoged ? (
                             <>
                                 {store.currentUser?.is_admin && (
@@ -58,7 +72,7 @@ export const MainNavbar = () => {
                         ) : (
                             <Nav.Link onClick={() => { setExpanded(false); navigate("/login"); }} className="d-flex align-items-center">
                                 <i className="fa-solid fa-user-plus fa-lg me-2"></i>
-                                <p className="small mb-0"></p>
+                                <p className="small mb-0">Iniciar sesión</p>
                             </Nav.Link>
                         )}
                     </Nav>

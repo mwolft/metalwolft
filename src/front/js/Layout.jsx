@@ -23,8 +23,9 @@ import { Home } from "./pages/Home.jsx";
 import { Error404 } from "./pages/Error404.jsx";
 import { Login } from "./pages/Login.jsx";
 import { Profile } from "./pages/Profile.jsx";
-import AdminPanel from "./pages/AdminPanel.jsx";  
-
+import AdminPanel from "./pages/AdminPanel.jsx"; 
+import { Favoritos } from "./pages/Favoritos.jsx";
+ 
 // Custom categories
 import { RejasParaVentanas } from "./pages/categories/RejasParaVentanas.jsx";
 
@@ -47,6 +48,7 @@ const Layout = () => {
                     <Route path="/body-home-tertiary" element={<BodyHomeTertiary />} />
                     <Route path="/body-home-quarter" element={<BodyHomeQuarter />} />
                     <Route path="/product" element={<Product />} />
+                    <Route path="/favoritos" element={<Favoritos />} />
                     <Route path="/cards-carrusel" element={<CardsCarrusel />} />
                     <Route path="/sidebar" element={<Sidebar />} />
                     <Route path="/profile" element={<Profile />} />
