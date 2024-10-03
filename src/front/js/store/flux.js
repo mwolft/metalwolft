@@ -66,11 +66,11 @@ const getState = ({ getStore, getActions, setStore }) => {
                 if (isLogin) {
                     setStore({ isLoged: true });
                 } else {
-                    setStore({ isLoged: false, isAdmin: false });
+                    setStore({ isLoged: false, isAdmin: false, favorites: [] }); // Resetear los favoritos al desloguearse
                     localStorage.removeItem("token");
                     localStorage.removeItem("user");
                 }
-            },
+            },            
             setIsAdmin: (isAdmin) => {
                 setStore({ isAdmin });
             },
