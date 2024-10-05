@@ -11,7 +11,7 @@ import { Notification } from "./Notification.jsx";
 export const Product = ({ product }) => {
     const [showModal, setShowModal] = useState(false);
     const [currentIndex, setCurrentIndex] = useState(0);
-    const [notification, setNotification] = useState(null); // Estado para la notificación
+    const [notification, setNotification] = useState(null);
     const { store, actions } = useContext(Context);
 
     const handleShow = () => setShowModal(true);
@@ -21,13 +21,13 @@ export const Product = ({ product }) => {
         setCurrentIndex(selectedIndex);
     };
 
-    const handleFavorite = () => {
+    const handleFavorite = async () => {
         if (store.isLoged) {
             if (actions.isFavorite(product)) {
-                actions.removeFavorite(product.id);
+                await actions.removeFavorite(product.id);
                 setNotification("Producto eliminado de favoritos");
             } else {
-                actions.addFavorite(product);
+                await actions.addFavorite(product);
                 setNotification("Producto añadido a favoritos");
             }
         } else {
@@ -134,7 +134,7 @@ export const Product = ({ product }) => {
             {notification && (
                 <Notification
                     message={notification}
-                    duration={3000} // Duración de 3 segundos
+                    duration={3000}
                     onClose={() => setNotification(null)}
                 />
             )}

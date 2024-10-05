@@ -1,14 +1,24 @@
-import React, { useContext } from 'react';
+import React, { useContext, useEffect } from 'react';
 import { Context } from "../store/appContext";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import "../../styles/favorites.css"; // Asegúrate de tener estilos específicos para la tabla de favoritos
 
 export const Favoritos = () => {
     const { store, actions } = useContext(Context);
+    const navigate = useNavigate();
+
+    useEffect(() => {
+        if (!store.isLoged) {
+            alert("Debe iniciar sesión para ver sus favoritos");
+            navigate("/login");
+        } else {
+            actions.loadFavorites(); // Cargar los favoritos del backend al abrir la página de favoritos
+        }
+    }, [store.isLoged, actions, navigate]);
 
     return (
         <div className="container">
-            <div className="row" style={{marginTop: '100px'}}>
+            <div className="row" style={{ marginTop: '100px' }}>
                 <div className="col-12">
                     <div className="table-responsive wishlist_table">
                         <table className="table">
@@ -46,7 +56,7 @@ export const Favoritos = () => {
                                             </td>
                                             <td className="product-remove" data-title="Eliminar">
                                                 <button onClick={() => actions.removeFavorite(product.id)}>
-                                                <i className="fa-regular fa-trash-can"></i>
+                                                    <i className="fa-regular fa-trash-can"></i>
                                                 </button>
                                             </td>
                                         </tr>

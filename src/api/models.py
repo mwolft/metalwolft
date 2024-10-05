@@ -196,3 +196,20 @@ class Favorites(db.Model):
             "usuario_id": self.usuario_id,
             "producto_id": self.producto_id
         }
+
+
+class Cart(db.Model):
+    __tablename__ = "cart"
+    id = db.Column(db.Integer, primary_key=True)
+    usuario_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    producto_id = db.Column(db.Integer, db.ForeignKey('products.id'), nullable=False)
+
+    def __repr__(self):
+        return f'<Cart {self.id}: User {self.usuario_id}, Product {self.producto_id}>'
+
+    def serialize(self):
+        return {
+            "id": self.id,
+            "usuario_id": self.usuario_id,
+            "producto_id": self.producto_id
+        }

@@ -4,20 +4,15 @@ const getState = ({ getStore, getActions, setStore }) => {
             message: null,
             currentUser: null,
             isLoged: false,
-            isAdmin: false,  // Campo para indicar si el usuario es administrador
+            isAdmin: false,  
             alert: { visible: false, back: 'danger', text: 'Mensaje del back' },
-            generatedRecipe: null,
-            recipeId: null,  // ID de receta generada
-            generatedRoutine: null,
-            routineId: null,  // ID de rutina generada
-            favoriteRecipes: [],
-            favoriteRoutines: [],
             error: null,
             loading: false,
             products: [],  
             favorites: [],
             orders: [],  
-            orderDetails: []  
+            orderDetails: [],
+            cart: []
         },
         actions: {
             getMessage: async () => {
@@ -38,9 +33,12 @@ const getState = ({ getStore, getActions, setStore }) => {
             setCurrentUser: (user) => {
                 setStore({
                     currentUser: user,
-                    isAdmin: user?.is_admin || false  // Actualizar el estado de administrador según el usuario
+                    isAdmin: user?.is_admin || false
                 });
-            },
+                // Cargar los favoritos y el carrito del usuario al iniciar sesión
+                getActions().loadFavorites();
+                getActions().loadCart();
+            },                       
             updateUserProfile: async (userId, updatedData) => {
                 const store = getStore(); // Corrección: Agregar esta línea para obtener el estado actual
                 try {
@@ -62,15 +60,19 @@ const getState = ({ getStore, getActions, setStore }) => {
                     return { ok: false };
                 }
             },
+            clearCart: () => {
+                setStore({ cart: [] });
+            },
             setIsLoged: (isLogin) => {
                 if (isLogin) {
                     setStore({ isLoged: true });
                 } else {
                     setStore({ isLoged: false, isAdmin: false, favorites: [] }); // Resetear los favoritos al desloguearse
+                    getActions().clearCart(); // Vaciar el carrito al cerrar sesión
                     localStorage.removeItem("token");
                     localStorage.removeItem("user");
                 }
-            },            
+            },           
             setIsAdmin: (isAdmin) => {
                 setStore({ isAdmin });
             },
@@ -78,7 +80,7 @@ const getState = ({ getStore, getActions, setStore }) => {
                 setStore({ alert: newAlert });
             },
             fetchOrders: async () => {
-                const store = getStore(); // Corrección: Agregar esta línea para obtener el estado actual
+                const store = getStore(); 
                 try {
                     const response = await fetch(`${process.env.BACKEND_URL}/api/orders`, {
                         method: 'GET',
@@ -136,22 +138,160 @@ const getState = ({ getStore, getActions, setStore }) => {
                 } catch (error) {
                     setStore({ error: error.message });
                 }
-            },            
-            addFavorite: (product) => {
-                const store = getStore();
-                setStore({ favorites: [...store.favorites, product] });
             },
-
-            // Eliminar un producto de favoritos
-            removeFavorite: (productId) => {
+            loadFavorites: async () => {
                 const store = getStore();
-                setStore({ favorites: store.favorites.filter(product => product.id !== productId) });
-            },
+                if (!store.isLoged) return; // Solo cargar si el usuario está logueado
 
-            // Verificar si un producto está en favoritos
+                try {
+                    const response = await fetch(`${process.env.BACKEND_URL}/api/favorites`, {
+                        method: 'GET',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            Authorization: `Bearer ${localStorage.getItem("token")}`
+                        }
+                    });
+                    if (!response.ok) throw new Error("Error al cargar los favoritos");
+
+                    const data = await response.json();
+                    setStore({ favorites: data });
+                } catch (error) {
+                    console.error("Error al cargar los favoritos:", error);
+                }
+            },
+            addFavorite: async (product) => {
+                const store = getStore();
+                if (!store.isLoged) {
+                    console.error("Debe estar logueado para añadir favoritos");
+                    return;
+                }
+
+                try {
+                    const response = await fetch(`${process.env.BACKEND_URL}/api/favorites`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            Authorization: `Bearer ${localStorage.getItem("token")}`
+                        },
+                        body: JSON.stringify({ product_id: product.id })
+                    });
+
+                    if (!response.ok) {
+                        const data = await response.json();
+                        console.error("Error al añadir a favoritos:", data.message);
+                        return;
+                    }
+
+                    setStore({ favorites: [...store.favorites, product] });
+                } catch (error) {
+                    console.error("Error al añadir a favoritos:", error);
+                }
+            },
+            removeFavorite: async (productId) => {
+                const store = getStore();
+                if (!store.isLoged) {
+                    console.error("Debe estar logueado para eliminar favoritos");
+                    return;
+                }
+
+                try {
+                    const response = await fetch(`${process.env.BACKEND_URL}/api/favorites/${productId}`, {
+                        method: 'DELETE',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            Authorization: `Bearer ${localStorage.getItem("token")}`
+                        }
+                    });
+
+                    if (!response.ok) {
+                        const data = await response.json();
+                        console.error("Error al eliminar de favoritos:", data.message);
+                        return;
+                    }
+
+                    setStore({ favorites: store.favorites.filter(product => product.id !== productId) });
+                } catch (error) {
+                    console.error("Error al eliminar de favoritos:", error);
+                }
+            },
             isFavorite: (product) => {
                 const store = getStore();
                 return store.favorites.some(favorite => favorite.id === product.id);
+            },
+            loadCart: async () => {
+                const store = getStore();
+                if (!store.isLoged) return; // Solo cargar si el usuario está logueado
+
+                try {
+                    const response = await fetch(`${process.env.BACKEND_URL}/api/cart`, {
+                        method: 'GET',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            Authorization: `Bearer ${localStorage.getItem("token")}`
+                        }
+                    });
+                    if (!response.ok) throw new Error("Error al cargar el carrito");
+
+                    const data = await response.json();
+                    setStore({ cart: data });
+                } catch (error) {
+                    console.error("Error al cargar el carrito:", error);
+                }
+            },
+            addToCart: async (product) => {
+                const store = getStore();
+                if (!store.isLoged) {
+                    alert("Debe estar logueado para añadir productos al carrito");
+                    return;
+                }
+                try {
+                    const response = await fetch(`${process.env.BACKEND_URL}/api/cart`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            Authorization: `Bearer ${localStorage.getItem("token")}`
+                        },
+                        body: JSON.stringify({ product_id: product.id })
+                    });
+
+                    if (!response.ok) {
+                        const data = await response.json();
+                        alert(data.message || "Error al añadir al carrito");
+                        return;
+                    }
+                    setStore({ cart: [...store.cart, product] });
+                    alert("Producto añadido al carrito");
+                } catch (error) {
+                    console.error("Error al añadir al carrito:", error);
+                }
+            },
+            removeFromCart: async (productId) => {
+                const store = getStore();
+                if (!store.isLoged) {
+                    alert("Debe estar logueado para eliminar productos del carrito");
+                    return;
+                }
+
+                try {
+                    const response = await fetch(`${process.env.BACKEND_URL}/api/cart/${productId}`, {
+                        method: 'DELETE',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            Authorization: `Bearer ${localStorage.getItem("token")}`
+                        }
+                    });
+
+                    if (!response.ok) {
+                        const data = await response.json();
+                        alert(data.message || "Error al eliminar del carrito");
+                        return;
+                    }
+
+                    setStore({ cart: store.cart.filter(product => product.id !== productId) });
+                    alert("Producto eliminado del carrito");
+                } catch (error) {
+                    console.error("Error al eliminar del carrito:", error);
+                }
             }
         }
     };

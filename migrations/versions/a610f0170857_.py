@@ -1,8 +1,8 @@
 """empty message
 
-Revision ID: 1f339c6874ff
+Revision ID: a610f0170857
 Revises: 
-Create Date: 2024-10-01 12:58:42.011329
+Create Date: 2024-10-05 07:17:10.815260
 
 """
 from alembic import op
@@ -10,7 +10,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision = '1f339c6874ff'
+revision = 'a610f0170857'
 down_revision = None
 branch_labels = None
 depends_on = None
@@ -64,6 +64,14 @@ def upgrade():
     sa.ForeignKeyConstraint(['categoria_id'], ['categories.id'], ),
     sa.PrimaryKeyConstraint('id')
     )
+    op.create_table('cart',
+    sa.Column('id', sa.Integer(), nullable=False),
+    sa.Column('usuario_id', sa.Integer(), nullable=False),
+    sa.Column('producto_id', sa.Integer(), nullable=False),
+    sa.ForeignKeyConstraint(['producto_id'], ['products.id'], ),
+    sa.ForeignKeyConstraint(['usuario_id'], ['users.id'], ),
+    sa.PrimaryKeyConstraint('id')
+    )
     op.create_table('favorites',
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('usuario_id', sa.Integer(), nullable=False),
@@ -100,6 +108,7 @@ def downgrade():
     op.drop_table('product_images')
     op.drop_table('order_details')
     op.drop_table('favorites')
+    op.drop_table('cart')
     op.drop_table('products')
     op.drop_table('orders')
     op.drop_table('users')

@@ -227,8 +227,11 @@ def get_categories():
     return response, 200
 
 
+# Rutas para manejar productos
 @api.route('/products', methods=['GET', 'POST'])
 def handle_products():
+    current_user = get_jwt_identity() if request.method == 'POST' else None
+
     if request.method == 'GET':
         # Obtener todos los productos
         products = Products.query.all()
@@ -241,7 +244,6 @@ def handle_products():
 
     elif request.method == 'POST':
         # Solo los administradores pueden crear productos
-        current_user = get_jwt_identity()  # Se requiere autenticación para POST
         if not current_user or not current_user.get("is_admin"):
             return jsonify({"message": "Access forbidden: Admins only"}), 403
 
@@ -363,7 +365,6 @@ def add_product_images(product_id):
     # Verificar que las URLs sean una lista de cadenas de texto válidas
     if not isinstance(image_urls, list) or not all(isinstance(url, str) for url in image_urls):
         return jsonify({"message": "Invalid images format. Expected a list of URLs."}), 400
-
     try:
         # Añadir cada imagen a la base de datos
         for image_url in image_urls:
@@ -372,7 +373,6 @@ def add_product_images(product_id):
 
         # Confirmar los cambios en la base de datos
         db.session.commit()
-
         # Devolver el producto con las nuevas imágenes
         response = jsonify({"message": "Images added successfully.", "product": product.serialize_with_images()})
         response.headers['Access-Control-Allow-Origin'] = '*'
@@ -455,6 +455,7 @@ def handle_orders():
             db.session.rollback()
             return jsonify({"message": "An error occurred while creating the order.", "error": str(e)}), 500
 
+
 @api.route('/orders/<int:order_id>', methods=['GET', 'DELETE'])
 @jwt_required()
 def handle_order(order_id):
@@ -483,6 +484,7 @@ def handle_order(order_id):
             db.session.rollback()
             return jsonify({"message": "An error occurred while deleting the order.", "error": str(e)}), 500
 
+
 @api.route('/orderdetails', methods=['POST'])
 @jwt_required()
 def add_order_detail():
@@ -492,10 +494,10 @@ def add_order_detail():
             order_id=data['order_id'],
             product_id=data['product_id'],
             quantity=data['quantity'],
-            alto=data.get('alto'),  # Opcional
-            ancho=data.get('ancho'),  # Opcional
-            anclaje=data.get('anclaje'),  # Opcional
-            color=data.get('color')  # Opcional
+            alto=data.get('alto'),  
+            ancho=data.get('ancho'),  
+            anclaje=data.get('anclaje'),  
+            color=data.get('color')  
         )
         db.session.add(new_order_detail)
         db.session.commit()
@@ -527,5 +529,145 @@ def get_order_details():
     response = jsonify(results)
     response.headers['X-Total-Count'] = str(total_count)
     response.headers['Access-Control-Expose-Headers'] = 'X-Total-Count'
+    response.headers['Access-Control-Allow-Origin'] = '*'
+    return response, 200
+
+
+@api.route('/favorites', methods=['OPTIONS', 'GET', 'POST'])
+@jwt_required(optional=True)  
+def handle_favorites():
+    if request.method == "OPTIONS":
+        # Manejar el preflight de CORS
+        response = jsonify({"message": "Preflight request successful"})
+        response.headers.add("Access-Control-Allow-Origin", "*")
+        response.headers.add("Access-Control-Allow-Headers", "Content-Type, Authorization")
+        response.headers.add("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+        return response, 200
+
+    current_user = get_jwt_identity()
+
+    if request.method == 'GET':
+        # Obtener todos los favoritos del usuario actual
+        if not current_user:
+            return jsonify({"message": "Debe estar autenticado para acceder a los favoritos"}), 401
+
+        favorites = db.session.execute(db.select(Favorites).where(Favorites.usuario_id == current_user['user_id'])).scalars()
+        products = [Products.query.get(fav.producto_id).serialize() for fav in favorites]
+
+        response = jsonify(products)
+        response.headers['Access-Control-Allow-Origin'] = '*'
+        return response, 200
+
+    if request.method == 'POST':
+        if not current_user:
+            return jsonify({"message": "Debe estar autenticado para añadir a favoritos"}), 401
+
+        data = request.get_json()
+        product_id = data.get('product_id')
+
+        # Verificar si el producto ya está en favoritos
+        existing_favorite = db.session.execute(db.select(Favorites).where(Favorites.usuario_id == current_user['user_id'], Favorites.producto_id == product_id)).scalar()
+        if existing_favorite:
+            return jsonify({"message": "Producto ya está en favoritos"}), 409
+
+        # Crear nuevo favorito
+        new_favorite = Favorites(usuario_id=current_user['user_id'], producto_id=product_id)
+        db.session.add(new_favorite)
+        db.session.commit()
+
+        response = jsonify({"message": "Producto añadido a favoritos"})
+        response.headers['Access-Control-Allow-Origin'] = '*'
+        return response, 201
+
+
+@api.route('/favorites/<int:product_id>', methods=['OPTIONS', 'DELETE'])
+@jwt_required(optional=True)
+def remove_favorite(product_id):
+    if request.method == "OPTIONS":
+        # Manejar el preflight de CORS
+        response = jsonify({"message": "Preflight request successful"})
+        response.headers.add("Access-Control-Allow-Origin", "*")
+        response.headers.add("Access-Control-Allow-Headers", "Content-Type, Authorization")
+        response.headers.add("Access-Control-Allow-Methods", "DELETE, OPTIONS")
+        return response, 200
+
+    current_user = get_jwt_identity()
+
+    if not current_user:
+        return jsonify({"message": "Debe estar autenticado para eliminar de favoritos"}), 401
+
+    favorite = db.session.execute(db.select(Favorites).where(Favorites.usuario_id == current_user['user_id'], Favorites.producto_id == product_id)).scalar()
+    if not favorite:
+        return jsonify({"message": "Producto no encontrado en favoritos"}), 404
+
+    db.session.delete(favorite)
+    db.session.commit()
+
+    response = jsonify({"message": "Producto eliminado de favoritos"})
+    response.headers['Access-Control-Allow-Origin'] = '*'
+    return response, 200
+
+
+@api.route('/cart', methods=['OPTIONS', 'GET', 'POST'])
+@jwt_required()
+def handle_cart():
+    if request.method == "OPTIONS":
+        # Manejar el preflight de CORS
+        response = jsonify({"message": "Preflight request successful"})
+        response.headers.add("Access-Control-Allow-Origin", "*")
+        response.headers.add("Access-Control-Allow-Headers", "Content-Type, Authorization")
+        response.headers.add("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+        return response, 200
+
+    current_user = get_jwt_identity()
+
+    if request.method == 'GET':
+        # Obtener los productos en el carrito del usuario actual
+        cart_items = db.session.execute(db.select(Cart).where(Cart.usuario_id == current_user['user_id'])).scalars()
+        products = [Products.query.get(item.producto_id).serialize() for item in cart_items]
+
+        response = jsonify(products)
+        response.headers['Access-Control-Allow-Origin'] = '*'
+        return response, 200
+    if request.method == 'POST':
+        data = request.get_json()
+        product_id = data.get('product_id')
+
+        # Verificar si el producto ya está en el carrito
+        existing_item = db.session.execute(db.select(Cart).where(Cart.usuario_id == current_user['user_id'], Cart.producto_id == product_id)).scalar()
+        if existing_item:
+            return jsonify({"message": "Producto ya está en el carrito"}), 409
+
+        # Añadir el producto al carrito
+        new_cart_item = Cart(usuario_id=current_user['user_id'], producto_id=product_id)
+        db.session.add(new_cart_item)
+        db.session.commit()
+
+        response = jsonify({"message": "Producto añadido al carrito"})
+        response.headers['Access-Control-Allow-Origin'] = '*'
+        return response, 201
+
+
+@api.route('/cart/<int:product_id>', methods=['OPTIONS', 'DELETE'])
+@jwt_required()
+def remove_from_cart(product_id):
+    if request.method == "OPTIONS":
+        # Manejar el preflight de CORS
+        response = jsonify({"message": "Preflight request successful"})
+        response.headers.add("Access-Control-Allow-Origin", "*")
+        response.headers.add("Access-Control-Allow-Headers", "Content-Type, Authorization")
+        response.headers.add("Access-Control-Allow-Methods", "DELETE, OPTIONS")
+        return response, 200
+
+    current_user = get_jwt_identity()
+
+    cart_item = db.session.execute(db.select(Cart).where(Cart.usuario_id == current_user['user_id'], Cart.producto_id == product_id)).scalar()
+    if not cart_item:
+        return jsonify({"message": "Producto no encontrado en el carrito"}), 404
+
+    db.session.delete(cart_item)
+    db.session.commit()
+
+    response = jsonify({"message": "Producto eliminado del carrito"})
     response.headers['Access-Control-Allow-Origin'] = '*'
     return response, 200
