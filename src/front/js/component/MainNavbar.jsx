@@ -61,12 +61,10 @@ export const MainNavbar = () => {
                         </Nav.Link>
                         <Nav.Link as={Link} to="/cart" className="d-flex align-items-center position-relative">
                             <i className="fa-solid fa-cart-shopping fa-lg"></i>
-                            {store.cart.length > 0 && (
-                                <span className="position-absolute badge rounded-pill bg-danger cart-badge">
-                                    {store.cart.length}
-                                    <span className="visually-hidden">productos en el carrito</span>
-                                </span>
-                            )}
+                            <span className="position-absolute badge rounded-pill bg-danger favorites-badge">
+                                {store.cart ? store.cart.length : 0}
+                                <span className="visually-hidden">productos en el carrito</span>
+                            </span>
                         </Nav.Link>
                         {store.isLoged ? (
                             <>

@@ -60,9 +60,6 @@ const getState = ({ getStore, getActions, setStore }) => {
                     return { ok: false };
                 }
             },
-            clearCart: () => {
-                setStore({ cart: [] });
-            },
             setIsLoged: (isLogin) => {
                 if (isLogin) {
                     setStore({ isLoged: true });
@@ -292,6 +289,9 @@ const getState = ({ getStore, getActions, setStore }) => {
                 } catch (error) {
                     console.error("Error al eliminar del carrito:", error);
                 }
+            },
+            clearCart: () => {
+                setStore({ cart: [] });
             }
         }
     };
