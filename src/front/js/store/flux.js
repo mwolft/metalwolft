@@ -10,6 +10,7 @@ const getState = ({ getStore, getActions, setStore }) => {
             loading: false,
             products: [],  
             favorites: [],
+            favoritesLoaded: false,
             orders: [],  
             orderDetails: [],
             cart: []
@@ -155,6 +156,27 @@ const getState = ({ getStore, getActions, setStore }) => {
                 } catch (error) {
                     console.error("Error al cargar los favoritos:", error);
                 }
+            },
+            loadFavorites: async () => {
+                const store = getStore();
+                try {
+                    const response = await fetch(`${process.env.BACKEND_URL}/api/favorites`, {
+                        method: 'GET',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            Authorization: `Bearer ${localStorage.getItem("token")}`,
+                        },
+                    });
+                    if (!response.ok) throw new Error("Error al cargar favoritos");
+
+                    const data = await response.json();
+                    setStore({ favorites: data });
+                } catch (error) {
+                    console.error("Error al cargar los favoritos:", error);
+                }
+            },
+            setFavoritesLoaded: (loaded) => {
+                setStore({ favoritesLoaded: loaded });
             },
             addFavorite: async (product) => {
                 const store = getStore();
