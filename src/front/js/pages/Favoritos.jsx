@@ -11,10 +11,12 @@ export const Favoritos = () => {
         if (!store.isLoged) {
             alert("Debe iniciar sesión para ver sus favoritos");
             navigate("/login");
-        } else {
-            actions.loadFavorites(); // Cargar los favoritos del backend al abrir la página de favoritos
+        } else if (!store.favoritesLoaded) {
+            actions.loadFavorites(); // Cargar los favoritos del backend solo si no están ya cargados
+            actions.setFavoritesLoaded(true); // Marcar los favoritos como cargados para evitar la recarga
         }
-    }, [store.isLoged, actions, navigate]);
+    }, [store.isLoged]);
+        
 
     return (
         <div className="container">
