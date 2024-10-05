@@ -1,7 +1,7 @@
 from flask import Flask, request, jsonify, Blueprint
 from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity
 from api.utils import generate_sitemap, APIException
-from api.models import db, Users, Products, ProductImages, Categories, Orders, OrderDetails, Favorites
+from api.models import db, Users, Products, ProductImages, Categories, Orders, OrderDetails, Favorites, Cart
 from sqlalchemy.exc import SQLAlchemyError
 import bcrypt
 
@@ -623,29 +623,62 @@ def handle_cart():
 
     if request.method == 'GET':
         # Obtener los productos en el carrito del usuario actual
-        cart_items = db.session.execute(db.select(Cart).where(Cart.usuario_id == current_user['user_id'])).scalars()
-        products = [Products.query.get(item.producto_id).serialize() for item in cart_items]
+        try:
+            cart_items = Cart.query.filter_by(usuario_id=current_user['user_id']).all()
+            products = [{"producto": Products.query.get(item.producto_id).serialize()} for item in cart_items]
 
-        response = jsonify(products)
-        response.headers['Access-Control-Allow-Origin'] = '*'
-        return response, 200
+            response = jsonify(products)
+            response.headers['Access-Control-Allow-Origin'] = '*'
+            response.headers['Access-Control-Expose-Headers'] = 'Authorization'
+            return response, 200
+        except Exception as e:
+            response = jsonify({"message": str(e)})
+            response.headers['Access-Control-Allow-Origin'] = '*'
+            response.headers['Access-Control-Expose-Headers'] = 'Authorization'
+            return response, 500
+
     if request.method == 'POST':
         data = request.get_json()
         product_id = data.get('product_id')
 
-        # Verificar si el producto ya está en el carrito
-        existing_item = db.session.execute(db.select(Cart).where(Cart.usuario_id == current_user['user_id'], Cart.producto_id == product_id)).scalar()
-        if existing_item:
-            return jsonify({"message": "Producto ya está en el carrito"}), 409
+        if not product_id:
+            response = jsonify({"message": "Product ID is required"})
+            response.headers['Access-Control-Allow-Origin'] = '*'
+            response.headers['Access-Control-Expose-Headers'] = 'Authorization'
+            return response, 400
 
-        # Añadir el producto al carrito
-        new_cart_item = Cart(usuario_id=current_user['user_id'], producto_id=product_id)
-        db.session.add(new_cart_item)
-        db.session.commit()
+        try:
+            # Verificar si el producto ya está en el carrito
+            existing_item = Cart.query.filter_by(usuario_id=current_user['user_id'], producto_id=product_id).first()
+            if existing_item:
+                response = jsonify({"message": "Producto ya está en el carrito"})
+                response.headers['Access-Control-Allow-Origin'] = '*'
+                response.headers['Access-Control-Expose-Headers'] = 'Authorization'
+                return response, 409
 
-        response = jsonify({"message": "Producto añadido al carrito"})
-        response.headers['Access-Control-Allow-Origin'] = '*'
-        return response, 201
+            # Añadir el producto al carrito
+            new_cart_item = Cart(usuario_id=current_user['user_id'], producto_id=product_id)
+            db.session.add(new_cart_item)
+            db.session.commit()
+
+            response = jsonify({"message": "Producto añadido al carrito"})
+            response.headers['Access-Control-Allow-Origin'] = '*'
+            response.headers['Access-Control-Expose-Headers'] = 'Authorization'
+            return response, 201
+
+        except SQLAlchemyError as e:
+            db.session.rollback()
+            response = jsonify({"message": f"Database error: {str(e)}"})
+            response.headers['Access-Control-Allow-Origin'] = '*'
+            response.headers['Access-Control-Expose-Headers'] = 'Authorization'
+            return response, 500
+
+        except Exception as e:
+            db.session.rollback()
+            response = jsonify({"message": f"Unexpected error: {str(e)}"})
+            response.headers['Access-Control-Allow-Origin'] = '*'
+            response.headers['Access-Control-Expose-Headers'] = 'Authorization'
+            return response, 500
 
 
 @api.route('/cart/<int:product_id>', methods=['OPTIONS', 'DELETE'])
@@ -661,13 +694,29 @@ def remove_from_cart(product_id):
 
     current_user = get_jwt_identity()
 
-    cart_item = db.session.execute(db.select(Cart).where(Cart.usuario_id == current_user['user_id'], Cart.producto_id == product_id)).scalar()
-    if not cart_item:
-        return jsonify({"message": "Producto no encontrado en el carrito"}), 404
+    try:
+        cart_item = Cart.query.filter_by(usuario_id=current_user['user_id'], producto_id=product_id).first()
+        if not cart_item:
+            response = jsonify({"message": "Producto no encontrado en el carrito"})
+            response.headers['Access-Control-Allow-Origin'] = '*'
+            response.headers['Access-Control-Expose-Headers'] = 'Authorization'
+            return response, 404
 
-    db.session.delete(cart_item)
-    db.session.commit()
+        db.session.delete(cart_item)
+        db.session.commit()
 
-    response = jsonify({"message": "Producto eliminado del carrito"})
-    response.headers['Access-Control-Allow-Origin'] = '*'
-    return response, 200
+        # Obtener el carrito actualizado
+        updated_cart_items = Cart.query.filter_by(usuario_id=current_user['user_id']).all()
+        updated_cart = [Products.query.get(item.producto_id).serialize() for item in updated_cart_items]
+
+        response = jsonify({"message": "Producto eliminado del carrito", "updated_cart": updated_cart})
+        response.headers['Access-Control-Allow-Origin'] = '*'
+        response.headers['Access-Control-Expose-Headers'] = 'Authorization'
+        return response, 200
+
+    except Exception as e:
+        db.session.rollback()
+        response = jsonify({"message": str(e)})
+        response.headers['Access-Control-Allow-Origin'] = '*'
+        response.headers['Access-Control-Expose-Headers'] = 'Authorization'
+        return response, 500

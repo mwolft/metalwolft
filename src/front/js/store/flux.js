@@ -39,7 +39,9 @@ const getState = ({ getStore, getActions, setStore }) => {
                 });
                 // Cargar favoritos cuando se establece el usuario actual
                 getActions().loadFavorites();
-            },                               
+                // Cargar el carrito del usuario cuando se establece el usuario actual
+                getActions().loadCart();
+            },                                        
             updateUserProfile: async (userId, updatedData) => {
                 const store = getStore(); // Corrección: Agregar esta línea para obtener el estado actual
                 try {
@@ -240,7 +242,7 @@ const getState = ({ getStore, getActions, setStore }) => {
             loadCart: async () => {
                 const store = getStore();
                 if (!store.isLoged) return; // Solo cargar si el usuario está logueado
-
+            
                 try {
                     const response = await fetch(`${process.env.BACKEND_URL}/api/cart`, {
                         method: 'GET',
@@ -249,20 +251,30 @@ const getState = ({ getStore, getActions, setStore }) => {
                             Authorization: `Bearer ${localStorage.getItem("token")}`
                         }
                     });
+            
                     if (!response.ok) throw new Error("Error al cargar el carrito");
-
+            
                     const data = await response.json();
-                    setStore({ cart: data });
+                    const cartProducts = data.map(item => item.producto);
+                    setStore({ cart: cartProducts });
                 } catch (error) {
                     console.error("Error al cargar el carrito:", error);
                 }
-            },
+            },            
             addToCart: async (product) => {
                 const store = getStore();
                 if (!store.isLoged) {
                     alert("Debe estar logueado para añadir productos al carrito");
                     return;
                 }
+            
+                // Verificar si el producto ya está en el carrito
+                const productExists = store.cart.some(item => item.id === product.id);
+                if (productExists) {
+                    alert("El producto ya está en el carrito");
+                    return;
+                }
+            
                 try {
                     const response = await fetch(`${process.env.BACKEND_URL}/api/cart`, {
                         method: 'POST',
@@ -272,7 +284,7 @@ const getState = ({ getStore, getActions, setStore }) => {
                         },
                         body: JSON.stringify({ product_id: product.id })
                     });
-
+            
                     if (!response.ok) {
                         const data = await response.json();
                         alert(data.message || "Error al añadir al carrito");
@@ -283,14 +295,14 @@ const getState = ({ getStore, getActions, setStore }) => {
                 } catch (error) {
                     console.error("Error al añadir al carrito:", error);
                 }
-            },
+            },            
             removeFromCart: async (productId) => {
                 const store = getStore();
                 if (!store.isLoged) {
                     alert("Debe estar logueado para eliminar productos del carrito");
                     return;
                 }
-
+            
                 try {
                     const response = await fetch(`${process.env.BACKEND_URL}/api/cart/${productId}`, {
                         method: 'DELETE',
@@ -299,19 +311,20 @@ const getState = ({ getStore, getActions, setStore }) => {
                             Authorization: `Bearer ${localStorage.getItem("token")}`
                         }
                     });
-
+            
                     if (!response.ok) {
                         const data = await response.json();
                         alert(data.message || "Error al eliminar del carrito");
                         return;
                     }
-
-                    setStore({ cart: store.cart.filter(product => product.id !== productId) });
+            
+                    const data = await response.json();
+                    setStore({ cart: data.updated_cart });
                     alert("Producto eliminado del carrito");
                 } catch (error) {
                     console.error("Error al eliminar del carrito:", error);
                 }
-            },
+            },            
             clearCart: () => {
                 setStore({ cart: [] });
             }
