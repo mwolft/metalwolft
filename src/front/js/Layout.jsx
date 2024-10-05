@@ -26,6 +26,8 @@ import { Login } from "./pages/Login.jsx";
 import { Profile } from "./pages/Profile.jsx";
 import AdminPanel from "./pages/AdminPanel.jsx"; 
 import { Favoritos } from "./pages/Favoritos.jsx";
+import { ProductDetail } from "./pages/ProductDetail.jsx";
+import { Cart } from "./pages/Cart.jsx";
  
 // Custom categories
 import { RejasParaVentanas } from "./pages/categories/RejasParaVentanas.jsx";
@@ -50,6 +52,8 @@ const Layout = () => {
                     <Route path="/body-home-quarter" element={<BodyHomeQuarter />} />
                     <Route path="/product" element={<Product />} />
                     <Route path="/favoritos" element={<Favoritos />} />
+                    <Route path="/product/:id" element={<ProductDetail />} />
+                    <Route path="/cart" element={<Cart />} />
                     <Route path="/notification" element={<Notification />} />
                     <Route path="/cards-carrusel" element={<CardsCarrusel />} />
                     <Route path="/sidebar" element={<Sidebar />} />

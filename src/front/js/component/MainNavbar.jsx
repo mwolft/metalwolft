@@ -52,10 +52,21 @@ export const MainNavbar = () => {
                     <Nav className="ms-auto" onSelect={handleSelect}>
                         <Nav.Link onClick={handleFavoritesClick} className="d-flex align-items-center position-relative">
                             <i className="fa-regular fa-heart fa-lg"></i>
-                            <span className="position-absolute badge rounded-pill bg-danger favorites-badge">
-                                {store.favorites ? store.favorites.length : 0}
-                                <span className="visually-hidden">favoritos</span>
-                            </span>
+                            {store.isLoged && (
+                                <span className="position-absolute badge rounded-pill bg-danger favorites-badge">
+                                    {store.favorites.length}
+                                    <span className="visually-hidden">favoritos</span>
+                                </span>
+                            )}
+                        </Nav.Link>
+                        <Nav.Link as={Link} to="/cart" className="d-flex align-items-center position-relative">
+                            <i className="fa-solid fa-cart-shopping fa-lg"></i>
+                            {store.cart.length > 0 && (
+                                <span className="position-absolute badge rounded-pill bg-danger cart-badge">
+                                    {store.cart.length}
+                                    <span className="visually-hidden">productos en el carrito</span>
+                                </span>
+                            )}
                         </Nav.Link>
                         {store.isLoged ? (
                             <>
