@@ -33,12 +33,12 @@ const getState = ({ getStore, getActions, setStore }) => {
             setCurrentUser: (user) => {
                 setStore({
                     currentUser: user,
-                    isAdmin: user?.is_admin || false
+                    isAdmin: user?.is_admin || false,
+                    isLoged: true
                 });
-                // Cargar los favoritos y el carrito del usuario al iniciar sesión
+                // Cargar favoritos cuando se establece el usuario actual
                 getActions().loadFavorites();
-                getActions().loadCart();
-            },                       
+            },                               
             updateUserProfile: async (userId, updatedData) => {
                 const store = getStore(); // Corrección: Agregar esta línea para obtener el estado actual
                 try {

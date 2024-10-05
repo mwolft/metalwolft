@@ -1,10 +1,22 @@
-import React, { useContext } from "react";
+import React, { useContext, useState } from "react";
 import { Context } from "../store/appContext";
 import { Link } from "react-router-dom";
 import { Button, Container, Row, Col, Card } from "react-bootstrap";
+import { Notification } from "../component/Notification.jsx";
 
 export const Cart = () => {
     const { store, actions } = useContext(Context);
+    const [notification, setNotification] = useState(null);
+
+    const handleAddToCart = (product) => {
+        actions.addToCart(product);
+        setNotification("Producto añadido al carrito");
+    };
+
+    const handleRemoveFromCart = (productId) => {
+        actions.removeFromCart(productId);
+        setNotification("Producto eliminado del carrito");
+    };
 
     return (
         <Container className="mt-5">
@@ -23,7 +35,7 @@ export const Cart = () => {
                                     <Card.Text>Precio: {product.precio} €/m²</Card.Text>
                                     <Button
                                         variant="danger"
-                                        onClick={() => actions.removeFromCart(product.id)}
+                                        onClick={() => handleRemoveFromCart(product.id)}
                                     >
                                         Eliminar del Carrito
                                     </Button>
@@ -40,6 +52,15 @@ export const Cart = () => {
                     </Button>
                 )}
             </div>
+
+            {/* Notificación */}
+            {notification && (
+                <Notification
+                    message={notification}
+                    duration={3000} // Duración de 3 segundos
+                    onClose={() => setNotification(null)}
+                />
+            )}
         </Container>
     );
 };
