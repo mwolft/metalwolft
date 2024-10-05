@@ -277,11 +277,8 @@ def handle_products():
             return jsonify({"message": "An error occurred while creating the product.", "error": str(e)}), 500
 
 
-# Rutas para manejar un producto específico
 @api.route('/products/<int:product_id>', methods=['GET', 'PUT', 'DELETE'])
-@jwt_required()
 def handle_product(product_id):
-    current_user = get_jwt_identity()
     product = Products.query.get(product_id)
 
     if not product:
@@ -293,9 +290,11 @@ def handle_product(product_id):
         response.headers['Access-Control-Expose-Headers'] = 'Authorization'
         return response, 200
 
-    elif request.method == 'PUT':
+    # Para los métodos PUT y DELETE requerimos autenticación
+    current_user = get_jwt_identity()
+    if request.method == 'PUT':
         # Solo los administradores pueden actualizar productos
-        if not current_user.get("is_admin"):
+        if not current_user or not current_user.get("is_admin"):
             return jsonify({"message": "Access forbidden: Admins only"}), 403
 
         data = request.json
@@ -329,7 +328,7 @@ def handle_product(product_id):
 
     elif request.method == 'DELETE':
         # Solo los administradores pueden eliminar productos
-        if not current_user.get("is_admin"):
+        if not current_user or not current_user.get("is_admin"):
             return jsonify({"message": "Access forbidden: Admins only"}), 403
 
         try:

@@ -120,17 +120,19 @@ const getState = ({ getStore, getActions, setStore }) => {
                 }
             },
             fetchProducts: async () => {
-                const store = getStore(); // Corrección: Agregar esta línea para obtener el estado actual
+                const store = getStore();
+                const token = localStorage.getItem("token");
+            
                 try {
                     const response = await fetch(`${process.env.BACKEND_URL}/api/products`, {
                         method: 'GET',
                         headers: {
                             'Content-Type': 'application/json',
-                            Authorization: `Bearer ${localStorage.getItem("token")}`
+                            ...(token && { Authorization: `Bearer ${token}` }) // Incluir el token solo si está presente
                         }
                     });
                     if (!response.ok) throw new Error("Error al obtener productos");
-
+            
                     const data = await response.json();
                     setStore({ products: data });
                 } catch (error) {
