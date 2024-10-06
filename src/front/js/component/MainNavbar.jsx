@@ -37,7 +37,30 @@ export const MainNavbar = () => {
                 <Navbar.Brand as={Link} to="/" onClick={handleSelect}>
                     <img src={logoweb} alt="Logo" className="d-inline-block align-top" />
                 </Navbar.Brand>
-                <Navbar.Toggle aria-controls="basic-navbar-nav" onClick={handleToggle} />
+                <div className="d-flex align-items-center">
+                    <Nav.Link onClick={handleFavoritesClick} className="d-flex align-items-center position-relative d-lg-none">
+                        <i className="fa-regular fa-heart fa-lg"></i>
+                        {store.isLoged && (
+                            <span className="position-absolute badge rounded-pill bg-danger favorites-badge">
+                                {store.favorites.length}
+                                <span className="visually-hidden">favoritos</span>
+                            </span>
+                        )}
+                    </Nav.Link>
+                    <Nav.Link as={Link} to="/cart" className="d-flex align-items-center position-relative d-lg-none">
+                        <i className="fa-solid fa-cart-shopping fa-lg"></i>
+                        {store.isLoged && (
+                            <span className="position-absolute badge rounded-pill bg-danger favorites-badge">
+                                {store.cart.length}
+                                <span className="visually-hidden">productos en el carrito</span>
+                            </span>
+                        )}
+                    </Nav.Link>
+                    <Nav.Link onClick={() => { setExpanded(false); navigate("/login"); }} className="d-flex align-items-center d-lg-none">
+                        <i className="fa-regular fa-user fa-lg me-2"></i>
+                    </Nav.Link>
+                    <Navbar.Toggle aria-controls="basic-navbar-nav" onClick={handleToggle} />
+                </div>
                 <Navbar.Collapse id="basic-navbar-nav">
                     <Nav className="me-auto" onSelect={handleSelect}>
                         <Nav.Link as={Link} to="/" onClick={handleSelect}>Inicio</Nav.Link>
@@ -49,11 +72,11 @@ export const MainNavbar = () => {
                         <Nav.Link as={Link} to="/exercises" onClick={handleSelect}>Contácto</Nav.Link>
                         <Nav.Link as={Link} to="/bmr-calculator" onClick={handleSelect}>Sobre nosotros</Nav.Link>
                     </Nav>
-                    <Nav className="ms-auto" onSelect={handleSelect}>
+                    <Nav className="ms-auto d-none d-lg-flex" onSelect={handleSelect}>
                         <Nav.Link onClick={handleFavoritesClick} className="d-flex align-items-center position-relative">
                             <i className="fa-regular fa-heart fa-lg"></i>
                             {store.isLoged && (
-                                <span className="position-absolute badge rounded-pill bg-danger favorites-badge">
+                                <span className="position-absolute badge rounded-pill favorites-badge">
                                     {store.favorites.length}
                                     <span className="visually-hidden">favoritos</span>
                                 </span>
@@ -61,10 +84,12 @@ export const MainNavbar = () => {
                         </Nav.Link>
                         <Nav.Link as={Link} to="/cart" className="d-flex align-items-center position-relative">
                             <i className="fa-solid fa-cart-shopping fa-lg"></i>
-                            <span className="position-absolute badge rounded-pill bg-danger favorites-badge">
-                                {store.cart ? store.cart.length : 0}
-                                <span className="visually-hidden">productos en el carrito</span>
-                            </span>
+                            {store.isLoged && (
+                                <span className="position-absolute badge rounded-pill favorites-badge">
+                                    {store.cart.length}
+                                    <span className="visually-hidden">productos en el carrito</span>
+                                </span>
+                            )}
                         </Nav.Link>
                         {store.isLoged ? (
                             <>
@@ -75,13 +100,13 @@ export const MainNavbar = () => {
                                 )}
                                 <Nav.Link onClick={handleLogout} className="d-flex align-items-center">
                                     <i className="fa-solid fa-right-to-bracket fa-lg me-2"></i>
-                                    <p className="small mb-0">Salir</p>
+                                    <p className="small mb-0"></p>
                                 </Nav.Link>
                             </>
                         ) : (
                             <Nav.Link onClick={() => { setExpanded(false); navigate("/login"); }} className="d-flex align-items-center">
-                                <i className="fa-solid fa-user-plus fa-lg me-2"></i>
-                                <p className="small mb-0">Iniciar sesión</p>
+                                <i className="fa-regular fa-user fa-lg me-2"></i>
+                                <p className="small mb-0"></p>
                             </Nav.Link>
                         )}
                     </Nav>

@@ -66,7 +66,7 @@ export const Product = ({ product }) => {
                             <i
                                 className={`fa-regular fa-heart ${actions.isFavorite(product) ? 'fa-solid' : ''}`}
                                 onClick={handleFavorite}
-                                style={{ cursor: 'pointer', color: 'red', fontSize: '1.5rem' }}
+                                style={{ cursor: 'pointer', color: '#ff324d', fontSize: '1.5rem' }}
                             ></i>
                         </div>
                     </Card.Body>
@@ -123,7 +123,7 @@ export const Product = ({ product }) => {
                 <Modal.Footer>
                     <i className={`fa-regular fa-heart ms-3 ${actions.isFavorite(product) ? 'fa-solid' : ''}`}
                         onClick={handleFavorite}
-                        style={{ cursor: 'pointer', color: 'red', fontSize: '1.5rem' }}></i>
+                        style={{ cursor: 'pointer', color: '#ff324d', fontSize: '1.5rem' }}></i>
                     <Button className="btn-style-background-color">
                         Añadir al carrito
                     </Button>
