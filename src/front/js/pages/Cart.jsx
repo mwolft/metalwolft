@@ -1,6 +1,6 @@
 import React, { useContext, useState } from "react";
 import { Context } from "../store/appContext";
-import { Button, Container, Row, Col, Table, Form } from "react-bootstrap";
+import { Button, Container, Row, Col, Table } from "react-bootstrap";
 import { Notification } from "../component/Notification.jsx";
 import "../../styles/cart.css";
 
@@ -8,17 +8,15 @@ export const Cart = () => {
     const { store, actions } = useContext(Context);
     const [notification, setNotification] = useState(null);
 
-    const handleAddToCart = (product) => {
-        actions.addToCart(product);
-        setNotification("Producto añadido al carrito");
-    };
-
     const handleRemoveFromCart = (productId) => {
         actions.removeFromCart(productId);
         setNotification("Producto eliminado del carrito");
     };
 
-    const calculateTotal = (product) => product.precio * product.cantidad;
+    const calculateTotal = (product) => {
+        const area = (parseFloat(product.height) * parseFloat(product.width)) / 10000; // cm² a m²
+        return area * product.precio;
+    };
 
     return (
         <Container className="mt-5">
@@ -32,8 +30,10 @@ export const Cart = () => {
                             <thead>
                                 <tr>
                                     <th>Producto</th>
-                                    <th>Precio</th>
-                                    <th>Cantidad</th>
+                                    <th>Altura</th>
+                                    <th>Anchura</th>
+                                    <th>Anclaje</th>
+                                    <th>Color</th>
                                     <th>Total</th>
                                     <th></th>
                                 </tr>
@@ -48,33 +48,10 @@ export const Cart = () => {
                                                 <p className="table-shopping-cart-item-description">{product.descripcion}</p>
                                             </div>
                                         </td>
-                                        <td className="cart__price-wrapper">
-                                            <span className="money">{product.precio.toFixed(2)} €</span>
-                                        </td>
-                                        <td className="table-shopping-cart-qty">
-                                            <div className="table-shopping-qty">
-                                                <Button
-                                                    variant="outline-secondary"
-                                                    className="table-shopping-qty-minus"
-                                                    onClick={() => actions.updateCartQuantity(product.id, product.cantidad - 1)}
-                                                >
-                                                    -
-                                                </Button>
-                                                <Form.Control
-                                                    type="text"
-                                                    value={product.cantidad}
-                                                    readOnly
-                                                    className="cart__qty-input"
-                                                />
-                                                <Button
-                                                    variant="outline-secondary"
-                                                    className="table-shopping-qty-plus"
-                                                    onClick={() => actions.updateCartQuantity(product.id, product.cantidad + 1)}
-                                                >
-                                                    +
-                                                </Button>
-                                            </div>
-                                        </td>
+                                        <td className="cart__dimension">{product.height} cm</td>
+                                        <td className="cart__dimension">{product.width} cm</td>
+                                        <td className="cart__mounting">{product.mounting}</td>
+                                        <td className="cart__color">{product.color}</td>
                                         <td className="cart__price-wrapper">
                                             <span className="money table-shopping-cart-item-price-total">
                                                 {calculateTotal(product).toFixed(2)} €

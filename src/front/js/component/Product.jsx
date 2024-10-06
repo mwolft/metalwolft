@@ -5,6 +5,7 @@ import Rating from 'react-rating';
 import Card from 'react-bootstrap/Card';
 import Modal from 'react-bootstrap/Modal';
 import Carousel from 'react-bootstrap/Carousel';
+import Form from 'react-bootstrap/Form';
 import { Context } from "../store/appContext";
 import { Notification } from "./Notification.jsx";
 
@@ -12,6 +13,11 @@ export const Product = ({ product }) => {
     const [showModal, setShowModal] = useState(false);
     const [currentIndex, setCurrentIndex] = useState(0);
     const [notification, setNotification] = useState(null);
+    const [height, setHeight] = useState('');
+    const [width, setWidth] = useState('');
+    const [mounting, setMounting] = useState('con obra');
+    const [color, setColor] = useState('blanco');
+    const [calculatedPrice, setCalculatedPrice] = useState(null);
     const { store, actions } = useContext(Context);
 
     const handleShow = () => setShowModal(true);
@@ -37,10 +43,32 @@ export const Product = ({ product }) => {
 
     const handleAddToCart = async () => {
         if (store.isLoged) {
-            await actions.addToCart(product);
-            setNotification("Producto añadido al carrito");
+            if (height && width) {
+                const productDetails = {
+                    ...product,
+                    height,
+                    width,
+                    mounting,
+                    color,
+                    price: calculatedPrice,
+                };
+                await actions.addToCart(productDetails);
+                setNotification("Producto añadido al carrito");
+            } else {
+                setNotification("Debe ingresar altura y anchura para calcular el precio");
+            }
         } else {
             setNotification("Debe registrarse para añadir productos al carrito");
+        }
+    };
+
+    const handleCalculatePrice = () => {
+        if (height && width) {
+            const area = (parseFloat(height) * parseFloat(width)) / 10000; // convertir cm² a m²
+            const price = area * product.precio;
+            setCalculatedPrice(price.toFixed(2));
+        } else {
+            setNotification("Debe ingresar altura y anchura válidas");
         }
     };
 
@@ -127,6 +155,59 @@ export const Product = ({ product }) => {
                                 readonly
                             />
                         </div>
+
+                        <Form className="mt-4">
+                            <Form.Group controlId="height">
+                                <Form.Label>Altura (cm)</Form.Label>
+                                <Form.Control
+                                    type="number"
+                                    value={height}
+                                    onChange={(e) => setHeight(e.target.value)}
+                                    placeholder="Ingrese la altura en cm"
+                                />
+                            </Form.Group>
+                            <Form.Group controlId="width" className="mt-2">
+                                <Form.Label>Anchura (cm)</Form.Label>
+                                <Form.Control
+                                    type="number"
+                                    value={width}
+                                    onChange={(e) => setWidth(e.target.value)}
+                                    placeholder="Ingrese la anchura en cm"
+                                />
+                            </Form.Group>
+                            <Form.Group controlId="mounting" className="mt-2">
+                                <Form.Label>Tipo de anclaje</Form.Label>
+                                <Form.Control
+                                    as="select"
+                                    value={mounting}
+                                    onChange={(e) => setMounting(e.target.value)}
+                                >
+                                    <option value="con obra">Con obra</option>
+                                    <option value="sin obra">Sin obra</option>
+                                </Form.Control>
+                            </Form.Group>
+                            <Form.Group controlId="color" className="mt-2">
+                                <Form.Label>Color</Form.Label>
+                                <Form.Control
+                                    as="select"
+                                    value={color}
+                                    onChange={(e) => setColor(e.target.value)}
+                                >
+                                    <option value="blanco">Blanco</option>
+                                    <option value="negro">Negro</option>
+                                    <option value="gris">Gris</option>
+                                    <option value="verde">Verde</option>
+                                    <option value="marrón">Marrón</option>
+                                </Form.Control>
+                            </Form.Group>
+                            <Button className="btn-style-background-color mt-3" onClick={handleCalculatePrice}>
+                                Calcular precio
+                            </Button>
+                        </Form>
+
+                        {calculatedPrice && (
+                            <h5 className="mt-3">Precio calculado: {calculatedPrice} €</h5>
+                        )}
                     </div>
                 </Modal.Body>
                 <Modal.Footer className="d-flex justify-content-between align-items-center">
