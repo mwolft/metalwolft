@@ -35,6 +35,15 @@ export const Product = ({ product }) => {
         }
     };
 
+    const handleAddToCart = async () => {
+        if (store.isLoged) {
+            await actions.addToCart(product);
+            setNotification("Producto añadido al carrito");
+        } else {
+            setNotification("Debe registrarse para añadir productos al carrito");
+        }
+    };
+
     const allImages = [
         { image_url: product.imagen },
         ...product.images.filter(image => image.image_url !== product.imagen),
@@ -120,11 +129,13 @@ export const Product = ({ product }) => {
                         </div>
                     </div>
                 </Modal.Body>
-                <Modal.Footer>
-                    <i className={`fa-regular fa-heart ms-3 ${actions.isFavorite(product) ? 'fa-solid' : ''}`}
+                <Modal.Footer className="d-flex justify-content-between align-items-center">
+                    <i
+                        className={`fa-regular fa-heart ${actions.isFavorite(product) ? 'fa-solid' : ''}`}
                         onClick={handleFavorite}
-                        style={{ cursor: 'pointer', color: '#ff324d', fontSize: '1.5rem' }}></i>
-                    <Button className="btn-style-background-color">
+                        style={{ cursor: 'pointer', color: '#ff324d', fontSize: '1.5rem' }}
+                    ></i>
+                    <Button className="btn-style-background-color" onClick={handleAddToCart}>
                         Añadir al carrito
                     </Button>
                 </Modal.Footer>
