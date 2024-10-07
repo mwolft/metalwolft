@@ -625,7 +625,7 @@ def handle_cart():
         # Obtener los productos en el carrito del usuario actual
         try:
             cart_items = Cart.query.filter_by(usuario_id=current_user['user_id']).all()
-            products = [{"producto": Products.query.get(item.producto_id).serialize()} for item in cart_items]
+            products = [item.serialize() for item in cart_items]
 
             response = jsonify(products)
             response.headers['Access-Control-Allow-Origin'] = '*'
@@ -656,8 +656,16 @@ def handle_cart():
                 response.headers['Access-Control-Expose-Headers'] = 'Authorization'
                 return response, 409
 
-            # Añadir el producto al carrito
-            new_cart_item = Cart(usuario_id=current_user['user_id'], producto_id=product_id)
+            # Añadir el producto al carrito con los detalles personalizados
+            new_cart_item = Cart(
+                usuario_id=current_user['user_id'],
+                producto_id=product_id,
+                alto=data.get('alto'),
+                ancho=data.get('ancho'),
+                anclaje=data.get('anclaje'),
+                color=data.get('color'),
+                precio_total=data.get('precio_total')
+            )
             db.session.add(new_cart_item)
             db.session.commit()
 

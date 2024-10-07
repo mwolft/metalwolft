@@ -44,14 +44,18 @@ export const Product = ({ product }) => {
     const handleAddToCart = async () => {
         if (store.isLoged) {
             if (height && width) {
+                const area = (parseFloat(height) * parseFloat(width)) / 10000; // Convertir cm² a m²
+                const price = area * product.precio;
+    
                 const productDetails = {
-                    ...product,
-                    height,
-                    width,
-                    mounting,
-                    color,
-                    price: calculatedPrice,
+                    product_id: product.id,
+                    alto: parseFloat(height),
+                    ancho: parseFloat(width),
+                    anclaje: mounting,
+                    color: color,
+                    precio_total: price.toFixed(2),
                 };
+    
                 await actions.addToCart(productDetails);
                 setNotification("Producto añadido al carrito");
             } else {
@@ -61,6 +65,7 @@ export const Product = ({ product }) => {
             setNotification("Debe registrarse para añadir productos al carrito");
         }
     };
+    
 
     const handleCalculatePrice = () => {
         if (height && width) {
