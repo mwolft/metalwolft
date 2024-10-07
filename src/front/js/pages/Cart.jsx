@@ -13,11 +13,6 @@ export const Cart = () => {
         setNotification("Producto eliminado del carrito");
     };
 
-    const calculateTotal = (product) => {
-        const area = (parseFloat(product.height) * parseFloat(product.width)) / 10000; // cm² a m²
-        return area * product.precio;
-    };
-
     return (
         <Container className="mt-5">
             <h2 className="text-center my-4">Carrito de compra</h2>
@@ -48,20 +43,20 @@ export const Cart = () => {
                                                 <p className="table-shopping-cart-item-description">{product.descripcion}</p>
                                             </div>
                                         </td>
-                                        <td className="cart__dimension">{product.height} cm</td>
-                                        <td className="cart__dimension">{product.width} cm</td>
-                                        <td className="cart__mounting">{product.mounting}</td>
+                                        <td className="cart__dimension">{product.alto} cm</td>
+                                        <td className="cart__dimension">{product.ancho} cm</td>
+                                        <td className="cart__mounting">{product.anclaje}</td>
                                         <td className="cart__color">{product.color}</td>
                                         <td className="cart__price-wrapper">
                                             <span className="money table-shopping-cart-item-price-total">
-                                                {calculateTotal(product).toFixed(2)} €
+                                                {product.precio_total} €
                                             </span>
                                         </td>
                                         <td className="cart_remove">
                                             <Button
                                                 variant="danger"
                                                 className="cart-remove-btn"
-                                                onClick={() => handleRemoveFromCart(product.id)}
+                                                onClick={() => handleRemoveFromCart(product.product_id)}
                                             >
                                                 Eliminar
                                             </Button>

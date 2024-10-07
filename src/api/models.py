@@ -158,10 +158,11 @@ class OrderDetails(db.Model):
     order_id = db.Column(db.Integer, db.ForeignKey('orders.id'), nullable=False)
     product_id = db.Column(db.Integer, db.ForeignKey('products.id'), nullable=False)
     quantity = db.Column(db.Integer, nullable=False)
-    alto = db.Column(db.Float, nullable=True)  # Tamaño - Alto (opcional)
-    ancho = db.Column(db.Float, nullable=True)  # Tamaño - Ancho (opcional)
-    anclaje = db.Column(db.Enum('pared', 'suelo', 'mixto', name='anclaje_enum'), nullable=True)  # Tipo de anclaje (opcional)
-    color = db.Column(db.String(50), nullable=True)  # Color (opcional)
+    alto = db.Column(db.Float, nullable=True)  # Tamaño - Alto
+    ancho = db.Column(db.Float, nullable=True)  # Tamaño - Ancho
+    anclaje = db.Column(db.String(50), nullable=True)  # Tipo de anclaje (con obra/sin obra)
+    color = db.Column(db.String(50), nullable=True)  # Color
+    precio_total = db.Column(db.Float, nullable=False)  # Precio total del producto personalizado
 
     product = db.relationship('Products', backref='order_details', lazy=True)  # Relación con productos
 
@@ -178,6 +179,7 @@ class OrderDetails(db.Model):
             "ancho": self.ancho,
             "anclaje": self.anclaje,
             "color": self.color,
+            "precio_total": self.precio_total
         }
 
 
@@ -203,6 +205,11 @@ class Cart(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     usuario_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     producto_id = db.Column(db.Integer, db.ForeignKey('products.id'), nullable=False)
+    alto = db.Column(db.Float, nullable=True)  # Tamaño - Alto
+    ancho = db.Column(db.Float, nullable=True)  # Tamaño - Ancho
+    anclaje = db.Column(db.String(50), nullable=True)  # Tipo de anclaje (con obra/sin obra)
+    color = db.Column(db.String(50), nullable=True)  # Color
+    precio_total = db.Column(db.Float, nullable=False)  # Precio total del producto personalizado
 
     def __repr__(self):
         return f'<Cart {self.id}: User {self.usuario_id}, Product {self.producto_id}>'
@@ -211,5 +218,10 @@ class Cart(db.Model):
         return {
             "id": self.id,
             "usuario_id": self.usuario_id,
-            "producto_id": self.producto_id
+            "producto_id": self.producto_id,
+            "alto": self.alto,
+            "ancho": self.ancho,
+            "anclaje": self.anclaje,
+            "color": self.color,
+            "precio_total": self.precio_total
         }

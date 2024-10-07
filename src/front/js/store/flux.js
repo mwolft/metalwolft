@@ -269,7 +269,7 @@ const getState = ({ getStore, getActions, setStore }) => {
                 }
             
                 // Verificar si el producto ya está en el carrito
-                const productExists = store.cart.some(item => item.id === product.id);
+                const productExists = store.cart.some(item => item.id === product.product_id);
                 if (productExists) {
                     alert("El producto ya está en el carrito");
                     return;
@@ -282,7 +282,14 @@ const getState = ({ getStore, getActions, setStore }) => {
                             'Content-Type': 'application/json',
                             Authorization: `Bearer ${localStorage.getItem("token")}`
                         },
-                        body: JSON.stringify({ product_id: product.id })
+                        body: JSON.stringify({
+                            product_id: product.product_id,
+                            alto: product.alto,
+                            ancho: product.ancho,
+                            anclaje: product.anclaje,
+                            color: product.color,
+                            precio_total: product.precio_total
+                        })
                     });
             
                     if (!response.ok) {
@@ -290,16 +297,22 @@ const getState = ({ getStore, getActions, setStore }) => {
                         alert(data.message || "Error al añadir al carrito");
                         return;
                     }
+            
                     setStore({ cart: [...store.cart, product] });
                     alert("Producto añadido al carrito");
                 } catch (error) {
                     console.error("Error al añadir al carrito:", error);
                 }
-            },            
+            },                     
             removeFromCart: async (productId) => {
                 const store = getStore();
                 if (!store.isLoged) {
                     alert("Debe estar logueado para eliminar productos del carrito");
+                    return;
+                }
+            
+                if (!productId) {
+                    console.error("El ID del producto no es válido");
                     return;
                 }
             
@@ -313,8 +326,9 @@ const getState = ({ getStore, getActions, setStore }) => {
                     });
             
                     if (!response.ok) {
-                        const data = await response.json();
-                        alert(data.message || "Error al eliminar del carrito");
+                        const data = await response.text(); // Cambié a `text()` para manejar una posible respuesta en HTML
+                        console.error("Error al eliminar del carrito:", data);
+                        alert("Error al eliminar del carrito");
                         return;
                     }
             
@@ -324,7 +338,7 @@ const getState = ({ getStore, getActions, setStore }) => {
                 } catch (error) {
                     console.error("Error al eliminar del carrito:", error);
                 }
-            },            
+            },                   
             clearCart: () => {
                 setStore({ cart: [] });
             }
