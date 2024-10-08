@@ -7,6 +7,7 @@ import "../../styles/cart.css";
 export const Cart = () => {
     const { store, actions } = useContext(Context);
     const [notification, setNotification] = useState(null);
+    const [notes, setNotes] = useState(""); // Campo para las notas del pedido
 
     useEffect(() => {
         actions.loadCart();  // Asegurarnos de cargar los datos del carrito al cargar el componente
@@ -20,9 +21,9 @@ export const Cart = () => {
             console.error("Error: Falta el producto_id en el carrito", product);
             return;
         }
-    
+
         actions.removeFromCart({
-            producto_id: product.producto_id,  // Usar 'producto_id' de forma consistente
+            producto_id: product.producto_id,
             alto: product.alto,
             ancho: product.ancho,
             anclaje: product.anclaje,
@@ -31,8 +32,10 @@ export const Cart = () => {
             imagen: product.imagen
         });
         setNotification("Producto eliminado del carrito");
-    };    
-    
+    };
+
+    // Calcular el subtotal de todos los productos en el carrito
+    const subtotal = store.cart.reduce((acc, product) => acc + parseFloat(product.precio_total), 0);
 
     return (
         <Container className="mt-5">
@@ -41,13 +44,13 @@ export const Cart = () => {
                 <p className="text-center">No tiene productos en su carrito aún.</p>
             ) : (
                 <Row>
-                    <Col md={11} className="mx-auto">
+                    <Col md={12} className="mx-auto">
                         <Table responsive className="table-shopping-cart">
                             <thead>
                                 <tr>
                                     <th>Producto</th>
-                                    <th>Alto</th>
-                                    <th>Ancho</th>
+                                    <th>Alto(cm)</th>
+                                    <th>Ancho(cm)</th>
                                     <th>Anclaje</th>
                                     <th>Color</th>
                                     <th>Total</th>
@@ -63,8 +66,8 @@ export const Cart = () => {
                                                 <p className="table-shopping-cart-item-title">{product.nombre}</p>
                                             </div>
                                         </td>
-                                        <td className="cart__dimension">{product.alto} cm</td>
-                                        <td className="cart__dimension">{product.ancho} cm</td>
+                                        <td className="cart__dimension">{product.alto}</td>
+                                        <td className="cart__dimension">{product.ancho}</td>
                                         <td className="cart__mounting">{product.anclaje}</td>
                                         <td className="cart__color">{product.color}</td>
                                         <td className="cart__price-wrapper">
@@ -74,9 +77,8 @@ export const Cart = () => {
                                         </td>
                                         <td className="cart_remove">
                                             <Button
-                                                variant="danger"
-                                                className="cart-remove-btn"
-                                                onClick={() => handleRemoveFromCart(product)}  // Pasamos el objeto completo del producto
+                                                className="btn-style-background-color"
+                                                onClick={() => handleRemoveFromCart(product)}
                                             >
                                                 Eliminar
                                             </Button>
@@ -85,16 +87,29 @@ export const Cart = () => {
                                 ))}
                             </tbody>
                         </Table>
+
+                        {/* Sección del subtotal y notas */}
+                        {store.cart.length > 0 && (
+                            <Row className="mt-4 mb-5 mx-3">
+                                <Col className="text-end"> {/* Usamos text-end para alinear todo a la derecha */}
+                                    <p className="cart-total">
+                                        <span className="sign">Subtotal:</span>
+                                        <span className="money"> {subtotal.toFixed(2)} €</span>
+                                    </p>
+                                    <div className="text-end"> {/* Alineamos el botón dentro del div */}
+                                        <Button
+                                            className="btn-style-background-color"
+                                            onClick={() => alert("Continuar con la compra no está implementado todavía")}
+                                        >
+                                            Pagar ahora
+                                        </Button>
+                                    </div>
+                                </Col>
+                            </Row>
+                        )}
                     </Col>
                 </Row>
             )}
-            <div className="text-center mt-4">
-                {store.cart.length > 0 && (
-                    <Button variant="success" onClick={() => alert("Continuar con la compra no está implementado todavía")}>
-                        Proceder al Pago
-                    </Button>
-                )}
-            </div>
 
             {/* Notificación */}
             {notification && (
