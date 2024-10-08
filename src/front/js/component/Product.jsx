@@ -44,22 +44,22 @@ export const Product = ({ product }) => {
     const handleAddToCart = async () => {
         if (store.isLoged) {
             if (height && width) {
-                const area = (parseFloat(height) * parseFloat(width)) / 10000; // Convertir cm² a m²
+                const area = (parseFloat(height) * parseFloat(width)) / 10000;
                 const price = area * product.precio;
-    
+
                 const productDetails = {
                     product_id: product.id,
                     alto: parseFloat(height),
                     ancho: parseFloat(width),
                     anclaje: mounting,
                     color: color,
-                    precio_total: price.toFixed(2),  // Asegúrate de que el precio total se está enviando
+                    precio_total: price.toFixed(2),
                 };
-    
+
                 await actions.addToCart(productDetails);
                 setNotification("Producto añadido al carrito");
-    
-                // Restablecer los valores de las especificaciones
+
+                // Reset values after adding to cart
                 setHeight('');
                 setWidth('');
                 setMounting('con obra');
@@ -70,12 +70,11 @@ export const Product = ({ product }) => {
         } else {
             setNotification("Debe registrarse para añadir productos al carrito");
         }
-    };    
-    
+    };
 
     const handleCalculatePrice = () => {
         if (height && width) {
-            const area = (parseFloat(height) * parseFloat(width)) / 10000; // convertir cm² a m²
+            const area = (parseFloat(height) * parseFloat(width)) / 10000;
             const price = area * product.precio;
             setCalculatedPrice(price.toFixed(2));
         } else {
@@ -98,15 +97,6 @@ export const Product = ({ product }) => {
                         <p className="card-text-carrusel">
                             <span className="current-price">{product.precio} €/m²</span>
                         </p>
-                        <div className="rating">
-                            <Rating
-                                emptySymbol="fa fa-star-o"
-                                fullSymbol="fa fa-star"
-                                fractions={2}
-                                initialRating={4}
-                                readonly
-                            />
-                        </div>
                         <div className="my-1 d-flex justify-content-between align-items-center">
                             <Button className="btn-style-background-color" onClick={handleShow}>
                                 Ver más
@@ -129,103 +119,103 @@ export const Product = ({ product }) => {
                     </Modal.Title>
                 </Modal.Header>
                 <Modal.Body>
-                    <Carousel activeIndex={currentIndex} onSelect={handleSelect}>
-                        {allImages.map((image, index) => (
-                            <Carousel.Item key={index}>
-                                <img
-                                    src={image.image_url}
-                                    alt={`Producto ${index + 1}`}
-                                    className="d-block w-100 img-fluid"
-                                />
-                            </Carousel.Item>
-                        ))}
-                    </Carousel>
+                    <div className="row">
+                        <div className="col-lg-6 col-md-6 mb-4 mb-md-0">
+                            <Carousel activeIndex={currentIndex} onSelect={handleSelect}>
+                                {allImages.map((image, index) => (
+                                    <Carousel.Item key={index}>
+                                        <img
+                                            src={image.image_url}
+                                            alt={`Producto ${index + 1}`}
+                                            className="d-block w-100 img-fluid"
+                                        />
+                                    </Carousel.Item>
+                                ))}
+                            </Carousel>
 
-                    <div className="thumbnail-gallery d-flex justify-content-center mt-3">
-                        {allImages.map((image, index) => (
-                            <img
-                                key={index}
-                                src={image.image_url}
-                                alt={`Producto Miniatura ${index + 1}`}
-                                className={`img-thumbnail mx-1 ${currentIndex === index ? 'active-thumbnail' : ''}`}
-                                style={{ width: '80px', height: '80px', cursor: 'pointer' }}
-                                onClick={() => handleSelect(index)}
-                            />
-                        ))}
-                    </div>
-
-                    <div className="product-details mt-4">
-                        <h5>Precio: {product.precio} €/m²</h5>
-                        <p>{product.descripcion}</p>
-                        <div className="rating">
-                            <Rating
-                                emptySymbol="fa fa-star-o"
-                                fullSymbol="fa fa-star"
-                                fractions={2}
-                                initialRating={product.rating || 4}
-                                readonly
-                            />
+                            <div className="thumbnail-gallery d-flex justify-content-center mt-3">
+                                {allImages.map((image, index) => (
+                                    <img
+                                        key={index}
+                                        src={image.image_url}
+                                        alt={`Producto Miniatura ${index + 1}`}
+                                        className={`img-thumbnail mx-1 ${currentIndex === index ? 'active-thumbnail' : ''}`}
+                                        style={{ width: '80px', height: '80px', cursor: 'pointer' }}
+                                        onClick={() => handleSelect(index)}
+                                    />
+                                ))}
+                            </div>
                         </div>
+                        <div className="col-lg-6 col-md-6">
+                            <div className="pr_detail">
+                                <h5>Precio: {product.precio} €/m²</h5>
+                                <p>{product.descripcion}</p>
 
-                        <Form className="mt-4">
-                            <Form.Group controlId="height">
-                                <Form.Label>Altura (cm)</Form.Label>
-                                <Form.Control
-                                    type="number"
-                                    value={height}
-                                    onChange={(e) => setHeight(e.target.value)}
-                                    placeholder="Ingrese la altura en cm"
-                                />
-                            </Form.Group>
-                            <Form.Group controlId="width" className="mt-2">
-                                <Form.Label>Anchura (cm)</Form.Label>
-                                <Form.Control
-                                    type="number"
-                                    value={width}
-                                    onChange={(e) => setWidth(e.target.value)}
-                                    placeholder="Ingrese la anchura en cm"
-                                />
-                            </Form.Group>
-                            <Form.Group controlId="mounting" className="mt-2">
-                                <Form.Label>Tipo de anclaje</Form.Label>
-                                <Form.Control
-                                    as="select"
-                                    value={mounting}
-                                    onChange={(e) => setMounting(e.target.value)}
-                                >
-                                    <option value="con obra">Con obra</option>
-                                    <option value="sin obra">Sin obra</option>
-                                </Form.Control>
-                            </Form.Group>
-                            <Form.Group controlId="color" className="mt-2">
-                                <Form.Label>Color</Form.Label>
-                                <Form.Control
-                                    as="select"
-                                    value={color}
-                                    onChange={(e) => setColor(e.target.value)}
-                                >
-                                    <option value="blanco">Blanco</option>
-                                    <option value="negro">Negro</option>
-                                    <option value="gris">Gris</option>
-                                    <option value="verde">Verde</option>
-                                    <option value="marrón">Marrón</option>
-                                </Form.Control>
-                            </Form.Group>
-                            <Button className="btn-style-background-color mt-3" onClick={handleCalculatePrice}>
-                                Calcular precio
-                            </Button>
-                        </Form>
+                                <div className="d-flex mt-4">
+                                    <Form.Group controlId="height" className="me-3" style={{ flex: 1 }}>
+                                        <Form.Label>Alto (cm):</Form.Label>
+                                        <Form.Control
+                                            type="number"
+                                            value={height}
+                                            onChange={(e) => setHeight(e.target.value)}
+                                            placeholder="cm"
+                                        />
+                                    </Form.Group>
+                                    <Form.Group controlId="width" style={{ flex: 1 }}>
+                                        <Form.Label>Ancho (cm):</Form.Label>
+                                        <Form.Control
+                                            type="number"
+                                            value={width}
+                                            onChange={(e) => setWidth(e.target.value)}
+                                            placeholder="cm"
+                                        />
+                                    </Form.Group>
+                                </div>
 
-                        {calculatedPrice && (
-                            <h5 className="mt-3">Precio calculado: {calculatedPrice} €</h5>
-                        )}
+                                <div className="d-flex mt-2">
+                                    <Form.Group controlId="mounting" className="me-3" style={{ flex: 1 }}>
+                                        <Form.Label>Instalación:</Form.Label>
+                                        <Form.Control
+                                            as="select"
+                                            value={mounting}
+                                            onChange={(e) => setMounting(e.target.value)}
+                                        >
+                                            <option value="con obra">Con obra</option>
+                                            <option value="sin obra">Sin obra</option>
+                                        </Form.Control>
+                                    </Form.Group>
+                                    <Form.Group controlId="color" style={{ flex: 1 }}>
+                                        <Form.Label>Color:</Form.Label>
+                                        <Form.Control
+                                            as="select"
+                                            value={color}
+                                            onChange={(e) => setColor(e.target.value)}
+                                        >
+                                            <option value="blanco">Blanco</option>
+                                            <option value="negro">Negro</option>
+                                            <option value="gris">Gris</option>
+                                            <option value="verde">Verde</option>
+                                            <option value="marrón">Marrón</option>
+                                        </Form.Control>
+                                    </Form.Group>
+                                </div>
+
+                                <Button className="btn-style-background-color mt-3" onClick={handleCalculatePrice}>
+                                    Calcular precio
+                                </Button>
+
+                                {calculatedPrice && (
+                                    <h5 className="mt-3">Precio calculado: {calculatedPrice} €</h5>
+                                )}
+                            </div>
+                        </div>
                     </div>
                 </Modal.Body>
-                <Modal.Footer className="d-flex justify-content-between align-items-center">
+                <Modal.Footer className="d-flex justify-content-end align-items-center">
                     <i
                         className={`fa-regular fa-heart ${actions.isFavorite(product) ? 'fa-solid' : ''}`}
                         onClick={handleFavorite}
-                        style={{ cursor: 'pointer', color: '#ff324d', fontSize: '1.5rem' }}
+                        style={{ cursor: 'pointer', color: '#ff324d', fontSize: '1.5rem', marginRight: '5px' }}
                     ></i>
                     <Button className="btn-style-background-color" onClick={handleAddToCart}>
                         Añadir al carrito
