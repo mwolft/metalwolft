@@ -1,4 +1,4 @@
-import React, { useContext, useState } from "react";
+import React, { useContext, useState, useEffect } from "react";
 import { Context } from "../store/appContext";
 import { Button, Container, Row, Col, Table } from "react-bootstrap";
 import { Notification } from "../component/Notification.jsx";
@@ -8,10 +8,31 @@ export const Cart = () => {
     const { store, actions } = useContext(Context);
     const [notification, setNotification] = useState(null);
 
-    const handleRemoveFromCart = (productId) => {
-        actions.removeFromCart(productId);
+    useEffect(() => {
+        actions.loadCart();  // Asegurarnos de cargar los datos del carrito al cargar el componente
+    }, []);
+
+    // Verificar qué datos se están recibiendo
+    console.log("Carrito:", store.cart);
+
+    const handleRemoveFromCart = (product) => {
+        if (!product.producto_id) {
+            console.error("Error: Falta el producto_id en el carrito", product);
+            return;
+        }
+    
+        actions.removeFromCart({
+            producto_id: product.producto_id,  // Usar 'producto_id' de forma consistente
+            alto: product.alto,
+            ancho: product.ancho,
+            anclaje: product.anclaje,
+            color: product.color,
+            precio_total: product.precio_total,
+            imagen: product.imagen
+        });
         setNotification("Producto eliminado del carrito");
-    };
+    };    
+    
 
     return (
         <Container className="mt-5">
@@ -56,7 +77,7 @@ export const Cart = () => {
                                             <Button
                                                 variant="danger"
                                                 className="cart-remove-btn"
-                                                onClick={() => handleRemoveFromCart(product.product_id)}
+                                                onClick={() => handleRemoveFromCart(product)}  // Pasamos el objeto completo del producto
                                             >
                                                 Eliminar
                                             </Button>
