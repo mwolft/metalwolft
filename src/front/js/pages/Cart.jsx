@@ -41,13 +41,13 @@ export const Cart = () => {
                 <p className="text-center">No tiene productos en su carrito aún.</p>
             ) : (
                 <Row>
-                    <Col md={{ span: 10, offset: 1 }}>
+                    <Col md={11} className="mx-auto">
                         <Table responsive className="table-shopping-cart">
                             <thead>
                                 <tr>
                                     <th>Producto</th>
-                                    <th>Altura</th>
-                                    <th>Anchura</th>
+                                    <th>Alto</th>
+                                    <th>Ancho</th>
                                     <th>Anclaje</th>
                                     <th>Color</th>
                                     <th>Total</th>
@@ -61,7 +61,6 @@ export const Cart = () => {
                                             <img className="cart__image" src={product.imagen} alt={product.nombre} />
                                             <div className="table-shopping-cart-item">
                                                 <p className="table-shopping-cart-item-title">{product.nombre}</p>
-                                                <p className="table-shopping-cart-item-description">{product.descripcion}</p>
                                             </div>
                                         </td>
                                         <td className="cart__dimension">{product.alto} cm</td>
