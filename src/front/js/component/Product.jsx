@@ -53,18 +53,24 @@ export const Product = ({ product }) => {
                     ancho: parseFloat(width),
                     anclaje: mounting,
                     color: color,
-                    precio_total: price.toFixed(2),
+                    precio_total: price.toFixed(2),  // Asegúrate de que el precio total se está enviando
                 };
     
                 await actions.addToCart(productDetails);
                 setNotification("Producto añadido al carrito");
+    
+                // Restablecer los valores de las especificaciones
+                setHeight('');
+                setWidth('');
+                setMounting('con obra');
+                setColor('blanco');
             } else {
                 setNotification("Debe ingresar altura y anchura para calcular el precio");
             }
         } else {
             setNotification("Debe registrarse para añadir productos al carrito");
         }
-    };
+    };    
     
 
     const handleCalculatePrice = () => {

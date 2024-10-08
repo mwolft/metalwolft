@@ -211,14 +211,16 @@ class Cart(db.Model):
     color = db.Column(db.String(50), nullable=True)  # Color
     precio_total = db.Column(db.Float, nullable=False)  # Precio total del producto personalizado
 
-    def __repr__(self):
-        return f'<Cart {self.id}: User {self.usuario_id}, Product {self.producto_id}>'
+    product = db.relationship('Products', backref='cart_items', lazy=True)
 
     def serialize(self):
         return {
             "id": self.id,
             "usuario_id": self.usuario_id,
             "producto_id": self.producto_id,
+            "nombre": self.product.nombre,  # Añadir el nombre del producto
+            "descripcion": self.product.descripcion,  # Añadir la descripción
+            "imagen": self.product.imagen,  # Añadir la imagen del producto
             "alto": self.alto,
             "ancho": self.ancho,
             "anclaje": self.anclaje,

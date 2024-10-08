@@ -625,7 +625,7 @@ def handle_cart():
         # Obtener los productos en el carrito del usuario actual
         try:
             cart_items = Cart.query.filter_by(usuario_id=current_user['user_id']).all()
-            products = [item.serialize() for item in cart_items]
+            products = [item.serialize() for item in cart_items]  # Ahora devuelve la información completa del producto
 
             response = jsonify(products)
             response.headers['Access-Control-Allow-Origin'] = '*'
@@ -648,10 +648,18 @@ def handle_cart():
             return response, 400
 
         try:
-            # Verificar si el producto ya está en el carrito
-            existing_item = Cart.query.filter_by(usuario_id=current_user['user_id'], producto_id=product_id).first()
+            # Verificar si ya existe un producto con las mismas especificaciones en el carrito
+            existing_item = Cart.query.filter_by(
+                usuario_id=current_user['user_id'],
+                producto_id=product_id,
+                alto=data.get('alto'),
+                ancho=data.get('ancho'),
+                anclaje=data.get('anclaje'),
+                color=data.get('color')
+            ).first()
+
             if existing_item:
-                response = jsonify({"message": "Producto ya está en el carrito"})
+                response = jsonify({"message": "Producto ya está en el carrito con las mismas especificaciones"})
                 response.headers['Access-Control-Allow-Origin'] = '*'
                 response.headers['Access-Control-Expose-Headers'] = 'Authorization'
                 return response, 409
@@ -664,7 +672,7 @@ def handle_cart():
                 ancho=data.get('ancho'),
                 anclaje=data.get('anclaje'),
                 color=data.get('color'),
-                precio_total=data.get('precio_total')
+                precio_total=data.get('precio_total')  # Guardar el precio total calculado
             )
             db.session.add(new_cart_item)
             db.session.commit()
@@ -689,42 +697,34 @@ def handle_cart():
             return response, 500
 
 
-@api.route('/cart/<int:product_id>', methods=['OPTIONS', 'DELETE'])
+@api.route('/cart/<int:product_id>', methods=['DELETE'])
 @jwt_required()
 def remove_from_cart(product_id):
-    if request.method == "OPTIONS":
-        # Manejar el preflight de CORS
-        response = jsonify({"message": "Preflight request successful"})
-        response.headers.add("Access-Control-Allow-Origin", "*")
-        response.headers.add("Access-Control-Allow-Headers", "Content-Type, Authorization")
-        response.headers.add("Access-Control-Allow-Methods", "DELETE, OPTIONS")
-        return response, 200
-
     current_user = get_jwt_identity()
 
     try:
-        cart_item = Cart.query.filter_by(usuario_id=current_user['user_id'], producto_id=product_id).first()
+        data = request.get_json()  # Obtener las especificaciones del producto
+        cart_item = Cart.query.filter_by(
+            usuario_id=current_user['user_id'],
+            producto_id=product_id,
+            alto=data.get('alto'),
+            ancho=data.get('ancho'),
+            anclaje=data.get('anclaje'),
+            color=data.get('color')
+        ).first()
+
         if not cart_item:
-            response = jsonify({"message": "Producto no encontrado en el carrito"})
-            response.headers['Access-Control-Allow-Origin'] = '*'
-            response.headers['Access-Control-Expose-Headers'] = 'Authorization'
-            return response, 404
+            return jsonify({"message": "Producto no encontrado en el carrito con esas especificaciones"}), 404
 
         db.session.delete(cart_item)
         db.session.commit()
 
         # Obtener el carrito actualizado
         updated_cart_items = Cart.query.filter_by(usuario_id=current_user['user_id']).all()
-        updated_cart = [Products.query.get(item.producto_id).serialize() for item in updated_cart_items]
+        updated_cart = [item.serialize() for item in updated_cart_items]
 
-        response = jsonify({"message": "Producto eliminado del carrito", "updated_cart": updated_cart})
-        response.headers['Access-Control-Allow-Origin'] = '*'
-        response.headers['Access-Control-Expose-Headers'] = 'Authorization'
-        return response, 200
+        return jsonify({"message": "Producto eliminado del carrito", "updated_cart": updated_cart}), 200
 
     except Exception as e:
         db.session.rollback()
-        response = jsonify({"message": str(e)})
-        response.headers['Access-Control-Allow-Origin'] = '*'
-        response.headers['Access-Control-Expose-Headers'] = 'Authorization'
-        return response, 500
+        return jsonify({"message": str(e)}), 500

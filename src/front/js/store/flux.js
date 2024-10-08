@@ -252,26 +252,22 @@ const getState = ({ getStore, getActions, setStore }) => {
                         }
                     });
             
-                    if (!response.ok) throw new Error("Error al cargar el carrito");
+                    if (!response.ok) {
+                        const errorText = await response.text();
+                        console.error("Error al cargar el carrito:", errorText);
+                        throw new Error(`Error al cargar el carrito: ${errorText}`);
+                    }
             
-                    const data = await response.json();
-                    const cartProducts = data.map(item => item.producto);
-                    setStore({ cart: cartProducts });
+                    const data = await response.json();  // Obtener los productos con especificaciones
+                    setStore({ cart: data });  // Guardar los productos en el estado global
                 } catch (error) {
                     console.error("Error al cargar el carrito:", error);
                 }
-            },            
+            },               
             addToCart: async (product) => {
                 const store = getStore();
                 if (!store.isLoged) {
                     alert("Debe estar logueado para añadir productos al carrito");
-                    return;
-                }
-            
-                // Verificar si el producto ya está en el carrito
-                const productExists = store.cart.some(item => item.id === product.product_id);
-                if (productExists) {
-                    alert("El producto ya está en el carrito");
                     return;
                 }
             
@@ -298,35 +294,46 @@ const getState = ({ getStore, getActions, setStore }) => {
                         return;
                     }
             
-                    setStore({ cart: [...store.cart, product] });
+                    // Actualizar el carrito en el estado
+                    const newProduct = await response.json();  // Obtener el producto añadido del backend
+                    setStore({ cart: [...store.cart, newProduct] });
                     alert("Producto añadido al carrito");
                 } catch (error) {
                     console.error("Error al añadir al carrito:", error);
                 }
-            },                     
-            removeFromCart: async (productId) => {
+            },                    
+            removeFromCart: async (product) => {
                 const store = getStore();
                 if (!store.isLoged) {
                     alert("Debe estar logueado para eliminar productos del carrito");
                     return;
                 }
             
-                if (!productId) {
-                    console.error("El ID del producto no es válido");
-                    return;
-                }
-            
                 try {
-                    const response = await fetch(`${process.env.BACKEND_URL}/api/cart/${productId}`, {
+                    if (!product.producto_id) {
+                        console.error("Faltan especificaciones del producto");
+                        alert("Faltan especificaciones para eliminar el producto del carrito");
+                        return;
+                    }
+            
+                    const response = await fetch(`${process.env.BACKEND_URL}/api/cart/${product.producto_id}`, {
                         method: 'DELETE',
                         headers: {
                             'Content-Type': 'application/json',
                             Authorization: `Bearer ${localStorage.getItem("token")}`
-                        }
+                        },
+                        body: JSON.stringify({
+                            alto: product.alto,
+                            ancho: product.ancho,
+                            anclaje: product.anclaje,
+                            color: product.color,
+                            precio_total: product.precio_total,
+                            imagen: product.imagen
+                        })
                     });
             
                     if (!response.ok) {
-                        const data = await response.text(); // Cambié a `text()` para manejar una posible respuesta en HTML
+                        const data = await response.text();
                         console.error("Error al eliminar del carrito:", data);
                         alert("Error al eliminar del carrito");
                         return;
@@ -338,10 +345,10 @@ const getState = ({ getStore, getActions, setStore }) => {
                 } catch (error) {
                     console.error("Error al eliminar del carrito:", error);
                 }
-            },                   
+            },               
             clearCart: () => {
                 setStore({ cart: [] });
-            }
+            }            
         }
     };
 };
