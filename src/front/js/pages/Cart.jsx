@@ -3,11 +3,13 @@ import { Context } from "../store/appContext";
 import { Button, Container, Row, Col, Table } from "react-bootstrap";
 import { Notification } from "../component/Notification.jsx";
 import "../../styles/cart.css";
+import { useNavigate } from "react-router-dom";
 
 export const Cart = () => {
     const { store, actions } = useContext(Context);
     const [notification, setNotification] = useState(null);
     const [notes, setNotes] = useState(""); // Campo para las notas del pedido
+    const navigate = useNavigate();
 
     useEffect(() => {
         actions.loadCart();  // Asegurarnos de cargar los datos del carrito al cargar el componente
@@ -37,6 +39,11 @@ export const Cart = () => {
     // Calcular el subtotal de todos los productos en el carrito
     const subtotal = store.cart.reduce((acc, product) => acc + parseFloat(product.precio_total), 0);
 
+    const handleCheckout = () => {
+        navigate("/checkout-form");  
+    };
+
+
     return (
         <Container className="mt-5">
             <h2 className="text-center my-4">Carrito de compra</h2>
@@ -44,7 +51,7 @@ export const Cart = () => {
                 <p className="text-center">No tiene productos en su carrito aún.</p>
             ) : (
                 <Row>
-                    <Col md={12} className="mx-auto">
+                    <Col md={10} className="mx-auto">
                         <Table responsive className="table-shopping-cart">
                             <thead>
                                 <tr>
@@ -99,7 +106,7 @@ export const Cart = () => {
                                     <div className="text-end"> {/* Alineamos el botón dentro del div */}
                                         <Button
                                             className="btn-style-background-color"
-                                            onClick={() => alert("Continuar con la compra no está implementado todavía")}
+                                            onClick={handleCheckout}
                                         >
                                             Pagar ahora
                                         </Button>
