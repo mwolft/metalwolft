@@ -4,9 +4,47 @@ from api.utils import generate_sitemap, APIException
 from api.models import db, Users, Products, ProductImages, Categories, Orders, OrderDetails, Favorites, Cart
 from sqlalchemy.exc import SQLAlchemyError
 import bcrypt
-
+import stripe
+from dotenv import load_dotenv
+import os
 
 api = Blueprint('api', __name__)
+
+load_dotenv()
+
+stripe.api_key = os.getenv('STRIPE_SECRET_KEY')
+
+@api.route('/create-payment-intent', methods=['POST'])
+def create_payment_intent():
+    try:
+        data = request.get_json()
+
+        # Crear o verificar el estado del Payment Intent
+        payment_intent_id = data.get('payment_intent_id')
+        if payment_intent_id:
+            # Si ya existe un PaymentIntent, obtener su estado
+            intent = stripe.PaymentIntent.retrieve(payment_intent_id)
+
+            # Si el PaymentIntent ya está en estado "succeeded", devolver un error para evitar una nueva confirmación
+            if intent['status'] == 'succeeded':
+                return jsonify({"message": "El pago ya ha sido completado.", "paymentIntent": intent}), 200
+
+        # Crear un nuevo PaymentIntent solo si no existe o si no ha sido completado
+        intent = stripe.PaymentIntent.create(
+            amount=data['amount'],  # Cantidad en centavos
+            currency='eur',
+            payment_method=data['payment_method_id'],  # ID del método de pago
+            confirm=True,  # Confirmar el intento de pago automáticamente
+            return_url='https://scaling-umbrella-976gwrg7664j3grx.github.dev/thank-you',  # URL de retorno
+        )
+
+        return jsonify({
+            'clientSecret': intent['client_secret'],  # Devuelve el 'clientSecret'
+            'paymentIntent': intent  # Devuelve también el PaymentIntent completo
+        })
+    except Exception as e:
+        return jsonify(error=str(e)), 403
+
 
 
 @api.route('/hello', methods=['GET'])

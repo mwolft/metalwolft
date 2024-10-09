@@ -297,7 +297,6 @@ const getState = ({ getStore, getActions, setStore }) => {
                     // Actualizar el carrito en el estado
                     const newProduct = await response.json();  // Obtener el producto añadido del backend
                     setStore({ cart: [...store.cart, newProduct] });
-                    alert("Producto añadido al carrito");
                 } catch (error) {
                     console.error("Error al añadir al carrito:", error);
                 }
@@ -341,7 +340,6 @@ const getState = ({ getStore, getActions, setStore }) => {
             
                     const data = await response.json();
                     setStore({ cart: data.updated_cart });
-                    alert("Producto eliminado del carrito");
                 } catch (error) {
                     console.error("Error al eliminar del carrito:", error);
                 }

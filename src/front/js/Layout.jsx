@@ -18,6 +18,8 @@ import { Breadcrumb } from "./component/Breadcrumb.jsx";
 import { Product } from "./component/Product.jsx";
 import { Notification } from "./component/Notification.jsx";
 import { AsideCategories } from "./component/AsideCategories.jsx";
+import CheckoutForm from "./component/CheckoutForm.jsx";
+import PayPalButton from "./component/PayPalButton.jsx";
 
 // Custom pages
 import { Home } from "./pages/Home.jsx";
@@ -28,6 +30,7 @@ import AdminPanel from "./pages/AdminPanel.jsx";
 import { Favoritos } from "./pages/Favoritos.jsx";
 import { ProductDetail } from "./pages/ProductDetail.jsx";
 import { Cart } from "./pages/Cart.jsx";
+import { ThankYou } from "./pages/ThankYou.jsx";
  
 // Custom categories
 import { RejasParaVentanas } from "./pages/categories/RejasParaVentanas.jsx";
@@ -54,6 +57,9 @@ const Layout = () => {
                     <Route path="/favoritos" element={<Favoritos />} />
                     <Route path="/product/:id" element={<ProductDetail />} />
                     <Route path="/cart" element={<Cart />} />
+                    <Route path="/checkout-form" element={<CheckoutForm />} />
+                    <Route path="/thank-you" element={<ThankYou />} />
+                    <Route path="/paypal-button" element={<PayPalButton />} />
                     <Route path="/notification" element={<Notification />} />
                     <Route path="/cards-carrusel" element={<CardsCarrusel />} />
                     <Route path="/sidebar" element={<Sidebar />} />
