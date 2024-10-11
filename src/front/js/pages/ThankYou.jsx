@@ -1,10 +1,13 @@
-import React from "react";
+import React from 'react';
 
 export const ThankYou = () => {
+
     return (
-        <div className="text-center">
-            <h1>¡Gracias por tu compra!</h1>
-            <p>Hemos recibido tu pedido y estamos procesándolo.</p>
+        <div style={{marginTop: '100px'}}>
+            <h1>Gracias por tu compra</h1>
+            <p>Tu pago ha sido procesado exitosamente.</p>
         </div>
     );
 };
+
+

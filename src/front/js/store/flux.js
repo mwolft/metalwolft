@@ -67,57 +67,18 @@ const getState = ({ getStore, getActions, setStore }) => {
                 if (isLogin) {
                     setStore({ isLoged: true });
                 } else {
-                    setStore({ isLoged: false, isAdmin: false, favorites: [] }); // Resetear los favoritos al desloguearse
+                    console.log("Cerrando sesión y limpiando carrito"); // Verificar que se está ejecutando
+                    setStore({ isLoged: false, isAdmin: false, favorites: [] }); // Resetear favoritos
                     getActions().clearCart(); // Vaciar el carrito al cerrar sesión
                     localStorage.removeItem("token");
                     localStorage.removeItem("user");
                 }
-            },           
+            },                
             setIsAdmin: (isAdmin) => {
                 setStore({ isAdmin });
             },
             setAlert: (newAlert) => {
                 setStore({ alert: newAlert });
-            },
-            fetchOrders: async () => {
-                const store = getStore(); 
-                try {
-                    const response = await fetch(`${process.env.BACKEND_URL}/api/orders`, {
-                        method: 'GET',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            Authorization: `Bearer ${localStorage.getItem("token")}`
-                        }
-                    });
-                    if (!response.ok) throw new Error("Error al obtener las órdenes");
-
-                    const data = await response.json();
-                    setStore({ orders: data });
-                    return { ok: true };
-                } catch (error) {
-                    setStore({ error: error.message });
-                    return { ok: false };
-                }
-            },
-            fetchOrderDetails: async () => {
-                const store = getStore(); // Corrección: Agregar esta línea para obtener el estado actual
-                try {
-                    const response = await fetch(`${process.env.BACKEND_URL}/api/orderdetails`, {
-                        method: 'GET',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            Authorization: `Bearer ${localStorage.getItem("token")}`
-                        }
-                    });
-                    if (!response.ok) throw new Error("Error al obtener los detalles de las órdenes");
-
-                    const data = await response.json();
-                    setStore({ orderDetails: data });
-                    return { ok: true };
-                } catch (error) {
-                    setStore({ error: error.message });
-                    return { ok: false };
-                }
             },
             fetchProducts: async () => {
                 const store = getStore();
@@ -138,107 +99,7 @@ const getState = ({ getStore, getActions, setStore }) => {
                 } catch (error) {
                     setStore({ error: error.message });
                 }
-            },
-            loadFavorites: async () => {
-                const store = getStore();
-                if (!store.isLoged) return; // Solo cargar si el usuario está logueado
-
-                try {
-                    const response = await fetch(`${process.env.BACKEND_URL}/api/favorites`, {
-                        method: 'GET',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            Authorization: `Bearer ${localStorage.getItem("token")}`
-                        }
-                    });
-                    if (!response.ok) throw new Error("Error al cargar los favoritos");
-
-                    const data = await response.json();
-                    setStore({ favorites: data });
-                } catch (error) {
-                    console.error("Error al cargar los favoritos:", error);
-                }
-            },
-            loadFavorites: async () => {
-                const store = getStore();
-                try {
-                    const response = await fetch(`${process.env.BACKEND_URL}/api/favorites`, {
-                        method: 'GET',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            Authorization: `Bearer ${localStorage.getItem("token")}`,
-                        },
-                    });
-                    if (!response.ok) throw new Error("Error al cargar favoritos");
-
-                    const data = await response.json();
-                    setStore({ favorites: data });
-                } catch (error) {
-                    console.error("Error al cargar los favoritos:", error);
-                }
-            },
-            setFavoritesLoaded: (loaded) => {
-                setStore({ favoritesLoaded: loaded });
-            },
-            addFavorite: async (product) => {
-                const store = getStore();
-                if (!store.isLoged) {
-                    console.error("Debe estar logueado para añadir favoritos");
-                    return;
-                }
-
-                try {
-                    const response = await fetch(`${process.env.BACKEND_URL}/api/favorites`, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            Authorization: `Bearer ${localStorage.getItem("token")}`
-                        },
-                        body: JSON.stringify({ product_id: product.id })
-                    });
-
-                    if (!response.ok) {
-                        const data = await response.json();
-                        console.error("Error al añadir a favoritos:", data.message);
-                        return;
-                    }
-
-                    setStore({ favorites: [...store.favorites, product] });
-                } catch (error) {
-                    console.error("Error al añadir a favoritos:", error);
-                }
-            },
-            removeFavorite: async (productId) => {
-                const store = getStore();
-                if (!store.isLoged) {
-                    console.error("Debe estar logueado para eliminar favoritos");
-                    return;
-                }
-
-                try {
-                    const response = await fetch(`${process.env.BACKEND_URL}/api/favorites/${productId}`, {
-                        method: 'DELETE',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            Authorization: `Bearer ${localStorage.getItem("token")}`
-                        }
-                    });
-
-                    if (!response.ok) {
-                        const data = await response.json();
-                        console.error("Error al eliminar de favoritos:", data.message);
-                        return;
-                    }
-
-                    setStore({ favorites: store.favorites.filter(product => product.id !== productId) });
-                } catch (error) {
-                    console.error("Error al eliminar de favoritos:", error);
-                }
-            },
-            isFavorite: (product) => {
-                const store = getStore();
-                return store.favorites.some(favorite => favorite.id === product.id);
-            },
+            }, 
             loadCart: async () => {
                 const store = getStore();
                 if (!store.isLoged) return; // Solo cargar si el usuario está logueado
@@ -263,7 +124,7 @@ const getState = ({ getStore, getActions, setStore }) => {
                 } catch (error) {
                     console.error("Error al cargar el carrito:", error);
                 }
-            },               
+            },                                 
             addToCart: async (product) => {
                 const store = getStore();
                 if (!store.isLoged) {
@@ -345,8 +206,210 @@ const getState = ({ getStore, getActions, setStore }) => {
                 }
             },               
             clearCart: () => {
-                setStore({ cart: [] });
-            }            
+                console.log("clearCart se ha llamado"); // Verificar si se está llamando
+                setStore({ cart: [] });  // Vaciar el carrito en el estado global
+                localStorage.removeItem("cart");  // Vaciar el carrito del localStorage
+            },                            
+            fetchOrders: async () => {
+                const store = getStore(); 
+                try {
+                    const response = await fetch(`${process.env.BACKEND_URL}/api/orders`, {
+                        method: 'GET',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            Authorization: `Bearer ${localStorage.getItem("token")}`
+                        }
+                    });
+                    if (!response.ok) throw new Error("Error al obtener las órdenes");
+
+                    const data = await response.json();
+                    setStore({ orders: data });
+                    return { ok: true };
+                } catch (error) {
+                    setStore({ error: error.message });
+                    return { ok: false };
+                }
+            },
+            saveOrder: async () => {
+                const store = getStore();
+                const orderData = {
+                    total_amount: store.cart.reduce((acc, product) => acc + product.precio_total, 0),
+                    products: store.cart.map(product => ({
+                        product_id: product.producto_id,
+                        quantity: 1,
+                        alto: product.alto,
+                        ancho: product.ancho,
+                        anclaje: product.anclaje,
+                        color: product.color,
+                        precio_total: product.precio_total
+                    }))
+                };
+
+                try {
+                    const response = await fetch(`${process.env.BACKEND_URL}/api/orders`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            Authorization: `Bearer ${localStorage.getItem("token")}`
+                        },
+                        body: JSON.stringify(orderData)
+                    });
+
+                    if (!response.ok) {
+                        const errorData = await response.json();
+                        console.error("Error al guardar el pedido:", errorData.message);
+                        alert("Error al guardar el pedido.");
+                        return { ok: false };
+                    }
+
+                    const data = await response.json();
+                    return { ok: true, order: data.order };
+                } catch (error) {
+                    console.error("Error al guardar el pedido:", error);
+                    alert("Error al guardar el pedido.");
+                    return { ok: false };
+                }
+            },
+            fetchOrderDetails: async () => {
+                const store = getStore(); // Corrección: Agregar esta línea para obtener el estado actual
+                try {
+                    const response = await fetch(`${process.env.BACKEND_URL}/api/orderdetails`, {
+                        method: 'GET',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            Authorization: `Bearer ${localStorage.getItem("token")}`
+                        }
+                    });
+                    if (!response.ok) throw new Error("Error al obtener los detalles de las órdenes");
+
+                    const data = await response.json();
+                    setStore({ orderDetails: data });
+                    return { ok: true };
+                } catch (error) {
+                    setStore({ error: error.message });
+                    return { ok: false };
+                }
+            },
+            saveOrderDetails: async (orderId) => {
+                const store = getStore();
+            
+                const orderDetailsData = store.cart.map(product => ({
+                    order_id: orderId,
+                    product_id: product.producto_id,
+                    quantity: 1, // O ajustar si estás manejando cantidades
+                    alto: product.alto,
+                    ancho: product.ancho,
+                    anclaje: product.anclaje,
+                    color: product.color,
+                    precio_total: product.precio_total
+                }));
+            
+                try {
+                    for (const detail of orderDetailsData) {
+                        const response = await fetch(`${process.env.BACKEND_URL}/api/orderdetails`, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                Authorization: `Bearer ${localStorage.getItem("token")}`
+                            },
+                            body: JSON.stringify(detail)
+                        });
+            
+                        if (!response.ok) {
+                            const errorData = await response.json();
+                            console.error("Error al guardar el detalle del pedido:", errorData.message);
+                            return { ok: false };
+                        }
+                    }
+            
+                    return { ok: true };
+                } catch (error) {
+                    console.error("Error al guardar los detalles del pedido:", error);
+                    return { ok: false };
+                }
+            },                                
+            loadFavorites: async () => {
+                const store = getStore();
+                if (!store.isLoged) return; // Solo cargar si el usuario está logueado
+
+                try {
+                    const response = await fetch(`${process.env.BACKEND_URL}/api/favorites`, {
+                        method: 'GET',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            Authorization: `Bearer ${localStorage.getItem("token")}`
+                        }
+                    });
+                    if (!response.ok) throw new Error("Error al cargar los favoritos");
+
+                    const data = await response.json();
+                    setStore({ favorites: data });
+                } catch (error) {
+                    console.error("Error al cargar los favoritos:", error);
+                }
+            },
+            setFavoritesLoaded: (loaded) => {
+                setStore({ favoritesLoaded: loaded });
+            },
+            addFavorite: async (product) => {
+                const store = getStore();
+                if (!store.isLoged) {
+                    console.error("Debe estar logueado para añadir favoritos");
+                    return;
+                }
+
+                try {
+                    const response = await fetch(`${process.env.BACKEND_URL}/api/favorites`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            Authorization: `Bearer ${localStorage.getItem("token")}`
+                        },
+                        body: JSON.stringify({ product_id: product.id })
+                    });
+
+                    if (!response.ok) {
+                        const data = await response.json();
+                        console.error("Error al añadir a favoritos:", data.message);
+                        return;
+                    }
+
+                    setStore({ favorites: [...store.favorites, product] });
+                } catch (error) {
+                    console.error("Error al añadir a favoritos:", error);
+                }
+            },
+            removeFavorite: async (productId) => {
+                const store = getStore();
+                if (!store.isLoged) {
+                    console.error("Debe estar logueado para eliminar favoritos");
+                    return;
+                }
+
+                try {
+                    const response = await fetch(`${process.env.BACKEND_URL}/api/favorites/${productId}`, {
+                        method: 'DELETE',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            Authorization: `Bearer ${localStorage.getItem("token")}`
+                        }
+                    });
+
+                    if (!response.ok) {
+                        const data = await response.json();
+                        console.error("Error al eliminar de favoritos:", data.message);
+                        return;
+                    }
+
+                    setStore({ favorites: store.favorites.filter(product => product.id !== productId) });
+                } catch (error) {
+                    console.error("Error al eliminar de favoritos:", error);
+                }
+            },
+            isFavorite: (product) => {
+                const store = getStore();
+                return store.favorites.some(favorite => favorite.id === product.id);
+            }               
         }
     };
 };

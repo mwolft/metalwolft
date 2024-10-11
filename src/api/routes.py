@@ -1,7 +1,7 @@
 from flask import Flask, request, jsonify, Blueprint
 from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity
 from api.utils import generate_sitemap, APIException
-from api.models import db, Users, Products, ProductImages, Categories, Orders, OrderDetails, Favorites, Cart
+from api.models import db, Users, Products, ProductImages, Categories, Orders, OrderDetails, Favorites, Cart, OrderDetails
 from sqlalchemy.exc import SQLAlchemyError
 import bcrypt
 import stripe
@@ -19,31 +19,31 @@ def create_payment_intent():
     try:
         data = request.get_json()
 
-        # Crear o verificar el estado del Payment Intent
+        # Verificar si ya existe el Payment Intent
         payment_intent_id = data.get('payment_intent_id')
         if payment_intent_id:
-            # Si ya existe un PaymentIntent, obtener su estado
             intent = stripe.PaymentIntent.retrieve(payment_intent_id)
 
-            # Si el PaymentIntent ya está en estado "succeeded", devolver un error para evitar una nueva confirmación
+            # Evitar intentar pagar un Payment Intent ya completado
             if intent['status'] == 'succeeded':
                 return jsonify({"message": "El pago ya ha sido completado.", "paymentIntent": intent}), 200
 
-        # Crear un nuevo PaymentIntent solo si no existe o si no ha sido completado
+        # Crear un nuevo PaymentIntent si no existe o no está completado
         intent = stripe.PaymentIntent.create(
             amount=data['amount'],  # Cantidad en centavos
             currency='eur',
-            payment_method=data['payment_method_id'],  # ID del método de pago
-            confirm=True,  # Confirmar el intento de pago automáticamente
-            return_url='https://scaling-umbrella-976gwrg7664j3grx.github.dev/thank-you',  # URL de retorno
+            payment_method=data['payment_method_id'],
+            confirm=True,
+            return_url=os.getenv('STRIPE_RETURN_URL')
         )
 
         return jsonify({
-            'clientSecret': intent['client_secret'],  # Devuelve el 'clientSecret'
-            'paymentIntent': intent  # Devuelve también el PaymentIntent completo
+            'clientSecret': intent['client_secret'],  # Devolver el 'client_secret' para confirmar el pago en el frontend
+            'paymentIntent': intent
         })
     except Exception as e:
-        return jsonify(error=str(e)), 403
+        return jsonify({"error": str(e)}), 403
+
 
 
 
@@ -217,23 +217,41 @@ def get_user(user_id):
 @jwt_required()
 def update_user(user_id):
     current_user = get_jwt_identity()
-    if not current_user.get("is_admin"):
-        return jsonify({"message": "Access forbidden: Admins only"}), 403
+
+    # Permitir que el usuario actualice su propio perfil o que el administrador actualice cualquier perfil
+    if current_user["id"] != user_id and not current_user.get("is_admin"):
+        response = jsonify({"message": "Access forbidden: Only admins or the user themselves can update the profile"})
+        response.headers['Access-Control-Allow-Origin'] = '*'
+        return response, 403
 
     user = Users.query.get(user_id)
     if not user:
-        return jsonify({"message": "User not found!"}), 404
+        response = jsonify({"message": "User not found!"})
+        response.headers['Access-Control-Allow-Origin'] = '*'
+        return response, 404
 
     data = request.json
     user.firstname = data.get('firstname', user.firstname)
     user.lastname = data.get('lastname', user.lastname)
     user.email = data.get('email', user.email)
-    user.is_admin = data.get('is_admin', user.is_admin)
+    
+    # Solo un administrador puede cambiar el rol de administrador
+    if current_user.get("is_admin"):
+        user.is_admin = data.get('is_admin', user.is_admin)
 
-    db.session.commit()
-    response = jsonify(user.serialize())
-    response.headers['Access-Control-Allow-Origin'] = '*'
-    return response, 200
+    try:
+        db.session.commit()
+        response = jsonify(user.serialize())
+        response.headers['Access-Control-Allow-Origin'] = '*'
+        response.headers['Access-Control-Allow-Headers'] = 'Content-Type,Authorization'
+        response.headers['Access-Control-Allow-Methods'] = 'PUT, OPTIONS'
+        response.headers['Access-Control-Expose-Headers'] = 'X-Total-Count'
+        return response, 200
+    except Exception as e:
+        db.session.rollback()
+        response = jsonify({"message": "An error occurred", "error": str(e)})
+        response.headers['Access-Control-Allow-Origin'] = '*'
+        return response, 500
 
 
 @api.route('/users/<int:user_id>', methods=['DELETE'])
@@ -241,11 +259,15 @@ def update_user(user_id):
 def delete_user(user_id):
     current_user = get_jwt_identity()
     if not current_user.get("is_admin"):
-        return jsonify({"message": "Access forbidden: Admins only"}), 403
+        response = jsonify({"message": "Access forbidden: Admins only"})
+        response.headers['Access-Control-Allow-Origin'] = '*'
+        return response, 403
 
     user = Users.query.get(user_id)
     if not user:
-        return jsonify({"message": "User not found!"}), 404
+        response = jsonify({"message": "User not found!"})
+        response.headers['Access-Control-Allow-Origin'] = '*'
+        return response, 404
 
     db.session.delete(user)
     db.session.commit()
@@ -766,3 +788,16 @@ def remove_from_cart(product_id):
     except Exception as e:
         db.session.rollback()
         return jsonify({"message": str(e)}), 500
+
+
+@api.route('/cart/clear', methods=['POST'])
+@jwt_required()
+def clear_cart():
+    current_user = get_jwt_identity()
+    try:
+        Cart.query.filter_by(usuario_id=current_user['user_id']).delete()
+        db.session.commit()
+        return jsonify({"message": "Carrito vaciado con éxito"}), 200
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"message": f"Error al vaciar el carrito: {str(e)}"}), 500
