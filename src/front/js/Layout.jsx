@@ -1,5 +1,5 @@
 import React from "react";
-import { HashRouter, Route, Routes } from "react-router-dom";
+import { BrowserRouter, Route, Routes } from "react-router-dom";
 import injectContext from "./store/appContext.js";
 
 // Custom components
@@ -41,7 +41,7 @@ const Layout = () => {
 
     return (
         <div className="d-flex flex-column min-vh-100 bg-white">
-            <HashRouter basename={basename}>
+            <BrowserRouter basename={basename}>
                 <ScrollToTop />
                 <MainNavbar />
                 <Routes>
@@ -70,7 +70,7 @@ const Layout = () => {
                     <Route path="*" element={<Error404 />} />
                 </Routes>
                 <Footer />
-            </HashRouter>
+            </BrowserRouter>
         </div>
     );
 };
