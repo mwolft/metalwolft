@@ -13,7 +13,8 @@ const getState = ({ getStore, getActions, setStore }) => {
             favoritesLoaded: false,
             orders: [],  
             orderDetails: [],
-            cart: []
+            cart: [],
+            paymentCompleted: false
         },
         actions: {
             getMessage: async () => {
@@ -120,6 +121,7 @@ const getState = ({ getStore, getActions, setStore }) => {
                     }
             
                     const data = await response.json();  // Obtener los productos con especificaciones
+                    console.log("Datos del carrito recibidos del backend:", data);
                     setStore({ cart: data });  // Guardar los productos en el estado global
                 } catch (error) {
                     console.error("Error al cargar el carrito:", error);
@@ -204,12 +206,12 @@ const getState = ({ getStore, getActions, setStore }) => {
                 } catch (error) {
                     console.error("Error al eliminar del carrito:", error);
                 }
-            },               
+            },  
             clearCart: () => {
-                console.log("clearCart se ha llamado"); // Verificar si se está llamando
-                setStore({ cart: [] });  // Vaciar el carrito en el estado global
-                localStorage.removeItem("cart");  // Vaciar el carrito del localStorage
-            },                            
+                console.log("clearCart se ha llamado"); 
+                setStore({ cart: [], paymentCompleted: true });  // Vaciar el carrito y marcar el pago como completado
+                localStorage.removeItem("cart");
+            },                                       
             fetchOrders: async () => {
                 const store = getStore(); 
                 try {
@@ -244,7 +246,10 @@ const getState = ({ getStore, getActions, setStore }) => {
                         precio_total: product.precio_total
                     }))
                 };
-
+            
+                // Agregar un console.log para ver qué datos se envían al backend
+                console.log("Datos de la orden que se envían al backend:", orderData);
+            
                 try {
                     const response = await fetch(`${process.env.BACKEND_URL}/api/orders`, {
                         method: 'POST',
@@ -254,14 +259,14 @@ const getState = ({ getStore, getActions, setStore }) => {
                         },
                         body: JSON.stringify(orderData)
                     });
-
+            
                     if (!response.ok) {
                         const errorData = await response.json();
                         console.error("Error al guardar el pedido:", errorData.message);
                         alert("Error al guardar el pedido.");
                         return { ok: false };
                     }
-
+            
                     const data = await response.json();
                     return { ok: true, order: data.order };
                 } catch (error) {
@@ -292,17 +297,20 @@ const getState = ({ getStore, getActions, setStore }) => {
             },
             saveOrderDetails: async (orderId) => {
                 const store = getStore();
-            
+                
                 const orderDetailsData = store.cart.map(product => ({
                     order_id: orderId,
                     product_id: product.producto_id,
-                    quantity: 1, // O ajustar si estás manejando cantidades
+                    quantity: 1,
                     alto: product.alto,
                     ancho: product.ancho,
                     anclaje: product.anclaje,
                     color: product.color,
                     precio_total: product.precio_total
                 }));
+            
+                // Agregar un console.log para ver los detalles de la orden
+                console.log("Detalles del pedido enviados al backend:", orderDetailsData);
             
                 try {
                     for (const detail of orderDetailsData) {
@@ -327,7 +335,7 @@ const getState = ({ getStore, getActions, setStore }) => {
                     console.error("Error al guardar los detalles del pedido:", error);
                     return { ok: false };
                 }
-            },                                
+            },                             
             loadFavorites: async () => {
                 const store = getStore();
                 if (!store.isLoged) return; // Solo cargar si el usuario está logueado
