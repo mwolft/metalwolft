@@ -207,11 +207,32 @@ const getState = ({ getStore, getActions, setStore }) => {
                     console.error("Error al eliminar del carrito:", error);
                 }
             },  
-            clearCart: () => {
-                console.log("clearCart se ha llamado"); 
-                setStore({ cart: [], paymentCompleted: true });  // Vaciar el carrito y marcar el pago como completado
-                localStorage.removeItem("cart");
-            },                                       
+            clearCart: async () => {
+                const store = getStore();
+                if (!store.isLoged) return;
+            
+                try {
+                    const response = await fetch(`${process.env.BACKEND_URL}/api/cart/clear`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            Authorization: `Bearer ${localStorage.getItem("token")}`
+                        }
+                    });
+            
+                    if (!response.ok) {
+                        const errorText = await response.text();
+                        console.error("Error al vaciar el carrito:", errorText);
+                        throw new Error(`Error al vaciar el carrito: ${errorText}`);
+                    }
+            
+                    // Si el backend responde correctamente, vacía el carrito también en el frontend
+                    setStore({ cart: [], paymentCompleted: true });
+                    localStorage.removeItem("cart");
+                } catch (error) {
+                    console.error("Error al vaciar el carrito:", error);
+                }
+            },                                                              
             fetchOrders: async () => {
                 const store = getStore(); 
                 try {
