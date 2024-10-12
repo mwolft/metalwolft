@@ -19,32 +19,31 @@ def create_payment_intent():
     try:
         data = request.get_json()
 
-        # Verificar si ya existe el Payment Intent
+        # Verificar si ya existe un Payment Intent
         payment_intent_id = data.get('payment_intent_id')
         if payment_intent_id:
             intent = stripe.PaymentIntent.retrieve(payment_intent_id)
 
-            # Evitar intentar pagar un Payment Intent ya completado
+            # Si el Payment Intent ya está completado, devolver el mensaje correspondiente
             if intent['status'] == 'succeeded':
                 return jsonify({"message": "El pago ya ha sido completado.", "paymentIntent": intent}), 200
 
-        # Crear un nuevo PaymentIntent si no existe o no está completado
+        # Crear un nuevo PaymentIntent
         intent = stripe.PaymentIntent.create(
             amount=data['amount'],  # Cantidad en centavos
             currency='eur',
-            payment_method=data['payment_method_id'],
-            confirm=True,
-            return_url=os.getenv('STRIPE_RETURN_URL')
+            payment_method=data['payment_method_id'],  # ID del método de pago creado en el frontend
+            confirm=True,  # Confirmar inmediatamente
+            return_url=os.getenv('STRIPE_RETURN_URL')  # URL de retorno si se necesita autenticación adicional
         )
 
         return jsonify({
-            'clientSecret': intent['client_secret'],  # Devolver el 'client_secret' para confirmar el pago en el frontend
+            'clientSecret': intent['client_secret'],
             'paymentIntent': intent
         })
+
     except Exception as e:
         return jsonify({"error": str(e)}), 403
-
-
 
 
 @api.route('/hello', methods=['GET'])
@@ -287,7 +286,6 @@ def get_categories():
     return response, 200
 
 
-# Rutas para manejar productos
 @api.route('/products', methods=['GET', 'POST'])
 def handle_products():
     current_user = get_jwt_identity() if request.method == 'POST' else None
@@ -404,7 +402,6 @@ def handle_product(product_id):
             return jsonify({"message": "An error occurred while deleting the product.", "error": str(e)}), 500
 
 
-# Ruta para agregar imágenes adicionales a un producto específico
 @api.route('/products/<int:product_id>/images', methods=['POST'])
 @jwt_required()
 def add_product_images(product_id):
@@ -557,7 +554,8 @@ def add_order_detail():
             alto=data.get('alto'),  
             ancho=data.get('ancho'),  
             anclaje=data.get('anclaje'),  
-            color=data.get('color')  
+            color=data.get('color'),
+            precio_total=data.get('precio_total')
         )
         db.session.add(new_order_detail)
         db.session.commit()
@@ -567,12 +565,18 @@ def add_order_detail():
             "order_detail": new_order_detail.serialize()
         })
         response.headers['Access-Control-Allow-Origin'] = '*'
-        response.headers['Access-Control-Expose-Headers'] = 'X-Total-Count'
         return response, 201
 
     except SQLAlchemyError as e:
         db.session.rollback()
-        return jsonify({"message": "An error occurred while adding the order detail.", "error": str(e)}), 500
+        print(f"Error al guardar el detalle del pedido: {str(e)}")  # Log detallado del error
+        return jsonify({"message": "Database error", "error": str(e)}), 500
+
+    except Exception as e:
+        db.session.rollback()
+        print(f"Error inesperado: {str(e)}")  # Log detallado del error
+        return jsonify({"message": "Unexpected error", "error": str(e)}), 500
+
 
 @api.route('/orderdetails', methods=['GET'])
 @jwt_required()
