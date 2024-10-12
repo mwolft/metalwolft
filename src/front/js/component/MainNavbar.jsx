@@ -38,6 +38,7 @@ export const MainNavbar = () => {
                     <img src={logoweb} alt="Logo" className="d-inline-block align-top" />
                 </Navbar.Brand>
                 <div className="d-flex align-items-center">
+                    {/* Versión del menú para pantallas pequeñas (d-lg-none) */}
                     <Nav.Link onClick={handleFavoritesClick} className="d-flex align-items-center position-relative d-lg-none">
                         <i className="fa-regular fa-heart fa-lg"></i>
                         {store.isLoged && (
@@ -56,9 +57,17 @@ export const MainNavbar = () => {
                             </span>
                         )}
                     </Nav.Link>
-                    <Nav.Link onClick={() => { setExpanded(false); navigate("/login"); }} className="d-flex align-items-center d-lg-none">
-                        <i className="fa-regular fa-user fa-lg me-2"></i>
-                    </Nav.Link>
+                    {store.isLoged ? (
+                        <Nav.Link onClick={handleLogout} className="d-flex align-items-center d-lg-none">
+                            <i className="fa-solid fa-right-to-bracket fa-lg me-2"></i>
+                            <p className="small mb-0">Salir</p>
+                        </Nav.Link>
+                    ) : (
+                        <Nav.Link onClick={() => { setExpanded(false); navigate("/login"); }} className="d-flex align-items-center d-lg-none">
+                            <i className="fa-regular fa-user fa-lg me-2"></i>
+                            <p className="small mb-0">Iniciar sesión</p>
+                        </Nav.Link>
+                    )}
                     <Navbar.Toggle aria-controls="basic-navbar-nav" onClick={handleToggle} />
                 </div>
                 <Navbar.Collapse id="basic-navbar-nav">
@@ -72,6 +81,7 @@ export const MainNavbar = () => {
                         <Nav.Link as={Link} to="/exercises" onClick={handleSelect}>Contácto</Nav.Link>
                         <Nav.Link as={Link} to="/bmr-calculator" onClick={handleSelect}>Sobre nosotros</Nav.Link>
                     </Nav>
+                    {/* Versión del menú para pantallas grandes (d-lg-flex) */}
                     <Nav className="ms-auto d-none d-lg-flex" onSelect={handleSelect}>
                         <Nav.Link onClick={handleFavoritesClick} className="d-flex align-items-center position-relative">
                             <i className="fa-regular fa-heart fa-lg"></i>
@@ -100,13 +110,13 @@ export const MainNavbar = () => {
                                 )}
                                 <Nav.Link onClick={handleLogout} className="d-flex align-items-center">
                                     <i className="fa-solid fa-right-to-bracket fa-lg me-2"></i>
-                                    <p className="small mb-0"></p>
+                                    <p className="small mb-0">Salir</p>
                                 </Nav.Link>
                             </>
                         ) : (
                             <Nav.Link onClick={() => { setExpanded(false); navigate("/login"); }} className="d-flex align-items-center">
                                 <i className="fa-regular fa-user fa-lg me-2"></i>
-                                <p className="small mb-0"></p>
+                                <p className="small mb-0">Iniciar sesión</p>
                             </Nav.Link>
                         )}
                     </Nav>
