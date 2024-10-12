@@ -546,36 +546,57 @@ def handle_order(order_id):
 @jwt_required()
 def add_order_detail():
     data = request.get_json()
+    current_user = get_jwt_identity()  # Obtiene el usuario actual a través del JWT
+
     try:
+        # Crear un nuevo detalle de pedido
         new_order_detail = OrderDetails(
             order_id=data['order_id'],
             product_id=data['product_id'],
             quantity=data['quantity'],
-            alto=data.get('alto'),  
-            ancho=data.get('ancho'),  
-            anclaje=data.get('anclaje'),  
+            alto=data.get('alto'),
+            ancho=data.get('ancho'),
+            anclaje=data.get('anclaje'),
             color=data.get('color'),
-            precio_total=data.get('precio_total')
+            precio_total=data['precio_total'],
+            firstname=data.get('firstname'),
+            lastname=data.get('lastname'),
+            shipping_address=data.get('shipping_address'),
+            shipping_city=data.get('shipping_city'),
+            shipping_postal_code=data.get('shipping_postal_code'),
+            billing_address=data.get('billing_address'),
+            billing_city=data.get('billing_city'),
+            billing_postal_code=data.get('billing_postal_code'),
+            CIF=data.get('CIF')
         )
         db.session.add(new_order_detail)
+
+        # Actualizar los datos del usuario si son diferentes o están vacíos
+        user = Users.query.filter_by(id=current_user['user_id']).first()
+        if user:
+            user.firstname = data.get('firstname') or user.firstname
+            user.lastname = data.get('lastname') or user.lastname
+            user.shipping_address = data.get('shipping_address') or user.shipping_address
+            user.shipping_city = data.get('shipping_city') or user.shipping_city
+            user.shipping_postal_code = data.get('shipping_postal_code') or user.shipping_postal_code
+            user.billing_address = data.get('billing_address') or user.billing_address
+            user.billing_city = data.get('billing_city') or user.billing_city
+            user.billing_postal_code = data.get('billing_postal_code') or user.billing_postal_code
+            user.CIF = data.get('CIF') or user.CIF
+
         db.session.commit()
 
         response = jsonify({
             "message": "Order detail added successfully.",
-            "order_detail": new_order_detail.serialize()
+            "order_detail": new_order_detail.serialize(),
         })
         response.headers['Access-Control-Allow-Origin'] = '*'
         return response, 201
 
     except SQLAlchemyError as e:
         db.session.rollback()
-        print(f"Error al guardar el detalle del pedido: {str(e)}")  # Log detallado del error
-        return jsonify({"message": "Database error", "error": str(e)}), 500
+        return jsonify({"message": "An error occurred while adding the order detail.", "error": str(e)}), 500
 
-    except Exception as e:
-        db.session.rollback()
-        print(f"Error inesperado: {str(e)}")  # Log detallado del error
-        return jsonify({"message": "Unexpected error", "error": str(e)}), 500
 
 
 @api.route('/orderdetails', methods=['GET'])
