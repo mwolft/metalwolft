@@ -356,7 +356,31 @@ const getState = ({ getStore, getActions, setStore }) => {
                     console.error("Error al guardar los detalles del pedido:", error);
                     return { ok: false };
                 }
-            },                             
+            },    
+            handlePaymentSuccess: async () => {
+                const store = getStore(); // Obtén el estado actual del store
+                const actions = getActions(); // Acciones para poder llamar a las funciones existentes
+            
+                // 1. Guardar la orden y obtener el order_id
+                const { ok, order } = await actions.saveOrder();
+                if (!ok) {
+                    console.error("Error al guardar la orden.");
+                    return;
+                }
+            
+                // 2. Guardar los detalles de la orden usando el order_id
+                const result = await actions.saveOrderDetails(order.id);
+                if (!result.ok) {
+                    console.error("Error al guardar los detalles de la orden.");
+                    return;
+                }
+            
+                // 3. Vaciar el carrito después de guardar la orden y los detalles
+                actions.clearCart();
+            
+                // Mensaje de confirmación (opcional)
+                console.log("Pago exitoso, orden y detalles guardados, carrito vaciado.");
+            },                                              
             loadFavorites: async () => {
                 const store = getStore();
                 if (!store.isLoged) return; // Solo cargar si el usuario está logueado

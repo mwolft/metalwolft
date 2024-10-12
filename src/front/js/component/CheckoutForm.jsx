@@ -39,7 +39,7 @@ const CheckoutForm = () => {
                 'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-                amount: total * 100,  // Enviar el monto en centavos (Stripe usa la menor denominación)
+                amount: total * 100,  // Enviar el monto en centavos
                 payment_method_id: paymentMethod.id,
                 payment_intent_id: store.paymentIntentId  // Si ya tienes un paymentIntent guardado
             }),
@@ -56,10 +56,35 @@ const CheckoutForm = () => {
         // Verificar si el PaymentIntent ya ha sido confirmado
         if (data.paymentIntent && data.paymentIntent.status === 'succeeded') {
             console.log("El PaymentIntent ya está completado.");
+    
+            // **Ajuste clave aquí**: Asegúrate de que la orden y los detalles se guarden incluso si el PaymentIntent ya está completado.
+            const { ok, order } = await actions.saveOrder();
+            if (!ok) {
+                alert("Error al guardar la orden.");
+                return;
+            }
+    
+            const result = await actions.saveOrderDetails(order.id);
+            if (!result.ok) {
+                alert("Error al guardar los detalles de la orden.");
+                return;
+            }
+    
+            // Limpiar el carrito en el frontend y backend
             actions.clearCart();
             localStorage.removeItem("cart");
+    
+            await fetch(`${process.env.BACKEND_URL}/api/cart/clear`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${localStorage.getItem("token")}`
+                }
+            });
+    
+            console.log("Carrito vaciado");
             navigate("/thank-you");
-            return;  // Salir de la función si ya está completado
+            return;  // Salir de la función
         }
     
         // Confirmar el pago con Stripe
@@ -70,8 +95,22 @@ const CheckoutForm = () => {
             return;
         }
     
-        // Si el pago fue exitoso, vaciar el carrito tanto en frontend como en backend
+        // Si el pago fue exitoso, proceder a guardar la orden en el backend
         if (confirmedPaymentIntent && confirmedPaymentIntent.status === 'succeeded') {
+            console.log("Pago completado con éxito, creando la orden...");
+    
+            const { ok, order } = await actions.saveOrder();
+            if (!ok) {
+                alert("Error al guardar la orden.");
+                return;
+            }
+    
+            const result = await actions.saveOrderDetails(order.id);
+            if (!result.ok) {
+                alert("Error al guardar los detalles de la orden.");
+                return;
+            }
+    
             // Limpiar el carrito del frontend
             actions.clearCart();
             localStorage.removeItem("cart");
