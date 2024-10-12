@@ -1,8 +1,8 @@
 """empty message
 
-Revision ID: 8b6e7d5e9894
+Revision ID: cc6151be250d
 Revises: 
-Create Date: 2024-10-12 07:53:05.089003
+Create Date: 2024-10-12 20:46:31.664493
 
 """
 from alembic import op
@@ -10,7 +10,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision = '8b6e7d5e9894'
+revision = 'cc6151be250d'
 down_revision = None
 branch_labels = None
 depends_on = None
@@ -95,6 +95,15 @@ def upgrade():
     sa.Column('anclaje', sa.String(length=50), nullable=True),
     sa.Column('color', sa.String(length=50), nullable=True),
     sa.Column('precio_total', sa.Float(), nullable=False),
+    sa.Column('firstname', sa.String(length=100), nullable=True),
+    sa.Column('lastname', sa.String(length=100), nullable=True),
+    sa.Column('shipping_address', sa.String(length=200), nullable=True),
+    sa.Column('shipping_city', sa.String(length=100), nullable=True),
+    sa.Column('shipping_postal_code', sa.String(length=20), nullable=True),
+    sa.Column('billing_address', sa.String(length=200), nullable=True),
+    sa.Column('billing_city', sa.String(length=100), nullable=True),
+    sa.Column('billing_postal_code', sa.String(length=20), nullable=True),
+    sa.Column('CIF', sa.String(length=20), nullable=True),
     sa.ForeignKeyConstraint(['order_id'], ['orders.id'], ),
     sa.ForeignKeyConstraint(['product_id'], ['products.id'], ),
     sa.PrimaryKeyConstraint('id')

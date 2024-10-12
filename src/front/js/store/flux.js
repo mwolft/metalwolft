@@ -316,7 +316,7 @@ const getState = ({ getStore, getActions, setStore }) => {
                     return { ok: false };
                 }
             },
-            saveOrderDetails: async (orderId) => {
+            saveOrderDetails: async (orderId, formData) => {
                 const store = getStore();
                 
                 const orderDetailsData = store.cart.map(product => ({
@@ -327,11 +327,18 @@ const getState = ({ getStore, getActions, setStore }) => {
                     ancho: product.ancho,
                     anclaje: product.anclaje,
                     color: product.color,
-                    precio_total: product.precio_total
+                    precio_total: product.precio_total,
+                    // Agregar los datos de facturación y envío
+                    firstname: formData.firstname,
+                    lastname: formData.lastname,
+                    shipping_address: formData.shipping_address,
+                    shipping_city: formData.shipping_city,
+                    shipping_postal_code: formData.shipping_postal_code,
+                    billing_address: formData.billing_address,
+                    billing_city: formData.billing_city,
+                    billing_postal_code: formData.billing_postal_code,
+                    CIF: formData.CIF
                 }));
-            
-                // Agregar un console.log para ver los detalles de la orden
-                console.log("Detalles del pedido enviados al backend:", orderDetailsData);
             
                 try {
                     for (const detail of orderDetailsData) {
@@ -350,7 +357,7 @@ const getState = ({ getStore, getActions, setStore }) => {
                             return { ok: false };
                         }
                     }
-            
+                                                                         
                     return { ok: true };
                 } catch (error) {
                     console.error("Error al guardar los detalles del pedido:", error);

@@ -164,6 +164,17 @@ class OrderDetails(db.Model):
     color = db.Column(db.String(50), nullable=True)  # Color
     precio_total = db.Column(db.Float, nullable=False)  # Precio total del producto personalizado
 
+    # Campos de información de usuario y envío
+    firstname = db.Column(db.String(100), nullable=True)
+    lastname = db.Column(db.String(100), nullable=True)
+    shipping_address = db.Column(db.String(200), nullable=True)
+    shipping_city = db.Column(db.String(100), nullable=True)
+    shipping_postal_code = db.Column(db.String(20), nullable=True)
+    billing_address = db.Column(db.String(200), nullable=True)
+    billing_city = db.Column(db.String(100), nullable=True)
+    billing_postal_code = db.Column(db.String(20), nullable=True)
+    CIF = db.Column(db.String(20), nullable=True)
+
     product = db.relationship('Products', backref='order_details', lazy=True)  # Relación con productos
 
     def __repr__(self):
@@ -179,7 +190,16 @@ class OrderDetails(db.Model):
             "ancho": self.ancho,
             "anclaje": self.anclaje,
             "color": self.color,
-            "precio_total": self.precio_total
+            "precio_total": self.precio_total,
+            "firstname": self.firstname,
+            "lastname": self.lastname,
+            "shipping_address": self.shipping_address,
+            "shipping_city": self.shipping_city,
+            "shipping_postal_code": self.shipping_postal_code,
+            "billing_address": self.billing_address,
+            "billing_city": self.billing_city,
+            "billing_postal_code": self.billing_postal_code,
+            "CIF": self.CIF
         }
 
 
