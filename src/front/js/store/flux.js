@@ -234,7 +234,6 @@ const getState = ({ getStore, getActions, setStore }) => {
                 }
             },                                                              
             fetchOrders: async () => {
-                const store = getStore(); 
                 try {
                     const response = await fetch(`${process.env.BACKEND_URL}/api/orders`, {
                         method: 'GET',
@@ -243,16 +242,21 @@ const getState = ({ getStore, getActions, setStore }) => {
                             Authorization: `Bearer ${localStorage.getItem("token")}`
                         }
                     });
+            
                     if (!response.ok) throw new Error("Error al obtener las órdenes");
-
+            
                     const data = await response.json();
+                    console.log("Órdenes recibidas:", data);
+            
                     setStore({ orders: data });
                     return { ok: true };
                 } catch (error) {
                     setStore({ error: error.message });
+                    console.error("Error al obtener las órdenes:", error.message);
                     return { ok: false };
                 }
             },
+            
             saveOrder: async () => {
                 const store = getStore();
                 const orderData = {
@@ -268,7 +272,6 @@ const getState = ({ getStore, getActions, setStore }) => {
                     }))
                 };
             
-                // Agregar un console.log para ver qué datos se envían al backend
                 console.log("Datos de la orden que se envían al backend:", orderData);
             
                 try {
@@ -284,20 +287,22 @@ const getState = ({ getStore, getActions, setStore }) => {
                     if (!response.ok) {
                         const errorData = await response.json();
                         console.error("Error al guardar el pedido:", errorData.message);
-                        alert("Error al guardar el pedido.");
                         return { ok: false };
                     }
             
                     const data = await response.json();
+                    console.log("Orden creada:", data.order);
+            
+                    // Actualizar el store con la nueva orden
+                    setStore({ orders: [...store.orders, data.order] });
                     return { ok: true, order: data.order };
                 } catch (error) {
                     console.error("Error al guardar el pedido:", error);
-                    alert("Error al guardar el pedido.");
                     return { ok: false };
                 }
             },
+            
             fetchOrderDetails: async () => {
-                const store = getStore(); // Corrección: Agregar esta línea para obtener el estado actual
                 try {
                     const response = await fetch(`${process.env.BACKEND_URL}/api/orderdetails`, {
                         method: 'GET',
@@ -306,19 +311,23 @@ const getState = ({ getStore, getActions, setStore }) => {
                             Authorization: `Bearer ${localStorage.getItem("token")}`
                         }
                     });
+            
                     if (!response.ok) throw new Error("Error al obtener los detalles de las órdenes");
-
+            
                     const data = await response.json();
+                    console.log("Detalles de las órdenes recibidos:", data);
+            
                     setStore({ orderDetails: data });
                     return { ok: true };
                 } catch (error) {
                     setStore({ error: error.message });
+                    console.error("Error al obtener los detalles de las órdenes:", error.message);
                     return { ok: false };
                 }
             },
+            
             saveOrderDetails: async (orderId, formData) => {
                 const store = getStore();
-                
                 const orderDetailsData = store.cart.map(product => ({
                     order_id: orderId,
                     product_id: product.producto_id,
@@ -328,7 +337,6 @@ const getState = ({ getStore, getActions, setStore }) => {
                     anclaje: product.anclaje,
                     color: product.color,
                     precio_total: product.precio_total,
-                    // Agregar los datos de facturación y envío
                     firstname: formData.firstname,
                     lastname: formData.lastname,
                     shipping_address: formData.shipping_address,
@@ -357,13 +365,15 @@ const getState = ({ getStore, getActions, setStore }) => {
                             return { ok: false };
                         }
                     }
-                                                                         
+            
+                    // Actualizar el store con los nuevos detalles de la orden
+                    setStore({ orderDetails: [...store.orderDetails, ...orderDetailsData] });
                     return { ok: true };
                 } catch (error) {
                     console.error("Error al guardar los detalles del pedido:", error);
                     return { ok: false };
                 }
-            },    
+            }, 
             handlePaymentSuccess: async () => {
                 const store = getStore(); // Obtén el estado actual del store
                 const actions = getActions(); // Acciones para poder llamar a las funciones existentes
