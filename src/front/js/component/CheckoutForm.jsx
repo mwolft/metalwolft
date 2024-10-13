@@ -39,7 +39,7 @@ const CheckoutForm = () => {
     const handleSubmit = async (event) => {
         event.preventDefault();
         if (!stripe || !elements) return;
-        
+
         const cardElement = elements.getElement(CardElement);
         const { error, paymentMethod } = await stripe.createPaymentMethod({
             type: 'card',
@@ -174,16 +174,22 @@ const CheckoutForm = () => {
                 <Col md={4} className="order-md-2 mb-4">
                     <h4 className="d-flex justify-content-between align-items-center mb-3">
                         <span className="text-muted">Tu carrito</span>
-                        <span className="badge badge-secondary badge-pill">{store.cart.length}</span>
+                        <span className="badge badge-secondary badge-pill text-secondary">{store.cart.length}</span>
                     </h4>
                     <ul className="list-group mb-3">
                         {store.cart.map((product, index) => (
                             <li key={index} className="list-group-item d-flex justify-content-between lh-condensed">
-                                <div>
-                                    <h6 className="my-0">{product.nombre}</h6>
-                                    <small className="text-muted">{product.descripcion}</small>
+                                <div className="d-flex align-items-start">
+                                    <div>
+                                        <img src={product.imagen} alt={product.nombre} className="img-thumbnail me-3" style={{ width: "80px", height: "80px" }} />
+                                        <h6 className="my-0">{product.nombre}</h6>
+                                        <small className="text-muted d-block mt-1 mx-1">Alto: {product.alto}cm | Ancho: {product.ancho}cm</small>
+                                        <small className="text-muted d-block mx-1">Anclaje: {product.anclaje}</small>
+                                        <small className="text-muted d-block mx-1">Color: {product.color}</small>
+                                    </div>
                                 </div>
                                 <span className="text-muted">{product.precio_total} €</span>
+                                <hr />
                             </li>
                         ))}
                         <li className="list-group-item d-flex justify-content-between">
