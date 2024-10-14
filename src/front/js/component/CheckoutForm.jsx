@@ -173,16 +173,10 @@ const CheckoutForm = () => {
     return (
         <Container fluid="sm" className="mt-5">
             <div className="py-5 text-center">
-                <h2>Checkout Form</h2>
-                <p className="lead">Por favor, llena los campos para continuar con el pago.</p>
+                <h2>Formulario de proceso de pago</h2>
             </div>
-
             <Row>
                 <Col md={4} className="order-md-2 mb-4">
-                    <h4 className="d-flex justify-content-between align-items-center mb-3">
-                        <span className="text-muted">Tu carrito</span>
-                        <span className="badge badge-secondary badge-pill text-secondary">{store.cart.length}</span>
-                    </h4>
                     <ul className="list-group mb-3">
                         {store.cart.map((product, index) => (
                             <li key={index} className="list-group-item d-flex justify-content-between lh-condensed">
@@ -202,12 +196,19 @@ const CheckoutForm = () => {
                             <span>Total (EUR)</span>
                             <strong>{total.toFixed(2)} €</strong>
                         </li>
+                        <div className="text-center">
+                            <img
+                                src="https://formalba.es/wp-content/uploads/2021/04/pagos-seguros-autorizado.png"
+                                alt="Pago Seguro Autorizado"
+                                style={{ maxWidth: '250px', height: 'auto' }}
+                            />
+                        </div>
                     </ul>
                 </Col>
-
                 <Col md={8} className="order-md-1">
-                    <h4 className="mb-3">Dirección de facturación</h4>
                     <Form onSubmit={handleSubmit} className="needs-validation" noValidate>
+                        <h4 className="mb-3">Dirección de facturación</h4>
+                        <hr className='hr-cart' />
                         <div className="row">
                             <div className="col-md-6 mb-3">
                                 <Form.Label>Nombre</Form.Label>
@@ -231,7 +232,6 @@ const CheckoutForm = () => {
                                 <div className="invalid-feedback">El apellido es obligatorio.</div>
                             </div>
                         </div>
-
                         <div className="row">
                             <div className="col-md-8 mb-3">
                                 <Form.Label>Dirección de Envío</Form.Label>
@@ -255,7 +255,6 @@ const CheckoutForm = () => {
                                 <div className="invalid-feedback">El código postal es obligatorio.</div>
                             </div>
                         </div>
-
                         <div className="row">
                             <div className="col-md-6 mb-3">
                                 <Form.Label>Ciudad</Form.Label>
@@ -279,63 +278,38 @@ const CheckoutForm = () => {
                                 <div className="invalid-feedback">El CIF o DNI es obligatorio.</div>
                             </div>
                         </div>
-
-                        <hr className="mb-4" />
-
-                        <Form.Check
-                            type="checkbox"
-                            label="La dirección de envío es diferente a la de facturación"
+                        <Form.Check type="checkbox" label="La dirección de envío es diferente a la de facturación"
                             id="differentBilling"
-                            onChange={handleCheckboxChange}
-                        />
+                            onChange={handleCheckboxChange} />
 
-                        {/* Mostrar automáticamente los campos de facturación si se selecciona la casilla */}
                         {differentBilling && (
-                            <div className="my-3">
-                                <h4 className="mb-3">Dirección de facturación</h4>
+                            <div className="my-3" style={{ marginTop: '50px' }}>
+                                <h4 className="mb-3">Dirección de envío</h4>
+                                <hr className='hr-cart' />
                                 <Form.Group controlId="billingAddress" className="mb-3">
                                     <Form.Label>Dirección de facturación</Form.Label>
-                                    <Form.Control
-                                        name="billing_address"
-                                        placeholder="Calle y número"
-                                        onChange={handleInputChange}
-                                        required
-                                    />
+                                    <Form.Control name="billing_address" placeholder="Calle y número" onChange={handleInputChange} required />
                                 </Form.Group>
                                 <Form.Group controlId="billingCity" className="mb-3">
                                     <Form.Label>Ciudad</Form.Label>
-                                    <Form.Control
-                                        name="billing_city"
-                                        placeholder="Ciudad"
-                                        onChange={handleInputChange}
-                                        required
-                                    />
+                                    <Form.Control name="billing_city" placeholder="Ciudad" onChange={handleInputChange} required />
                                 </Form.Group>
                                 <Form.Group controlId="billingPostalCode" className="mb-3">
                                     <Form.Label>Código Postal</Form.Label>
-                                    <Form.Control
-                                        name="billing_postal_code"
-                                        placeholder="Código Postal"
-                                        onChange={handleInputChange}
-                                        required
-                                    />
+                                    <Form.Control name="billing_postal_code" placeholder="Código Postal" onChange={handleInputChange} required />
                                 </Form.Group>
                             </div>
                         )}
-
-                        <hr className="mb-4" />
-                        <h4 className="mb-3">Método de pago</h4>
-
-                        {/* Opciones de método de pago */}
+                        <h4 className="mb-3" style={{ marginTop: '50px' }}>Método de pago</h4>
+                        <hr className='hr-cart' />
                         <Form.Check
                             type="radio"
-                            label="Tarjeta (Stripe)"
+                            label="Tarjeta de crédito"
                             name="paymentMethod"
                             id="paymentStripe"
                             checked={paymentMethod === "stripe"}
                             onChange={() => setPaymentMethod("stripe")}
-                            className="mb-2"
-                        />
+                            className="mb-2" />
                         <Form.Check
                             type="radio"
                             label="PayPal"
@@ -343,8 +317,7 @@ const CheckoutForm = () => {
                             id="paymentPayPal"
                             checked={paymentMethod === "paypal"}
                             onChange={() => setPaymentMethod("paypal")}
-                            className="mb-4"
-                        />
+                            className="mb-4" />
 
                         {/* Mostrar el formulario de pago adecuado */}
                         {paymentMethod === "paypal" ? (
@@ -355,8 +328,8 @@ const CheckoutForm = () => {
                                     <Form.Label>Detalles de la tarjeta</Form.Label>
                                     <CardElement />
                                 </Form.Group>
-                                <Button className="btn btn-primary btn-lg btn-block mt-4" type="submit" disabled={!stripe}>
-                                    Continuar al pago con tarjeta
+                                <Button className="btn btn-style-background-color btn-block my-5" type="submit" disabled={!stripe}>
+                                    Pagar
                                 </Button>
                             </div>
                         )}

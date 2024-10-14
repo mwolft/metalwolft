@@ -60,12 +60,12 @@ export const MainNavbar = () => {
                     {store.isLoged ? (
                         <Nav.Link onClick={handleLogout} className="d-flex align-items-center d-lg-none">
                             <i className="fa-solid fa-right-to-bracket fa-lg me-2"></i>
-                            <p className="small mb-0">Salir</p>
+                            <p className="small mb-0"></p>
                         </Nav.Link>
                     ) : (
                         <Nav.Link onClick={() => { setExpanded(false); navigate("/login"); }} className="d-flex align-items-center d-lg-none">
                             <i className="fa-regular fa-user fa-lg me-2"></i>
-                            <p className="small mb-0">Iniciar sesión</p>
+                            <p className="small mb-0"></p>
                         </Nav.Link>
                     )}
                     <Navbar.Toggle aria-controls="basic-navbar-nav" onClick={handleToggle} />
@@ -110,13 +110,13 @@ export const MainNavbar = () => {
                                 )}
                                 <Nav.Link onClick={handleLogout} className="d-flex align-items-center">
                                     <i className="fa-solid fa-right-to-bracket fa-lg me-2"></i>
-                                    <p className="small mb-0">Salir</p>
+                                    <p className="small mb-0"></p>
                                 </Nav.Link>
                             </>
                         ) : (
                             <Nav.Link onClick={() => { setExpanded(false); navigate("/login"); }} className="d-flex align-items-center">
                                 <i className="fa-regular fa-user fa-lg me-2"></i>
-                                <p className="small mb-0">Iniciar sesión</p>
+                                <p className="small mb-0"></p>
                             </Nav.Link>
                         )}
                     </Nav>
