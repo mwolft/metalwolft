@@ -4,6 +4,31 @@
   font-weight: 400;
   font-style: normal;
 }
+/*Cart*/
+.form-check-input:checked {
+  background-color: #ff324d; 
+  border-color: #ff324d;
+  box-shadow: 0 0 5px #f4a8b2; 
+  appearance: none; 
+}
+/* Cuando el radio button está siendo presionado */
+.form-check-input:active {
+  background-color: #ff324d; 
+  border-color: #ff324d;
+  transform: scale(1.1);
+  box-shadow: 0 0 5px #f3909d;
+}
+/* Añadir a tu archivo CSS */
+.paypal-buttons iframe {
+  min-height: 300px; 
+  margin-bottom: 20px; 
+}
+.hr-cart {
+  width: 100%;               
+  border: 1.5px solid #ff324d;
+  color: #ff324d;
+  opacity: 100; 
+}
 
 /* -----START BTN ----- */
 .btn-style {
