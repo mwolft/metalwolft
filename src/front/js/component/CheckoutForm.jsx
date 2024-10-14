@@ -7,14 +7,13 @@ import { useNavigate } from "react-router-dom";
 import PayPalButton from './PayPalButton.jsx'; // Importar el botón de PayPal
 import { PayPalScriptProvider } from "@paypal/react-paypal-js";
 
-
 const stripePromise = loadStripe('pk_test_51I1FgUDyMBNofWjFVmq85bCUIBbzjopkQw1VWtt7I9Gp0trmFwYH0O60Heuit0BOaaa2dEJvEMzaB90uGxjr5Cuw00hVfWhV4y');
 
 const CheckoutForm = () => {
     const stripe = useStripe();
     const elements = useElements();
     const { store, actions } = useContext(Context);
-    const [isPayPal, setIsPayPal] = useState(false); // Estado para alternar entre PayPal y Stripe
+    const [paymentMethod, setPaymentMethod] = useState("stripe"); // Estado para seleccionar entre Stripe y PayPal
     const [differentBilling, setDifferentBilling] = useState(false);
     const [formData, setFormData] = useState({
         firstname: "",
@@ -290,53 +289,65 @@ const CheckoutForm = () => {
                             onChange={handleCheckboxChange}
                         />
 
+                        {/* Mostrar automáticamente los campos de facturación si se selecciona la casilla */}
                         {differentBilling && (
-                            <Accordion className="my-3">
-                                <Accordion.Item eventKey="0">
-                                    <Accordion.Header>Dirección de facturación</Accordion.Header>
-                                    <Accordion.Body>
-                                        <Form.Group controlId="billingAddress">
-                                            <Form.Label>Dirección de facturación</Form.Label>
-                                            <Form.Control
-                                                name="billing_address"
-                                                placeholder="Calle y número"
-                                                onChange={handleInputChange}
-                                                required
-                                            />
-                                        </Form.Group>
-                                        <Form.Group controlId="billingCity">
-                                            <Form.Label>Ciudad</Form.Label>
-                                            <Form.Control
-                                                name="billing_city"
-                                                placeholder="Ciudad"
-                                                onChange={handleInputChange}
-                                                required
-                                            />
-                                        </Form.Group>
-                                        <Form.Group controlId="billingPostalCode">
-                                            <Form.Label>Código Postal</Form.Label>
-                                            <Form.Control
-                                                name="billing_postal_code"
-                                                placeholder="Código Postal"
-                                                onChange={handleInputChange}
-                                                required
-                                            />
-                                        </Form.Group>
-                                    </Accordion.Body>
-                                </Accordion.Item>
-                            </Accordion>
+                            <div className="my-3">
+                                <h4 className="mb-3">Dirección de facturación</h4>
+                                <Form.Group controlId="billingAddress" className="mb-3">
+                                    <Form.Label>Dirección de facturación</Form.Label>
+                                    <Form.Control
+                                        name="billing_address"
+                                        placeholder="Calle y número"
+                                        onChange={handleInputChange}
+                                        required
+                                    />
+                                </Form.Group>
+                                <Form.Group controlId="billingCity" className="mb-3">
+                                    <Form.Label>Ciudad</Form.Label>
+                                    <Form.Control
+                                        name="billing_city"
+                                        placeholder="Ciudad"
+                                        onChange={handleInputChange}
+                                        required
+                                    />
+                                </Form.Group>
+                                <Form.Group controlId="billingPostalCode" className="mb-3">
+                                    <Form.Label>Código Postal</Form.Label>
+                                    <Form.Control
+                                        name="billing_postal_code"
+                                        placeholder="Código Postal"
+                                        onChange={handleInputChange}
+                                        required
+                                    />
+                                </Form.Group>
+                            </div>
                         )}
 
                         <hr className="mb-4" />
                         <h4 className="mb-3">Método de pago</h4>
-                        <Button onClick={() => setIsPayPal(false)} variant={!isPayPal ? 'primary' : 'secondary'}>
-                            Pagar con tarjeta (Stripe)
-                        </Button>
-                        <Button onClick={() => setIsPayPal(true)} variant={isPayPal ? 'primary' : 'secondary'}>
-                            Pagar con PayPal
-                        </Button>
 
-                        {isPayPal ? (
+                        {/* Opciones de método de pago */}
+                        <Form.Check
+                            type="radio"
+                            label="Tarjeta (Stripe)"
+                            name="paymentMethod"
+                            id="paymentStripe"
+                            checked={paymentMethod === "stripe"}
+                            onChange={() => setPaymentMethod("stripe")}
+                            className="mb-2"
+                        />
+                        <Form.Check
+                            type="radio"
+                            label="PayPal"
+                            name="paymentMethod"
+                            id="paymentPayPal"
+                            checked={paymentMethod === "paypal"}
+                            onChange={() => setPaymentMethod("paypal")}
+                            className="mb-4"
+                        />
+
+                        {/* Mostrar el formulario de pago adecuado */}
+                        {paymentMethod === "paypal" ? (
                             <PayPalButton amount={total} onSuccess={handlePayPalSuccess} />
                         ) : (
                             <div className="mt-4">
@@ -356,7 +367,6 @@ const CheckoutForm = () => {
     );
 };
 
-// Envolver CheckoutForm con Elements para Stripe
 // Envolver CheckoutForm con Elements para Stripe y PayPalScriptProvider para PayPal
 const CheckoutWrapper = () => {
     return (
