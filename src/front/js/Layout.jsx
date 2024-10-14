@@ -58,8 +58,8 @@ const Layout = () => {
                     <Route path="/product/:id" element={<ProductDetail />} />
                     <Route path="/cart" element={<Cart />} />
                     <Route path="/checkout-form" element={<CheckoutForm />} />
+                    <Route path="/pay-pal-button" element={<PayPalButton />} />
                     <Route path="/thank-you" element={<ThankYou />} />
-                    <Route path="/paypal-button" element={<PayPalButton />} />
                     <Route path="/notification" element={<Notification />} />
                     <Route path="/cards-carrusel" element={<CardsCarrusel />} />
                     <Route path="/sidebar" element={<Sidebar />} />

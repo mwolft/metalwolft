@@ -4,15 +4,17 @@ import { Elements, CardElement, useStripe, useElements } from '@stripe/react-str
 import { Context } from "../store/appContext";
 import { Button, Container, Row, Col, Form, Accordion } from "react-bootstrap";
 import { useNavigate } from "react-router-dom";
+import PayPalButton from './PayPalButton.jsx'; // Importar el botón de PayPal
+import { PayPalScriptProvider } from "@paypal/react-paypal-js";
 
 
 const stripePromise = loadStripe('pk_test_51I1FgUDyMBNofWjFVmq85bCUIBbzjopkQw1VWtt7I9Gp0trmFwYH0O60Heuit0BOaaa2dEJvEMzaB90uGxjr5Cuw00hVfWhV4y');
-
 
 const CheckoutForm = () => {
     const stripe = useStripe();
     const elements = useElements();
     const { store, actions } = useContext(Context);
+    const [isPayPal, setIsPayPal] = useState(false); // Estado para alternar entre PayPal y Stripe
     const [differentBilling, setDifferentBilling] = useState(false);
     const [formData, setFormData] = useState({
         firstname: "",
@@ -36,6 +38,15 @@ const CheckoutForm = () => {
         });
     };
 
+    const handlePayPalSuccess = (details) => {
+        console.log("Pago exitoso con PayPal:", details);
+        // Guardar la orden y vaciar el carrito
+        actions.saveOrder();
+        actions.clearCart();
+        navigate("/thank-you");
+    };
+
+    // Manejar el pago con Stripe
     const handleSubmit = async (event) => {
         event.preventDefault();
         if (!stripe || !elements) return;
@@ -115,7 +126,6 @@ const CheckoutForm = () => {
             return;
         }
 
-        // Si el pago fue exitoso, proceder a guardar la orden en el backend
         if (confirmedPaymentIntent && confirmedPaymentIntent.status === 'succeeded') {
             console.log("Pago completado con éxito, creando la orden...");
 
@@ -131,11 +141,9 @@ const CheckoutForm = () => {
                 return;
             }
 
-            // Limpiar el carrito del frontend
             actions.clearCart();
             localStorage.removeItem("cart");
 
-            // Limpiar el carrito en el backend
             await fetch(`${process.env.BACKEND_URL}/api/cart/clear`, {
                 method: 'POST',
                 headers: {
@@ -145,7 +153,7 @@ const CheckoutForm = () => {
             });
 
             console.log("Carrito vaciado");
-            navigate("/thank-you");  // Redirigir a la página de agradecimiento
+            navigate("/thank-you");
         }
     };
 
@@ -189,7 +197,6 @@ const CheckoutForm = () => {
                                     </div>
                                 </div>
                                 <span className="text-muted">{product.precio_total} €</span>
-                                <hr />
                             </li>
                         ))}
                         <li className="list-group-item d-flex justify-content-between">
@@ -321,14 +328,27 @@ const CheckoutForm = () => {
                         )}
 
                         <hr className="mb-4" />
-                        <h4 className="mb-3">Pago</h4>
-                        <Form.Group controlId="card-element">
-                            <Form.Label>Detalles de la tarjeta</Form.Label>
-                            <CardElement />
-                        </Form.Group>
-                        <Button className="btn btn-primary btn-lg btn-block mt-4" type="submit" disabled={!stripe}>
-                            Continuar al pago
+                        <h4 className="mb-3">Método de pago</h4>
+                        <Button onClick={() => setIsPayPal(false)} variant={!isPayPal ? 'primary' : 'secondary'}>
+                            Pagar con tarjeta (Stripe)
                         </Button>
+                        <Button onClick={() => setIsPayPal(true)} variant={isPayPal ? 'primary' : 'secondary'}>
+                            Pagar con PayPal
+                        </Button>
+
+                        {isPayPal ? (
+                            <PayPalButton amount={total} onSuccess={handlePayPalSuccess} />
+                        ) : (
+                            <div className="mt-4">
+                                <Form.Group controlId="card-element">
+                                    <Form.Label>Detalles de la tarjeta</Form.Label>
+                                    <CardElement />
+                                </Form.Group>
+                                <Button className="btn btn-primary btn-lg btn-block mt-4" type="submit" disabled={!stripe}>
+                                    Continuar al pago con tarjeta
+                                </Button>
+                            </div>
+                        )}
                     </Form>
                 </Col>
             </Row>
@@ -337,11 +357,14 @@ const CheckoutForm = () => {
 };
 
 // Envolver CheckoutForm con Elements para Stripe
+// Envolver CheckoutForm con Elements para Stripe y PayPalScriptProvider para PayPal
 const CheckoutWrapper = () => {
     return (
-        <Elements stripe={stripePromise}>
-            <CheckoutForm />
-        </Elements>
+        <PayPalScriptProvider options={{ "client-id": "Aaj17-VA823EmfsMZpQYMV6d9KwWwmFHLcuX8xZTKp19etDK6TpF6Idd2zjbdTMbfxZaEuNFTVinS6uO" }}>
+            <Elements stripe={stripePromise}>
+                <CheckoutForm />
+            </Elements>
+        </PayPalScriptProvider>
     );
 };
 
