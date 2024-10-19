@@ -397,7 +397,39 @@ const getState = ({ getStore, getActions, setStore }) => {
             
                 // Mensaje de confirmación (opcional)
                 console.log("Pago exitoso, orden y detalles guardados, carrito vaciado.");
-            },                                              
+            },   
+            generateInvoice: async (orderId) => {
+                try {
+                    const response = await fetch(`${process.env.BACKEND_URL}/api/generate-invoice`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            Authorization: `Bearer ${localStorage.getItem("token")}`
+                        },
+                        body: JSON.stringify({ order_id: orderId })
+                    });
+            
+                    if (!response.ok) {
+                        const errorData = await response.json();
+                        console.error("Error al generar la factura:", errorData.message);
+                        return { ok: false };
+                    }
+            
+                    // Convertir la respuesta en blob para descargar el PDF
+                    const blob = await response.blob();
+                    const url = window.URL.createObjectURL(blob);
+                    const link = document.createElement('a');
+                    link.href = url;
+                    link.download = `invoice_${orderId}.pdf`;
+                    link.click();
+                    window.URL.revokeObjectURL(url);
+            
+                    return { ok: true };
+                } catch (error) {
+                    console.error("Error al generar la factura:", error);
+                    return { ok: false };
+                }
+            },                                                       
             loadFavorites: async () => {
                 const store = getStore();
                 if (!store.isLoged) return; // Solo cargar si el usuario está logueado
