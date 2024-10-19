@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify, Blueprint
+from flask import Flask, request, jsonify, Blueprint, send_file
 from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity
 from api.utils import generate_sitemap, APIException
 from api.models import db, Users, Products, ProductImages, Categories, Orders, OrderDetails, Favorites, Cart, OrderDetails
@@ -7,6 +7,8 @@ import bcrypt
 import stripe
 from dotenv import load_dotenv
 import os
+from io import BytesIO
+from reportlab.pdfgen import canvas
 
 api = Blueprint('api', __name__)
 
@@ -44,6 +46,82 @@ def create_payment_intent():
 
     except Exception as e:
         return jsonify({"error": str(e)}), 403
+
+
+@api.route('/generate-invoice', methods=['POST'])
+@jwt_required()
+def generate_invoice():
+    try:
+        data = request.get_json()
+        order_id = data.get('order_id')
+        if not order_id:
+            return jsonify({"message": "Order ID is required"}), 400
+
+        # Obtener el usuario actual
+        current_user = get_jwt_identity()
+        user_id = current_user['user_id']
+
+        # Obtener la orden y validar si existe
+        order = Orders.query.get(order_id)
+        if not order:
+            return jsonify({"message": "Order not found"}), 404
+
+        # Validar que el usuario que solicita la factura sea el propietario de la orden o un administrador
+        if order.user_id != user_id and not current_user.get("is_admin"):
+            return jsonify({"message": "You do not have permission to access this invoice"}), 403
+
+        # Obtener el usuario asociado a la orden
+        user = Users.query.get(order.user_id)
+
+        # Crear un buffer para el PDF
+        pdf_buffer = BytesIO()
+        pdf = canvas.Canvas(pdf_buffer)
+
+        # Configurar detalles del PDF
+        pdf.setTitle(f"Factura_{order.invoice_number}")
+
+        # Título y datos generales
+        pdf.setFont("Helvetica-Bold", 16)
+        pdf.drawString(200, 800, "Factura")
+
+        pdf.setFont("Helvetica", 12)
+        pdf.drawString(100, 750, f"Factura No: {order.invoice_number}")
+        pdf.drawString(100, 730, f"Fecha: {order.order_date.strftime('%d/%m/%Y')}")
+        pdf.drawString(100, 710, f"Total: {order.total_amount:.2f} EUR")
+
+        # Información del cliente
+        pdf.setFont("Helvetica-Bold", 14)
+        pdf.drawString(100, 680, "Información del Cliente")
+        pdf.setFont("Helvetica", 12)
+        pdf.drawString(100, 660, f"Nombre: {user.firstname} {user.lastname}")
+        pdf.drawString(100, 640, f"Dirección de Envío: {user.shipping_address}, {user.shipping_city} ({user.shipping_postal_code})")
+        pdf.drawString(100, 620, f"Dirección de Facturación: {user.billing_address}, {user.billing_city} ({user.billing_postal_code})")
+        pdf.drawString(100, 600, f"CIF: {user.CIF}")
+
+        # Detalles del pedido
+        pdf.setFont("Helvetica-Bold", 14)
+        pdf.drawString(100, 570, "Detalles del Pedido")
+        pdf.setFont("Helvetica", 12)
+
+        y_position = 550
+        for detail in order.order_details:
+            product = detail.product
+            pdf.drawString(100, y_position, f"Producto: {product.nombre} - Cantidad: {detail.quantity} - Precio: {detail.precio_total:.2f} EUR")
+            pdf.drawString(100, y_position - 15, f"  Alto: {detail.alto}cm | Ancho: {detail.ancho}cm | Anclaje: {detail.anclaje} | Color: {detail.color}")
+            y_position -= 40
+
+            if y_position < 100:  # Comprobar si queda espacio suficiente en la página
+                pdf.showPage()  # Crear una nueva página si no hay espacio
+                y_position = 750
+
+        pdf.save()
+
+        # Devolver el PDF generado como respuesta
+        pdf_buffer.seek(0)
+        return send_file(pdf_buffer, as_attachment=True, download_name=f"invoice_{order.invoice_number}.pdf", mimetype='application/pdf')
+
+    except Exception as e:
+        return jsonify({"message": "An error occurred while generating the invoice.", "error": str(e)}), 500
 
 
 @api.route('/hello', methods=['GET'])
