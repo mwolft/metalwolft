@@ -1,7 +1,7 @@
 from flask import Flask, request, jsonify, Blueprint, send_file
 from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity
 from api.utils import generate_sitemap, APIException
-from api.models import db, Users, Products, ProductImages, Categories, Orders, OrderDetails, Favorites, Cart, OrderDetails
+from api.models import db, Users, Products, ProductImages, Categories, Orders, OrderDetails, Favorites, Cart, OrderDetails, Posts
 from sqlalchemy.exc import SQLAlchemyError
 import bcrypt
 import stripe
@@ -13,6 +13,7 @@ from reportlab.platypus import Table, TableStyle
 from reportlab.lib.pagesizes import A4
 from reportlab.lib import colors
 from reportlab.lib.units import cm
+from datetime import datetime
 
 api = Blueprint('api', __name__)
 
@@ -46,6 +47,86 @@ def create_payment_intent():
 
     except Exception as e:
         return jsonify({"error": str(e)}), 403
+
+
+@api.route('/posts', methods=['GET'])
+@jwt_required(optional=True)  # Hacemos que la autenticación sea opcional para las publicaciones públicas
+def get_posts():
+    posts = Posts.query.all()
+    total_count = len(posts)
+
+    response = jsonify([post.serialize() for post in posts])
+    response.headers['X-Total-Count'] = total_count
+    response.headers['Access-Control-Expose-Headers'] = 'X-Total-Count'
+    response.headers['Access-Control-Allow-Origin'] = '*'
+    return response, 200
+
+
+@api.route('/posts/<string:slug>', methods=['GET'])
+@jwt_required(optional=True)
+def get_post(slug):
+    post = Posts.query.filter_by(slug=slug).first()
+    if post:
+        return jsonify(post.serialize()), 200
+    return jsonify({"message": "Post not found"}), 404
+
+
+@api.route('/posts', methods=['POST'])
+@jwt_required()
+def create_post():
+    current_user = get_jwt_identity()
+    if not current_user.get("is_admin"):
+        return jsonify({"message": "Access forbidden: Admins only"}), 403
+
+    data = request.json
+    new_post = Posts(
+        title=data.get('title'),
+        content=data.get('content'),
+        author_id=current_user.get('id'),
+        slug=data.get('slug'),
+        image_url=data.get('image_url')
+    )
+    db.session.add(new_post)
+    db.session.commit()
+    return jsonify(new_post.serialize()), 201
+
+
+@api.route('/posts/<int:post_id>', methods=['PUT'])
+@jwt_required()
+def update_post(post_id):
+    current_user = get_jwt_identity()
+    if not current_user.get("is_admin"):
+        return jsonify({"message": "Access forbidden: Admins only"}), 403
+
+    post = Posts.query.get(post_id)
+    if not post:
+        return jsonify({"message": "Post not found"}), 404
+
+    data = request.json
+    post.title = data.get('title', post.title)
+    post.content = data.get('content', post.content)
+    post.slug = data.get('slug', post.slug)
+    post.image_url = data.get('image_url', post.image_url)
+    post.updated_at = datetime.utcnow()
+
+    db.session.commit()
+    return jsonify(post.serialize()), 200
+
+
+@api.route('/posts/<int:post_id>', methods=['DELETE'])
+@jwt_required()
+def delete_post(post_id):
+    current_user = get_jwt_identity()
+    if not current_user.get("is_admin"):
+        return jsonify({"message": "Access forbidden: Admins only"}), 403
+
+    post = Posts.query.get(post_id)
+    if not post:
+        return jsonify({"message": "Post not found"}), 404
+
+    db.session.delete(post)
+    db.session.commit()
+    return jsonify({"message": "Post deleted"}), 200
 
 
 @api.route('/generate-invoice', methods=['POST'])

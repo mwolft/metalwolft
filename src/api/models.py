@@ -2,6 +2,7 @@ from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import Enum
 import random
 import string
+from datetime import datetime
 
 db = SQLAlchemy()
 
@@ -40,6 +41,63 @@ class Users(db.Model):
             "billing_city": self.billing_city,
             "billing_postal_code": self.billing_postal_code,
             "CIF": self.CIF,
+        }
+
+
+class Posts(db.Model):
+    __tablename__ = 'posts'
+    id = db.Column(db.Integer, primary_key=True)
+    title = db.Column(db.String(200), nullable=False)
+    content = db.Column(db.Text, nullable=False)
+    author_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    slug = db.Column(db.String(200), unique=True, nullable=False)
+    image_url = db.Column(db.String(300), nullable=True)  # Opcional, para una imagen destacada
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, onupdate=datetime.utcnow)
+
+    # Relación con el modelo de Users
+    author = db.relationship('Users', backref='posts', lazy=True)
+
+    def __repr__(self):
+        return f'<Post {self.id}: {self.title}>'
+
+    def serialize(self):
+        return {
+            "id": self.id,
+            "title": self.title,
+            "content": self.content,
+            "author_id": self.author_id,
+            "slug": self.slug,
+            "image_url": self.image_url,
+            "created_at": self.created_at,
+            "updated_at": self.updated_at,
+        }
+
+
+class Comments(db.Model):
+    __tablename__ = 'comments'
+    id = db.Column(db.Integer, primary_key=True)
+    content = db.Column(db.Text, nullable=False)
+    post_id = db.Column(db.Integer, db.ForeignKey('posts.id'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    # Relación con el modelo de Posts
+    post = db.relationship('Posts', backref='comments', lazy=True)
+
+    # Relación con el modelo de Users
+    user = db.relationship('Users', backref='comments', lazy=True)
+
+    def __repr__(self):
+        return f'<Comment {self.id} on Post {self.post_id} by User {self.user_id}>'
+
+    def serialize(self):
+        return {
+            "id": self.id,
+            "content": self.content,
+            "post_id": self.post_id,
+            "user_id": self.user_id,
+            "created_at": self.created_at,
         }
 
 
