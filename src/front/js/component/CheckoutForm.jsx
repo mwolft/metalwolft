@@ -260,7 +260,7 @@ const CheckoutForm = () => {
                             <div className="col-md-6 mb-3">
                                 <Form.Label></Form.Label>
                                 <Form.Control
-                                    name="billingCity"
+                                    name="billing_city"
                                     placeholder="Ciudad"
                                     onChange={handleInputChange}
                                     required

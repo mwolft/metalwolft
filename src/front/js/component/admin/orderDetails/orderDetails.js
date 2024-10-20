@@ -17,6 +17,16 @@ export const OrderDetailsList = (props) => (
       <NumberField source="ancho" label="Ancho" />
       <TextField source="anclaje" label="Anclaje" />
       <TextField source="color" label="Color" />
+      <NumberField source="precio_total" label="Precio Total" />
+      <TextField source="firstname" label="Nombre" />
+      <TextField source="lastname" label="Apellido" />
+      <TextField source="shipping_address" label="Dirección de Envío" />
+      <TextField source="shipping_city" label="Ciudad de Envío" />
+      <TextField source="shipping_postal_code" label="Código Postal de Envío" />
+      <TextField source="billing_address" label="Dirección de Facturación" />
+      <TextField source="billing_city" label="Ciudad de Facturación" />
+      <TextField source="billing_postal_code" label="Código Postal de Facturación" />
+      <TextField source="CIF" label="CIF" />
       <EditButton />
       <DeleteButton />
     </Datagrid>
@@ -39,6 +49,16 @@ export const OrderDetailsEdit = (props) => (
       <NumberInput source="ancho" label="Ancho" />
       <TextInput source="anclaje" label="Anclaje" />
       <TextInput source="color" label="Color" />
+      <NumberInput source="precio_total" label="Precio Total" />
+      <TextInput source="firstname" label="Nombre" />
+      <TextInput source="lastname" label="Apellido" />
+      <TextInput source="shipping_address" label="Dirección de Envío" />
+      <TextInput source="shipping_city" label="Ciudad de Envío" />
+      <TextInput source="shipping_postal_code" label="Código Postal de Envío" />
+      <TextInput source="billing_address" label="Dirección de Facturación" />
+      <TextInput source="billing_city" label="Ciudad de Facturación" />
+      <TextInput source="billing_postal_code" label="Código Postal de Facturación" />
+      <TextInput source="CIF" label="CIF" />
     </SimpleForm>
   </Edit>
 );
@@ -58,6 +78,16 @@ export const OrderDetailsCreate = (props) => (
       <NumberInput source="ancho" label="Ancho" />
       <TextInput source="anclaje" label="Anclaje" />
       <TextInput source="color" label="Color" />
+      <NumberInput source="precio_total" label="Precio Total" />
+      <TextInput source="firstname" label="Nombre" />
+      <TextInput source="lastname" label="Apellido" />
+      <TextInput source="shipping_address" label="Dirección de Envío" />
+      <TextInput source="shipping_city" label="Ciudad de Envío" />
+      <TextInput source="shipping_postal_code" label="Código Postal de Envío" />
+      <TextInput source="billing_address" label="Dirección de Facturación" />
+      <TextInput source="billing_city" label="Ciudad de Facturación" />
+      <TextInput source="billing_postal_code" label="Código Postal de Facturación" />
+      <TextInput source="CIF" label="CIF" />
     </SimpleForm>
   </Create>
 );

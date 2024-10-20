@@ -77,10 +77,23 @@ def generate_invoice():
         pdf_buffer = BytesIO()
         pdf = canvas.Canvas(pdf_buffer, pagesize=A4)
 
+        # Añadir la imagen en la parte superior derecha
+        image_url = "https://www.metalwolft.com/assets/images/herrero-soldador-en-ciudad-real.jpg"
+        pdf.drawImage(image_url, 300, 750, width=250, height=64)  # Ajustar posición y tamaño según necesidad
+
         # Configurar márgenes estrechos y título
         pdf.setTitle(f"Factura_{order.invoice_number}")
         pdf.setFont("Helvetica-Bold", 12)
         pdf.drawString(50, 800, "Factura")
+
+        # Datos de la empresa en la parte superior derecha debajo de la imagen
+        pdf.setFont("Helvetica-Bold", 12)
+        pdf.drawString(400, 700, "Información del Proveedor")
+        pdf.setFont("Helvetica", 10)
+        pdf.drawString(400, 680, "Sergio Arias Fernández")
+        pdf.drawString(400, 660, "DNI 05703874N")
+        pdf.drawString(400, 640, "Francisco Fernández Ordoñez 32")
+        pdf.drawString(400, 620, "13170 Miguelturra")
 
         # Información general
         pdf.setFont("Helvetica", 10)
@@ -89,7 +102,7 @@ def generate_invoice():
 
         # Información del cliente
         pdf.setFont("Helvetica-Bold", 12)
-        pdf.drawString(50, 700, "Información del Cliente") ########################################################################################################
+        pdf.drawString(50, 700, "Información del Cliente")
         pdf.setFont("Helvetica", 10)
         pdf.drawString(50, 680, f"{user.firstname} {user.lastname}")
         pdf.drawString(50, 660, f"{user.billing_address}, {user.billing_city} ({user.billing_postal_code})")
@@ -97,13 +110,13 @@ def generate_invoice():
 
         # Información del envío
         pdf.setFont("Helvetica-Bold", 12)
-        pdf.drawString(50, 580, "Dirección de envío") ########################################################################################################
+        pdf.drawString(50, 580, "Dirección de envío")
         pdf.setFont("Helvetica", 10)
         pdf.drawString(50, 560, f"{user.shipping_address}, {user.shipping_city} ({user.shipping_postal_code})")
 
         # Detalles del pedido
         pdf.setFont("Helvetica-Bold", 12)
-        pdf.drawString(50, 510, "Detalles del Pedido") ########################################################################################################
+        pdf.drawString(50, 510, "Detalles del Pedido")
         pdf.setFont("Helvetica", 10)
 
         # Crear datos para la tabla de productos
@@ -137,7 +150,7 @@ def generate_invoice():
         page_width = A4[0] - 100
 
         # Posicionar la tabla de productos en el PDF alineada a la derecha
-        y_position = 490 ########################################################################################################
+        y_position = 490
         table.wrapOn(pdf, 50, y_position)
         table_height = table._height
         table.drawOn(pdf, page_width - table._width, y_position - table_height)
@@ -166,7 +179,6 @@ def generate_invoice():
             ('GRID', (0, 0), (-1, -1), 1, colors.black),
         ]))
 
-
         # Posicionar la tabla de totales alineada a la derecha, debajo de la tabla de productos
         totals_y_position = y_position - table_height - 20
         totals_table.wrapOn(pdf, 50, totals_y_position)
@@ -182,7 +194,6 @@ def generate_invoice():
     except Exception as e:
         # Devolver un mensaje de error detallado en el caso de que ocurra un problema
         return jsonify({"message": "An error occurred while generating the invoice.", "error": str(e)}), 500
-
 
 
 @api.route('/hello', methods=['GET'])
