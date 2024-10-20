@@ -27,7 +27,6 @@ const CheckoutForm = () => {
         CIF: ""
     });
     const navigate = useNavigate();
-
     // Manejar cambios en los campos del formulario
     const handleInputChange = (e) => {
         const { name, value } = e.target;
@@ -44,8 +43,7 @@ const CheckoutForm = () => {
         actions.clearCart();
         navigate("/thank-you");
     };
-
-    // Manejar el pago con Stripe
+    // Pago con Stripe
     const handleSubmit = async (event) => {
         event.preventDefault();
         if (!stripe || !elements) return;
@@ -55,12 +53,10 @@ const CheckoutForm = () => {
             type: 'card',
             card: cardElement,
         });
-
         if (error) {
             alert(`Error en el pago: ${error.message}`);
             return;
         }
-
         // Enviar la solicitud de creación de Payment Intent a tu backend
         const response = await fetch(`${process.env.BACKEND_URL}/api/create-payment-intent`, {
             method: 'POST',
@@ -68,7 +64,7 @@ const CheckoutForm = () => {
                 'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-                amount: total * 100,  // Enviar el monto en centavos
+                amount: total * 100,  
                 payment_method_id: paymentMethod.id,
                 payment_intent_id: store.paymentIntentId  // Si ya tienes un paymentIntent guardado
             }),
@@ -318,7 +314,6 @@ const CheckoutForm = () => {
                             checked={paymentMethod === "paypal"}
                             onChange={() => setPaymentMethod("paypal")}
                             className="mb-4" />
-
                         {/* Mostrar el formulario de pago adecuado */}
                         {paymentMethod === "paypal" ? (
                             <PayPalButton amount={total} onSuccess={handlePayPalSuccess} />
@@ -339,7 +334,6 @@ const CheckoutForm = () => {
         </Container>
     );
 };
-
 // Envolver CheckoutForm con Elements para Stripe y PayPalScriptProvider para PayPal
 const CheckoutWrapper = () => {
     return (

@@ -6,7 +6,7 @@ import { useNavigate } from 'react-router-dom';
 export const ThankYou = () => {
     const { store, actions } = useContext(Context);
     const [orderSummary, setOrderSummary] = useState(null);
-    const [isLoading, setIsLoading] = useState(false); // Estado para manejar la carga
+    const [isLoading, setIsLoading] = useState(false); 
     const navigate = useNavigate();
 
     useEffect(() => {
@@ -18,9 +18,9 @@ export const ThankYou = () => {
 
     const handleDownloadInvoice = async () => {
         if (orderSummary) {
-            setIsLoading(true); // Mostrar el spinner de carga
+            setIsLoading(true); 
             const { ok } = await actions.generateInvoice(orderSummary.id);
-            setIsLoading(false); // Ocultar el spinner de carga
+            setIsLoading(false); 
             if (!ok) {
                 alert("Hubo un error al generar la factura. Intenta de nuevo más tarde.");
             }
@@ -50,7 +50,7 @@ export const ThankYou = () => {
                                     animation="border"
                                     size="sm"
                                     role="status"
-                                    aria-live="polite"  // Cambiar de aria-hidden a aria-live para proporcionar información accesible
+                                    aria-live="polite"  
                                 />
                                 {" "}Generando Factura...
                             </>

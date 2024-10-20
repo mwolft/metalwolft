@@ -20,25 +20,21 @@ stripe.api_key = os.getenv('STRIPE_SECRET_KEY')
 def create_payment_intent():
     try:
         data = request.get_json()
-
         # Verificar si ya existe un Payment Intent
         payment_intent_id = data.get('payment_intent_id')
         if payment_intent_id:
             intent = stripe.PaymentIntent.retrieve(payment_intent_id)
-
             # Si el Payment Intent ya está completado, devolver el mensaje correspondiente
             if intent['status'] == 'succeeded':
                 return jsonify({"message": "El pago ya ha sido completado.", "paymentIntent": intent}), 200
-
         # Crear un nuevo PaymentIntent
         intent = stripe.PaymentIntent.create(
-            amount=data['amount'],  # Cantidad en centavos
+            amount=data['amount'], 
             currency='eur',
             payment_method=data['payment_method_id'],  # ID del método de pago creado en el frontend
             confirm=True,  # Confirmar inmediatamente
-            return_url=os.getenv('STRIPE_RETURN_URL')  # URL de retorno si se necesita autenticación adicional
+            return_url=os.getenv('STRIPE_RETURN_URL')  
         )
-
         return jsonify({
             'clientSecret': intent['client_secret'],
             'paymentIntent': intent
@@ -56,39 +52,30 @@ def generate_invoice():
         order_id = data.get('order_id')
         if not order_id:
             return jsonify({"message": "Order ID is required"}), 400
-
         # Obtener el usuario actual
         current_user = get_jwt_identity()
         user_id = current_user['user_id']
-
         # Obtener la orden y validar si existe
         order = Orders.query.get(order_id)
         if not order:
             return jsonify({"message": "Order not found"}), 404
-
         # Validar que el usuario que solicita la factura sea el propietario de la orden o un administrador
         if order.user_id != user_id and not current_user.get("is_admin"):
             return jsonify({"message": "You do not have permission to access this invoice"}), 403
-
         # Obtener el usuario asociado a la orden
         user = Users.query.get(order.user_id)
-
         # Crear un buffer para el PDF
         pdf_buffer = BytesIO()
         pdf = canvas.Canvas(pdf_buffer)
-
         # Configurar detalles del PDF
         pdf.setTitle(f"Factura_{order.invoice_number}")
-
         # Título y datos generales
         pdf.setFont("Helvetica-Bold", 16)
         pdf.drawString(200, 800, "Factura")
-
         pdf.setFont("Helvetica", 12)
         pdf.drawString(100, 750, f"Factura No: {order.invoice_number}")
         pdf.drawString(100, 730, f"Fecha: {order.order_date.strftime('%d/%m/%Y')}")
         pdf.drawString(100, 710, f"Total: {order.total_amount:.2f} EUR")
-
         # Información del cliente
         pdf.setFont("Helvetica-Bold", 14)
         pdf.drawString(100, 680, "Información del Cliente")
@@ -97,29 +84,23 @@ def generate_invoice():
         pdf.drawString(100, 640, f"Dirección de Envío: {user.shipping_address}, {user.shipping_city} ({user.shipping_postal_code})")
         pdf.drawString(100, 620, f"Dirección de Facturación: {user.billing_address}, {user.billing_city} ({user.billing_postal_code})")
         pdf.drawString(100, 600, f"CIF: {user.CIF}")
-
         # Detalles del pedido
         pdf.setFont("Helvetica-Bold", 14)
         pdf.drawString(100, 570, "Detalles del Pedido")
         pdf.setFont("Helvetica", 12)
-
         y_position = 550
         for detail in order.order_details:
             product = detail.product
             pdf.drawString(100, y_position, f"Producto: {product.nombre} - Cantidad: {detail.quantity} - Precio: {detail.precio_total:.2f} EUR")
             pdf.drawString(100, y_position - 15, f"  Alto: {detail.alto}cm | Ancho: {detail.ancho}cm | Anclaje: {detail.anclaje} | Color: {detail.color}")
             y_position -= 40
-
             if y_position < 100:  # Comprobar si queda espacio suficiente en la página
                 pdf.showPage()  # Crear una nueva página si no hay espacio
                 y_position = 750
-
         pdf.save()
-
         # Devolver el PDF generado como respuesta
         pdf_buffer.seek(0)
         return send_file(pdf_buffer, as_attachment=True, download_name=f"invoice_{order.invoice_number}.pdf", mimetype='application/pdf')
-
     except Exception as e:
         return jsonify({"message": "An error occurred while generating the invoice.", "error": str(e)}), 500
 
@@ -138,26 +119,22 @@ def login():
         response.headers.add("Access-Control-Allow-Headers", "Content-Type, Authorization")
         response.headers.add("Access-Control-Allow-Methods", "POST, OPTIONS")
         return response, 200
-
     # Lógica de inicio de sesión
     data = request.json
     email = data.get("email", None)
     password = data.get("password", None)
-
     user = db.session.execute(db.select(Users).where(Users.email == email)).scalar()
     if not user or not bcrypt.checkpw(password.encode('utf-8'), user.password.encode('utf-8')):
         response_body = {'message': 'Correo o contraseña incorrectos'}
         response = jsonify(response_body)
         response.headers.add("Access-Control-Allow-Origin", "*")
         return response, 401
-
     # Crear el token JWT con los datos del usuario
     access_token = create_access_token(identity={
         'email': user.email,
         'user_id': user.id,
         'is_admin': user.is_admin
     })
-
     response_body = {
         'results': user.serialize(),
         'message': 'Bienvenido',
@@ -198,7 +175,6 @@ def signup():
     email = data.get("email", None)
     password = data.get("password", None)
     rol = data.get("rol", "user")
-
     # Verificar si el usuario ya existe
     existing_user = db.session.execute(db.select(Users).where(Users.email == email)).scalar()
     if existing_user:
@@ -206,27 +182,22 @@ def signup():
         response = jsonify(response_body)
         response.headers.add("Access-Control-Allow-Origin", "*")
         return response, 409
-
     # Encriptar la contraseña
     hashed_password = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt())
-
     # Crear nuevo usuario
     user = Users()
     user.email = email
     user.password = hashed_password.decode('utf-8')
     user.is_admin = True if rol == "admin" else False
-
     # Guardar en la base de datos
     db.session.add(user)
     db.session.commit()
-
     # Crear el token JWT
     access_token = create_access_token(identity={
         'email': user.email,
         'user_id': user.id,
         'is_admin': user.is_admin
     })
-
     response_body = {
         'results': user.serialize(),
         'message': 'Usuario registrado',
@@ -306,16 +277,13 @@ def update_user(user_id):
         response = jsonify({"message": "User not found!"})
         response.headers['Access-Control-Allow-Origin'] = '*'
         return response, 404
-
     data = request.json
     user.firstname = data.get('firstname', user.firstname)
     user.lastname = data.get('lastname', user.lastname)
     user.email = data.get('email', user.email)
-    
     # Solo un administrador puede cambiar el rol de administrador
     if current_user.get("is_admin"):
         user.is_admin = data.get('is_admin', user.is_admin)
-
     try:
         db.session.commit()
         response = jsonify(user.serialize())
@@ -339,13 +307,11 @@ def delete_user(user_id):
         response = jsonify({"message": "Access forbidden: Admins only"})
         response.headers['Access-Control-Allow-Origin'] = '*'
         return response, 403
-
     user = Users.query.get(user_id)
     if not user:
         response = jsonify({"message": "User not found!"})
         response.headers['Access-Control-Allow-Origin'] = '*'
         return response, 404
-
     db.session.delete(user)
     db.session.commit()
     response = jsonify({"message": "User deleted!"})
@@ -367,7 +333,6 @@ def get_categories():
 @api.route('/products', methods=['GET', 'POST'])
 def handle_products():
     current_user = get_jwt_identity() if request.method == 'POST' else None
-
     if request.method == 'GET':
         # Obtener todos los productos
         products = Products.query.all()
@@ -377,12 +342,10 @@ def handle_products():
         response.headers['Access-Control-Expose-Headers'] = 'X-Total-Count, Authorization'
         response.headers['Access-Control-Allow-Origin'] = '*'
         return response, 200
-
     elif request.method == 'POST':
         # Solo los administradores pueden crear productos
         if not current_user or not current_user.get("is_admin"):
             return jsonify({"message": "Access forbidden: Admins only"}), 403
-
         data = request.json
         try:
             # Crear el nuevo producto
@@ -395,19 +358,16 @@ def handle_products():
             )
             db.session.add(new_product)
             db.session.flush()  # Para obtener el ID del producto antes de confirmar
-
             # Agregar imágenes adicionales si se proporcionan
             images_urls = data.get('images', [])
             for image_url in images_urls:
                 new_image = ProductImages(product_id=new_product.id, image_url=image_url)
                 db.session.add(new_image)
-
             db.session.commit()
             response = jsonify(new_product.serialize_with_images())
             response.headers['Access-Control-Allow-Origin'] = '*'
             response.headers['Access-Control-Expose-Headers'] = 'Authorization'
             return response, 201
-
         except SQLAlchemyError as e:
             db.session.rollback()
             return jsonify({"message": "An error occurred while creating the product.", "error": str(e)}), 500
@@ -416,23 +376,19 @@ def handle_products():
 @api.route('/products/<int:product_id>', methods=['GET', 'PUT', 'DELETE'])
 def handle_product(product_id):
     product = Products.query.get(product_id)
-
     if not product:
         return jsonify({"message": "Product not found"}), 404
-
     if request.method == 'GET':
         response = jsonify(product.serialize_with_images())
         response.headers['Access-Control-Allow-Origin'] = '*'
         response.headers['Access-Control-Expose-Headers'] = 'Authorization'
         return response, 200
-
     # Para los métodos PUT y DELETE requerimos autenticación
     current_user = get_jwt_identity()
     if request.method == 'PUT':
         # Solo los administradores pueden actualizar productos
         if not current_user or not current_user.get("is_admin"):
             return jsonify({"message": "Access forbidden: Admins only"}), 403
-
         data = request.json
         try:
             # Actualizar los detalles del producto
@@ -441,7 +397,6 @@ def handle_product(product_id):
             product.precio = data.get('precio', product.precio)
             product.categoria_id = data.get('categoria_id', product.categoria_id)
             product.imagen = data.get('imagen', product.imagen)
-
             # Actualizar las imágenes adicionales si se proporcionan
             if 'images' in data:
                 images_urls = data.get('images', [])
@@ -451,13 +406,11 @@ def handle_product(product_id):
                 for image_url in images_urls:
                     new_image = ProductImages(product_id=product_id, image_url=image_url)
                     db.session.add(new_image)
-
             db.session.commit()
             response = jsonify(product.serialize_with_images())
             response.headers['Access-Control-Allow-Origin'] = '*'
             response.headers['Access-Control-Expose-Headers'] = 'Authorization'
             return response, 200
-
         except SQLAlchemyError as e:
             db.session.rollback()
             return jsonify({"message": "An error occurred while updating the product.", "error": str(e)}), 500
@@ -487,16 +440,13 @@ def add_product_images(product_id):
     # Solo los administradores pueden agregar imágenes
     if not current_user.get("is_admin"):
         return jsonify({"message": "Access forbidden: Admins only"}), 403
-
     # Obtener el producto por ID
     product = Products.query.get(product_id)
     if not product:
         return jsonify({"message": "Product not found"}), 404
-
     # Obtener las URLs de las imágenes desde la solicitud
     data = request.get_json()
     image_urls = data.get('images', [])
-    
     # Verificar que las URLs sean una lista de cadenas de texto válidas
     if not isinstance(image_urls, list) or not all(isinstance(url, str) for url in image_urls):
         return jsonify({"message": "Invalid images format. Expected a list of URLs."}), 400
@@ -505,7 +455,6 @@ def add_product_images(product_id):
         for image_url in image_urls:
             new_image = ProductImages(product_id=product_id, image_url=image_url)
             db.session.add(new_image)
-
         # Confirmar los cambios en la base de datos
         db.session.commit()
         # Devolver el producto con las nuevas imágenes
@@ -513,7 +462,6 @@ def add_product_images(product_id):
         response.headers['Access-Control-Allow-Origin'] = '*'
         response.headers['Access-Control-Expose-Headers'] = 'Authorization'
         return response, 201
-
     except SQLAlchemyError as e:
         # Manejar errores y revertir la transacción si ocurre un problema
         db.session.rollback()
@@ -525,7 +473,6 @@ def get_product_with_images(product_id):
     product = Products.query.get(product_id)
     if not product:
         return jsonify({"message": "Product not found"}), 404
-
     return jsonify(product.serialize_with_images()), 200
 
 
@@ -535,11 +482,9 @@ def get_product_images():
     current_user = get_jwt_identity()
     if not current_user.get("is_admin"):
         return jsonify({"message": "Access forbidden: Admins only"}), 403
-
     # Obtener todas las imágenes de productos
     product_images = ProductImages.query.all()
     total_count = len(product_images)
-
     # Preparar la respuesta con las imágenes serializadas
     response = jsonify([image.serialize() for image in product_images])
     response.headers['X-Total-Count'] = total_count
@@ -552,19 +497,16 @@ def get_product_images():
 @jwt_required()
 def handle_orders():
     current_user = get_jwt_identity()
-
     if request.method == 'GET':
         # Obtener todas las órdenes del usuario actual
         orders = db.session.execute(db.select(Orders).where(Orders.user_id == current_user['user_id'])).scalars()
         results = [order.serialize() for order in orders]
         total_count = len(results)
-
         response = jsonify(results)
         response.headers['X-Total-Count'] = str(total_count)
         response.headers['Access-Control-Expose-Headers'] = 'X-Total-Count'
         response.headers['Access-Control-Allow-Origin'] = '*'
         return response, 200
-
     if request.method == 'POST':
         # Crear nueva orden
         data = request.get_json()
@@ -577,7 +519,6 @@ def handle_orders():
             )
             db.session.add(new_order)
             db.session.commit()
-
             response = jsonify({
                 'message': 'Order created successfully.',
                 'order': new_order.serialize()
@@ -585,7 +526,6 @@ def handle_orders():
             response.headers['Access-Control-Allow-Origin'] = '*'
             response.headers['Access-Control-Expose-Headers'] = 'X-Total-Count'
             return response, 201
-
         except SQLAlchemyError as e:
             db.session.rollback()
             return jsonify({"message": "An error occurred while creating the order.", "error": str(e)}), 500
@@ -595,17 +535,14 @@ def handle_orders():
 @jwt_required()
 def handle_order(order_id):
     current_user = get_jwt_identity()
-
     order = db.session.execute(db.select(Orders).where(Orders.id == order_id, Orders.user_id == current_user['user_id'])).scalar()
     if not order:
         return jsonify({"message": "Order not found or not authorized"}), 404
-
     if request.method == 'GET':
         response = jsonify(order.serialize())
         response.headers['Access-Control-Allow-Origin'] = '*'
         response.headers['Access-Control-Expose-Headers'] = 'X-Total-Count'
         return response, 200
-
     if request.method == 'DELETE':
         try:
             db.session.delete(order)
@@ -614,7 +551,6 @@ def handle_order(order_id):
             response.headers['Access-Control-Allow-Origin'] = '*'
             response.headers['Access-Control-Expose-Headers'] = 'X-Total-Count'
             return response, 200
-
         except SQLAlchemyError as e:
             db.session.rollback()
             return jsonify({"message": "An error occurred while deleting the order.", "error": str(e)}), 500
@@ -625,7 +561,6 @@ def handle_order(order_id):
 def add_order_detail():
     data = request.get_json()
     current_user = get_jwt_identity()  # Obtiene el usuario actual a través del JWT
-
     try:
         # Crear un nuevo detalle de pedido
         new_order_detail = OrderDetails(
@@ -648,7 +583,6 @@ def add_order_detail():
             CIF=data.get('CIF')
         )
         db.session.add(new_order_detail)
-
         # Actualizar los datos del usuario si son diferentes o están vacíos
         user = Users.query.filter_by(id=current_user['user_id']).first()
         if user:
@@ -661,20 +595,16 @@ def add_order_detail():
             user.billing_city = data.get('billing_city') or user.billing_city
             user.billing_postal_code = data.get('billing_postal_code') or user.billing_postal_code
             user.CIF = data.get('CIF') or user.CIF
-
         db.session.commit()
-
         response = jsonify({
             "message": "Order detail added successfully.",
             "order_detail": new_order_detail.serialize(),
         })
         response.headers['Access-Control-Allow-Origin'] = '*'
         return response, 201
-
     except SQLAlchemyError as e:
         db.session.rollback()
         return jsonify({"message": "An error occurred while adding the order detail.", "error": str(e)}), 500
-
 
 
 @api.route('/orderdetails', methods=['GET'])
@@ -683,12 +613,10 @@ def get_order_details():
     current_user = get_jwt_identity()
     if not current_user.get("is_admin"):
         return jsonify({"message": "Access forbidden: Admins only"}), 403
-
     # Obtener todos los detalles de pedidos
     order_details = db.session.execute(db.select(OrderDetails)).scalars()
     results = [detail.serialize() for detail in order_details]
     total_count = len(results)
-
     response = jsonify(results)
     response.headers['X-Total-Count'] = str(total_count)
     response.headers['Access-Control-Expose-Headers'] = 'X-Total-Count'
@@ -706,38 +634,29 @@ def handle_favorites():
         response.headers.add("Access-Control-Allow-Headers", "Content-Type, Authorization")
         response.headers.add("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
         return response, 200
-
     current_user = get_jwt_identity()
-
     if request.method == 'GET':
         # Obtener todos los favoritos del usuario actual
         if not current_user:
             return jsonify({"message": "Debe estar autenticado para acceder a los favoritos"}), 401
-
         favorites = db.session.execute(db.select(Favorites).where(Favorites.usuario_id == current_user['user_id'])).scalars()
         products = [Products.query.get(fav.producto_id).serialize() for fav in favorites]
-
         response = jsonify(products)
         response.headers['Access-Control-Allow-Origin'] = '*'
         return response, 200
-
     if request.method == 'POST':
         if not current_user:
             return jsonify({"message": "Debe estar autenticado para añadir a favoritos"}), 401
-
         data = request.get_json()
         product_id = data.get('product_id')
-
         # Verificar si el producto ya está en favoritos
         existing_favorite = db.session.execute(db.select(Favorites).where(Favorites.usuario_id == current_user['user_id'], Favorites.producto_id == product_id)).scalar()
         if existing_favorite:
             return jsonify({"message": "Producto ya está en favoritos"}), 409
-
         # Crear nuevo favorito
         new_favorite = Favorites(usuario_id=current_user['user_id'], producto_id=product_id)
         db.session.add(new_favorite)
         db.session.commit()
-
         response = jsonify({"message": "Producto añadido a favoritos"})
         response.headers['Access-Control-Allow-Origin'] = '*'
         return response, 201
@@ -753,19 +672,14 @@ def remove_favorite(product_id):
         response.headers.add("Access-Control-Allow-Headers", "Content-Type, Authorization")
         response.headers.add("Access-Control-Allow-Methods", "DELETE, OPTIONS")
         return response, 200
-
     current_user = get_jwt_identity()
-
     if not current_user:
         return jsonify({"message": "Debe estar autenticado para eliminar de favoritos"}), 401
-
     favorite = db.session.execute(db.select(Favorites).where(Favorites.usuario_id == current_user['user_id'], Favorites.producto_id == product_id)).scalar()
     if not favorite:
         return jsonify({"message": "Producto no encontrado en favoritos"}), 404
-
     db.session.delete(favorite)
     db.session.commit()
-
     response = jsonify({"message": "Producto eliminado de favoritos"})
     response.headers['Access-Control-Allow-Origin'] = '*'
     return response, 200
@@ -781,9 +695,7 @@ def handle_cart():
         response.headers.add("Access-Control-Allow-Headers", "Content-Type, Authorization")
         response.headers.add("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
         return response, 200
-
     current_user = get_jwt_identity()
-
     if request.method == 'GET':
         # Obtener los productos en el carrito del usuario actual
         try:
@@ -799,17 +711,14 @@ def handle_cart():
             response.headers['Access-Control-Allow-Origin'] = '*'
             response.headers['Access-Control-Expose-Headers'] = 'Authorization'
             return response, 500
-
     if request.method == 'POST':
         data = request.get_json()
         product_id = data.get('product_id')
-
         if not product_id:
             response = jsonify({"message": "Product ID is required"})
             response.headers['Access-Control-Allow-Origin'] = '*'
             response.headers['Access-Control-Expose-Headers'] = 'Authorization'
             return response, 400
-
         try:
             # Verificar si ya existe un producto con las mismas especificaciones en el carrito
             existing_item = Cart.query.filter_by(
@@ -820,13 +729,11 @@ def handle_cart():
                 anclaje=data.get('anclaje'),
                 color=data.get('color')
             ).first()
-
             if existing_item:
                 response = jsonify({"message": "Producto ya está en el carrito con las mismas especificaciones"})
                 response.headers['Access-Control-Allow-Origin'] = '*'
                 response.headers['Access-Control-Expose-Headers'] = 'Authorization'
                 return response, 409
-
             # Añadir el producto al carrito con los detalles personalizados
             new_cart_item = Cart(
                 usuario_id=current_user['user_id'],
@@ -839,19 +746,16 @@ def handle_cart():
             )
             db.session.add(new_cart_item)
             db.session.commit()
-
             response = jsonify({"message": "Producto añadido al carrito"})
             response.headers['Access-Control-Allow-Origin'] = '*'
             response.headers['Access-Control-Expose-Headers'] = 'Authorization'
             return response, 201
-
         except SQLAlchemyError as e:
             db.session.rollback()
             response = jsonify({"message": f"Database error: {str(e)}"})
             response.headers['Access-Control-Allow-Origin'] = '*'
             response.headers['Access-Control-Expose-Headers'] = 'Authorization'
             return response, 500
-
         except Exception as e:
             db.session.rollback()
             response = jsonify({"message": f"Unexpected error: {str(e)}"})
@@ -864,7 +768,6 @@ def handle_cart():
 @jwt_required()
 def remove_from_cart(product_id):
     current_user = get_jwt_identity()
-
     try:
         data = request.get_json()  # Obtener las especificaciones del producto
         cart_item = Cart.query.filter_by(
@@ -875,19 +778,14 @@ def remove_from_cart(product_id):
             anclaje=data.get('anclaje'),
             color=data.get('color')
         ).first()
-
         if not cart_item:
             return jsonify({"message": "Producto no encontrado en el carrito con esas especificaciones"}), 404
-
         db.session.delete(cart_item)
         db.session.commit()
-
         # Obtener el carrito actualizado
         updated_cart_items = Cart.query.filter_by(usuario_id=current_user['user_id']).all()
         updated_cart = [item.serialize() for item in updated_cart_items]
-
         return jsonify({"message": "Producto eliminado del carrito", "updated_cart": updated_cart}), 200
-
     except Exception as e:
         db.session.rollback()
         return jsonify({"message": str(e)}), 500
