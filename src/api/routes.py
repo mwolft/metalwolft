@@ -9,6 +9,10 @@ from dotenv import load_dotenv
 import os
 from io import BytesIO
 from reportlab.pdfgen import canvas
+from reportlab.platypus import Table, TableStyle
+from reportlab.lib.pagesizes import A4
+from reportlab.lib import colors
+from reportlab.lib.units import cm
 
 api = Blueprint('api', __name__)
 
@@ -52,57 +56,133 @@ def generate_invoice():
         order_id = data.get('order_id')
         if not order_id:
             return jsonify({"message": "Order ID is required"}), 400
+        
         # Obtener el usuario actual
         current_user = get_jwt_identity()
         user_id = current_user['user_id']
+
         # Obtener la orden y validar si existe
         order = Orders.query.get(order_id)
         if not order:
             return jsonify({"message": "Order not found"}), 404
+        
         # Validar que el usuario que solicita la factura sea el propietario de la orden o un administrador
         if order.user_id != user_id and not current_user.get("is_admin"):
             return jsonify({"message": "You do not have permission to access this invoice"}), 403
+        
         # Obtener el usuario asociado a la orden
         user = Users.query.get(order.user_id)
+
         # Crear un buffer para el PDF
         pdf_buffer = BytesIO()
-        pdf = canvas.Canvas(pdf_buffer)
-        # Configurar detalles del PDF
+        pdf = canvas.Canvas(pdf_buffer, pagesize=A4)
+
+        # Configurar márgenes estrechos y título
         pdf.setTitle(f"Factura_{order.invoice_number}")
-        # Título y datos generales
-        pdf.setFont("Helvetica-Bold", 16)
-        pdf.drawString(200, 800, "Factura")
-        pdf.setFont("Helvetica", 12)
-        pdf.drawString(100, 750, f"Factura No: {order.invoice_number}")
-        pdf.drawString(100, 730, f"Fecha: {order.order_date.strftime('%d/%m/%Y')}")
-        pdf.drawString(100, 710, f"Total: {order.total_amount:.2f} EUR")
+        pdf.setFont("Helvetica-Bold", 12)
+        pdf.drawString(50, 800, "Factura")
+
+        # Información general
+        pdf.setFont("Helvetica", 10)
+        pdf.drawString(50, 770, f"Factura No: {order.invoice_number}")
+        pdf.drawString(50, 750, f"Fecha: {order.order_date.strftime('%d/%m/%Y')}")
+
         # Información del cliente
-        pdf.setFont("Helvetica-Bold", 14)
-        pdf.drawString(100, 680, "Información del Cliente")
-        pdf.setFont("Helvetica", 12)
-        pdf.drawString(100, 660, f"Nombre: {user.firstname} {user.lastname}")
-        pdf.drawString(100, 640, f"Dirección de Envío: {user.shipping_address}, {user.shipping_city} ({user.shipping_postal_code})")
-        pdf.drawString(100, 620, f"Dirección de Facturación: {user.billing_address}, {user.billing_city} ({user.billing_postal_code})")
-        pdf.drawString(100, 600, f"CIF: {user.CIF}")
+        pdf.setFont("Helvetica-Bold", 12)
+        pdf.drawString(50, 700, "Información del Cliente") ########################################################################################################
+        pdf.setFont("Helvetica", 10)
+        pdf.drawString(50, 680, f"{user.firstname} {user.lastname}")
+        pdf.drawString(50, 660, f"{user.billing_address}, {user.billing_city} ({user.billing_postal_code})")
+        pdf.drawString(50, 640, f"{user.CIF}")
+
+        # Información del envío
+        pdf.setFont("Helvetica-Bold", 12)
+        pdf.drawString(50, 580, "Dirección de envío") ########################################################################################################
+        pdf.setFont("Helvetica", 10)
+        pdf.drawString(50, 560, f"{user.shipping_address}, {user.shipping_city} ({user.shipping_postal_code})")
+
         # Detalles del pedido
-        pdf.setFont("Helvetica-Bold", 14)
-        pdf.drawString(100, 570, "Detalles del Pedido")
-        pdf.setFont("Helvetica", 12)
-        y_position = 550
+        pdf.setFont("Helvetica-Bold", 12)
+        pdf.drawString(50, 510, "Detalles del Pedido") ########################################################################################################
+        pdf.setFont("Helvetica", 10)
+
+        # Crear datos para la tabla de productos
+        data = [["Producto", "Alto", "Ancho", "Anclaje", "Color", "Precio"]]
         for detail in order.order_details:
             product = detail.product
-            pdf.drawString(100, y_position, f"Producto: {product.nombre} - Cantidad: {detail.quantity} - Precio: {detail.precio_total:.2f} EUR")
-            pdf.drawString(100, y_position - 15, f"  Alto: {detail.alto}cm | Ancho: {detail.ancho}cm | Anclaje: {detail.anclaje} | Color: {detail.color}")
-            y_position -= 40
-            if y_position < 100:  # Comprobar si queda espacio suficiente en la página
-                pdf.showPage()  # Crear una nueva página si no hay espacio
-                y_position = 750
+            row = [
+                product.nombre,
+                f"{detail.alto}",
+                f"{detail.ancho}",
+                detail.anclaje,
+                detail.color,
+                f"{detail.precio_total:.2f} €"
+            ]
+            data.append(row)
+
+        # Crear la tabla de productos
+        table = Table(data, colWidths=[6*cm, 2*cm, 2*cm, 2*cm, 2*cm, 2*cm])
+        table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), colors.Color(1, 0.196, 0.302)),  # #ff324d
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, 0), (-1, 0), 12),
+            ('BOTTOMPADDING', (0, 0), (-1, 0), 8),
+            ('BACKGROUND', (0, 1), (-1, -1), colors.Color(0.941, 0.941, 0.941)),  # #f0f0f0
+            ('GRID', (0, 0), (-1, -1), 1, colors.black),
+        ]))
+
+        # Obtener el ancho total de la página menos márgenes
+        page_width = A4[0] - 100
+
+        # Posicionar la tabla de productos en el PDF alineada a la derecha
+        y_position = 490 ########################################################################################################
+        table.wrapOn(pdf, 50, y_position)
+        table_height = table._height
+        table.drawOn(pdf, page_width - table._width, y_position - table_height)
+
+        # Calcular valores para la tabla de totales
+        total = order.total_amount
+        iva = total - (total / 1.21)
+        base_imponible = total - iva
+        envio = 0.00  # Envío fijo a 0 euros
+
+        # Crear datos para la tabla de totales
+        totals_data = [
+            ["Envío", "Base Imponible", "IVA (21%)", "Total"],
+            [f"{envio:.2f} €", f"{base_imponible:.2f} €", f"{iva:.2f} €", f"{total:.2f} €"]
+        ]
+
+        # Crear la tabla de totales
+        totals_table = Table(totals_data, colWidths=[4*cm, 4*cm, 4*cm, 4*cm])
+        totals_table.setStyle(TableStyle([
+            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),  # Negrita solo para la primera fila
+            ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),  # Fuente normal para las filas restantes
+            ('FONTSIZE', (0, 0), (-1, 0), 10),
+            ('BACKGROUND', (0, 0), (-1, -1), colors.Color(0.941, 0.941, 0.941)),  # Mismo fondo para todas las filas
+            ('TEXTCOLOR', (0, 0), (-1, -1), colors.black),  # Color del texto en negro para toda la tabla
+            ('GRID', (0, 0), (-1, -1), 1, colors.black),
+        ]))
+
+
+        # Posicionar la tabla de totales alineada a la derecha, debajo de la tabla de productos
+        totals_y_position = y_position - table_height - 20
+        totals_table.wrapOn(pdf, 50, totals_y_position)
+        totals_table_height = totals_table._height
+        totals_table.drawOn(pdf, page_width - totals_table._width, totals_y_position - totals_table_height)
+
+        # Finalizar el PDF
         pdf.save()
+
         # Devolver el PDF generado como respuesta
         pdf_buffer.seek(0)
         return send_file(pdf_buffer, as_attachment=True, download_name=f"invoice_{order.invoice_number}.pdf", mimetype='application/pdf')
     except Exception as e:
+        # Devolver un mensaje de error detallado en el caso de que ocurra un problema
         return jsonify({"message": "An error occurred while generating the invoice.", "error": str(e)}), 500
+
 
 
 @api.route('/hello', methods=['GET'])
