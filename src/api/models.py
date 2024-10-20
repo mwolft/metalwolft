@@ -158,11 +158,11 @@ class OrderDetails(db.Model):
     order_id = db.Column(db.Integer, db.ForeignKey('orders.id'), nullable=False)
     product_id = db.Column(db.Integer, db.ForeignKey('products.id'), nullable=False)
     quantity = db.Column(db.Integer, nullable=False)
-    alto = db.Column(db.Float, nullable=True)  # Tamaño - Alto
-    ancho = db.Column(db.Float, nullable=True)  # Tamaño - Ancho
-    anclaje = db.Column(db.String(50), nullable=True)  # Tipo de anclaje (con obra/sin obra)
-    color = db.Column(db.String(50), nullable=True)  # Color
-    precio_total = db.Column(db.Float, nullable=False)  # Precio total del producto personalizado
+    alto = db.Column(db.Float, nullable=True)  
+    ancho = db.Column(db.Float, nullable=True)  
+    anclaje = db.Column(db.String(50), nullable=True)  
+    color = db.Column(db.String(50), nullable=True) 
+    precio_total = db.Column(db.Float, nullable=False)  
 
     # Campos de información de usuario y envío
     firstname = db.Column(db.String(100), nullable=True)
@@ -175,7 +175,7 @@ class OrderDetails(db.Model):
     billing_postal_code = db.Column(db.String(20), nullable=True)
     CIF = db.Column(db.String(20), nullable=True)
 
-    product = db.relationship('Products', backref='order_details', lazy=True)  # Relación con productos
+    product = db.relationship('Products', backref='order_details', lazy=True)  
 
     def __repr__(self):
         return f'<OrderDetail {self.id}: Order {self.order_id} - Product {self.product_id}>'
@@ -225,11 +225,11 @@ class Cart(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     usuario_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     producto_id = db.Column(db.Integer, db.ForeignKey('products.id'), nullable=False)
-    alto = db.Column(db.Float, nullable=True)  # Tamaño - Alto
-    ancho = db.Column(db.Float, nullable=True)  # Tamaño - Ancho
-    anclaje = db.Column(db.String(50), nullable=True)  # Tipo de anclaje (con obra/sin obra)
-    color = db.Column(db.String(50), nullable=True)  # Color
-    precio_total = db.Column(db.Float, nullable=False)  # Precio total del producto personalizado
+    alto = db.Column(db.Float, nullable=True)  
+    ancho = db.Column(db.Float, nullable=True)  
+    anclaje = db.Column(db.String(50), nullable=True)  
+    color = db.Column(db.String(50), nullable=True)  
+    precio_total = db.Column(db.Float, nullable=False)  
 
     product = db.relationship('Products', backref='cart_items', lazy=True)
 

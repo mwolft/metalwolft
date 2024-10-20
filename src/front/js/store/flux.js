@@ -38,9 +38,7 @@ const getState = ({ getStore, getActions, setStore }) => {
                     isAdmin: user?.is_admin || false,
                     isLoged: true
                 });
-                // Cargar favoritos cuando se establece el usuario actual
                 getActions().loadFavorites();
-                // Cargar el carrito del usuario cuando se establece el usuario actual
                 getActions().loadCart();
             },                                        
             updateUserProfile: async (userId, updatedData) => {
@@ -104,7 +102,6 @@ const getState = ({ getStore, getActions, setStore }) => {
             loadCart: async () => {
                 const store = getStore();
                 if (!store.isLoged) return; // Solo cargar si el usuario está logueado
-            
                 try {
                     const response = await fetch(`${process.env.BACKEND_URL}/api/cart`, {
                         method: 'GET',
@@ -113,13 +110,11 @@ const getState = ({ getStore, getActions, setStore }) => {
                             Authorization: `Bearer ${localStorage.getItem("token")}`
                         }
                     });
-            
                     if (!response.ok) {
                         const errorText = await response.text();
                         console.error("Error al cargar el carrito:", errorText);
                         throw new Error(`Error al cargar el carrito: ${errorText}`);
                     }
-            
                     const data = await response.json();  // Obtener los productos con especificaciones
                     console.log("Datos del carrito recibidos del backend:", data);
                     setStore({ cart: data });  // Guardar los productos en el estado global
@@ -133,7 +128,6 @@ const getState = ({ getStore, getActions, setStore }) => {
                     alert("Debe estar logueado para añadir productos al carrito");
                     return;
                 }
-            
                 try {
                     const response = await fetch(`${process.env.BACKEND_URL}/api/cart`, {
                         method: 'POST',
@@ -150,13 +144,11 @@ const getState = ({ getStore, getActions, setStore }) => {
                             precio_total: product.precio_total
                         })
                     });
-            
                     if (!response.ok) {
                         const data = await response.json();
                         alert(data.message || "Error al añadir al carrito");
                         return;
                     }
-            
                     // Actualizar el carrito en el estado
                     const newProduct = await response.json();  // Obtener el producto añadido del backend
                     setStore({ cart: [...store.cart, newProduct] });
@@ -170,14 +162,12 @@ const getState = ({ getStore, getActions, setStore }) => {
                     alert("Debe estar logueado para eliminar productos del carrito");
                     return;
                 }
-            
                 try {
                     if (!product.producto_id) {
                         console.error("Faltan especificaciones del producto");
                         alert("Faltan especificaciones para eliminar el producto del carrito");
                         return;
                     }
-            
                     const response = await fetch(`${process.env.BACKEND_URL}/api/cart/${product.producto_id}`, {
                         method: 'DELETE',
                         headers: {
@@ -193,14 +183,12 @@ const getState = ({ getStore, getActions, setStore }) => {
                             imagen: product.imagen
                         })
                     });
-            
                     if (!response.ok) {
                         const data = await response.text();
                         console.error("Error al eliminar del carrito:", data);
                         alert("Error al eliminar del carrito");
                         return;
                     }
-            
                     const data = await response.json();
                     setStore({ cart: data.updated_cart });
                 } catch (error) {
@@ -210,7 +198,6 @@ const getState = ({ getStore, getActions, setStore }) => {
             clearCart: async () => {
                 const store = getStore();
                 if (!store.isLoged) return;
-            
                 try {
                     const response = await fetch(`${process.env.BACKEND_URL}/api/cart/clear`, {
                         method: 'POST',
@@ -219,13 +206,11 @@ const getState = ({ getStore, getActions, setStore }) => {
                             Authorization: `Bearer ${localStorage.getItem("token")}`
                         }
                     });
-            
                     if (!response.ok) {
                         const errorText = await response.text();
                         console.error("Error al vaciar el carrito:", errorText);
                         throw new Error(`Error al vaciar el carrito: ${errorText}`);
                     }
-            
                     // Si el backend responde correctamente, vacía el carrito también en el frontend
                     setStore({ cart: [], paymentCompleted: true });
                     localStorage.removeItem("cart");
@@ -255,8 +240,7 @@ const getState = ({ getStore, getActions, setStore }) => {
                     console.error("Error al obtener las órdenes:", error.message);
                     return { ok: false };
                 }
-            },
-            
+            },  
             saveOrder: async () => {
                 const store = getStore();
                 const orderData = {
@@ -300,8 +284,7 @@ const getState = ({ getStore, getActions, setStore }) => {
                     console.error("Error al guardar el pedido:", error);
                     return { ok: false };
                 }
-            },
-            
+            },     
             fetchOrderDetails: async () => {
                 try {
                     const response = await fetch(`${process.env.BACKEND_URL}/api/orderdetails`, {
@@ -325,7 +308,6 @@ const getState = ({ getStore, getActions, setStore }) => {
                     return { ok: false };
                 }
             },
-            
             saveOrderDetails: async (orderId, formData) => {
                 const store = getStore();
                 const orderDetailsData = store.cart.map(product => ({
@@ -347,7 +329,6 @@ const getState = ({ getStore, getActions, setStore }) => {
                     billing_postal_code: formData.billing_postal_code,
                     CIF: formData.CIF
                 }));
-            
                 try {
                     for (const detail of orderDetailsData) {
                         const response = await fetch(`${process.env.BACKEND_URL}/api/orderdetails`, {
@@ -358,14 +339,12 @@ const getState = ({ getStore, getActions, setStore }) => {
                             },
                             body: JSON.stringify(detail)
                         });
-            
                         if (!response.ok) {
                             const errorData = await response.json();
                             console.error("Error al guardar el detalle del pedido:", errorData.message);
                             return { ok: false };
                         }
                     }
-            
                     // Actualizar el store con los nuevos detalles de la orden
                     setStore({ orderDetails: [...store.orderDetails, ...orderDetailsData] });
                     return { ok: true };
@@ -377,24 +356,20 @@ const getState = ({ getStore, getActions, setStore }) => {
             handlePaymentSuccess: async () => {
                 const store = getStore(); // Obtén el estado actual del store
                 const actions = getActions(); // Acciones para poder llamar a las funciones existentes
-            
                 // 1. Guardar la orden y obtener el order_id
                 const { ok, order } = await actions.saveOrder();
                 if (!ok) {
                     console.error("Error al guardar la orden.");
                     return;
                 }
-            
                 // 2. Guardar los detalles de la orden usando el order_id
                 const result = await actions.saveOrderDetails(order.id);
                 if (!result.ok) {
                     console.error("Error al guardar los detalles de la orden.");
                     return;
                 }
-            
                 // 3. Vaciar el carrito después de guardar la orden y los detalles
                 actions.clearCart();
-            
                 // Mensaje de confirmación (opcional)
                 console.log("Pago exitoso, orden y detalles guardados, carrito vaciado.");
             },   
@@ -408,13 +383,11 @@ const getState = ({ getStore, getActions, setStore }) => {
                         },
                         body: JSON.stringify({ order_id: orderId })
                     });
-            
                     if (!response.ok) {
                         const errorData = await response.json();
                         console.error("Error al generar la factura:", errorData.message);
                         return { ok: false };
                     }
-            
                     // Convertir la respuesta en blob para descargar el PDF
                     const blob = await response.blob();
                     const url = window.URL.createObjectURL(blob);
@@ -423,7 +396,6 @@ const getState = ({ getStore, getActions, setStore }) => {
                     link.download = `invoice_${orderId}.pdf`;
                     link.click();
                     window.URL.revokeObjectURL(url);
-            
                     return { ok: true };
                 } catch (error) {
                     console.error("Error al generar la factura:", error);
