@@ -1,8 +1,8 @@
 """empty message
 
-Revision ID: e40490bdb946
+Revision ID: d080f8b23480
 Revises: 
-Create Date: 2024-10-20 13:37:46.093083
+Create Date: 2024-10-20 17:41:37.206987
 
 """
 from alembic import op
@@ -10,7 +10,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision = 'e40490bdb946'
+revision = 'd080f8b23480'
 down_revision = None
 branch_labels = None
 depends_on = None
@@ -54,6 +54,19 @@ def upgrade():
     sa.UniqueConstraint('invoice_number'),
     sa.UniqueConstraint('locator')
     )
+    op.create_table('posts',
+    sa.Column('id', sa.Integer(), nullable=False),
+    sa.Column('title', sa.String(length=200), nullable=False),
+    sa.Column('content', sa.Text(), nullable=False),
+    sa.Column('author_id', sa.Integer(), nullable=False),
+    sa.Column('slug', sa.String(length=200), nullable=False),
+    sa.Column('image_url', sa.String(length=300), nullable=True),
+    sa.Column('created_at', sa.DateTime(), nullable=True),
+    sa.Column('updated_at', sa.DateTime(), nullable=True),
+    sa.ForeignKeyConstraint(['author_id'], ['users.id'], ),
+    sa.PrimaryKeyConstraint('id'),
+    sa.UniqueConstraint('slug')
+    )
     op.create_table('products',
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('nombre', sa.String(length=100), nullable=False),
@@ -75,6 +88,16 @@ def upgrade():
     sa.Column('precio_total', sa.Float(), nullable=False),
     sa.ForeignKeyConstraint(['producto_id'], ['products.id'], ),
     sa.ForeignKeyConstraint(['usuario_id'], ['users.id'], ),
+    sa.PrimaryKeyConstraint('id')
+    )
+    op.create_table('comments',
+    sa.Column('id', sa.Integer(), nullable=False),
+    sa.Column('content', sa.Text(), nullable=False),
+    sa.Column('post_id', sa.Integer(), nullable=False),
+    sa.Column('user_id', sa.Integer(), nullable=False),
+    sa.Column('created_at', sa.DateTime(), nullable=True),
+    sa.ForeignKeyConstraint(['post_id'], ['posts.id'], ),
+    sa.ForeignKeyConstraint(['user_id'], ['users.id'], ),
     sa.PrimaryKeyConstraint('id')
     )
     op.create_table('favorites',
@@ -123,8 +146,10 @@ def downgrade():
     op.drop_table('product_images')
     op.drop_table('order_details')
     op.drop_table('favorites')
+    op.drop_table('comments')
     op.drop_table('cart')
     op.drop_table('products')
+    op.drop_table('posts')
     op.drop_table('orders')
     op.drop_table('users')
     op.drop_table('categories')

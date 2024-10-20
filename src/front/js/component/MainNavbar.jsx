@@ -75,7 +75,7 @@ export const MainNavbar = () => {
                         <Nav.Link as={Link} to="/" onClick={handleSelect}>Inicio</Nav.Link>
                         <NavDropdown title="Productos" id="trainer-nav-dropdown">
                             <NavDropdown.Item as={Link} to="/rejas-para-ventanas" onClick={handleSelect}>Rejas para ventanas</NavDropdown.Item>
-                            <NavDropdown.Item as={Link} to="/generate-routines" onClick={handleSelect}>Generar Rutina</NavDropdown.Item>
+                            <NavDropdown.Item as={Link} to="/blog-list-page" onClick={handleSelect}>Generar Rutina</NavDropdown.Item>
                         </NavDropdown>
                         <Nav.Link as={Link} to="/bmr-calculator" onClick={handleSelect}>Blog</Nav.Link>
                         <Nav.Link as={Link} to="/exercises" onClick={handleSelect}>Contácto</Nav.Link>
