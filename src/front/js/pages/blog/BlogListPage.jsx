@@ -50,7 +50,7 @@ export const BlogListPage = () => {
                                 <i className="fa-regular fa-comments mx-1" style={{color: '#ff324d', paddingLeft: '10px'}}></i> 1
                             </p>
                             <p className='p-content'>{post.content.substring(0, 100)}...</p>
-                            <Link className="slug" to={`/blog/${post.slug}`}>Leer más</Link>
+                            <Link className="slug" to={'/medir-hueco-rejas-para-ventanas'}>Leer más</Link>
                         </div>
                     ))}
                 </div>

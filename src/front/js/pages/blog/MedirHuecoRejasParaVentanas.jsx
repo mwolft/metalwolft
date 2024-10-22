@@ -1,19 +1,18 @@
 import React, { useEffect, useContext, useState } from 'react';
-import { useParams } from 'react-router-dom';
 import { Container, Form, Button, Alert } from 'react-bootstrap';
 import { Context } from '../../store/appContext';
 
-export const BlogDetailPage = () => {
-    const { slug } = useParams();
+export const MedirHuecoRejasParaVentanas = () => {
     const { store, actions } = useContext(Context);
     const [commentContent, setCommentContent] = useState("");
     const [successMessage, setSuccessMessage] = useState("");
 
-    const { currentPost, currentComments, error } = store;
+    const { currentComments, error } = store;
+    const postId = 1; // Asume que este es el ID del post que corresponde a este componente (ajústalo según corresponda)
 
     useEffect(() => {
-        actions.fetchPost(slug);
-    }, [slug, actions]);
+        actions.fetchComments(postId);
+    }, [actions, postId]);
 
     const handleCommentSubmit = async (e) => {
         e.preventDefault();
@@ -21,7 +20,7 @@ export const BlogDetailPage = () => {
 
         try {
             const token = localStorage.getItem('jwt');
-            const response = await fetch(`${process.env.BACKEND_URL}/api/posts/${currentPost.id}/comments`, {
+            const response = await fetch(`${process.env.BACKEND_URL}/api/posts/${postId}/comments`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -35,7 +34,7 @@ export const BlogDetailPage = () => {
             }
 
             const newComment = await response.json();
-            actions.fetchComments(currentPost.id); // Actualizar los comentarios después de añadir uno nuevo
+            actions.fetchComments(postId); // Actualizar los comentarios después de añadir uno nuevo
             setCommentContent("");
             setSuccessMessage("Comment posted successfully!");
             setTimeout(() => setSuccessMessage(""), 3000);
@@ -44,15 +43,10 @@ export const BlogDetailPage = () => {
         }
     };
 
-    if (!currentPost) {
-        return <p>Loading...</p>;
-    }
-
     return (
-        <Container>
-            <h2 className="my-4">{currentPost.title}</h2>
-            <p>{currentPost.content}</p>
-            {currentPost.image_url && <img src={currentPost.image_url} alt={currentPost.title} className="img-fluid mb-4" />}
+        <Container style={{ marginTop: '350px' }}>
+            <h2 className="my-4">Primer Post</h2>
+            <p>Contenido del post...</p> {/* Aquí iría el contenido personalizado de este post */}
             
             <hr />
             <h3>Comments</h3>
