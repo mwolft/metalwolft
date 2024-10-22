@@ -31,8 +31,10 @@ import { Favoritos } from "./pages/Favoritos.jsx";
 import { ProductDetail } from "./pages/ProductDetail.jsx";
 import { Cart } from "./pages/Cart.jsx";
 import { ThankYou } from "./pages/ThankYou.jsx";
+
+// Blog
 import { BlogListPage } from "./pages/blog/BlogListPage.jsx";
-import { BlogDetailPage } from "./pages/blog/BlogDetailPage.jsx";
+import { MedirHuecoRejasParaVentanas } from "./pages/blog/MedirHuecoRejasParaVentanas.jsx"
 
 // Custom categories
 import { RejasParaVentanas } from "./pages/categories/RejasParaVentanas.jsx";
@@ -70,7 +72,7 @@ const Layout = () => {
                     <Route path="/breadcrumb" element={<Breadcrumb />} />
                     <Route path="/rejas-para-ventanas" element={<RejasParaVentanas />} />
                     <Route path="/blogs" element={<BlogListPage />} />
-                    <Route path="/blog/:slug" element={<BlogDetailPage />} />
+                    <Route path="/medir-hueco-rejas-para-ventanas" element={<MedirHuecoRejasParaVentanas />} />
                     <Route path="*" element={<Error404 />} />
                 </Routes>
                 <Footer />

@@ -50,8 +50,7 @@ class Posts(db.Model):
     title = db.Column(db.String(200), nullable=False)
     content = db.Column(db.Text, nullable=False)
     author_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
-    slug = db.Column(db.String(200), unique=True, nullable=False)
-    image_url = db.Column(db.String(300), nullable=True)  # Opcional, para una imagen destacada
+    image_url = db.Column(db.String(300), nullable=True)  
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, onupdate=datetime.utcnow)
 
@@ -67,7 +66,6 @@ class Posts(db.Model):
             "title": self.title,
             "content": self.content,
             "author_id": self.author_id,
-            "slug": self.slug,
             "image_url": self.image_url,
             "created_at": self.created_at,
             "updated_at": self.updated_at,
