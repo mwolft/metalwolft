@@ -1,47 +1,60 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useContext } from 'react';
 import { Link } from 'react-router-dom';
+import { Breadcrumb } from '../../component/Breadcrumb.jsx';
+import "../../../styles/blog.css";
+import { Context } from '../../store/appContext';
 
 export const BlogListPage = () => {
-    const [posts, setPosts] = useState([]);
-    const [loading, setLoading] = useState(true);
+    const { store, actions } = useContext(Context);
+    const { posts, error } = store;
 
     useEffect(() => {
-        // Función para obtener las publicaciones
-        const fetchPosts = async () => {
-            try {
-                const response = await fetch(`${process.env.BACKEND_URL}/api/posts`);
-                if (!response.ok) {
-                    throw new Error('Error fetching posts');
-                }
-                const data = await response.json();
-                setPosts(data);
-                setLoading(false);
-            } catch (error) {
-                console.error('Error:', error);
-                setLoading(false);
-            }
-        };
+        if (!store.postsLoaded) {
+            actions.loadPosts();
+        }
+    }, [actions, store.postsLoaded]);
 
-        fetchPosts();
-    }, []);
+    const formatDate = (dateString) => {
+        const options = { year: 'numeric', month: 'long', day: 'numeric' };
+        return new Date(dateString).toLocaleDateString(undefined, options);
+    };
 
-    if (loading) {
-        return <p>Loading...</p>;
+    if (!store.postsLoaded) {
+        return <p>Cargando...</p>;
+    }
+
+    if (error) {
+        return <p>Error al cargar los posts. Por favor, inténtalo de nuevo más tarde.</p>;
+    }
+
+    if (posts.length === 0) {
+        return <p>No hay posts disponibles en este momento.</p>;
     }
 
     return (
-        <div style={{marginTop: '150px'}}>
-            <h2>Blog</h2>
-            <ul>
-                {posts.map(post => (
-                    <li key={post.id}>
-                        <h3>{post.title}</h3>
-                        <p>{post.content.substring(0, 100)}...</p> {/* Muestra un resumen del contenido */}
-                        <Link to={`/blog/${post.slug}`}>Read more</Link>
-                    </li>
-                ))}
-            </ul>
-        </div>
+        <>
+            <Breadcrumb />
+            <div className="container-fluid">
+                <div className="row" style={{ margin: '3rem 4rem', backgroundSize: 'cover' }}>
+                    {posts.map(post => (
+                        <div className="card-blog col-12 col-sm-12 col-md-4 col-lg-4 col-xl-4 mb-4" key={post.id}>
+                            <img 
+                                src={post.image_url} 
+                                alt={post.title} 
+                                className="img-blog img-fluid w-100" 
+                                style={{ objectFit: 'cover', height: '200px' }} 
+                            />
+                            <h2 className='h2-title-blog'>{post.title}</h2>
+                            <p className='p-coments'>
+                                <i className="fa-regular fa-calendar mx-1" style={{color: '#ff324d'}}></i> {formatDate(post.created_at)}
+                                <i className="fa-regular fa-comments mx-1" style={{color: '#ff324d', paddingLeft: '10px'}}></i> 1
+                            </p>
+                            <p className='p-content'>{post.content.substring(0, 100)}...</p>
+                            <Link className="slug" to={`/blog/${post.slug}`}>Leer más</Link>
+                        </div>
+                    ))}
+                </div>
+            </div>
+        </>
     );
 };
-

@@ -1,7 +1,7 @@
 from flask import Flask, request, jsonify, Blueprint, send_file
 from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity
 from api.utils import generate_sitemap, APIException
-from api.models import db, Users, Products, ProductImages, Categories, Orders, OrderDetails, Favorites, Cart, OrderDetails, Posts
+from api.models import db, Users, Products, ProductImages, Categories, Orders, OrderDetails, Favorites, Cart, OrderDetails, Posts, Comments
 from sqlalchemy.exc import SQLAlchemyError
 import bcrypt
 import stripe
@@ -47,6 +47,14 @@ def create_payment_intent():
 
     except Exception as e:
         return jsonify({"error": str(e)}), 403
+
+
+@api.route('/posts/<int:post_id>/comments', methods=['GET'])
+def get_comments(post_id):
+    comments = Comments.query.filter_by(post_id=post_id).all()
+    if not comments:
+        return jsonify([]), 200
+    return jsonify([comment.serialize() for comment in comments]), 200
 
 
 @api.route('/posts', methods=['GET'])

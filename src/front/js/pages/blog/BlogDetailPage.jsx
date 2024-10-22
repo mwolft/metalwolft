@@ -1,48 +1,19 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useContext, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { Container, Form, Button, Alert } from 'react-bootstrap';
+import { Context } from '../../store/appContext';
 
 export const BlogDetailPage = () => {
     const { slug } = useParams();
-    const [post, setPost] = useState(null);
-    const [comments, setComments] = useState([]);
-    const [loading, setLoading] = useState(true);
+    const { store, actions } = useContext(Context);
     const [commentContent, setCommentContent] = useState("");
     const [successMessage, setSuccessMessage] = useState("");
 
+    const { currentPost, currentComments, error } = store;
+
     useEffect(() => {
-        const fetchPost = async () => {
-            try {
-                const response = await fetch(`http://localhost:5000/api/posts/${slug}`);
-                if (!response.ok) {
-                    throw new Error('Error fetching post');
-                }
-                const data = await response.json();
-                setPost(data);
-                fetchComments(data.id);
-            } catch (error) {
-                console.error('Error:', error);
-                setLoading(false);
-            }
-        };
-
-        const fetchComments = async (postId) => {
-            try {
-                const response = await fetch(`http://localhost:5000/api/posts/${postId}/comments`);
-                if (!response.ok) {
-                    throw new Error('Error fetching comments');
-                }
-                const data = await response.json();
-                setComments(data);
-                setLoading(false);
-            } catch (error) {
-                console.error('Error:', error);
-                setLoading(false);
-            }
-        };
-
-        fetchPost();
-    }, [slug]);
+        actions.fetchPost(slug);
+    }, [slug, actions]);
 
     const handleCommentSubmit = async (e) => {
         e.preventDefault();
@@ -50,7 +21,7 @@ export const BlogDetailPage = () => {
 
         try {
             const token = localStorage.getItem('jwt');
-            const response = await fetch(`http://localhost:5000/api/posts/${post.id}/comments`, {
+            const response = await fetch(`${process.env.BACKEND_URL}/api/posts/${currentPost.id}/comments`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -64,7 +35,7 @@ export const BlogDetailPage = () => {
             }
 
             const newComment = await response.json();
-            setComments([...comments, newComment]);
+            actions.fetchComments(currentPost.id); // Actualizar los comentarios después de añadir uno nuevo
             setCommentContent("");
             setSuccessMessage("Comment posted successfully!");
             setTimeout(() => setSuccessMessage(""), 3000);
@@ -73,25 +44,21 @@ export const BlogDetailPage = () => {
         }
     };
 
-    if (loading) {
+    if (!currentPost) {
         return <p>Loading...</p>;
-    }
-
-    if (!post) {
-        return <p>Post not found</p>;
     }
 
     return (
         <Container>
-            <h2 className="my-4">{post.title}</h2>
-            <p>{post.content}</p>
-            {post.image_url && <img src={post.image_url} alt={post.title} className="img-fluid mb-4" />}
+            <h2 className="my-4">{currentPost.title}</h2>
+            <p>{currentPost.content}</p>
+            {currentPost.image_url && <img src={currentPost.image_url} alt={currentPost.title} className="img-fluid mb-4" />}
             
             <hr />
             <h3>Comments</h3>
-            {comments.length > 0 ? (
+            {currentComments && currentComments.length > 0 ? (
                 <ul>
-                    {comments.map(comment => (
+                    {currentComments.map(comment => (
                         <li key={comment.id}>
                             <p>{comment.content}</p>
                             <small>Posted by user {comment.user_id}</small>
@@ -119,4 +86,3 @@ export const BlogDetailPage = () => {
         </Container>
     );
 };
-

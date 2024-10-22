@@ -1,7 +1,6 @@
 import React, { useEffect, useContext } from "react";
 import { Breadcrumb } from "../../component/Breadcrumb.jsx";
 import { Product } from "../../component/Product.jsx";
-import "../../../styles/categories.css";
 import { useNavigate } from "react-router-dom";
 import { AsideCategories } from "../../component/AsideCategories.jsx";
 import { Context } from "../../store/appContext";

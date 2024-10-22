@@ -31,9 +31,9 @@ import { Favoritos } from "./pages/Favoritos.jsx";
 import { ProductDetail } from "./pages/ProductDetail.jsx";
 import { Cart } from "./pages/Cart.jsx";
 import { ThankYou } from "./pages/ThankYou.jsx";
-import { BlogListPage } from "./pages/blog/BlogListPage.jsx"
+import { BlogListPage } from "./pages/blog/BlogListPage.jsx";
 import { BlogDetailPage } from "./pages/blog/BlogDetailPage.jsx";
- 
+
 // Custom categories
 import { RejasParaVentanas } from "./pages/categories/RejasParaVentanas.jsx";
 
@@ -69,9 +69,9 @@ const Layout = () => {
                     <Route path="/aside-categories" element={<AsideCategories />} />
                     <Route path="/breadcrumb" element={<Breadcrumb />} />
                     <Route path="/rejas-para-ventanas" element={<RejasParaVentanas />} />
+                    <Route path="/blogs" element={<BlogListPage />} />
+                    <Route path="/blog/:slug" element={<BlogDetailPage />} />
                     <Route path="*" element={<Error404 />} />
-                    <Route path="/blog-list-page" element={<BlogListPage />} />
-                    <Route path="/blog-detail-page" element={<BlogDetailPage />} />
                 </Routes>
                 <Footer />
             </BrowserRouter>
