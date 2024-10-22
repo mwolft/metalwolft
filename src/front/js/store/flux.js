@@ -14,9 +14,93 @@ const getState = ({ getStore, getActions, setStore }) => {
             orders: [],  
             orderDetails: [],
             cart: [],
-            paymentCompleted: false
+            paymentCompleted: false,
+            posts: [],  
+            postsLoaded: false
         },
         actions: {
+            loadPosts: async () => {
+                try {
+                    const response = await fetch(`${process.env.BACKEND_URL}/api/posts`, {
+                        method: 'GET',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        }
+                    });
+            
+                    if (!response.ok) throw new Error("Error loading posts");
+            
+                    const data = await response.json();
+                    setStore({ posts: data, postsLoaded: true });
+                } catch (error) {
+                    console.error("Error fetching posts:", error);
+                    setStore({ error: error.message });
+                }
+            },            
+            addPost: async (postData) => {
+                const token = localStorage.getItem("token");
+                try {
+                    const response = await fetch(`${process.env.BACKEND_URL}/api/posts`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            Authorization: `Bearer ${token}` // Aseguramos que el usuario esté autenticado
+                        },
+                        body: JSON.stringify(postData)
+                    });
+            
+                    if (!response.ok) throw new Error("Error adding post");
+            
+                    const newPost = await response.json();
+                    const store = getStore();
+                    setStore({ posts: [...store.posts, newPost] }); // Actualizar el store con el nuevo post
+                } catch (error) {
+                    console.error("Error adding post:", error);
+                    setStore({ error: error.message });
+                }
+            },   
+            fetchPost: async (slug) => {
+                try {
+                    const response = await fetch(`${process.env.BACKEND_URL}/api/posts/${slug}`, {
+                        method: 'GET',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        }
+                    });
+            
+                    if (!response.ok) throw new Error("Error fetching post");
+            
+                    const postData = await response.json();
+                    setStore({ currentPost: postData });
+                    getActions().fetchComments(postData.id);
+                } catch (error) {
+                    console.error("Error fetching post:", error);
+                    setStore({ error: error.message });
+                }
+            },
+            fetchComments: async (postId) => {
+                try {
+                    const response = await fetch(`${process.env.BACKEND_URL}/api/posts/${postId}/comments`, {
+                        method: 'GET',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        }
+                    });
+            
+                    if (!response.ok) {
+                        // Imprimir el cuerpo de la respuesta si no es 200 OK
+                        const errorText = await response.text();
+                        console.error(`Error fetching comments: ${response.status} - ${errorText}`);
+                        throw new Error(`Error ${response.status}: ${response.statusText}`);
+                    }
+            
+                    const commentsData = await response.json();
+                    setStore({ currentComments: commentsData });
+                } catch (error) {
+                    console.error("Error fetching comments:", error);
+                    setStore({ error: error.message });
+                }
+            },                                        
             getMessage: async () => {
                 const options = {
                     headers: { 'Content-Type': 'application/json' },
