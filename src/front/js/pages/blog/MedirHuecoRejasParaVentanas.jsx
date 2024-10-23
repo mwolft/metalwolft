@@ -1,6 +1,7 @@
 import React, { useEffect, useContext, useState } from 'react';
 import { Container, Row, Col, Form, Button, Alert } from 'react-bootstrap';
 import { Context } from '../../store/appContext';
+import { Breadcrumb } from '../../component/Breadcrumb.jsx';
 import "../../../styles/blog.css";
 
 export const MedirHuecoRejasParaVentanas = () => {
@@ -9,7 +10,7 @@ export const MedirHuecoRejasParaVentanas = () => {
     const [successMessage, setSuccessMessage] = useState("");
 
     const { currentPost, currentComments, error } = store;
-    const postId = 1; 
+    const postId = 1;
 
     // Cargar el post al montar el componente
     useEffect(() => {
@@ -45,7 +46,7 @@ export const MedirHuecoRejasParaVentanas = () => {
             }
 
             const newComment = await response.json();
-            actions.fetchComments(postId); 
+            actions.fetchComments(postId);
             setCommentContent("");
             setSuccessMessage("Comment posted successfully!");
             setTimeout(() => setSuccessMessage(""), 3000);
@@ -55,81 +56,131 @@ export const MedirHuecoRejasParaVentanas = () => {
     };
 
     return (
-        <Container style={{ marginTop: '150px' }}>
-            <Row>
-                <Col xl={9}>
-                    {currentPost && (
-                        <div className="single_post">
-                            <h1 className="blog_title">{currentPost.title}</h1>
-                            <p className="p-coments">
-                                <i className="fa-regular fa-calendar mx-1" style={{color: '#ff324d'}}></i> {new Date(currentPost.created_at).toLocaleDateString()}
-                                <i className="fa-regular fa-comments mx-1" style={{color: '#ff324d', paddingLeft: '10px'}}></i> {currentComments?.length || 0} Comentarios
-                            </p>
-                            <div className="blog_img">
-                                <img src="https://www.metalwolft.com/assets/images/blog/rejas-para-ventanas.avif" alt="es" className="img-fluid" />
+        <>
+            <Breadcrumb />
+            <Container style={{ padding: '10px' }}>
+                <Row>
+                    <Col xl={9}>
+                        {currentPost && (
+                            <div className="single_post">
+                                <h1 className="blog_title">{currentPost.title}</h1>
+                                <p className="p-coments">
+                                    <i className="fa-regular fa-calendar mx-1" style={{ color: '#ff324d' }}></i> {new Date(currentPost.created_at).toLocaleDateString()}
+                                    <i className="fa-regular fa-comments mx-1" style={{ color: '#ff324d', paddingLeft: '10px' }}></i> {currentComments?.length || 0} Comentarios
+                                </p>
+                                <img src="https://www.metalwolft.com/assets/images/blog/rejas-para-ventanas.avif" alt="es" className="img-fluid my-3" />
                             </div>
-                        </div>
-                    )}
-                    <div className="comment-area">
-                        <div className="content_title">
-                            <h5>Comentarios ({currentComments?.length || 0})</h5>
-                        </div>
-                        {currentComments && currentComments.length > 0 ? (
-                            <ul className="list_none comment_list">
-                                {currentComments.map(comment => (
-                                    <li className="comment_info" key={comment.id}>
-                                        <div className="d-flex">
-                                            <div className="comment_user">
-                                                <img src="https://www.metalwolft.com/assets/images/users/user.png" alt="user avatar" />
-                                            </div>
-                                            <div className="comment_content">
-                                                <div className="d-flex">
-                                                    <div className="meta_data">
-                                                        <h6>{comment.user_id}</h6>
-                                                        <div className="comment-time">{new Date(comment.created_at).toLocaleString()}</div>
-                                                    </div>
-                                                </div>
-                                                <p>{comment.content}</p>
-                                            </div>
-                                        </div>
-                                    </li>
-                                ))}
-                            </ul>
-                        ) : (
-                            <p>No comments yet. Be the first to comment!</p>
                         )}
-                        {successMessage && <Alert variant="success">{successMessage}</Alert>}
-                        <Form onSubmit={handleCommentSubmit}>
-                            <Form.Group>
-                                <Form.Control
-                                    as="textarea"
-                                    value={commentContent}
-                                    onChange={(e) => setCommentContent(e.target.value)}
-                                    placeholder="Add a comment"
-                                    rows="4"
-                                />
-                            </Form.Group>
-                            <Button type="submit" className="mt-2">Submit Comment</Button>
-                        </Form>
-                    </div>
-                </Col>
-                <Col xl={3}>
-                    <div className="sidebar">
-                        <div className="widget">
-                            <div className="shop_banner">
-                                <div className="banner_img overlay_bg_20">
-                                    <img src="https://www.metalwolft.com/assets/images/banners/rejas_para_ventanas_banner_img.avif" alt="rejas para ventanas rusticas" />
+                        <div className="blog_text">
+                            <p>En numerosas ocasiones, nos enfrentamos a la realidad de que los huecos destinados para la instalación de rejas en ventanas presentan <b>leves variaciones en sus dimensiones.</b></p>
+                            <p>Esta divergencia es completamente normal, ya que cada espacio posee sus particularidades.</p>
+                            <p>Generalmente esta diferencia <b>es muy leve</b> y no nos tiene que preocupar en exceso estéticamente, pero si hay que <b>ser preciso</b> para el ensamblaje de la misma.</p>
+                            <p>En el proceso de instalación de rejas para ventanas, es una práctica común dejar un <b>espacio de aproximadamente 3/4 de centímetros</b> entre la reja y la parte inferior del hueco, sea esta de ladrillo u otro material. </p>
+                            <p>Este espacio sirve para <b>evitar la acumulación</b> de suciedad, como polvo y hojas, permitiendo un drenaje eficiente del agua y facilitando la limpieza tanto de la parte inferior del hueco como de la propia reja. </p>
+                            <p>Además, contribuye a <b>mantener la integridad</b> de las rejas para ventanas al evitar el contacto directo con la superficie de la pared, <b>previniendo así la corrosión.</b></p>
+                            <p>En consecuencia, la <b>medición más crítica</b> se centra en el ancho, que debe realizarse con <b>precisión,</b> como veremos más adelante. </p>
+                            <blockquote className="blockquote_style3">
+                                <p>Los huecos donde se instalan las rejas para ventanas en muchas ocasiones no son rectángulos perfectos</p>
+                            </blockquote>
+                            <div className="row">
+                                <div className="col-sm-6">
+                                    <div className="single_img">
+                                        <img className="w-100 mb-4" src="https://www.metalwolft.com/assets/images/blog/rejas-para-ventanas-modernas.avif" alt="rejas para ventanas modernas" />
+                                    </div>
                                 </div>
-                                <div className="shop_bn_content2 text_white">
-                                    <h5 className="text-uppercase shop_subtitle">Hazlo en Casa</h5>
-                                    <h3 className="text-uppercase shop_title">Instalación Simple</h3>
-                                    <a href="instalation-rejas-para-ventanas" className="btn btn-white rounded-0 btn-sm text-uppercase">Ver video</a>
+                                <div className="col-sm-6">
+                                    <div className="single_img">
+                                        <img className="w-100 mb-4" src="https://www.metalwolft.com/assets/images/blog/rejas-para-ventanas-sin-obra.avif" alt="rejas para ventanas sin obra" />
+                                    </div>
+                                </div>
+                            </div>
+                            <p>El alto del hueco, por otro lado, suele admitir <b>cierta flexibilidad,</b> dado que se reserva un pequeño margen. </p>
+                            <p>Esto significa que, a menudo, es más importante asegurarse de <b>medir el ancho con precisión,</b> ya que cualquier error en esta dimensión podría resultar en la incompatibilidad de las rejas para ventanas con el hueco.</p>
+                            <p>La dimensión final del ancho del hueco para las rejas de las ventanas se determina tomando <b>la medida más estrecha</b> entre tres puntos cruciales: la parte inferior, la zona intermedia y la superior. </p>
+                            <p>Esto implica que es necesario <b>medir cuidadosamente</b> cada uno de estos puntos para asegurarse de que la reja encaje perfectamente y proporcione una estética deseada.</p>
+                            <p>Aunque las rejas para ventanas son rectángulos prácticamente perfectos, con muy pocas variaciones en sus medidas, la <b>albañilería,</b> en contraste, tiende a ser <b>menos precisa.</b></p>
+                            <p>Las imperfecciones en las paredes o los cambios en el grosor de los materiales utilizados pueden generar diferencias en las dimensiones del hueco. </p>
+                            <p>Por lo tanto, es <b>fundamental</b> no asumir que todas las partes del hueco tienen la <b>misma medida,</b> sino <b>verificar</b> cada punto clave para asegurarse de una instalación exitosa.</p>
+                            <blockquote className="blockquote_style3">
+                                <p>La dimensión final del ancho la determina la medida más estrecha</p>
+                            </blockquote>
+                            <p>En situaciones donde las <b>medidas varían</b> algunos milímetros, es posible corregir esta disparidad rellenando el espacio posteriormente. </p>
+                            <p>Esto puede lograrse mediante el <b>uso de silicona</b> en casos menores, mientras que para espacios más amplios se recurre al uso de cemento. Estas soluciones permiten <b>ajustar la reja</b> de manera efectiva al hueco y garantizar su estética.</p>
+                            <p>Por eso es fundamental que la medición y la instalación se realicen <b>de manera cuidadosa</b> y con seguridad, siempre con alguien que nos ayude en la medición y hacerlo <b>varias veces</b> para estar del todo seguros.</p>
+                            <p>En resumen, la medición adecuada del hueco para rejas de ventanas es esencial para garantizar una instalación estéticamente agradable. Dejar un espacio entre la reja y la parte inferior del hueco permite una fácil limpieza y evita la acumulación de suciedad. </p>
+                            <p>Asegurarse de medir con <b>precisión el ancho del hueco</b> y considerar las variaciones en la albañilería es fundamental para un resultado exitoso. </p>
+                            <p>En caso de discrepancias en las medidas, las soluciones de relleno adecuadas son clave para garantizar un ajuste perfecto y una estética óptima en el hogar.</p>
+                            <p>Más abajo <b>os presentamos un video</b> que explica al detalle cómo realizar una medida correcta del hueco de rejas para ventanas.</p>
+                            <p>¡Si todavía tiene dudas siempre puede contar con nosotros para resolverle cuantas cuestiones necesite!</p>
+                            <video controls width="100%" height="auto">
+                                <source src="https://www.metalwolft.com/assets/video/medicion-rejas-para-ventanas.webm" type="video/webm" />
+                                Your browser does not support the video tag.
+                            </video>
+                        </div>
+                        <hr style={{ marginTop: '30px' }} />
+                        <div className="comment-area" style={{ marginTop: '50px', marginBottom: '50px' }}>
+                            <div className="content_title">
+                                <p>Comentarios ({currentComments?.length || 0})</p>
+                            </div>
+                            {currentComments && currentComments.length > 0 ? (
+                                <ul className="list_none comment_list">
+                                    {currentComments.map(comment => (
+                                        <li className="comment_info" key={comment.id}>
+                                            <div className="d-flex">
+                                                <div className="comment_user">
+                                                    <img src="https://www.metalwolft.com/assets/images/users/user.png"
+                                                        alt="user avatar"
+                                                        style={{ width: '3rem', height: 'auto' }} />
+                                                </div>
+                                                <div className="comment_content">
+                                                    <div className="d-flex">
+                                                        <div className="meta_data">
+                                                            <h6>{comment.user_id}</h6>
+                                                            <div className="comment-time">{new Date(comment.created_at).toLocaleString()}</div>
+                                                        </div>
+                                                    </div>
+                                                    <p>{comment.content}</p>
+                                                </div>
+                                            </div>
+                                        </li>
+                                    ))}
+                                </ul>
+                            ) : (
+                                <p>No comments yet. Be the first to comment!</p>
+                            )}
+                            {successMessage && <Alert variant="success">{successMessage}</Alert>}
+                            <Form onSubmit={handleCommentSubmit}>
+                                <Form.Group>
+                                    <Form.Control
+                                        as="textarea"
+                                        value={commentContent}
+                                        onChange={(e) => setCommentContent(e.target.value)}
+                                        placeholder="Escribir un comentario"
+                                        rows="4"
+                                    />
+                                </Form.Group>
+                                <Button type="submit" className="btn btn-style-background-color mt-2">Enviar comentario</Button>
+                            </Form>
+                        </div>
+                    </Col>
+                    <Col xl={3}>
+                        <div className="sidebar">
+                            <div className="widget">
+                                <div className="shop_banner">
+                                    <div className="banner_img overlay_bg_20">
+                                        <img src="https://www.metalwolft.com/assets/images/banners/rejas_para_ventanas_banner_img.avif" alt="rejas para ventanas rusticas" />
+                                    </div>
+                                    <div className="shop_bn_content2 text_white">
+                                        <h5 className="text-uppercase shop_subtitle">Hazlo en Casa</h5>
+                                        <h3 className="text-uppercase shop_title">Instalación Simple</h3>
+                                        <a href="instalation-rejas-para-ventanas" className="btn btn-white rounded-0 btn-sm text-uppercase">Ver video</a>
+                                    </div>
                                 </div>
                             </div>
                         </div>
-                    </div>
-                </Col>
-            </Row>
-        </Container>
+                    </Col>
+                </Row>
+            </Container>
+        </>
     );
 };
