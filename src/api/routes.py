@@ -21,6 +21,7 @@ load_dotenv()
 
 stripe.api_key = os.getenv('STRIPE_SECRET_KEY')
 
+
 @api.route('/create-payment-intent', methods=['POST'])
 def create_payment_intent():
     try:
@@ -58,7 +59,7 @@ def get_comments(post_id):
 
 
 @api.route('/posts', methods=['GET'])
-@jwt_required(optional=True)  # Hacemos que la autenticación sea opcional para las publicaciones públicas
+@jwt_required(optional=True)
 def get_posts():
     posts = Posts.query.all()
     total_count = len(posts)
@@ -70,10 +71,10 @@ def get_posts():
     return response, 200
 
 
-@api.route('/posts/<string:slug>', methods=['GET'])
+@api.route('/posts/<int:post_id>', methods=['GET'])
 @jwt_required(optional=True)
-def get_post(slug):
-    post = Posts.query.filter_by(slug=slug).first()
+def get_post(post_id):
+    post = Posts.query.get(post_id)
     if post:
         return jsonify(post.serialize()), 200
     return jsonify({"message": "Post not found"}), 404
@@ -91,7 +92,6 @@ def create_post():
         title=data.get('title'),
         content=data.get('content'),
         author_id=current_user.get('id'),
-        slug=data.get('slug'),
         image_url=data.get('image_url')
     )
     db.session.add(new_post)
@@ -113,7 +113,6 @@ def update_post(post_id):
     data = request.json
     post.title = data.get('title', post.title)
     post.content = data.get('content', post.content)
-    post.slug = data.get('slug', post.slug)
     post.image_url = data.get('image_url', post.image_url)
     post.updated_at = datetime.utcnow()
 

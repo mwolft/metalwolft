@@ -19,6 +19,11 @@ export const BlogListPage = () => {
         return new Date(dateString).toLocaleDateString(undefined, options);
     };
 
+    const fetchCommentsForPost = async (postId) => {
+        // Fetch the comments for each post when needed
+        await actions.fetchComments(postId);
+    };
+
     if (!store.postsLoaded) {
         return <p>Cargando...</p>;
     }
@@ -37,20 +42,24 @@ export const BlogListPage = () => {
             <div className="container-fluid">
                 <div className="row" style={{ margin: '3rem 4rem', backgroundSize: 'cover' }}>
                     {posts.map(post => (
-                        <div className="card-blog col-12 col-sm-12 col-md-4 col-lg-4 col-xl-4 mb-4" key={post.id}>
-                            <img 
-                                src={post.image_url} 
-                                alt={post.title} 
-                                className="img-blog img-fluid w-100" 
-                                style={{ objectFit: 'cover', height: '200px' }} 
+                        <div 
+                            className="card-blog col-12 col-sm-12 col-md-4 col-lg-4 col-xl-4 mb-4" 
+                            key={post.id}
+                            onMouseEnter={() => fetchCommentsForPost(post.id)} // Carga los comentarios cuando el mouse está sobre el post
+                        >
+                            <img
+                                src={post.image_url}
+                                alt={post.title}
+                                className="img-blog img-fluid w-100"
+                                style={{ objectFit: 'cover', height: '200px' }}
                             />
                             <h2 className='h2-title-blog'>{post.title}</h2>
                             <p className='p-coments'>
-                                <i className="fa-regular fa-calendar mx-1" style={{color: '#ff324d'}}></i> {formatDate(post.created_at)}
-                                <i className="fa-regular fa-comments mx-1" style={{color: '#ff324d', paddingLeft: '10px'}}></i> 1
+                                <i className="fa-regular fa-calendar mx-1" style={{ color: '#ff324d' }}></i> {formatDate(post.created_at)}
+                                <i className="fa-regular fa-comments mx-1" style={{ color: '#ff324d', paddingLeft: '10px' }}></i> {store.currentComments?.filter(comment => comment.post_id === post.id).length || 0} Comentarios
                             </p>
                             <p className='p-content'>{post.content.substring(0, 100)}...</p>
-                            <Link className="slug" to={'/medir-hueco-rejas-para-ventanas'}>Leer más</Link>
+                            <Link className="slug" to={`/medir-hueco-rejas-para-ventanas`}>Leer más</Link>
                         </div>
                     ))}
                 </div>
