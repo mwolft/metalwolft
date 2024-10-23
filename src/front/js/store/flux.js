@@ -59,9 +59,9 @@ const getState = ({ getStore, getActions, setStore }) => {
                     setStore({ error: error.message });
                 }
             },   
-            fetchPost: async (slug) => {
+            fetchPost: async (postId) => {
                 try {
-                    const response = await fetch(`${process.env.BACKEND_URL}/api/posts/${slug}`, {
+                    const response = await fetch(`${process.env.BACKEND_URL}/api/posts/${postId}`, {
                         method: 'GET',
                         headers: {
                             'Content-Type': 'application/json'
@@ -77,7 +77,7 @@ const getState = ({ getStore, getActions, setStore }) => {
                     console.error("Error fetching post:", error);
                     setStore({ error: error.message });
                 }
-            },
+            },                     
             fetchComments: async (postId) => {
                 try {
                     const response = await fetch(`${process.env.BACKEND_URL}/api/posts/${postId}/comments`, {

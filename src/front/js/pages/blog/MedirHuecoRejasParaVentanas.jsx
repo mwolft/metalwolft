@@ -1,18 +1,29 @@
 import React, { useEffect, useContext, useState } from 'react';
 import { Container, Row, Col, Form, Button, Alert } from 'react-bootstrap';
 import { Context } from '../../store/appContext';
+import "../../../styles/blog.css";
 
 export const MedirHuecoRejasParaVentanas = () => {
     const { store, actions } = useContext(Context);
     const [commentContent, setCommentContent] = useState("");
     const [successMessage, setSuccessMessage] = useState("");
 
-    const { currentComments, error } = store;
+    const { currentPost, currentComments, error } = store;
     const postId = 1; 
 
+    // Cargar el post al montar el componente
     useEffect(() => {
-        actions.fetchComments(postId);
-    }, [actions, postId]);
+        if (!currentPost || currentPost.id !== postId) {
+            actions.fetchPost(postId);
+        }
+    }, [actions, currentPost, postId]);
+
+    // Cargar comentarios solo si el post ha sido cargado y solo si los comentarios no están ya cargados
+    useEffect(() => {
+        if (currentPost && currentPost.id === postId && (!currentComments || currentComments[0]?.post_id !== postId)) {
+            actions.fetchComments(postId);
+        }
+    }, [actions, currentPost, currentComments, postId]);
 
     const handleCommentSubmit = async (e) => {
         e.preventDefault();
@@ -47,43 +58,18 @@ export const MedirHuecoRejasParaVentanas = () => {
         <Container style={{ marginTop: '150px' }}>
             <Row>
                 <Col xl={9}>
-                    <div className="single_post">
-                        <h2 className="blog_title">MEDICIÓN DEL HUECO PARA REJAS DE VENTANAS: CONSEJOS IMPORTANTES.</h2>
-                        <ul className="list_none blog_meta">
-                            <li><i className="ti-calendar"></i> 16 de marzo, 2023</li>
-                            <li><i className="ti-comments"></i> 2 Comentarios</li>
-                        </ul>
-                        <div className="blog_img">
-                            <img src="https://www.metalwolft.com/assets/images/blog/rejas-para-ventanas.avif" alt="rejas para ventanas" className="img-fluid" />
-                        </div>
-                        <div className="blog_content">
-                            <div className="blog_text">
-                                <p>En numerosas ocasiones, nos enfrentamos a la realidad de que los huecos destinados para la instalación de rejas en ventanas presentan <b>leves variaciones en sus dimensiones.</b></p>
-                                <p>Esta divergencia es completamente normal, ya que cada espacio posee sus particularidades.</p>
-                                <p>Generalmente esta diferencia <b>es muy leve</b> y no nos tiene que preocupar en exceso estéticamente, pero si hay que <b>ser preciso</b> para el ensamblaje de la misma.</p>
-                                <blockquote className="blockquote_style3">
-                                    <p>Los huecos donde se instalan las rejas para ventanas en muchas ocasiones no son rectángulos perfectos</p>
-                                </blockquote>
-                                <Row>
-                                    <Col sm={6}>
-                                        <div className="single_img">
-                                            <img className="w-100 mb-4" src="https://www.metalwolft.com/assets/images/blog/rejas-para-ventanas-modernas.avif" alt="rejas para ventanas modernas" />
-                                        </div>
-                                    </Col>
-                                    <Col sm={6}>
-                                        <div className="single_img">
-                                            <img className="w-100 mb-4" src="https://www.metalwolft.com/assets/images/blog/rejas-para-ventanas-sin-obra.avif" alt="rejas para ventanas sin obra" />
-                                        </div>
-                                    </Col>
-                                </Row>
-                                <p>El alto del hueco, por otro lado, suele admitir <b>cierta flexibilidad,</b> dado que se reserva un pequeño margen.</p>
-                                <a href="../rejas-para-ventanas" className="btn btn-fill-out btn-radius mb-5">Ver catálogo</a>
-                                <video controls preload="none" className="w-100">
-                                    <source src="https://www.metalwolft.com/assets/video/medicion-rejas-para-ventanas.webm" type="video/webm" />
-                                </video>
+                    {currentPost && (
+                        <div className="single_post">
+                            <h1 className="blog_title">{currentPost.title}</h1>
+                            <p className="p-coments">
+                                <i className="fa-regular fa-calendar mx-1" style={{color: '#ff324d'}}></i> {new Date(currentPost.created_at).toLocaleDateString()}
+                                <i className="fa-regular fa-comments mx-1" style={{color: '#ff324d', paddingLeft: '10px'}}></i> {currentComments?.length || 0} Comentarios
+                            </p>
+                            <div className="blog_img">
+                                <img src="https://www.metalwolft.com/assets/images/blog/rejas-para-ventanas.avif" alt="es" className="img-fluid" />
                             </div>
                         </div>
-                    </div>
+                    )}
                     <div className="comment-area">
                         <div className="content_title">
                             <h5>Comentarios ({currentComments?.length || 0})</h5>
