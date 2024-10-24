@@ -12,26 +12,38 @@ export const MedirHuecoRejasParaVentanas = () => {
     const { currentPost, currentComments, error } = store;
     const postId = 1;
 
-    // Cargar el post al montar el componente
+
     useEffect(() => {
         if (!currentPost || currentPost.id !== postId) {
             actions.fetchPost(postId);
         }
     }, [actions, currentPost, postId]);
 
-    // Cargar comentarios solo si el post ha sido cargado y solo si los comentarios no están ya cargados
+
     useEffect(() => {
         if (currentPost && currentPost.id === postId && (!currentComments || currentComments[0]?.post_id !== postId)) {
             actions.fetchComments(postId);
         }
     }, [actions, currentPost, currentComments, postId]);
 
+
     const handleCommentSubmit = async (e) => {
         e.preventDefault();
-        if (!commentContent) return;
-
+        const token = localStorage.getItem('token'); // Cambiado 'jwt' por 'token'
+    
+        console.log("Token al enviar el comentario:", token);
+    
+        if (!token) {
+            alert("Debes estar logeado para comentar.");
+            return;
+        }
+    
+        if (!commentContent || commentContent.trim() === "") {
+            console.error("El contenido del comentario no puede estar vacío");
+            return;
+        }
+    
         try {
-            const token = localStorage.getItem('jwt');
             const response = await fetch(`${process.env.BACKEND_URL}/api/posts/${postId}/comments`, {
                 method: 'POST',
                 headers: {
@@ -40,39 +52,42 @@ export const MedirHuecoRejasParaVentanas = () => {
                 },
                 body: JSON.stringify({ content: commentContent })
             });
-
+    
             if (!response.ok) {
-                throw new Error('Error posting comment');
+                const errorText = await response.text();
+                console.error(`Error posting comment: ${response.status} - ${errorText}`);
+                throw new Error(`Error ${response.status}: ${response.statusText}`);
             }
-
+    
             const newComment = await response.json();
             actions.fetchComments(postId);
             setCommentContent("");
-            setSuccessMessage("Comment posted successfully!");
+            setSuccessMessage("Comentario publicado con éxito!");
             setTimeout(() => setSuccessMessage(""), 3000);
         } catch (error) {
             console.error('Error:', error);
         }
-    };
+    };    
+    
 
     return (
         <>
             <Breadcrumb />
-            <Container style={{ padding: '10px' }}>
+            <Container className='post-page'>
                 <Row>
                     <Col xl={9}>
                         {currentPost && (
                             <div className="single_post">
                                 <h1 className="blog_title">{currentPost.title}</h1>
-                                <p className="p-coments">
+                                <p className="p-coments-single-post">
                                     <i className="fa-regular fa-calendar mx-1" style={{ color: '#ff324d' }}></i> {new Date(currentPost.created_at).toLocaleDateString()}
                                     <i className="fa-regular fa-comments mx-1" style={{ color: '#ff324d', paddingLeft: '10px' }}></i> {currentComments?.length || 0} Comentarios
                                 </p>
                                 <img src="https://www.metalwolft.com/assets/images/blog/rejas-para-ventanas.avif" alt="es" className="img-fluid my-3" />
                             </div>
                         )}
-                        <div className="blog_text">
-                            <p>En numerosas ocasiones, nos enfrentamos a la realidad de que los huecos destinados para la instalación de rejas en ventanas presentan <b>leves variaciones en sus dimensiones.</b></p>
+                        <div className="blog-text">
+                        <p>En numerosas ocasiones, nos enfrentamos a la realidad de que los huecos destinados para la instalación de rejas en ventanas presentan <b>leves variaciones en sus dimensiones.</b></p>
                             <p>Esta divergencia es completamente normal, ya que cada espacio posee sus particularidades.</p>
                             <p>Generalmente esta diferencia <b>es muy leve</b> y no nos tiene que preocupar en exceso estéticamente, pero si hay que <b>ser preciso</b> para el ensamblaje de la misma.</p>
                             <p>En el proceso de instalación de rejas para ventanas, es una práctica común dejar un <b>espacio de aproximadamente 3/4 de centímetros</b> entre la reja y la parte inferior del hueco, sea esta de ladrillo u otro material. </p>

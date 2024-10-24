@@ -101,6 +101,36 @@ const getState = ({ getStore, getActions, setStore }) => {
                     setStore({ error: error.message });
                 }
             },                                        
+            addComment: async (postId, commentContent) => {
+                const token = localStorage.getItem("jwt");
+                if (!token) {
+                    console.error("No JWT token found");
+                    return;
+                }
+            
+                try {
+                    const response = await fetch(`${process.env.BACKEND_URL}/api/posts/${postId}/comments`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${token}`
+                        },
+                        body: JSON.stringify({ content: commentContent })
+                    });
+            
+                    if (!response.ok) {
+                        const errorText = await response.text();
+                        console.error(`Error posting comment: ${response.status} - ${errorText}`);
+                        throw new Error(`Error ${response.status}: ${response.statusText}`);
+                    }
+            
+                    const newComment = await response.json();
+                    const store = getStore();
+                    setStore({ currentComments: [...store.currentComments, newComment] });
+                } catch (error) {
+                    console.error("Error posting comment:", error);
+                }
+            },                                                              
             getMessage: async () => {
                 const options = {
                     headers: { 'Content-Type': 'application/json' },
