@@ -50,90 +50,164 @@ def create_payment_intent():
         return jsonify({"error": str(e)}), 403
 
 
+# Ruta para obtener los comentarios de un post
 @api.route('/posts/<int:post_id>/comments', methods=['GET'])
 def get_comments(post_id):
-    comments = Comments.query.filter_by(post_id=post_id).all()
-    if not comments:
-        return jsonify([]), 200
-    return jsonify([comment.serialize() for comment in comments]), 200
+    try:
+        comments = Comments.query.filter_by(post_id=post_id).all()
+        if not comments:
+            response = jsonify([])
+        else:
+            response = jsonify([comment.serialize() for comment in comments])
+        # Añadir encabezados CORS
+        response.headers['Access-Control-Allow-Origin'] = '*'
+        response.headers['Access-Control-Expose-Headers'] = 'Authorization'
+        return response, 200
+    except Exception as e:
+        return jsonify({"message": "Error al obtener los comentarios", "error": str(e)}), 500
 
 
+@api.route('/posts/<int:post_id>/comments', methods=['POST'])
+@jwt_required()
+def add_comment(post_id):
+    try:
+        current_user = get_jwt_identity()
+        if not current_user:
+            return jsonify({"message": "Autenticación requerida"}), 401
+
+        user_id = current_user['user_id']  # Extraer el user_id del token
+
+        data = request.get_json()
+        if not data or not data.get("content"):
+            return jsonify({"msg": "El contenido es requerido"}), 422
+
+        new_comment = Comments(
+            content=data["content"],
+            post_id=post_id,
+            user_id=user_id  # Usar el user_id extraído
+        )
+        db.session.add(new_comment)
+        db.session.commit()
+        response = jsonify(new_comment.serialize())
+        response.headers['Access-Control-Allow-Origin'] = '*'
+        response.headers['Access-Control-Expose-Headers'] = 'Authorization'
+        return response, 201
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"message": "Error al agregar el comentario", "error": str(e)}), 500
+
+
+# Ruta para obtener todos los posts
 @api.route('/posts', methods=['GET'])
 @jwt_required(optional=True)
 def get_posts():
-    posts = Posts.query.all()
-    total_count = len(posts)
+    try:
+        posts = Posts.query.all()
+        total_count = len(posts)
 
-    response = jsonify([post.serialize() for post in posts])
-    response.headers['X-Total-Count'] = total_count
-    response.headers['Access-Control-Expose-Headers'] = 'X-Total-Count'
-    response.headers['Access-Control-Allow-Origin'] = '*'
-    return response, 200
+        response = jsonify([post.serialize() for post in posts])
+        response.headers['X-Total-Count'] = total_count
+        response.headers['Access-Control-Expose-Headers'] = 'X-Total-Count, Authorization'
+        response.headers['Access-Control-Allow-Origin'] = '*'
+        return response, 200
+    except Exception as e:
+        return jsonify({"message": "Error al obtener los posts", "error": str(e)}), 500
 
-
+# Ruta para obtener un post específico
 @api.route('/posts/<int:post_id>', methods=['GET'])
 @jwt_required(optional=True)
 def get_post(post_id):
-    post = Posts.query.get(post_id)
-    if post:
-        return jsonify(post.serialize()), 200
-    return jsonify({"message": "Post not found"}), 404
+    try:
+        post = Posts.query.get(post_id)
+        if post:
+            response = jsonify(post.serialize())
+            # Añadir encabezados CORS
+            response.headers['Access-Control-Allow-Origin'] = '*'
+            response.headers['Access-Control-Expose-Headers'] = 'Authorization'
+            return response, 200
+        return jsonify({"message": "Post no encontrado"}), 404
+    except Exception as e:
+        return jsonify({"message": "Error al obtener el post", "error": str(e)}), 500
 
-
+# Ruta para crear un nuevo post (solo administradores)
 @api.route('/posts', methods=['POST'])
 @jwt_required()
 def create_post():
-    current_user = get_jwt_identity()
-    if not current_user.get("is_admin"):
-        return jsonify({"message": "Access forbidden: Admins only"}), 403
+    try:
+        current_user = get_jwt_identity()
+        if not current_user.get("is_admin"):
+            return jsonify({"message": "Acceso prohibido: Solo administradores"}), 403
 
-    data = request.json
-    new_post = Posts(
-        title=data.get('title'),
-        content=data.get('content'),
-        author_id=current_user.get('id'),
-        image_url=data.get('image_url')
-    )
-    db.session.add(new_post)
-    db.session.commit()
-    return jsonify(new_post.serialize()), 201
+        data = request.json
+        new_post = Posts(
+            title=data.get('title'),
+            content=data.get('content'),
+            author_id=current_user.get('id'),
+            image_url=data.get('image_url')
+        )
+        db.session.add(new_post)
+        db.session.commit()
+        response = jsonify(new_post.serialize())
+        # Añadir encabezados CORS
+        response.headers['Access-Control-Allow-Origin'] = '*'
+        response.headers['Access-Control-Expose-Headers'] = 'Authorization'
+        return response, 201
+    except SQLAlchemyError as e:
+        db.session.rollback()
+        return jsonify({"message": "Error al crear el post", "error": str(e)}), 500
 
-
+# Ruta para actualizar un post (solo administradores)
 @api.route('/posts/<int:post_id>', methods=['PUT'])
 @jwt_required()
 def update_post(post_id):
-    current_user = get_jwt_identity()
-    if not current_user.get("is_admin"):
-        return jsonify({"message": "Access forbidden: Admins only"}), 403
+    try:
+        current_user = get_jwt_identity()
+        if not current_user.get("is_admin"):
+            return jsonify({"message": "Acceso prohibido: Solo administradores"}), 403
 
-    post = Posts.query.get(post_id)
-    if not post:
-        return jsonify({"message": "Post not found"}), 404
+        post = Posts.query.get(post_id)
+        if not post:
+            return jsonify({"message": "Post no encontrado"}), 404
 
-    data = request.json
-    post.title = data.get('title', post.title)
-    post.content = data.get('content', post.content)
-    post.image_url = data.get('image_url', post.image_url)
-    post.updated_at = datetime.utcnow()
+        data = request.json
+        post.title = data.get('title', post.title)
+        post.content = data.get('content', post.content)
+        post.image_url = data.get('image_url', post.image_url)
+        post.updated_at = datetime.utcnow()
 
-    db.session.commit()
-    return jsonify(post.serialize()), 200
+        db.session.commit()
+        response = jsonify(post.serialize())
+        # Añadir encabezados CORS
+        response.headers['Access-Control-Allow-Origin'] = '*'
+        response.headers['Access-Control-Expose-Headers'] = 'Authorization'
+        return response, 200
+    except SQLAlchemyError as e:
+        db.session.rollback()
+        return jsonify({"message": "Error al actualizar el post", "error": str(e)}), 500
 
-
+# Ruta para eliminar un post (solo administradores)
 @api.route('/posts/<int:post_id>', methods=['DELETE'])
 @jwt_required()
 def delete_post(post_id):
-    current_user = get_jwt_identity()
-    if not current_user.get("is_admin"):
-        return jsonify({"message": "Access forbidden: Admins only"}), 403
+    try:
+        current_user = get_jwt_identity()
+        if not current_user.get("is_admin"):
+            return jsonify({"message": "Acceso prohibido: Solo administradores"}), 403
 
-    post = Posts.query.get(post_id)
-    if not post:
-        return jsonify({"message": "Post not found"}), 404
+        post = Posts.query.get(post_id)
+        if not post:
+            return jsonify({"message": "Post no encontrado"}), 404
 
-    db.session.delete(post)
-    db.session.commit()
-    return jsonify({"message": "Post deleted"}), 200
+        db.session.delete(post)
+        db.session.commit()
+        response = jsonify({"message": "Post eliminado"})
+        # Añadir encabezados CORS
+        response.headers['Access-Control-Allow-Origin'] = '*'
+        response.headers['Access-Control-Expose-Headers'] = 'Authorization'
+        return response, 200
+    except SQLAlchemyError as e:
+        db.session.rollback()
+        return jsonify({"message": "Error al eliminar el post", "error": str(e)}), 500
 
 
 @api.route('/generate-invoice', methods=['POST'])
@@ -298,6 +372,7 @@ def login():
         response.headers.add("Access-Control-Allow-Headers", "Content-Type, Authorization")
         response.headers.add("Access-Control-Allow-Methods", "POST, OPTIONS")
         return response, 200
+
     # Lógica de inicio de sesión
     data = request.json
     email = data.get("email", None)
@@ -308,12 +383,14 @@ def login():
         response = jsonify(response_body)
         response.headers.add("Access-Control-Allow-Origin", "*")
         return response, 401
+
     # Crear el token JWT con los datos del usuario
     access_token = create_access_token(identity={
-        'email': user.email,
         'user_id': user.id,
+        'email': user.email,
         'is_admin': user.is_admin
     })
+
     response_body = {
         'results': user.serialize(),
         'message': 'Bienvenido',
@@ -321,7 +398,7 @@ def login():
     }
     response = jsonify(response_body)
     response.headers.add("Access-Control-Allow-Origin", "*")
-    return response, 201
+    return response, 200  # Cambié el código de estado a 200 OK
 
 
 @api.route("/protected", methods=["GET"])
@@ -373,8 +450,8 @@ def signup():
     db.session.commit()
     # Crear el token JWT
     access_token = create_access_token(identity={
-        'email': user.email,
         'user_id': user.id,
+        'email': user.email,
         'is_admin': user.is_admin
     })
     response_body = {

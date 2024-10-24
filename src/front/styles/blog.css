@@ -1,13 +1,21 @@
 /* Blog List Page */
+.post-page{
+    padding: 20px;
+}
+.blog-text{
+    color: rgb(90, 90, 90);
+}
 .h2-title-blog {
     font-size: 1rem;
     margin-top: 1rem;
     margin: 15px;
+    color: black !important;
 }
 
 .p-coments {
     font-size: 0.7rem;
     margin: 15px;
+    color: rgb(90, 90, 90);
 }
 
 .p-content{
@@ -51,3 +59,19 @@ h1{
     margin-top: 35px;
     text-align: justify;
 }
+.p-coments-single-post{
+    font-size: 0.9rem;
+    margin: 15px;
+}
+/* ----- Pantallas grandes (escritorios y laptops) ----- */
+@media (min-width: 768px) {
+    .post-page{
+      padding: 50px;
+    }
+  }
+  /* ----- Pantallas muy grandes (desktops grandes) ----- */
+  @media (min-width: 1200px) {
+    .post-page{
+        padding: 50px;
+      }
+  }
