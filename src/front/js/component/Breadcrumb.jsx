@@ -19,7 +19,7 @@ export const Breadcrumb = () => {
 
     const breadcrumbNameMap = {
         'rejas-para-ventanas': 'Rejas para Ventanas',
-        'blogs': 'Blog',
+        'blogs': 'Blog de Carpintería Metálica',
         'medir-hueco-rejas-para-ventanas': 'Cómo Medir el Hueco para Rejas de Ventanas',
         // Agregar rutas y categorías
     };

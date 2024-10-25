@@ -1,7 +1,7 @@
 .breadcrumb {
     background-color: #f0f0f0;
     margin-top: 65px;
-    height: 6rem;
+    min-height: 11rem;
     display: flex;
     justify-content: left;
     align-items: center;
@@ -44,10 +44,18 @@
 }
 /* ----- Pantallas medianas (tabletas) ----- */
 @media (min-width: 576px) and (max-width: 767px) {
-
+    .p-breadcrumb {
+        margin-left: 60px;
+    }
+    .h1-breadcrumb{
+        padding-top: 20px;
+    }
 }
 /* ----- Pantallas grandes (escritorios y laptops) ----- */
 @media (min-width: 768px) {
+    .p-breadcrumb {
+        margin-left: 60px;
+    }
 }
 /* ----- Pantallas muy grandes (desktops grandes) ----- */
 @media (min-width: 1200px) {

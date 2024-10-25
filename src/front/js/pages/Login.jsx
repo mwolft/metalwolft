@@ -6,11 +6,11 @@ import { Row, Col, Container, Button, Form } from "react-bootstrap";
 export const Login = () => {
   const { actions } = useContext(Context);
   const [isLogin, setIsLogin] = useState(true);
-  const [isForgotPassword, setIsForgotPassword] = useState(false); // Estado para manejar la vista de restablecer contraseña
+  const [isForgotPassword, setIsForgotPassword] = useState(false); 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [errorMessage, setErrorMessage] = useState(""); // Estado para manejar los errores debajo de la contraseña
+  const [errorMessage, setErrorMessage] = useState(""); 
   const navigate = useNavigate();
 
   const handleEmail = (event) => { setEmail(event.target.value); };
@@ -36,7 +36,7 @@ export const Login = () => {
 
   const handleSubmit = async (event) => {
     event.preventDefault();
-    setErrorMessage(""); // Reiniciar el mensaje de error al intentar nuevamente
+    setErrorMessage(""); 
 
     if (!isLogin) {
       const passwordError = validatePassword(password);
@@ -50,15 +50,12 @@ export const Login = () => {
     let uri, options;
 
     if (isLogin) {
-      // Configuración para iniciar sesión
       uri = process.env.BACKEND_URL + '/api/login';
     } else {
-      // Verificación de contraseñas coincidentes para el registro
       if (password !== confirmPassword) {
         setErrorMessage('Las contraseñas no coinciden');
         return;
       }
-      // Configuración para registrarse
       uri = process.env.BACKEND_URL + '/api/signup';
     }
 
@@ -81,13 +78,11 @@ export const Login = () => {
       }
 
       if (data.access_token && data.results) {
-        // Guardar el token y el usuario en localStorage solo si se recibe la respuesta correcta
         localStorage.setItem("token", data.access_token);
         localStorage.setItem("user", JSON.stringify(data.results));
         actions.setCurrentUser(data.results);
         actions.setIsLoged(true);
 
-        // Redirigir dependiendo del rol
         if (data.results.is_admin) {
           navigate("/admin");
         } else {
@@ -103,9 +98,9 @@ export const Login = () => {
   };
 
   const handleToggleForm = (event) => {
-    event.preventDefault(); // Esto evitará cualquier acción predeterminada del navegador
+    event.preventDefault(); 
     setIsLogin(!isLogin);
-    setErrorMessage(""); // Reiniciar el mensaje de error al cambiar entre login y registro
+    setErrorMessage(""); 
   };
 
   const handleForgotPassword = (event) => {
@@ -122,8 +117,6 @@ export const Login = () => {
 
   const handleForgotPasswordSubmit = async (event) => {
     event.preventDefault();
-    // Lógica para enviar un correo electrónico de restablecimiento de contraseña
-    // Aquí podrías hacer una solicitud al backend para enviar un email de restablecimiento
     console.log("Solicitud para restablecer la contraseña enviada a:", email);
     setErrorMessage("Te hemos enviado un correo para restablecer tu contraseña, si el email está registrado.");
   };
@@ -134,6 +127,7 @@ export const Login = () => {
         <Row className="text-center mb-3 d-flex justify-content-center">
           <Col>
             <h4>{isForgotPassword ? "Restablecer tu contraseña" : isLogin ? "INICIAR SESIÓN" : "REGÍSTRATE"}</h4>
+            <hr className="hr_login" />
           </Col>
         </Row>
         {isForgotPassword ? (

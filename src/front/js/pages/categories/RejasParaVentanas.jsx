@@ -10,7 +10,7 @@ export const RejasParaVentanas = () => {
     const navigate = useNavigate();
 
     useEffect(() => {
-        actions.fetchProducts();  // Llamar a la acción para obtener productos
+        actions.fetchProducts();  
     }, []);
 
     return (

@@ -44,7 +44,7 @@ const getState = ({ getStore, getActions, setStore }) => {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
-                            Authorization: `Bearer ${token}` // Aseguramos que el usuario esté autenticado
+                            Authorization: `Bearer ${token}` // usuario autenticado
                         },
                         body: JSON.stringify(postData)
                     });
@@ -88,7 +88,6 @@ const getState = ({ getStore, getActions, setStore }) => {
                     });
             
                     if (!response.ok) {
-                        // Imprimir el cuerpo de la respuesta si no es 200 OK
                         const errorText = await response.text();
                         console.error(`Error fetching comments: ${response.status} - ${errorText}`);
                         throw new Error(`Error ${response.status}: ${response.statusText}`);
@@ -156,7 +155,7 @@ const getState = ({ getStore, getActions, setStore }) => {
                 getActions().loadCart();
             },                                        
             updateUserProfile: async (userId, updatedData) => {
-                const store = getStore(); // Corrección: Agregar esta línea para obtener el estado actual
+                const store = getStore(); 
                 try {
                     const response = await fetch(`${process.env.BACKEND_URL}/api/users/${userId}`, {
                         method: 'PUT',
@@ -180,7 +179,7 @@ const getState = ({ getStore, getActions, setStore }) => {
                 if (isLogin) {
                     setStore({ isLoged: true });
                 } else {
-                    console.log("Cerrando sesión y limpiando carrito"); // Verificar que se está ejecutando
+                    console.log("Cerrando sesión y limpiando carrito"); 
                     setStore({ isLoged: false, isAdmin: false, favorites: [] }); // Resetear favoritos
                     getActions().clearCart(); // Vaciar el carrito al cerrar sesión
                     localStorage.removeItem("token");
@@ -202,7 +201,7 @@ const getState = ({ getStore, getActions, setStore }) => {
                         method: 'GET',
                         headers: {
                             'Content-Type': 'application/json',
-                            ...(token && { Authorization: `Bearer ${token}` }) // Incluir el token solo si está presente
+                            ...(token && { Authorization: `Bearer ${token}` }) // Incluir el token
                         }
                     });
                     if (!response.ok) throw new Error("Error al obtener productos");
@@ -264,7 +263,7 @@ const getState = ({ getStore, getActions, setStore }) => {
                         return;
                     }
                     // Actualizar el carrito en el estado
-                    const newProduct = await response.json();  // Obtener el producto añadido del backend
+                    const newProduct = await response.json();  // Producto añadido del backend
                     setStore({ cart: [...store.cart, newProduct] });
                 } catch (error) {
                     console.error("Error al añadir al carrito:", error);
@@ -390,7 +389,6 @@ const getState = ({ getStore, getActions, setStore }) => {
             
                     const data = await response.json();
                     console.log("Orden creada:", data.order);
-            
                     // Actualizar el store con la nueva orden
                     setStore({ orders: [...store.orders, data.order] });
                     return { ok: true, order: data.order };
@@ -459,7 +457,7 @@ const getState = ({ getStore, getActions, setStore }) => {
                             return { ok: false };
                         }
                     }
-                    // Actualizar el store con los nuevos detalles de la orden
+                    // Actualizar el store con los nuevos detalles
                     setStore({ orderDetails: [...store.orderDetails, ...orderDetailsData] });
                     return { ok: true };
                 } catch (error) {
@@ -468,23 +466,19 @@ const getState = ({ getStore, getActions, setStore }) => {
                 }
             }, 
             handlePaymentSuccess: async () => {
-                const store = getStore(); // Obtén el estado actual del store
-                const actions = getActions(); // Acciones para poder llamar a las funciones existentes
-                // 1. Guardar la orden y obtener el order_id
+                const store = getStore(); 
+                const actions = getActions(); 
                 const { ok, order } = await actions.saveOrder();
                 if (!ok) {
                     console.error("Error al guardar la orden.");
                     return;
                 }
-                // 2. Guardar los detalles de la orden usando el order_id
                 const result = await actions.saveOrderDetails(order.id);
                 if (!result.ok) {
                     console.error("Error al guardar los detalles de la orden.");
                     return;
                 }
-                // 3. Vaciar el carrito después de guardar la orden y los detalles
                 actions.clearCart();
-                // Mensaje de confirmación (opcional)
                 console.log("Pago exitoso, orden y detalles guardados, carrito vaciado.");
             },   
             generateInvoice: async (orderId) => {
@@ -502,7 +496,6 @@ const getState = ({ getStore, getActions, setStore }) => {
                         console.error("Error al generar la factura:", errorData.message);
                         return { ok: false };
                     }
-                    // Convertir la respuesta en blob para descargar el PDF
                     const blob = await response.blob();
                     const url = window.URL.createObjectURL(blob);
                     const link = document.createElement('a');

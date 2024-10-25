@@ -18,7 +18,7 @@ html {
   box-shadow: 0 0 5px #f4a8b2; 
   appearance: none; 
 }
-/* Cuando el radio button está siendo presionado */
+/* radio button está siendo presionado */
 .form-check-input:active {
   background-color: #ff324d; 
   border-color: #ff324d;
@@ -75,7 +75,7 @@ html {
   padding: 6px 20px; 
   border-radius: 12px; 
   cursor: pointer; 
-  transition: all 0.3s ease; /* Suaviza las transiciones */
+  transition: all 0.3s ease; 
 }
 
 .btn-style-background-color:hover {
@@ -111,50 +111,52 @@ p .btn-color-yellow:hover {
 
  /* --- LOGIN */
  .auth-box {
-  background-color: #dddddd; /* Fondo blanco */
-  border-radius: 15px; /* Bordes redondeados */
-  box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.1); /* Sombra suave */
-  max-width: 450px; /* Limitar el ancho máximo */
+  background-color: #dddddd; 
+  border-radius: 15px; 
+  box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.1); 
+  max-width: 450px; 
   width: 100%;
-  padding: 30px; /* Espaciado interno */
+  padding: 30px; 
 }
 form{
   padding-left: 25px;
   padding-right: 25px;
 }
 .auth-header {
-  color: #007bff; /* Color primario de Bootstrap */
+  color: #007bff; 
   font-weight: bold;
-  font-size: 24px; /* Tamaño más grande */
+  font-size: 24px; 
 }
-
+.hr_login{
+  border: solid 1.5px #ff324d;
+  opacity: 100%;
+  border-radius: 5px;
+}
 .stylebtn {
-  background-color: #007bff; /* Azul principal */
-  border: none; /* Sin borde */
-  color: white; /* Texto blanco */
-  padding: 10px 20px; /* Espaciado interno */
+  background-color: #ff324d; 
+  border: none; 
+  color: white; 
+  padding: 10px 20px; 
   font-weight: bold;
-  border-radius: 50px; /* Bordes redondeados */
-  transition: all 0.3s ease; /* Animación suave */
-
-  /* Ajuste del ancho del botón */
+  border-radius: 50px; 
+  transition: all 0.3s ease; 
   width: 200px;
 }
 
 .stylebtn:hover {
-  background-color: #0056b3; /* Azul más oscuro */
-  transform: translateY(-2px); /* Levantar el botón al hacer hover */
+  background-color: #a42133; 
+  transform: translateY(-2px); 
 }
 
 .form-control {
-  padding: 5px; /* Añadir espaciado interno */
-  border-radius: 10px; /* Bordes redondeados */
-  border: 1px solid #ced4da; /* Color del borde más claro */
+  padding: 5px; 
+  border-radius: 10px; 
+  border: 1px solid #ced4da; 
 }
 
 .form-control:focus {
-  border-color: #007bff; /* Cambiar color del borde al enfocar */
-  box-shadow: 0 0 5px rgba(0, 123, 255, 0.5); /* Añadir un pequeño resplandor al enfocar */
+  border-color: #007bff; 
+  box-shadow: 0 0 5px rgba(0, 123, 255, 0.5); 
 }
 
 

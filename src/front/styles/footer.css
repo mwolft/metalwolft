@@ -15,12 +15,12 @@
 .footer-p {
   font-size: 0.8rem;
   display: flex;
-  align-items: center; /* Alinea verticalmente los elementos */
-  gap: 10px; /* Añade un espacio entre el icono y el texto */
+  align-items: center; 
+  gap: 10px; 
 }
 
 .footer-p i {
-  min-width: 20px; /* Ajusta el ancho mínimo para los iconos */
+  min-width: 20px;
 }
 /* ----- START DESIGN MEDIA QUERIES ----- */
 /* ----- Pantallas pequeñas (móviles) ----- */

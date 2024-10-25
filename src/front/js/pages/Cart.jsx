@@ -8,14 +8,13 @@ import { useNavigate } from "react-router-dom";
 export const Cart = () => {
     const { store, actions } = useContext(Context);
     const [notification, setNotification] = useState(null);
-    const [notes, setNotes] = useState(""); // Campo para las notas del pedido
+    const [notes, setNotes] = useState(""); // notas del pedido
     const navigate = useNavigate();
 
     useEffect(() => {
-        actions.loadCart();  // Asegurarnos de cargar los datos del carrito al cargar el componente
+        actions.loadCart();  
     }, []);
 
-    // Verificar qué datos se están recibiendo
     console.log("Carrito:", store.cart);
 
     const handleRemoveFromCart = (product) => {
@@ -36,7 +35,6 @@ export const Cart = () => {
         setNotification("Producto eliminado del carrito");
     };
 
-    // Calcular el subtotal de todos los productos en el carrito
     const subtotal = store.cart.reduce((acc, product) => acc + parseFloat(product.precio_total), 0);
 
     const handleCheckout = () => {
@@ -95,15 +93,14 @@ export const Cart = () => {
                             </tbody>
                         </Table>
 
-                        {/* Sección del subtotal y notas */}
                         {store.cart.length > 0 && (
                             <Row className="mt-4 mb-5 mx-3">
-                                <Col className="text-end"> {/* Usamos text-end para alinear todo a la derecha */}
+                                <Col className="text-end"> 
                                     <p className="cart-total">
                                         <span className="sign">Subtotal:</span>
                                         <span className="money"> {subtotal.toFixed(2)} €</span>
                                     </p>
-                                    <div className="text-end"> {/* Alineamos el botón dentro del div */}
+                                    <div className="text-end"> 
                                         <Button
                                             className="btn-style-background-color"
                                             onClick={handleCheckout}
@@ -118,11 +115,11 @@ export const Cart = () => {
                 </Row>
             )}
 
-            {/* Notificación */}
+
             {notification && (
                 <Notification
                     message={notification}
-                    duration={3000} // Duración de 3 segundos
+                    duration={3000} 
                     onClose={() => setNotification(null)}
                 />
             )}

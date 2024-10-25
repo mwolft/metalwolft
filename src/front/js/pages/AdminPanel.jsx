@@ -12,7 +12,7 @@ import { authProvider } from "../authProvider.js";
 import { FaUser, FaBoxOpen, FaShoppingCart, FaImages, FaClipboardList } from 'react-icons/fa';
 import '../../styles/admin-panel.css';
 
-// Crear una función de cliente personalizado para agregar el token al header de cada solicitud
+
 const httpClient = (url, options = {}) => {
   if (!options.headers) {
     options.headers = new Headers({ Accept: 'application/json' });
@@ -24,7 +24,6 @@ const httpClient = (url, options = {}) => {
   return fetchUtils.fetchJson(url, options);
 };
 
-// Data Provider con cliente HTTP personalizado
 const dataProvider = jsonServerProvider(process.env.REACT_APP_BACKEND_URL + "/api", httpClient);
 
 const AdminPanel = () => {
