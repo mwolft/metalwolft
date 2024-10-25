@@ -1,6 +1,6 @@
 .notification {
     position: fixed;
-    bottom: 70px;  /* Cambiamos de bottom a top para que esté en la parte superior */
+    bottom: 70px;  
     right: 20px;
     background-color: #333;
     color: #fff;

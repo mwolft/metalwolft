@@ -76,7 +76,7 @@ button.btn-outline-dark i {
 /* Iconos junto a la hamburguesa en pantallas pequeñas */
 @media (max-width: 991.98px) {
     .navbar-toggler + .d-flex {
-        order: -1;  /* Mover los íconos antes del botón de hamburguesa */
+        order: -1;  
     }
     .nav-link.d-lg-none {
         margin-left: 0.5rem;

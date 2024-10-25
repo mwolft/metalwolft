@@ -1,7 +1,7 @@
 import React, { useContext, useEffect } from 'react';
 import { Context } from "../store/appContext";
 import { Link, useNavigate } from "react-router-dom";
-import "../../styles/favorites.css"; // Asegúrate de tener estilos específicos para la tabla de favoritos
+import "../../styles/favorites.css"; 
 
 export const Favoritos = () => {
     const { store, actions } = useContext(Context);
@@ -12,8 +12,8 @@ export const Favoritos = () => {
             alert("Debe iniciar sesión para ver sus favoritos");
             navigate("/login");
         } else if (!store.favoritesLoaded) {
-            actions.loadFavorites(); // Cargar los favoritos del backend solo si no están ya cargados
-            actions.setFavoritesLoaded(true); // Marcar los favoritos como cargados para evitar la recarga
+            actions.loadFavorites(); 
+            actions.setFavoritesLoaded(true); 
         }
     }, [store.isLoged]);
         
