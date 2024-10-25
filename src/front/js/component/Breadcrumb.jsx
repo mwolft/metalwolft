@@ -1,28 +1,55 @@
-import React from "react";
-import { useNavigate } from "react-router-dom";
+import React, { useEffect, useState } from 'react';
+import { useLocation, Link } from 'react-router-dom';
+import '../../styles/breadcrumb.css';
 
 export const Breadcrumb = () => {
-    const navigate = useNavigate();
-    const handleSignUp = () => {
-        navigate("/login");
+    const location = useLocation();
+    const [breadcrumbs, setBreadcrumbs] = useState([]);
+
+    useEffect(() => {
+        const pathnames = location.pathname.split('/').filter((x) => x);
+        const breadcrumbsArray = pathnames.map((value, index) => {
+            const to = `/${pathnames.slice(0, index + 1).join('/')}`;
+            return { name: value, path: to };
+        });
+
+        setBreadcrumbs(breadcrumbsArray);
+    }, [location]);
+
+
+    const breadcrumbNameMap = {
+        'rejas-para-ventanas': 'Rejas para Ventanas',
+        'blogs': 'Blog',
+        'medir-hueco-rejas-para-ventanas': 'Cómo Medir el Hueco para Rejas de Ventanas',
+        // Agregar rutas y categorías
     };
 
+    // Función para obtener el nombre amigable
+    const getDisplayName = (breadcrumb) => {
+        return breadcrumbNameMap[breadcrumb.name] || breadcrumb.name;
+    };
+
+    // título para el h1 segun el último breadcrumb)
+    const pageTitle = breadcrumbs.length > 0 ? getDisplayName(breadcrumbs[breadcrumbs.length - 1]) : 'Inicio';
+
     return (
-        <div className="container-fluid breadcrumb" style={{ marginTop: '65px' }}>
-            <div className="row d-flex justify-content-center">
-                <div className="col-11 py-3">
-                    <div className="row d-flex align-items-center">
-                        <div className="col-12 col-lg-9 col-xl-9">
-                            <h1 className="h1-breadcrumb">Rejas para Ventanas Modernas | Sencillas | Sin obra | Envíos Gratuítos.</h1>
-                        </div>
-                        <div className="col-12 col-lg-3 col-xl-3">
-                            <p className="p-breadcrumb">Inicio Rejas para ventanas</p>
-                        </div>
-                    </div>
-                </div>
-            </div>
+        <div className="breadcrumb">
+            <h1 className='h1-breadcrumb'>{pageTitle}</h1>
+            <p className='p-breadcrumb'>
+                <Link className="a-breadcrumb" to="/">Inicio</Link>
+                {breadcrumbs.map((breadcrumb, index) => {
+                    const isLast = index === breadcrumbs.length - 1;
+                    const name = getDisplayName(breadcrumb);
+                    return isLast ? (
+                        <span className="span-bradcrumb" key={breadcrumb.path}> / {name}</span>
+                    ) : (
+                        <span className="span-bradcrumb" key={breadcrumb.path}>
+                            {' '}
+                            / <Link to={breadcrumb.path}>{name}</Link>
+                        </span>
+                    );
+                })}
+            </p>
         </div>
     );
-
 };
-

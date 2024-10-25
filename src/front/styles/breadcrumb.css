@@ -1,0 +1,55 @@
+.breadcrumb {
+    background-color: #f0f0f0;
+    margin-top: 65px;
+    height: 6rem;
+    display: flex;
+    justify-content: left;
+    align-items: center;
+}
+
+.h1-breadcrumb {
+    font-size: 2rem;
+    padding: 0 60px 0 60px;
+    margin: 0;
+}
+.a-breadcrumb{
+    text-decoration: underline;
+}
+.a-breadcrumb:hover{
+    color: #ff324d;
+    text-decoration: underline;
+}
+
+.p-breadcrumb, .span-bradcrumb,.a-breadcrumb {
+    font-size: .8rem;
+    margin-top: 25px;
+}
+
+@media (max-width: 575px) {
+    .p-breadcrumb {
+        margin-left: 60px;
+    }
+    .h1-breadcrumb{
+        margin-top: 20px;
+    }
+    .span-bradcrumb{
+        margin-bottom: 20px;
+    }
+    .breadcrumb{
+        height: 8rem;
+    }
+    .p-breadcrumb{
+       margin-top: 0px !important;
+    }
+}
+/* ----- Pantallas medianas (tabletas) ----- */
+@media (min-width: 576px) and (max-width: 767px) {
+
+}
+/* ----- Pantallas grandes (escritorios y laptops) ----- */
+@media (min-width: 768px) {
+}
+/* ----- Pantallas muy grandes (desktops grandes) ----- */
+@media (min-width: 1200px) {
+
+}
