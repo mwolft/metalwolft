@@ -99,17 +99,6 @@ html {
   outline: none; 
 }
 /* -----END BTN ----- */
-/* -----START BREADCRUMB ----- */
-.breadcrumb{
-  background-color: #f0f0f0;
-  height: auto;
-  padding-top: 3rem;
-  padding-bottom: 3rem;
-}
-.h1-breadcrumb{
-  font-size: 2rem;
-}
-/* -----END BREADCRUMB ----- */
 
 p .btn-color-yellow {
   background-color: rgba(255, 193, 7);
@@ -181,13 +170,9 @@ form{
 }
 /* ----- Pantallas grandes (escritorios y laptops) ----- */
 @media (min-width: 768px) {
-  .h1-breadcrumb{
-    padding-right: 8rem;
-  }
+  
 }
 /* ----- Pantallas muy grandes (desktops grandes) ----- */
 @media (min-width: 1200px) {
-  .h1-breadcrumb{
-    padding-right: 10rem;
-  }
+
 }
