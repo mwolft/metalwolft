@@ -126,7 +126,7 @@ export const Login = () => {
       <div className="auth-box p-3">
         <Row className="text-center mb-3 d-flex justify-content-center">
           <Col>
-            <h4>{isForgotPassword ? "Restablecer tu contraseña" : isLogin ? "INICIAR SESIÓN" : "REGÍSTRATE"}</h4>
+            <h4>{isForgotPassword ? "Restablecer tu contraseña" : isLogin ? "INGRESAR" : "CREAR CUENTA"}</h4>
             <hr className="hr_login" />
           </Col>
         </Row>
@@ -135,7 +135,7 @@ export const Login = () => {
             <p className="text-center">Te enviaremos un correo electrónico para restablecer tu contraseña.</p>
             <Form onSubmit={handleForgotPasswordSubmit}>
               <Form.Group className="mt-2">
-                <Form.Label>Email:</Form.Label>
+                <Form.Label><b>Email:</b></Form.Label>
                 <Form.Control
                   type="email"
                   value={email}
@@ -156,7 +156,7 @@ export const Login = () => {
         ) : (
           <Form onSubmit={handleSubmit}>
             <Form.Group className="mt-2">
-              <Form.Label>Email:</Form.Label>
+              <Form.Label><b>Email:</b></Form.Label>
               <Form.Control
                 type="email"
                 value={email}
@@ -165,7 +165,7 @@ export const Login = () => {
               />
             </Form.Group>
             <Form.Group className="mt-2">
-              <Form.Label>Contraseña:</Form.Label>
+              <Form.Label><b>Contraseña:</b></Form.Label>
               <Form.Control
                 type="password"
                 value={password}
@@ -178,7 +178,7 @@ export const Login = () => {
             </Form.Group>
             {!isLogin && (
               <Form.Group className="mt-2">
-                <Form.Label>Confirmar Contraseña:</Form.Label>
+                <Form.Label><b>Confirmar Contraseña:</b></Form.Label>
                 <Form.Control
                   type="password"
                   value={confirmPassword}
@@ -200,7 +200,7 @@ export const Login = () => {
               <Col>
                 <span>
                   {isLogin ? "¿Nuevo Usuario? " : "¿Ya dispone de una cuenta? "}
-                  <a href="#" onClick={handleToggleForm} className="text-primary text-decoration-underline">
+                  <a href="#" onClick={handleToggleForm} className="text-decoration-underline" style={{color: '#ff324d'}}>
                     {isLogin ? "Crear cuenta" : "Ingresar"}
                   </a>
                 </span>
@@ -208,7 +208,7 @@ export const Login = () => {
             </Row>
             <Row className="mt-2 text-center">
               <Col>
-                <a href="#" onClick={handleForgotPassword} className="text-primary text-decoration-underline">
+                <a href="#" onClick={handleForgotPassword} className="text-decoration-underline" style={{color: '#ff324d'}}>
                   ¿Olvidaste tu contraseña?
                 </a>
               </Col>
