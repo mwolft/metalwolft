@@ -21,7 +21,11 @@ export const Breadcrumb = () => {
         'rejas-para-ventanas': 'Rejas para Ventanas',
         'blogs': 'Blog de Carpintería Metálica',
         'medir-hueco-rejas-para-ventanas': 'Cómo Medir el Hueco para Rejas de Ventanas',
-        // Agregar rutas y categorías
+        'cookies-esenciales': 'Cookies',
+        'politica-privacidad': 'Política de Privacidad',
+        'politica-cookies': 'Política de Cookies',
+        'informacion-recogida': 'Información Recogida',
+        'cambios-politica-cookies': 'Cambios de Política de Cookies'
     };
 
     // Función para obtener el nombre amigable

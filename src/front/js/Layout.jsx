@@ -26,11 +26,16 @@ import { Home } from "./pages/Home.jsx";
 import { Error404 } from "./pages/Error404.jsx";
 import { Login } from "./pages/Login.jsx";
 import { Profile } from "./pages/Profile.jsx";
-import AdminPanel from "./pages/AdminPanel.jsx"; 
+import AdminPanel from "./pages/AdminPanel.jsx";
 import { Favoritos } from "./pages/Favoritos.jsx";
 import { ProductDetail } from "./pages/ProductDetail.jsx";
 import { Cart } from "./pages/Cart.jsx";
 import { ThankYou } from "./pages/ThankYou.jsx";
+import { PrivacyCookiesHome } from "./pages/PrivacyCookiesHome.jsx"
+import { PrivacyPolicy } from "./pages/PrivacyPolicy.jsx";
+import { CookiesPolicy } from "./pages/CookiesPolicy.jsx";
+import { InformationCollected } from "./pages/InformationCollected.jsx";
+import { ChangesInCookiePolicy } from "./pages/ChangesInCookiePolicy.jsx";
 
 // Blog
 import { BlogListPage } from "./pages/blog/BlogListPage.jsx";
@@ -52,7 +57,7 @@ const Layout = () => {
                     <Route path="/" element={<Home />} />
                     <Route path="/carrusel" element={<Carrusel />} />
                     <Route path="/login" element={<Login />} />
-                    <Route path="/admin/*" element={<AdminPanel />} /> 
+                    <Route path="/admin/*" element={<AdminPanel />} />
                     <Route path="/body-home-main" element={<BodyHomeMain />} />
                     <Route path="/body-home-secondary" element={<BodyHomeSecondary />} />
                     <Route path="/body-home-tertiary" element={<BodyHomeTertiary />} />
@@ -74,6 +79,11 @@ const Layout = () => {
                     <Route path="/blogs" element={<BlogListPage />} />
                     <Route path="/medir-hueco-rejas-para-ventanas" element={<MedirHuecoRejasParaVentanas />} />
                     <Route path="*" element={<Error404 />} />
+                    <Route path="/cookies-esenciales" element={<PrivacyCookiesHome />} />
+                    <Route path="/politica-privacidad" element={<PrivacyPolicy />} />
+                    <Route path="/politica-cookies" element={<CookiesPolicy />} />
+                    <Route path="/informacion-recogida" element={<InformationCollected />} />
+                    <Route path="/cambios-politica-cookies" element={<ChangesInCookiePolicy />} />
                 </Routes>
                 <Footer />
             </BrowserRouter>

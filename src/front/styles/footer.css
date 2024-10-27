@@ -18,6 +18,10 @@
   align-items: center; 
   gap: 10px; 
 }
+.footer-p a:hover {
+  color: #ff324d;
+  text-decoration: underline;
+}
 
 .footer-p i {
   min-width: 20px;
