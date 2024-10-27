@@ -1,6 +1,7 @@
 import React from "react";
 import { BrowserRouter, Route, Routes } from "react-router-dom";
 import injectContext from "./store/appContext.js";
+import { CookieBanner } from "./component/CookieBanner.jsx";
 
 // Custom components
 import ScrollToTop from "./component/ScrollToTop.jsx";
@@ -49,9 +50,10 @@ const Layout = () => {
     if (!process.env.BACKEND_URL || process.env.BACKEND_URL === "") return <BackendURL />;
 
     return (
-        <div className="d-flex flex-column min-vh-100 bg-white">
+        <div className="d-flex flex-column min-vh-100 bg-white" style={{margin: '0px', padding: '0px'}}>
             <BrowserRouter basename={basename}>
                 <ScrollToTop />
+                <CookieBanner />
                 <MainNavbar />
                 <Routes>
                     <Route path="/" element={<Home />} />
