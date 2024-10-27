@@ -1,7 +1,3 @@
-body, html {
-    margin: 0;
-    padding: 0;
-}
 /* ----- START NAVBAR ----- */
 .estilo-navbar {
     position: fixed;          
@@ -37,8 +33,6 @@ body, html {
 .nav-link:hover {
     color: #ff324d !important; 
 }
-
-
 
 .navbar-toggler {
     border-color: #000;     
