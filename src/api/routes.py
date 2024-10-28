@@ -50,7 +50,118 @@ def create_payment_intent():
         return jsonify({"error": str(e)}), 403
 
 
-# Ruta para obtener los comentarios de un post
+@api.route('/categories', methods=['POST'])
+@jwt_required()
+def create_category():
+    current_user = get_jwt_identity()
+    if not current_user.get("is_admin"):
+        response = jsonify({"message": "Acceso prohibido: Solo administradores"})
+        response.headers['Access-Control-Allow-Origin'] = '*'
+        response.headers['Access-Control-Expose-Headers'] = 'Authorization'
+        return response, 403
+
+    data = request.get_json()
+    nombre = data.get('nombre')
+    descripcion = data.get('descripcion')
+    parent_id = data.get('parent_id')
+
+    if not nombre:
+        response = jsonify({"message": "El nombre de la categoría es obligatorio"})
+        response.headers['Access-Control-Allow-Origin'] = '*'
+        return response, 400
+
+    new_category = Categories(nombre=nombre, descripcion=descripcion, parent_id=parent_id)
+    db.session.add(new_category)
+    db.session.commit()
+
+    response = jsonify(new_category.serialize())
+    response.headers['Access-Control-Allow-Origin'] = '*'
+    response.headers['Access-Control-Expose-Headers'] = 'Authorization'
+    return response, 201
+
+
+@api.route('/categories/<int:category_id>', methods=['PUT'])
+@jwt_required()
+def update_category(category_id):
+    current_user = get_jwt_identity()
+    if not current_user.get("is_admin"):
+        response = jsonify({"message": "Acceso prohibido: Solo administradores"})
+        response.headers['Access-Control-Allow-Origin'] = '*'
+        response.headers['Access-Control-Expose-Headers'] = 'Authorization'
+        return response, 403
+
+    category = Categories.query.get(category_id)
+    if not category:
+        response = jsonify({"message": "Categoría no encontrada"})
+        response.headers['Access-Control-Allow-Origin'] = '*'
+        return response, 404
+
+    data = request.get_json()
+    category.nombre = data.get('nombre', category.nombre)
+    category.descripcion = data.get('descripcion', category.descripcion)
+    category.parent_id = data.get('parent_id', category.parent_id)
+
+    db.session.commit()
+
+    response = jsonify(category.serialize())
+    response.headers['Access-Control-Allow-Origin'] = '*'
+    response.headers['Access-Control-Expose-Headers'] = 'Authorization'
+    return response, 200
+
+
+@api.route('/categories', methods=['GET'])
+def get_all_categories():
+    # Obtener todas las categorías principales (sin parent_id)
+    categories = Categories.query.filter(Categories.parent_id.is_(None)).all()
+    response = jsonify([category.serialize() for category in categories])
+    response.headers['Access-Control-Allow-Origin'] = '*'
+    response.headers['Access-Control-Expose-Headers'] = 'Authorization'
+    return response, 200
+
+
+@api.route('/categories/<int:category_id>/subcategories', methods=['GET'])
+def get_subcategories(category_id):
+    try:
+        # Obtener subcategorías de una categoría específica
+        subcategories = Categories.query.filter_by(parent_id=category_id).all()
+        response = jsonify([subcategory.serialize() for subcategory in subcategories])
+        response.headers['Access-Control-Allow-Origin'] = '*'
+        response.headers['Access-Control-Expose-Headers'] = 'Authorization'
+        return response, 200
+    except SQLAlchemyError as e:
+        db.session.rollback()
+        response = jsonify({"message": "Error retrieving subcategories", "error": str(e)})
+        response.headers['Access-Control-Allow-Origin'] = '*'
+        response.headers['Access-Control-Expose-Headers'] = 'Authorization'
+        return response, 500
+
+
+@api.route('/products', methods=['GET'])
+def get_products():
+    # Obtener productos por categoría y subcategoría (si se proporcionan)
+    category_id = request.args.get('category_id')
+    subcategory_id = request.args.get('subcategory_id')
+    
+    try:
+        query = Products.query
+        if category_id:
+            query = query.filter_by(categoria_id=category_id)
+        if subcategory_id:
+            query = query.filter_by(subcategoria_id=subcategory_id)
+
+        products = query.all()
+        response = jsonify([product.serialize_with_images() for product in products])
+        response.headers['Access-Control-Allow-Origin'] = '*'
+        response.headers['Access-Control-Expose-Headers'] = 'Authorization'
+        return response, 200
+    except SQLAlchemyError as e:
+        db.session.rollback()
+        response = jsonify({"message": "Error retrieving products", "error": str(e)})
+        response.headers['Access-Control-Allow-Origin'] = '*'
+        response.headers['Access-Control-Expose-Headers'] = 'Authorization'
+        return response, 500
+
+
 @api.route('/posts/<int:post_id>/comments', methods=['GET'])
 def get_comments(post_id):
     try:
@@ -59,7 +170,6 @@ def get_comments(post_id):
             response = jsonify([])
         else:
             response = jsonify([comment.serialize() for comment in comments])
-        # Añadir encabezados CORS
         response.headers['Access-Control-Allow-Origin'] = '*'
         response.headers['Access-Control-Expose-Headers'] = 'Authorization'
         return response, 200
@@ -97,7 +207,6 @@ def add_comment(post_id):
         return jsonify({"message": "Error al agregar el comentario", "error": str(e)}), 500
 
 
-# Ruta para obtener todos los posts
 @api.route('/posts', methods=['GET'])
 @jwt_required(optional=True)
 def get_posts():
@@ -113,7 +222,7 @@ def get_posts():
     except Exception as e:
         return jsonify({"message": "Error al obtener los posts", "error": str(e)}), 500
 
-# Ruta para obtener un post específico
+
 @api.route('/posts/<int:post_id>', methods=['GET'])
 @jwt_required(optional=True)
 def get_post(post_id):
@@ -121,7 +230,6 @@ def get_post(post_id):
         post = Posts.query.get(post_id)
         if post:
             response = jsonify(post.serialize())
-            # Añadir encabezados CORS
             response.headers['Access-Control-Allow-Origin'] = '*'
             response.headers['Access-Control-Expose-Headers'] = 'Authorization'
             return response, 200
@@ -129,7 +237,7 @@ def get_post(post_id):
     except Exception as e:
         return jsonify({"message": "Error al obtener el post", "error": str(e)}), 500
 
-# Ruta para crear un nuevo post (solo administradores)
+
 @api.route('/posts', methods=['POST'])
 @jwt_required()
 def create_post():
@@ -148,7 +256,6 @@ def create_post():
         db.session.add(new_post)
         db.session.commit()
         response = jsonify(new_post.serialize())
-        # Añadir encabezados CORS
         response.headers['Access-Control-Allow-Origin'] = '*'
         response.headers['Access-Control-Expose-Headers'] = 'Authorization'
         return response, 201
@@ -156,7 +263,7 @@ def create_post():
         db.session.rollback()
         return jsonify({"message": "Error al crear el post", "error": str(e)}), 500
 
-# Ruta para actualizar un post (solo administradores)
+
 @api.route('/posts/<int:post_id>', methods=['PUT'])
 @jwt_required()
 def update_post(post_id):
@@ -177,7 +284,6 @@ def update_post(post_id):
 
         db.session.commit()
         response = jsonify(post.serialize())
-        # Añadir encabezados CORS
         response.headers['Access-Control-Allow-Origin'] = '*'
         response.headers['Access-Control-Expose-Headers'] = 'Authorization'
         return response, 200
@@ -185,7 +291,7 @@ def update_post(post_id):
         db.session.rollback()
         return jsonify({"message": "Error al actualizar el post", "error": str(e)}), 500
 
-# Ruta para eliminar un post (solo administradores)
+
 @api.route('/posts/<int:post_id>', methods=['DELETE'])
 @jwt_required()
 def delete_post(post_id):
@@ -201,7 +307,6 @@ def delete_post(post_id):
         db.session.delete(post)
         db.session.commit()
         response = jsonify({"message": "Post eliminado"})
-        # Añadir encabezados CORS
         response.headers['Access-Control-Allow-Origin'] = '*'
         response.headers['Access-Control-Expose-Headers'] = 'Authorization'
         return response, 200
@@ -218,36 +323,26 @@ def generate_invoice():
         order_id = data.get('order_id')
         if not order_id:
             return jsonify({"message": "Order ID is required"}), 400
-        
-        # Obtener el usuario actual
         current_user = get_jwt_identity()
         user_id = current_user['user_id']
-
-        # Obtener la orden y validar si existe
         order = Orders.query.get(order_id)
         if not order:
             return jsonify({"message": "Order not found"}), 404
-        
         # Validar que el usuario que solicita la factura sea el propietario de la orden o un administrador
         if order.user_id != user_id and not current_user.get("is_admin"):
             return jsonify({"message": "You do not have permission to access this invoice"}), 403
-        
         # Obtener el usuario asociado a la orden
         user = Users.query.get(order.user_id)
-
         # Crear un buffer para el PDF
         pdf_buffer = BytesIO()
         pdf = canvas.Canvas(pdf_buffer, pagesize=A4)
-
         # Añadir la imagen en la parte superior derecha
         image_url = "https://www.metalwolft.com/assets/images/herrero-soldador-en-ciudad-real.jpg"
         pdf.drawImage(image_url, 300, 750, width=250, height=64)  # Ajustar posición y tamaño según necesidad
-
         # Configurar márgenes estrechos y título
         pdf.setTitle(f"Factura_{order.invoice_number}")
         pdf.setFont("Helvetica-Bold", 12)
         pdf.drawString(50, 800, "Factura")
-
         # Datos de la empresa en la parte superior derecha debajo de la imagen
         pdf.setFont("Helvetica-Bold", 12)
         pdf.drawString(400, 700, "Información del Proveedor")
@@ -256,12 +351,10 @@ def generate_invoice():
         pdf.drawString(400, 660, "DNI 05703874N")
         pdf.drawString(400, 640, "Francisco Fernández Ordoñez 32")
         pdf.drawString(400, 620, "13170 Miguelturra")
-
         # Información general
         pdf.setFont("Helvetica", 10)
         pdf.drawString(50, 770, f"Factura No: {order.invoice_number}")
         pdf.drawString(50, 750, f"Fecha: {order.order_date.strftime('%d/%m/%Y')}")
-
         # Información del cliente
         pdf.setFont("Helvetica-Bold", 12)
         pdf.drawString(50, 700, "Información del Cliente")
@@ -269,18 +362,15 @@ def generate_invoice():
         pdf.drawString(50, 680, f"{user.firstname} {user.lastname}")
         pdf.drawString(50, 660, f"{user.billing_address}, {user.billing_city} ({user.billing_postal_code})")
         pdf.drawString(50, 640, f"{user.CIF}")
-
         # Información del envío
         pdf.setFont("Helvetica-Bold", 12)
         pdf.drawString(50, 580, "Dirección de envío")
         pdf.setFont("Helvetica", 10)
         pdf.drawString(50, 560, f"{user.shipping_address}, {user.shipping_city} ({user.shipping_postal_code})")
-
         # Detalles del pedido
         pdf.setFont("Helvetica-Bold", 12)
         pdf.drawString(50, 510, "Detalles del Pedido")
         pdf.setFont("Helvetica", 10)
-
         # Crear datos para la tabla de productos
         data = [["Producto", "Alto", "Ancho", "Anclaje", "Color", "Precio"]]
         for detail in order.order_details:

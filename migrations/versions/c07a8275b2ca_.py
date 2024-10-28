@@ -1,8 +1,8 @@
 """empty message
 
-Revision ID: 67e15acac35f
+Revision ID: c07a8275b2ca
 Revises: 
-Create Date: 2024-10-24 13:59:44.704341
+Create Date: 2024-10-28 07:08:52.848433
 
 """
 from alembic import op
@@ -10,7 +10,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision = '67e15acac35f'
+revision = 'c07a8275b2ca'
 down_revision = None
 branch_labels = None
 depends_on = None
@@ -22,6 +22,8 @@ def upgrade():
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('nombre', sa.String(length=100), nullable=False),
     sa.Column('descripcion', sa.Text(), nullable=True),
+    sa.Column('parent_id', sa.Integer(), nullable=True),
+    sa.ForeignKeyConstraint(['parent_id'], ['categories.id'], ),
     sa.PrimaryKeyConstraint('id')
     )
     op.create_table('users',
@@ -65,14 +67,34 @@ def upgrade():
     sa.ForeignKeyConstraint(['author_id'], ['users.id'], ),
     sa.PrimaryKeyConstraint('id')
     )
+    op.create_table('subcategories',
+    sa.Column('id', sa.Integer(), nullable=False),
+    sa.Column('nombre', sa.String(length=100), nullable=False),
+    sa.Column('descripcion', sa.Text(), nullable=True),
+    sa.Column('categoria_id', sa.Integer(), nullable=False),
+    sa.ForeignKeyConstraint(['categoria_id'], ['categories.id'], ),
+    sa.PrimaryKeyConstraint('id')
+    )
+    op.create_table('comments',
+    sa.Column('id', sa.Integer(), nullable=False),
+    sa.Column('content', sa.Text(), nullable=False),
+    sa.Column('post_id', sa.Integer(), nullable=False),
+    sa.Column('user_id', sa.Integer(), nullable=False),
+    sa.Column('created_at', sa.DateTime(), nullable=True),
+    sa.ForeignKeyConstraint(['post_id'], ['posts.id'], ),
+    sa.ForeignKeyConstraint(['user_id'], ['users.id'], ),
+    sa.PrimaryKeyConstraint('id')
+    )
     op.create_table('products',
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('nombre', sa.String(length=100), nullable=False),
     sa.Column('descripcion', sa.Text(), nullable=False),
     sa.Column('precio', sa.Float(), nullable=False),
     sa.Column('categoria_id', sa.Integer(), nullable=True),
+    sa.Column('subcategoria_id', sa.Integer(), nullable=True),
     sa.Column('imagen', sa.String(length=200), nullable=True),
     sa.ForeignKeyConstraint(['categoria_id'], ['categories.id'], ),
+    sa.ForeignKeyConstraint(['subcategoria_id'], ['subcategories.id'], ),
     sa.PrimaryKeyConstraint('id')
     )
     op.create_table('cart',
@@ -86,16 +108,6 @@ def upgrade():
     sa.Column('precio_total', sa.Float(), nullable=False),
     sa.ForeignKeyConstraint(['producto_id'], ['products.id'], ),
     sa.ForeignKeyConstraint(['usuario_id'], ['users.id'], ),
-    sa.PrimaryKeyConstraint('id')
-    )
-    op.create_table('comments',
-    sa.Column('id', sa.Integer(), nullable=False),
-    sa.Column('content', sa.Text(), nullable=False),
-    sa.Column('post_id', sa.Integer(), nullable=False),
-    sa.Column('user_id', sa.Integer(), nullable=False),
-    sa.Column('created_at', sa.DateTime(), nullable=True),
-    sa.ForeignKeyConstraint(['post_id'], ['posts.id'], ),
-    sa.ForeignKeyConstraint(['user_id'], ['users.id'], ),
     sa.PrimaryKeyConstraint('id')
     )
     op.create_table('favorites',
@@ -144,9 +156,10 @@ def downgrade():
     op.drop_table('product_images')
     op.drop_table('order_details')
     op.drop_table('favorites')
-    op.drop_table('comments')
     op.drop_table('cart')
     op.drop_table('products')
+    op.drop_table('comments')
+    op.drop_table('subcategories')
     op.drop_table('posts')
     op.drop_table('orders')
     op.drop_table('users')
