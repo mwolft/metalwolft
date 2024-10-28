@@ -106,8 +106,13 @@ class Products(db.Model):
     descripcion = db.Column(db.Text, nullable=False)
     precio = db.Column(db.Float, nullable=False)
     categoria_id = db.Column(db.Integer, db.ForeignKey('categories.id'), nullable=True)
+    subcategoria_id = db.Column(db.Integer, db.ForeignKey('subcategories.id'), nullable=True)  
     imagen = db.Column(db.String(200), nullable=True)
+    
+    # Relaciones
     images = db.relationship('ProductImages', backref='product', lazy=True)
+    categoria = db.relationship('Categories', backref='products', lazy=True)  
+    subcategoria = db.relationship('Subcategories', backref='products', lazy=True) 
 
     def __repr__(self):
         return f'<Product {self.id}: {self.nombre}>'
@@ -119,6 +124,7 @@ class Products(db.Model):
             "descripcion": self.descripcion,
             "precio": self.precio,
             "categoria_id": self.categoria_id,
+            "subcategoria_id": self.subcategoria_id,  
             "imagen": self.imagen,
         }
 
@@ -129,6 +135,7 @@ class Products(db.Model):
             "descripcion": self.descripcion,
             "precio": self.precio,
             "categoria_id": self.categoria_id,
+            "subcategoria_id": self.subcategoria_id,
             "imagen": self.imagen,
             "images": [image.serialize() for image in self.images]
         }
@@ -156,7 +163,10 @@ class Categories(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     nombre = db.Column(db.String(100), nullable=False)
     descripcion = db.Column(db.Text, nullable=True)
-    products = db.relationship('Products', backref='categoria', lazy=True)
+    parent_id = db.Column(db.Integer, db.ForeignKey('categories.id'), nullable=True)  # Para identificar subcategorías
+    
+    # Relación padre-hijo para subcategorías
+    children = db.relationship('Categories', backref=db.backref('parent', remote_side=[id]), lazy=True)
 
     def __repr__(self):
         return f'<Category {self.id}: {self.nombre}>'
@@ -165,7 +175,26 @@ class Categories(db.Model):
         return {
             "id": self.id,
             "nombre": self.nombre,
-            "descripcion": self.descripcion
+            "descripcion": self.descripcion,
+            "parent_id": self.parent_id
+        }
+
+
+class Subcategories(db.Model):
+    __tablename__ = "subcategories"
+    id = db.Column(db.Integer, primary_key=True)
+    nombre = db.Column(db.String(100), nullable=False)
+    descripcion = db.Column(db.Text, nullable=True)
+    categoria_id = db.Column(db.Integer, db.ForeignKey('categories.id'), nullable=False)
+    categoria = db.relationship('Categories', backref='subcategories', lazy=True)  
+    def __repr__(self):
+        return f'<Subcategory {self.id}: {self.nombre}>'
+    def serialize(self):
+        return {
+            "id": self.id,
+            "nombre": self.nombre,
+            "descripcion": self.descripcion,
+            "categoria_id": self.categoria_id
         }
 
 
@@ -175,11 +204,11 @@ class Orders(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     order_date = db.Column(db.DateTime, default=db.func.current_timestamp())
     total_amount = db.Column(db.Float, nullable=False)
-    invoice_number = db.Column(db.String(50), nullable=False, unique=True)  # Número de factura
-    locator = db.Column(db.String(10), nullable=False, unique=True)  # Localizador único
+    invoice_number = db.Column(db.String(50), nullable=False, unique=True)  
+    locator = db.Column(db.String(10), nullable=False, unique=True)  
 
     user = db.relationship('Users', backref='orders', lazy=True)
-    order_details = db.relationship('OrderDetails', backref='order', lazy=True)  # Relación con OrderDetails
+    order_details = db.relationship('OrderDetails', backref='order', lazy=True)  
 
     def __repr__(self):
         return f'<Order {self.id} by User {self.user_id}>'
@@ -192,7 +221,7 @@ class Orders(db.Model):
             "total_amount": self.total_amount,
             "invoice_number": self.invoice_number,
             "locator": self.locator,
-            "order_details": [detail.serialize() for detail in self.order_details]  # Serializar detalles del pedido
+            "order_details": [detail.serialize() for detail in self.order_details] 
         }
 
     @staticmethod
@@ -230,12 +259,9 @@ class OrderDetails(db.Model):
     billing_city = db.Column(db.String(100), nullable=True)
     billing_postal_code = db.Column(db.String(20), nullable=True)
     CIF = db.Column(db.String(20), nullable=True)
-
     product = db.relationship('Products', backref='order_details', lazy=True)  
-
     def __repr__(self):
         return f'<OrderDetail {self.id}: Order {self.order_id} - Product {self.product_id}>'
-
     def serialize(self):
         return {
             "id": self.id,

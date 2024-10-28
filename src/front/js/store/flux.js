@@ -16,7 +16,8 @@ const getState = ({ getStore, getActions, setStore }) => {
             cart: [],
             paymentCompleted: false,
             posts: [],  
-            postsLoaded: false
+            postsLoaded: false,
+            subcategories: []
         },
         actions: {
             loadPosts: async () => {
@@ -192,26 +193,59 @@ const getState = ({ getStore, getActions, setStore }) => {
             setAlert: (newAlert) => {
                 setStore({ alert: newAlert });
             },
-            fetchProducts: async () => {
+            getCategories: async () => {
+                try {
+                    const response = await fetch(`${process.env.BACKEND_URL}/api/categories`, {
+                        method: 'GET',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        }
+                    });
+                    if (!response.ok) throw new Error("Error fetching categories");
+            
+                    const data = await response.json();
+                    setStore({ categories: data });  // Asegúrate de tener 'categories' en el estado del store
+                } catch (error) {
+                    console.error("Error fetching categories:", error);
+                    setStore({ error: error.message });
+                }
+            },            
+            fetchSubcategories: async (categoryId) => {
+                try {
+                    const response = await fetch(`${process.env.BACKEND_URL}/api/categories/${categoryId}/subcategories`, {
+                        method: 'GET',
+                        headers: { 'Content-Type': 'application/json' }
+                    });
+                    if (!response.ok) throw new Error("Error fetching subcategories");
+
+                    const data = await response.json();
+                    setStore({ subcategories: data });
+                } catch (error) {
+                    console.error("Error fetching subcategories:", error);
+                    setStore({ error: error.message });
+                }
+            },
+            fetchProducts: async (categoryId = null, subcategoryId = null) => {
                 const store = getStore();
                 const token = localStorage.getItem("token");
-            
+                let url = `${process.env.BACKEND_URL}/api/products`;
+                if (categoryId) url += `?category_id=${categoryId}`;
+                if (subcategoryId) url += `&subcategory_id=${subcategoryId}`;
                 try {
-                    const response = await fetch(`${process.env.BACKEND_URL}/api/products`, {
+                    const response = await fetch(url, {
                         method: 'GET',
                         headers: {
                             'Content-Type': 'application/json',
-                            ...(token && { Authorization: `Bearer ${token}` }) // Incluir el token
+                            ...(token && { Authorization: `Bearer ${token}` })
                         }
                     });
-                    if (!response.ok) throw new Error("Error al obtener productos");
-            
+                    if (!response.ok) throw new Error("Error fetching products");
                     const data = await response.json();
                     setStore({ products: data });
                 } catch (error) {
                     setStore({ error: error.message });
                 }
-            }, 
+            },
             loadCart: async () => {
                 const store = getStore();
                 if (!store.isLoged) return; // Solo cargar si el usuario está logueado

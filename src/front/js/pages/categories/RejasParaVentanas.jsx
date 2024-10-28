@@ -1,17 +1,15 @@
 import React, { useEffect, useContext } from "react";
 import { Breadcrumb } from "../../component/Breadcrumb.jsx";
 import { Product } from "../../component/Product.jsx";
-import { useNavigate } from "react-router-dom";
 import { AsideCategories } from "../../component/AsideCategories.jsx";
-import { Context } from "../../store/appContext";
+import { Context } from "../../store/appContext.js";
 
 export const RejasParaVentanas = () => {
     const { store, actions } = useContext(Context);
-    const navigate = useNavigate();
 
     useEffect(() => {
-        actions.fetchProducts();  
-    }, []);
+        if (store.products.length === 0) actions.fetchProducts(); // Cargar productos solo si no están en el store
+    }, [store.products, actions]);
 
     return (
         <>
@@ -30,7 +28,7 @@ export const RejasParaVentanas = () => {
                                     </div>
                                 ))
                             ) : (
-                                <p>No hay productos disponibles en esta categoría.</p>
+                                <p>No hay productos disponibles para la categoría seleccionada.</p>
                             )}
                         </div>
                     </div>

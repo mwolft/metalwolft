@@ -2,7 +2,7 @@ import os
 from flask_admin import Admin
 from flask_admin.contrib.sqla import ModelView
 from wtforms.fields import SelectField, StringField
-from .models import db, Users, Products, ProductImages, Categories, Cart, Orders, OrderDetails, Favorites, Posts, Comments
+from .models import db, Users, Products, ProductImages, Categories, Subcategories, Cart, Orders, OrderDetails, Favorites, Posts, Comments
 
 
 class ProductAdminView(ModelView):
@@ -52,6 +52,7 @@ def setup_admin(app):
     # Agregar vistas personalizadas para los modelos
     admin.add_view(ModelView(Users, db.session))
     admin.add_view(ModelView(Categories, db.session))
+    admin.add_view(ModelView(Subcategories, db.session))
     admin.add_view(ProductAdminView(Products, db.session))
     admin.add_view(ModelView(ProductImages, db.session))
     admin.add_view(ModelView(Cart, db.session))
