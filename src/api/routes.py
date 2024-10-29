@@ -14,6 +14,7 @@ from reportlab.lib.pagesizes import A4
 from reportlab.lib import colors
 from reportlab.lib.units import cm
 from datetime import datetime
+from sqlalchemy import func
 
 api = Blueprint('api', __name__)
 
@@ -48,118 +49,6 @@ def create_payment_intent():
 
     except Exception as e:
         return jsonify({"error": str(e)}), 403
-
-
-@api.route('/categories', methods=['POST'])
-@jwt_required()
-def create_category():
-    current_user = get_jwt_identity()
-    if not current_user.get("is_admin"):
-        response = jsonify({"message": "Acceso prohibido: Solo administradores"})
-        response.headers['Access-Control-Allow-Origin'] = '*'
-        response.headers['Access-Control-Expose-Headers'] = 'Authorization'
-        return response, 403
-
-    data = request.get_json()
-    nombre = data.get('nombre')
-    descripcion = data.get('descripcion')
-    parent_id = data.get('parent_id')
-
-    if not nombre:
-        response = jsonify({"message": "El nombre de la categoría es obligatorio"})
-        response.headers['Access-Control-Allow-Origin'] = '*'
-        return response, 400
-
-    new_category = Categories(nombre=nombre, descripcion=descripcion, parent_id=parent_id)
-    db.session.add(new_category)
-    db.session.commit()
-
-    response = jsonify(new_category.serialize())
-    response.headers['Access-Control-Allow-Origin'] = '*'
-    response.headers['Access-Control-Expose-Headers'] = 'Authorization'
-    return response, 201
-
-
-@api.route('/categories/<int:category_id>', methods=['PUT'])
-@jwt_required()
-def update_category(category_id):
-    current_user = get_jwt_identity()
-    if not current_user.get("is_admin"):
-        response = jsonify({"message": "Acceso prohibido: Solo administradores"})
-        response.headers['Access-Control-Allow-Origin'] = '*'
-        response.headers['Access-Control-Expose-Headers'] = 'Authorization'
-        return response, 403
-
-    category = Categories.query.get(category_id)
-    if not category:
-        response = jsonify({"message": "Categoría no encontrada"})
-        response.headers['Access-Control-Allow-Origin'] = '*'
-        return response, 404
-
-    data = request.get_json()
-    category.nombre = data.get('nombre', category.nombre)
-    category.descripcion = data.get('descripcion', category.descripcion)
-    category.parent_id = data.get('parent_id', category.parent_id)
-
-    db.session.commit()
-
-    response = jsonify(category.serialize())
-    response.headers['Access-Control-Allow-Origin'] = '*'
-    response.headers['Access-Control-Expose-Headers'] = 'Authorization'
-    return response, 200
-
-
-@api.route('/categories', methods=['GET'])
-def get_all_categories():
-    # Obtener todas las categorías principales (sin parent_id)
-    categories = Categories.query.filter(Categories.parent_id.is_(None)).all()
-    response = jsonify([category.serialize() for category in categories])
-    response.headers['Access-Control-Allow-Origin'] = '*'
-    response.headers['Access-Control-Expose-Headers'] = 'Authorization'
-    return response, 200
-
-
-@api.route('/categories/<int:category_id>/subcategories', methods=['GET'])
-def get_subcategories(category_id):
-    try:
-        # Obtener subcategorías de una categoría específica
-        subcategories = Categories.query.filter_by(parent_id=category_id).all()
-        response = jsonify([subcategory.serialize() for subcategory in subcategories])
-        response.headers['Access-Control-Allow-Origin'] = '*'
-        response.headers['Access-Control-Expose-Headers'] = 'Authorization'
-        return response, 200
-    except SQLAlchemyError as e:
-        db.session.rollback()
-        response = jsonify({"message": "Error retrieving subcategories", "error": str(e)})
-        response.headers['Access-Control-Allow-Origin'] = '*'
-        response.headers['Access-Control-Expose-Headers'] = 'Authorization'
-        return response, 500
-
-
-@api.route('/products', methods=['GET'])
-def get_products():
-    # Obtener productos por categoría y subcategoría (si se proporcionan)
-    category_id = request.args.get('category_id')
-    subcategory_id = request.args.get('subcategory_id')
-    
-    try:
-        query = Products.query
-        if category_id:
-            query = query.filter_by(categoria_id=category_id)
-        if subcategory_id:
-            query = query.filter_by(subcategoria_id=subcategory_id)
-
-        products = query.all()
-        response = jsonify([product.serialize_with_images() for product in products])
-        response.headers['Access-Control-Allow-Origin'] = '*'
-        response.headers['Access-Control-Expose-Headers'] = 'Authorization'
-        return response, 200
-    except SQLAlchemyError as e:
-        db.session.rollback()
-        response = jsonify({"message": "Error retrieving products", "error": str(e)})
-        response.headers['Access-Control-Allow-Origin'] = '*'
-        response.headers['Access-Control-Expose-Headers'] = 'Authorization'
-        return response, 500
 
 
 @api.route('/posts/<int:post_id>/comments', methods=['GET'])
@@ -666,57 +555,137 @@ def delete_user(user_id):
 
 
 @api.route('/categories', methods=['GET'])
-def get_categories():
-    categories = Categories.query.all()
-    total_count = len(categories)
+def get_all_categories():
+    try:
+        categories = (
+            db.session.query(
+                Categories,
+                func.count(Products.id).label("product_count")
+            )
+            .outerjoin(Products, Products.categoria_id == Categories.id)
+            .filter(Categories.parent_id.is_(None))
+            .group_by(Categories.id)
+            .all()
+        )
 
-    response = jsonify([category.serialize() for category in categories])
-    response.headers['X-Total-Count'] = total_count
-    response.headers['Access-Control-Expose-Headers'] = 'X-Total-Count'
+        response_data = [
+            {
+                **category[0].serialize(),
+                "product_count": category[1]
+            }
+            for category in categories
+        ]
+        response = jsonify(response_data)
+        response.headers['Access-Control-Allow-Origin'] = '*'
+        response.headers['Access-Control-Expose-Headers'] = 'Authorization'
+        return response, 200
+    except SQLAlchemyError as e:
+        db.session.rollback()
+        response = jsonify({"message": "Error retrieving categories", "error": str(e)})
+        response.headers['Access-Control-Allow-Origin'] = '*'
+        response.headers['Access-Control-Expose-Headers'] = 'Authorization'
+        return response, 500
+
+
+@api.route('/products', methods=['GET'])
+def get_products():
+    category_id = request.args.get('category_id')
+    subcategory_id = request.args.get('subcategory_id')
+
+    try:
+        query = Products.query
+        if category_id:
+            query = query.filter_by(categoria_id=category_id)
+        if subcategory_id:
+            query = query.filter_by(subcategoria_id=subcategory_id)
+
+        products = query.all()
+        response = jsonify([product.serialize_with_images() for product in products])
+        response.headers['Access-Control-Allow-Origin'] = '*'
+        response.headers['Access-Control-Expose-Headers'] = 'Authorization'
+        return response, 200
+    except SQLAlchemyError as e:
+        db.session.rollback()
+        response = jsonify({"message": "Error retrieving products", "error": str(e)})
+        response.headers['Access-Control-Allow-Origin'] = '*'
+        response.headers['Access-Control-Expose-Headers'] = 'Authorization'
+        return response, 500
+
+
+@api.route('/categories', methods=['POST'])
+@jwt_required()
+def create_category():
+    current_user = get_jwt_identity()
+    if not current_user.get("is_admin"):
+        response = jsonify({"message": "Acceso prohibido: Solo administradores"})
+        response.headers['Access-Control-Allow-Origin'] = '*'
+        response.headers['Access-Control-Expose-Headers'] = 'Authorization'
+        return response, 403
+
+    data = request.get_json()
+    nombre = data.get('nombre')
+    descripcion = data.get('descripcion')
+    parent_id = data.get('parent_id')
+
+    if not nombre:
+        response = jsonify({"message": "El nombre de la categoría es obligatorio"})
+        response.headers['Access-Control-Allow-Origin'] = '*'
+        return response, 400
+
+    new_category = Categories(nombre=nombre, descripcion=descripcion, parent_id=parent_id)
+    db.session.add(new_category)
+    db.session.commit()
+
+    response = jsonify(new_category.serialize())
+    response.headers['Access-Control-Allow-Origin'] = '*'
+    response.headers['Access-Control-Expose-Headers'] = 'Authorization'
+    return response, 201
+
+
+@api.route('/categories/<int:category_id>', methods=['PUT'])
+@jwt_required()
+def update_category(category_id):
+    current_user = get_jwt_identity()
+    if not current_user.get("is_admin"):
+        response = jsonify({"message": "Acceso prohibido: Solo administradores"})
+        response.headers['Access-Control-Allow-Origin'] = '*'
+        response.headers['Access-Control-Expose-Headers'] = 'Authorization'
+        return response, 403
+
+    category = Categories.query.get(category_id)
+    if not category:
+        response = jsonify({"message": "Categoría no encontrada"})
+        response.headers['Access-Control-Allow-Origin'] = '*'
+        return response, 404
+
+    data = request.get_json()
+    category.nombre = data.get('nombre', category.nombre)
+    category.descripcion = data.get('descripcion', category.descripcion)
+    category.parent_id = data.get('parent_id', category.parent_id)
+
+    db.session.commit()
+
+    response = jsonify(category.serialize())
+    response.headers['Access-Control-Allow-Origin'] = '*'
+    response.headers['Access-Control-Expose-Headers'] = 'Authorization'
     return response, 200
 
 
-@api.route('/products', methods=['GET', 'POST'])
-def handle_products():
-    current_user = get_jwt_identity() if request.method == 'POST' else None
-    if request.method == 'GET':
-        # Obtener todos los productos
-        products = Products.query.all()
-        total_count = len(products)
-        response = jsonify([product.serialize_with_images() for product in products])
-        response.headers['X-Total-Count'] = str(total_count)
-        response.headers['Access-Control-Expose-Headers'] = 'X-Total-Count, Authorization'
+@api.route('/categories/<int:category_id>/subcategories', methods=['GET'])
+def get_subcategories(category_id):
+    try:
+        # Obtener subcategorías de una categoría específica
+        subcategories = Categories.query.filter_by(parent_id=category_id).all()
+        response = jsonify([subcategory.serialize() for subcategory in subcategories])
         response.headers['Access-Control-Allow-Origin'] = '*'
+        response.headers['Access-Control-Expose-Headers'] = 'Authorization'
         return response, 200
-    elif request.method == 'POST':
-        # Solo los administradores pueden crear productos
-        if not current_user or not current_user.get("is_admin"):
-            return jsonify({"message": "Access forbidden: Admins only"}), 403
-        data = request.json
-        try:
-            # Crear el nuevo producto
-            new_product = Products(
-                nombre=data.get('nombre'),
-                descripcion=data.get('descripcion'),
-                precio=data.get('precio'),
-                categoria_id=data.get('categoria_id'),
-                imagen=data.get('imagen')
-            )
-            db.session.add(new_product)
-            db.session.flush()  # Para obtener el ID del producto antes de confirmar
-            # Agregar imágenes adicionales si se proporcionan
-            images_urls = data.get('images', [])
-            for image_url in images_urls:
-                new_image = ProductImages(product_id=new_product.id, image_url=image_url)
-                db.session.add(new_image)
-            db.session.commit()
-            response = jsonify(new_product.serialize_with_images())
-            response.headers['Access-Control-Allow-Origin'] = '*'
-            response.headers['Access-Control-Expose-Headers'] = 'Authorization'
-            return response, 201
-        except SQLAlchemyError as e:
-            db.session.rollback()
-            return jsonify({"message": "An error occurred while creating the product.", "error": str(e)}), 500
+    except SQLAlchemyError as e:
+        db.session.rollback()
+        response = jsonify({"message": "Error retrieving subcategories", "error": str(e)})
+        response.headers['Access-Control-Allow-Origin'] = '*'
+        response.headers['Access-Control-Expose-Headers'] = 'Authorization'
+        return response, 500
 
 
 @api.route('/products/<int:product_id>', methods=['GET', 'PUT', 'DELETE'])
@@ -812,14 +781,6 @@ def add_product_images(product_id):
         # Manejar errores y revertir la transacción si ocurre un problema
         db.session.rollback()
         return jsonify({"message": "An error occurred while adding images.", "error": str(e)}), 500
-
-
-@api.route('/products/<int:product_id>', methods=['GET'])
-def get_product_with_images(product_id):
-    product = Products.query.get(product_id)
-    if not product:
-        return jsonify({"message": "Product not found"}), 404
-    return jsonify(product.serialize_with_images()), 200
 
 
 @api.route('/product_images', methods=['GET'])

@@ -17,7 +17,8 @@ const getState = ({ getStore, getActions, setStore }) => {
             paymentCompleted: false,
             posts: [],  
             postsLoaded: false,
-            subcategories: []
+            subcategories: [],
+            categories: []
         },
         actions: {
             loadPosts: async () => {
@@ -204,12 +205,12 @@ const getState = ({ getStore, getActions, setStore }) => {
                     if (!response.ok) throw new Error("Error fetching categories");
             
                     const data = await response.json();
-                    setStore({ categories: data });  // Asegúrate de tener 'categories' en el estado del store
+                    setStore({ categories: data });
                 } catch (error) {
                     console.error("Error fetching categories:", error);
-                    setStore({ error: error.message });
+                    setStore({ error: error.message, categories: [] });
                 }
-            },            
+            },        
             fetchSubcategories: async (categoryId) => {
                 try {
                     const response = await fetch(`${process.env.BACKEND_URL}/api/categories/${categoryId}/subcategories`, {
@@ -229,8 +230,15 @@ const getState = ({ getStore, getActions, setStore }) => {
                 const store = getStore();
                 const token = localStorage.getItem("token");
                 let url = `${process.env.BACKEND_URL}/api/products`;
-                if (categoryId) url += `?category_id=${categoryId}`;
-                if (subcategoryId) url += `&subcategory_id=${subcategoryId}`;
+            
+                const queryParams = new URLSearchParams();
+                if (categoryId) queryParams.append('category_id', categoryId);
+                if (subcategoryId) queryParams.append('subcategory_id', subcategoryId);
+            
+                if (queryParams.toString()) {
+                    url += `?${queryParams.toString()}`;
+                }
+            
                 try {
                     const response = await fetch(url, {
                         method: 'GET',
@@ -239,13 +247,34 @@ const getState = ({ getStore, getActions, setStore }) => {
                             ...(token && { Authorization: `Bearer ${token}` })
                         }
                     });
+            
                     if (!response.ok) throw new Error("Error fetching products");
+            
                     const data = await response.json();
                     setStore({ products: data });
                 } catch (error) {
+                    console.error("Error fetching products:", error);
+                    setStore({ error: error.message, products: [] });
+                }
+            },                    
+            fetchCategories: async () => {
+                try {
+                    const response = await fetch(`${process.env.BACKEND_URL}/api/categories/with-counts`, {
+                        method: 'GET',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        }
+                    });
+            
+                    if (!response.ok) throw new Error("Error fetching categories");
+            
+                    const data = await response.json();
+                    setStore({ categoriesWithCounts: data });
+                } catch (error) {
+                    console.error("Error fetching categories with counts:", error);
                     setStore({ error: error.message });
                 }
-            },
+            },            
             loadCart: async () => {
                 const store = getStore();
                 if (!store.isLoged) return; // Solo cargar si el usuario está logueado
