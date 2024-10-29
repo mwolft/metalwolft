@@ -2,28 +2,23 @@ import React, { useEffect, useContext } from "react";
 import { Context } from "../store/appContext.js";
 import "../../styles/categories-pages.css";
 
-export const AsideCategories = ({ onSelectCategory, onSelectSubcategory }) => {
+export const AsideCategories = ({ onSelectCategory, onSelectSubcategory, categoryId }) => {
     const { store, actions } = useContext(Context);
 
     useEffect(() => {
         actions.getCategories();
     }, []);
 
-    const handleCategoryClick = (categoryId) => {
-        onSelectCategory(categoryId);
-    };
-
-    const handleSubcategoryClick = (subcategoryId) => {
-        onSelectSubcategory(subcategoryId);
-    };
+    const category = store.categories?.find(cat => cat.id === categoryId);
 
     return (
-        <div className="widget">
+        <div className="widget my-5">
             <h5 className="widget_title">Categorías</h5>
-            <ul className="widget_categories">
-                {store.categories && store.categories.map(category => (
+            <hr className="hr-home" />
+            {category ? (
+                <ul className="widget_categories">
                     <li key={category.id}>
-                        <button type="button" onClick={() => handleCategoryClick(category.id)} className="category-button">
+                        <button type="button" onClick={() => onSelectCategory(category.id)} className="category-button">
                             <i className="fas fa-chevron-right category-icon"></i>
                             <span className="categories_name">{category.nombre}</span>
                             <span className="categories_num"> ({category.product_count || 0})</span>
@@ -32,7 +27,7 @@ export const AsideCategories = ({ onSelectCategory, onSelectSubcategory }) => {
                             <ul className="subcategory-list">
                                 {category.subcategories.map(sub => (
                                     <li key={sub.id}>
-                                        <button type="button" onClick={() => handleSubcategoryClick(sub.id)} className="subcategory-button">
+                                        <button type="button" onClick={() => onSelectSubcategory(sub.id)} className="subcategory-button">
                                             <i className="fas fa-caret-right subcategory-icon"></i>
                                             <span className="categories_name">{sub.nombre}</span>
                                             <span className="categories_num"> ({sub.product_count || 0})</span>
@@ -42,8 +37,10 @@ export const AsideCategories = ({ onSelectCategory, onSelectSubcategory }) => {
                             </ul>
                         )}
                     </li>
-                ))}
-            </ul>
+                </ul>
+            ) : (
+                <p>Cargando categorías...</p>
+            )}
         </div>
     );
 };

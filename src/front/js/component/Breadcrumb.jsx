@@ -19,6 +19,11 @@ export const Breadcrumb = () => {
 
     const breadcrumbNameMap = {
         'rejas-para-ventanas': 'Rejas para Ventanas',
+        'vallados-metalicos-exteriores': 'Vallados Metálicos Exteriores',
+        'puertas-peatonales-metalicas' : 'Puertas Peatonales Metálicas',
+        'puertas-correderas-exteriores' : 'Puertas Correderas Exteriores',
+        'cerramientos-de-cocina-con-cristal' : 'Cerramientos de Cocina con Cristal',
+        'puertas-correderas-interiores' : 'Puertas Correderas Interiores',
         'blogs': 'Blog de Carpintería Metálica',
         'medir-hueco-rejas-para-ventanas': 'Cómo Medir el Hueco para Rejas de Ventanas',
         'cookies-esenciales': 'Cookies',
@@ -27,6 +32,7 @@ export const Breadcrumb = () => {
         'informacion-recogida': 'Información Recogida',
         'cambios-politica-cookies': 'Cambios de Política de Cookies'
     };
+    
 
     // Función para obtener el nombre amigable
     const getDisplayName = (breadcrumb) => {

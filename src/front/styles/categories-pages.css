@@ -9,7 +9,7 @@
     align-items: center;
     background-color: white;
     border: none;
-    padding: 8px 12px;
+    padding: 2px 2px;
     width: 100%;
     text-align: left;
     cursor: pointer;
@@ -25,10 +25,10 @@
     color: #ff324d;
 }
 
-
 .category-icon, .subcategory-icon {
     margin-right: 8px;
     color: #555;
+    font-size: 10px; 
 }
 
 .categories_name {
@@ -40,9 +40,7 @@
     font-size: 14px;
 }
 
-/* Estilo para la lista de subcategorías */
 .subcategory-list {
     list-style-type: none;
     padding-left: 20px;
-    margin-top: 4px;
 }
