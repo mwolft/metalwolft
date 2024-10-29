@@ -6,7 +6,6 @@ from .models import db, Users, Products, ProductImages, Categories, Subcategorie
 
 
 class ProductAdminView(ModelView):
-    # Modificar el formulario para seleccionar la categoría
     form_extra_fields = {
         'categoria_id': SelectField('Categoría', choices=[])
     }
@@ -26,7 +25,6 @@ class ProductAdminView(ModelView):
 
 
 class OrderAdminView(ModelView):
-    # Mostrar los campos de factura y localizador como de solo lectura
     form_columns = ['user_id', 'total_amount', 'order_date', 'invoice_number', 'locator']
     column_list = ['id', 'user_id', 'total_amount', 'order_date', 'invoice_number', 'locator']
     column_editable_list = ['total_amount']
@@ -49,14 +47,13 @@ def setup_admin(app):
     app.config['FLASK_ADMIN_SWATCH'] = 'sandstone'
     admin = Admin(app, name='MetalWolft.com', template_mode='bootstrap3')
 
-    # Agregar vistas personalizadas para los modelos
     admin.add_view(ModelView(Users, db.session))
     admin.add_view(ModelView(Categories, db.session))
     admin.add_view(ModelView(Subcategories, db.session))
     admin.add_view(ProductAdminView(Products, db.session))
     admin.add_view(ModelView(ProductImages, db.session))
     admin.add_view(ModelView(Cart, db.session))
-    admin.add_view(OrderAdminView(Orders, db.session))  # Vista personalizada para Orders
+    admin.add_view(OrderAdminView(Orders, db.session))  
     admin.add_view(ModelView(OrderDetails, db.session))
     admin.add_view(ModelView(Favorites, db.session))
     admin.add_view(ModelView(Posts, db.session))

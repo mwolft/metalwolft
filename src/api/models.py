@@ -79,11 +79,9 @@ class Comments(db.Model):
     post_id = db.Column(db.Integer, db.ForeignKey('posts.id'), nullable=False)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
-
-    # Relación con el modelo de Posts
+    
     post = db.relationship('Posts', backref='comments', lazy=True)
 
-    # Relación con el modelo de Users
     user = db.relationship('Users', backref='comments', lazy=True)
 
     def __repr__(self):
@@ -105,14 +103,13 @@ class Products(db.Model):
     nombre = db.Column(db.String(100), nullable=False)
     descripcion = db.Column(db.Text, nullable=False)
     precio = db.Column(db.Float, nullable=False)
-    categoria_id = db.Column(db.Integer, db.ForeignKey('categories.id'), nullable=True)
-    subcategoria_id = db.Column(db.Integer, db.ForeignKey('subcategories.id'), nullable=True)  
+    categoria_id = db.Column(db.Integer, db.ForeignKey('categories.id'), nullable=False)
+    subcategoria_id = db.Column(db.Integer, db.ForeignKey('subcategories.id'), nullable=True)
     imagen = db.Column(db.String(200), nullable=True)
-    
-    # Relaciones
+
     images = db.relationship('ProductImages', backref='product', lazy=True)
-    categoria = db.relationship('Categories', backref='products', lazy=True)  
-    subcategoria = db.relationship('Subcategories', backref='products', lazy=True) 
+    categoria = db.relationship('Categories', backref='products', lazy=True)
+    subcategoria = db.relationship('Subcategories', backref='products', lazy=True)
 
     def __repr__(self):
         return f'<Product {self.id}: {self.nombre}>'
@@ -124,20 +121,16 @@ class Products(db.Model):
             "descripcion": self.descripcion,
             "precio": self.precio,
             "categoria_id": self.categoria_id,
-            "subcategoria_id": self.subcategoria_id,  
+            "subcategoria_id": self.subcategoria_id,
             "imagen": self.imagen,
         }
 
     def serialize_with_images(self):
         return {
-            "id": self.id,
-            "nombre": self.nombre,
-            "descripcion": self.descripcion,
-            "precio": self.precio,
-            "categoria_id": self.categoria_id,
-            "subcategoria_id": self.subcategoria_id,
-            "imagen": self.imagen,
-            "images": [image.serialize() for image in self.images]
+            **self.serialize(),
+            "images": [image.serialize() for image in self.images],
+            "categoria_nombre": self.categoria.nombre,
+            "subcategoria_nombre": self.subcategoria.nombre if self.subcategoria else None,
         }
 
 
@@ -163,9 +156,9 @@ class Categories(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     nombre = db.Column(db.String(100), nullable=False)
     descripcion = db.Column(db.Text, nullable=True)
-    parent_id = db.Column(db.Integer, db.ForeignKey('categories.id'), nullable=True)  # Para identificar subcategorías
+    parent_id = db.Column(db.Integer, db.ForeignKey('categories.id'), nullable=True)
     
-    # Relación padre-hijo para subcategorías
+    # Relaciones
     children = db.relationship('Categories', backref=db.backref('parent', remote_side=[id]), lazy=True)
 
     def __repr__(self):
@@ -248,8 +241,6 @@ class OrderDetails(db.Model):
     anclaje = db.Column(db.String(50), nullable=True)  
     color = db.Column(db.String(50), nullable=True) 
     precio_total = db.Column(db.Float, nullable=False)  
-
-    # Campos de información de usuario y envío
     firstname = db.Column(db.String(100), nullable=True)
     lastname = db.Column(db.String(100), nullable=True)
     shipping_address = db.Column(db.String(200), nullable=True)

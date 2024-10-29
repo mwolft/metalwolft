@@ -1,7 +1,7 @@
 from flask import Flask, request, jsonify, Blueprint, send_file
 from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity
 from api.utils import generate_sitemap, APIException
-from api.models import db, Users, Products, ProductImages, Categories, Orders, OrderDetails, Favorites, Cart, OrderDetails, Posts, Comments
+from api.models import db, Users, Products, ProductImages, Categories, Subcategories, Orders, OrderDetails, Favorites, Cart, OrderDetails, Posts, Comments
 from sqlalchemy.exc import SQLAlchemyError
 import bcrypt
 import stripe
@@ -557,58 +557,30 @@ def delete_user(user_id):
 @api.route('/categories', methods=['GET'])
 def get_all_categories():
     try:
-        categories = (
-            db.session.query(
-                Categories,
-                func.count(Products.id).label("product_count")
-            )
-            .outerjoin(Products, Products.categoria_id == Categories.id)
-            .filter(Categories.parent_id.is_(None))
-            .group_by(Categories.id)
-            .all()
-        )
-
-        response_data = [
-            {
-                **category[0].serialize(),
-                "product_count": category[1]
-            }
-            for category in categories
-        ]
+        categories = Categories.query.all()
+        response_data = []
+        for category in categories:
+            product_count = Products.query.filter(Products.categoria_id == category.id).count()
+            subcategories = Subcategories.query.filter_by(categoria_id=category.id).all()
+            subcategories_data = []
+            for subcat in subcategories:
+                subcat_product_count = Products.query.filter(Products.subcategoria_id == subcat.id).count()
+                subcategories_data.append({
+                    **subcat.serialize(),
+                    "product_count": subcat_product_count
+                })
+            response_data.append({
+                **category.serialize(),
+                "product_count": product_count,
+                "subcategories": subcategories_data
+            })
         response = jsonify(response_data)
         response.headers['Access-Control-Allow-Origin'] = '*'
-        response.headers['Access-Control-Expose-Headers'] = 'Authorization'
         return response, 200
     except SQLAlchemyError as e:
         db.session.rollback()
         response = jsonify({"message": "Error retrieving categories", "error": str(e)})
         response.headers['Access-Control-Allow-Origin'] = '*'
-        response.headers['Access-Control-Expose-Headers'] = 'Authorization'
-        return response, 500
-
-
-@api.route('/products', methods=['GET'])
-def get_products():
-    category_id = request.args.get('category_id')
-    subcategory_id = request.args.get('subcategory_id')
-
-    try:
-        query = Products.query
-        if category_id:
-            query = query.filter_by(categoria_id=category_id)
-        if subcategory_id:
-            query = query.filter_by(subcategoria_id=subcategory_id)
-
-        products = query.all()
-        response = jsonify([product.serialize_with_images() for product in products])
-        response.headers['Access-Control-Allow-Origin'] = '*'
-        response.headers['Access-Control-Expose-Headers'] = 'Authorization'
-        return response, 200
-    except SQLAlchemyError as e:
-        db.session.rollback()
-        response = jsonify({"message": "Error retrieving products", "error": str(e)})
-        response.headers['Access-Control-Allow-Origin'] = '*'
-        response.headers['Access-Control-Expose-Headers'] = 'Authorization'
         return response, 500
 
 
@@ -674,8 +646,8 @@ def update_category(category_id):
 @api.route('/categories/<int:category_id>/subcategories', methods=['GET'])
 def get_subcategories(category_id):
     try:
-        # Obtener subcategorías de una categoría específica
         subcategories = Categories.query.filter_by(parent_id=category_id).all()
+        print("Subcategories fetched from database:", subcategories)
         response = jsonify([subcategory.serialize() for subcategory in subcategories])
         response.headers['Access-Control-Allow-Origin'] = '*'
         response.headers['Access-Control-Expose-Headers'] = 'Authorization'
@@ -688,6 +660,62 @@ def get_subcategories(category_id):
         return response, 500
 
 
+@api.route('/products', methods=['GET'])
+def get_products():
+    category_id = request.args.get('category_id', type=int)
+    subcategory_id = request.args.get('subcategory_id', type=int)
+    try:
+        query = Products.query
+        if subcategory_id:
+            query = query.filter(Products.subcategoria_id == subcategory_id)
+        elif category_id:
+            subcategory_ids = [sub.id for sub in Subcategories.query.filter_by(categoria_id=category_id).all()]
+            ids_to_filter = [category_id] + subcategory_ids
+            query = query.filter(
+                (Products.categoria_id == category_id) |
+                (Products.subcategoria_id.in_(subcategory_ids))
+            )
+        products = query.all()
+        response = jsonify([product.serialize_with_images() for product in products])
+        response.headers['Access-Control-Allow-Origin'] = '*'
+        return response, 200
+    except SQLAlchemyError as e:
+        db.session.rollback()
+        response = jsonify({"message": "Error retrieving products", "error": str(e)})
+        response.headers['Access-Control-Allow-Origin'] = '*'
+        return response, 500
+
+
+@api.route('/products', methods=['POST'])
+def create_product():
+    data = request.form  
+    nombre = data.get('nombre')
+    descripcion = data.get('descripcion')
+    precio = data.get('precio')
+    imagen = data.get('imagen')
+    categoria_id = data.get('categoria_id')
+    subcategoria_id = data.get('subcategoria_id')
+    subcategoria = Subcategories.query.get(subcategoria_id)
+    if not subcategoria:
+        return jsonify({"message": "La subcategoría especificada no existe"}), 400
+    categoria_id = subcategoria.categoria_id
+    new_product = Products(
+        nombre=nombre,
+        descripcion=descripcion,
+        precio=precio,
+        imagen=imagen,
+        categoria_id=categoria_id,
+        subcategoria_id=subcategoria_id
+    )
+    try:
+        db.session.add(new_product)
+        db.session.commit()
+        return jsonify(new_product.serialize_with_images()), 201
+    except SQLAlchemyError as e:
+        db.session.rollback()
+        return jsonify({"message": "Error al crear el producto", "error": str(e)}), 500
+
+
 @api.route('/products/<int:product_id>', methods=['GET', 'PUT', 'DELETE'])
 def handle_product(product_id):
     product = Products.query.get(product_id)
@@ -698,26 +726,20 @@ def handle_product(product_id):
         response.headers['Access-Control-Allow-Origin'] = '*'
         response.headers['Access-Control-Expose-Headers'] = 'Authorization'
         return response, 200
-    # Para los métodos PUT y DELETE requerimos autenticación
     current_user = get_jwt_identity()
     if request.method == 'PUT':
-        # Solo los administradores pueden actualizar productos
         if not current_user or not current_user.get("is_admin"):
             return jsonify({"message": "Access forbidden: Admins only"}), 403
         data = request.json
         try:
-            # Actualizar los detalles del producto
             product.nombre = data.get('nombre', product.nombre)
             product.descripcion = data.get('descripcion', product.descripcion)
             product.precio = data.get('precio', product.precio)
             product.categoria_id = data.get('categoria_id', product.categoria_id)
             product.imagen = data.get('imagen', product.imagen)
-            # Actualizar las imágenes adicionales si se proporcionan
             if 'images' in data:
                 images_urls = data.get('images', [])
-                # Borrar imágenes anteriores
                 ProductImages.query.filter_by(product_id=product_id).delete()
-                # Añadir nuevas imágenes
                 for image_url in images_urls:
                     new_image = ProductImages(product_id=product_id, image_url=image_url)
                     db.session.add(new_image)
@@ -729,12 +751,9 @@ def handle_product(product_id):
         except SQLAlchemyError as e:
             db.session.rollback()
             return jsonify({"message": "An error occurred while updating the product.", "error": str(e)}), 500
-
     elif request.method == 'DELETE':
-        # Solo los administradores pueden eliminar productos
         if not current_user or not current_user.get("is_admin"):
             return jsonify({"message": "Access forbidden: Admins only"}), 403
-
         try:
             db.session.delete(product)
             db.session.commit()
@@ -742,7 +761,6 @@ def handle_product(product_id):
             response.headers['Access-Control-Allow-Origin'] = '*'
             response.headers['Access-Control-Expose-Headers'] = 'Authorization'
             return response, 200
-
         except SQLAlchemyError as e:
             db.session.rollback()
             return jsonify({"message": "An error occurred while deleting the product.", "error": str(e)}), 500
@@ -752,33 +770,25 @@ def handle_product(product_id):
 @jwt_required()
 def add_product_images(product_id):
     current_user = get_jwt_identity()
-    # Solo los administradores pueden agregar imágenes
     if not current_user.get("is_admin"):
         return jsonify({"message": "Access forbidden: Admins only"}), 403
-    # Obtener el producto por ID
     product = Products.query.get(product_id)
     if not product:
         return jsonify({"message": "Product not found"}), 404
-    # Obtener las URLs de las imágenes desde la solicitud
     data = request.get_json()
     image_urls = data.get('images', [])
-    # Verificar que las URLs sean una lista de cadenas de texto válidas
     if not isinstance(image_urls, list) or not all(isinstance(url, str) for url in image_urls):
         return jsonify({"message": "Invalid images format. Expected a list of URLs."}), 400
     try:
-        # Añadir cada imagen a la base de datos
         for image_url in image_urls:
             new_image = ProductImages(product_id=product_id, image_url=image_url)
             db.session.add(new_image)
-        # Confirmar los cambios en la base de datos
         db.session.commit()
-        # Devolver el producto con las nuevas imágenes
         response = jsonify({"message": "Images added successfully.", "product": product.serialize_with_images()})
         response.headers['Access-Control-Allow-Origin'] = '*'
         response.headers['Access-Control-Expose-Headers'] = 'Authorization'
         return response, 201
     except SQLAlchemyError as e:
-        # Manejar errores y revertir la transacción si ocurre un problema
         db.session.rollback()
         return jsonify({"message": "An error occurred while adding images.", "error": str(e)}), 500
 
@@ -789,10 +799,8 @@ def get_product_images():
     current_user = get_jwt_identity()
     if not current_user.get("is_admin"):
         return jsonify({"message": "Access forbidden: Admins only"}), 403
-    # Obtener todas las imágenes de productos
     product_images = ProductImages.query.all()
     total_count = len(product_images)
-    # Preparar la respuesta con las imágenes serializadas
     response = jsonify([image.serialize() for image in product_images])
     response.headers['X-Total-Count'] = total_count
     response.headers['Access-Control-Expose-Headers'] = 'X-Total-Count, Authorization'
