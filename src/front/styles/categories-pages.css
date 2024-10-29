@@ -1,0 +1,48 @@
+.widget_categories {
+    list-style-type: none;
+    padding: 0;
+    margin: 0;
+}
+
+.category-button, .subcategory-button {
+    display: flex;
+    align-items: center;
+    background-color: white;
+    border: none;
+    padding: 8px 12px;
+    width: 100%;
+    text-align: left;
+    cursor: pointer;
+    font-size: 16px;
+}
+
+.widget_categories li .category-button:hover i,
+.widget_categories li .category-button:hover .categories_name,
+.widget_categories li .category-button:hover .categories_num,
+.widget_categories li .subcategory-button:hover i,
+.widget_categories li .subcategory-button:hover .categories_name,
+.widget_categories li .subcategory-button:hover .categories_num {
+    color: #ff324d;
+}
+
+
+.category-icon, .subcategory-icon {
+    margin-right: 8px;
+    color: #555;
+}
+
+.categories_name {
+    flex: 1;
+}
+
+.categories_num {
+    color: #999;
+    font-size: 14px;
+}
+
+/* Estilo para la lista de subcategorías */
+.subcategory-list {
+    list-style-type: none;
+    padding-left: 20px;
+    margin-top: 4px;
+}
