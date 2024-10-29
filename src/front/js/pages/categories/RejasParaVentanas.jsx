@@ -3,17 +3,13 @@ import { Breadcrumb } from "../../component/Breadcrumb.jsx";
 import { Product } from "../../component/Product.jsx";
 import { AsideCategories } from "../../component/AsideCategories.jsx";
 import { Context } from "../../store/appContext.js";
-import "../../../styles/categories-pages.css"; 
+import "../../../styles/categories-pages.css";
 
 export const RejasParaVentanas = () => {
     const { store, actions } = useContext(Context);
-    const [selectedCategoryId, setSelectedCategoryId] = useState(null);
+    const rejasCategoryId = 1; // ID específico de "Rejas para Ventanas"
+    const [selectedCategoryId, setSelectedCategoryId] = useState(rejasCategoryId);
     const [selectedSubcategoryId, setSelectedSubcategoryId] = useState(null);
-
-    // Cargar todos los productos al inicio
-    useEffect(() => {
-        actions.fetchProducts();
-    }, []);
 
     useEffect(() => {
         actions.fetchProducts(selectedCategoryId, selectedSubcategoryId);
@@ -21,7 +17,7 @@ export const RejasParaVentanas = () => {
 
     const handleCategorySelect = (categoryId) => {
         setSelectedCategoryId(categoryId);
-        setSelectedSubcategoryId(null); // Resetear subcategoría al seleccionar una categoría
+        setSelectedSubcategoryId(null);
     };
 
     const handleSubcategorySelect = (subcategoryId) => {
@@ -33,13 +29,14 @@ export const RejasParaVentanas = () => {
             <Breadcrumb />
             <div className="container">
                 <div className="row">
-                    <div className="col-12 col-lg-3 col-xl-3 order-2">
+                    <div className="col-12 col-lg-3 col-xl-3 order-1">
                         <AsideCategories 
                             onSelectCategory={handleCategorySelect} 
-                            onSelectSubcategory={handleSubcategorySelect} // Pasar el manejador
+                            onSelectSubcategory={handleSubcategorySelect}
+                            categoryId={rejasCategoryId} // Pasar la categoría específica
                         />
                     </div>
-                    <div className="col-12 col-lg-9 col-xl-9 order-1">
+                    <div className="col-12 col-lg-9 col-xl-9 order-2">
                         <div className="row">
                             {store.products && store.products.length > 0 ? (
                                 store.products.map((product, index) => (

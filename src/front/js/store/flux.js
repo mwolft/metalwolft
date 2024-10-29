@@ -205,29 +205,13 @@ const getState = ({ getStore, getActions, setStore }) => {
                     if (!response.ok) throw new Error("Error fetching categories");
             
                     const data = await response.json();
+                    console.log("Categories data:", data); // Imprime los datos para revisar la estructura
                     setStore({ categories: data });
                 } catch (error) {
                     console.error("Error fetching categories:", error);
                     setStore({ error: error.message, categories: [] });
                 }
-            },                               
-            getCategories: async () => {
-                try {
-                    const response = await fetch(`${process.env.BACKEND_URL}/api/categories`, {
-                        method: 'GET',
-                        headers: {
-                            'Content-Type': 'application/json'
-                        }
-                    });
-                    if (!response.ok) throw new Error("Error fetching categories");
-            
-                    const data = await response.json();
-                    setStore({ categories: data });
-                } catch (error) {
-                    console.error("Error fetching categories:", error);
-                    setStore({ error: error.message, categories: [] });
-                }
-            },
+            },                                    
             fetchProducts: async (categoryId = null, subcategoryId = null) => {
                 let url = `${process.env.BACKEND_URL}/api/products`;
             

@@ -74,8 +74,12 @@ export const MainNavbar = () => {
                     <Nav className="me-auto" onSelect={handleSelect}>
                         <Nav.Link as={Link} to="/" onClick={handleSelect}>Inicio</Nav.Link>
                         <NavDropdown title="Productos" id="trainer-nav-dropdown">
-                            <NavDropdown.Item as={Link} to="/rejas-para-ventanas" onClick={handleSelect}>Rejas para ventanas</NavDropdown.Item>
-                            <NavDropdown.Item as={Link} to="/blogs" onClick={handleSelect}>Generar Rutina</NavDropdown.Item>
+                            <NavDropdown.Item as={Link} to="/rejas-para-ventanas" onClick={handleSelect}>Rejas para Ventanas</NavDropdown.Item>
+                            <NavDropdown.Item as={Link} to="/vallados-metalicos-exteriores" onClick={handleSelect}>Vallados Metálicos Exteriores</NavDropdown.Item>
+                            <NavDropdown.Item as={Link} to="/puertas-peatonales-metalicas" onClick={handleSelect}>Puertas Peatonales Metálicas</NavDropdown.Item>
+                            <NavDropdown.Item as={Link} to="/puertas-correderas-exteriores" onClick={handleSelect}>Puertas Correderas Exteriores</NavDropdown.Item>
+                            <NavDropdown.Item as={Link} to="/cerramientos-de-cocina-con-cristal" onClick={handleSelect}>Cerramientos de Cocina con Cristal</NavDropdown.Item>
+                            <NavDropdown.Item as={Link} to="/puertas-correderas-interiores" onClick={handleSelect}>Puertas Correderas Interiores</NavDropdown.Item>
                         </NavDropdown>
                         <Nav.Link as={Link} to="/blogs" onClick={handleSelect}>Blog</Nav.Link>
                         <Nav.Link as={Link} to="/exercises" onClick={handleSelect}>Contácto</Nav.Link>

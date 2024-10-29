@@ -43,7 +43,12 @@ import { BlogListPage } from "./pages/blog/BlogListPage.jsx";
 import { MedirHuecoRejasParaVentanas } from "./pages/blog/MedirHuecoRejasParaVentanas.jsx"
 
 // Custom categories
-import { RejasParaVentanas } from "./pages/categories/RejasParaVentanas.jsx";
+import { RejasParaVentanas } from './pages/categories/RejasParaVentanas.jsx';
+import { ValladosMetalicosExteriores } from "./pages/categories/ValladosMetalicosExteriores.jsx";
+import { PuertasPeatonalesMetalicas } from "./pages/categories/PuertasPeatonalesMetalicas.jsx";
+import { PuertasCorrederasInteriores } from "./pages/categories/PuertasCorrederasInteriores.jsx";
+import { PuertasCorrederasExteriores } from "./pages/categories/PuertasCorrederasExteriores.jsx";
+import { CerramientoDeCocinaConCristal } from "./pages/categories/CerramientoDeCocinaConCristal.jsx";
 
 const Layout = () => {
     const basename = process.env.BASENAME || "";
@@ -78,6 +83,11 @@ const Layout = () => {
                     <Route path="/aside-categories" element={<AsideCategories />} />
                     <Route path="/breadcrumb" element={<Breadcrumb />} />
                     <Route path="/rejas-para-ventanas" element={<RejasParaVentanas />} />
+                    <Route path="/vallados-metalicos-exteriores" element={<ValladosMetalicosExteriores />} />
+                    <Route path="/puertas-peatonales-metalicas" element={<PuertasPeatonalesMetalicas />} />
+                    <Route path="/puertas-correderas-interiores" element={<PuertasCorrederasInteriores />} />
+                    <Route path="/puertas-correderas-exteriores" element={<PuertasCorrederasExteriores />} />
+                    <Route path="/cerramientos-de-cocina-con-cristal" element={<CerramientoDeCocinaConCristal />} />
                     <Route path="/blogs" element={<BlogListPage />} />
                     <Route path="/medir-hueco-rejas-para-ventanas" element={<MedirHuecoRejasParaVentanas />} />
                     <Route path="*" element={<Error404 />} />
