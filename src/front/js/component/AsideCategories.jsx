@@ -13,7 +13,7 @@ export const AsideCategories = ({ onSelectCategory, onSelectSubcategory, categor
 
     return (
         <div className="widget my-5">
-            <h5 className="widget_title">Categorías</h5>
+            <h5 className="widget_title">Subcategorías</h5>
             <hr className="hr-home" />
             {category ? (
                 <ul className="widget_categories">

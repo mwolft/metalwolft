@@ -2,6 +2,8 @@ import React, { useEffect, useContext, useState } from "react";
 import { Breadcrumb } from "../../component/Breadcrumb.jsx";
 import { Product } from "../../component/Product.jsx";
 import { AsideCategories } from "../../component/AsideCategories.jsx";
+import { AsideOthersCategories } from "../../component/AsideOthersCategories.jsx";
+import { AsidePost } from "../../component/AsidePost.jsx";
 import { Context } from "../../store/appContext.js";
 import "../../../styles/categories-pages.css";
 
@@ -35,6 +37,8 @@ export const RejasParaVentanas = () => {
                             onSelectSubcategory={handleSubcategorySelect}
                             categoryId={rejasCategoryId} // Pasar la categoría específica
                         />
+                        <AsidePost />
+                        <AsideOthersCategories />
                     </div>
                     <div className="col-12 col-lg-9 col-xl-9 order-2">
                         <div className="row">

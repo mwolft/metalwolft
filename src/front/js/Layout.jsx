@@ -19,6 +19,8 @@ import { Breadcrumb } from "./component/Breadcrumb.jsx";
 import { Product } from "./component/Product.jsx";
 import { Notification } from "./component/Notification.jsx";
 import { AsideCategories } from "./component/AsideCategories.jsx";
+import { AsideOthersCategories } from "./component/AsideOthersCategories.jsx";
+import { AsidePost } from "./component/AsidePost.jsx";
 import CheckoutForm from "./component/CheckoutForm.jsx";
 import PayPalButton from "./component/PayPalButton.jsx";
 
@@ -81,6 +83,8 @@ const Layout = () => {
                     <Route path="/sidebar" element={<Sidebar />} />
                     <Route path="/profile" element={<Profile />} />
                     <Route path="/aside-categories" element={<AsideCategories />} />
+                    <Route path="/aside-otherscategories" element={<AsideOthersCategories />} />
+                    <Route path="/aside-post" element={<AsidePost />} />
                     <Route path="/breadcrumb" element={<Breadcrumb />} />
                     <Route path="/rejas-para-ventanas" element={<RejasParaVentanas />} />
                     <Route path="/vallados-metalicos-exteriores" element={<ValladosMetalicosExteriores />} />
