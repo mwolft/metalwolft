@@ -44,3 +44,31 @@
     list-style-type: none;
     padding-left: 20px;
 }
+.others-categories{
+    display: flex;
+    margin-top: 15px;
+}
+.img-other-categories{
+    width: auto;
+    height: 80px;
+}
+.p-other-categories{
+    width: 70%;
+    height: auto;
+    padding: 7px 0 0 7px;
+    font-size: 14px;
+}
+.buton-other-categories {
+    padding: 2px 3px 2px 3px;
+    margin: 3px 0 0 5px;
+    font-size: 10px;
+    color: white;
+    background-color: #ff324d;
+    border: 0;
+    width: 6rem;
+    border-radius: 4px;
+}
+.other-categories-span{
+    font-size: 10px;
+    color: grey;
+}
