@@ -28,7 +28,7 @@ module.exports = {
           }]
         }, //css only files
         {
-          test: /\.(png|svg|jpg|gif|jpeg|webp|avif)$/i,  // Añadí soporte para avif aquí
+          test: /\.(png|svg|jpg|gif|jpeg|webp|avif)$/i,  
           use: {
             loader: 'file-loader',
             options: { 
@@ -47,7 +47,7 @@ module.exports = {
   },
   plugins: [
     new HtmlWebpackPlugin({
-        favicon: 'app-fit.ico',
+        favicon: 'favicon.ico',
         template: 'template.html'
     }),
     new Dotenv({ safe: true, systemvars: true })
