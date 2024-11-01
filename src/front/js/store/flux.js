@@ -17,8 +17,11 @@ const getState = ({ getStore, getActions, setStore }) => {
             paymentCompleted: false,
             posts: [],  
             postsLoaded: false,
+            posts: [],
+            recentPosts: [],
             subcategories: [],
-            categories: []
+            categories: [],
+            otherCategories: []
         },
         actions: {
             loadPosts: async () => {
@@ -55,7 +58,7 @@ const getState = ({ getStore, getActions, setStore }) => {
             
                     const newPost = await response.json();
                     const store = getStore();
-                    setStore({ posts: [...store.posts, newPost] }); // Actualizar el store con el nuevo post
+                    setStore({ posts: [...store.posts, newPost] }); 
                 } catch (error) {
                     console.error("Error adding post:", error);
                     setStore({ error: error.message });
@@ -79,7 +82,46 @@ const getState = ({ getStore, getActions, setStore }) => {
                     console.error("Error fetching post:", error);
                     setStore({ error: error.message });
                 }
-            },                     
+            },  
+            getRecentPosts: async () => {
+                try {
+                    const response = await fetch(`${process.env.BACKEND_URL}/api/posts?limit=5`, {
+                        method: 'GET',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        }
+                    });
+                    if (!response.ok) throw new Error("Error fetching recent posts");
+                    const data = await response.json();
+                    setStore({ recentPosts: data });
+                    return data;
+                } catch (error) {
+                    console.error("Error fetching recent posts:", error);
+                    return [];
+                }
+            },   
+            getOtherCategories: async (currentCategoryId) => {
+                try {
+                    const response = await fetch(`${process.env.BACKEND_URL}/api/categories`, {
+                        method: 'GET',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        }
+                    });
+                    if (!response.ok) throw new Error("Error fetching categories");
+
+                    const data = await response.json();
+                    const otherCategories = data.filter(category => category.id !== currentCategoryId);
+                    setStore({ otherCategories });
+                    return otherCategories;
+                } catch (error) {
+                    console.error("Error fetching other categories:", error);
+                    return [];
+                }
+            },
+            navigateToCategory: (categoryId) => {
+                window.location.href = `/category/${categoryId}`; 
+            },      
             fetchComments: async (postId) => {
                 try {
                     const response = await fetch(`${process.env.BACKEND_URL}/api/posts/${postId}/comments`, {
@@ -182,8 +224,8 @@ const getState = ({ getStore, getActions, setStore }) => {
                     setStore({ isLoged: true });
                 } else {
                     console.log("Cerrando sesión y limpiando carrito"); 
-                    setStore({ isLoged: false, isAdmin: false, favorites: [] }); // Resetear favoritos
-                    getActions().clearCart(); // Vaciar el carrito al cerrar sesión
+                    setStore({ isLoged: false, isAdmin: false, favorites: [] }); 
+                    getActions().clearCart(); 
                     localStorage.removeItem("token");
                     localStorage.removeItem("user");
                 }
@@ -205,7 +247,7 @@ const getState = ({ getStore, getActions, setStore }) => {
                     if (!response.ok) throw new Error("Error fetching categories");
             
                     const data = await response.json();
-                    console.log("Categories data:", data); // Imprime los datos para revisar la estructura
+                    console.log("Categories data:", data); 
                     setStore({ categories: data });
                 } catch (error) {
                     console.error("Error fetching categories:", error);
@@ -242,7 +284,7 @@ const getState = ({ getStore, getActions, setStore }) => {
             },                                    
             loadCart: async () => {
                 const store = getStore();
-                if (!store.isLoged) return; // Solo cargar si el usuario está logueado
+                if (!store.isLoged) return; 
                 try {
                     const response = await fetch(`${process.env.BACKEND_URL}/api/cart`, {
                         method: 'GET',
@@ -256,9 +298,9 @@ const getState = ({ getStore, getActions, setStore }) => {
                         console.error("Error al cargar el carrito:", errorText);
                         throw new Error(`Error al cargar el carrito: ${errorText}`);
                     }
-                    const data = await response.json();  // Obtener los productos con especificaciones
+                    const data = await response.json();  
                     console.log("Datos del carrito recibidos del backend:", data);
-                    setStore({ cart: data });  // Guardar los productos en el estado global
+                    setStore({ cart: data });  
                 } catch (error) {
                     console.error("Error al cargar el carrito:", error);
                 }
@@ -290,8 +332,7 @@ const getState = ({ getStore, getActions, setStore }) => {
                         alert(data.message || "Error al añadir al carrito");
                         return;
                     }
-                    // Actualizar el carrito en el estado
-                    const newProduct = await response.json();  // Producto añadido del backend
+                    const newProduct = await response.json();  
                     setStore({ cart: [...store.cart, newProduct] });
                 } catch (error) {
                     console.error("Error al añadir al carrito:", error);
@@ -352,7 +393,6 @@ const getState = ({ getStore, getActions, setStore }) => {
                         console.error("Error al vaciar el carrito:", errorText);
                         throw new Error(`Error al vaciar el carrito: ${errorText}`);
                     }
-                    // Si el backend responde correctamente, vacía el carrito también en el frontend
                     setStore({ cart: [], paymentCompleted: true });
                     localStorage.removeItem("cart");
                 } catch (error) {
@@ -539,7 +579,7 @@ const getState = ({ getStore, getActions, setStore }) => {
             },                                                       
             loadFavorites: async () => {
                 const store = getStore();
-                if (!store.isLoged) return; // Solo cargar si el usuario está logueado
+                if (!store.isLoged) return; 
 
                 try {
                     const response = await fetch(`${process.env.BACKEND_URL}/api/favorites`, {

@@ -9,7 +9,7 @@ import "../../../styles/categories-pages.css";
 
 export const RejasParaVentanas = () => {
     const { store, actions } = useContext(Context);
-    const rejasCategoryId = 1; // ID específico de "Rejas para Ventanas"
+    const rejasCategoryId = 1; 
     const [selectedCategoryId, setSelectedCategoryId] = useState(rejasCategoryId);
     const [selectedSubcategoryId, setSelectedSubcategoryId] = useState(null);
 
@@ -35,10 +35,10 @@ export const RejasParaVentanas = () => {
                         <AsideCategories 
                             onSelectCategory={handleCategorySelect} 
                             onSelectSubcategory={handleSubcategorySelect}
-                            categoryId={rejasCategoryId} // Pasar la categoría específica
+                            categoryId={rejasCategoryId}
                         />
                         <AsidePost />
-                        <AsideOthersCategories />
+                        <AsideOthersCategories currentCategoryId={rejasCategoryId} />
                     </div>
                     <div className="col-12 col-lg-9 col-xl-9 order-2">
                         <div className="row">
