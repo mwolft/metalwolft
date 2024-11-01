@@ -1,10 +1,12 @@
 import React, { useEffect, useContext, useState } from "react";
 import { Context } from "../store/appContext.js";
+import { useNavigate } from "react-router-dom";
 import "../../styles/categories-pages.css";
 
 export const AsidePost = () => {
     const { store, actions } = useContext(Context);
     const [recentPosts, setRecentPosts] = useState([]);
+    const navigate = useNavigate();
 
     useEffect(() => {
         const fetchRecentPosts = async () => {
@@ -14,6 +16,10 @@ export const AsidePost = () => {
         fetchRecentPosts();
     }, []);
 
+    const handlePostNavigation = (postSlug) => {
+        navigate(`/${postSlug}`);
+    };
+
     return (
         <div className="widget my-5">
             <h5 className="widget_title">Post Recientes</h5>
@@ -21,8 +27,17 @@ export const AsidePost = () => {
             {recentPosts.length > 0 ? (
                 recentPosts.map((post, index) => (
                     <div key={index} className="others-categories">
-                        <img className="img-other-categories" src={post.image_url} alt="" />
-                        <p className="p-other-categories">{post.title}<br /><span className="other-categories-span">{post.date}</span></p>
+                        <img className="img-other-categories" src={post.image_url} alt={post.title} />
+                        <p className="p-other-categories">
+                            {post.title}<br />
+                            <span className="other-categories-span">{post.date}</span>
+                            <button 
+                                className="buton-other-categories" 
+                                onClick={() => handlePostNavigation(post.slug)}
+                            >
+                                Leer más
+                            </button>
+                        </p>
                     </div>
                 ))
             ) : (
