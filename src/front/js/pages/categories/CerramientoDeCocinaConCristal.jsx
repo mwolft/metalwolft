@@ -2,13 +2,15 @@ import React, { useEffect, useContext, useState } from "react";
 import { Breadcrumb } from "../../component/Breadcrumb.jsx";
 import { Product } from "../../component/Product.jsx";
 import { AsideCategories } from "../../component/AsideCategories.jsx";
+import { AsideOthersCategories } from "../../component/AsideOthersCategories.jsx";
+import { AsidePost } from "../../component/AsidePost.jsx";
 import { Context } from "../../store/appContext.js";
 import "../../../styles/categories-pages.css";
 
 export const CerramientoDeCocinaConCristal = () => {
     const { store, actions } = useContext(Context);
-    const valladosCategoryId = 2; // Reemplazar con el ID real 
-    const [selectedCategoryId, setSelectedCategoryId] = useState(valladosCategoryId);
+    const cerramientoCocinaCategoryId = 6;
+    const [selectedCategoryId, setSelectedCategoryId] = useState(cerramientoCocinaCategoryId);
     const [selectedSubcategoryId, setSelectedSubcategoryId] = useState(null);
 
     useEffect(() => {
@@ -32,9 +34,11 @@ export const CerramientoDeCocinaConCristal = () => {
                     <div className="col-12 col-lg-3 col-xl-3 order-1">
                         <AsideCategories 
                             onSelectCategory={handleCategorySelect} 
-                            onSelectSubcategory={handleSubcategorySelect} 
-                            categoryId={valladosCategoryId} 
+                            onSelectSubcategory={handleSubcategorySelect}
+                            categoryId={cerramientoCocinaCategoryId}
                         />
+                        <AsidePost />
+                        <AsideOthersCategories currentCategoryId={cerramientoCocinaCategoryId} />
                     </div>
                     <div className="col-12 col-lg-9 col-xl-9 order-2">
                         <div className="row">

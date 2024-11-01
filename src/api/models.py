@@ -14,7 +14,7 @@ class Users(db.Model):
     firstname = db.Column(db.String(100), nullable=True)
     lastname = db.Column(db.String(100), nullable=True)
     is_active = db.Column(db.Boolean, default=True)
-    is_admin = db.Column(db.Boolean, default=False)  # Nuevo campo para indicar si el usuario es administrador
+    is_admin = db.Column(db.Boolean, default=False) 
     shipping_address = db.Column(db.String(200), nullable=True)
     shipping_city = db.Column(db.String(100), nullable=True)
     shipping_postal_code = db.Column(db.String(20), nullable=True)
@@ -33,7 +33,7 @@ class Users(db.Model):
             "lastname": self.lastname,
             "is_active": self.is_active,
             "email": self.email,
-            "is_admin": self.is_admin,  # Incluir el campo en la serialización
+            "is_admin": self.is_admin,  
             "shipping_address": self.shipping_address,
             "shipping_city": self.shipping_city,
             "shipping_postal_code": self.shipping_postal_code,
@@ -50,10 +50,12 @@ class Posts(db.Model):
     title = db.Column(db.String(200), nullable=False)
     content = db.Column(db.Text, nullable=False)
     author_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
-    image_url = db.Column(db.String(300), nullable=True)  
+    image_url = db.Column(db.String(300), nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, onupdate=datetime.utcnow)
+    slug = db.Column(db.String(100), unique=True, nullable=False)  
 
+    # Relación con el modelo de Users
     author = db.relationship('Users', backref='posts', lazy=True)
 
     def __repr__(self):
@@ -68,7 +70,11 @@ class Posts(db.Model):
             "image_url": self.image_url,
             "created_at": self.created_at,
             "updated_at": self.updated_at,
+            "slug": self.slug
         }
+
+    def generate_slug(self):
+        self.slug = slugify(self.title)
 
 
 class Comments(db.Model):
@@ -156,7 +162,8 @@ class Categories(db.Model):
     nombre = db.Column(db.String(100), nullable=False)
     descripcion = db.Column(db.Text, nullable=True)
     parent_id = db.Column(db.Integer, db.ForeignKey('categories.id'), nullable=True)
-    image_url = db.Column(db.String(255), nullable=True) 
+    image_url = db.Column(db.String(255), nullable=True)
+    slug = db.Column(db.String(100), unique=True, nullable=False)  
 
     children = db.relationship('Categories', backref=db.backref('parent', remote_side=[id]), lazy=True)
 
@@ -169,8 +176,12 @@ class Categories(db.Model):
             "nombre": self.nombre,
             "descripcion": self.descripcion,
             "parent_id": self.parent_id,
-            "image_url": self.image_url  
+            "image_url": self.image_url,
+            "slug": self.slug
         }
+
+    def generate_slug(self):
+        self.slug = slugify(self.nombre)
 
 
 class Subcategories(db.Model):
@@ -311,9 +322,9 @@ class Cart(db.Model):
             "id": self.id,
             "usuario_id": self.usuario_id,
             "producto_id": self.producto_id,
-            "nombre": self.product.nombre,  # Añadir el nombre del producto
-            "descripcion": self.product.descripcion,  # Añadir la descripción
-            "imagen": self.product.imagen,  # Añadir la imagen del producto
+            "nombre": self.product.nombre,  
+            "descripcion": self.product.descripcion, 
+            "imagen": self.product.imagen, 
             "alto": self.alto,
             "ancho": self.ancho,
             "anclaje": self.anclaje,

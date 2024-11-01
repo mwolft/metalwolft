@@ -1,10 +1,12 @@
 import React, { useEffect, useContext, useState } from "react";
 import { Context } from "../store/appContext.js";
+import { useNavigate } from "react-router-dom";
 import "../../styles/categories-pages.css";
 
 export const AsideOthersCategories = ({ currentCategoryId }) => {
     const { store, actions } = useContext(Context);
     const [otherCategories, setOtherCategories] = useState([]);
+    const navigate = useNavigate();
 
     useEffect(() => {
         const fetchOtherCategories = async () => {
@@ -13,6 +15,10 @@ export const AsideOthersCategories = ({ currentCategoryId }) => {
         };
         fetchOtherCategories();
     }, [currentCategoryId]);
+
+    const handleCategoryNavigation = (categorySlug) => {
+        navigate(`/${categorySlug}`);
+    };
 
     return (
         <div className="widget my-5">
@@ -30,7 +36,7 @@ export const AsideOthersCategories = ({ currentCategoryId }) => {
                             {category.nombre}<br />
                             <button 
                                 className="buton-other-categories" 
-                                onClick={() => actions.navigateToCategory(category.id)}
+                                onClick={() => handleCategoryNavigation(category.slug)}
                             >
                                 Ir a categoría
                             </button>
