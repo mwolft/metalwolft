@@ -1,20 +1,33 @@
-import React from "react";
+import React, { useEffect, useContext, useState } from "react";
+import { Context } from "../store/appContext.js";
 import "../../styles/categories-pages.css";
 
 export const AsidePost = () => {
+    const { store, actions } = useContext(Context);
+    const [recentPosts, setRecentPosts] = useState([]);
+
+    useEffect(() => {
+        const fetchRecentPosts = async () => {
+            const posts = await actions.getRecentPosts(); 
+            setRecentPosts(posts);
+        };
+        fetchRecentPosts();
+    }, []);
 
     return (
         <div className="widget my-5">
             <h5 className="widget_title">Post Recientes</h5>
             <hr className="hr-home" />
-            <div className="others-categories">
-                <img className="img-other-categories" src="https://www.metalwolft.com/assets/images/blog/rejas-para-ventanas.avif" alt="" />
-                <p className="p-other-categories">5 Consejos para Medir el Espacio de tus Rejas para Ventanas <br /><span className="other-categories-span">16 de marzo del 2023</span></p>
-            </div>
-            <div className="others-categories">
-                <img className="img-other-categories" src="https://www.metalwolft.com/assets/images/blog/rejas-de-seguridad-para-ventanas.avif" alt="" />
-                <p className="p-other-categories">Instalación Sin Obra: Rejas para Ventanas con Tornillos Torx<br /><span className="other-categories-span">16 de marzo del 2023</span></p>
-            </div>
+            {recentPosts.length > 0 ? (
+                recentPosts.map((post, index) => (
+                    <div key={index} className="others-categories">
+                        <img className="img-other-categories" src={post.image_url} alt="" />
+                        <p className="p-other-categories">{post.title}<br /><span className="other-categories-span">{post.date}</span></p>
+                    </div>
+                ))
+            ) : (
+                <p>Cargando posts recientes...</p>
+            )}
         </div>
     );
 };

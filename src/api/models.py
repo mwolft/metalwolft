@@ -54,7 +54,6 @@ class Posts(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, onupdate=datetime.utcnow)
 
-    # Relación con el modelo de Users
     author = db.relationship('Users', backref='posts', lazy=True)
 
     def __repr__(self):
@@ -157,8 +156,8 @@ class Categories(db.Model):
     nombre = db.Column(db.String(100), nullable=False)
     descripcion = db.Column(db.Text, nullable=True)
     parent_id = db.Column(db.Integer, db.ForeignKey('categories.id'), nullable=True)
-    
-    # Relaciones
+    image_url = db.Column(db.String(255), nullable=True) 
+
     children = db.relationship('Categories', backref=db.backref('parent', remote_side=[id]), lazy=True)
 
     def __repr__(self):
@@ -169,7 +168,8 @@ class Categories(db.Model):
             "id": self.id,
             "nombre": self.nombre,
             "descripcion": self.descripcion,
-            "parent_id": self.parent_id
+            "parent_id": self.parent_id,
+            "image_url": self.image_url  
         }
 
 
