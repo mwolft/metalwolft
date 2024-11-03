@@ -26,6 +26,7 @@ export const Breadcrumb = () => {
         'puertas-correderas-interiores' : 'Puertas Correderas Interiores',
         'blogs': 'Blog de Carpintería Metálica',
         'medir-hueco-rejas-para-ventanas': 'Cómo Medir el Hueco para Rejas de Ventanas',
+        'instalation-rejas-para-ventanas': 'Instalación de Rejas para Ventanas con Tornillos Inviolables',
         'cookies-esenciales': 'Cookies',
         'politica-privacidad': 'Política de Privacidad',
         'politica-cookies': 'Política de Cookies',
