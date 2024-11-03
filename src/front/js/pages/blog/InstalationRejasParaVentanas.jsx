@@ -4,13 +4,13 @@ import { Context } from '../../store/appContext';
 import { Breadcrumb } from '../../component/Breadcrumb.jsx';
 import "../../../styles/blog.css";
 
-export const MedirHuecoRejasParaVentanas = () => {
+export const InstalationRejasParaVentanas = () => {
     const { store, actions } = useContext(Context);
     const [commentContent, setCommentContent] = useState("");
     const [successMessage, setSuccessMessage] = useState("");
 
     const { currentPost, currentComments, error } = store;
-    const postId = 1;
+    const postId = 2;
 
 
     useEffect(() => {
@@ -29,7 +29,7 @@ export const MedirHuecoRejasParaVentanas = () => {
 
     const handleCommentSubmit = async (e) => {
         e.preventDefault();
-        const token = localStorage.getItem('token');
+        const token = localStorage.getItem('token'); 
     
         console.log("Token al enviar el comentario:", token);
     

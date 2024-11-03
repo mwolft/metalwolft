@@ -20,7 +20,6 @@ export const BlogListPage = () => {
     };
 
     const fetchCommentsForPost = async (postId) => {
-        // Fetch the comments for each post when needed
         await actions.fetchComments(postId);
     };
 
@@ -45,7 +44,7 @@ export const BlogListPage = () => {
                         <div 
                             className="card-blog col-12 col-sm-12 col-md-4 col-lg-4 col-xl-4 mb-4" 
                             key={post.id}
-                            onMouseEnter={() => fetchCommentsForPost(post.id)} // Carga los comentarios cuando el mouse está sobre el post
+                            onMouseEnter={() => fetchCommentsForPost(post.id)} 
                         >
                             <img
                                 src={post.image_url}
@@ -59,7 +58,7 @@ export const BlogListPage = () => {
                                 <i className="fa-regular fa-comments mx-1" style={{ color: '#ff324d', paddingLeft: '10px' }}></i> {store.currentComments?.filter(comment => comment.post_id === post.id).length || 0} Comentarios
                             </p>
                             <p className='p-content'>{post.content.substring(0, 100)}...</p>
-                            <Link className="slug" to={`/medir-hueco-rejas-para-ventanas`}>Leer más</Link>
+                            <Link className="slug" to={`/${post.slug}`}>Leer más</Link>
                         </div>
                     ))}
                 </div>

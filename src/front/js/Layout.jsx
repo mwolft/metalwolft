@@ -43,6 +43,7 @@ import { ChangesInCookiePolicy } from "./pages/ChangesInCookiePolicy.jsx";
 // Blog
 import { BlogListPage } from "./pages/blog/BlogListPage.jsx";
 import { MedirHuecoRejasParaVentanas } from "./pages/blog/MedirHuecoRejasParaVentanas.jsx"
+import { InstalationRejasParaVentanas } from "./pages/blog/InstalationRejasParaVentanas.jsx";
 
 // Custom categories
 import { RejasParaVentanas } from './pages/categories/RejasParaVentanas.jsx';
@@ -94,6 +95,7 @@ const Layout = () => {
                     <Route path="/cerramientos-de-cocina-con-cristal" element={<CerramientoDeCocinaConCristal />} />
                     <Route path="/blogs" element={<BlogListPage />} />
                     <Route path="/medir-hueco-rejas-para-ventanas" element={<MedirHuecoRejasParaVentanas />} />
+                    <Route path="/instalation-rejas-para-ventanas" element={<InstalationRejasParaVentanas />} />
                     <Route path="*" element={<Error404 />} />
                     <Route path="/cookies-esenciales" element={<PrivacyCookiesHome />} />
                     <Route path="/politica-privacidad" element={<PrivacyPolicy />} />
