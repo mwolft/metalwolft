@@ -1,20 +1,20 @@
 import React, { useEffect, useContext, useState } from "react";
-import { Context } from "../store/appContext.js";
 import { useNavigate } from "react-router-dom";
+import { Context } from "../store/appContext.js";
 import "../../styles/categories-pages.css";
 
-export const AsidePost = () => {
+export const AsidePost = ({ currentPostId }) => {
     const { store, actions } = useContext(Context);
     const [recentPosts, setRecentPosts] = useState([]);
     const navigate = useNavigate();
 
     useEffect(() => {
         const fetchRecentPosts = async () => {
-            const posts = await actions.getRecentPosts(); 
-            setRecentPosts(posts);
+            const posts = await actions.getRecentPosts();
+            setRecentPosts(posts.filter(post => post.id !== currentPostId)); // Excluir el post actual
         };
         fetchRecentPosts();
-    }, []);
+    }, [currentPostId]);
 
     const handlePostNavigation = (postSlug) => {
         navigate(`/${postSlug}`);
