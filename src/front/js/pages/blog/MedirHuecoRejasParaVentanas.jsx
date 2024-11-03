@@ -2,6 +2,8 @@ import React, { useEffect, useContext, useState } from 'react';
 import { Container, Row, Col, Form, Button, Alert } from 'react-bootstrap';
 import { Context } from '../../store/appContext';
 import { Breadcrumb } from '../../component/Breadcrumb.jsx';
+import { AsidePost } from "../../component/AsidePost.jsx";
+import { AsideOthersCategories } from "../../component/AsideOthersCategories.jsx";
 import "../../../styles/blog.css";
 
 export const MedirHuecoRejasParaVentanas = () => {
@@ -12,13 +14,11 @@ export const MedirHuecoRejasParaVentanas = () => {
     const { currentPost, currentComments, error } = store;
     const postId = 1;
 
-
     useEffect(() => {
         if (!currentPost || currentPost.id !== postId) {
             actions.fetchPost(postId);
         }
     }, [actions, currentPost, postId]);
-
 
     useEffect(() => {
         if (currentPost && currentPost.id === postId && (!currentComments || currentComments[0]?.post_id !== postId)) {
@@ -26,23 +26,17 @@ export const MedirHuecoRejasParaVentanas = () => {
         }
     }, [actions, currentPost, currentComments, postId]);
 
-
     const handleCommentSubmit = async (e) => {
         e.preventDefault();
         const token = localStorage.getItem('token');
-    
-        console.log("Token al enviar el comentario:", token);
-    
         if (!token) {
             alert("Debes estar logeado para comentar.");
             return;
         }
-    
         if (!commentContent || commentContent.trim() === "") {
             console.error("El contenido del comentario no puede estar vacío");
             return;
         }
-    
         try {
             const response = await fetch(`${process.env.BACKEND_URL}/api/posts/${postId}/comments`, {
                 method: 'POST',
@@ -52,13 +46,11 @@ export const MedirHuecoRejasParaVentanas = () => {
                 },
                 body: JSON.stringify({ content: commentContent })
             });
-    
             if (!response.ok) {
                 const errorText = await response.text();
                 console.error(`Error posting comment: ${response.status} - ${errorText}`);
                 throw new Error(`Error ${response.status}: ${response.statusText}`);
             }
-    
             const newComment = await response.json();
             actions.fetchComments(postId);
             setCommentContent("");
@@ -68,7 +60,6 @@ export const MedirHuecoRejasParaVentanas = () => {
             console.error('Error:', error);
         }
     };    
-    
 
     return (
         <>
@@ -179,20 +170,8 @@ export const MedirHuecoRejasParaVentanas = () => {
                         </div>
                     </Col>
                     <Col xl={3}>
-                        <div className="sidebar">
-                            <div className="widget">
-                                <div className="shop_banner">
-                                    <div className="banner_img overlay_bg_20">
-                                        <img src="https://www.metalwolft.com/assets/images/banners/rejas_para_ventanas_banner_img.avif" alt="rejas para ventanas rusticas" />
-                                    </div>
-                                    <div className="shop_bn_content2 text_white">
-                                        <h5 className="text-uppercase shop_subtitle">Hazlo en Casa</h5>
-                                        <h3 className="text-uppercase shop_title">Instalación Simple</h3>
-                                        <a href="instalation-rejas-para-ventanas" className="btn btn-white rounded-0 btn-sm text-uppercase">Ver video</a>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
+                        <AsidePost currentPostId={postId} />
+                        <AsideOthersCategories currentCategoryId={null} />
                     </Col>
                 </Row>
             </Container>
