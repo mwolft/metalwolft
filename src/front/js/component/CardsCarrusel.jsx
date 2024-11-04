@@ -43,8 +43,8 @@ export const CardsCarrusel = () => {
                                             emptySymbol="fa fa-star-o"
                                             fullSymbol="fa fa-star"
                                             fractions={2}
-                                            initialRating={4} // Ajusta la puntuación inicial aquí
-                                            readonly // Pone el rating en modo solo lectura
+                                            initialRating={4}
+                                            readonly 
                                         />
                                     </div>
                                     <div className="my-1">

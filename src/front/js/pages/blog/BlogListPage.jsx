@@ -39,23 +39,25 @@ export const BlogListPage = () => {
         <>
             <Breadcrumb />
             <div className="container-fluid">
-                <div className="row" style={{ margin: '3rem 4rem', backgroundSize: 'cover' }}>
+                <div className="row" style={{ margin: '8px 8px', backgroundSize: 'cover'}}>
                     {posts.map(post => (
                         <div 
                             className="card-blog col-12 col-sm-12 col-md-4 col-lg-4 col-xl-4 mb-4" 
                             key={post.id}
-                            onMouseEnter={() => fetchCommentsForPost(post.id)} 
-                        >
+                            onMouseEnter={() => fetchCommentsForPost(post.id)}>
                             <img
                                 src={post.image_url}
                                 alt={post.title}
                                 className="img-blog img-fluid w-100"
-                                style={{ objectFit: 'cover', height: '200px' }}
-                            />
+                                style={{ objectFit: 'cover', height: '200px' }}/>
                             <h2 className='h2-title-blog'>{post.title}</h2>
                             <p className='p-coments'>
-                                <i className="fa-regular fa-calendar mx-1" style={{ color: '#ff324d' }}></i> {formatDate(post.created_at)}
-                                <i className="fa-regular fa-comments mx-1" style={{ color: '#ff324d', paddingLeft: '10px' }}></i> {store.currentComments?.filter(comment => comment.post_id === post.id).length || 0} Comentarios
+                                <div className='p-comments-single'>
+                                    <i className="fa-regular fa-calendar" style={{ color: '#ff324d'}}></i> {formatDate(post.created_at)}
+                                </div>
+                                <div className='p-comments-single'>
+                                    <i className="fa-regular fa-comments" style={{ color: '#ff324d'}}></i> {store.currentComments?.filter(comment => comment.post_id === post.id).length || 0} Comentarios
+                                </div>
                             </p>
                             <p className='p-content'>{post.content.substring(0, 100)}...</p>
                             <Link className="slug" to={`/${post.slug}`}>Leer más</Link>
