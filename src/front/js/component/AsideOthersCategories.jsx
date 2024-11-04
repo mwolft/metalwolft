@@ -31,6 +31,11 @@ export const AsideOthersCategories = ({ currentCategoryId }) => {
                             className="img-other-categories" 
                             src={category.image_url || "/path/to/default/image.jpg"} 
                             alt={category.nombre} 
+                            style={{
+                                width: "80px",
+                                height: "100%",
+                                objectFit: "cover"
+                            }}
                         />
                         <p className="p-other-categories">
                             {category.nombre}<br />
