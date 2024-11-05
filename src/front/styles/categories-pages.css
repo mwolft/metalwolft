@@ -49,13 +49,14 @@
     margin-top: 15px;
 }
 .img-other-categories{
-    width: auto;
-    height: 80px;
+    width: 90px;
+    height: 100%;
+    object-fit: cover;
 }
 .p-other-categories{
     width: 70%;
     height: auto;
-    padding: 7px 0 0 7px;
+    padding: 0 0 0 7px;
     font-size: 14px;
 }
 .buton-other-categories {
