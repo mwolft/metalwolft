@@ -5,7 +5,7 @@ export const BodyHomeTertiary = () => {
     return (
         <div className="container home-info">
             <div className="row d-flex justify-content-center">
-                <div className="bg-light pt-4 px-4 col-12 col-sm-12 col-md-6 col-lg-4 col-xl-4">
+                <div className="pt-4 px-4 col-12 col-sm-12 col-md-6 col-lg-4 col-xl-4">
                     <div className="home-info-card d-flex flex-column justify-content-center align-items-center">
                         <div className="bg-info-icon">
                             <i className="my-3 info-icon fa-regular fa-map fa-2x"></i>

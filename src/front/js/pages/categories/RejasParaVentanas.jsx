@@ -9,7 +9,7 @@ import "../../../styles/categories-pages.css";
 
 export const RejasParaVentanas = () => {
     const { store, actions } = useContext(Context);
-    const rejasCategoryId = 1; 
+    const rejasCategoryId = 1;
     const [selectedCategoryId, setSelectedCategoryId] = useState(rejasCategoryId);
     const [selectedSubcategoryId, setSelectedSubcategoryId] = useState(null);
 
@@ -32,13 +32,15 @@ export const RejasParaVentanas = () => {
             <div className="container">
                 <div className="row">
                     <div className="col-12 col-lg-3 col-xl-3 order-1">
-                        <AsideCategories 
-                            onSelectCategory={handleCategorySelect} 
+                        <AsideCategories
+                            onSelectCategory={handleCategorySelect}
                             onSelectSubcategory={handleSubcategorySelect}
                             categoryId={rejasCategoryId}
                         />
-                        <AsidePost />
-                        <AsideOthersCategories currentCategoryId={rejasCategoryId} />
+                        <div className="d-none d-lg-block">
+                            <AsidePost />
+                            <AsideOthersCategories currentCategoryId={rejasCategoryId} />
+                        </div>
                     </div>
                     <div className="col-12 col-lg-9 col-xl-9 order-2">
                         <div className="row">
@@ -52,6 +54,10 @@ export const RejasParaVentanas = () => {
                                 <p>Cargando productos o no hay productos disponibles para esta categoría.</p>
                             )}
                         </div>
+                    </div>
+                    <div className="col-12 d-block d-lg-none order-3">
+                        <AsidePost />
+                        <AsideOthersCategories currentCategoryId={rejasCategoryId} />
                     </div>
                 </div>
             </div>
