@@ -31,14 +31,16 @@ export const PuertasCorrederasExteriores = () => {
             <Breadcrumb />
             <div className="container">
                 <div className="row">
-                    <div className="col-12 col-lg-3 col-xl-3 order-1">
-                        <AsideCategories 
-                            onSelectCategory={handleCategorySelect} 
+                <div className="col-12 col-lg-3 col-xl-3 order-1">
+                        <AsideCategories
+                            onSelectCategory={handleCategorySelect}
                             onSelectSubcategory={handleSubcategorySelect}
                             categoryId={puertasCorrederasExterioresCategoryId}
                         />
-                        <AsidePost />
-                        <AsideOthersCategories currentCategoryId={puertasCorrederasExterioresCategoryId} />
+                        <div className="d-none d-lg-block">
+                            <AsidePost />
+                            <AsideOthersCategories currentCategoryId={puertasCorrederasExterioresCategoryId} />
+                        </div>
                     </div>
                     <div className="col-12 col-lg-9 col-xl-9 order-2">
                         <div className="row">
@@ -52,6 +54,10 @@ export const PuertasCorrederasExteriores = () => {
                                 <p>Cargando productos o no hay productos disponibles para esta categoría.</p>
                             )}
                         </div>
+                    </div>
+                    <div className="col-12 d-block d-lg-none order-3">
+                        <AsidePost />
+                        <AsideOthersCategories currentCategoryId={puertasCorrederasExterioresCategoryId} />
                     </div>
                 </div>
             </div>
