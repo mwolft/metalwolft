@@ -2,7 +2,7 @@ import os
 from flask import Flask, request, jsonify, url_for, send_from_directory
 from flask_migrate import Migrate
 from flask_swagger import swagger
-from flask_cors import CORS  # Import CORS
+from flask_cors import CORS
 from api.utils import APIException, generate_sitemap
 from api.routes import api
 from api.admin import setup_admin
@@ -10,6 +10,7 @@ from api.commands import setup_commands
 from api.models import db
 from flask_jwt_extended import JWTManager
 from datetime import timedelta
+from api.seo_routes import seo_bp  # Importamos el nuevo Blueprint de SEO
 
 ENV = "development" if os.getenv("FLASK_DEBUG") == "1" else "production"
 static_file_dir = os.path.join(os.path.dirname(os.path.realpath(__file__)), '../public/')
@@ -31,13 +32,14 @@ MIGRATE = Migrate(app, db, compare_type=True)
 db.init_app(app)
 
 # Other configurations 
-setup_admin(app)  # Add the admin
-setup_commands(app)  # Add the admin
-app.register_blueprint(api, url_prefix='/api')  # Add all endpoints from the API with a "api" prefix
+setup_admin(app) 
+setup_commands(app)
+app.register_blueprint(api, url_prefix='/api')
+app.register_blueprint(seo_bp, url_prefix='/')  # Registramos el Blueprint de SEO
 
 # Setup the Flask-JWT-Extended extension
-app.config["JWT_SECRET_KEY"] = os.getenv("JWT_SECRET_KEY")  # Change this!
-app.config['JWT_ACCESS_TOKEN_EXPIRES'] = timedelta(hours=24)  # Token expira en 24 horas
+app.config["JWT_SECRET_KEY"] = os.getenv("JWT_SECRET_KEY")
+app.config['JWT_ACCESS_TOKEN_EXPIRES'] = timedelta(hours=24)
 jwt = JWTManager(app)
 
 # Handle/serialize errors like a JSON object
