@@ -9,6 +9,7 @@ def rejas_para_ventanas():
         "description": "Descubre nuestra amplia Colección de Rejas para Ventanas...",
         "keywords": "rejas para ventanas, rejas modernas, rejas rusticas...",
         "og_image": "https://www.metalwolft.com/assets/images/rejas-para-ventanas.jpg",
-        "og_url": "https://www.metalwolft.com/rejas-para-ventanas"
+        "og_url": "https://scaling-umbrella-976gwrg7664j3grx-3000.app.github.dev/rejas-para-ventanas"
     }
-    return render_template("rejas_para_ventanas.html", **meta_data)
+    # Añadimos un texto visible para confirmar que esta ruta está sirviendo
+    return render_template("rejas_para_ventanas.html", **meta_data), 200
