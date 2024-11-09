@@ -47,6 +47,13 @@ jwt = JWTManager(app)
 def handle_invalid_usage(error):
     return jsonify(error.to_dict()), error.status_code
 
+@app.route('/routes')
+def show_routes():
+    output = []
+    for rule in app.url_map.iter_rules():
+        output.append(str(rule))
+    return jsonify(routes=output)
+
 # Generate sitemap with all your endpoints
 @app.route('/')
 def sitemap():
