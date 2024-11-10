@@ -1,19 +1,150 @@
 <!-- templates/rejas_para_ventanas.html -->
 <!DOCTYPE html>
 <html lang="es">
-<head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-    <title>{{ title }}</title>
-    <meta name="description" content="{{ description }}">
-    <meta name="keywords" content="{{ keywords }}">
-    <!-- Mensaje de prueba -->
-    <h1>Esta es la página de Rejas para Ventanas</h1>
-</head>
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <title>{{ title }}</title>
+        <meta name="description" content="{{ description }}">
+        <meta name="keywords" content="{{ keywords }}">
+        <meta name="author" content="Metal Wolft">
+        <meta name="copyright" content="Metal Wolft">
+    
+        <!-- Open Graph meta tags -->
+        <meta property="og:url" content="{{ og_url }}">
+        <meta property="og:type" content="web">
+        <meta property="og:title" content="{{ title }}">
+        <meta property="og:description" content="{{ description }}">
+        <meta property="og:locale" content="es_ES">
+        <meta property="og:updated_time" content="2023-10-06T12:30:20">
+        <meta property="og:image" content="{{ og_image }}">
+        <meta property="og:image:type" content="image/jpg">
+        <meta property="og:image:width" content="400">
+        <meta property="og:image:height" content="300">
+        <meta property="og:image:alt" content="rejas para ventanas">
+        <meta name="og:site_name" content="Metal Wolft">
+        <link rel="canonical" href="{{ og_url }}">
+    
+        <!-- JSON-LD structured data -->
+        <script type="application/ld+json">
+        [
+          {
+            "@context": "https://schema.org/",
+            "@type": "ImageObject",
+            "contentUrl": "https://www.metalwolft.com/assets/images/rejas/essex/rejas-para-ventanas.jpg",
+            "creditText": "Rejas para ventanas",
+            "creator": { "@type": "Person", "name": "ESSEX" },
+            "copyrightNotice": "Metal Wolft",
+            "acquireLicensePage": "https://www.metalwolft.com/license",
+            "license": "https://www.metalwolft.com/license"
+          },
+          {
+            "@context": "https://schema.org/",
+            "@type": "ImageObject",
+            "contentUrl": "https://www.metalwolft.com/assets/images/rejas/albany/rejas-para-ventanas.jpg",
+            "creditText": "Rejas para ventanas",
+            "creator": { "@type": "Person", "name": "ALBANY" },
+            "copyrightNotice": "Metal Wolft",
+            "acquireLicensePage": "https://www.metalwolft.com/license",
+            "license": "https://www.metalwolft.com/license"
+          },
+          {
+            "@context": "https://schema.org/",
+            "@type": "ImageObject",
+            "contentUrl": "https://www.metalwolft.com/assets/images/rejas/luton/rejas-para-ventanas.jpg",
+            "creditText": "Reja para ventana",
+            "creator": { "@type": "Person", "name": "LUTON" },
+            "copyrightNotice": "Metal Wolft",
+            "acquireLicensePage": "https://www.metalwolft.com/license",
+            "license": "https://www.metalwolft.com/license"
+          },
+          {
+            "@context": "https://schema.org/",
+            "@type": "ImageObject",
+            "contentUrl": "https://www.metalwolft.com/assets/images/rejas/poole/rejas-para-ventanas.jpg",
+            "creditText": "Rejas para ventanas",
+            "creator": { "@type": "Person", "name": "POOLE" },
+            "copyrightNotice": "Metal Wolft",
+            "acquireLicensePage": "https://www.metalwolft.com/license",
+            "license": "https://www.metalwolft.com/license"
+          },
+          {
+            "@context": "https://schema.org/",
+            "@type": "ImageObject",
+            "contentUrl": "https://www.metalwolft.com/assets/images/rejas/delhi/rejas-para-ventanas.jpg",
+            "creditText": "Rejas para ventanas",
+            "creator": { "@type": "Person", "name": "DELHI" },
+            "copyrightNotice": "Metal Wolft",
+            "acquireLicensePage": "https://www.metalwolft.com/license",
+            "license": "https://www.metalwolft.com/license"
+          },
+          {
+            "@context": "https://schema.org/",
+            "@type": "ImageObject",
+            "contentUrl": "https://www.metalwolft.com/assets/images/rejas/erie/rejas-para-ventanas.jpg",
+            "creditText": "Rejas para ventanas",
+            "creator": { "@type": "Person", "name": "ERIE" },
+            "copyrightNotice": "Metal Wolft",
+            "acquireLicensePage": "https://www.metalwolft.com/license",
+            "license": "https://www.metalwolft.com/license"
+          },
+          {
+            "@context": "https://schema.org/",
+            "@type": "ImageObject",
+            "contentUrl": "https://www.metalwolft.com/assets/images/rejas/pittsburgh/rejas-para-ventanas.jpg",
+            "creditText": "Rejas para ventanas",
+            "creator": { "@type": "Person", "name": "PITTSBURGH" },
+            "copyrightNotice": "Metal Wolft",
+            "acquireLicensePage": "https://www.metalwolft.com/license",
+            "license": "https://www.metalwolft.com/license"
+          },
+          {
+            "@context": "https://schema.org/",
+            "@type": "ImageObject",
+            "contentUrl": "https://www.metalwolft.com/assets/images/rejas/lancaster/rejas-para-ventanas.jpg",
+            "creditText": "Rejas para ventanas",
+            "creator": { "@type": "Person", "name": "LANCASTER" },
+            "copyrightNotice": "Metal Wolft",
+            "acquireLicensePage": "https://www.metalwolft.com/license",
+            "license": "https://www.metalwolft.com/license"
+          },
+          {
+            "@context": "https://schema.org/",
+            "@type": "ImageObject",
+            "contentUrl": "https://www.metalwolft.com/assets/images/rejas/cortland/rejas-para-ventanas.jpg",
+            "creditText": "Rejas para ventanas",
+            "creator": { "@type": "Person", "name": "CORTLAND" },
+            "copyrightNotice": "Metal Wolft",
+            "acquireLicensePage": "https://www.metalwolft.com/license",
+            "license": "https://www.metalwolft.com/license"
+          },
+          {
+            "@context": "https://schema.org/",
+            "@type": "ImageObject",
+            "contentUrl": "https://www.metalwolft.com/assets/images/rejas/genesee/rejas-para-ventanas.jpg",
+            "creditText": "Rejas para ventanas",
+            "creator": { "@type": "Person", "name": "GENESEE" },
+            "copyrightNotice": "Metal Wolft",
+            "acquireLicensePage": "https://www.metalwolft.com/license",
+            "license": "https://www.metalwolft.com/license"
+          },
+          {
+            "@context": "https://schema.org/",
+            "@type": "ImageObject",
+            "contentUrl": "https://www.metalwolft.com/assets/images/rejas/livingston/rejas-para-ventanas.jpg",
+            "creditText": "Rejas para ventanas",
+            "creator": { "@type": "Person", "name": "LIVINGSTON" },
+            "copyrightNotice": "Metal Wolft",
+            "acquireLicensePage": "https://www.metalwolft.com/license",
+            "license": "https://www.metalwolft.com/license"
+          }
+        ]
+        </script>
+    </head>
 <body>
     <main>
         <div id="react-root">
-            <!-- Componente React se montará aquí -->
         </div>
     </main>
 </body>
