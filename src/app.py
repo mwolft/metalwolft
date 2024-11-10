@@ -10,7 +10,7 @@ from api.commands import setup_commands
 from api.models import db
 from flask_jwt_extended import JWTManager
 from datetime import timedelta
-from api.seo_routes import seo_bp  # Importamos el nuevo Blueprint de SEO
+from api.seo_routes import seo_bp  
 
 ENV = "development" if os.getenv("FLASK_DEBUG") == "1" else "production"
 static_file_dir = os.path.join(os.path.dirname(os.path.realpath(__file__)), '../public/')
@@ -35,7 +35,7 @@ db.init_app(app)
 setup_admin(app) 
 setup_commands(app)
 app.register_blueprint(api, url_prefix='/api')
-app.register_blueprint(seo_bp, url_prefix='/')  # Registramos el Blueprint de SEO
+app.register_blueprint(seo_bp, url_prefix='/')  
 
 # Setup the Flask-JWT-Extended extension
 app.config["JWT_SECRET_KEY"] = os.getenv("JWT_SECRET_KEY")
