@@ -112,15 +112,15 @@ export const MainNavbar = () => {
                                         Administración
                                     </Nav.Link>
                                 )}
-                                <Nav.Link onClick={handleLogout} className="d-flex align-items-center">
+                                <Nav.Link onClick={handleLogout} className="button-navbar d-flex align-items-center">
                                     <i className="fa-solid fa-right-to-bracket fa-lg me-2"></i>
-                                    <p className="small mb-0"></p>
+                                    <p className="small mb-0">Salir</p>
                                 </Nav.Link>
                             </>
                         ) : (
-                            <Nav.Link onClick={() => { setExpanded(false); navigate("/login"); }} className="d-flex align-items-center">
+                            <Nav.Link onClick={() => { setExpanded(false); navigate("/login"); }} className="button-navbar d-flex align-items-center">
                                 <i className="fa-regular fa-user fa-lg me-2"></i>
-                                <p className="small mb-0"></p>
+                                <p className="small mb-0">Iniciar sesión</p>
                             </Nav.Link>
                         )}
                     </Nav>
