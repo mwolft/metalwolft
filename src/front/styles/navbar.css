@@ -17,14 +17,21 @@
 .navbar-brand{
     margin-right: 0;
 }
-
+.button-navbar{
+    border: #ff324d solid 2px;
+    border-radius: 10px;
+}
+.button-navbar:hover {
+    padding: 5px 10px !important; 
+    border-radius: 10px;
+}
 .nav-link {
     font-weight: 400; 
     font-size: 0.9rem;
     color: #000 !important;       
-    padding: 10px !important;  
+    padding: 5px 10px !important;  
     margin-left: 1.3rem;     
-    text-decoration: none;    
+    text-decoration: none;   
 }
 .navbar-toggler{
     margin-right: 10px !important;

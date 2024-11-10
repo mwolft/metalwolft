@@ -4,7 +4,7 @@ from flask import Blueprint, render_template
 seo_bp = Blueprint('seo', __name__)
 
 
-@seo_bp.route('/')
+"""@seo_bp.route('/')
 def home():
     meta_data = {
         "title": "Carpintería Metálica en Ciudad Real | Herrería y Soldador.",
@@ -13,7 +13,7 @@ def home():
         "og_image": "https://www.metalwolft.com/assets/images/herrero-soldador-ciudad-real.jpg",
         "og_url": "https://www.metalwolft.com/"
     }
-    return render_template("index.html", **meta_data)
+    return render_template("index.html", **meta_data)"""
 
 
 @seo_bp.route('/rejas-para-ventanas')
