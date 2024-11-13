@@ -13,9 +13,13 @@ export const authProvider = {
         return response.json();
       })
       .then(auth => {
-        console.log("Login successful:", auth);
+        console.log("Login successful.");
         localStorage.setItem('token', auth.access_token);
         localStorage.setItem('user', JSON.stringify(auth.results));
+      })
+      .catch(error => {
+        console.error("Login error:", error);
+        throw error;
       });
   },
   logout: () => {
@@ -27,21 +31,19 @@ export const authProvider = {
   checkAuth: () => {
     const token = localStorage.getItem('token');
     const user = JSON.parse(localStorage.getItem('user') || "{}");
-    console.log("checkAuth executed. Token:", token);
-    console.log("checkAuth executed. User:", user);
 
     if (token && user && user.is_admin) {
-      console.log("User is authenticated and authorized.");
+      console.log("User authenticated.");
       return Promise.resolve();
     } else {
-      console.warn("User is not authenticated or not authorized.");
+      console.warn("User not authenticated or unauthorized.");
       return Promise.reject({ redirectTo: '/login' });
     }
   },
   checkError: (error) => {
     const status = error.status;
-    console.log("checkError executed. Status:", status);
     if (status === 401 || status === 403) {
+      console.warn("Unauthorized access detected. Logging out.");
       localStorage.removeItem('token');
       localStorage.removeItem('user');
       return Promise.reject({ redirectTo: '/login' });
@@ -50,20 +52,17 @@ export const authProvider = {
   },
   getPermissions: () => {
     const user = JSON.parse(localStorage.getItem('user') || "{}");
-    console.log("getPermissions executed. User:", user);
-    if (user.is_admin) {
-      return Promise.resolve("admin");
-    } else {
-      return Promise.resolve();
-    }
+    return user.is_admin ? Promise.resolve("admin") : Promise.resolve();
   },
   getIdentity: () => {
     try {
       const user = JSON.parse(localStorage.getItem('user'));
-      console.log("getIdentity executed. User:", user);
+      if (!user || !user.firstname || !user.lastname) {
+        throw new Error("User data is incomplete.");
+      }
       return Promise.resolve({
         id: user.user_id,
-        fullName: user.firstname + " " + user.lastname,
+        fullName: `${user.firstname} ${user.lastname}`,
       });
     } catch (error) {
       console.error("Error getting user identity:", error);
