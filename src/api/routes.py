@@ -675,9 +675,16 @@ def get_products():
                 (Products.categoria_id == category_id) |
                 (Products.subcategoria_id.in_(subcategory_ids))
             )
+
+        total_count = query.count()
+        
         products = query.all()
         response = jsonify([product.serialize_with_images() for product in products])
+        
+        response.headers['X-Total-Count'] = total_count
+        response.headers['Access-Control-Expose-Headers'] = 'X-Total-Count, Authorization'
         response.headers['Access-Control-Allow-Origin'] = '*'
+        
         return response, 200
     except SQLAlchemyError as e:
         db.session.rollback()
