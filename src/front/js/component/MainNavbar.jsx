@@ -15,9 +15,9 @@ export const MainNavbar = () => {
     const navigate = useNavigate();
 
     const handleLogout = () => {
-        actions.setIsLoged(false); // Desloguea al usuario y vacía los favoritos
+        actions.setIsLoged(false); 
         setExpanded(false);
-        navigate("/"); // Redirige a la home después del logout
+        navigate("/"); 
     };
 
     const handleToggle = () => setExpanded(!expanded);
@@ -38,7 +38,6 @@ export const MainNavbar = () => {
                     <img src={logoweb} alt="Logo" className="d-inline-block align-top" />
                 </Navbar.Brand>
                 <div className="d-flex align-items-center">
-                    {/* Versión del menú para pantallas pequeñas (d-lg-none) */}
                     <Nav.Link onClick={handleFavoritesClick} className="d-flex align-items-center position-relative d-lg-none">
                         <i className="fa-regular fa-heart fa-lg"></i>
                         {store.isLoged && (
@@ -84,8 +83,12 @@ export const MainNavbar = () => {
                         <Nav.Link as={Link} to="/blogs" onClick={handleSelect}>Blog</Nav.Link>
                         <Nav.Link as={Link} to="/exercises" onClick={handleSelect}>Contácto</Nav.Link>
                         <Nav.Link as={Link} to="/bmr-calculator" onClick={handleSelect}>Sobre nosotros</Nav.Link>
+                        {store.isLoged && store.currentUser?.is_admin && (
+                            <Nav.Link as={Link} to="/admin" onClick={handleSelect} className="d-lg-none" style={{marginLeft: '1.3rem', border: 'solid 2px #ff324d', borderRadius: '10px'}}>
+                               <i className="fa-solid fa-toolbox"></i> Admin
+                            </Nav.Link>
+                        )}
                     </Nav>
-                    {/* Versión del menú para pantallas grandes (d-lg-flex) */}
                     <Nav className="ms-auto d-none d-lg-flex" onSelect={handleSelect}>
                         <Nav.Link onClick={handleFavoritesClick} className="d-flex align-items-center position-relative">
                             <i className="fa-regular fa-heart fa-lg"></i>
@@ -108,8 +111,8 @@ export const MainNavbar = () => {
                         {store.isLoged ? (
                             <>
                                 {store.currentUser?.is_admin && (
-                                    <Nav.Link as={Link} to="/admin" onClick={handleSelect}>
-                                        Administración
+                                    <Nav.Link as={Link} to="/admin" onClick={handleSelect} style={{marginLeft: '1.3rem', border: 'solid 2px #ff324d', borderRadius: '10px'}}>
+                                       <i className="fa-solid fa-toolbox"></i> Admin
                                     </Nav.Link>
                                 )}
                                 <Nav.Link onClick={handleLogout} className="button-navbar d-flex align-items-center">
