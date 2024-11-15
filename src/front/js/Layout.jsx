@@ -58,11 +58,11 @@ const Layout = () => {
     if (!process.env.BACKEND_URL || process.env.BACKEND_URL === "") return <BackendURL />;
 
     return (
-        <div className="d-flex flex-column min-vh-100 bg-white" style={{margin: '0px', padding: '0px'}}>
-            <BrowserRouter basename={basename}>
-                <ScrollToTop />
-                <CookieBanner />
-                <MainNavbar />
+        <BrowserRouter basename={basename}>
+            <ScrollToTop />
+            <CookieBanner />
+            <MainNavbar />
+            <div id="main-content" className="d-flex flex-column bg-white" style={{ margin: '0px', padding: '0px' }}>
                 <Routes>
                     <Route path="/" element={<Home />} />
                     <Route path="/carrusel" element={<Carrusel />} />
@@ -104,8 +104,8 @@ const Layout = () => {
                     <Route path="/cambios-politica-cookies" element={<ChangesInCookiePolicy />} />
                 </Routes>
                 <Footer />
+                </div>
             </BrowserRouter>
-        </div>
     );
 };
 
