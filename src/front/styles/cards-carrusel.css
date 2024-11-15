@@ -24,7 +24,7 @@
     background: transparent !important; 
     border: 1px solid #ff324d; 
     display: block;
-    -webkit-backface-visibility: visible;
+    backface-visibility: visible; 
     transition: all 200ms ease;
     border-radius: 50%; 
 }
