@@ -82,7 +82,6 @@ export const MainNavbar = () => {
                         </NavDropdown>
                         <Nav.Link as={Link} to="/blogs" onClick={handleSelect}>Blog</Nav.Link>
                         <Nav.Link as={Link} to="/exercises" onClick={handleSelect}>Contácto</Nav.Link>
-                        <Nav.Link as={Link} to="/bmr-calculator" onClick={handleSelect}>Sobre nosotros</Nav.Link>
                         {store.isLoged && store.currentUser?.is_admin && (
                             <Nav.Link as={Link} to="/admin" onClick={handleSelect} className="d-lg-none" style={{marginLeft: '1.3rem', border: 'solid 2px #ff324d', borderRadius: '10px'}}>
                                <i className="fa-solid fa-toolbox"></i> Admin
