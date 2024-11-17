@@ -31,7 +31,7 @@ body, html {
   transform: scale(1.1);
   box-shadow: 0 0 5px #f3909d;
 }
-/* Añadir a tu archivo CSS */
+
 .paypal-buttons iframe {
   min-height: 300px; 
   margin-bottom: 20px; 
@@ -155,8 +155,8 @@ form{
 
 .form-control {
   padding: 5px; 
-  border-radius: 10px; 
-  border: 1px solid #ff324d; 
+  border-radius: 5px; 
+  border: 1px solid #cfcbcb; 
 }
 
 .form-control:focus {
