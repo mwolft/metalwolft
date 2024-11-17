@@ -31,7 +31,8 @@ export const Breadcrumb = () => {
         'politica-privacidad': 'Política de Privacidad',
         'politica-cookies': 'Política de Cookies',
         'informacion-recogida': 'Información Recogida',
-        'cambios-politica-cookies': 'Cambios de Política de Cookies'
+        'cambios-politica-cookies': 'Cambios de Política de Cookies',
+        'contact': 'Comunícate con Nuestro Equipo'
     };
     
 

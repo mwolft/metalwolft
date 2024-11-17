@@ -34,6 +34,7 @@ import { Favoritos } from "./pages/Favoritos.jsx";
 import { ProductDetail } from "./pages/ProductDetail.jsx";
 import { Cart } from "./pages/Cart.jsx";
 import { ThankYou } from "./pages/ThankYou.jsx";
+import { Contact } from "./pages/Contact.jsx";
 import { PrivacyCookiesHome } from "./pages/PrivacyCookiesHome.jsx"
 import { PrivacyPolicy } from "./pages/PrivacyPolicy.jsx";
 import { CookiesPolicy } from "./pages/CookiesPolicy.jsx";
@@ -79,6 +80,7 @@ const Layout = () => {
                     <Route path="/checkout-form" element={<CheckoutForm />} />
                     <Route path="/pay-pal-button" element={<PayPalButton />} />
                     <Route path="/thank-you" element={<ThankYou />} />
+                    <Route path="/contact" element={<Contact />} />
                     <Route path="/notification" element={<Notification />} />
                     <Route path="/cards-carrusel" element={<CardsCarrusel />} />
                     <Route path="/sidebar" element={<Sidebar />} />
