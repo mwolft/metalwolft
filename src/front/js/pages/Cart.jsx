@@ -96,9 +96,10 @@ export const Cart = () => {
                         {store.cart.length > 0 && (
                             <Row className="mt-4 mb-5 mx-3">
                                 <Col className="text-end"> 
-                                    <p className="cart-total">
-                                        <span className="sign">Subtotal:</span>
-                                        <span className="money"> {subtotal.toFixed(2)} €</span>
+                                    <p>Envío: <u>0€</u></p>
+                                    <p className="cart-total mb-5">
+                                        <span className="sign">Subtotal: </span>
+                                        <span className="money"><u>{subtotal.toFixed(2)} € (IVA incl.)</u></span>
                                     </p>
                                     <div className="text-end"> 
                                         <Button

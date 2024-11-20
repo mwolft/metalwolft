@@ -152,7 +152,7 @@ export const MedirHuecoRejasParaVentanas = () => {
                                     ))}
                                 </ul>
                             ) : (
-                                <p>No comments yet. Be the first to comment!</p>
+                                <p>Sin comentarios todavía. Sé el primero en escribir un comentario!</p>
                             )}
                             {successMessage && <Alert variant="success">{successMessage}</Alert>}
                             <Form onSubmit={handleCommentSubmit}>
