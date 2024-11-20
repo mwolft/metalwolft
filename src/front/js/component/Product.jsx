@@ -1,4 +1,5 @@
 import React, { useState, useContext } from 'react';
+import { Link } from "react-router-dom";
 import "../../styles/cards-carrusel.css";
 import Button from 'react-bootstrap/Button';
 import Rating from 'react-rating';
@@ -8,6 +9,9 @@ import Carousel from 'react-bootstrap/Carousel';
 import Form from 'react-bootstrap/Form';
 import { Context } from "../store/appContext";
 import { Notification } from "./Notification.jsx";
+import OverlayTrigger from 'react-bootstrap/OverlayTrigger';
+import Popover from 'react-bootstrap/Popover';
+import AlbanyImg from '../../img/rejas-para-ventanas-sin-obra.png'
 
 export const Product = ({ product }) => {
     const [showModal, setShowModal] = useState(false);
@@ -101,11 +105,10 @@ export const Product = ({ product }) => {
                             <Button className="btn-style-background-color" onClick={handleShow}>
                                 Comprar
                             </Button>
-                            <i
-                                className={`fa-regular fa-heart ${actions.isFavorite(product) ? 'fa-solid' : ''}`}
+                            <i className={`fa-regular fa-heart ${actions.isFavorite(product) ? 'fa-solid' : ''}`}
                                 onClick={handleFavorite}
-                                style={{ cursor: 'pointer', color: '#ff324d', fontSize: '1.5rem' }}
-                            ></i>
+                                style={{ cursor: 'pointer', color: '#ff324d', fontSize: '1.5rem' }}>
+                            </i>
                         </div>
                     </Card.Body>
                 </Card>
@@ -132,7 +135,6 @@ export const Product = ({ product }) => {
                                     </Carousel.Item>
                                 ))}
                             </Carousel>
-
                             <div className="thumbnail-gallery d-flex justify-content-center mt-3">
                                 {allImages.map((image, index) => (
                                     <img
@@ -150,7 +152,6 @@ export const Product = ({ product }) => {
                             <div className="pr_detail">
                                 <h5>Precio: {product.precio} €/m²</h5>
                                 <p>{product.descripcion}</p>
-
                                 <div className="d-flex mt-4">
                                     <Form.Group controlId="height" className="me-3" style={{ flex: 1 }}>
                                         <Form.Label>Alto (cm):</Form.Label>
@@ -158,8 +159,7 @@ export const Product = ({ product }) => {
                                             type="number"
                                             value={height}
                                             onChange={(e) => setHeight(e.target.value)}
-                                            placeholder="cm"
-                                        />
+                                            placeholder="cm" />
                                     </Form.Group>
                                     <Form.Group controlId="width" style={{ flex: 1 }}>
                                         <Form.Label>Ancho (cm):</Form.Label>
@@ -167,21 +167,48 @@ export const Product = ({ product }) => {
                                             type="number"
                                             value={width}
                                             onChange={(e) => setWidth(e.target.value)}
-                                            placeholder="cm"
-                                        />
+                                            placeholder="cm" />
                                     </Form.Group>
                                 </div>
-
                                 <div className="d-flex mt-2">
                                     <Form.Group controlId="mounting" className="me-3" style={{ flex: 1 }}>
-                                        <Form.Label>Instalación:</Form.Label>
+                                        <OverlayTrigger
+                                            trigger={['hover', 'focus']}
+                                            placement="top"
+                                            rootClose={false}
+                                            overlay={
+                                                <Popover id="popover-mounting">
+                                                    <Popover.Header as="h3">Instalación de rejas para ventanas</Popover.Header>
+                                                    <Popover.Body>
+                                                        <p className='p-popover'>
+                                                            <span style={{ textDecoration: 'underline', fontWeight: 'bold' }}>Sin obra: </span>
+                                                            Tornillos Inviolables.
+                                                        </p>
+                                                        <img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSWeCVUg3hSyUQj2YKAzXEAScWZ170dqvQ_mQ&s"
+                                                                style={{ width: '70px', height: 'auto', marginBottom: '10px', marginTop: '5px'}}
+                                                                alt="rejas para ventanas sin obra" />
+                                                        <p className='p-popover'>
+                                                            <span style={{ textDecoration: 'underline', fontWeight: 'bold' }}>Con obra: </span>
+                                                            Anclaje con garras.
+                                                        </p>
+                                                            <img src={AlbanyImg}
+                                                                style={{ width: '110px', height: 'auto', marginBottom: '10px', marginTop: '5px'}}
+                                                                alt="rejas para ventanas con obra" />
+                                                    </Popover.Body>
+                                                </Popover>
+                                            }
+                                        >
+                                            <Form.Label>
+                                                Instalación: <i className="fa-solid fa-info-circle ms-2" style={{ color: '#007bff', cursor: 'pointer' }}></i>
+                                            </Form.Label>
+                                        </OverlayTrigger>
                                         <Form.Control
                                             as="select"
                                             value={mounting}
                                             onChange={(e) => setMounting(e.target.value)}
                                         >
-                                            <option value="con obra">Con obra</option>
                                             <option value="sin obra">Sin obra</option>
+                                            <option value="con obra">Con obra</option>
                                         </Form.Control>
                                     </Form.Group>
                                     <Form.Group controlId="color" style={{ flex: 1 }}>
@@ -199,11 +226,9 @@ export const Product = ({ product }) => {
                                         </Form.Control>
                                     </Form.Group>
                                 </div>
-
                                 <Button className="btn-style-background-color mt-3" onClick={handleCalculatePrice}>
-                                <i className="fa-solid fa-calculator" style={{marginRight: '7px'}}></i> Calcular precio
+                                    <i className="fa-solid fa-calculator" style={{ marginRight: '7px' }}></i> Calcular precio
                                 </Button>
-
                                 {calculatedPrice && (
                                     <h5 className="mt-3">Precio calculado: {calculatedPrice} €</h5>
                                 )}
@@ -215,15 +240,15 @@ export const Product = ({ product }) => {
                     <i
                         className={`fa-regular fa-heart ${actions.isFavorite(product) ? 'fa-solid' : ''}`}
                         onClick={handleFavorite}
-                        style={{ cursor: 'pointer', color: '#ff324d', fontSize: '1.5rem', marginRight: '5px' }}
-                    ></i>
+                        style={{ cursor: 'pointer', color: '#ff324d', fontSize: '1.5rem', marginRight: '5px' }}>
+                    </i>
                     <Button className="btn-style-background-color" onClick={handleAddToCart}>
-                    <i className="fa-solid fa-cart-shopping" style={{marginRight: '7px'}}></i> Añadir al carrito
+                        <i className="fa-solid fa-cart-shopping" style={{ marginRight: '7px' }}></i> Añadir al carrito
                     </Button>
                 </Modal.Footer>
             </Modal>
 
-            {/* Notificación */}
+            {/* Notification */}
             {notification && (
                 <Notification
                     message={notification}

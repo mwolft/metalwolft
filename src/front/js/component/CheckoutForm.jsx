@@ -47,7 +47,7 @@ const CheckoutForm = () => {
     const handleSubmit = async (event) => {
         event.preventDefault();
         if (!stripe || !elements) return;
-    
+
         const cardElement = elements.getElement(CardElement);
         const { error, paymentMethod } = await stripe.createPaymentMethod({
             type: 'card',
@@ -57,10 +57,10 @@ const CheckoutForm = () => {
             alert(`Error en el pago: ${error.message}`);
             return;
         }
-    
+
         // Convertir el total a un número entero para evitar errores con Stripe
         const convertedAmount = Math.round(total * 100);
-    
+
         // Enviar la solicitud de creación de Payment Intent a tu backend
         const response = await fetch(`${process.env.BACKEND_URL}/api/create-payment-intent`, {
             method: 'POST',
@@ -73,37 +73,37 @@ const CheckoutForm = () => {
                 payment_intent_id: store.paymentIntentId  // Si ya tienes un paymentIntent guardado
             }),
         });
-    
+
         const data = await response.json();
         console.log("Response from create-payment-intent:", data);  // Para depuración
-    
+
         if (!data || !data.clientSecret) {
             alert("Hubo un error en la creación del intento de pago.");
             return;
         }
-    
+
         // Verificar si el PaymentIntent ya ha sido confirmado
         if (data.paymentIntent && data.paymentIntent.status === 'succeeded') {
             console.log("El PaymentIntent ya está completado.");
-    
+
             // Guardar la orden y detalles en el backend
             const { ok, order } = await actions.saveOrder();
             if (!ok) {
                 alert("Error al guardar la orden.");
                 return;
             }
-    
+
             // Enviar los datos de facturación y envío junto con los detalles de la orden
             const result = await actions.saveOrderDetails(order.id, formData);
             if (!result.ok) {
                 alert("Error al guardar los detalles de la orden.");
                 return;
             }
-    
+
             // Limpiar el carrito en el frontend y backend
             actions.clearCart();
             localStorage.removeItem("cart");
-    
+
             await fetch(`${process.env.BACKEND_URL}/api/cart/clear`, {
                 method: 'POST',
                 headers: {
@@ -111,38 +111,38 @@ const CheckoutForm = () => {
                     Authorization: `Bearer ${localStorage.getItem("token")}`
                 }
             });
-    
+
             console.log("Carrito vaciado");
             navigate("/thank-you");
             return;
         }
-    
+
         // Confirmar el pago con Stripe
         const { error: confirmError, paymentIntent: confirmedPaymentIntent } = await stripe.confirmCardPayment(data.clientSecret);
-    
+
         if (confirmError) {
             alert(`Error en la confirmación del pago: ${confirmError.message}`);
             return;
         }
-    
+
         if (confirmedPaymentIntent && confirmedPaymentIntent.status === 'succeeded') {
             console.log("Pago completado con éxito, creando la orden...");
-    
+
             const { ok, order } = await actions.saveOrder();
             if (!ok) {
                 alert("Error al guardar la orden.");
                 return;
             }
-    
+
             const result = await actions.saveOrderDetails(order.id, formData);
             if (!result.ok) {
                 alert("Error al guardar los detalles de la orden.");
                 return;
             }
-    
+
             actions.clearCart();
             localStorage.removeItem("cart");
-    
+
             await fetch(`${process.env.BACKEND_URL}/api/cart/clear`, {
                 method: 'POST',
                 headers: {
@@ -150,12 +150,12 @@ const CheckoutForm = () => {
                     Authorization: `Bearer ${localStorage.getItem("token")}`
                 }
             });
-    
+
             console.log("Carrito vaciado");
             navigate("/thank-you");
         }
     };
-    
+
 
     const handleCheckboxChange = (e) => {
         setDifferentBilling(e.target.checked);
@@ -194,6 +194,10 @@ const CheckoutForm = () => {
                             </li>
                         ))}
                         <li className="list-group-item d-flex justify-content-between">
+                            <span>Envío: </span>
+                            <strong>0€</strong>
+                        </li>
+                        <li className="list-group-item d-flex justify-content-between">
                             <span>Total (EUR)</span>
                             <strong>{total.toFixed(2)} €</strong>
                         </li>
@@ -211,7 +215,7 @@ const CheckoutForm = () => {
                         <h4 className="mb-3">Dirección de facturación</h4>
                         <hr className='hr-cart' />
                         <div className="row">
-                            <div className="col-md-6 mb-3">
+                            <div className="col-md-6">
                                 <Form.Label></Form.Label>
                                 <Form.Control
                                     name="firstname"
@@ -222,7 +226,7 @@ const CheckoutForm = () => {
                                 <div className="invalid-feedback">El nombre es obligatorio.</div>
                             </div>
 
-                            <div className="col-md-6 mb-3">
+                            <div className="col-md-6">
                                 <Form.Label></Form.Label>
                                 <Form.Control
                                     name="lastname"
@@ -234,7 +238,7 @@ const CheckoutForm = () => {
                             </div>
                         </div>
                         <div className="row">
-                            <div className="col-md-8 mb-3">
+                            <div className="col-md-8">
                                 <Form.Label></Form.Label>
                                 <Form.Control
                                     name="billing_address"
@@ -245,7 +249,7 @@ const CheckoutForm = () => {
                                 <div className="invalid-feedback">La dirección es obligatoria.</div>
                             </div>
 
-                            <div className="col-md-4 mb-3">
+                            <div className="col-md-4">
                                 <Form.Label></Form.Label>
                                 <Form.Control
                                     name="billing_postal_code"
@@ -257,7 +261,7 @@ const CheckoutForm = () => {
                             </div>
                         </div>
                         <div className="row">
-                            <div className="col-md-6 mb-3">
+                            <div className="col-md-6">
                                 <Form.Label></Form.Label>
                                 <Form.Control
                                     name="billing_city"
@@ -287,15 +291,15 @@ const CheckoutForm = () => {
                             <div className="my-3" style={{ marginTop: '50px' }}>
                                 <h4 className="mb-3">Dirección de envío</h4>
                                 <hr className='hr-cart' />
-                                <Form.Group controlId="shipping_address" className="mb-3">
+                                <Form.Group controlId="shipping_address">
                                     <Form.Label></Form.Label>
                                     <Form.Control name="shipping_address" placeholder="Calle, número, portal, piso..." onChange={handleInputChange} required />
                                 </Form.Group>
-                                <Form.Group controlId="shipping_city" className="mb-3">
+                                <Form.Group controlId="shipping_city">
                                     <Form.Label></Form.Label>
                                     <Form.Control name="shipping_city" placeholder="Ciudad" onChange={handleInputChange} required />
                                 </Form.Group>
-                                <Form.Group controlId="shipping_postal_code" className="mb-3">
+                                <Form.Group controlId="shipping_postal_code">
                                     <Form.Label></Form.Label>
                                     <Form.Control name="shipping_postal_code" placeholder="Código Postal" onChange={handleInputChange} required />
                                 </Form.Group>
