@@ -32,14 +32,6 @@
 
 ---
 
-## **Estructura del Proyecto**
-
-El proyecto está organizado de la siguiente manera:
-
-metalwolft/ ├── src/ │ ├── api/ # Lógica de negocio y rutas del backend │ │ ├── routes.py # Endpoints principales │ │ ├── models.py # Modelos de datos │ │ ├── seo_routes.py # Rutas enfocadas en SEO │ │ ├── admin.py # Configuración del panel de administración │ ├── templates/ # Plantillas HTML renderizadas por Flask │ ├── front/ # Recursos del frontend (React) │ │ ├── img/ # Imágenes estáticas │ │ ├── js/ # Código JS │ │ ├── styles/ # Hojas de estilo CSS │ ├── app.py # Archivo principal de la aplicación Flask │ ├── requirements.txt # Dependencias de Python │ └── wsgi.py # Configuración para servidores WSGI
-
-
----
 
 ## **Instalación y Configuración**
 
