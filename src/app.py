@@ -12,7 +12,7 @@ from flask_jwt_extended import JWTManager
 from datetime import timedelta
 from api.seo_routes import seo_bp  
 
-ENV = "development" if os.getenv("FLASK_DEBUG") == "1" else "production"
+CORS(app, resources={r"/*": {"origins": "https://www.metalwolft.com"}}, supports_credentials=True, allow_headers=["Content-Type", "Authorization"])
 static_file_dir = os.path.join(os.path.dirname(os.path.realpath(__file__)), '../public/')
 app = Flask(__name__)
 app.url_map.strict_slashes = False
