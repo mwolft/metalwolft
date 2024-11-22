@@ -80,9 +80,11 @@ button.btn-outline-dark i {
         order: -1;  
     }
     .nav-link.d-lg-none {
-        margin-left: 0.5rem;
+        margin-left: 0rem;
     }
-    .navbar-brand img {      
+    .navbar-brand img {
+        max-height: 2.8rem;         
+        margin-right: 0px;       
         padding-left: 0rem;
     }
 }
