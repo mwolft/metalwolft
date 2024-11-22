@@ -12,13 +12,13 @@ from flask_jwt_extended import JWTManager
 from datetime import timedelta
 from api.seo_routes import seo_bp  
 
-CORS(app, resources={r"/*": {"origins": "https://www.metalwolft.com"}}, supports_credentials=True, allow_headers=["Content-Type", "Authorization"])
+ENV = "development" if os.getenv("FLASK_DEBUG") == "1" else "production"
 static_file_dir = os.path.join(os.path.dirname(os.path.realpath(__file__)), '../public/')
 app = Flask(__name__)
 app.url_map.strict_slashes = False
 
 
-CORS(app, resources={r"/*": {"origins": "*"}}, supports_credentials=True, allow_headers=["Content-Type", "Authorization"])
+CORS(app, resources={r"/*": {"origins": "https://www.metalwolft.com"}}, supports_credentials=True, allow_headers=["Content-Type", "Authorization"])
 
 
 # Database configuration
