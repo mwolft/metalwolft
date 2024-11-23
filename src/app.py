@@ -17,9 +17,7 @@ static_file_dir = os.path.join(os.path.dirname(os.path.realpath(__file__)), '../
 app = Flask(__name__)
 app.url_map.strict_slashes = False
 
-
-CORS(app, resources={r"/*": {"origins": "https://www.metalwolft.com"}}, supports_credentials=True, allow_headers=["Content-Type", "Authorization"])
-
+CORS(app, resources={r"/*": {"origins": "*"}}, supports_credentials=True, allow_headers=["Content-Type", "Authorization"])
 
 # Database configuration
 db_url = os.getenv("DATABASE_URL")
@@ -46,13 +44,6 @@ jwt = JWTManager(app)
 @app.errorhandler(APIException)
 def handle_invalid_usage(error):
     return jsonify(error.to_dict()), error.status_code
-
-@app.route('/routes')
-def show_routes():
-    output = []
-    for rule in app.url_map.iter_rules():
-        output.append(str(rule))
-    return jsonify(routes=output)
 
 # Generate sitemap with all your endpoints
 @app.route('/')
