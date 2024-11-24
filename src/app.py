@@ -1,6 +1,6 @@
 import os
 from flask import Flask, request, jsonify, url_for, send_from_directory
-from flask_migrate import Migrate
+from flask_migrate import Migrate, upgrade
 from flask_swagger import swagger
 from flask_cors import CORS
 from api.utils import APIException, generate_sitemap
@@ -60,6 +60,24 @@ def serve_any_other_file(path):
     response = send_from_directory(static_file_dir, path)
     response.cache_control.max_age = 0  # Avoid cache memory
     return response
+
+# Endpoint to check the database connection
+@app.route('/db-check', methods=['GET'])
+def db_check():
+    try:
+        result = db.session.execute("SELECT 1").fetchall()
+        return {"message": "Database connection successful", "result": result}, 200
+    except Exception as e:
+        return {"error": "Database connection failed", "details": str(e)}, 500
+
+# Endpoint to run migrations
+@app.route('/run-migrations', methods=['GET'])
+def run_migrations():
+    try:
+        upgrade()  # Applies the migrations
+        return {"message": "Migrations applied successfully"}, 200
+    except Exception as e:
+        return {"error": "Failed to apply migrations", "details": str(e)}, 500
 
 # This only runs if `$ python src/main.py` is executed
 if __name__ == '__main__':
