@@ -74,7 +74,7 @@ export const MedirHuecoRejasParaVentanas = () => {
                                     <i className="fa-regular fa-calendar mx-1" style={{ color: '#ff324d' }}></i> {new Date(currentPost.created_at).toLocaleDateString()}
                                     <i className="fa-regular fa-comments mx-1" style={{ color: '#ff324d', paddingLeft: '10px' }}></i> {currentComments?.length || 0} Comentarios
                                 </p>
-                                <img src="https://www.metalwolft.com/assets/images/blog/rejas-para-ventanas.avif" alt="es" className="img-fluid my-3" />
+                                <img src="https://www.metalwolft.com/img/blog/rejas-para-ventanas.avif" alt="rejas para ventanas" className="img-fluid my-3" />
                             </div>
                         )}
                         <div className="blog-text">
@@ -91,12 +91,12 @@ export const MedirHuecoRejasParaVentanas = () => {
                             <div className="row">
                                 <div className="col-sm-6">
                                     <div className="single_img">
-                                        <img className="w-100 mb-4" src="https://www.metalwolft.com/assets/images/blog/rejas-para-ventanas-modernas.avif" alt="rejas para ventanas modernas" />
+                                        <img className="w-100 mb-4" src="https://www.metalwolft.com/img/blog/rejas-para-ventanas-modernas.avif" alt="rejas para ventanas modernas" />
                                     </div>
                                 </div>
                                 <div className="col-sm-6">
                                     <div className="single_img">
-                                        <img className="w-100 mb-4" src="https://www.metalwolft.com/assets/images/blog/rejas-para-ventanas-sin-obra.avif" alt="rejas para ventanas sin obra" />
+                                        <img className="w-100 mb-4" src="https://www.metalwolft.com/img/blog/rejas-para-ventanas-sin-obra.avif" alt="rejas para ventanas sin obra" />
                                     </div>
                                 </div>
                             </div>
@@ -119,7 +119,7 @@ export const MedirHuecoRejasParaVentanas = () => {
                             <p>Más abajo <b>os presentamos un video</b> que explica al detalle cómo realizar una medida correcta del hueco de rejas para ventanas.</p>
                             <p>¡Si todavía tiene dudas siempre puede contar con nosotros para resolverle cuantas cuestiones necesite!</p>
                             <video controls width="100%" height="auto">
-                                <source src="https://www.metalwolft.com/assets/video/medicion-rejas-para-ventanas.webm" type="video/webm" />
+                                <source src="https://www.metalwolft.com/img/blog/medicion-rejas-para-ventanas.webm" type="video/webm" />
                                 Your browser does not support the video tag.
                             </video>
                         </div>
@@ -134,7 +134,7 @@ export const MedirHuecoRejasParaVentanas = () => {
                                         <li className="comment_info" key={comment.id}>
                                             <div className="d-flex">
                                                 <div className="comment_user">
-                                                    <img src="https://www.metalwolft.com/assets/images/users/user.png"
+                                                    <img src="https://www.metalwolft.com/img/blog/users/user.png"
                                                         alt="user avatar"
                                                         style={{ width: '3rem', height: 'auto' }} />
                                                 </div>
