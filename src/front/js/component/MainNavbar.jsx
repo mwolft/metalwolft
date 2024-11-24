@@ -33,7 +33,7 @@ export const MainNavbar = () => {
 
     return (
         <Navbar expand="lg" className="estilo-navbar fixed-top text-uppercase" data-bs-theme="light" expanded={expanded}>
-            <Container fluid>
+            <Container fluid className="container-nav">
                 <Navbar.Brand as={Link} to="/" onClick={handleSelect}>
                     <img src={logoweb} alt="Logo" className="d-inline-block align-top" />
                 </Navbar.Brand>
