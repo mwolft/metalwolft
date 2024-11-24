@@ -8,6 +8,7 @@ import ScrollToTop from "./component/ScrollToTop.jsx";
 import { BackendURL } from "./component/BackendURL.jsx";
 import { Footer } from "./component/Footer.jsx";
 import { MainNavbar } from "./component/MainNavbar.jsx";
+import MaintenancePopup from "./component/MaintenancePopup.jsx"
 import { Sidebar } from "./component/Sidebar.jsx";
 import { BodyHomeMain } from "./component/BodyHomeMain.jsx";
 import { BodyHomeSecondary } from "./component/BodyHomeSecondary.jsx";
@@ -35,7 +36,7 @@ import { ProductDetail } from "./pages/ProductDetail.jsx";
 import { Cart } from "./pages/Cart.jsx";
 import { ThankYou } from "./pages/ThankYou.jsx";
 import { Contact } from "./pages/Contact.jsx";
-import { PrivacyCookiesHome } from "./pages/PrivacyCookiesHome.jsx"
+import { PrivacyCookiesHome } from "./pages/PrivacyCookiesHome.jsx";
 import { PrivacyPolicy } from "./pages/PrivacyPolicy.jsx";
 import { CookiesPolicy } from "./pages/CookiesPolicy.jsx";
 import { InformationCollected } from "./pages/InformationCollected.jsx";
@@ -43,7 +44,7 @@ import { ChangesInCookiePolicy } from "./pages/ChangesInCookiePolicy.jsx";
 
 // Blog
 import { BlogListPage } from "./pages/blog/BlogListPage.jsx";
-import { MedirHuecoRejasParaVentanas } from "./pages/blog/MedirHuecoRejasParaVentanas.jsx"
+import { MedirHuecoRejasParaVentanas } from "./pages/blog/MedirHuecoRejasParaVentanas.jsx";
 import { InstalationRejasParaVentanas } from "./pages/blog/InstalationRejasParaVentanas.jsx";
 
 // Custom categories
@@ -61,6 +62,7 @@ const Layout = () => {
     return (
         <BrowserRouter basename={basename}>
             <ScrollToTop />
+            <MaintenancePopup />
             <CookieBanner />
             <MainNavbar />
             <div id="main-content" className="d-flex flex-column bg-white" style={{ margin: '0px', padding: '0px' }}>
@@ -106,8 +108,8 @@ const Layout = () => {
                     <Route path="/cambios-politica-cookies" element={<ChangesInCookiePolicy />} />
                 </Routes>
                 <Footer />
-                </div>
-            </BrowserRouter>
+            </div>
+        </BrowserRouter>
     );
 };
 
