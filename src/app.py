@@ -66,8 +66,11 @@ def serve_any_other_file(path):
 def db_check():
     try:
         result = db.session.execute("SELECT 1").fetchall()
-        return {"message": "Database connection successful", "result": result}, 200
+        serializable_result = [dict(row) for row in result]
+
+        return {"message": "Database connection successful", "result": serializable_result}, 200
     except Exception as e:
+        app.logger.error(f"Database connection error: {str(e)}")
         return {"error": "Database connection failed", "details": str(e)}, 500
 
 # Endpoint to run migrations
