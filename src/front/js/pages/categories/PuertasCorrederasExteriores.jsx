@@ -9,7 +9,7 @@ import "../../../styles/categories-pages.css";
 
 export const PuertasCorrederasExteriores = () => {
     const { store, actions } = useContext(Context);
-    const puertasCorrederasExterioresCategoryId = 5;
+    const puertasCorrederasExterioresCategoryId = 7;
     const [selectedCategoryId, setSelectedCategoryId] = useState(puertasCorrederasExterioresCategoryId);
     const [selectedSubcategoryId, setSelectedSubcategoryId] = useState(null);
 

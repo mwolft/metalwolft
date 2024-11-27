@@ -10,7 +10,7 @@ import { Link } from "react-router-dom";
 
 export const RejasParaVentanas = () => {
     const { store, actions } = useContext(Context);
-    const rejasCategoryId = 1;
+    const rejasCategoryId = 3;
     const [selectedCategoryId, setSelectedCategoryId] = useState(rejasCategoryId);
     const [selectedSubcategoryId, setSelectedSubcategoryId] = useState(null);
 

@@ -9,7 +9,7 @@ import "../../../styles/categories-pages.css";
 
 export const CerramientoDeCocinaConCristal = () => {
     const { store, actions } = useContext(Context);
-    const cerramientoCocinaCategoryId = 6;
+    const cerramientoCocinaCategoryId = 8;
     const [selectedCategoryId, setSelectedCategoryId] = useState(cerramientoCocinaCategoryId);
     const [selectedSubcategoryId, setSelectedSubcategoryId] = useState(null);
 
