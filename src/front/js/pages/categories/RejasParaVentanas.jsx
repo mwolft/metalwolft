@@ -71,7 +71,7 @@ export const RejasParaVentanas = () => {
                         <br />
                         <h2>REJAS PARA VENTANAS SENCILLAS Y BONITAS</h2>
                         <hr className="hr-cart" />
-                        <img className="img-fluid my-2" style={{ width: '100%', height: 'auto' }} src="https://www.metalwolft.com/assets/images/rejas/rejas-para-ventanas-sencillas-y-bonitas.webp" alt="" />
+                        <img className="img-fluid my-2" style={{ width: '100%', height: 'auto' }} src="https://www.metalwolft.com/img/blog/rejas-para-ventanas/rejas-para-ventanas-sencillas-y-bonitas.webp" alt="rejas para ventanas" />
                         <p>Las <strong>rejas para ventanas sencillas y bonitas </strong>tienen una creciente demanda en la actualidad y destacan por su <b>simplicidad y belleza</b>.</p>
                         <p>Unos años atrás se han destacado por la combinación de figuras metálicas, un enfoque que está cayendo en desuso.</p>
                         <p>En la actualidad, la demanda de rejas online se caracteriza por una estética más simplificada y atractiva, reduciendo la cantidad de material empleado sin comprometer la <b>modernidad de su diseño.</b></p>
@@ -85,12 +85,12 @@ export const RejasParaVentanas = () => {
                         <br />
                         <h2>REJAS PARA VENTANAS SIN OBRA</h2>
                         <hr className="hr-cart" />
-                        <img className="img-fluid my-2" style={{ width: '100%', height: 'auto' }} src="https://www.metalwolft.com/assets/images/rejas/rejas-para-ventanas-modernas-2023.avif" alt="" />
+                        <img className="img-fluid my-2" style={{ width: '100%', height: 'auto' }} src="https://www.metalwolft.com/img/blog/rejas-para-ventanas/rejas-para-ventanas-modernas-2023.avif" alt="rejas para ventanas sencillas y bonitas" />
                         <p>Nuestras <strong>rejas para ventanas</strong> están especialmente diseñadas para adaptarse a huecos de ventana <strong>sin obra</strong>, es decir, sin la necesidad de realizar costosos trabajos de albañilería.</p>
                         <p>Este tipo de instalación no solo conserva la seguridad de su propiedad, gracias a la utilización de tornillos especiales tipo Torx inviolables (incluidos), sino que también simplifica el proceso de montaje, lo que a su vez se traduce en el <strong>precio</strong>.</p>
                         <p>Tenemos un artículo dedicado exclusivamente a <Link to="/instalation-rejas-para-ventanas" style={{ color: '#ff324d', textDecoration: 'underline', fontStyle: 'italic' }}>¿cómo instalar rejas para ventanas?</Link></p>
                         <video controls preload="auto" style={{ width: '100%', height: 'auto' }}>
-                            <source src="https://www.metalwolft.com/assets/video/instalacion-rejas-para-ventanas.webm" type="video/webm" />
+                            <source src="https://www.metalwolft.com/img/blog/instalacion-rejas-para-ventanas.webm" type="video/webm" />
                         </video>
                     </div>
                 </div>
