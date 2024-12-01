@@ -12,7 +12,7 @@ export const ProductDetail = () => {
     useEffect(() => {
         const fetchProduct = async () => {
             try {
-                const response = await fetch(`${process.env.BACKEND_URL}/api/products/${id}`);
+                const response = await fetch(`${process.env.REACT_APP_BACKEND_UR}/api/products/${id}`);
                 if (!response.ok) throw new Error("Producto no encontrado");
                 const data = await response.json();
                 setProduct(data);

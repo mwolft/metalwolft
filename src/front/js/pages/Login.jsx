@@ -50,13 +50,13 @@ export const Login = () => {
     let uri, options;
 
     if (isLogin) {
-      uri = process.env.BACKEND_URL + '/api/login';
+      uri = process.env.REACT_APP_BACKEND_UR + '/api/login';
     } else {
       if (password !== confirmPassword) {
         setErrorMessage('Las contraseñas no coinciden');
         return;
       }
-      uri = process.env.BACKEND_URL + '/api/signup';
+      uri = process.env.REACT_APP_BACKEND_UR + '/api/signup';
     }
 
     options = {

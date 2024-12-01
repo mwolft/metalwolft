@@ -62,7 +62,7 @@ const CheckoutForm = () => {
         const convertedAmount = Math.round(total * 100);
 
         // Enviar la solicitud de creación de Payment Intent a tu backend
-        const response = await fetch(`${process.env.BACKEND_URL}/api/create-payment-intent`, {
+        const response = await fetch(`${process.env.REACT_APP_BACKEND_UR}/api/create-payment-intent`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -104,7 +104,7 @@ const CheckoutForm = () => {
             actions.clearCart();
             localStorage.removeItem("cart");
 
-            await fetch(`${process.env.BACKEND_URL}/api/cart/clear`, {
+            await fetch(`${process.env.REACT_APP_BACKEND_UR}/api/cart/clear`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -143,7 +143,7 @@ const CheckoutForm = () => {
             actions.clearCart();
             localStorage.removeItem("cart");
 
-            await fetch(`${process.env.BACKEND_URL}/api/cart/clear`, {
+            await fetch(`${process.env.REACT_APP_BACKEND_UR}/api/cart/clear`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
