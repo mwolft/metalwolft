@@ -9,7 +9,7 @@ import "../../../styles/categories-pages.css";
 
 export const ValladosMetalicosExteriores = () => {
     const { store, actions } = useContext(Context);
-    const valladosCategoryId = 4;
+    const valladosCategoryId = 2;
     const [selectedCategoryId, setSelectedCategoryId] = useState(valladosCategoryId);
     const [selectedSubcategoryId, setSelectedSubcategoryId] = useState(null);
 

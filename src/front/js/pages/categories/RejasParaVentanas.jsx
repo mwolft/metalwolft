@@ -10,7 +10,7 @@ import { Link } from "react-router-dom";
 
 export const RejasParaVentanas = () => {
     const { store, actions } = useContext(Context);
-    const rejasCategoryId = 3;
+    const rejasCategoryId = 1;
     const [selectedCategoryId, setSelectedCategoryId] = useState(rejasCategoryId);
     const [selectedSubcategoryId, setSelectedSubcategoryId] = useState(null);
 
@@ -71,7 +71,7 @@ export const RejasParaVentanas = () => {
                         <br />
                         <h2>REJAS PARA VENTANAS SENCILLAS Y BONITAS</h2>
                         <hr className="hr-cart" />
-                        <img className="img-fluid my-2" style={{ width: '100%', height: 'auto' }} src="https://www.metalwolft.com/img/blog/rejas-para-ventanas/rejas-para-ventanas-sencillas-y-bonitas.webp" alt="rejas para ventanas" />
+                        <img className="img-fluid my-2" style={{ width: '100%', height: 'auto' }} src="https://www.metalwolft.com/img/blog/rejas-para-ventanas/rejas-para-ventanas-sencillas-y-bonitas.avif" alt="rejas para ventanas" />
                         <p>Las <strong>rejas para ventanas sencillas y bonitas </strong>tienen una creciente demanda en la actualidad y destacan por su <b>simplicidad y belleza</b>.</p>
                         <p>Unos años atrás se han destacado por la combinación de figuras metálicas, un enfoque que está cayendo en desuso.</p>
                         <p>En la actualidad, la demanda de rejas online se caracteriza por una estética más simplificada y atractiva, reduciendo la cantidad de material empleado sin comprometer la <b>modernidad de su diseño.</b></p>

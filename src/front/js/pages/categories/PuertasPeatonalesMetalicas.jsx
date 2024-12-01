@@ -9,7 +9,7 @@ import "../../../styles/categories-pages.css";
 
 export const PuertasPeatonalesMetalicas = () => {
     const { store, actions } = useContext(Context);
-    const puertasPeatonalesCategoryId = 5;
+    const puertasPeatonalesCategoryId = 3;
     const [selectedCategoryId, setSelectedCategoryId] = useState(puertasPeatonalesCategoryId);
     const [selectedSubcategoryId, setSelectedSubcategoryId] = useState(null);
 
