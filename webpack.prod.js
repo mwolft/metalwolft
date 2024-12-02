@@ -9,9 +9,9 @@ const Dotenv = require('dotenv-webpack');
 module.exports = merge(common, {
     mode: 'production',
     output: {
-        path: path.resolve(__dirname, 'build'), 
-        filename: 'static/js/[name].[contenthash].js', 
-        publicPath: '/' 
+        path: path.resolve(__dirname, 'build'), // Carpeta de salida
+        filename: 'bundle.js', // Genera un único archivo llamado bundle.js
+        publicPath: '/' // Sirve desde la raíz
     },
     module: {
         rules: [
@@ -26,23 +26,20 @@ module.exports = merge(common, {
     },
     plugins: [
         new MiniCssExtractPlugin({
-            filename: 'static/css/[name].[contenthash].css', // Nombres con hash para cacheo
+            filename: 'styles.css', // Un único archivo CSS
         }),
         new Dotenv({
-            systemvars: true, 
-            silent: true     
+            systemvars: true, // Carga variables de entorno del sistema
+            silent: true // Suprime advertencias si faltan variables
         })
     ],
     optimization: {
-        minimize: true, 
+        minimize: true, // Activa la minimización
         minimizer: [
             new TerserPlugin({
-                parallel: true, 
+                parallel: true, // Paraleliza la minificación JS
             }),
-            new CssMinimizerPlugin() 
+            new CssMinimizerPlugin() // Minimiza CSS
         ],
-        splitChunks: {
-            chunks: 'all', 
-        }
     }
 });
