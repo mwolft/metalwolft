@@ -9,8 +9,8 @@ const Dotenv = require('dotenv-webpack');
 module.exports = merge(common, {
     mode: 'production',
     output: {
-        path: path.resolve(__dirname, 'build'), // Carpeta de salida
-        filename: 'bundle.js', // Genera un único archivo llamado bundle.js
+        path: path.resolve(__dirname, 'public'), // Generar archivos directamente en public
+        filename: 'bundle.js', // Generar el archivo bundle.js
         publicPath: '/' // Sirve desde la raíz
     },
     module: {
@@ -26,7 +26,7 @@ module.exports = merge(common, {
     },
     plugins: [
         new MiniCssExtractPlugin({
-            filename: 'styles.css', // Un único archivo CSS
+            filename: 'styles.css', // Generar un único archivo CSS
         }),
         new Dotenv({
             systemvars: true, // Carga variables de entorno del sistema

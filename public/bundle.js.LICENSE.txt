@@ -19,6 +19,15 @@ object-assign
  */
 
 /*!
+ * inflection
+ * Copyright(c) 2011 Ben Lin <ben@dreamerslab.com>
+ * MIT Licensed
+ *
+ * @fileoverview
+ * A port of inflection-js to node.js module.
+ */
+
+/*!
  * react-paypal-js v8.7.0 (2024-09-16T17:52:54.237Z)
  * Copyright 2020-present, PayPal, Inc. All rights reserved.
  *
