@@ -4,7 +4,6 @@ from api.utils import generate_sitemap, APIException
 from api.models import db, Users, Products, ProductImages, Categories, Subcategories, Orders, OrderDetails, Favorites, Cart, OrderDetails, Posts, Comments
 from sqlalchemy.exc import SQLAlchemyError
 import bcrypt
-import stripe
 from dotenv import load_dotenv
 import os
 from io import BytesIO
@@ -20,33 +19,31 @@ api = Blueprint('api', __name__)
 
 load_dotenv()
 
-stripe.api_key = os.getenv('STRIPE_SECRET_KEY')
-
-
 @api.route('/create-payment-intent', methods=['POST'])
 def create_payment_intent():
     try:
+        import stripe  # Import Stripe solo cuando se utiliza
+        stripe.api_key = os.getenv('STRIPE_SECRET_KEY')  # Configurar la clave aquí
+
         data = request.get_json()
-        # Verificar si ya existe un Payment Intent
         payment_intent_id = data.get('payment_intent_id')
+
         if payment_intent_id:
             intent = stripe.PaymentIntent.retrieve(payment_intent_id)
-            # Si el Payment Intent ya está completado, devolver el mensaje correspondiente
             if intent['status'] == 'succeeded':
                 return jsonify({"message": "El pago ya ha sido completado.", "paymentIntent": intent}), 200
-        # Crear un nuevo PaymentIntent
+
         intent = stripe.PaymentIntent.create(
             amount=data['amount'], 
             currency='eur',
-            payment_method=data['payment_method_id'],  # ID del método de pago creado en el frontend
-            confirm=True,  # Confirmar inmediatamente
+            payment_method=data['payment_method_id'],
+            confirm=True,
             return_url=os.getenv('STRIPE_RETURN_URL')  
         )
         return jsonify({
             'clientSecret': intent['client_secret'],
             'paymentIntent': intent
         })
-
     except Exception as e:
         return jsonify({"error": str(e)}), 403
 

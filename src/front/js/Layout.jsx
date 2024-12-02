@@ -62,7 +62,7 @@ const Layout = () => {
     return (
         <BrowserRouter basename={basename}>
             <ScrollToTop />
-            <MaintenancePopup />
+            {/*<MaintenancePopup />*/}
             <CookieBanner />
             <MainNavbar />
             <div id="main-content" className="d-flex flex-column bg-white" style={{ margin: '0px', padding: '0px' }}>
