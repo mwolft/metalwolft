@@ -57,7 +57,7 @@ import { CerramientoDeCocinaConCristal } from "./pages/categories/CerramientoDeC
 
 const Layout = () => {
     const basename = process.env.BASENAME || "";
-    if (!process.env.REACT_APP_BACKEND_UR || process.env.REACT_APP_BACKEND_UR === "") return <BackendURL />;
+    if (!process.env.REACT_APP_BACKEND_URL || process.env.REACT_APP_BACKEND_URL === "") return <BackendURL />;
 
     return (
         <BrowserRouter basename={basename}>

@@ -26,7 +26,7 @@ const getState = ({ getStore, getActions, setStore }) => {
         actions: {
             loadPosts: async () => {
                 try {
-                    const response = await fetch(`${process.env.REACT_APP_BACKEND_UR}/api/posts`, {
+                    const response = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/posts`, {
                         method: 'GET',
                         headers: {
                             'Content-Type': 'application/json'
@@ -45,7 +45,7 @@ const getState = ({ getStore, getActions, setStore }) => {
             addPost: async (postData) => {
                 const token = localStorage.getItem("token");
                 try {
-                    const response = await fetch(`${process.env.REACT_APP_BACKEND_UR}/api/posts`, {
+                    const response = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/posts`, {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
@@ -66,7 +66,7 @@ const getState = ({ getStore, getActions, setStore }) => {
             },   
             fetchPost: async (postId) => {
                 try {
-                    const response = await fetch(`${process.env.REACT_APP_BACKEND_UR}/api/posts/${postId}`, {
+                    const response = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/posts/${postId}`, {
                         method: 'GET',
                         headers: {
                             'Content-Type': 'application/json'
@@ -85,7 +85,7 @@ const getState = ({ getStore, getActions, setStore }) => {
             },  
             getRecentPosts: async () => {
                 try {
-                    const response = await fetch(`${process.env.REACT_APP_BACKEND_UR}/api/posts?limit=5`, {
+                    const response = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/posts?limit=5`, {
                         method: 'GET',
                         headers: {
                             'Content-Type': 'application/json'
@@ -102,7 +102,7 @@ const getState = ({ getStore, getActions, setStore }) => {
             },   
             getOtherCategories: async (currentCategoryId) => {
                 try {
-                    const response = await fetch(`${process.env.REACT_APP_BACKEND_UR}/api/categories`, {
+                    const response = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/categories`, {
                         method: 'GET',
                         headers: {
                             'Content-Type': 'application/json'
@@ -124,7 +124,7 @@ const getState = ({ getStore, getActions, setStore }) => {
             },      
             fetchComments: async (postId) => {
                 try {
-                    const response = await fetch(`${process.env.REACT_APP_BACKEND_UR}/api/posts/${postId}/comments`, {
+                    const response = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/posts/${postId}/comments`, {
                         method: 'GET',
                         headers: {
                             'Content-Type': 'application/json'
@@ -152,7 +152,7 @@ const getState = ({ getStore, getActions, setStore }) => {
                 }
             
                 try {
-                    const response = await fetch(`${process.env.REACT_APP_BACKEND_UR}/api/posts/${postId}/comments`, {
+                    const response = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/posts/${postId}/comments`, {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
@@ -180,7 +180,7 @@ const getState = ({ getStore, getActions, setStore }) => {
                     method: 'GET'
                 };
                 try {
-                    const response = await fetch(`${process.env.REACT_APP_BACKEND_UR}/api/hello`, options);
+                    const response = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/hello`, options);
                     if (!response.ok) throw new Error("Error loading message from backend");
                     const data = await response.json();
                     setStore({ message: data.message });
@@ -201,7 +201,7 @@ const getState = ({ getStore, getActions, setStore }) => {
             updateUserProfile: async (userId, updatedData) => {
                 const store = getStore(); 
                 try {
-                    const response = await fetch(`${process.env.REACT_APP_BACKEND_UR}/api/users/${userId}`, {
+                    const response = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/users/${userId}`, {
                         method: 'PUT',
                         headers: {
                             'Content-Type': 'application/json',
@@ -238,7 +238,7 @@ const getState = ({ getStore, getActions, setStore }) => {
             },
             getCategories: async () => {
                 try {
-                    const response = await fetch(`${process.env.REACT_APP_BACKEND_UR}/api/categories`, {
+                    const response = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/categories`, {
                         method: 'GET',
                         headers: {
                             'Content-Type': 'application/json'
@@ -255,7 +255,7 @@ const getState = ({ getStore, getActions, setStore }) => {
                 }
             },                                    
             fetchProducts: async (categoryId = null, subcategoryId = null) => {
-                let url = `${process.env.REACT_APP_BACKEND_UR}/api/products`;
+                let url = `${process.env.REACT_APP_BACKEND_URL}/api/products`;
             
                 const queryParams = new URLSearchParams();
                 if (categoryId) queryParams.append('category_id', categoryId);
@@ -286,7 +286,7 @@ const getState = ({ getStore, getActions, setStore }) => {
                 const store = getStore();
                 if (!store.isLoged) return; 
                 try {
-                    const response = await fetch(`${process.env.REACT_APP_BACKEND_UR}/api/cart`, {
+                    const response = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/cart`, {
                         method: 'GET',
                         headers: {
                             'Content-Type': 'application/json',
@@ -312,7 +312,7 @@ const getState = ({ getStore, getActions, setStore }) => {
                     return;
                 }
                 try {
-                    const response = await fetch(`${process.env.REACT_APP_BACKEND_UR}/api/cart`, {
+                    const response = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/cart`, {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
@@ -350,7 +350,7 @@ const getState = ({ getStore, getActions, setStore }) => {
                         alert("Faltan especificaciones para eliminar el producto del carrito");
                         return;
                     }
-                    const response = await fetch(`${process.env.REACT_APP_BACKEND_UR}/api/cart/${product.producto_id}`, {
+                    const response = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/cart/${product.producto_id}`, {
                         method: 'DELETE',
                         headers: {
                             'Content-Type': 'application/json',
@@ -381,7 +381,7 @@ const getState = ({ getStore, getActions, setStore }) => {
                 const store = getStore();
                 if (!store.isLoged) return;
                 try {
-                    const response = await fetch(`${process.env.REACT_APP_BACKEND_UR}/api/cart/clear`, {
+                    const response = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/cart/clear`, {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
@@ -401,7 +401,7 @@ const getState = ({ getStore, getActions, setStore }) => {
             },                                                              
             fetchOrders: async () => {
                 try {
-                    const response = await fetch(`${process.env.REACT_APP_BACKEND_UR}/api/orders`, {
+                    const response = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/orders`, {
                         method: 'GET',
                         headers: {
                             'Content-Type': 'application/json',
@@ -440,7 +440,7 @@ const getState = ({ getStore, getActions, setStore }) => {
                 console.log("Datos de la orden que se envían al backend:", orderData);
             
                 try {
-                    const response = await fetch(`${process.env.REACT_APP_BACKEND_UR}/api/orders`, {
+                    const response = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/orders`, {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
@@ -467,7 +467,7 @@ const getState = ({ getStore, getActions, setStore }) => {
             },     
             fetchOrderDetails: async () => {
                 try {
-                    const response = await fetch(`${process.env.REACT_APP_BACKEND_UR}/api/orderdetails`, {
+                    const response = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/orderdetails`, {
                         method: 'GET',
                         headers: {
                             'Content-Type': 'application/json',
@@ -511,7 +511,7 @@ const getState = ({ getStore, getActions, setStore }) => {
                 }));
                 try {
                     for (const detail of orderDetailsData) {
-                        const response = await fetch(`${process.env.REACT_APP_BACKEND_UR}/api/orderdetails`, {
+                        const response = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/orderdetails`, {
                             method: 'POST',
                             headers: {
                                 'Content-Type': 'application/json',
@@ -551,7 +551,7 @@ const getState = ({ getStore, getActions, setStore }) => {
             },   
             generateInvoice: async (orderId) => {
                 try {
-                    const response = await fetch(`${process.env.REACT_APP_BACKEND_UR}/api/generate-invoice`, {
+                    const response = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/generate-invoice`, {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
@@ -582,7 +582,7 @@ const getState = ({ getStore, getActions, setStore }) => {
                 if (!store.isLoged) return; 
 
                 try {
-                    const response = await fetch(`${process.env.REACT_APP_BACKEND_UR}/api/favorites`, {
+                    const response = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/favorites`, {
                         method: 'GET',
                         headers: {
                             'Content-Type': 'application/json',
@@ -608,7 +608,7 @@ const getState = ({ getStore, getActions, setStore }) => {
                 }
 
                 try {
-                    const response = await fetch(`${process.env.REACT_APP_BACKEND_UR}/api/favorites`, {
+                    const response = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/favorites`, {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
@@ -636,7 +636,7 @@ const getState = ({ getStore, getActions, setStore }) => {
                 }
 
                 try {
-                    const response = await fetch(`${process.env.REACT_APP_BACKEND_UR}/api/favorites/${productId}`, {
+                    const response = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/favorites/${productId}`, {
                         method: 'DELETE',
                         headers: {
                             'Content-Type': 'application/json',

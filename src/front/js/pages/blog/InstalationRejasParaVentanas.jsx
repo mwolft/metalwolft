@@ -38,7 +38,7 @@ export const InstalationRejasParaVentanas = () => {
             return;
         }
         try {
-            const response = await fetch(`${process.env.REACT_APP_BACKEND_UR}/api/posts/${postId}/comments`, {
+            const response = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/posts/${postId}/comments`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
