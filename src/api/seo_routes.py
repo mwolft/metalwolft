@@ -1,10 +1,11 @@
 from flask import Blueprint, render_template
+from flask import current_app, Response, url_for
 
 
 seo_bp = Blueprint('seo', __name__)
 
 
-"""@seo_bp.route('/')
+@seo_bp.route('/')
 def home():
     meta_data = {
         "title": "Carpintería Metálica en Ciudad Real | Herrería y Soldador.",
@@ -13,7 +14,7 @@ def home():
         "og_image": "https://www.metalwolft.com/assets/images/herrero-soldador-ciudad-real.jpg",
         "og_url": "https://www.metalwolft.com/"
     }
-    return render_template("index.html", **meta_data)"""
+    return render_template("index.html", **meta_data)
 
 
 @seo_bp.route('/rejas-para-ventanas')
@@ -122,3 +123,22 @@ def medir_hueco_rejas_para_ventanas():
     }
     return render_template("medir_hueco_rejas_para_ventanas.html", **meta_data)
 
+
+@seo_bp.route('/sitemap.xml', methods=['GET'])
+def sitemap():
+    # Lista de URLs generadas dinámicamente
+    urls = []
+    for rule in current_app.url_map.iter_rules():
+        if "GET" in rule.methods and not rule.arguments:  # Solo rutas sin parámetros
+            url = url_for(rule.endpoint, _external=True)
+            if "static" not in url:  # Excluir rutas de archivos estáticos
+                urls.append(url)
+
+    # Crear el contenido del sitemap XML
+    sitemap_content = '<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
+    for url in urls:
+        sitemap_content += f"  <url>\n    <loc>{url}</loc>\n    <changefreq>daily</changefreq>\n    <priority>0.8</priority>\n  </url>\n"
+    sitemap_content += '</urlset>'
+
+    # Retornar el contenido del sitemap
+    return Response(sitemap_content, mimetype='application/xml')

@@ -173,21 +173,6 @@ const getState = ({ getStore, getActions, setStore }) => {
                 } catch (error) {
                     console.error("Error posting comment:", error);
                 }
-            },                                                              
-            getMessage: async () => {
-                const options = {
-                    headers: { 'Content-Type': 'application/json' },
-                    method: 'GET'
-                };
-                try {
-                    const response = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/hello`, options);
-                    if (!response.ok) throw new Error("Error loading message from backend");
-                    const data = await response.json();
-                    setStore({ message: data.message });
-                    return data;
-                } catch (error) {
-                    setStore({ error: error.message });
-                }
             },
             setCurrentUser: (user) => {
                 setStore({

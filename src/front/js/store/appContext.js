@@ -21,8 +21,6 @@ const injectContext = PassedComponent => {
         );
 
         useEffect(() => {
-            state.actions.getMessage();  // Llama a esta función desde las acciones de flux.
-
             // Revisa si el usuario ya está logueado comprobando el localStorage.
             const storedUser = localStorage.getItem('user');
             const token = localStorage.getItem('token');

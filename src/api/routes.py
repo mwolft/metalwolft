@@ -334,11 +334,6 @@ def generate_invoice():
         return jsonify({"message": "An error occurred while generating the invoice.", "error": str(e)}), 500
 
 
-@api.route('/hello', methods=['GET'])
-def handle_hello():
-    return jsonify({"message": "Hello! I'm a message from the backend"}), 200
-
-
 @api.route("/login", methods=["OPTIONS", "POST"])
 def login():
     if request.method == "OPTIONS":

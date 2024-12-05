@@ -52,14 +52,19 @@ def sitemap():
         return generate_sitemap(app)
     return send_from_directory(static_file_dir, 'index.html')
 
-# Any other endpoint will try to serve it like a static file
 @app.route('/<path:path>', methods=['GET'])
 def serve_any_other_file(path):
-    if not os.path.isfile(os.path.join(static_file_dir, path)):
-        path = 'index.html'
-    response = send_from_directory(static_file_dir, path)
-    response.cache_control.max_age = 0  # Avoid cache memory
-    return response
+    # Si el archivo existe, se sirve directamente
+    if os.path.isfile(os.path.join(static_file_dir, path)):
+        return send_from_directory(static_file_dir, path)
+
+    # Si la ruta es manejada por Flask, no redirigirla a React
+    flask_routes = [rule.rule for rule in app.url_map.iter_rules()]
+    if f"/{path}" in flask_routes:
+        return sitemap()  # Reemplaza con el comportamiento deseado si necesitas algo dinámico
+
+    # Redirige a React para rutas no definidas en Flask
+    return send_from_directory(static_file_dir, 'index.html')
 
 # Endpoint to check the database connection
 @app.route('/db-check', methods=['GET'])
