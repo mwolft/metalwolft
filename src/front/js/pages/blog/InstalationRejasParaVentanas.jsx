@@ -74,7 +74,7 @@ export const InstalationRejasParaVentanas = () => {
                                     <i className="fa-regular fa-calendar mx-1" style={{ color: '#ff324d' }}></i> {new Date(currentPost.created_at).toLocaleDateString()}
                                     <i className="fa-regular fa-comments mx-1" style={{ color: '#ff324d', paddingLeft: '10px' }}></i> {currentComments?.length || 0} Comentarios
                                 </p>
-                                <img src="https://www.metalwolft.com/img/blog/rejas-de-seguridad-para-ventanas.avif" alt="instalacion de rejas para ventanas" className="img-fluid my-3" />
+                                <img src="https://res.cloudinary.com/dewanllxn/image/upload/v1733562840/rejas-de-seguridad-para-ventanas_buzhg0.avif" alt="instalacion de rejas para ventanas" className="img-fluid my-3" />
                             </div>
                         )}
                         <div className="blog-text">
@@ -111,12 +111,12 @@ export const InstalationRejasParaVentanas = () => {
                             <div class="row">
                                 <div class="col-sm-6">
                                     <div class="single_img">
-                                        <img class="w-100 mb-4" src="https://www.metalwolft.com/img/blog/rejas-para-ventanas-modernas-2023.avif" alt="rejas para ventanas modernas" />
+                                        <img class="w-100 mb-4" src="https://res.cloudinary.com/dewanllxn/image/upload/v1733562842/rejas-para-ventanas-modernas-2023_mambli.avif" alt="rejas para ventanas modernas" />
                                     </div>
                                 </div>
                                 <div class="col-sm-6">
                                     <div class="single_img">
-                                        <img class="w-100 mb-4" src="https://www.metalwolft.com/img/blog/rejas-para-ventanas-sin-obra-precio.avif" alt="rejas para ventanas sin obra" />
+                                        <img class="w-100 mb-4" src="https://res.cloudinary.com/dewanllxn/image/upload/v1733562850/rejas-para-ventanas-sin-obra-precio_bps3ec.avif" alt="rejas para ventanas sin obra" />
                                     </div>
                                 </div>
                             </div>
@@ -148,7 +148,7 @@ export const InstalationRejasParaVentanas = () => {
                             <p>Esperamos que esta guía haya sido útil en tu proyecto de instalación de rejas para ventanas. Si tienes alguna pregunta o necesitas más información,
                                 no dudes en ponerte en <u>contacto con nosotros.</u> ¡Estamos aquí para ayudarte!</p>
                             <video controls width="100%" height="auto">
-                                <source src="https://www.metalwolft.com/img/blog/instalacion-rejas-para-ventanas.webm" type="video/webm" />
+                                <source src="https://res.cloudinary.com/dewanllxn/video/upload/v1733563618/instalacion-rejas-para-ventanas_kcno5b.webm" type="video/webm" />
                                 Your browser does not support the video tag.
                             </video>
                         </div>
@@ -163,7 +163,7 @@ export const InstalationRejasParaVentanas = () => {
                                         <li className="comment_info" key={comment.id}>
                                             <div className="d-flex">
                                                 <div className="comment_user">
-                                                    <img src="https://www.metalwolft.com/img/blog/users/user.png"
+                                                    <img src="https://res.cloudinary.com/dewanllxn/image/upload/v1733563800/user_tnrkmx.png"
                                                         alt="user avatar"
                                                         style={{ width: '3rem', height: 'auto' }} />
                                                 </div>
