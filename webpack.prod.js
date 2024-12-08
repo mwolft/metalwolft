@@ -5,14 +5,15 @@ const MiniCssExtractPlugin = require('mini-css-extract-plugin');
 const TerserPlugin = require('terser-webpack-plugin');
 const CssMinimizerPlugin = require('css-minimizer-webpack-plugin');
 const Dotenv = require('dotenv-webpack');
+const CopyWebpackPlugin = require('copy-webpack-plugin');
 
 module.exports = merge(common, {
     mode: 'production',
     output: {
-        path: path.resolve(__dirname, 'build'), 
-        filename: '[name].[contenthash].js', 
+        path: path.resolve(__dirname, 'build'),
+        filename: '[name].[contenthash].js',
         publicPath: '/', 
-    },    
+    },
     module: {
         rules: [
             {
@@ -26,20 +27,25 @@ module.exports = merge(common, {
     },
     plugins: [
         new MiniCssExtractPlugin({
-            filename: 'styles.css', 
+            filename: 'styles.css',
         }),
         new Dotenv({
             systemvars: true,
             silent: true 
+        }),
+        new CopyWebpackPlugin({
+            patterns: [
+                { from: path.resolve(__dirname, 'public/_redirects'), to: path.resolve(__dirname, 'build') }
+            ]
         })
     ],
     optimization: {
-        minimize: true, 
+        minimize: true,
         minimizer: [
             new TerserPlugin({
-                parallel: true, 
+                parallel: true,
             }),
-            new CssMinimizerPlugin() 
+            new CssMinimizerPlugin()
         ],
     }
 });

@@ -63,8 +63,13 @@ def serve_any_other_file(path):
     if os.path.isfile(os.path.join(static_file_dir, path)):
         return send_from_directory(static_file_dir, path)
 
-    # Si no, redirigir al index.html de React
+    # Excluir rutas de la API del manejo de React
+    if path.startswith("api/"):
+        return jsonify({"error": "Endpoint not found"}), 404
+
+    # Si no es un archivo estático ni una ruta de API, redirigir al index.html de React
     return send_from_directory(static_file_dir, 'index.html')
+
 
 # Verificar conexión con la base de datos
 @app.route('/db-check', methods=['GET'])
