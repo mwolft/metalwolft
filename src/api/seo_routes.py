@@ -1,11 +1,10 @@
-from flask import Blueprint, render_template
-from flask import current_app, Response, url_for
+from flask import Blueprint, jsonify
 
 
 seo_bp = Blueprint('seo', __name__)
 
 
-@seo_bp.route('/')
+@seo_bp.route('/api/seo/home', methods=['GET'])
 def home():
     meta_data = {
         "title": "Carpintería Metálica en Ciudad Real | Herrería y Soldador.",
@@ -14,22 +13,134 @@ def home():
         "og_image": "https://www.metalwolft.com/assets/images/herrero-soldador-ciudad-real.jpg",
         "og_url": "https://www.metalwolft.com/"
     }
-    return render_template("index.html", **meta_data)
+    return jsonify(meta_data)
 
 
-@seo_bp.route('/rejas-para-ventanas')
+@seo_bp.route('/api/seo/rejas-para-ventanas', methods=['GET'])
 def rejas_para_ventanas():
     meta_data = {
         "title": "10 Modelos Exclusivos - Rejas para Ventanas",
         "description": "Descubre nuestra amplia Colección de Rejas para Ventanas...",
         "keywords": "rejas para ventanas, rejas modernas, rejas rusticas...",
-        "og_image": "https://www.metalwolft.com/assets/images/rejas-para-ventanas.jpg",
-        "og_url": "https://www.metalwolft.com/rejas-para-ventanas"
+        "og_image": "https://res.cloudinary.com/dewanllxn/image/upload/v1733597610/rejas-para-ventanas_nthmwg.png",
+        "og_url": "https://www.metalwolft.com/rejas-para-ventanas",
+        "json_ld": [
+            {
+                "@context": "https://schema.org/",
+                "@type": "ImageObject",
+                "contentUrl": "https://res.cloudinary.com/dewanllxn/image/upload/v1733561338/rejas-para-ventanas_qyj5nq.png",
+                "creditText": "Rejas para ventanas",
+                "creator": { "@type": "Person", "name": "ESSEX" },
+                "copyrightNotice": "Metal Wolft",
+                "acquireLicensePage": "https://www.metalwolft.com/license",
+                "license": "https://www.metalwolft.com/license"
+            },
+            {
+                "@context": "https://schema.org/",
+                "@type": "ImageObject",
+                "contentUrl": "https://res.cloudinary.com/dewanllxn/image/upload/v1733560989/rejas-para-ventanas_vwhwjy.avif",
+                "creditText": "Rejas para ventanas",
+                "creator": { "@type": "Person", "name": "ALBANY" },
+                "copyrightNotice": "Metal Wolft",
+                "acquireLicensePage": "https://www.metalwolft.com/license",
+                "license": "https://www.metalwolft.com/license"
+            },
+                      {
+            "@context": "https://schema.org/",
+            "@type": "ImageObject",
+            "contentUrl": "https://res.cloudinary.com/dewanllxn/image/upload/v1733561486/rejas-para-ventanas_grlync.png",
+            "creditText": "Reja para ventana",
+            "creator": { "@type": "Person", "name": "LUTON" },
+            "copyrightNotice": "Metal Wolft",
+            "acquireLicensePage": "https://www.metalwolft.com/license",
+            "license": "https://www.metalwolft.com/license"
+          },
+          {
+            "@context": "https://schema.org/",
+            "@type": "ImageObject",
+            "contentUrl": "https://res.cloudinary.com/dewanllxn/image/upload/v1733561452/rejas-para-ventanas_bjs0kt.png",
+            "creditText": "Rejas para ventanas",
+            "creator": { "@type": "Person", "name": "POOLE" },
+            "copyrightNotice": "Metal Wolft",
+            "acquireLicensePage": "https://www.metalwolft.com/license",
+            "license": "https://www.metalwolft.com/license"
+          },
+          {
+            "@context": "https://schema.org/",
+            "@type": "ImageObject",
+            "contentUrl": "https://res.cloudinary.com/dewanllxn/image/upload/v1733561584/rejas-para-ventanas_d8ojmp.avif",
+            "creditText": "Rejas para ventanas",
+            "creator": { "@type": "Person", "name": "DELHI" },
+            "copyrightNotice": "Metal Wolft",
+            "acquireLicensePage": "https://www.metalwolft.com/license",
+            "license": "https://www.metalwolft.com/license"
+          },
+          {
+            "@context": "https://schema.org/",
+            "@type": "ImageObject",
+            "contentUrl": "https://res.cloudinary.com/dewanllxn/image/upload/v1733561547/rejas-para-ventanas_agh7r0.png",
+            "creditText": "Rejas para ventanas",
+            "creator": { "@type": "Person", "name": "ERIE" },
+            "copyrightNotice": "Metal Wolft",
+            "acquireLicensePage": "https://www.metalwolft.com/license",
+            "license": "https://www.metalwolft.com/license"
+          },
+          {
+            "@context": "https://schema.org/",
+            "@type": "ImageObject",
+            "contentUrl": "https://res.cloudinary.com/dewanllxn/image/upload/v1733561465/rejas-para-ventanas_suhqkg.png",
+            "creditText": "Rejas para ventanas",
+            "creator": { "@type": "Person", "name": "PITTSBURGH" },
+            "copyrightNotice": "Metal Wolft",
+            "acquireLicensePage": "https://www.metalwolft.com/license",
+            "license": "https://www.metalwolft.com/license"
+          },
+          {
+            "@context": "https://schema.org/",
+            "@type": "ImageObject",
+            "contentUrl": "https://res.cloudinary.com/dewanllxn/image/upload/v1733561500/rejas-para-ventanas_fzz2wp.png",
+            "creditText": "Rejas para ventanas",
+            "creator": { "@type": "Person", "name": "LANCASTER" },
+            "copyrightNotice": "Metal Wolft",
+            "acquireLicensePage": "https://www.metalwolft.com/license",
+            "license": "https://www.metalwolft.com/license"
+          },
+          {
+            "@context": "https://schema.org/",
+            "@type": "ImageObject",
+            "contentUrl": "https://res.cloudinary.com/dewanllxn/image/upload/v1733561600/rejas-para-ventanas_c9ctly.png",
+            "creditText": "Rejas para ventanas",
+            "creator": { "@type": "Person", "name": "CORTLAND" },
+            "copyrightNotice": "Metal Wolft",
+            "acquireLicensePage": "https://www.metalwolft.com/license",
+            "license": "https://www.metalwolft.com/license"
+          },
+          {
+            "@context": "https://schema.org/",
+            "@type": "ImageObject",
+            "contentUrl": "https://res.cloudinary.com/dewanllxn/image/upload/v1733561562/rejas-para-ventanas_ybx4oj.avif",
+            "creditText": "Rejas para ventanas",
+            "creator": { "@type": "Person", "name": "GENESEE" },
+            "copyrightNotice": "Metal Wolft",
+            "acquireLicensePage": "https://www.metalwolft.com/license",
+            "license": "https://www.metalwolft.com/license"
+          },
+          {
+            "@context": "https://schema.org/",
+            "@type": "ImageObject",
+            "contentUrl": "https://res.cloudinary.com/dewanllxn/image/upload/v1733561526/rejas-para-ventanas_kkeagu.png",
+            "creditText": "Rejas para ventanas",
+            "creator": { "@type": "Person", "name": "LIVINGSTON" },
+            "copyrightNotice": "Metal Wolft",
+            "acquireLicensePage": "https://www.metalwolft.com/license",
+            "license": "https://www.metalwolft.com/license"
+          }
+        ]
     }
-    return render_template("rejas_para_ventanas.html", **meta_data)
+    return jsonify(meta_data)
 
 
-@seo_bp.route('/vallados-metalicos-exteriores')
+@seo_bp.route('/api/seo/vallados-metalicos-exteriores', methods=['GET'])
 def vallados_metalicos():
     meta_data = {
         "title": "Vallados Metálicos: Seguridad y Estilo Exterior",
@@ -38,10 +149,9 @@ def vallados_metalicos():
         "og_image": "https://www.metalwolft.com/assets/images/vallados-metalicos-open.jpg",
         "og_url": "https://www.metalwolft.com/vallados-metalicos-exteriores"
     }
-    return render_template("vallados_metalicos.html", **meta_data)
+    return jsonify(meta_data)
 
-
-@seo_bp.route('/puertas-peatonales-metalicas')
+@seo_bp.route('/api/seo/puertas-peatonales-metalicas', methods=['GET'])
 def puertas_peatonales_metalicas():
     meta_data = {
         "title": "Puertas Peatonales Metálicas. Diseños para exteriores.",
@@ -50,7 +160,7 @@ def puertas_peatonales_metalicas():
         "og_image": "https://www.metalwolft.com/assets/images/puertas-peatonales-open.jpg",
         "og_url": "https://www.metalwolft.com/puertas-peatonales-metalicas"
     }
-    return render_template("puertas_peatonales_metalicas.html", **meta_data)
+    return jsonify(meta_data)
 
 
 @seo_bp.route('/puertas-correderas-interiores')

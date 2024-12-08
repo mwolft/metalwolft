@@ -1,4 +1,5 @@
 import React, { useEffect, useContext, useState } from "react";
+import { Helmet } from "react-helmet";
 import { Breadcrumb } from "../../component/Breadcrumb.jsx";
 import { Product } from "../../component/Product.jsx";
 import { AsideCategories } from "../../component/AsideCategories.jsx";
@@ -13,10 +14,17 @@ export const RejasParaVentanas = () => {
     const rejasCategoryId = 1;
     const [selectedCategoryId, setSelectedCategoryId] = useState(rejasCategoryId);
     const [selectedSubcategoryId, setSelectedSubcategoryId] = useState(null);
+    const [metaData, setMetaData] = useState({}); 
 
     useEffect(() => {
         actions.fetchProducts(selectedCategoryId, selectedSubcategoryId);
     }, [selectedCategoryId, selectedSubcategoryId]);
+
+    useEffect(() => {
+        fetch("/api/seo/rejas-para-ventanas")
+            .then((response) => response.json())
+            .then((data) => setMetaData(data));
+    }, []);
 
     const handleCategorySelect = (categoryId) => {
         setSelectedCategoryId(categoryId);
@@ -29,6 +37,18 @@ export const RejasParaVentanas = () => {
 
     return (
         <>
+            <Helmet>
+                <title>{metaData.title}</title>
+                <meta name="description" content={metaData.description} />
+                <meta name="keywords" content={metaData.keywords} />
+                <meta property="og:image" content={metaData.og_image} />
+                <meta property="og:url" content={metaData.og_url} />
+                {metaData.json_ld && (
+                    <script type="application/ld+json">
+                        {JSON.stringify(metaData.json_ld)}
+                    </script>
+                )}
+            </Helmet>
             <Breadcrumb />
             <div className="container">
                 <div className="row">
@@ -65,7 +85,7 @@ export const RejasParaVentanas = () => {
                     <div className="col-12 col-lg-3 col-xl-3 order-1">
                     </div>
                     <div className="col-12 col-lg-9 col-xl-9 order-2 my-4">
-                        <p>Las <strong>rejas para ventanas</strong> son elementos esenciales en cualquier hogar. En esta página, exploraremos cómo estas <strong>rejas para ventanas modernas</strong> no solo brindan <b>seguridad y protección</b>, sino que también pueden ser una expresión de <b>estilo y diseño</b> en nuestro catálogo exclusivo online.</p>
+                    <p>Las <strong>rejas para ventanas</strong> son elementos esenciales en cualquier hogar. En esta página, exploraremos cómo estas <strong>rejas para ventanas modernas</strong> no solo brindan <b>seguridad y protección</b>, sino que también pueden ser una expresión de <b>estilo y diseño</b> en nuestro catálogo exclusivo online.</p>
                         <p>Nuestra gama se basa en la premisa de que no deberías tener que sacrificar el estilo en post de la seguridad. En cada detalle encontrarás una cuidadosa planificación y ejecución de nuestras <strong>rejas para ventanas sencillas y bonitas</strong>.</p>
                         <p>Descubre nuestra amplia gama de <strong>rejas para ventanas sin obra y con obra</strong> que combinan <b>funcionalidad y estética</b>, garantizando la seguridad de tu hogar sin comprometer su apariencia.</p>
                         <br />
@@ -91,8 +111,8 @@ export const RejasParaVentanas = () => {
                         <p>Tenemos un artículo dedicado exclusivamente a <Link to="/instalation-rejas-para-ventanas" style={{ color: '#ff324d', textDecoration: 'underline', fontStyle: 'italic' }}>¿cómo instalar rejas para ventanas?</Link></p>
                         <video controls preload="auto" style={{ width: '100%', height: 'auto' }}>
                             <source src="https://www.metalwolft.com/img/blog/instalacion-rejas-para-ventanas.webm" type="video/webm" />
-                        </video>
-                    </div>
+                        </video>                    
+                        </div>
                 </div>
             </div>
         </>
