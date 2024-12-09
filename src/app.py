@@ -1,5 +1,5 @@
 import os
-from flask import Flask, jsonify, send_from_directory
+from flask import Flask, jsonify, send_from_directory, request
 from flask_migrate import Migrate, upgrade
 from flask_cors import CORS
 from api.utils import APIException, generate_sitemap
@@ -10,6 +10,7 @@ from api.models import db
 from flask_jwt_extended import JWTManager
 from datetime import timedelta
 from api.seo_routes import seo_bp
+import requests
 
 # Configuración de entorno
 ENV = "development" if os.getenv("FLASK_DEBUG") == "1" else "production"
@@ -43,6 +44,33 @@ app.register_blueprint(seo_bp)
 app.config["JWT_SECRET_KEY"] = os.getenv("JWT_SECRET_KEY")
 app.config['JWT_ACCESS_TOKEN_EXPIRES'] = timedelta(hours=24)
 jwt = JWTManager(app)
+
+# Configuración de Prerender.io
+BOT_USER_AGENTS = [
+    "googlebot", "bingbot", "yandex", "baiduspider", "facebookexternalhit",
+    "twitterbot", "rogerbot", "linkedinbot", "embedly", "quora link preview",
+    "showyoubot", "outbrain", "pinterest", "slackbot", "vkShare", "W3C_Validator"
+]
+PRERENDER_URL = "https://service.prerender.io/"
+PRERENDER_TOKEN = os.getenv("PRERENDER_TOKEN")
+
+@app.before_request
+def prerender_io():
+    # Detectar bots
+    user_agent = request.headers.get("User-Agent", "").lower()
+    is_bot = any(bot in user_agent for bot in BOT_USER_AGENTS)
+
+    # Detectar si es una petición de HTML
+    is_html = "text/html" in request.headers.get("Accept", "")
+
+    # Redirigir solo bots a Prerender.io
+    if is_bot and is_html:
+        prerender_url = f"{PRERENDER_URL}{request.url}"
+        headers = {"X-Prerender-Token": PRERENDER_TOKEN}
+        response = requests.get(prerender_url, headers=headers)
+
+        # Retornar la respuesta de Prerender.io
+        return response.content, response.status_code, response.headers.items()
 
 # Manejo de errores como JSON
 @app.errorhandler(APIException)
