@@ -37,7 +37,7 @@ setup_commands(app)
 
 # Registro de Blueprints
 app.register_blueprint(api, url_prefix='/api')  # Todas las rutas del backend deben estar bajo /api
-app.register_blueprint(seo_bp, url_prefix='/api/seo')
+app.register_blueprint(seo_bp)
 
 # Configuración de JWT
 app.config["JWT_SECRET_KEY"] = os.getenv("JWT_SECRET_KEY")
