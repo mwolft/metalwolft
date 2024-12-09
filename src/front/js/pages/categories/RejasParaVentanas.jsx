@@ -16,15 +16,30 @@ export const RejasParaVentanas = () => {
     const [selectedSubcategoryId, setSelectedSubcategoryId] = useState(null);
     const [metaData, setMetaData] = useState({}); 
 
+
     useEffect(() => {
         actions.fetchProducts(selectedCategoryId, selectedSubcategoryId);
     }, [selectedCategoryId, selectedSubcategoryId]);
 
+
     useEffect(() => {
-        fetch("/api/seo/rejas-para-ventanas")
-            .then((response) => response.json())
-            .then((data) => setMetaData(data));
+        const apiBaseUrl = process.env.REACT_APP_BACKEND_URL
+            ? process.env.REACT_APP_BACKEND_URL 
+            : process.env.NODE_ENV === "production"
+            ? "https://api.metalwolft.com" 
+            : "https://scaling-umbrella-976gwrg7664j3grx-3001.app.github.dev";    
+    
+        fetch(`${apiBaseUrl}/api/seo/rejas-para-ventanas`)
+            .then((response) => {
+                if (!response.ok) {
+                    throw new Error(`Error: ${response.status} ${response.statusText}`);
+                }
+                return response.json();
+            })
+            .then((data) => setMetaData(data))
+            .catch((error) => console.error("Error fetching SEO data:", error));
     }, []);
+    
 
     const handleCategorySelect = (categoryId) => {
         setSelectedCategoryId(categoryId);
