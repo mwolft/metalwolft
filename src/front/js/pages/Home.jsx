@@ -48,9 +48,9 @@ export const Home = () => {
             <section className="section">
                 <BodyHomeQuarter />
             </section>
-            <section className="section">
+            {/*<section className="section">
                 <CardsCarrusel />
-            </section>
+            </section>*/}
         </div>
     );
 };
