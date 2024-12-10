@@ -1,4 +1,5 @@
 import React, { useEffect, useContext, useState } from "react";
+import { Helmet } from "react-helmet";
 import { Breadcrumb } from "../../component/Breadcrumb.jsx";
 import { Product } from "../../component/Product.jsx";
 import { AsideCategories } from "../../component/AsideCategories.jsx";
@@ -12,10 +13,29 @@ export const ValladosMetalicosExteriores = () => {
     const valladosCategoryId = 2;
     const [selectedCategoryId, setSelectedCategoryId] = useState(valladosCategoryId);
     const [selectedSubcategoryId, setSelectedSubcategoryId] = useState(null);
+    const [metaData, setMetaData] = useState({}); 
 
     useEffect(() => {
         actions.fetchProducts(selectedCategoryId, selectedSubcategoryId);
     }, [selectedCategoryId, selectedSubcategoryId]);
+
+    useEffect(() => {
+        const apiBaseUrl = process.env.REACT_APP_BACKEND_URL
+            ? process.env.REACT_APP_BACKEND_URL
+            : process.env.NODE_ENV === "production"
+                ? "https://api.metalwolft.com"
+                : "https://scaling-umbrella-976gwrg7664j3grx-3001.app.github.dev";
+
+        fetch(`${apiBaseUrl}/api/seo/vallados-metalicos-exteriores`)
+            .then((response) => {
+                if (!response.ok) {
+                    throw new Error(`Error: ${response.status} ${response.statusText}`);
+                }
+                return response.json();
+            })
+            .then((data) => setMetaData(data))
+            .catch((error) => console.error("Error fetching SEO data:", error));
+    }, []);
 
     const handleCategorySelect = (categoryId) => {
         setSelectedCategoryId(categoryId);
@@ -28,10 +48,22 @@ export const ValladosMetalicosExteriores = () => {
 
     return (
         <>
+            <Helmet>
+                <title>{metaData.title}</title>
+                <meta name="description" content={metaData.description} />
+                <meta name="keywords" content={metaData.keywords} />
+                <meta property="og:image" content={metaData.og_image} />
+                <meta property="og:url" content={metaData.og_url} />
+                {metaData.json_ld && (
+                    <script type="application/ld+json">
+                        {JSON.stringify(metaData.json_ld)}
+                    </script>
+                )}
+            </Helmet>
             <Breadcrumb />
             <div className="container">
                 <div className="row">
-                <div className="col-12 col-lg-3 col-xl-3 order-1">
+                    <div className="col-12 col-lg-3 col-xl-3 order-1">
                         <AsideCategories
                             onSelectCategory={handleCategorySelect}
                             onSelectSubcategory={handleSubcategorySelect}

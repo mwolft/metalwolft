@@ -1,4 +1,5 @@
-import React, { useEffect, useContext, useState } from 'react';
+import React, { useEffect, useContext, useState } from "react";
+import { Helmet } from "react-helmet";
 import { Container, Row, Col, Form, Button, Alert } from 'react-bootstrap';
 import { Context } from '../../store/appContext';
 import { Breadcrumb } from '../../component/Breadcrumb.jsx';
@@ -8,6 +9,7 @@ import { AsideOthersCategories } from "../../component/AsideOthersCategories.jsx
 
 export const InstalationRejasParaVentanas = () => {
     const { store, actions } = useContext(Context);
+    const [metaData, setMetaData] = useState({});
     const [commentContent, setCommentContent] = useState("");
     const [successMessage, setSuccessMessage] = useState("");
 
@@ -19,6 +21,24 @@ export const InstalationRejasParaVentanas = () => {
             actions.fetchPost(postId);
         }
     }, [actions, currentPost, postId]);
+
+    useEffect(() => {
+        const apiBaseUrl = process.env.REACT_APP_BACKEND_URL
+            ? process.env.REACT_APP_BACKEND_URL
+            : process.env.NODE_ENV === "production"
+                ? "https://api.metalwolft.com"
+                : "https://scaling-umbrella-976gwrg7664j3grx-3001.app.github.dev";
+
+        fetch(`${apiBaseUrl}/api/seo/instalation-rejas-para-ventanas`)
+            .then((response) => {
+                if (!response.ok) {
+                    throw new Error(`Error: ${response.status} ${response.statusText}`);
+                }
+                return response.json();
+            })
+            .then((data) => setMetaData(data))
+            .catch((error) => console.error("Error fetching SEO data:", error));
+    }, []);
 
     useEffect(() => {
         if (currentPost && currentPost.id === postId && (!currentComments || currentComments[0]?.post_id !== postId)) {
@@ -63,6 +83,18 @@ export const InstalationRejasParaVentanas = () => {
 
     return (
         <>
+            <Helmet>
+                <title>{metaData.title}</title>
+                <meta name="description" content={metaData.description} />
+                <meta name="keywords" content={metaData.keywords} />
+                <meta property="og:image" content={metaData.og_image} />
+                <meta property="og:url" content={metaData.og_url} />
+                {metaData.json_ld && (
+                    <script type="application/ld+json">
+                        {JSON.stringify(metaData.json_ld)}
+                    </script>
+                )}
+            </Helmet>
             <Breadcrumb />
             <Container className='post-page'>
                 <Row>

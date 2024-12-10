@@ -1,4 +1,5 @@
-import React, { useEffect, useContext, useState } from 'react';
+import React, { useEffect, useContext, useState } from "react";
+import { Helmet } from "react-helmet";
 import { Container, Row, Col, Form, Button, Alert } from 'react-bootstrap';
 import { Context } from '../../store/appContext';
 import { Breadcrumb } from '../../component/Breadcrumb.jsx';
@@ -8,6 +9,7 @@ import "../../../styles/blog.css";
 
 export const MedirHuecoRejasParaVentanas = () => {
     const { store, actions } = useContext(Context);
+    const [metaData, setMetaData] = useState({});
     const [commentContent, setCommentContent] = useState("");
     const [successMessage, setSuccessMessage] = useState("");
 
@@ -19,6 +21,25 @@ export const MedirHuecoRejasParaVentanas = () => {
             actions.fetchPost(postId);
         }
     }, [actions, currentPost, postId]);
+
+    useEffect(() => {
+        const apiBaseUrl = process.env.REACT_APP_BACKEND_URL
+            ? process.env.REACT_APP_BACKEND_URL
+            : process.env.NODE_ENV === "production"
+                ? "https://api.metalwolft.com"
+                : "https://scaling-umbrella-976gwrg7664j3grx-3001.app.github.dev";
+
+        fetch(`${apiBaseUrl}/api/seo/medir-hueco-rejas-para-ventanas`)
+            .then((response) => {
+                if (!response.ok) {
+                    throw new Error(`Error: ${response.status} ${response.statusText}`);
+                }
+                return response.json();
+            })
+            .then((data) => setMetaData(data))
+            .catch((error) => console.error("Error fetching SEO data:", error));
+    }, []);
+
 
     useEffect(() => {
         if (currentPost && currentPost.id === postId && (!currentComments || currentComments[0]?.post_id !== postId)) {
@@ -59,10 +80,22 @@ export const MedirHuecoRejasParaVentanas = () => {
         } catch (error) {
             console.error('Error:', error);
         }
-    };    
+    };
 
     return (
         <>
+            <Helmet>
+                <title>{metaData.title}</title>
+                <meta name="description" content={metaData.description} />
+                <meta name="keywords" content={metaData.keywords} />
+                <meta property="og:image" content={metaData.og_image} />
+                <meta property="og:url" content={metaData.og_url} />
+                {metaData.json_ld && (
+                    <script type="application/ld+json">
+                        {JSON.stringify(metaData.json_ld)}
+                    </script>
+                )}
+            </Helmet>
             <Breadcrumb />
             <Container className='post-page'>
                 <Row>
@@ -78,7 +111,7 @@ export const MedirHuecoRejasParaVentanas = () => {
                             </div>
                         )}
                         <div className="blog-text">
-                        <p>En numerosas ocasiones, nos enfrentamos a la realidad de que los huecos destinados para la instalación de rejas en ventanas presentan <b>leves variaciones en sus dimensiones.</b></p>
+                            <p>En numerosas ocasiones, nos enfrentamos a la realidad de que los huecos destinados para la instalación de rejas en ventanas presentan <b>leves variaciones en sus dimensiones.</b></p>
                             <p>Esta divergencia es completamente normal, ya que cada espacio posee sus particularidades.</p>
                             <p>Generalmente esta diferencia <b>es muy leve</b> y no nos tiene que preocupar en exceso estéticamente, pero si hay que <b>ser preciso</b> para el ensamblaje de la misma.</p>
                             <p>En el proceso de instalación de rejas para ventanas, es una práctica común dejar un <b>espacio de aproximadamente 3/4 de centímetros</b> entre la reja y la parte inferior del hueco, sea esta de ladrillo u otro material. </p>
