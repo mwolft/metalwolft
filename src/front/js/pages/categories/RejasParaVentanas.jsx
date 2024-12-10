@@ -14,7 +14,7 @@ export const RejasParaVentanas = () => {
     const rejasCategoryId = 1;
     const [selectedCategoryId, setSelectedCategoryId] = useState(rejasCategoryId);
     const [selectedSubcategoryId, setSelectedSubcategoryId] = useState(null);
-    const [metaData, setMetaData] = useState({}); 
+    const [metaData, setMetaData] = useState({});
 
 
     useEffect(() => {
@@ -24,11 +24,11 @@ export const RejasParaVentanas = () => {
 
     useEffect(() => {
         const apiBaseUrl = process.env.REACT_APP_BACKEND_URL
-            ? process.env.REACT_APP_BACKEND_URL 
+            ? process.env.REACT_APP_BACKEND_URL
             : process.env.NODE_ENV === "production"
-            ? "https://api.metalwolft.com" 
-            : "https://scaling-umbrella-976gwrg7664j3grx-3001.app.github.dev";    
-    
+                ? "https://api.metalwolft.com"
+                : "https://scaling-umbrella-976gwrg7664j3grx-3001.app.github.dev";
+
         fetch(`${apiBaseUrl}/api/seo/rejas-para-ventanas`)
             .then((response) => {
                 if (!response.ok) {
@@ -39,7 +39,7 @@ export const RejasParaVentanas = () => {
             .then((data) => setMetaData(data))
             .catch((error) => console.error("Error fetching SEO data:", error));
     }, []);
-    
+
 
     const handleCategorySelect = (categoryId) => {
         setSelectedCategoryId(categoryId);
@@ -53,11 +53,35 @@ export const RejasParaVentanas = () => {
     return (
         <>
             <Helmet>
+                {/* Título y Descripción */}
                 <title>{metaData.title}</title>
                 <meta name="description" content={metaData.description} />
                 <meta name="keywords" content={metaData.keywords} />
+
+                {/* Robots */}
+                <meta name="robots" content={metaData.robots || "index, follow"} />
+
+                {/* Theme Color */}
+                <meta name="theme-color" content={metaData.theme_color || "#ffffff"} />
+
+                {/* Open Graph Meta Tags */}
+                <meta property="og:type" content={metaData.og_type || "website"} />
+                <meta property="og:title" content={metaData.title} />
+                <meta property="og:description" content={metaData.description} />
                 <meta property="og:image" content={metaData.og_image} />
+                <meta property="og:image:width" content={metaData.og_image_width || "1200"} />
+                <meta property="og:image:height" content={metaData.og_image_height || "630"} />
+                <meta property="og:image:alt" content={metaData.og_image_alt || "Carpintería metálica"} />
+                <meta property="og:image:type" content={metaData.og_image_type || "image/jpeg"} />
                 <meta property="og:url" content={metaData.og_url} />
+                <meta property="og:site_name" content={metaData.og_site_name || "Metal Wolft"} />
+                <meta property="og:locale" content={metaData.og_locale || "es_ES"} />
+                <meta property="og:updated_time" content={metaData.og_updated_time || "2024-12-10T12:00:00"} />
+
+                {/* Canonical */}
+                <link rel="canonical" href={metaData.canonical} />
+
+                {/* JSON-LD Schema */}
                 {metaData.json_ld && (
                     <script type="application/ld+json">
                         {JSON.stringify(metaData.json_ld)}
@@ -100,7 +124,7 @@ export const RejasParaVentanas = () => {
                     <div className="col-12 col-lg-3 col-xl-3 order-1">
                     </div>
                     <div className="col-12 col-lg-9 col-xl-9 order-2 my-4">
-                    <p>Las <strong>rejas para ventanas</strong> son elementos esenciales en cualquier hogar. En esta página, exploraremos cómo estas <strong>rejas para ventanas modernas</strong> no solo brindan <b>seguridad y protección</b>, sino que también pueden ser una expresión de <b>estilo y diseño</b> en nuestro catálogo exclusivo online.</p>
+                        <p>Las <strong>rejas para ventanas</strong> son elementos esenciales en cualquier hogar. En esta página, exploraremos cómo estas <strong>rejas para ventanas modernas</strong> no solo brindan <b>seguridad y protección</b>, sino que también pueden ser una expresión de <b>estilo y diseño</b> en nuestro catálogo exclusivo online.</p>
                         <p>Nuestra gama se basa en la premisa de que no deberías tener que sacrificar el estilo en post de la seguridad. En cada detalle encontrarás una cuidadosa planificación y ejecución de nuestras <strong>rejas para ventanas sencillas y bonitas</strong>.</p>
                         <p>Descubre nuestra amplia gama de <strong>rejas para ventanas sin obra y con obra</strong> que combinan <b>funcionalidad y estética</b>, garantizando la seguridad de tu hogar sin comprometer su apariencia.</p>
                         <br />
@@ -126,8 +150,8 @@ export const RejasParaVentanas = () => {
                         <p>Tenemos un artículo dedicado exclusivamente a <Link to="/instalation-rejas-para-ventanas" style={{ color: '#ff324d', textDecoration: 'underline', fontStyle: 'italic' }}>¿cómo instalar rejas para ventanas?</Link></p>
                         <video controls preload="auto" style={{ width: '100%', height: 'auto' }}>
                             <source src="https://res.cloudinary.com/dewanllxn/video/upload/v1733563618/instalacion-rejas-para-ventanas_kcno5b.webm" type="video/webm" />
-                        </video>                    
-                        </div>
+                        </video>
+                    </div>
                 </div>
             </div>
         </>

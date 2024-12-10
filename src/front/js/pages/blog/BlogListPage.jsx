@@ -18,11 +18,11 @@ export const BlogListPage = () => {
 
     useEffect(() => {
         const apiBaseUrl = process.env.REACT_APP_BACKEND_URL
-            ? process.env.REACT_APP_BACKEND_URL 
+            ? process.env.REACT_APP_BACKEND_URL
             : process.env.NODE_ENV === "production"
-            ? "https://api.metalwolft.com" 
-            : "https://scaling-umbrella-976gwrg7664j3grx-3001.app.github.dev";    
-    
+                ? "https://api.metalwolft.com"
+                : "https://scaling-umbrella-976gwrg7664j3grx-3001.app.github.dev";
+
         fetch(`${apiBaseUrl}/api/seo/blogs`)
             .then((response) => {
                 if (!response.ok) {
@@ -61,8 +61,24 @@ export const BlogListPage = () => {
                 <title>{metaData.title}</title>
                 <meta name="description" content={metaData.description} />
                 <meta name="keywords" content={metaData.keywords} />
+                <meta name="robots" content={metaData.robots || "index, follow"} />
+                <meta name="theme-color" content={metaData.theme_color || "#ffffff"} />
+                {/* Open Graph Meta Tags */}
+                <meta property="og:type" content={metaData.og_type || "website"} />
+                <meta property="og:title" content={metaData.title} />
+                <meta property="og:description" content={metaData.description} />
                 <meta property="og:image" content={metaData.og_image} />
+                <meta property="og:image:width" content={metaData.og_image_width || "400"} />
+                <meta property="og:image:height" content={metaData.og_image_height || "300"} />
+                <meta property="og:image:type" content={metaData.og_image_type || "image/jpg"} />
+                <meta property="og:image:alt" content={metaData.og_image_alt || "herrero soldador ciudad real"} />
                 <meta property="og:url" content={metaData.og_url} />
+                <meta property="og:site_name" content={metaData.og_site_name || "Metal Wolft"} />
+                <meta property="og:locale" content={metaData.og_locale || "es_ES"} />
+                <meta property="og:locale:alternate" content={metaData.og_locale_alternate || "en_US"} />
+                {/* Canonical Link */}
+                <link rel="canonical" href={metaData.canonical} />
+                {/* JSON-LD Schema */}
                 {metaData.json_ld && (
                     <script type="application/ld+json">
                         {JSON.stringify(metaData.json_ld)}

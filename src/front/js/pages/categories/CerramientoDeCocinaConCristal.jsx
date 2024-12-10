@@ -13,7 +13,7 @@ export const CerramientoDeCocinaConCristal = () => {
     const cerramientoCocinaCategoryId = 6;
     const [selectedCategoryId, setSelectedCategoryId] = useState(cerramientoCocinaCategoryId);
     const [selectedSubcategoryId, setSelectedSubcategoryId] = useState(null);
-    const [metaData, setMetaData] = useState({}); 
+    const [metaData, setMetaData] = useState({});
 
     useEffect(() => {
         actions.fetchProducts(selectedCategoryId, selectedSubcategoryId);
@@ -53,8 +53,24 @@ export const CerramientoDeCocinaConCristal = () => {
                 <title>{metaData.title}</title>
                 <meta name="description" content={metaData.description} />
                 <meta name="keywords" content={metaData.keywords} />
+                <meta name="robots" content={metaData.robots || "index, follow"} />
+                <meta name="theme-color" content={metaData.theme_color || "#ffffff"} />
+                {/* Open Graph Meta Tags */}
+                <meta property="og:type" content={metaData.og_type || "article"} />
+                <meta property="og:title" content={metaData.title} />
+                <meta property="og:description" content={metaData.description} />
                 <meta property="og:image" content={metaData.og_image} />
+                <meta property="og:image:width" content={metaData.og_image_width || "400"} />
+                <meta property="og:image:height" content={metaData.og_image_height || "300"} />
+                <meta property="og:image:type" content={metaData.og_image_type || "image/jpg"} />
+                <meta property="og:image:alt" content={metaData.og_image_alt || "cerramientos de cocina con cristal"} />
                 <meta property="og:url" content={metaData.og_url} />
+                <meta property="og:site_name" content={metaData.og_site_name || "Metal Wolft"} />
+                <meta property="og:locale" content={metaData.og_locale || "es_ES"} />
+                <meta property="og:locale:alternate" content={metaData.og_locale_alternate || "en_US"} />
+                {/* Canonical Link */}
+                <link rel="canonical" href={metaData.canonical} />
+                {/* JSON-LD Schema */}
                 {metaData.json_ld && (
                     <script type="application/ld+json">
                         {JSON.stringify(metaData.json_ld)}

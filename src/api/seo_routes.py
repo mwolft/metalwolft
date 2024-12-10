@@ -9,9 +9,38 @@ def home():
     meta_data = {
         "title": "Carpintería Metálica en Ciudad Real | Herrería y Soldador.",
         "description": "Somos expertos en carpintería metálica en Ciudad Real. Fabricamos rejas para ventanas, puertas correderas, vallados metálicos o puertas peatonales.",
-        "keywords": "carpintería metálica en Ciudad Real, soldador en ciudad real, herrero en Ciudad Real, herrería en Ciudad Real, rejas para ventanas...",
+        "keywords": "carpintería metálica en Ciudad Real, soldador en ciudad real, herrero en Ciudad Real, herrería en Ciudad Real, rejas para ventanas, puertas metálicas, vallados exteriores, carpintería de aluminio...",
         "og_image": "https://res.cloudinary.com/dewanllxn/image/upload/v1733821952/herrero-soldador-ciudad-real_cc199z.jpg",
-        "og_url": "https://www.metalwolft.com/"
+        "og_url": "https://www.metalwolft.com/",
+        "og_type": "website",
+        "og_locale": "es_ES",
+        "og_updated_time": "2024-12-10T12:00:00",
+        "og_image_type": "image/jpeg",
+        "og_image_width": "400",
+        "og_image_height": "300",
+        "og_image_alt": "Carpintería metálica en Ciudad Real",
+        "og_site_name": "Metal Wolft Ciudad Real",
+        "canonical": "https://www.metalwolft.com/",
+        "robots": "index, follow",
+        "theme_color": "#ff324d",
+        "json_ld": {
+            "@context": "https://schema.org",
+            "@type": "Organization",
+            "name": "Metal Wolft",
+            "url": "https://www.metalwolft.com/",
+            "logo": "https://res.cloudinary.com/dewanllxn/image/upload/v1733821952/logo-metal-wolft.jpg",
+            "description": "Expertos en carpintería metálica en Ciudad Real, fabricamos rejas, puertas y vallados.",
+            "address": {
+                "@type": "PostalAddress",
+                "addressLocality": "Ciudad Real",
+                "addressCountry": "ES"
+            },
+            "contactPoint": {
+                "@type": "ContactPoint",
+                "telephone": "+34 123 456 789",
+                "contactType": "Customer Service"
+            }
+        }
     }
     return jsonify(meta_data)
 
@@ -23,7 +52,19 @@ def rejas_para_ventanas():
         "description": "Descubre nuestra amplia Colección de Rejas para Ventanas...",
         "keywords": "rejas para ventanas, rejas modernas, rejas rusticas...",
         "og_image": "https://res.cloudinary.com/dewanllxn/image/upload/v1733821800/rejas-para-ventanas_opusgz.png",
+        "og_image_width": "400",
+        "og_image_height": "300",
+        "og_image_type": "image/png",
+        "og_image_alt": "Rejas para ventanas",
         "og_url": "https://www.metalwolft.com/rejas-para-ventanas",
+        "og_type": "article",
+        "og_locale": "es_ES",
+        "og_locale_alternate": "en_US",
+        "og_updated_time": "2024-12-10T12:00:00",
+        "og_site_name": "Metal Wolft Ciudad Real",
+        "canonical": "https://www.metalwolft.com/rejas-para-ventanas",
+        "robots": "index, follow",
+        "theme_color": "#ff324d",
         "json_ld": [
             {
                 "@context": "https://schema.org/",
@@ -145,9 +186,32 @@ def vallados_metalicos():
     meta_data = {
         "title": "Vallados Metálicos: Seguridad y Estilo Exterior",
         "description": "Descubre nuestra amplia gama de vallados metálicos diseñados para proteger y embellecer tu espacio exterior. ¡Visítanos hoy mismo!",
-        "keywords": "vallados metalicos, tipos de vallados metálicos, cerramientos metalicos exteriores, vallado exterior moderno, valla metálica...",
+        "keywords": "vallados metalicos, tipos de vallados metálicos, cerramientos metalicos exteriores, vallado exterior moderno, valla metálica, valla metalica jardin, valla metálica leroy merlin, valla metálica bricomart, vallas metálicas baratas, precio valla metalica, valla metálica bricodepot, vallado metalico, valla metalica precio, vallas metalicas precios",
         "og_image": "https://res.cloudinary.com/dewanllxn/image/upload/v1733821751/vallados-metalicos-open_lemviq.png",
-        "og_url": "https://www.metalwolft.com/vallados-metalicos-exteriores"
+        "og_url": "https://www.metalwolft.com/vallados-metalicos-exteriores",
+        "og_type": "web",
+        "og_locale": "es_ES",
+        "og_updated_time": "2024-12-10T12:00:00",
+        "og_image_type": "image/jpg",
+        "og_image_width": "400",
+        "og_image_height": "300",
+        "og_image_alt": "vallados metalicos",
+        "og_site_name": "Metal Wolft Ciudad Real",
+        "canonical": "https://www.metalwolft.com/vallados-metalicos-exteriores",
+        "robots": "index, follow", 
+        "theme_color": "#ff324d",  
+        "json_ld": {
+            "@context": "https://schema.org",
+            "@type": "Article",
+            "headline": "Vallados Metálicos: Seguridad y Estilo Exterior",
+            "description": "Descubre nuestra amplia gama de vallados metálicos diseñados para proteger y embellecer tu espacio exterior.",
+            "image": "https://res.cloudinary.com/dewanllxn/image/upload/v1733821751/vallados-metalicos-open_lemviq.png",
+            "url": "https://www.metalwolft.com/vallados-metalicos-exteriores",
+            "author": {
+                "@type": "Person",
+                "name": "Metal Wolft"
+            }
+        }
     }
     return jsonify(meta_data)
 
@@ -159,7 +223,31 @@ def puertas_peatonales_metalicas():
         "description": "Explora nuestras puertas peatonales metálicas diseñadas para resistir y embellecer tu entrada. ¡Descúbrelas ahora!",
         "keywords": "puertas peatonales, puerta peatonal exterior, puerta peatonal en puerta de garaje, puerta peatonal automática...",
         "og_image": "https://res.cloudinary.com/dewanllxn/image/upload/v1733821886/puertas-peatonales-open_e9vsu8.jpg",
-        "og_url": "https://www.metalwolft.com/puertas-peatonales-metalicas"
+        "og_image_width": "400",
+        "og_image_height": "300",
+        "og_image_type": "image/jpg",
+        "og_image_alt": "Puertas Peatonales Metálicas",
+        "og_url": "https://www.metalwolft.com/puertas-peatonales-metalicas",
+        "og_type": "article",
+        "og_locale": "es_ES",
+        "og_locale_alternate": "en_US",
+        "og_updated_time": "2024-12-10T12:00:00",
+        "og_site_name": "Metal Wolft Ciudad Real",
+        "canonical": "https://www.metalwolft.com/puertas-peatonales-metalicas",
+        "robots": "index, follow",
+        "theme_color": "#ff324d",
+        "json_ld": {
+            "@context": "https://schema.org",
+            "@type": "Article",
+            "headline": "Puertas Peatonales Metálicas. Diseños para exteriores.",
+            "description": "Explora nuestras puertas peatonales metálicas diseñadas para resistir y embellecer tu entrada. ¡Descúbrelas ahora!",
+            "image": "https://res.cloudinary.com/dewanllxn/image/upload/v1733821886/puertas-peatonales-open_e9vsu8.jpg",
+            "url": "https://www.metalwolft.com/puertas-peatonales-metalicas",
+            "author": {
+                "@type": "Person",
+                "name": "Metal Wolft"
+            }
+        }
     }
     return jsonify(meta_data)
 
@@ -171,7 +259,30 @@ def puertas_correderas_interiores():
         "description": "Descubre nuestra gama de puertas correderas interiores diseñadas para embellecer tu espacio interior.",
         "keywords": "puertas correderas con cristal, puertas correderas leroy merlin, puertas correderas de cristal empotradas en tabique, puertas correderas de cristal para baños...",
         "og_image": "https://res.cloudinary.com/dewanllxn/image/upload/v1733821952/herrero-soldador-ciudad-real_cc199z.jpg",
-        "og_url": "https://www.metalwolft.com/puertas-correderas-interiores"
+        "og_image_width": "400",
+        "og_image_height": "300",
+        "og_image_type": "image/jpg",
+        "og_image_alt": "puertas correderas interiores",
+        "og_url": "https://www.metalwolft.com/puertas-correderas-interiores",
+        "og_type": "article",
+        "og_locale": "es_ES",
+        "og_locale_alternate": "en_US",
+        "og_site_name": "Metal Wolft Ciudad Real",
+        "canonical": "https://www.metalwolft.com/puertas-correderas-interiores",
+        "robots": "index, follow",
+        "theme_color": "#ff324d",
+        "json_ld": {
+            "@context": "https://schema.org",
+            "@type": "Article",
+            "headline": "Puertas Correderas con Cristal: a medida.",
+            "description": "Descubre nuestra gama de puertas correderas interiores diseñadas para embellecer tu espacio interior.",
+            "image": "https://res.cloudinary.com/dewanllxn/image/upload/v1733821952/herrero-soldador-ciudad-real_cc199z.jpg",
+            "url": "https://www.metalwolft.com/puertas-correderas-interiores",
+            "author": {
+                "@type": "Person",
+                "name": "Metal Wolft"
+            }
+        }
     }
     return jsonify(meta_data)
 
@@ -183,7 +294,30 @@ def puertas_correderas_exteriores():
         "description": "Descubre nuestra gama de puertas correderas exteriores que combinan funcionalidad y estilo, ideales para tu espacio exterior.",
         "keywords": "puertas correderas exteriores, puerta corredera exterior, puertas correderas chalet exterior, puerta corredera exterior jardin...",
         "og_image": "https://res.cloudinary.com/dewanllxn/image/upload/v1733823037/puertas-correderas-open_so6hji.jpg",
-        "og_url": "https://www.metalwolft.com/puertas-correderas-exteriores"
+        "og_image_width": "400",
+        "og_image_height": "300",
+        "og_image_type": "image/jpg",
+        "og_image_alt": "puertas correderas exteriores",
+        "og_url": "https://www.metalwolft.com/puertas-correderas-exteriores",
+        "og_type": "article",
+        "og_locale": "es_ES",
+        "og_locale_alternate": "en_US",
+        "og_site_name": "Metal Wolft Ciudad Real",
+        "canonical": "https://www.metalwolft.com/puertas-correderas-exteriores",
+        "robots": "index, follow",
+        "theme_color": "#ff324d",
+        "json_ld": {
+            "@context": "https://schema.org",
+            "@type": "Article",
+            "headline": "Puertas Correderas Exterior: funcionalidad, estilo y confort",
+            "description": "Descubre nuestra gama de puertas correderas exteriores que combinan funcionalidad y estilo, ideales para tu espacio exterior.",
+            "image": "https://res.cloudinary.com/dewanllxn/image/upload/v1733823037/puertas-correderas-open_so6hji.jpg",
+            "url": "https://www.metalwolft.com/puertas-correderas-exteriores",
+            "author": {
+                "@type": "Person",
+                "name": "Metal Wolft"
+            }
+        }
     }
     return jsonify(meta_data)
 
@@ -195,7 +329,30 @@ def cerramiento_de_cocina_con_cristal():
         "description": "Descubre nuestra gama de cerramientos de cocina y salon diseñados para embellecer tu espacio interior.",
         "keywords": "cerramiento cocina con cristal, cerramiento cocina con cristal leroy merlin, cerramiento cocina salon, cerramiento cocina aluminio...",
         "og_image": "https://res.cloudinary.com/dewanllxn/image/upload/v1733821952/herrero-soldador-ciudad-real_cc199z.jpg",
-        "og_url": "https://www.metalwolft.com/cerramientos-de-cocina-con-cristal"
+        "og_image_width": "400",
+        "og_image_height": "300",
+        "og_image_type": "image/jpg",
+        "og_image_alt": "cerramientos de cocina con cristal",
+        "og_url": "https://www.metalwolft.com/cerramientos-de-cocina-con-cristal",
+        "og_type": "article",
+        "og_locale": "es_ES",
+        "og_locale_alternate": "en_US",
+        "og_site_name": "Metal Wolft Ciudad Real",
+        "canonical": "https://www.metalwolft.com/cerramientos-de-cocina-con-cristal",
+        "robots": "index, follow",
+        "theme_color": "#ff324d",
+        "json_ld": {
+            "@context": "https://schema.org",
+            "@type": "Article",
+            "headline": "Cerramientos cocina con cristal",
+            "description": "Descubre nuestra gama de cerramientos de cocina y salon diseñados para embellecer tu espacio interior.",
+            "image": "https://res.cloudinary.com/dewanllxn/image/upload/v1733821952/herrero-soldador-ciudad-real_cc199z.jpg",
+            "url": "https://www.metalwolft.com/cerramientos-de-cocina-con-cristal",
+            "author": {
+                "@type": "Person",
+                "name": "Metal Wolft"
+            }
+        }
     }
     return jsonify(meta_data)
 
@@ -207,7 +364,30 @@ def blog_metal_wolft():
         "description": "Explora nuestro blog dedicado a la herrería y el diseño en metal. Inspiración, consejos y proyectos creativos para elevar la elegancia en tu hogar.",
         "keywords": "rejas para ventanas, rejas modernas, rejas rústicas, rejas sin obra, rejas ikea, rejas leroy merlin",
         "og_image": "https://res.cloudinary.com/dewanllxn/image/upload/v1733821952/herrero-soldador-ciudad-real_cc199z.jpg",
-        "og_url": "https://www.metalwolft.com/blogs"
+        "og_image_width": "400",
+        "og_image_height": "300",
+        "og_image_type": "image/jpg",
+        "og_image_alt": "herrero soldador ciudad real",
+        "og_url": "https://www.metalwolft.com/blogs",
+        "og_type": "website",
+        "og_locale": "es_ES",
+        "og_locale_alternate": "en_US",
+        "og_site_name": "Metal Wolft Ciudad Real",
+        "canonical": "https://www.metalwolft.com/blogs",
+        "robots": "index, follow",
+        "theme_color": "#ff324d",
+        "json_ld": {
+            "@context": "https://schema.org",
+            "@type": "Blog",
+            "headline": "Blog de Metal Wolft: Inspiración y diseño en metal y madera.",
+            "description": "Explora nuestro blog dedicado a la herrería y el diseño en metal. Inspiración, consejos y proyectos creativos para elevar la elegancia en tu hogar.",
+            "image": "https://res.cloudinary.com/dewanllxn/image/upload/v1733821952/herrero-soldador-ciudad-real_cc199z.jpg",
+            "url": "https://www.metalwolft.com/blogs",
+            "author": {
+                "@type": "Organization",
+                "name": "Metal Wolft"
+            }
+        }
     }
     return jsonify(meta_data)
 
@@ -219,7 +399,48 @@ def instalation_rejas_para_ventanas():
         "description": "Descubre cómo instalar rejas para ventanas de forma sencilla y segura sin necesidad de obra, utilizando tornillos Torx.",
         "keywords": "rejas para ventanas, rejas modernas, rejas rústicas, rejas sin obra, rejas ikea, rejas leroy merlin...",
         "og_image": "https://res.cloudinary.com/dewanllxn/image/upload/v1733562859/rejas-de-seguridad-para-ventanas-open_w0kfez.png",
-        "og_url": "https://www.metalwolft.com/instalation-rejas-para-ventanas"
+        "og_image_width": "400",
+        "og_image_height": "300",
+        "og_image_type": "image/png",
+        "og_image_alt": "Instalación de rejas para ventanas",
+        "og_url": "https://www.metalwolft.com/instalation-rejas-para-ventanas",
+        "og_type": "article",
+        "og_locale": "es_ES",
+        "og_locale_alternate": "en_US",
+        "og_site_name": "Metal Wolft Ciudad Real",
+        "canonical": "https://www.metalwolft.com/instalation-rejas-para-ventanas",
+        "robots": "index, follow",
+        "theme_color": "#ff324d",
+        "json_ld": {
+            "@context": "https://schema.org",
+            "@type": "HowTo",
+            "name": "Instalación de rejas para ventanas sin obra",
+            "description": "Descubre cómo instalar rejas para ventanas de forma sencilla y segura sin necesidad de obra, utilizando tornillos Torx.",
+            "image": "https://res.cloudinary.com/dewanllxn/image/upload/v1733562859/rejas-de-seguridad-para-ventanas-open_w0kfez.png",
+            "url": "https://www.metalwolft.com/instalation-rejas-para-ventanas",
+            "step": [
+                {
+                    "@type": "HowToStep",
+                    "name": "Preparar herramientas",
+                    "text": "Reúne los tornillos Torx y el destornillador correspondiente.",
+                    "image": "https://res.cloudinary.com/dewanllxn/image/upload/v1733562859/rejas-de-seguridad-para-ventanas-open_w0kfez.png"
+                },
+                {
+                    "@type": "HowToStep",
+                    "name": "Marcar los puntos de anclaje",
+                    "text": "Utiliza la plantilla para marcar los puntos de anclaje en el marco de la ventana.",
+                },
+                {
+                    "@type": "HowToStep",
+                    "name": "Fijar la reja",
+                    "text": "Asegura la reja al marco utilizando los tornillos Torx y comprueba la estabilidad.",
+                }
+            ],
+            "author": {
+                "@type": "Person",
+                "name": "Metal Wolft"
+            }
+        }
     }
     return jsonify(meta_data)
 
@@ -231,26 +452,47 @@ def medir_hueco_rejas_para_ventanas():
         "description": "Descubre cómo medir el hueco para instalar rejas de ventanas de forma sencilla y segura sin necesidad de obra. Guía paso a paso.",
         "keywords": "rejas para ventanas, rejas modernas, rejas rústicas, rejas sin obra, rejas ikea, rejas leroy merlin...",
         "og_image": "https://res.cloudinary.com/dewanllxn/image/upload/v1733562852/rejas-para-ventanas-open_aoo6nt.avif",
-        "og_url": "https://www.metalwolft.com/medir-hueco-rejas-para-ventanas"
+        "og_image_width": "400",
+        "og_image_height": "300",
+        "og_image_type": "image/avif",
+        "og_image_alt": "Medición hueco rejas para ventanas",
+        "og_url": "https://www.metalwolft.com/medir-hueco-rejas-para-ventanas",
+        "og_type": "article",
+        "og_locale": "es_ES",
+        "og_locale_alternate": "en_US",
+        "og_site_name": "Metal Wolft Ciudad Real",
+        "canonical": "https://www.metalwolft.com/medir-hueco-rejas-para-ventanas",
+        "robots": "index, follow",
+        "theme_color": "#ff324d",
+        "json_ld": {
+            "@context": "https://schema.org",
+            "@type": "HowTo",
+            "name": "Medición del hueco para rejas de ventanas",
+            "description": "Descubre cómo medir el hueco para instalar rejas de ventanas de forma sencilla y segura sin necesidad de obra. Guía paso a paso.",
+            "image": "https://res.cloudinary.com/dewanllxn/image/upload/v1733562852/rejas-para-ventanas-open_aoo6nt.avif",
+            "url": "https://www.metalwolft.com/medir-hueco-rejas-para-ventanas",
+            "step": [
+                {
+                    "@type": "HowToStep",
+                    "name": "Preparar herramientas",
+                    "text": "Reúne una cinta métrica y un lápiz para marcar las medidas.",
+                    "image": "https://res.cloudinary.com/dewanllxn/image/upload/v1733562852/rejas-para-ventanas-open_aoo6nt.avif"
+                },
+                {
+                    "@type": "HowToStep",
+                    "name": "Medir ancho y alto",
+                    "text": "Mide el ancho y alto del hueco donde instalarás la reja.",
+                },
+                {
+                    "@type": "HowToStep",
+                    "name": "Anotar medidas",
+                    "text": "Registra las medidas en milímetros para mayor precisión.",
+                }
+            ],
+            "author": {
+                "@type": "Person",
+                "name": "Metal Wolft"
+            }
+        }
     }
     return jsonify(meta_data)
-
-
-@seo_bp.route('/sitemap.xml', methods=['GET'])
-def sitemap():
-    # Lista de URLs generadas dinámicamente
-    urls = []
-    for rule in current_app.url_map.iter_rules():
-        if "GET" in rule.methods and not rule.arguments:  # Solo rutas sin parámetros
-            url = url_for(rule.endpoint, _external=True)
-            if "static" not in url:  # Excluir rutas de archivos estáticos
-                urls.append(url)
-
-    # Crear el contenido del sitemap XML
-    sitemap_content = '<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
-    for url in urls:
-        sitemap_content += f"  <url>\n    <loc>{url}</loc>\n    <changefreq>daily</changefreq>\n    <priority>0.8</priority>\n  </url>\n"
-    sitemap_content += '</urlset>'
-
-    # Retornar el contenido del sitemap
-    return Response(sitemap_content, mimetype='application/xml')
