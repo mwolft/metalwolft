@@ -10,7 +10,10 @@ from api.models import db
 from flask_jwt_extended import JWTManager
 from datetime import timedelta
 from api.seo_routes import seo_bp
+from api.email_routes import email_bp, configure_mail
 import requests
+
+
 
 # Configuración de entorno
 ENV = "development" if os.getenv("FLASK_DEBUG") == "1" else "production"
@@ -32,18 +35,22 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 MIGRATE = Migrate(app, db, compare_type=True)
 db.init_app(app)
 
+# Configuración de JWT
+app.config["JWT_SECRET_KEY"] = os.getenv("JWT_SECRET_KEY")
+app.config['JWT_ACCESS_TOKEN_EXPIRES'] = timedelta(hours=24)
+jwt = JWTManager(app)
+
+# Configuración de Mail
+mail = configure_mail(app)
+
 # Configuraciones adicionales
 setup_admin(app)
 setup_commands(app)
 
 # Registro de Blueprints
-app.register_blueprint(api, url_prefix='/api')  # Todas las rutas del backend deben estar bajo /api
+app.register_blueprint(api, url_prefix='/api')
 app.register_blueprint(seo_bp)
-
-# Configuración de JWT
-app.config["JWT_SECRET_KEY"] = os.getenv("JWT_SECRET_KEY")
-app.config['JWT_ACCESS_TOKEN_EXPIRES'] = timedelta(hours=24)
-jwt = JWTManager(app)
+app.register_blueprint(email_bp, url_prefix='/api/email')
 
 # Configuración de Prerender.io
 BOT_USER_AGENTS = [

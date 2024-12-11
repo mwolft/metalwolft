@@ -1,10 +1,46 @@
-import React from "react";
+import React, { useState } from "react";
 import Button from 'react-bootstrap/Button';
 import Form from 'react-bootstrap/Form';
 import { Breadcrumb } from '../component/Breadcrumb.jsx';
 import { BodyHomeTertiary } from "../component/BodyHomeTertiary.jsx";
 
 export const Contact = () => {
+    const [formData, setFormData] = useState({
+        name: "",
+        firstname: "",
+        phone: "",
+        email: "",
+        message: "",
+    });
+
+    const handleChange = (e) => {
+        const { id, value } = e.target;
+        setFormData({ ...formData, [id]: value });
+    };
+
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        try {
+            const response = await fetch("/api/contact", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify(formData),
+            });
+
+            if (response.ok) {
+                alert("Mensaje enviado correctamente.");
+                setFormData({ name: "", firstname: "", phone: "", email: "", message: "" });
+            } else {
+                alert("Error al enviar el mensaje. Intenta nuevamente.");
+            }
+        } catch (error) {
+            console.error("Error al enviar el formulario:", error);
+            alert("Error al enviar el mensaje. Intenta nuevamente.");
+        }
+    };
+
     return (
         <>
             <Breadcrumb />
@@ -15,35 +51,61 @@ export const Contact = () => {
                         <h2>Contáctanos</h2>
                         <p>Estamos listos para resolver tus dudas y atender tus necesidades. Si buscas más información sobre nuestros productos metálicos, deseas un presupuesto o simplemente quieres saludarnos, utiliza nuestro formulario de contacto.</p>
                         <p>Te responderemos rápidamente para ofrecerte la mejor solución en productos metálicos personalizados.</p>
-                        <Form>
+                        <Form onSubmit={handleSubmit}>
                             <div className="row">
                                 <div className="col-md-6">
-                                    <Form.Group className="mb-3" controlId="formBasicName">
-                                        <Form.Control type="text" placeholder="Nombre:" />
+                                    <Form.Group className="mb-3" controlId="name">
+                                        <Form.Control 
+                                            type="text" 
+                                            placeholder="Nombre:" 
+                                            value={formData.name} 
+                                            onChange={handleChange} 
+                                        />
                                     </Form.Group>
                                 </div>
                                 <div className="col-md-6">
-                                    <Form.Group className="mb-3" controlId="formBasicFirstname">
-                                        <Form.Control type="text" placeholder="Apellidos:" />
+                                    <Form.Group className="mb-3" controlId="firstname">
+                                        <Form.Control 
+                                            type="text" 
+                                            placeholder="Apellidos:" 
+                                            value={formData.firstname} 
+                                            onChange={handleChange} 
+                                        />
                                     </Form.Group>
                                 </div>
                             </div>
                             <div className="row">
                                 <div className="col-md-6">
                                     <Form.Group className="mb-3" controlId="phone">
-                                        <Form.Control type="text" placeholder="Teléfono:" />
+                                        <Form.Control 
+                                            type="text" 
+                                            placeholder="Teléfono:" 
+                                            value={formData.phone} 
+                                            onChange={handleChange} 
+                                        />
                                     </Form.Group>
                                 </div>
                                 <div className="col-md-6">
                                     <Form.Group className="mb-3" controlId="email">
-                                        <Form.Control type="email" placeholder="Correo:" />
+                                        <Form.Control 
+                                            type="email" 
+                                            placeholder="Correo:" 
+                                            value={formData.email} 
+                                            onChange={handleChange} 
+                                        />
                                     </Form.Group>
                                 </div>
                             </div>
                             <div className="row">
                                 <div className="col-md-12">
                                     <Form.Group className="mb-3" controlId="message">
-                                        <Form.Control as="textarea" rows={3} placeholder="Mensaje:" />
+                                        <Form.Control 
+                                            as="textarea" 
+                                            rows={3} 
+                                            placeholder="Mensaje:" 
+                                            value={formData.message} 
+                                            onChange={handleChange} 
+                                        />
                                     </Form.Group>
                                 </div>
                             </div>
