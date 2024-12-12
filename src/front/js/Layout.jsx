@@ -41,6 +41,7 @@ import { PrivacyPolicy } from "./pages/PrivacyPolicy.jsx";
 import { CookiesPolicy } from "./pages/CookiesPolicy.jsx";
 import { InformationCollected } from "./pages/InformationCollected.jsx";
 import { ChangesInCookiePolicy } from "./pages/ChangesInCookiePolicy.jsx";
+import ResetPassword from "./pages/ResetPassword.jsx"
 
 // Blog
 import { BlogListPage } from "./pages/blog/BlogListPage.jsx";
@@ -70,6 +71,7 @@ const Layout = () => {
                     <Route path="/" element={<Home />} />
                     <Route path="/carrusel" element={<Carrusel />} />
                     <Route path="/login" element={<Login />} />
+                    <Route path="/reset-password" element={<ResetPassword />} />
                     <Route path="/admin/*" element={<AdminPanel />} />
                     <Route path="/body-home-main" element={<BodyHomeMain />} />
                     <Route path="/body-home-secondary" element={<BodyHomeSecondary />} />

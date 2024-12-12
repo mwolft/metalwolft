@@ -1,4 +1,5 @@
-from flask import jsonify, url_for
+from flask_mail import Message
+from flask import current_app, jsonify, url_for
 
 
 class APIException(Exception):
@@ -43,3 +44,24 @@ def generate_sitemap(app):
                 """ + links_html + """
             </ul>
         </div>"""
+
+
+def send_email(subject, recipients, body):
+    """
+    Envía un correo utilizando Flask-Mail.
+    """
+    from flask_mail import Mail  # Asegurarse de importar dentro de la función para evitar ciclos
+    mail = Mail(current_app)
+
+    try:
+        message = Message(
+            subject=subject,
+            recipients=recipients,
+            body=body,
+            sender=current_app.config['MAIL_DEFAULT_SENDER']
+        )
+        mail.send(message)
+        return True
+    except Exception as e:
+        current_app.logger.error(f"Error al enviar el correo: {e}")
+        return False

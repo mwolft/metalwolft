@@ -9,11 +9,11 @@ from api.commands import setup_commands
 from api.models import db
 from flask_jwt_extended import JWTManager
 from datetime import timedelta
+from flask_mail import Mail
 from api.seo_routes import seo_bp
-from api.email_routes import email_bp, configure_mail
+from api.email_routes import email_bp
+from api.password_recovery_endpoints import auth_bp
 import requests
-
-
 
 # Configuración de entorno
 ENV = "development" if os.getenv("FLASK_DEBUG") == "1" else "production"
@@ -41,7 +41,15 @@ app.config['JWT_ACCESS_TOKEN_EXPIRES'] = timedelta(hours=24)
 jwt = JWTManager(app)
 
 # Configuración de Mail
-mail = configure_mail(app)
+app.config['MAIL_SERVER'] = os.getenv('MAIL_SERVER', 'smtp.example.com')
+app.config['MAIL_PORT'] = int(os.getenv('MAIL_PORT', 587))
+app.config['MAIL_USE_TLS'] = os.getenv('MAIL_USE_TLS', 'True').lower() in ['true', '1', 't']
+app.config['MAIL_USE_SSL'] = os.getenv('MAIL_USE_SSL', 'False').lower() in ['true', '1', 't']
+app.config['MAIL_USERNAME'] = os.getenv('MAIL_USERNAME')
+app.config['MAIL_PASSWORD'] = os.getenv('MAIL_PASSWORD')
+app.config['MAIL_DEFAULT_SENDER'] = os.getenv('MAIL_DEFAULT_SENDER', app.config['MAIL_USERNAME'])
+app.config['FRONTEND_URL'] = os.getenv('FRONTEND_URL', 'http://localhost:3000')
+mail = Mail(app)
 
 # Configuraciones adicionales
 setup_admin(app)
@@ -51,6 +59,7 @@ setup_commands(app)
 app.register_blueprint(api, url_prefix='/api')
 app.register_blueprint(seo_bp)
 app.register_blueprint(email_bp, url_prefix='/api/email')
+app.register_blueprint(auth_bp, url_prefix='/api/auth')
 
 # Configuración de Prerender.io
 BOT_USER_AGENTS = [
@@ -104,7 +113,6 @@ def serve_any_other_file(path):
 
     # Si no es un archivo estático ni una ruta de API, redirigir al index.html de React
     return send_from_directory(static_file_dir, 'index.html')
-
 
 # Verificar conexión con la base de datos
 @app.route('/db-check', methods=['GET'])
