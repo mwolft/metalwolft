@@ -127,6 +127,7 @@ export const RejasParaVentanas = () => {
                         <p>Las <strong>rejas para ventanas</strong> son elementos esenciales en cualquier hogar. En esta página, exploraremos cómo estas <strong>rejas para ventanas modernas</strong> no solo brindan <b>seguridad y protección</b>, sino que también pueden ser una expresión de <b>estilo y diseño</b> en nuestro catálogo exclusivo online.</p>
                         <p>Nuestra gama se basa en la premisa de que no deberías tener que sacrificar el estilo en post de la seguridad. En cada detalle encontrarás una cuidadosa planificación y ejecución de nuestras <strong>rejas para ventanas sencillas y bonitas</strong>.</p>
                         <p>Descubre nuestra amplia gama de <strong>rejas para ventanas sin obra y con obra</strong> que combinan <b>funcionalidad y estética</b>, garantizando la seguridad de tu hogar sin comprometer su apariencia.</p>
+                        <p>Tenemos artículos dedidados a explicar desde <Link to="/medir-hueco-rejas-para-ventanas" style={{ color: '#ff324d', textDecoration: 'underline', fontStyle: 'italic' }}>¿cómo medir los huecos de ventanas</Link> a <Link to="/instalation-rejas-para-ventanas" style={{ color: '#ff324d', textDecoration: 'underline', fontStyle: 'italic' }}>¿cómo instalar rejas para ventanas?</Link></p>
                         <br />
                         <h2>REJAS PARA VENTANAS SENCILLAS Y BONITAS</h2>
                         <hr className="hr-cart" />
@@ -146,8 +147,7 @@ export const RejasParaVentanas = () => {
                         <hr className="hr-cart" />
                         <img className="img-fluid my-2" style={{ width: '100%', height: 'auto' }} src="https://res.cloudinary.com/dewanllxn/image/upload/v1733674435/rejas-para-ventanas-modernas-2023_ifvzpo.avif" alt="rejas para ventanas sencillas y bonitas" />
                         <p>Nuestras <strong>rejas para ventanas</strong> están especialmente diseñadas para adaptarse a huecos de ventana <strong>sin obra</strong>, es decir, sin la necesidad de realizar costosos trabajos de albañilería.</p>
-                        <p>Este tipo de instalación no solo conserva la seguridad de su propiedad, gracias a la utilización de tornillos especiales tipo Torx inviolables (incluidos), sino que también simplifica el proceso de montaje, lo que a su vez se traduce en el <strong>precio</strong>.</p>
-                        <p>Tenemos un artículo dedicado exclusivamente a <Link to="/instalation-rejas-para-ventanas" style={{ color: '#ff324d', textDecoration: 'underline', fontStyle: 'italic' }}>¿cómo instalar rejas para ventanas?</Link></p>
+                        <p>Este tipo de instalación no solo conserva la seguridad de su propiedad, gracias a la utilización de <Link to="https://amzn.to/3VF0P3V" style={{ color: '#ff324d', textDecoration: 'underline', fontStyle: 'italic' }}>tornillos especiales tipo Torx inviolables</Link> (incluidos), sino que también simplifica el proceso de montaje, lo que a su vez se traduce en el <strong>precio</strong>.</p>
                         <video controls preload="auto" style={{ width: '100%', height: 'auto' }}>
                             <source src="https://res.cloudinary.com/dewanllxn/video/upload/v1733563618/instalacion-rejas-para-ventanas_kcno5b.webm" type="video/webm" />
                         </video>

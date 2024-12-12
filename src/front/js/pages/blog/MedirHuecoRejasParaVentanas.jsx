@@ -6,6 +6,7 @@ import { Breadcrumb } from '../../component/Breadcrumb.jsx';
 import { AsidePost } from "../../component/AsidePost.jsx";
 import { AsideOthersCategories } from "../../component/AsideOthersCategories.jsx";
 import "../../../styles/blog.css";
+import { Link } from "react-router-dom";
 
 export const MedirHuecoRejasParaVentanas = () => {
     const { store, actions } = useContext(Context);
@@ -167,6 +168,7 @@ export const MedirHuecoRejasParaVentanas = () => {
                             <p>En caso de discrepancias en las medidas, las soluciones de relleno adecuadas son clave para garantizar un ajuste perfecto y una estética óptima en el hogar.</p>
                             <p>Más abajo <b>os presentamos un video</b> que explica al detalle cómo realizar una medida correcta del hueco de rejas para ventanas.</p>
                             <p>¡Si todavía tiene dudas siempre puede contar con nosotros para resolverle cuantas cuestiones necesite!</p>
+                            <p><Link to="/rejas-para-ventanas" style={{ color: '#ff324d', textDecoration: 'underline', fontStyle: 'italic' }}>Ver el catálogo completo</Link></p>
                             <video controls width="100%" height="auto">
                                 <source src="https://res.cloudinary.com/dewanllxn/video/upload/v1733563614/medicion-rejas-para-ventanas_t2lbbe.webm" type="video/webm" />
                                 Your browser does not support the video tag.

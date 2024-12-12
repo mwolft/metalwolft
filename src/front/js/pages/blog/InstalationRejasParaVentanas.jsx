@@ -6,6 +6,7 @@ import { Breadcrumb } from '../../component/Breadcrumb.jsx';
 import "../../../styles/blog.css";
 import { AsidePost } from "../../component/AsidePost.jsx";
 import { AsideOthersCategories } from "../../component/AsideOthersCategories.jsx";
+import { Link } from "react-router-dom";
 
 export const InstalationRejasParaVentanas = () => {
     const { store, actions } = useContext(Context);
@@ -194,7 +195,8 @@ export const InstalationRejasParaVentanas = () => {
                             <p><b>Mantener</b> tus rejas para ventanas en buenas condiciones es <b>esencial</b> para garantizar su eficacia y aspecto atractivo <b>con el tiempo.</b></p>
                             <p>No dudes en contactárnos si tienes alguna pregunta o necesitas <b>asesoramiento adicional</b> sobre la instalación o el mantenimiento de tus rejas para ventanas.</p>
                             <p>Esperamos que esta guía haya sido útil en tu proyecto de instalación de rejas para ventanas. Si tienes alguna pregunta o necesitas más información,
-                                no dudes en ponerte en <u>contacto con nosotros.</u> ¡Estamos aquí para ayudarte!</p>
+                                no dudes en<Link to="/contact" style={{ color: '#ff324d', textDecoration: 'underline', fontStyle: 'italic' }}> ponerte en contacto con nosotros.</Link> ¡Estamos aquí para ayudarte!</p>
+                            <p><Link to="/rejas-para-ventanas" style={{ color: '#ff324d', textDecoration: 'underline', fontStyle: 'italic' }}>Ver el catálogo completo</Link></p>
                             <video controls width="100%" height="auto">
                                 <source src="https://res.cloudinary.com/dewanllxn/video/upload/v1733563618/instalacion-rejas-para-ventanas_kcno5b.webm" type="video/webm" />
                                 Your browser does not support the video tag.
