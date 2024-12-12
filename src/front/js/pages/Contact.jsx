@@ -21,7 +21,7 @@ export const Contact = () => {
     const handleSubmit = async (e) => {
         e.preventDefault();
         try {
-            const response = await fetch("/api/contact", {
+            const response = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/email/contact`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
@@ -41,6 +41,7 @@ export const Contact = () => {
         }
     };
 
+
     return (
         <>
             <Breadcrumb />
@@ -55,21 +56,21 @@ export const Contact = () => {
                             <div className="row">
                                 <div className="col-md-6">
                                     <Form.Group className="mb-3" controlId="name">
-                                        <Form.Control 
-                                            type="text" 
-                                            placeholder="Nombre:" 
-                                            value={formData.name} 
-                                            onChange={handleChange} 
+                                        <Form.Control
+                                            type="text"
+                                            placeholder="Nombre:"
+                                            value={formData.name}
+                                            onChange={handleChange}
                                         />
                                     </Form.Group>
                                 </div>
                                 <div className="col-md-6">
                                     <Form.Group className="mb-3" controlId="firstname">
-                                        <Form.Control 
-                                            type="text" 
-                                            placeholder="Apellidos:" 
-                                            value={formData.firstname} 
-                                            onChange={handleChange} 
+                                        <Form.Control
+                                            type="text"
+                                            placeholder="Apellidos:"
+                                            value={formData.firstname}
+                                            onChange={handleChange}
                                         />
                                     </Form.Group>
                                 </div>
@@ -77,21 +78,21 @@ export const Contact = () => {
                             <div className="row">
                                 <div className="col-md-6">
                                     <Form.Group className="mb-3" controlId="phone">
-                                        <Form.Control 
-                                            type="text" 
-                                            placeholder="Teléfono:" 
-                                            value={formData.phone} 
-                                            onChange={handleChange} 
+                                        <Form.Control
+                                            type="text"
+                                            placeholder="Teléfono:"
+                                            value={formData.phone}
+                                            onChange={handleChange}
                                         />
                                     </Form.Group>
                                 </div>
                                 <div className="col-md-6">
                                     <Form.Group className="mb-3" controlId="email">
-                                        <Form.Control 
-                                            type="email" 
-                                            placeholder="Correo:" 
-                                            value={formData.email} 
-                                            onChange={handleChange} 
+                                        <Form.Control
+                                            type="email"
+                                            placeholder="Correo:"
+                                            value={formData.email}
+                                            onChange={handleChange}
                                         />
                                     </Form.Group>
                                 </div>
@@ -99,12 +100,12 @@ export const Contact = () => {
                             <div className="row">
                                 <div className="col-md-12">
                                     <Form.Group className="mb-3" controlId="message">
-                                        <Form.Control 
-                                            as="textarea" 
-                                            rows={3} 
-                                            placeholder="Mensaje:" 
-                                            value={formData.message} 
-                                            onChange={handleChange} 
+                                        <Form.Control
+                                            as="textarea"
+                                            rows={3}
+                                            placeholder="Mensaje:"
+                                            value={formData.message}
+                                            onChange={handleChange}
                                         />
                                     </Form.Group>
                                 </div>

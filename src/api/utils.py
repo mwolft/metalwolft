@@ -50,7 +50,7 @@ def send_email(subject, recipients, body):
     """
     Envía un correo utilizando Flask-Mail.
     """
-    from flask_mail import Mail  # Asegurarse de importar dentro de la función para evitar ciclos
+    from flask_mail import Mail  
     mail = Mail(current_app)
 
     try:
