@@ -1,6 +1,7 @@
-from flask_mail import Message
+from flask_mail import Mail, Message
 from flask import current_app, jsonify, url_for
 
+mail = Mail()
 
 class APIException(Exception):
     status_code = 400
