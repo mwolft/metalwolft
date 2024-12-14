@@ -1,4 +1,4 @@
-from flask import request, jsonify, Blueprint, send_file
+from flask import request, jsonify, Blueprint, send_file, send_from_directory, current_app
 from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity
 from api.models import db, Users, Products, ProductImages, Categories, Subcategories, Orders, OrderDetails, Favorites, Cart, Posts, Comments
 from sqlalchemy.exc import SQLAlchemyError
@@ -51,6 +51,7 @@ def create_payment_intent():
     except Exception as e:
         return jsonify({"error": str(e)}), 403
 
+
 @api.route('/posts/<int:post_id>/comments', methods=['GET'])
 def get_comments(post_id):
     try:
@@ -64,6 +65,7 @@ def get_comments(post_id):
         return response, 200
     except Exception as e:
         return jsonify({"message": "Error al obtener los comentarios", "error": str(e)}), 500
+
 
 @api.route('/posts/<int:post_id>/comments', methods=['POST'])
 @jwt_required()
@@ -94,6 +96,7 @@ def add_comment(post_id):
         db.session.rollback()
         return jsonify({"message": "Error al agregar el comentario", "error": str(e)}), 500
 
+
 @api.route('/posts', methods=['GET'])
 @jwt_required(optional=True)
 def get_posts():
@@ -109,6 +112,7 @@ def get_posts():
     except Exception as e:
         return jsonify({"message": "Error al obtener los posts", "error": str(e)}), 500
 
+
 @api.route('/posts/<int:post_id>', methods=['GET'])
 @jwt_required(optional=True)
 def get_post(post_id):
@@ -122,6 +126,7 @@ def get_post(post_id):
         return jsonify({"message": "Post no encontrado"}), 404
     except Exception as e:
         return jsonify({"message": "Error al obtener el post", "error": str(e)}), 500
+
 
 @api.route('/posts', methods=['POST'])
 @jwt_required()
@@ -147,6 +152,7 @@ def create_post():
     except SQLAlchemyError as e:
         db.session.rollback()
         return jsonify({"message": "Error al crear el post", "error": str(e)}), 500
+
 
 @api.route('/posts/<int:post_id>', methods=['PUT'])
 @jwt_required()
@@ -175,6 +181,7 @@ def update_post(post_id):
         db.session.rollback()
         return jsonify({"message": "Error al actualizar el post", "error": str(e)}), 500
 
+
 @api.route('/posts/<int:post_id>', methods=['DELETE'])
 @jwt_required()
 def delete_post(post_id):
@@ -196,6 +203,7 @@ def delete_post(post_id):
     except SQLAlchemyError as e:
         db.session.rollback()
         return jsonify({"message": "Error al eliminar el post", "error": str(e)}), 500
+
 
 @api.route('/generate-invoice', methods=['POST'])
 @jwt_required()
@@ -361,6 +369,153 @@ def generate_invoice():
     except Exception as e:
         return jsonify({"message": "An error occurred while generating the invoice.", "error": str(e)}), 500
 
+
+@api.route('/manual-invoice', methods=['POST'])
+@jwt_required()
+def create_manual_invoice():
+    from api.models import Invoices
+    try:
+        # Verificar que el usuario sea administrador
+        current_user = get_jwt_identity()
+        if not current_user.get("is_admin"):
+            return jsonify({"message": "Unauthorized"}), 403
+
+        # Recibir los datos del formulario
+        data = request.get_json()
+        client_name = data.get("client_name")
+        client_address = data.get("client_address")
+        client_cif = data.get("client_cif")
+        order_details = data.get("order_details", [])
+
+        # Validar los datos requeridos
+        if not client_name or not client_address:
+            return jsonify({"message": "Missing required fields"}), 400
+
+        # Generar número de factura
+        invoice_number = Invoices.generate_next_invoice_number()
+
+        # Crear el PDF
+        pdf_filename = f"invoice_{invoice_number}.pdf"
+        pdf_path = os.path.join(current_app.config['INVOICE_FOLDER'], pdf_filename)
+        os.makedirs(current_app.config['INVOICE_FOLDER'], exist_ok=True)
+
+        pdf_buffer = BytesIO()
+        pdf = canvas.Canvas(pdf_buffer, pagesize=A4)
+
+        # Logo o imagen
+        image_url = "https://res.cloudinary.com/dewanllxn/image/upload/v1734079825/herrero-soldador-en-ciudad-real_yzq1f3_bszzj8.png"
+        pdf.drawImage(image_url, 300, 750, width=250, height=64)
+        pdf.setTitle(f"Factura_{invoice_number}")
+
+        # Título de la factura
+        pdf.setFont("Helvetica-Bold", 12)
+        pdf.drawString(50, 800, "Factura Manual")
+
+        # Información del proveedor
+        pdf.setFont("Helvetica-Bold", 12)
+        pdf.drawString(400, 700, "Información del Proveedor")
+        pdf.setFont("Helvetica", 10)
+        pdf.drawString(400, 680, "Sergio Arias Fernández")
+        pdf.drawString(400, 660, "DNI 05703874N")
+        pdf.drawString(400, 640, "Francisco Fernández Ordoñez 32")
+        pdf.drawString(400, 620, "13170 Miguelturra")
+
+        # Información del cliente
+        pdf.setFont("Helvetica-Bold", 12)
+        pdf.drawString(50, 700, "Información del Cliente")
+        pdf.setFont("Helvetica", 10)
+        pdf.drawString(50, 680, f"Nombre: {client_name}")
+        pdf.drawString(50, 660, f"Dirección: {client_address}")
+        pdf.drawString(50, 640, f"CIF: {client_cif}")
+
+        # Detalles del pedido o productos
+        pdf.setFont("Helvetica-Bold", 12)
+        pdf.drawString(50, 600, "Detalles del Pedido")
+        pdf.setFont("Helvetica", 10)
+
+        y_position = 580
+        data_table = [["Producto", "Cantidad", "Precio"]]
+        base_imponible = 0  # Suma de los precios de los productos
+
+        for detail in order_details:
+            product = detail.get("product", "Producto")
+            quantity = detail.get("quantity", 1)
+            price = detail.get("price", 0.0)
+            subtotal = quantity * price
+            base_imponible += subtotal
+            row = [product, quantity, f"{price:.2f} €"]
+            data_table.append(row)
+
+        # Crear tabla de productos
+        table = Table(data_table, colWidths=[8*cm, 4*cm, 4*cm])
+        table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), colors.Color(1, 0.196, 0.302)),  # Cabecera roja
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, 0), (-1, 0), 12),
+            ('BOTTOMPADDING', (0, 0), (-1, 0), 8),
+            ('GRID', (0, 0), (-1, -1), 1, colors.black),
+        ]))
+        table.wrapOn(pdf, 50, y_position)
+        table.drawOn(pdf, 50, y_position - table._height)
+
+        # Calcular IVA y Total
+        iva = base_imponible * 0.21
+        total = base_imponible + iva
+
+        # Crear tabla de totales
+        totals_data = [
+            ["Base Imponible", f"{base_imponible:.2f} €"],
+            ["IVA (21%)", f"{iva:.2f} €"],
+            ["Total", f"{total:.2f} €"]
+        ]
+
+        totals_table = Table(totals_data, colWidths=[10*cm, 6*cm])
+        totals_table.setStyle(TableStyle([
+            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+            ('FONTNAME', (0, 0), (-1, -1), 'Helvetica-Bold'),
+            ('BACKGROUND', (0, 0), (-1, -1), colors.Color(0.941, 0.941, 0.941)),
+            ('GRID', (0, 0), (-1, -1), 1, colors.black),
+        ]))
+        totals_y_position = y_position - table._height - 50
+        totals_table.wrapOn(pdf, 50, totals_y_position)
+        totals_table.drawOn(pdf, 50, totals_y_position - totals_table._height)
+
+        # Guardar el PDF
+        pdf.save()
+        with open(pdf_path, "wb") as f:
+            f.write(pdf_buffer.getvalue())
+
+        # Registrar la factura en la base de datos
+        new_invoice = Invoices(
+            invoice_number=invoice_number,
+            pdf_path=pdf_path,
+            client_name=client_name,
+            client_address=client_address,
+            client_cif=client_cif,
+            amount=total,
+            order_details=order_details
+        )
+        db.session.add(new_invoice)
+        db.session.commit()
+
+        return jsonify({"message": "Manual invoice created successfully", "invoice_number": invoice_number}), 201
+
+    except Exception as e:
+        return jsonify({"message": "An error occurred while creating the manual invoice.", "error": str(e)}), 500
+
+
+@api.route('/download-invoice/<filename>', methods=['GET'])
+@jwt_required()
+def download_invoice(filename):
+    invoice_folder = current_app.config['INVOICE_FOLDER']
+    try:
+        return send_from_directory(invoice_folder, filename, as_attachment=True)
+    except FileNotFoundError:
+        return jsonify({"message": "Invoice not found"}), 404
+
+
 @api.route("/login", methods=["OPTIONS", "POST"])
 def login():
     if request.method == "OPTIONS":
@@ -398,6 +553,7 @@ def login():
     response.headers.add("Access-Control-Allow-Origin", "*")
     return response, 200  # Cambié el código de estado a 200 OK
 
+
 @api.route("/protected", methods=["GET"])
 @jwt_required()
 def protected():
@@ -411,6 +567,7 @@ def protected():
     response_body['message'] = f'Acceso denegado'
     response_body['results'] = {}
     return response_body, 403
+
 
 @api.route("/signup", methods=["OPTIONS", "POST"])
 def signup():
@@ -459,6 +616,7 @@ def signup():
     response.headers.add("Access-Control-Allow-Origin", "*")
     return response, 201
 
+
 @api.route('/users', methods=['GET'])
 @jwt_required()
 def get_users():
@@ -474,6 +632,7 @@ def get_users():
     response.headers['Access-Control-Expose-Headers'] = 'X-Total-Count'
     response.headers['Access-Control-Allow-Origin'] = '*'
     return response, 200
+
 
 @api.route('/users', methods=['POST'])
 @jwt_required()
@@ -494,6 +653,7 @@ def create_user():
     db.session.commit()
     return jsonify(new_user.serialize()), 201
 
+
 @api.route('/users/<int:user_id>', methods=['GET'])
 @jwt_required()
 def get_user(user_id):
@@ -508,6 +668,7 @@ def get_user(user_id):
     response = jsonify(user.serialize())
     response.headers['Access-Control-Allow-Origin'] = '*'
     return response, 200
+
 
 @api.route('/users/<int:user_id>', methods=['PUT'])
 @jwt_required()
@@ -545,6 +706,7 @@ def update_user(user_id):
         response = jsonify({"message": "An error occurred", "error": str(e)})
         response.headers['Access-Control-Allow-Origin'] = '*'
         return response, 500
+
 
 @api.route('/users/<int:user_id>', methods=['DELETE'])
 @jwt_required()
@@ -594,6 +756,7 @@ def get_all_categories():
         response.headers['Access-Control-Allow-Origin'] = '*'
         return response, 500
 
+
 @api.route('/categories', methods=['POST'])
 @jwt_required()
 def create_category():
@@ -623,6 +786,7 @@ def create_category():
     response.headers['Access-Control-Expose-Headers'] = 'Authorization'
     return response, 201
 
+
 @api.route('/categories/<int:category_id>', methods=['PUT'])
 @jwt_required()
 def update_category(category_id):
@@ -651,6 +815,7 @@ def update_category(category_id):
     response.headers['Access-Control-Expose-Headers'] = 'Authorization'
     return response, 200
 
+
 @api.route('/categories/<int:category_id>/subcategories', methods=['GET'])
 def get_subcategories(category_id):
     try:
@@ -666,6 +831,7 @@ def get_subcategories(category_id):
         response.headers['Access-Control-Allow-Origin'] = '*'
         response.headers['Access-Control-Expose-Headers'] = 'Authorization'
         return response, 500
+
 
 @api.route('/products', methods=['GET'])
 def get_products():
@@ -699,6 +865,7 @@ def get_products():
         response.headers['Access-Control-Allow-Origin'] = '*'
         return response, 500
 
+
 @api.route('/products', methods=['POST'])
 def create_product():
     data = request.form  
@@ -727,6 +894,7 @@ def create_product():
     except SQLAlchemyError as e:
         db.session.rollback()
         return jsonify({"message": "Error al crear el producto", "error": str(e)}), 500
+
 
 @api.route('/products/<int:product_id>', methods=['GET', 'PUT', 'DELETE'])
 def handle_product(product_id):
@@ -777,6 +945,7 @@ def handle_product(product_id):
             db.session.rollback()
             return jsonify({"message": "An error occurred while deleting the product.", "error": str(e)}), 500
 
+
 @api.route('/products/<int:product_id>/images', methods=['POST'])
 @jwt_required()
 def add_product_images(product_id):
@@ -803,6 +972,7 @@ def add_product_images(product_id):
         db.session.rollback()
         return jsonify({"message": "An error occurred while adding images.", "error": str(e)}), 500
 
+
 @api.route('/product_images', methods=['GET'])
 @jwt_required()
 def get_product_images():
@@ -816,6 +986,7 @@ def get_product_images():
     response.headers['Access-Control-Expose-Headers'] = 'X-Total-Count, Authorization'
     response.headers['Access-Control-Allow-Origin'] = '*'
     return response, 200
+
 
 @api.route('/orders', methods=['GET', 'POST'])
 @jwt_required()
@@ -854,6 +1025,7 @@ def handle_orders():
             db.session.rollback()
             return jsonify({"message": "An error occurred while creating the order.", "error": str(e)}), 500
 
+
 @api.route('/orders/<int:order_id>', methods=['GET', 'DELETE'])
 @jwt_required()
 def handle_order(order_id):
@@ -877,6 +1049,7 @@ def handle_order(order_id):
         except SQLAlchemyError as e:
             db.session.rollback()
             return jsonify({"message": "An error occurred while deleting the order.", "error": str(e)}), 500
+
 
 @api.route('/orderdetails', methods=['POST'])
 @jwt_required()
@@ -928,6 +1101,7 @@ def add_order_detail():
         db.session.rollback()
         return jsonify({"message": "An error occurred while adding the order detail.", "error": str(e)}), 500
 
+
 @api.route('/orderdetails', methods=['GET'])
 @jwt_required()
 def get_order_details():
@@ -943,6 +1117,7 @@ def get_order_details():
     response.headers['Access-Control-Expose-Headers'] = 'X-Total-Count'
     response.headers['Access-Control-Allow-Origin'] = '*'
     return response, 200
+
 
 @api.route('/favorites', methods=['OPTIONS', 'GET', 'POST'])
 @jwt_required(optional=True)  
@@ -981,6 +1156,7 @@ def handle_favorites():
         response.headers['Access-Control-Allow-Origin'] = '*'
         return response, 201
 
+
 @api.route('/favorites/<int:product_id>', methods=['OPTIONS', 'DELETE'])
 @jwt_required(optional=True)
 def remove_favorite(product_id):
@@ -1002,6 +1178,7 @@ def remove_favorite(product_id):
     response = jsonify({"message": "Producto eliminado de favoritos"})
     response.headers['Access-Control-Allow-Origin'] = '*'
     return response, 200
+
 
 @api.route('/cart', methods=['OPTIONS', 'GET', 'POST'])
 @jwt_required()
@@ -1081,6 +1258,7 @@ def handle_cart():
             response.headers['Access-Control-Expose-Headers'] = 'Authorization'
             return response, 500
 
+
 @api.route('/cart/<int:product_id>', methods=['DELETE'])
 @jwt_required()
 def remove_from_cart(product_id):
@@ -1106,6 +1284,7 @@ def remove_from_cart(product_id):
     except Exception as e:
         db.session.rollback()
         return jsonify({"message": str(e)}), 500
+
 
 @api.route('/cart/clear', methods=['POST'])
 @jwt_required()

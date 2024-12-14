@@ -287,6 +287,45 @@ class OrderDetails(db.Model):
         }
 
 
+class Invoices(db.Model):
+    __tablename__ = "invoices"
+
+    id = db.Column(db.Integer, primary_key=True)
+    invoice_number = db.Column(db.String(50), nullable=False, unique=True)
+    order_id = db.Column(db.Integer, db.ForeignKey('orders.id'), nullable=True)
+    created_at = db.Column(db.DateTime, default=db.func.current_timestamp())
+    pdf_path = db.Column(db.String(255), nullable=False)
+    amount = db.Column(db.Float, nullable=False)
+
+    client_name = db.Column(db.String(255), nullable=False)
+    client_address = db.Column(db.String(255), nullable=False)
+    client_cif = db.Column(db.String(50), nullable=True)
+    order_details = db.Column(db.JSON, nullable=False)
+
+    def __repr__(self):
+        return f'<Invoice {self.invoice_number}>'
+
+    @staticmethod
+    def generate_next_invoice_number():
+        from datetime import datetime
+        now = datetime.now()
+        prefix = f"{now.strftime('%b').upper()}-{now.year}-"  # Ejemplo: "DEC-2024-"
+
+        # Buscar el último número con el prefijo
+        last_invoice = db.session.query(Invoices.invoice_number).filter(
+            Invoices.invoice_number.like(f"{prefix}%")
+        ).order_by(Invoices.invoice_number.desc()).first()
+
+        if last_invoice:
+            # Extraer el último número secuencial
+            last_number = int(last_invoice[0].split("-")[-1])
+            next_number = last_number + 1
+        else:
+            next_number = 1  # Si no hay facturas, comienza desde 1
+
+        return f"{prefix}{next_number:03}"  # Ejemplo: "DEC-2024-001"
+
+
 class Favorites(db.Model):
     __tablename__ = "favorites"
     id = db.Column(db.Integer, primary_key=True)
