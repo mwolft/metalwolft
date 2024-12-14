@@ -309,9 +309,7 @@ class Invoices(db.Model):
     def generate_next_invoice_number():
         from datetime import datetime
         now = datetime.now()
-        prefix = f"{now.strftime('%b').upper()}-{now.year}-"  # Ejemplo: "DEC-2024-"
-
-        # Buscar el último número con el prefijo
+        prefix = f"{now.strftime('%b').upper()}-{now.year}-"
         last_invoice = db.session.query(Invoices.invoice_number).filter(
             Invoices.invoice_number.like(f"{prefix}%")
         ).order_by(Invoices.invoice_number.desc()).first()
@@ -321,9 +319,23 @@ class Invoices(db.Model):
             last_number = int(last_invoice[0].split("-")[-1])
             next_number = last_number + 1
         else:
-            next_number = 1  # Si no hay facturas, comienza desde 1
+            next_number = 1 
 
-        return f"{prefix}{next_number:03}"  # Ejemplo: "DEC-2024-001"
+        return f"{prefix}{next_number:03}"  
+
+    def serialize(self):
+        return {
+            "id": self.id,
+            "invoice_number": self.invoice_number,
+            "order_id": self.order_id,
+            "created_at": self.created_at.strftime("%Y-%m-%d %H:%M:%S"),
+            "pdf_path": self.pdf_path,
+            "amount": self.amount,
+            "client_name": self.client_name,
+            "client_address": self.client_address,
+            "client_cif": self.client_cif,
+            "order_details": self.order_details,
+        }
 
 
 class Favorites(db.Model):

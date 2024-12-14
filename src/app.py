@@ -51,6 +51,7 @@ app.config['FRONTEND_URL'] = os.getenv('FRONTEND_URL', 'http://localhost:3000')
 app.config['INVOICE_FOLDER'] = os.path.join(os.getcwd(), 'invoices')
 
 
+
 mail.init_app(app)
 
 # Configuración adicional

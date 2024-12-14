@@ -8,8 +8,10 @@ import { ProductList, ProductEdit, ProductCreate } from "../component/admin/prod
 import { OrderList, OrderEdit, OrderCreate } from "../component/admin/orders/orders.js";
 import { ProductImagesList, ProductImagesEdit, ProductImagesCreate } from "../component/admin/products/productImages.js";
 import { OrderDetailsList, OrderDetailsEdit, OrderDetailsCreate } from "../component/admin/orderDetails/orderDetails.js";
+import { InvoiceList, InvoiceCreate, InvoiceEdit } from "../component/admin/invoices/invoices.js";
 import { authProvider } from "../authProvider.js";
-import { FaUser, FaBoxOpen, FaShoppingCart, FaImages, FaClipboardList } from 'react-icons/fa';
+import { FaUser, FaBoxOpen, FaShoppingCart, FaImages, FaFileInvoice } from 'react-icons/fa';
+import { TbListDetails } from "react-icons/tb";
 import '../../styles/admin-panel.css';
 
 
@@ -25,6 +27,7 @@ const httpClient = (url, options = {}) => {
 };
 
 const dataProvider = jsonServerProvider(process.env.REACT_APP_BACKEND_URL + "/api", httpClient);
+
 
 const AdminPanel = () => {
   const navigate = useNavigate();
@@ -90,7 +93,14 @@ const AdminPanel = () => {
             list={OrderDetailsList}
             edit={OrderDetailsEdit}
             create={OrderDetailsCreate}
-            icon={() => <FaClipboardList size={19} />}
+            icon={() => <TbListDetails size={19} />}
+          />
+          <Resource
+            name="invoices"
+            list={InvoiceList}
+            edit={InvoiceEdit}
+            create={InvoiceCreate}
+            icon={() => <FaFileInvoice size={19} />} 
           />
         </Admin>
       </div>
