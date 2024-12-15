@@ -49,11 +49,12 @@ def generate_sitemap(app):
 
 def send_email(subject, recipients, body, attachment_path=None):
     try:
+        # Crear el mensaje de correo
         message = Message(
             subject=subject,
-            recipients=recipients,
+            recipients=recipients,  # Lista de destinatarios
             body=body,
-            sender=current_app.config['MAIL_DEFAULT_SENDER']
+            sender=current_app.config['MAIL_DEFAULT_SENDER']  # Correo configurado como remitente
         )
 
         # Adjuntar archivo si se proporciona
@@ -72,3 +73,4 @@ def send_email(subject, recipients, body, attachment_path=None):
     except Exception as e:
         current_app.logger.error(f"Error al enviar el correo: {e}")
         return False
+

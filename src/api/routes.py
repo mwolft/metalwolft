@@ -1136,6 +1136,19 @@ def handle_orders():
                 new_order.invoice_number = invoice_number
                 db.session.commit()
 
+                # Enviar el correo con la factura
+                email_sent = send_email(
+                    subject=f"Factura de tu pedido #{invoice_number}",
+                    recipients=[current_user['email'], current_app.config['MAIL_USERNAME']],
+                    body=f"Hola {data.get('firstname')} {data.get('lastname')},\n\nAdjuntamos la factura {invoice_number} de tu compra.\n\nGracias por tu confianza.",
+                    attachment_path=file_path
+                )
+
+                if not email_sent:
+                    current_app.logger.error(f"Error al enviar el correo con la factura {invoice_number}.")
+                else:
+                    current_app.logger.info(f"Correo enviado correctamente con la factura {invoice_number}.")
+
                 # Crear la respuesta con encabezados CORS
                 response = jsonify({
                     "data": new_order.serialize(),
