@@ -3,6 +3,7 @@ from sqlalchemy import Enum
 import random
 import string
 from datetime import datetime
+from flask import current_app
 
 db = SQLAlchemy()
 
@@ -208,8 +209,8 @@ class Orders(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     order_date = db.Column(db.DateTime, default=db.func.current_timestamp())
     total_amount = db.Column(db.Float, nullable=False)
-    invoice_number = db.Column(db.String(50), nullable=False, unique=True)  
-    locator = db.Column(db.String(10), nullable=False, unique=True)  
+    invoice_number = db.Column(db.String(50), nullable=True, unique=True)  # Permitir valores nulos
+    locator = db.Column(db.String(10), nullable=False, unique=True)
 
     user = db.relationship('Users', backref='orders', lazy=True)
     order_details = db.relationship('OrderDetails', backref='order', lazy=True)  
@@ -228,11 +229,50 @@ class Orders(db.Model):
             "order_details": [detail.serialize() for detail in self.order_details] 
         }
 
+        
     @staticmethod
-    def generate_invoice_number():
+    def generate_next_invoice_number():
         from datetime import datetime
         now = datetime.now()
-        return f"{now.strftime('%b').upper()}-{now.year}-{random.randint(1, 999):03}"
+        prefix = f"{now.strftime('%b').upper()}-{now.year}-"
+
+        for attempt in range(3):
+            try:
+                # Consultar el número más alto de ambas tablas
+                last_number_query = db.session.execute(
+                    f"""
+                    SELECT MAX(CAST(SUBSTRING(invoice_number, '([0-9]+)$') AS INTEGER)) AS last_number
+                    FROM (
+                        SELECT invoice_number FROM invoices WHERE invoice_number LIKE '{prefix}%'
+                        UNION ALL
+                        SELECT invoice_number FROM orders WHERE invoice_number LIKE '{prefix}%'
+                    ) AS combined;
+                    """
+                ).scalar()
+
+                next_number = (last_number_query or 0) + 1
+                invoice_number = f"{prefix}{next_number:03}"
+                
+                # Agregar logs detallados para validar la existencia del número generado
+                existing_invoice = db.session.query(Invoices).filter_by(invoice_number=invoice_number).first()
+                existing_order = db.session.query(Orders).filter_by(invoice_number=invoice_number).first()
+                
+                if existing_invoice or existing_order:
+                    current_app.logger.warning(
+                        f"Intento {attempt + 1}: Número de factura duplicado detectado: {invoice_number}. "
+                        f"En Invoices: {bool(existing_invoice)}, En Orders: {bool(existing_order)}"
+                    )
+                    continue  # Intentar nuevamente con el siguiente número
+                
+                # Si el número no existe en ninguna tabla, retornarlo
+                current_app.logger.info(f"Número de factura generado exitosamente: {invoice_number}")
+                return invoice_number
+
+            except Exception as e:
+                current_app.logger.error(f"Error durante la generación del número de factura: {str(e)}")
+
+        raise Exception("Failed to generate a unique invoice number after 3 attempts")
+
 
     @staticmethod
     def generate_locator():
@@ -292,7 +332,7 @@ class Invoices(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     invoice_number = db.Column(db.String(50), nullable=False, unique=True)
-    order_id = db.Column(db.Integer, db.ForeignKey('orders.id'), nullable=True)
+    order_id = db.Column(db.Integer, db.ForeignKey('orders.id'), nullable=True)  # Clave foránea
     created_at = db.Column(db.DateTime, default=db.func.current_timestamp())
     pdf_path = db.Column(db.String(255), nullable=False)
     amount = db.Column(db.Float, nullable=False)
@@ -301,6 +341,7 @@ class Invoices(db.Model):
     client_address = db.Column(db.String(255), nullable=False)
     client_cif = db.Column(db.String(50), nullable=True)
     order_details = db.Column(db.JSON, nullable=False)
+    order = db.relationship('Orders', backref='invoice', lazy=True)  # Relación
 
     def __repr__(self):
         return f'<Invoice {self.invoice_number}>'

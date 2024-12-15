@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Admin, Resource, Layout } from "react-admin";
+import dataProvider from '../../../../src/dataProvider.js'; 
 import jsonServerProvider from "ra-data-json-server";
 import { fetchUtils } from 'ra-core';
 import { useNavigate } from "react-router-dom";
@@ -25,8 +26,6 @@ const httpClient = (url, options = {}) => {
   }
   return fetchUtils.fetchJson(url, options);
 };
-
-const dataProvider = jsonServerProvider(process.env.REACT_APP_BACKEND_URL + "/api", httpClient);
 
 
 const AdminPanel = () => {

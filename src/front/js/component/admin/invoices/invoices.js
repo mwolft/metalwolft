@@ -5,7 +5,6 @@ import {
   TextField,
   DateField,
   NumberField,
-  Button,
   Create,
   SimpleForm,
   TextInput,
@@ -13,24 +12,32 @@ import {
   ArrayInput,
   SimpleFormIterator,
   Edit,
+  useRecordContext,
 } from "react-admin";
 import { FaDownload } from "react-icons/fa";
 
-// Botón de descarga para el PDF de la factura
-const DownloadButton = ({ record }) => {
+const DownloadButton = () => {
+  const record = useRecordContext();
+  
+  console.log("Registro en DownloadButton:", record); // Log para verificar el record
+
   const handleDownload = () => {
-    if (!record || !record.pdf_path) {
-        alert("No se encontró el archivo PDF para esta factura.");
-        return;
+    if (!record) {
+      alert("No se encontró información para esta factura.");
+      return;
     }
 
-    const backendUrl = process.env.REACT_APP_BACKEND_URL || "http://localhost:3001"; // Cambia según tu configuración
+    if (!record.pdf_path) {
+      alert("No se encontró el archivo PDF para esta factura.");
+      return;
+    }
+
+    const backendUrl = process.env.REACT_APP_BACKEND_URL || "http://localhost:3001";
     const downloadUrl = `${backendUrl}${record.pdf_path}`;
-    console.log("Descargando desde:", downloadUrl);
+    console.log("Descargando archivo desde:", downloadUrl);
 
     window.open(downloadUrl, "_blank");
-};
-
+  };
 
   return (
     <button
@@ -49,7 +56,6 @@ const DownloadButton = ({ record }) => {
   );
 };
 
-// Listado de facturas
 export const InvoiceList = (props) => (
   <List {...props} title="Facturas">
     <Datagrid rowClick="edit">
@@ -58,13 +64,11 @@ export const InvoiceList = (props) => (
       <NumberField source="amount" label="Total" options={{ style: "currency", currency: "EUR" }} />
       <DateField source="created_at" label="Fecha" />
       <TextField source="pdf_path" label="Ruta del PDF" />
-      {/* El botón recibe el record automáticamente */}
       <DownloadButton />
     </Datagrid>
   </List>
 );
 
-// Crear nueva factura manual
 export const InvoiceCreate = (props) => (
   <Create {...props} title="Crear Factura Manual">
     <SimpleForm>
@@ -83,7 +87,6 @@ export const InvoiceCreate = (props) => (
   </Create>
 );
 
-// Editar factura existente
 export const InvoiceEdit = (props) => (
   <Edit {...props} title="Editar Factura">
     <SimpleForm>

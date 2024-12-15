@@ -86,19 +86,57 @@ const CheckoutForm = () => {
         if (data.paymentIntent && data.paymentIntent.status === 'succeeded') {
             console.log("El PaymentIntent ya está completado.");
 
-            // Guardar la orden y detalles en el backend
-            const { ok, order } = await actions.saveOrder();
+            console.log("Datos que se envían al backend:", {
+                total_amount: total,
+                products: store.cart,
+                ...formData
+            });
+            
+        // Guardar la orden en el backend
+        const { ok, order, error } = await actions.saveOrder({
+            total_amount: total,
+            products: store.cart.map(product => ({
+                producto_id: product.producto_id,
+                quantity: product.quantity || 1, // Asignar 1 como predeterminado si no existe
+                alto: product.alto,
+                ancho: product.ancho,
+                anclaje: product.anclaje,
+                color: product.color,
+                precio_total: product.precio_total
+            })),
+            ...formData
+        });
+
+        // Log para depuración
+        console.log("Datos que se envían al backend:", {
+            total_amount: total,
+            products: store.cart.map(product => ({
+                producto_id: product.producto_id,
+                quantity: product.quantity || 1,
+                alto: product.alto,
+                ancho: product.ancho,
+                anclaje: product.anclaje,
+                color: product.color,
+                precio_total: product.precio_total
+            })),
+            ...formData
+        });
+                        
+            
             if (!ok) {
-                alert("Error al guardar la orden.");
+                console.error("Error al guardar la orden:", error);
+                alert("No se pudo procesar tu pedido. Por favor, inténtalo nuevamente.");
                 return;
             }
-
+            
             // Enviar los datos de facturación y envío junto con los detalles de la orden
             const result = await actions.saveOrderDetails(order.id, formData);
             if (!result.ok) {
+                console.error("Error al guardar los detalles de la orden.");
                 alert("Error al guardar los detalles de la orden.");
                 return;
             }
+            
 
             // Limpiar el carrito en el frontend y backend
             actions.clearCart();

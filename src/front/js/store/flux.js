@@ -407,24 +407,10 @@ const getState = ({ getStore, getActions, setStore }) => {
                     return { ok: false };
                 }
             },  
-            saveOrder: async () => {
+            saveOrder: async (orderData) => {
                 const store = getStore();
-                const orderData = {
-                    total_amount: store.cart.reduce((acc, product) => acc + product.precio_total, 0),
-                    products: store.cart.map(product => ({
-                        product_id: product.producto_id,
-                        quantity: 1,
-                        alto: product.alto,
-                        ancho: product.ancho,
-                        anclaje: product.anclaje,
-                        color: product.color,
-                        precio_total: product.precio_total
-                    }))
-                };
-            
-                console.log("Datos de la orden que se envían al backend:", orderData);
-            
                 try {
+                    console.log("Datos de la orden que se envían al backend:", orderData); // Para depuración
                     const response = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/orders`, {
                         method: 'POST',
                         headers: {
@@ -437,19 +423,20 @@ const getState = ({ getStore, getActions, setStore }) => {
                     if (!response.ok) {
                         const errorData = await response.json();
                         console.error("Error al guardar el pedido:", errorData.message);
-                        return { ok: false };
+                        return { ok: false, error: errorData.message };
                     }
             
                     const data = await response.json();
-                    console.log("Orden creada:", data.order);
+                    console.log("Orden creada:", data.data);
+            
                     // Actualizar el store con la nueva orden
-                    setStore({ orders: [...store.orders, data.order] });
-                    return { ok: true, order: data.order };
+                    setStore({ orders: [...store.orders, data.data] });
+                    return { ok: true, order: data.data };
                 } catch (error) {
-                    console.error("Error al guardar el pedido:", error);
-                    return { ok: false };
+                    console.error("Error al guardar el pedido:", error.message);
+                    return { ok: false, error: error.message };
                 }
-            },     
+            },                       
             fetchOrderDetails: async () => {
                 try {
                     const response = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/orderdetails`, {

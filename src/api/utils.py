@@ -47,13 +47,7 @@ def generate_sitemap(app):
         </div>"""
 
 
-def send_email(subject, recipients, body):
-    """
-    Envía un correo utilizando Flask-Mail.
-    """
-    from flask_mail import Mail  
-    mail = Mail(current_app)
-
+def send_email(subject, recipients, body, attachment_path=None):
     try:
         message = Message(
             subject=subject,
@@ -61,7 +55,19 @@ def send_email(subject, recipients, body):
             body=body,
             sender=current_app.config['MAIL_DEFAULT_SENDER']
         )
+
+        # Adjuntar archivo si se proporciona
+        if attachment_path:
+            with open(attachment_path, "rb") as attachment:
+                message.attach(
+                    filename=attachment_path.split("/")[-1],
+                    content_type="application/pdf",
+                    data=attachment.read()
+                )
+
+        current_app.logger.info(f"Enviando correo a {recipients} con asunto '{subject}'.")
         mail.send(message)
+        current_app.logger.info(f"Correo enviado correctamente a {recipients}.")
         return True
     except Exception as e:
         current_app.logger.error(f"Error al enviar el correo: {e}")

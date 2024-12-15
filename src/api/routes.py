@@ -1,6 +1,7 @@
 from flask import request, jsonify, Blueprint, send_file, send_from_directory, current_app
 from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity
 from api.models import db, Users, Products, ProductImages, Categories, Subcategories, Orders, OrderDetails, Favorites, Cart, Posts, Comments, Invoices
+from api.utils import send_email
 from sqlalchemy.exc import SQLAlchemyError
 import bcrypt
 import os
@@ -17,6 +18,9 @@ from dotenv import load_dotenv
 from api.exceptions import APIException
 from api.sitemap import generate_sitemap
 from api.utils import mail
+from sqlalchemy.exc import IntegrityError
+
+
 
 api = Blueprint('api', __name__)
 
@@ -209,6 +213,7 @@ def delete_post(post_id):
 @jwt_required()
 def generate_invoice():
     try:
+        # Obtener datos del pedido
         data = request.get_json()
         order_id = data.get('order_id')
         if not order_id:
@@ -217,151 +222,74 @@ def generate_invoice():
         current_user = get_jwt_identity()
         user_id = current_user['user_id']
 
+        # Validar el pedido
         order = Orders.query.get(order_id)
         if not order:
             return jsonify({"message": "Order not found"}), 404
 
-        # Validar permisos (el dueño de la orden o un admin)
+        # Validar permisos
         if order.user_id != user_id and not current_user.get("is_admin"):
             return jsonify({"message": "You do not have permission to access this invoice"}), 403
 
-        # Obtener el usuario asociado a la orden
-        user = Users.query.get(order.user_id)
+        # Generar número de factura único
+        invoice_number = Invoices.generate_next_invoice_number()
 
-        # Crear el PDF en memoria
-        pdf_buffer = BytesIO()
-        pdf = canvas.Canvas(pdf_buffer, pagesize=A4)
+        # Crear el PDF
+        pdf_filename = f"invoice_{invoice_number}.pdf"
+        file_path = os.path.join(current_app.config['INVOICE_FOLDER'], pdf_filename)
+        os.makedirs(current_app.config['INVOICE_FOLDER'], exist_ok=True)
 
-        # Logo o imagen
-        image_url = "https://res.cloudinary.com/dewanllxn/image/upload/v1734079825/herrero-soldador-en-ciudad-real_yzq1f3_bszzj8.png"
-        pdf.drawImage(image_url, 300, 750, width=250, height=64)  
-        pdf.setTitle(f"Factura_{order.invoice_number}")
-        
-        # Título de la factura
+        pdf = canvas.Canvas(file_path, pagesize=A4)
         pdf.setFont("Helvetica-Bold", 12)
-        pdf.drawString(50, 800, "Factura")
-
-        # Información del proveedor
-        pdf.setFont("Helvetica-Bold", 12)
-        pdf.drawString(400, 700, "Información del Proveedor")
-        pdf.setFont("Helvetica", 10)
-        pdf.drawString(400, 680, "Sergio Arias Fernández")
-        pdf.drawString(400, 660, "DNI 05703874N")
-        pdf.drawString(400, 640, "Francisco Fernández Ordoñez 32")
-        pdf.drawString(400, 620, "13170 Miguelturra")
-
-        # Información del cliente
-        pdf.setFont("Helvetica-Bold", 12)
-        pdf.drawString(50, 700, "Información del Cliente")
-        pdf.setFont("Helvetica", 10)
-        pdf.drawString(50, 680, f"{user.firstname} {user.lastname}")
-        pdf.drawString(50, 660, f"{user.billing_address}, {user.billing_city} ({user.billing_postal_code})")
-        pdf.drawString(50, 640, f"{user.CIF}")
-
-        # Dirección de envío
-        pdf.setFont("Helvetica-Bold", 12)
-        pdf.drawString(50, 580, "Dirección de envío")
-        pdf.setFont("Helvetica", 10)
-        pdf.drawString(50, 560, f"{user.shipping_address}, {user.shipping_city} ({user.shipping_postal_code})")
-
-        # Detalles del pedido
-        pdf.setFont("Helvetica-Bold", 12)
-        pdf.drawString(50, 510, "Detalles del Pedido")
-        pdf.setFont("Helvetica", 10)
-
-        # Tabla de productos
-        data_table = [["Producto", "Alto", "Ancho", "Anclaje", "Color", "Precio"]]
-        for detail in order.order_details:
-            product = detail.product
-            row = [
-                product.nombre,
-                f"{detail.alto}",
-                f"{detail.ancho}",
-                detail.anclaje,
-                detail.color,
-                f"{detail.precio_total:.2f} €"
-            ]
-            data_table.append(row)
-
-        table = Table(data_table, colWidths=[6*cm, 2*cm, 2*cm, 2*cm, 2*cm, 2*cm])
-        table.setStyle(TableStyle([
-            ('BACKGROUND', (0, 0), (-1, 0), colors.Color(1, 0.196, 0.302)),  # Cabecera roja
-            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
-            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-            ('FONTSIZE', (0, 0), (-1, 0), 12),
-            ('BOTTOMPADDING', (0, 0), (-1, 0), 8),
-            ('BACKGROUND', (0, 1), (-1, -1), colors.Color(0.941, 0.941, 0.941)),
-            ('GRID', (0, 0), (-1, -1), 1, colors.black),
-        ]))
-
-        page_width = A4[0] - 100
-        y_position = 490
-        table.wrapOn(pdf, 50, y_position)
-        table_height = table._height
-        table.drawOn(pdf, page_width - table._width, y_position - table_height)
-
-        # Cálculos de IVA, base imponible, etc.
-        total = order.total_amount
-        iva = total - (total / 1.21)
-        base_imponible = total - iva
-        envio = 0.00  # Envío fijo
-
-        totals_data = [
-            ["Envío", "Base Imponible", "IVA (21%)", "Total"],
-            [f"{envio:.2f} €", f"{base_imponible:.2f} €", f"{iva:.2f} €", f"{total:.2f} €"]
-        ]
-
-        totals_table = Table(totals_data, colWidths=[4*cm, 4*cm, 4*cm, 4*cm])
-        totals_table.setStyle(TableStyle([
-            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-            ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
-            ('FONTSIZE', (0, 0), (-1, 0), 10),
-            ('BACKGROUND', (0, 0), (-1, -1), colors.Color(0.941, 0.941, 0.941)),
-            ('TEXTCOLOR', (0, 0), (-1, -1), colors.black),
-            ('GRID', (0, 0), (-1, -1), 1, colors.black),
-        ]))
-
-        totals_y_position = y_position - table_height - 20
-        totals_table.wrapOn(pdf, 50, totals_y_position)
-        totals_table_height = totals_table._height
-        totals_table.drawOn(pdf, page_width - totals_table._width, totals_y_position - totals_table_height)
-
+        pdf.drawString(50, 800, f"Factura No: {invoice_number}")
+        pdf.drawString(50, 780, f"Cliente: {order.user.firstname} {order.user.lastname}")
+        pdf.drawString(50, 760, f"Dirección: {order.user.billing_address}")
+        pdf.drawString(50, 740, f"CIF: {order.user.CIF}")
+        pdf.drawString(50, 720, f"Monto Total: {order.total_amount:.2f} €")
         pdf.save()
-        pdf_buffer.seek(0)
-        pdf_data = pdf_buffer.getvalue()
 
-        # Enviar el correo
-        user_email = user.email
-        admin_email = "admin@metalwolft.com"  # Cambia esta dirección
-        subject = f"Factura de tu pedido #{order.invoice_number}"
-        body = (
-            f"Hola {user.firstname},\n\n"
-            f"Adjuntamos la factura de tu pedido.\n\n"
-            f"Gracias por tu compra.\n\nSaludos,\nTu empresa"
+        pdf_path = f"/api/download-invoice/{pdf_filename}"
+
+        # Guardar la factura en la tabla 'invoices'
+        new_invoice = Invoices(
+            invoice_number=invoice_number,
+            order_id=order.id,
+            pdf_path=pdf_path,
+            amount=order.total_amount,
+            client_name=f"{order.user.firstname} {order.user.lastname}",
+            client_address=order.user.billing_address,
+            client_cif=order.user.CIF,
+            order_details=[detail.serialize() for detail in order.order_details]
+        )
+        db.session.add(new_invoice)
+        db.session.flush()  # Verifica que la factura se guarda correctamente
+
+        # Asignar el invoice_number a la orden solo si la factura fue creada
+        order.invoice_number = invoice_number
+        db.session.commit()
+
+        # **Enviar el correo con la factura**
+        email_sent = send_email(
+            subject=f"Factura de tu pedido #{invoice_number}",
+            recipients=[order.user.email],  
+            body=f"Hola {order.user.firstname},\n\nAdjuntamos la factura {invoice_number} de tu compra.\n\nGracias por tu confianza.",
+            attachment_path=file_path
         )
 
-        msg = Message(
-            subject=subject,
-            recipients=[user_email, admin_email],
-            body=body
-        )
+        if not email_sent:
+            current_app.logger.error("Error al enviar el correo con la factura.")
 
-        # Adjuntar el PDF
-        msg.attach(
-            f"invoice_{order.invoice_number}.pdf",
-            "application/pdf",
-            pdf_data
-        )
-
-        mail.send(msg)
-
-        # Opcionalmente, puedes devolver el PDF o solo un mensaje de éxito
-        # return send_file(pdf_buffer, as_attachment=True, download_name=f"invoice_{order.invoice_number}.pdf", mimetype='application/pdf')
-        return jsonify({"message": "Invoice generated and sent successfully."}), 200
+        return jsonify({"message": "Invoice generated, saved, and sent successfully."}), 200
 
     except Exception as e:
+        current_app.logger.error(f"Error durante la generación de la factura: {str(e)}")
+
+        # Limpiar el invoice_number en caso de fallo
+        db.session.rollback()
+        if order and order.invoice_number:
+            order.invoice_number = None
+            db.session.commit()  # Confirmar la limpieza
+
         return jsonify({"message": "An error occurred while generating the invoice.", "error": str(e)}), 500
 
 
@@ -444,33 +372,25 @@ def create_manual_invoice():
         db.session.add(new_invoice)
         db.session.commit()
 
-        return jsonify({
-            "message": "Manual invoice created successfully",
-            "invoice_number": invoice_number,
-            "pdf_path": pdf_path,
-            "data": new_invoice.serialize()
-        }), 201
+        return jsonify({ "data": new_invoice.serialize() }), 201
+
 
     except Exception as e:
         return jsonify({"message": "An error occurred while creating the manual invoice.", "error": str(e)}), 500
 
 
 @api.route('/download-invoice/<filename>', methods=['GET'])
-@jwt_required()
 def download_invoice(filename):
     try:
         file_path = os.path.join(current_app.config['INVOICE_FOLDER'], filename)
+        current_app.logger.info(f"Buscando archivo en: {file_path}")
 
         if not os.path.exists(file_path):
             return jsonify({"message": "No se encontró el archivo PDF para esta factura."}), 404
 
-        response = send_file(file_path, as_attachment=True, download_name=filename, mimetype='application/pdf')
-        response.headers['Access-Control-Allow-Origin'] = '*'
-        response.headers['Access-Control-Expose-Headers'] = 'Content-Disposition'
-
-        return response
+        return send_file(file_path, as_attachment=True, download_name=filename, mimetype='application/pdf')
     except Exception as e:
-        app.logger.error(f"Error al descargar la factura: {str(e)}")
+        current_app.logger.error(f"Error al descargar la factura: {str(e)}")
         return jsonify({"message": "An error occurred while downloading the invoice.", "error": str(e)}), 500
 
 
@@ -527,12 +447,10 @@ def get_invoice_by_id(invoice_id):
 def create_invoice():
     from api.models import Invoices
     try:
-        # Verificar que el usuario sea administrador
         current_user = get_jwt_identity()
         if not current_user.get("is_admin"):
             return jsonify({"message": "Unauthorized"}), 403
 
-        # Obtener los datos del cuerpo de la solicitud
         data = request.get_json()
         client_name = data.get("client_name")
         client_address = data.get("client_address")
@@ -540,14 +458,15 @@ def create_invoice():
         amount = data.get("amount")
         order_details = data.get("order_details", [])
 
-        # Validar los datos obligatorios
         if not client_name or not client_address or not amount:
             return jsonify({"message": "Missing required fields"}), 400
 
-        # Generar el número de factura
         invoice_number = Invoices.generate_next_invoice_number()
 
-        # Crear la factura en la base de datos
+        # Aqui asigna el pdf_path igual que en /manual-invoice
+        pdf_filename = f"invoice_{invoice_number}.pdf"
+        pdf_path = f"/api/download-invoice/{pdf_filename}"
+
         new_invoice = Invoices(
             invoice_number=invoice_number,
             client_name=client_name,
@@ -555,15 +474,89 @@ def create_invoice():
             client_cif=client_cif,
             amount=amount,
             order_details=order_details,
-            pdf_path=f"/path/to/invoices/invoice_{invoice_number}.pdf"  # Esto puede ajustarse según tu lógica
+            pdf_path=pdf_path
         )
         db.session.add(new_invoice)
         db.session.commit()
 
-        return jsonify({"message": "Invoice created successfully", "invoice": new_invoice.serialize()}), 201
+        # Devolver solo {"data": ...} con id incluido
+        return jsonify({"data": new_invoice.serialize()}), 201
 
     except Exception as e:
         return jsonify({"message": "An error occurred while creating the invoice.", "error": str(e)}), 500
+
+
+@api.route('/generate-invoice/<int:order_id>', methods=['POST'], endpoint='generate_invoice_for_order')
+@jwt_required()
+def generate_invoice(order_id):
+    try:
+        # Obtener la orden por ID
+        order = Orders.query.get(order_id)
+        if not order:
+            return jsonify({"message": "Order not found"}), 404
+
+        if order.invoice_number:
+            return jsonify({"message": "Invoice already exists for this order."}), 400
+
+        # Generar número de factura único
+        for attempt in range(3):
+            try:
+                invoice_number = Invoices.generate_next_invoice_number()
+                current_app.logger.info(f"Intento {attempt + 1}: Número de factura generado: {invoice_number}")
+
+                # Crear el PDF de la factura
+                pdf_filename = f"invoice_{invoice_number}.pdf"
+                file_path = os.path.join(current_app.config['INVOICE_FOLDER'], pdf_filename)
+                pdf_path = f"/api/download-invoice/{pdf_filename}"
+                os.makedirs(current_app.config['INVOICE_FOLDER'], exist_ok=True)
+
+                pdf_buffer = BytesIO()
+                pdf = canvas.Canvas(pdf_buffer, pagesize=A4)
+                pdf.setFont("Helvetica-Bold", 12)
+                pdf.drawString(50, 800, f"Factura No: {invoice_number}")
+                pdf.drawString(50, 780, f"Cliente: {order.order_details[0].firstname} {order.order_details[0].lastname}")
+                pdf.drawString(50, 760, f"Dirección: {order.order_details[0].billing_address}, {order.order_details[0].billing_city}")
+                pdf.drawString(50, 740, f"CIF: {order.order_details[0].CIF}")
+                pdf.drawString(50, 720, f"Monto Total: {order.total_amount:.2f} €")
+                pdf.save()
+
+                with open(file_path, "wb") as f:
+                    f.write(pdf_buffer.getvalue())
+
+                # Crear la factura
+                new_invoice = Invoices(
+                    invoice_number=invoice_number,
+                    order_id=order.id,
+                    pdf_path=pdf_path,
+                    client_name=f"{order.order_details[0].firstname} {order.order_details[0].lastname}",
+                    client_address=order.order_details[0].billing_address,
+                    client_cif=order.order_details[0].CIF,
+                    amount=order.total_amount,
+                    order_details=[detail.serialize() for detail in order.order_details]
+                )
+                db.session.add(new_invoice)
+
+                # Asociar el número de factura a la orden
+                order.invoice_number = invoice_number
+                db.session.commit()
+
+                return jsonify({
+                    "message": "Invoice generated successfully.",
+                    "invoice": new_invoice.serialize()
+                }), 201
+
+            except IntegrityError:
+                db.session.rollback()
+                current_app.logger.warning(f"Intento {attempt + 1} fallido: Número de factura duplicado.")
+                continue
+
+        # Si no se pudo generar un número único de factura
+        return jsonify({"message": "Failed to generate a unique invoice number after 3 attempts."}), 500
+
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f"Error al generar la factura: {str(e)}")
+        return jsonify({"message": "An error occurred while generating the invoice.", "error": str(e)}), 500
 
 
 @api.route("/login", methods=["OPTIONS", "POST"])
@@ -776,6 +769,7 @@ def delete_user(user_id):
     response = jsonify({"message": "User deleted!"})
     response.headers['Access-Control-Allow-Origin'] = '*'
     return response, 200
+
 
 @api.route('/categories', methods=['GET'])
 def get_all_categories():
@@ -1042,37 +1036,123 @@ def get_product_images():
 @jwt_required()
 def handle_orders():
     current_user = get_jwt_identity()
+    
     if request.method == 'GET':
-        # Obtener todas las órdenes del usuario actual
-        orders = db.session.execute(db.select(Orders).where(Orders.user_id == current_user['user_id'])).scalars()
-        results = [order.serialize() for order in orders]
-        total_count = len(results)
-        response = jsonify(results)
-        response.headers['X-Total-Count'] = str(total_count)
-        response.headers['Access-Control-Expose-Headers'] = 'X-Total-Count'
-        response.headers['Access-Control-Allow-Origin'] = '*'
-        return response, 200
-    if request.method == 'POST':
-        # Crear nueva orden
-        data = request.get_json()
         try:
+            # Si el usuario es administrador, devolver todas las órdenes
+            if current_user.get("is_admin"):
+                orders = db.session.execute(db.select(Orders)).scalars()
+            else:
+                # Si no, devolver solo las órdenes del usuario autenticado
+                orders = db.session.execute(
+                    db.select(Orders).where(Orders.user_id == current_user['user_id'])
+                ).scalars()
+            
+            results = [order.serialize() for order in orders]
+            total_count = len(results)
+            
+            # Crear respuesta con encabezados requeridos por React Admin
+            response = jsonify(results)
+            response.headers['X-Total-Count'] = str(total_count)
+            response.headers['Access-Control-Expose-Headers'] = 'X-Total-Count'
+            response.headers['Access-Control-Allow-Origin'] = '*'
+            return response, 200
+        except Exception as e:
+            current_app.logger.error(f"Error al obtener las órdenes: {str(e)}")
+            return jsonify({"message": "Error fetching orders", "error": str(e)}), 500
+
+    if request.method == 'POST':
+        data = request.get_json()
+        current_app.logger.info(f"Datos recibidos para crear la orden: {data}")
+        try:
+            # Crear la orden
             new_order = Orders(
                 user_id=current_user['user_id'],
                 total_amount=data['total_amount'],
-                invoice_number=Orders.generate_invoice_number(),
                 locator=Orders.generate_locator()
             )
             db.session.add(new_order)
+            db.session.flush()
+
+            # Crear los detalles de la orden
+            order_details = data.get('products', [])
+            for detail in order_details:
+                new_detail = OrderDetails(
+                    order_id=new_order.id,
+                    product_id=detail['producto_id'],
+                    quantity=detail['quantity'],
+                    alto=detail.get('alto'),
+                    ancho=detail.get('ancho'),
+                    anclaje=detail.get('anclaje'),
+                    color=detail.get('color'),
+                    precio_total=detail['precio_total'],
+                    firstname=data.get('firstname'),
+                    lastname=data.get('lastname'),
+                    shipping_address=data.get('shipping_address'),
+                    shipping_city=data.get('shipping_city'),
+                    shipping_postal_code=data.get('shipping_postal_code'),
+                    billing_address=data.get('billing_address'),
+                    billing_city=data.get('billing_city'),
+                    billing_postal_code=data.get('billing_postal_code'),
+                    CIF=data.get('CIF')
+                )
+                db.session.add(new_detail)
+
             db.session.commit()
-            response = jsonify({
-                'message': 'Order created successfully.',
-                'order': new_order.serialize()
-            })
-            response.headers['Access-Control-Allow-Origin'] = '*'
-            response.headers['Access-Control-Expose-Headers'] = 'X-Total-Count'
-            return response, 201
+
+            # Generar la factura
+            try:
+                invoice_number = Invoices.generate_next_invoice_number()
+                pdf_filename = f"invoice_{invoice_number}.pdf"
+                file_path = os.path.join(current_app.config['INVOICE_FOLDER'], pdf_filename)
+                pdf_path = f"/api/download-invoice/{pdf_filename}"
+                os.makedirs(current_app.config['INVOICE_FOLDER'], exist_ok=True)
+
+                pdf_buffer = BytesIO()
+                pdf = canvas.Canvas(pdf_buffer, pagesize=A4)
+                pdf.setFont("Helvetica-Bold", 12)
+                pdf.drawString(50, 800, f"Factura No: {invoice_number}")
+                pdf.drawString(50, 780, f"Cliente: {data.get('firstname')} {data.get('lastname')}")
+                pdf.drawString(50, 760, f"Dirección: {data.get('billing_address')}, {data.get('billing_city')}")
+                pdf.drawString(50, 740, f"CIF: {data.get('CIF')}")
+                pdf.drawString(50, 720, f"Monto Total: {new_order.total_amount:.2f} €")
+                pdf.save()
+
+                with open(file_path, "wb") as f:
+                    f.write(pdf_buffer.getvalue())
+
+                # Guardar la factura
+                new_invoice = Invoices(
+                    invoice_number=invoice_number,
+                    order_id=new_order.id,
+                    pdf_path=pdf_path,
+                    client_name=f"{data.get('firstname')} {data.get('lastname')}",
+                    client_address=data.get('billing_address'),
+                    client_cif=data.get('CIF'),
+                    amount=new_order.total_amount,
+                    order_details=[detail.serialize() for detail in new_order.order_details]
+                )
+                db.session.add(new_invoice)
+                new_order.invoice_number = invoice_number
+                db.session.commit()
+
+                # Crear la respuesta con encabezados CORS
+                response = jsonify({
+                    "data": new_order.serialize(),
+                    "message": "Order, details, and invoice created successfully."
+                })
+                response.headers['Access-Control-Allow-Origin'] = '*'
+                response.headers['Access-Control-Expose-Headers'] = 'X-Total-Count'
+                return response, 201
+
+            except Exception as e:
+                db.session.rollback()
+                current_app.logger.error(f"Error al generar la factura: {str(e)}")
+                return jsonify({"message": "An error occurred while generating the invoice.", "error": str(e)}), 500
+
         except SQLAlchemyError as e:
             db.session.rollback()
+            current_app.logger.error(f"Error al crear la orden: {str(e)}")
             return jsonify({"message": "An error occurred while creating the order.", "error": str(e)}), 500
 
 
@@ -1347,3 +1427,83 @@ def clear_cart():
     except Exception as e:
         db.session.rollback()
         return jsonify({"message": f"Error al vaciar el carrito: {str(e)}"}), 500
+
+
+@api.route('/debug/orders', methods=['GET'])
+def debug_orders():
+    try:
+        orders = Orders.query.filter(Orders.invoice_number.isnot(None)).all()
+        result = [{"order_id": o.id, "invoice_number": o.invoice_number} for o in orders]
+        return jsonify(result), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@api.route('/debug/invoices', methods=['GET'])
+def debug_invoices():
+    try:
+        invoices = Invoices.query.all()
+        result = [{"invoice_id": i.id, "order_id": i.order_id, "invoice_number": i.invoice_number} for i in invoices]
+        return jsonify(result), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@api.route('/debug/orders-duplicates', methods=['GET'])
+def check_order_duplicates():
+    try:
+        # Consultar duplicados en invoice_number de Orders
+        query = """
+        SELECT invoice_number, COUNT(*) AS count
+        FROM orders
+        WHERE invoice_number IS NOT NULL
+        GROUP BY invoice_number
+        HAVING COUNT(*) > 1;
+        """
+        result = db.session.execute(query).fetchall()
+        duplicates = [{"invoice_number": row[0], "count": row[1]} for row in result]
+        return jsonify(duplicates), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@api.route('/debug/orders-invoice/<string:invoice_number>', methods=['GET'])
+def check_order_by_invoice(invoice_number):
+    try:
+        # Consultar si un número de factura específico existe en Orders
+        orders = Orders.query.filter_by(invoice_number=invoice_number).all()
+        return jsonify([order.serialize() for order in orders]), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@api.route('/debug/schema', methods=['GET'])
+def debug_schema():
+    try:
+        # Consultar las columnas de la tabla Orders
+        orders_schema = db.session.execute("""
+            SELECT column_name, data_type, is_nullable
+            FROM information_schema.columns
+            WHERE table_name = 'orders';
+        """).fetchall()
+
+        # Consultar las columnas de la tabla Invoices
+        invoices_schema = db.session.execute("""
+            SELECT column_name, data_type, is_nullable
+            FROM information_schema.columns
+            WHERE table_name = 'invoices';
+        """).fetchall()
+
+        return jsonify({
+            "orders": [{"column_name": col[0], "data_type": col[1], "is_nullable": col[2]} for col in orders_schema],
+            "invoices": [{"column_name": col[0], "data_type": col[1], "is_nullable": col[2]} for col in invoices_schema]
+        }), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@api.route('/debug/invoice-number', methods=['GET'])
+def debug_generate_invoice_number():
+    try:
+        invoice_number = Invoices.generate_next_invoice_number()
+        return jsonify({"invoice_number": invoice_number}), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
