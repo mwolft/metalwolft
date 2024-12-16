@@ -57,7 +57,7 @@ def send_email(subject, recipients, body, attachment_path=None):
             sender=current_app.config['MAIL_DEFAULT_SENDER']  # Correo configurado como remitente
         )
 
-        # Adjuntar archivo si se proporciona
+        # Adjuntar archivo 
         if attachment_path:
             with open(attachment_path, "rb") as attachment:
                 message.attach(

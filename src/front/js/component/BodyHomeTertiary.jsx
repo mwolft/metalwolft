@@ -15,7 +15,8 @@ export const BodyHomeTertiary = () => {
                     </div>
                 </div>
                 <div className="pt-4 px-4 col-12 col-sm-12 col-md-6 col-lg-4 col-xl-4">
-                    <div className="home-info-card d-flex flex-column justify-content-center align-items-center">
+                    <div className="home-info-card d-flex flex-column justify-content-center align-items-center"
+                        onClick={() => window.location.href = 'mailto:admin@metalwolft.com'}>
                         <div className="bg-info-icon">
                             <i className="info-icon fa-solid fa-at fa-2x"></i>
                         </div>
@@ -24,7 +25,8 @@ export const BodyHomeTertiary = () => {
                     </div>
                 </div>
                 <div className="pt-4 px-4 col-12 col-sm-12 col-md-6 col-lg-4 col-xl-4">
-                    <div className="home-info-card d-flex flex-column justify-content-center align-items-center">
+                    <div className="home-info-card d-flex flex-column justify-content-center align-items-center"
+                        onClick={() => window.location.href = 'tel:+34634112604'}>
                         <div className="bg-info-icon">
                             <i className="info-icon fa-solid fa-phone-volume fa-2x"></i>
                         </div>
@@ -36,4 +38,3 @@ export const BodyHomeTertiary = () => {
         </div>
     );
 };
-
