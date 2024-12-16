@@ -48,7 +48,8 @@ app.config['MAIL_USERNAME'] = os.getenv('MAIL_USERNAME')
 app.config['MAIL_PASSWORD'] = os.getenv('MAIL_PASSWORD')
 app.config['MAIL_DEFAULT_SENDER'] = os.getenv('MAIL_DEFAULT_SENDER', app.config['MAIL_USERNAME'])
 app.config['FRONTEND_URL'] = os.getenv('FRONTEND_URL', 'http://localhost:3000')
-app.config['INVOICE_FOLDER'] = os.path.join(os.getcwd(), 'invoices')
+app.config['INVOICE_FOLDER'] = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'src', 'assets', 'invoices')
+
 
 
 

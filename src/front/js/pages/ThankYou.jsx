@@ -1,12 +1,11 @@
 import React, { useContext, useEffect, useState } from 'react';
 import { Context } from "../store/appContext";
-import { Button, Spinner } from "react-bootstrap";
+import { Button } from "react-bootstrap";
 import { useNavigate } from 'react-router-dom';
 
 export const ThankYou = () => {
-    const { store, actions } = useContext(Context);
+    const { store } = useContext(Context);
     const [orderSummary, setOrderSummary] = useState(null);
-    const [isLoading, setIsLoading] = useState(false);
     const navigate = useNavigate();
 
     useEffect(() => {
@@ -16,17 +15,6 @@ export const ThankYou = () => {
         }
     }, [store.orders]);
 
-    const handleDownloadInvoice = async () => {
-        if (orderSummary) {
-            setIsLoading(true);
-            const { ok } = await actions.generateInvoice(orderSummary.id);
-            setIsLoading(false);
-            if (!ok) {
-                alert("Hubo un error al generar la factura. Intenta de nuevo más tarde.");
-            }
-        }
-    };
-
     if (!orderSummary) {
         return <div>Cargando el resumen de tu compra...</div>;
     }
@@ -34,38 +22,19 @@ export const ThankYou = () => {
     return (
         <div className="container" style={{ marginTop: '100px', marginBottom: '250px' }}>
             <div className="row">
-                <div className="col-11">
-                    <h1 className='text-center'>Gracias por su compra</h1>
-                    <p className='text-center'>Tu pago ha sido procesado correctamente</p>
-                    <div className="d-flex align-items-center mt-5">
-                        <p className="mb-0 me-3">
-                            <strong>Número de Factura:</strong> {orderSummary.invoice_number}
-                        </p>
-                        <Button
-                            className="btn btn-style-background-color"
-                            onClick={handleDownloadInvoice}
-                            disabled={isLoading}>
-                            {isLoading ? (
-                                <>
-                                    <Spinner
-                                        as="span"
-                                        animation="border"
-                                        size="sm"
-                                        role="status"
-                                        aria-live="polite"
-                                    />
-                                    {" "}Generando Factura...
-                                </>
-                            ) : (
-                                "Descargar Factura"
-                            )}
-                        </Button>
-                    </div>
-                    <p><strong>Localizador:</strong> {orderSummary.locator}</p>
+                <div className="col-11 text-center">
+                    <h1>Gracias por tu compra</h1>
+                    <p>Tu pago ha sido procesado correctamente.</p>
+                    <p>
+                        <strong>Localizador:</strong> {orderSummary.locator}
+                    </p>
+                    <p>
+                        Tu factura se ha enviado al correo: <strong>{store.user?.email}</strong>
+                    </p>
                     <Button
-                        variant="link"
+                        className="btn btn-style-background-color"
                         onClick={() => navigate('/')}>
-                        Volver a inicio
+                        Volver al inicio
                     </Button>
                 </div>
             </div>
