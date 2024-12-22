@@ -21,28 +21,35 @@ export const AsidePost = ({ currentPostId }) => {
     };
 
     return (
-        <div className="widget my-5">
-            <h5 className="widget_title">Post Recientes</h5>
+        <aside className="widget my-5">
+            <h2 className="widget_title">Posts Recientes</h2>
             <hr className="hr-home" />
             {recentPosts.length > 0 ? (
-                recentPosts.map((post, index) => (
-                    <div key={index} className="others-categories">
-                        <img className="img-other-categories" src={post.image_url} alt={post.title} />
-                        <p className="p-other-categories">
-                            {post.title}<br />
-                            <span className="other-categories-span">{post.date}</span>
-                            <button 
-                                className="buton-other-categories" 
-                                onClick={() => handlePostNavigation(post.slug)}
-                            >
-                                Leer más
-                            </button>
-                        </p>
-                    </div>
-                ))
+                <ul className="widget_categories">
+                    {recentPosts.map((post, index) => (
+                        <li key={index} className="others-categories">
+                            <img 
+                                className="img-other-categories" 
+                                src={post.image_url} 
+                                alt={post.title} 
+                            />
+                            <p className="p-other-categories">
+                                {post.title}<br />
+                                <span className="other-categories-span">{post.date}</span>
+                                <button 
+                                    className="buton-other-categories" 
+                                    onClick={() => handlePostNavigation(post.slug)}
+                                    aria-label={`Leer más sobre ${post.title}`}
+                                >
+                                    Leer más
+                                </button>
+                            </p>
+                        </li>
+                    ))}
+                </ul>
             ) : (
                 <p>Cargando posts recientes...</p>
             )}
-        </div>
-    );
+        </aside>
+    );    
 };

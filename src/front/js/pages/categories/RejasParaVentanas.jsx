@@ -1,4 +1,5 @@
 import React, { useEffect, useContext, useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import { Helmet } from "react-helmet";
 import { Breadcrumb } from "../../component/Breadcrumb.jsx";
 import { Product } from "../../component/Product.jsx";
@@ -7,14 +8,41 @@ import { AsideOthersCategories } from "../../component/AsideOthersCategories.jsx
 import { AsidePost } from "../../component/AsidePost.jsx";
 import { Context } from "../../store/appContext.js";
 import "../../../styles/categories-pages.css";
-import { Link } from "react-router-dom";
 
-export const RejasParaVentanas = () => {
+export const RejasParaVentanas = ({ onSelectCategory, onSelectSubcategory, categoryId }) => {
     const { store, actions } = useContext(Context);
+    const navigate = useNavigate();
     const rejasCategoryId = 1;
     const [selectedCategoryId, setSelectedCategoryId] = useState(rejasCategoryId);
     const [selectedSubcategoryId, setSelectedSubcategoryId] = useState(null);
     const [metaData, setMetaData] = useState({});
+    const [recentPosts, setRecentPosts] = useState([]);
+    const [otherCategories, setOtherCategories] = useState([]);
+
+
+    useEffect(() => {
+        const fetchRecentPosts = async () => {
+            const posts = await actions.getRecentPosts();
+            setRecentPosts(posts);
+        };
+        fetchRecentPosts();
+
+        const fetchOtherCategories = async () => {
+            const categories = await actions.getOtherCategories(rejasCategoryId);
+            setOtherCategories(categories);
+        };
+        fetchOtherCategories();
+    }, []);
+
+
+    const handlePostNavigation = (postSlug) => {
+        navigate(`/${postSlug}`);
+    };
+
+
+    const handleCategoryNavigation = (categorySlug) => {
+        navigate(`/${categorySlug}`);
+    };
 
 
     useEffect(() => {
@@ -46,9 +74,11 @@ export const RejasParaVentanas = () => {
         setSelectedSubcategoryId(null);
     };
 
+
     const handleSubcategorySelect = (subcategoryId) => {
         setSelectedSubcategoryId(subcategoryId);
     };
+
 
     return (
         <>
@@ -91,18 +121,32 @@ export const RejasParaVentanas = () => {
             <Breadcrumb />
             <div className="container">
                 <div className="row">
-                    <div className="col-12 col-lg-3 col-xl-3 order-1">
-                        <AsideCategories
-                            onSelectCategory={handleCategorySelect}
-                            onSelectSubcategory={handleSubcategorySelect}
-                            categoryId={rejasCategoryId}
-                        />
+                    <div className="col-12 col-lg-3 col-xl-3 order-1 p-3">
+                        <div className="d-none d-lg-block">
+                            <AsideCategories
+                                onSelectCategory={handleCategorySelect}
+                                onSelectSubcategory={handleSubcategorySelect}
+                                categoryId={rejasCategoryId}
+                            />
+                        </div>
                         <div className="d-none d-lg-block">
                             <AsidePost />
                             <AsideOthersCategories currentCategoryId={rejasCategoryId} />
                         </div>
                     </div>
-                    <div className="col-12 col-lg-9 col-xl-9 order-2">
+                    <div className="col-12 col-lg-9 col-xl-9 order-2 p-3">
+                        {/* ------------------------------------------------------------------------------------------------------------------------ */}
+                        <p>
+                            Las <strong>rejas para ventanas</strong> son elementos esenciales para la protección en cualquier hogar.</p>
+                        <p>Además de funcionar como una barrera efectiva ante intrusiones, las rejas permiten disfrutar de la <b>ventilación</b> e <b>iluminación natural</b> sin comprometer la tranquilidad y el bienestar.</p>
+                        <p>
+                            En este sitio encontrarás información completa sobre los diferentes <b>tipos</b>, <b>estilos</b> y <b>precios</b> de rejas para ventanas. Nuestro objetivo es ayudarte a elegir la opción más adecuada, teniendo en cuenta tanto la <b>funcionalidad</b> como la <b>estética</b>.
+                        </p>
+                        <p>
+                            En nuestro catálogo exclusivo online podrás calcular el <strong>precio</strong> al instante.
+                        </p>
+                        <p>¡Aprovécha de los <strong>envíos gratuitos</strong> directos de fábrica!</p>
+                        <h2 className="h2-categories">Catálogo de rejas para ventanas</h2>
                         <div className="row">
                             {store.products && store.products.length > 0 ? (
                                 store.products.map((product, index) => (
@@ -115,42 +159,256 @@ export const RejasParaVentanas = () => {
                             )}
                         </div>
                     </div>
-                    <div className="col-12 d-block d-lg-none order-3">
-                        <AsidePost />
-                        <AsideOthersCategories currentCategoryId={rejasCategoryId} />
+                    <div className="col-12 d-block d-lg-none order-3 p-3" aria-hidden="true">
+                        <aside className="widget my-5">
+                            <p className="widget_title">Posts Recientes</p>
+                            <hr className="hr-home" />
+                            {recentPosts.length > 0 ? (
+                                <ul className="widget_categories">
+                                    {recentPosts.map((post, index) => (
+                                        <li key={index} className="others-categories">
+                                            <img className="img-other-categories" src={post.image_url} alt={post.title} />
+                                            <p className="p-other-categories">
+                                                {post.title}<br />
+                                                <span className="other-categories-span">{post.date}</span>
+                                                <button
+                                                    className="buton-other-categories"
+                                                    onClick={() => handlePostNavigation(post.slug)}
+                                                    aria-label={`Leer más sobre ${post.title}`}
+                                                >
+                                                    Leer más
+                                                </button>
+                                            </p>
+                                        </li>
+                                    ))}
+                                </ul>
+                            ) : (
+                                <p>Cargando posts recientes...</p>
+                            )}
+                        </aside>
+
+                        <aside className="widget my-2">
+                            <p className="widget_title">Otras Categorías</p>
+                            <hr className="hr-home" />
+                            {otherCategories.length > 0 ? (
+                                <ul className="widget_categories">
+                                    {otherCategories.map((category, index) => (
+                                        <li key={index} className="others-categories">
+                                            <img
+                                                className="img-other-categories"
+                                                src={category.image_url || "/path/to/default/image.jpg"}
+                                                alt={category.nombre}
+                                                style={{
+                                                    width: "80px",
+                                                    height: "100%",
+                                                    objectFit: "cover"
+                                                }}
+                                            />
+                                            <p className="p-other-categories">
+                                                {category.nombre}<br />
+                                                <button
+                                                    className="buton-other-categories"
+                                                    onClick={() => handleCategoryNavigation(category.slug)}
+                                                    aria-label={`Ir a categoría ${category.nombre}`}
+                                                >
+                                                    Ir a categoría
+                                                </button>
+                                            </p>
+                                        </li>
+                                    ))}
+                                </ul>
+                            ) : (
+                                <p>Cargando otras categorías...</p>
+                            )}
+                        </aside>
                     </div>
                 </div>
                 <div className="row">
                     <div className="col-12 col-lg-3 col-xl-3 order-1">
                     </div>
-                    <div className="col-12 col-lg-9 col-xl-9 order-2 my-4">
-                        <p>Las <strong>rejas para ventanas</strong> son elementos esenciales en cualquier hogar. En esta página, exploraremos cómo estas <strong>rejas para ventanas modernas</strong> no solo brindan <b>seguridad y protección</b>, sino que también pueden ser una expresión de <b>estilo y diseño</b> en nuestro catálogo exclusivo online.</p>
-                        <p>Nuestra gama se basa en la premisa de que no deberías tener que sacrificar el estilo en post de la seguridad. En cada detalle encontrarás una cuidadosa planificación y ejecución de nuestras <strong>rejas para ventanas sencillas y bonitas</strong>.</p>
-                        <p>Descubre nuestra amplia gama de <strong>rejas para ventanas sin obra y con obra</strong> que combinan <b>funcionalidad y estética</b>, garantizando la seguridad de tu hogar sin comprometer su apariencia.</p>
-                        <p>Tenemos artículos dedidados a explicar desde <Link to="/medir-hueco-rejas-para-ventanas" style={{ color: '#ff324d', textDecoration: 'underline', fontStyle: 'italic' }}>¿cómo medir los huecos de ventanas</Link> a <Link to="/instalation-rejas-para-ventanas" style={{ color: '#ff324d', textDecoration: 'underline', fontStyle: 'italic' }}>¿cómo instalar rejas para ventanas?</Link></p>
-                        <br />
-                        <h2>REJAS PARA VENTANAS SENCILLAS Y BONITAS</h2>
-                        <hr className="hr-cart" />
-                        <img className="img-fluid my-2" style={{ width: '100%', height: 'auto' }} src="https://res.cloudinary.com/dewanllxn/image/upload/v1733674435/rejas-para-ventanas-sencillas-y-bonitas_ue4qzc.avif" alt="rejas para ventanas" />
-                        <p>Las <strong>rejas para ventanas sencillas y bonitas </strong>tienen una creciente demanda en la actualidad y destacan por su <b>simplicidad y belleza</b>.</p>
-                        <p>Unos años atrás se han destacado por la combinación de figuras metálicas, un enfoque que está cayendo en desuso.</p>
-                        <p>En la actualidad, la demanda de rejas online se caracteriza por una estética más simplificada y atractiva, reduciendo la cantidad de material empleado sin comprometer la <b>modernidad de su diseño.</b></p>
-                        <br />
-                        <h2>REJAS PARA VENTANAS MODERNAS</h2>
-                        <hr className="hr-cart" />
-                        <p>Las <strong>rejas para ventanas modernas</strong> han experimentado una transformación en su <b>estilo y materiales</b>, siguiendo líneas más <strong>sencillas</strong> siendo igual de bonitas, ofreciendo un equilibrio perfecto entre <b>seguridad y estética</b>.</p>
-                        <p>Aunque el <strong>hierro</strong> sigue siendo el material predominante, se han incorporado otros materiales, como el acero inoxidable, para satisfacer las necesidades cambiantes de los propietarios.</p>
-                        <p>En Metal Wolf, nos enorgullece presentar una selección de <strong>rejas para ventanas modernas</strong> que destacan tanto por su estilo como por su capacidad de brindar protección efectiva.</p>
-                        <p>Nuestra filosofía se centra en la creación de diseños que no solo cumplen con su propósito principal, sino que también realzan la estética de su hogar.</p>
-                        <br />
-                        <h2>REJAS PARA VENTANAS SIN OBRA</h2>
-                        <hr className="hr-cart" />
-                        <img className="img-fluid my-2" style={{ width: '100%', height: 'auto' }} src="https://res.cloudinary.com/dewanllxn/image/upload/v1733674435/rejas-para-ventanas-modernas-2023_ifvzpo.avif" alt="rejas para ventanas sencillas y bonitas" />
-                        <p>Nuestras <strong>rejas para ventanas</strong> están especialmente diseñadas para adaptarse a huecos de ventana <strong>sin obra</strong>, es decir, sin la necesidad de realizar costosos trabajos de albañilería.</p>
-                        <p>Este tipo de instalación no solo conserva la seguridad de su propiedad, gracias a la utilización de <Link to="https://amzn.to/3VF0P3V" style={{ color: '#ff324d', textDecoration: 'underline', fontStyle: 'italic' }}>tornillos especiales tipo Torx inviolables</Link> (incluidos), sino que también simplifica el proceso de montaje, lo que a su vez se traduce en el <strong>precio</strong>.</p>
-                        <video controls preload="auto" style={{ width: '100%', height: 'auto' }}>
-                            <source src="https://res.cloudinary.com/dewanllxn/video/upload/v1733563618/instalacion-rejas-para-ventanas_kcno5b.webm" type="video/webm" />
-                        </video>
+                    <div className="col-12 col-lg-9 col-xl-9 order-2 my-4 p-3">
+                        {/* ------------------------------------------------------------------------------------------------------------------------ */}
+                        <hr className="hr-categories" />
+                        <h2 className="h2-categories">Tipos de rejas para ventanas</h2>
+                        {/* ------------------------------------------ */}
+                        <h3 className="h3-categories">Rejas para ventanas modernas</h3>
+                        <p>Las <strong>rejas para ventanas modernas</strong> han experimentado una transformación en su estilo y materiales, siguiendo líneas más <strong>sencillas</strong> siendo igual de <strong>bonitas</strong>, ofreciendo un equilibrio perfecto entre <b>seguridad y estética</b>.</p>
+                        <p>Aunque el hierro sigue siendo el material predominante, se han incorporado otros materiales, como el acero inoxidable, para satisfacer las necesidades cambiantes de los propietarios.</p>
+                        <p>En <Link to="/" className="link-categories">Metal Wolf</Link>, nos enorgullece presentar una selección de <strong>rejas para ventanas modernas</strong> que destacan tanto por su estilo como por su capacidad de brindar <b>protección efectiva</b>.</p>
+                        <p>Nuestra filosofía se centra en la creación de <b>diseños</b> que no solo cumplen con su propósito principal, sino que también <b>realzan la estética de su hogar</b>.</p>
+                        {/* ------------------------------------------ */}
+                        <h3 className="h3-categories">Rejas para ventanas sin obra</h3>
+                        {/*<img className="img-fluid my-2" style={{ width: '100%', height: 'auto' }} src="https://res.cloudinary.com/dewanllxn/image/upload/v1733674435/rejas-para-ventanas-modernas-2023_ifvzpo.avif" alt="rejas para ventanas sencillas y bonitas" />*/}
+                        <p><strong>Las rejas para ventanas sin obra</strong> se fijan directamente en el marco de la ventana con <Link to="/" className="link-categories">tornillos especiales inviolables</Link>, diseñados para ofrecer una sujeción segura y resistente. Al no requerir intervención en los muros, el resultado es más <b>limpio</b>.</p>
+                        <p>La <Link to="/" className="link-categories">instalación de las rejas sin obra</Link> es rápida y sencilla, lo que permite reducir tanto los tiempos como los costes asociados.</p>
+                        <p>Este tipo de reja las convierte en una opción ideal para quienes desean mantener intacto el acabado de la fachada.</p>
+                        <p>Si deseas proteger tu hogar sin alterar la fachada, las <strong>rejas sin obra</strong> son la alternativa perfecta. Combina <b>seguridad y funcionalidad</b> y un diseño que se adapta a cualquier estilo de ventana.</p>
+
+                        <div className="comparison-table">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th></th>
+                                        <th>INSTALACIÓN CON OBRA</th>
+                                        <th>INSTALACIÓN SIN OBRA</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td>
+                                            <strong>Descripción</strong>
+                                        </td>
+                                        <td>
+                                            Las rejas se fijan directamente a los muros mediante garras de hierro
+                                            y cemento, proporcionando una unión resistente y permanente.
+                                        </td>
+                                        <td>
+                                            Las rejas se fijan al marco de la ventana con tornillos especiales,
+                                            evitando la necesidad de modificar los muros.
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td>
+                                            <strong>Ventajas</strong>
+                                        </td>
+                                        <td>
+                                            <ul>
+                                                <li>Mayor resistencia.</li>
+                                                <li>Adecuado para proyectos en construcción o reforma.</li>
+                                            </ul>
+                                        </td>
+                                        <td>
+                                            <ul>
+                                                <li>Rápida instalación.</li>
+                                                <li>No afecta la estética de la fachada.</li>
+                                                <li>Más económico.</li>
+                                            </ul>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td>
+                                            <strong>Desventajas</strong>
+                                        </td>
+                                        <td>
+                                            <ul>
+                                                <li>Requiere albañilería.</li>
+                                                <li>Proceso más costoso.</li>
+                                            </ul>
+                                        </td>
+                                        <td>
+                                            <ul>
+                                                <li>Menor resistencia a impactos fuertes.</li>
+                                                <li>No adecuado para fachadas en construcción.</li>
+                                            </ul>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td>
+                                            <strong>Tiempo de Instalación</strong>
+                                        </td>
+                                        <td>1-2 días (dependiendo de la obra).</td>
+                                        <td>1-2 horas (sin necesidad de obra).</td>
+                                    </tr>
+                                    <tr>
+                                        <td>
+                                            <strong>Precio Aproximado</strong>
+                                        </td>
+                                        <td>Más elevado por el coste de mano de obra y materiales.</td>
+                                        <td>Más económico, solo se necesitan los tornillos y herramientas básicas.</td>
+                                    </tr>
+                                    <tr>
+                                        <td>
+                                            <strong>Ejemplo</strong>
+                                        </td>
+                                        <td>
+                                            <img
+                                                src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSWeCVUg3hSyUQj2YKAzXEAScWZ170dqvQ_mQ&s"
+                                                alt="Instalacion de rejas para ventanas con obra"
+                                                className="comparison-image"
+                                            />
+                                        </td>
+                                        <td>
+                                            <img
+                                                src="https://res.cloudinary.com/dewanllxn/image/upload/v1734888241/rejas-para-ventanas-sin-obra_wukdzi.png"
+                                                alt="Instalacion de rejas para ventanas sin obra"
+                                                className="comparison-image"
+                                            />
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+
+
+                        {/* ------------------------------------------ */}
+                        <h3 className="h3-categories">Rejas para ventanas con obra</h3>
+                        <p>Las <strong>rejas para ventanas con obra</strong> son una opción perfecta para proyectos en los que <b>la fachada aún no tiene su acabado final</b>, como durante reformas o construcciones en curso.</p>
+                        <p>A diferencia de las rejas sin obra, estas <b>no utilizan tornillos especiales</b>. En su lugar, están diseñadas con <b>garras de hierro soldadas</b> al lateral del bastidor de la reja. </p>
+                        <p>Estas garras <b>se fijan directamente al muro</b> de la fachada mediante una mezcla de cemento, creando una unión resistente y permanente.</p>
+                        {/* ------------------------------------------ */}
+                        <h3 className="h3-categories">Rejas abatibles para ventanas</h3>
+                        <p>Las <strong>rejas abatibles para ventanas</strong> son la solución perfecta para quienes buscan <b>seguridad y comodidad en su hogar</b>.</p>
+                        <p>Gracias a su sistema de apertura y cierre, estas rejas permiten un acceso sencillo para limpiar las ventanas o disfrutar de una ventilación sin restricciones.</p>
+                        {/* ------------------------------------------ */}
+                        <h3 className="h3-categories">Rejas para gatos y mascotas</h3>
+                        <p>Las <strong>rejas para gatos y mascotas</strong> son una solución perfecta para proteger a tus animales de compañía, asegurando su bienestar sin comprometer la ventilación o la estética de tu hogar.</p>
+                        <p>Este tipo de reja está diseñado especialmente para <b>evitar accidentes</b>, como caídas desde ventanas abiertas o balcones, sin limitar la libertad de movimiento de tus mascotas.</p>
+                        <p>A diferencia de las rejas convencionales, las rejas para mascotas cuentan con un <b>diseño especial</b> que reduce el espacio entre los barrotes. </p>
+                        <p>Esta característica evita que gatos, perros pequeños u otros animales puedan atravesarlas, ofreciendo una protección efectiva sin limitar su libertad de movimiento.</p>
+                        {/* ------------------------------------------ */}
+                        <h3 className="h3-categories">Rejas rústicas</h3>
+                        <p>Las <strong>rejas rústicas</strong> son ideales para quienes buscan un <b>estilo tradicional</b> en la decoración de sus ventanas. Inspiradas en la arquitectura <b>clásica</b>, estas rejas destacan por sus <b>detalles ornamentales</b> y su robustez.</p>
+                        <p>Aportan un encanto histórico y una elegancia atemporal a cualquier edificación. Estas piezas, a menudo elaboradas en <b>hierro forjado</b>, reflejan la artesanía de épocas pasadas y son ideales para quienes buscan un estilo clásico en sus ventanas o puertas.</p>
+
+                        {/* ------------------------------------------------------------------------------------------------------------------------ */}
+                        <hr className="hr-categories" />
+                        <h2 className="h2-categories">Precios de rejas para ventanas</h2>
+                        <p>El <strong>precio de las rejas para ventanas</strong> puede variar considerablemente dependiendo de diversos factores, como el <b>material utilizado, el tipo de diseño, las dimensiones de la ventana y el método de instalación</b> requerido.</p>
+                        <p>Los materiales más comunes, como el hierro, el aluminio y el acero inoxidable, tienen precios diferentes. El <b>hierro suele ser la opción más económica</b>, mientras que el acero inoxidable es una de las más costosas debido a su alta resistencia y durabilidad.</p>
+                        <p>También influye el <b>nivel de personalización</b>. Las rejas estándar suelen ser más económicas, mientras que las rejas con <b>diseños ornamentales o personalizados tienden a incrementar su coste</b>.</p>
+                        <p>En cuanto a la instalación, las rejas que requieren <b>obra suelen tener un precio más alto</b> debido al tiempo y materiales adicionales necesarios, mientras que las <strong>rejas sin obra son más rápidas y económicas</strong> de colocar.</p>
+                        <p>Además, algunos proveedores ofrecen servicios adicionales, como acabados especiales o tratamientos anticorrosión, que pueden agregar valor y durabilidad a las rejas, aunque con un coste extra.</p>
+                        <p>En nuestra página web, puedes <b>calcular al instante el precio de cada reja</b>, lo que te permitirá explorar diferentes opciones y encontrar la que mejor se ajuste a tu presupuesto y necesidades. </p>
+                        <p>Consulta nuestro <strong>catálogo</strong> para obtener más detalles y solicita un presupuesto personalizado si necesitas asesoramiento adicional.</p>
+                        {/* ------------------------------------------ */}
+                        <h3 className="h3-categories">¿Cuánto vale poner una reja en una ventana?</h3>
+                        <p>El coste de <strong>instalar una reja en una ventana</strong> puede variar significativamente en función del tipo de instalación. </p>
+                        <p>Si la instalación requiere obra de albañilería el coste es mayor con respecto a la instalación de rejas para ventana sin obra que su instalación es mucho más simple.</p>
+                        {/* ------------------------------------------ */}
+                        <h3 className="h3-categories">Consejos para ahorrar en la instalación</h3>
+                        <p>Las <strong>rejas sin obra</strong> son una opción <b>económica y práctica</b>, ya que su instalación es <b>rápida</b>, requiere menos mano de obra y <b>reduce significativamente el coste total</b>. </p>
+                        <p>Además, están diseñadas para que <b>reduce significativamente el coste total</b>x, sin necesidad de conocimientos especializados.</p>
+                        <p>Nuestras <strong>rejas para ventanas sin obra</strong> incluyen todos los elementos necesarios para una <strong>instalación sencilla</strong>: tacos y tornillos especialmente diseñados. </p>
+                        <p>Con solo un <b>taladro</b>, puedes perforar los agujeros, fijar la reja y ajustar los tornillos para que quede perfectamente instalada. </p>
+                        {/* ------------------------------------------ */}
+                        <h3 className="h3-categories">Consigue el precio exacto</h3>
+                        <p>Para obtener un <strong>precio</strong> exacto de las rejas para tus ventanas, es importante proporcionar <b>medidas precisas</b> y detallar el tipo de <strong>instalación</strong> que necesitas. </p>
+                        <p>En nuestro <strong>catálogo</strong> encontrará diversos diseños de reja donde podrá insertar las medidas, el tipo de instalación y el color y se calculará el <strong>precio</strong> <b>al instante</b>.</p>
+                        <p>Te recomendamos que, si tiene dudas, <Link to="contact" className="link-categories">contáctenos</Link> para que podamos asesorarle y ofrecerle toda la información necesaria.</p>
+                        {/* ------------------------------------------------------------------------------------------------------------------------ */}
+                        <hr className="hr-categories" />
+                        <h2 className="h2-categories">Instalación y consejos prácticos</h2>
+                        {/* ------------------------------------------ */}
+                        <h3 className="h3-categories">¿Cómo elegir la reja perfecta para tu ventana?</h3>
+                        <p>En cuanto a estética y estilo es cuestión de <b>gustos</b> porque todas cumplen con la premisa fundamental de la <strong>seguridad</strong>.</p>
+                        <p>Para elegir la reja perfecta hay que fijarse en que la instalación que sea lo más favorable para cada caso. </p>
+                        <p>Se recomienda <b>con garras en el caso que la ubicación</b> se encuentre <b>en fase de obra y esté en bruto la fachada</b> faltándole el acabado a la fachada, simplemente porque coge <b>más fuerza el anclaje</b>, para todos los demás casos el <b>anclaje con tornillos especiales</b> es suficiente, siendo más <b>limpio y económico</b>.</p>
+                        {/* ------------------------------------------ */}
+                        <h3 className="h3-categories">¿Cómo Medir el Hueco para Rejas de Ventanas?</h3>
+                        <ul>
+                            <li><strong>Mide el ancho:</strong> Mide de un lado al otro del marco de la ventana, asegurándote de tomar la medida en varios puntos (arriba, en el centro y abajo). La <b>medida mas pequeña</b> es la que debes de coger para que encaje la reja. Además, como puede haber ligeras variaciones de milímetros, es muy aconsejable restarle medio centímetro para repartir en los laterales y asegurar que la reja va a encajar.</li>
+                            <li><strong>Mide la altura:</strong> Desde la base hasta la parte superior del marco de la ventana. Repite la medición en ambos lados. A esta altura a nosotros nos gusta restarle 2/3 centímetros para que quede hueco en la parte inferior para poder limpiar el vierteaguas y no se acumulen restos de polvo, hojas, etc. </li></ul>
+                        <p>Asegúrate de anotar todas las medidas y, si es posible, <Link to="contact" className="link-categories">consultárnos</Link> para evitar errores.</p>
+                        <p>Puede consultar un <Link to="/medir-hueco-rejas-para-ventanas" className="link-categories">artículo dedicado</Link> en nuestro blog</p>
+                        <p>
+                            Tomar medidas precisas es esencial para garantizar que las rejas se ajusten correctamente.
+                        </p>
+                        {/* ------------------------------------------ */}
+                        <h3 className="h3-categories">¿Cómo instalar rejas para ventanas?</h3>
+                        <p>La <strong>instalación de rejas para ventanas</strong> no solo garantiza la <strong>seguridad</strong> de tu hogar, sino que también puede mejorar su estética. </p>
+                        <p>Dependiendo del <b>tipo de instalación</b>, que nosotros diferenciamos en con obra o sin obra, se requerirá diferentes herramientas.</p>
+                        <p>Como la instalación con obra la suele realizar un albañil con mucha facilidad, nos centramos en la instalación sin obra en la que cualquiera lo puede hacer con pocas herramientas.</p>
+                        <p>Tenemos un artículo dedicado donde especificamos con más detalle este proceso pinchando en el siguiente enlace: <Link to="/instalation-rejas-para-ventanas" className="link-categories">Instalación de rejas para ventanas sin obra</Link>.</p>
                     </div>
                 </div>
             </div>

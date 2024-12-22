@@ -97,7 +97,7 @@ export const Product = ({ product }) => {
                 <Card className="px-2 my-3" style={{ width: 'auto' }}>
                     <Card.Img variant="top" src={product.imagen} />
                     <Card.Body>
-                        <h6 className="card-title">{product.nombre}</h6>
+                        <h3 className="card-title" style={{fontSize: '14px'}}>{product.nombre}</h3>
                         <p className="card-text-carrusel">
                             <span className="current-price">{product.precio} €/m²</span>
                         </p>

@@ -1,4 +1,4 @@
-.h1-profile{
+/*.h1-profile{
     font-family: "Anton", sans-serif;
     font-size: 2rem;
     font-weight: 200;
@@ -106,7 +106,7 @@
     font-style: italic;
     font-size: 1rem;
 }
- /* --- SIDEBAR */
+ --- SIDEBAR 
  li{
     list-style:none
  }
@@ -185,3 +185,4 @@ a[data-toggle="collapse"]{
         display: none; 
     }
 }
+*/

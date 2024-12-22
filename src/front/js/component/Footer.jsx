@@ -7,7 +7,7 @@ export const Footer = () => {
     <footer className="footer-style mt-auto bg-dark text-white">
       <div className="row footer-row">
         <div className="footer-box col-12 col-md-6 col-lg-6 col-xl-6">
-          <h5 className="footer-h5 mb-4 text-uppercase">Localización</h5>
+          <h2 className="footer-h5 mb-4 text-uppercase">Localización</h2>
           <p className="footer-p">
             <i className="fa-solid fa-location-dot"></i> Ofic. Calle Pedrera Alta 11. Ciudad Real, Castilla La Mancha, España
           </p>
@@ -35,15 +35,13 @@ export const Footer = () => {
           </p>
         </div>
         <div className="footer-box col-12 col-md-3 col-lg-3 col-xl-3">
-          <h5 className="footer-h5 mb-4 text-uppercase">Contácto</h5>
-          <p className="footer-p"><Link to="/contact" className="footer-p">Contácto</Link></p>
-          {/*<p className="footer-p"><Link to="/sobre-nosotros" className="footer-p">Sobre nosotros</Link></p>
-          <p className="footer-p"><Link to="/preguntas-frecuentes" className="footer-p">Preguntas frecuentes</Link></p>*/}
+          <h2 className="footer-h5 mb-4 text-uppercase">Contacto</h2>
+          <p className="footer-p"><Link to="/contact" className="footer-p">Contacto</Link></p>
           <p className="footer-p"><Link to="/cookies-esenciales" className="footer-p">Cookies esenciales</Link></p>
           <p className="footer-p"><Link to="/politica-cookies" className="footer-p">Política de cookies</Link></p>
         </div>
         <div className="footer-box col-12 col-md-3 col-lg-3 col-xl-3">
-          <h5 className="footer-h5 mb-4 text-uppercase">Área legal</h5>
+          <h2 className="footer-h5 mb-4 text-uppercase">Área legal</h2>
           <p className="footer-p"><Link to="/informacion-recogida" className="footer-p">Información recogida</Link></p>
           <p className="footer-p"><Link to="/cambios-politica-cookies" className="footer-p">Cambios en la política de cookies</Link></p>
           <p className="footer-p"><Link to="/politica-privacidad" className="footer-p">Política de privacidad</Link></p>

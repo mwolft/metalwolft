@@ -48,8 +48,8 @@ def home():
 @seo_bp.route('/api/seo/rejas-para-ventanas', methods=['GET'])
 def rejas_para_ventanas():
     meta_data = {
-        "title": "10 Modelos Exclusivos - Rejas para Ventanas",
-        "description": "Descubre nuestra amplia Colección de Rejas para Ventanas...",
+        "title": "Rejas para Ventanas Modernas al Mejor Precio",
+        "description": "Descubre rejas para ventanas modernas, abatibles y sin obra. Precios accesibles y modelos exclusivos en hierro y aluminio. ¡Pide tu catálogo hoy!",
         "keywords": "rejas para ventanas, rejas modernas, rejas rusticas...",
         "og_image": "https://res.cloudinary.com/dewanllxn/image/upload/v1733821800/rejas-para-ventanas_opusgz.png",
         "og_image_width": "400",

@@ -1,9 +1,69 @@
+.comparison-table table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 20px 0;
+    font-size: 16px;
+    text-align: left;
+  }
+  
+  .comparison-table th,
+  .comparison-table td {
+    border: 1px solid #ff324d;
+    padding: 12px;
+}
+
+.comparison-table th {
+    background-color: #ff324d;
+    text-align: center;
+    color: white;
+  }
+  
+  .comparison-table td img {
+    width: 100px;
+    height: auto;
+    display: block;
+    margin: 0 auto;
+  }
+  
+  .comparison-table ul {
+    margin: 0;
+    padding-left: 20px;
+    list-style: disc;
+  }
+  
 .post-page{
     padding: 20px;
 }
 .blog-text{
     color: rgb(90, 90, 90);
 }
+.hr-cart {
+    width: 100%;               
+    border: 1.5px solid #ff324d;
+    color: #3c3c3c;
+    opacity: 100; 
+    margin-top: 20px;
+  }
+.h2-categories{
+    background-color: #ff324d;
+    color: white;
+    margin-top: 50px;
+    padding: 15px;
+}
+.h3-categories{
+    color: #ff324d;
+    margin-top: 40px;
+}
+.link-categories{
+    font-weight: bold;
+    color: #ff324d;
+    text-decoration: none;
+}
+.link-categories:hover{
+    color: #ff324d;
+    text-decoration: none;
+}
+
 .h2-title-blog {
     font-size: 1rem;
     margin-top: 1rem;
