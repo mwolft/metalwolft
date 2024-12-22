@@ -239,8 +239,8 @@ export const RejasParaVentanas = ({ onSelectCategory, onSelectSubcategory, categ
                         {/* ------------------------------------------ */}
                         <h3 className="h3-categories">Rejas para ventanas sin obra</h3>
                         {/*<img className="img-fluid my-2" style={{ width: '100%', height: 'auto' }} src="https://res.cloudinary.com/dewanllxn/image/upload/v1733674435/rejas-para-ventanas-modernas-2023_ifvzpo.avif" alt="rejas para ventanas sencillas y bonitas" />*/}
-                        <p><strong>Las rejas para ventanas sin obra</strong> se fijan directamente en el marco de la ventana con <Link to="/" className="link-categories">tornillos especiales inviolables</Link>, diseñados para ofrecer una sujeción segura y resistente. Al no requerir intervención en los muros, el resultado es más <b>limpio</b>.</p>
-                        <p>La <Link to="/" className="link-categories">instalación de las rejas sin obra</Link> es rápida y sencilla, lo que permite reducir tanto los tiempos como los costes asociados.</p>
+                        <p><strong>Las rejas para ventanas sin obra</strong> se fijan directamente en el marco de la ventana con <Link to="https://todoanclajes.com/producto/tornillo-inviolable-torx-7-x-30/?gad_source=1&gclid=CjwKCAiAjp-7BhBZEiwAmh9rBX_pS1jYu9WcRXkLhOVUreLYelh3cFK1xX7rnxMQv4ru8xcZ-6YLmRoCnEsQAvD_BwE" className="link-categories">tornillos especiales inviolables</Link>, diseñados para ofrecer una sujeción segura y resistente. Al no requerir intervención en los muros, el resultado es más <b>limpio</b>.</p>
+                        <p>La <Link to="https://www.metalwolft.com/instalation-rejas-para-ventanas" className="link-categories">instalación de las rejas sin obra</Link> es rápida y sencilla, lo que permite reducir tanto los tiempos como los costes asociados.</p>
                         <p>Este tipo de reja las convierte en una opción ideal para quienes desean mantener intacto el acabado de la fachada.</p>
                         <p>Si deseas proteger tu hogar sin alterar la fachada, las <strong>rejas sin obra</strong> son la alternativa perfecta. Combina <b>seguridad y funcionalidad</b> y un diseño que se adapta a cualquier estilo de ventana.</p>
 
@@ -384,7 +384,7 @@ export const RejasParaVentanas = ({ onSelectCategory, onSelectSubcategory, categ
                         <h3 className="h3-categories">Consigue el precio exacto</h3>
                         <p>Para obtener un <strong>precio</strong> exacto de las rejas para tus ventanas, es importante proporcionar <b>medidas precisas</b> y detallar el tipo de <strong>instalación</strong> que necesitas. </p>
                         <p>En nuestro <strong>catálogo</strong> encontrará diversos diseños de reja donde podrá insertar las medidas, el tipo de instalación y el color y se calculará el <strong>precio</strong> <b>al instante</b>.</p>
-                        <p>Te recomendamos que, si tiene dudas, <Link to="contact" className="link-categories">contáctenos</Link> para que podamos asesorarle y ofrecerle toda la información necesaria.</p>
+                        <p>Te recomendamos que, si tiene dudas, <Link to="https://www.metalwolft.com/contact" className="link-categories">contáctenos</Link> para que podamos asesorarle y ofrecerle toda la información necesaria.</p>
                         {/* ------------------------------------------------------------------------------------------------------------------------ */}
                         <hr className="hr-categories" />
                         <h2 className="h2-categories">Instalación y consejos prácticos</h2>
@@ -398,8 +398,8 @@ export const RejasParaVentanas = ({ onSelectCategory, onSelectSubcategory, categ
                         <ul>
                             <li><strong>Mide el ancho:</strong> Mide de un lado al otro del marco de la ventana, asegurándote de tomar la medida en varios puntos (arriba, en el centro y abajo). La <b>medida mas pequeña</b> es la que debes de coger para que encaje la reja. Además, como puede haber ligeras variaciones de milímetros, es muy aconsejable restarle medio centímetro para repartir en los laterales y asegurar que la reja va a encajar.</li>
                             <li><strong>Mide la altura:</strong> Desde la base hasta la parte superior del marco de la ventana. Repite la medición en ambos lados. A esta altura a nosotros nos gusta restarle 2/3 centímetros para que quede hueco en la parte inferior para poder limpiar el vierteaguas y no se acumulen restos de polvo, hojas, etc. </li></ul>
-                        <p>Asegúrate de anotar todas las medidas y, si es posible, <Link to="contact" className="link-categories">consultárnos</Link> para evitar errores.</p>
-                        <p>Puede consultar un <Link to="/medir-hueco-rejas-para-ventanas" className="link-categories">artículo dedicado</Link> en nuestro blog</p>
+                        <p>Asegúrate de anotar todas las medidas y, si es posible, <Link to="https://www.metalwolft.com/contact" className="link-categories">consultárnos</Link> para evitar errores.</p>
+                        <p>Puede consultar un <Link to="https://www.metalwolft.com/medir-hueco-rejas-para-ventanas" className="link-categories">artículo dedicado</Link> en nuestro blog</p>
                         <p>
                             Tomar medidas precisas es esencial para garantizar que las rejas se ajusten correctamente.
                         </p>
@@ -408,7 +408,7 @@ export const RejasParaVentanas = ({ onSelectCategory, onSelectSubcategory, categ
                         <p>La <strong>instalación de rejas para ventanas</strong> no solo garantiza la <strong>seguridad</strong> de tu hogar, sino que también puede mejorar su estética. </p>
                         <p>Dependiendo del <b>tipo de instalación</b>, que nosotros diferenciamos en con obra o sin obra, se requerirá diferentes herramientas.</p>
                         <p>Como la instalación con obra la suele realizar un albañil con mucha facilidad, nos centramos en la instalación sin obra en la que cualquiera lo puede hacer con pocas herramientas.</p>
-                        <p>Tenemos un artículo dedicado donde especificamos con más detalle este proceso pinchando en el siguiente enlace: <Link to="/instalation-rejas-para-ventanas" className="link-categories">Instalación de rejas para ventanas sin obra</Link>.</p>
+                        <p>Tenemos un artículo dedicado donde especificamos con más detalle este proceso pinchando en el siguiente enlace: <Link to="https://www.metalwolft.com/instalation-rejas-para-ventanas" className="link-categories">Instalación de rejas para ventanas sin obra</Link>.</p>
                     </div>
                 </div>
             </div>
