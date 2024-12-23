@@ -111,6 +111,15 @@ export const RejasParaVentanas = ({ onSelectCategory, onSelectSubcategory, categ
                 {/* Canonical */}
                 <link rel="canonical" href={metaData.canonical} />
 
+                {store.products && store.products.length > 0 && (
+                    <link
+                        rel="preload"
+                        as="image"
+                        href={store.products[0].imagen} // Cambia esto si la imagen principal está en otra posición
+                    />
+                )}
+
+
                 {/* JSON-LD Schema */}
                 {metaData.json_ld && (
                     <script type="application/ld+json">

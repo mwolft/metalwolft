@@ -12,6 +12,7 @@ import { Notification } from "./Notification.jsx";
 import OverlayTrigger from 'react-bootstrap/OverlayTrigger';
 import Popover from 'react-bootstrap/Popover';
 import AlbanyImg from '../../img/rejas-para-ventanas-sin-obra.png'
+import { Helmet } from "react-helmet";
 
 export const Product = ({ product }) => {
     const [showModal, setShowModal] = useState(false);
@@ -94,10 +95,19 @@ export const Product = ({ product }) => {
     return (
         <>
             <div className="col">
-                <Card className="px-2 my-3" style={{ width: 'auto' }}>
-                    <Card.Img variant="top" src={product.imagen} />
+                <Card className="px-2 my-3">
+                    <div style={{ width: "100%", height: "auto", overflow: "hidden" }}>
+                        <Card.Img
+                            variant="top"
+                            src={product.imagen}
+                            alt={product.nombre}
+                            className="img-fluid"
+                            style={{ objectFit: "cover", maxHeight: "600px" }}
+                            loading="lazy"
+                        />
+                    </div>
                     <Card.Body>
-                        <h3 className="card-title" style={{fontSize: '14px'}}>{product.nombre}</h3>
+                        <h3 className="card-title" style={{ fontSize: '14px' }}>{product.nombre}</h3>
                         <p className="card-text-carrusel">
                             <span className="current-price">{product.precio} €/m²</span>
                         </p>
@@ -124,13 +134,25 @@ export const Product = ({ product }) => {
                 <Modal.Body>
                     <div className="row">
                         <div className="col-lg-6 col-md-6 mb-4 mb-md-0">
+                            {allImages.slice(0, 1).map((image, index) => (
+                                <Helmet key={index}>
+                                    <link
+                                        rel="preload"
+                                        as="image"
+                                        href={image.image_url}
+                                    />
+                                </Helmet>
+                            ))}
                             <Carousel activeIndex={currentIndex} onSelect={handleSelect}>
                                 {allImages.map((image, index) => (
                                     <Carousel.Item key={index}>
                                         <img
                                             src={image.image_url}
-                                            alt={`Producto ${index + 1}`}
+                                            alt={`${product.nombre}`} 
                                             className="d-block w-100 img-fluid"
+                                            loading={index === 0 ? "eager" : "lazy"}
+                                            width="540"
+                                            height="600"
                                         />
                                     </Carousel.Item>
                                 ))}
@@ -140,9 +162,9 @@ export const Product = ({ product }) => {
                                     <img
                                         key={index}
                                         src={image.image_url}
-                                        alt={`Producto Miniatura ${index + 1}`}
+                                        alt={`${product.nombre}`} 
                                         className={`img-thumbnail mx-1 ${currentIndex === index ? 'active-thumbnail' : ''}`}
-                                        style={{ width: '80px', height: '80px', cursor: 'pointer' }}
+                                        style={{ width: '72px', height: '80px', cursor: 'pointer' }}
                                         onClick={() => handleSelect(index)}
                                     />
                                 ))}
@@ -185,15 +207,15 @@ export const Product = ({ product }) => {
                                                             Tornillos Inviolables.
                                                         </p>
                                                         <img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSWeCVUg3hSyUQj2YKAzXEAScWZ170dqvQ_mQ&s"
-                                                                style={{ width: '70px', height: 'auto', marginBottom: '10px', marginTop: '5px'}}
-                                                                alt="rejas para ventanas sin obra" />
+                                                            style={{ width: '70px', height: 'auto', marginBottom: '10px', marginTop: '5px'}}
+                                                            alt="rejas para ventanas sin obra" />
                                                         <p className='p-popover'>
                                                             <span style={{ textDecoration: 'underline', fontWeight: 'bold' }}>Con obra: </span>
                                                             Anclaje con garras.
                                                         </p>
-                                                            <img src={AlbanyImg}
-                                                                style={{ width: '110px', height: 'auto', marginBottom: '10px', marginTop: '5px'}}
-                                                                alt="rejas para ventanas con obra" />
+                                                        <img src={AlbanyImg}
+                                                            style={{ width: '110px', height: 'auto', marginBottom: '10px', marginTop: '5px'}}
+                                                            alt="rejas para ventanas con obra" />
                                                     </Popover.Body>
                                                 </Popover>
                                             }
