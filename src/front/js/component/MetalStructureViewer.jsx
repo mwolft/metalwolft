@@ -32,7 +32,7 @@ const MetalStructure = () => {
 };
 
 const MetalStructureViewer = () => (
-  <div style={{ position: 'relative', width: '100%', height: '500px' }}>
+  <div style={{ position: 'relative', width: '100%', height: '400px' }}>
     {/* Imagen de 360 grados */}
     <img
       src="https://cdn-icons-png.flaticon.com/512/1758/1758455.png" // Reemplaza con tu URL de imagen
@@ -48,11 +48,11 @@ const MetalStructureViewer = () => (
     />
     {/* Visor 3D */}
     <Canvas
-      style={{ height: '500px', width: '100%' }}
+      style={{ height: '400px', width: '100%' }}
       camera={{ position: [3, 1, 6] }} // Ajusta la cámara según tus necesidades
     >
-      <ambientLight intensity={0.5} />
-      <directionalLight position={[2, 5, 2]} intensity={1} />
+      <ambientLight intensity={1} />
+      <directionalLight position={[2, 5, 2]} intensity={2} />
       <MetalStructure />
       <OrbitControls />
     </Canvas>

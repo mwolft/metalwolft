@@ -146,7 +146,7 @@ export const RejasParaVentanas = ({ onSelectCategory, onSelectSubcategory, categ
                     </div>
                     <div className="col-12 col-lg-9 col-xl-9 order-2 p-3">
                         {/* ------------------------------------------------------------------------------------------------------------------------ */}
-                        <h2 className="h2-categories">Rejas para ventanas</h2>
+                        <h2 className="h2-categories mb-3">Rejas para ventanas</h2>
                         <p>
                             Las <strong>rejas para ventanas</strong> son elementos esenciales para la protección en cualquier hogar.</p>
                         <p>Además de funcionar como una barrera efectiva ante intrusiones, las rejas permiten disfrutar de la <b>ventilación</b> e <b>iluminación natural</b> sin comprometer la tranquilidad y el bienestar.</p>
@@ -158,7 +158,7 @@ export const RejasParaVentanas = ({ onSelectCategory, onSelectSubcategory, categ
                             En nuestro catálogo exclusivo online podrás calcular el <strong>precio</strong> al instante.
                         </p>
                         <p>¡Aprovécha de los <strong>envíos gratuitos</strong> directos de fábrica!</p>
-                        <h2 className="h2-categories">Catálogo de rejas para ventanas</h2>
+                        <h2 className="h2-categories mt-5">Catálogo de rejas para ventanas</h2>
                         <div className="row">
                             {store.products && store.products.length > 0 ? (
                                 store.products.map((product, index) => (
@@ -373,8 +373,8 @@ export const RejasParaVentanas = ({ onSelectCategory, onSelectSubcategory, categ
                         <p>Aportan un encanto histórico y una elegancia atemporal a cualquier edificación. Estas piezas, a menudo elaboradas en <b>hierro forjado</b>, reflejan la artesanía de épocas pasadas y son ideales para quienes buscan un estilo clásico en sus ventanas o puertas.</p>
 
                         {/* ------------------------------------------------------------------------------------------------------------------------ */}
-                        <hr className="hr-categories" />
-                        <h2 className="h2-categories">Precios de rejas para ventanas</h2>
+                        <hr className="hr-categories mt-5" />
+                        <h2 className="h2-categories my-3">Precios de rejas para ventanas</h2>
                         <p>El <strong>precio de las rejas para ventanas</strong> puede variar considerablemente dependiendo de diversos factores, como el <b>material utilizado, el tipo de diseño, las dimensiones de la ventana y el método de instalación</b> requerido.</p>
                         <p>Los materiales más comunes, como el hierro, el aluminio y el acero inoxidable, tienen precios diferentes. El <b>hierro suele ser la opción más económica</b>, mientras que el acero inoxidable es una de las más costosas debido a su alta resistencia y durabilidad.</p>
                         <p>También influye el <b>nivel de personalización</b>. Las rejas estándar suelen ser más económicas, mientras que las rejas con <b>diseños ornamentales o personalizados tienden a incrementar su coste</b>.</p>
@@ -398,8 +398,8 @@ export const RejasParaVentanas = ({ onSelectCategory, onSelectSubcategory, categ
                         <p>En nuestro <strong>catálogo</strong> encontrará diversos diseños de reja donde podrá insertar las medidas, el tipo de instalación y el color y se calculará el <strong>precio</strong> <b>al instante</b>.</p>
                         <p>Te recomendamos que, si tiene dudas, <Link to="https://www.metalwolft.com/contact" className="link-categories">contáctenos</Link> para que podamos asesorarle y ofrecerle toda la información necesaria.</p>
                         {/* ------------------------------------------------------------------------------------------------------------------------ */}
-                        <hr className="hr-categories" />
-                        <h2 className="h2-categories">Instalación y consejos prácticos</h2>
+                        <hr className="hr-categories mt-5" />
+                        <h2 className="h2-categories my-3">Instalación y consejos prácticos</h2>
                         {/* ------------------------------------------ */}
                         <h3 className="h3-categories">¿Cómo elegir la reja perfecta para tu ventana?</h3>
                         <p>En cuanto a estética y estilo es cuestión de <b>gustos</b> porque todas cumplen con la premisa fundamental de la <strong>seguridad</strong>.</p>
@@ -421,6 +421,22 @@ export const RejasParaVentanas = ({ onSelectCategory, onSelectSubcategory, categ
                         <p>Dependiendo del <b>tipo de instalación</b>, que nosotros diferenciamos en con obra o sin obra, se requerirá diferentes herramientas.</p>
                         <p>Como la instalación con obra la suele realizar un albañil con mucha facilidad, nos centramos en la instalación sin obra en la que cualquiera lo puede hacer con pocas herramientas.</p>
                         <p>Tenemos un artículo dedicado donde especificamos con más detalle este proceso pinchando en el siguiente enlace: <Link to="https://www.metalwolft.com/instalation-rejas-para-ventanas" className="link-categories">Instalación de rejas para ventanas sin obra</Link>.</p>
+                        <div style={{ position: "relative", paddingBottom: "56.25%", height: 0, overflow: "hidden", maxWidth: "100%" }}>
+                            <iframe
+                                src="https://www.youtube.com/embed/oTexCiDJTfA"
+                                title="Instalación de rejas para ventanas"
+                                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                allowFullScreen
+                                style={{
+                                    position: "absolute",
+                                    top: 0,
+                                    left: 0,
+                                    width: "100%",
+                                    height: "100%",
+                                    border: "none",
+                                }}
+                            />
+                        </div>
                     </div>
                 </div>
             </div>
