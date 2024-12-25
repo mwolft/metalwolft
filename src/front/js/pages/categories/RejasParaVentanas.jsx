@@ -8,6 +8,7 @@ import { AsideOthersCategories } from "../../component/AsideOthersCategories.jsx
 import { AsidePost } from "../../component/AsidePost.jsx";
 import { Context } from "../../store/appContext.js";
 import "../../../styles/categories-pages.css";
+import MetalStructureViewer from '../../component/MetalStructureViewer.jsx';
 
 export const RejasParaVentanas = ({ onSelectCategory, onSelectSubcategory, categoryId }) => {
     const { store, actions } = useContext(Context);
@@ -130,7 +131,7 @@ export const RejasParaVentanas = ({ onSelectCategory, onSelectSubcategory, categ
             <Breadcrumb />
             <div className="container">
                 <div className="row">
-                    <div className="col-12 col-lg-3 col-xl-3 order-1 p-3">
+                    <div className="col-12 col-lg-3 col-xl-3 order-1">
                         <div className="d-none d-lg-block">
                             <AsideCategories
                                 onSelectCategory={handleCategorySelect}
@@ -145,9 +146,11 @@ export const RejasParaVentanas = ({ onSelectCategory, onSelectSubcategory, categ
                     </div>
                     <div className="col-12 col-lg-9 col-xl-9 order-2 p-3">
                         {/* ------------------------------------------------------------------------------------------------------------------------ */}
+                        <h2 className="h2-categories">Rejas para ventanas</h2>
                         <p>
                             Las <strong>rejas para ventanas</strong> son elementos esenciales para la protección en cualquier hogar.</p>
                         <p>Además de funcionar como una barrera efectiva ante intrusiones, las rejas permiten disfrutar de la <b>ventilación</b> e <b>iluminación natural</b> sin comprometer la tranquilidad y el bienestar.</p>
+                        <MetalStructureViewer />
                         <p>
                             En este sitio encontrarás información completa sobre los diferentes <b>tipos</b>, <b>estilos</b> y <b>precios</b> de rejas para ventanas. Nuestro objetivo es ayudarte a elegir la opción más adecuada, teniendo en cuenta tanto la <b>funcionalidad</b> como la <b>estética</b>.
                         </p>
