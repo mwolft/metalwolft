@@ -9,6 +9,7 @@ import { AsidePost } from "../../component/AsidePost.jsx";
 import { Context } from "../../store/appContext.js";
 import "../../../styles/categories-pages.css";
 import MetalStructureViewer from '../../component/MetalStructureViewer.jsx';
+import LazyLoad from "react-lazyload";
 
 export const RejasParaVentanas = ({ onSelectCategory, onSelectSubcategory, categoryId }) => {
     const { store, actions } = useContext(Context);
@@ -421,22 +422,6 @@ export const RejasParaVentanas = ({ onSelectCategory, onSelectSubcategory, categ
                         <p>Dependiendo del <b>tipo de instalación</b>, que nosotros diferenciamos en con obra o sin obra, se requerirá diferentes herramientas.</p>
                         <p>Como la instalación con obra la suele realizar un albañil con mucha facilidad, nos centramos en la instalación sin obra en la que cualquiera lo puede hacer con pocas herramientas.</p>
                         <p>Tenemos un artículo dedicado donde especificamos con más detalle este proceso pinchando en el siguiente enlace: <Link to="https://www.metalwolft.com/instalation-rejas-para-ventanas" className="link-categories">Instalación de rejas para ventanas sin obra</Link>.</p>
-                        <div style={{ position: "relative", paddingBottom: "56.25%", height: 0, overflow: "hidden", maxWidth: "100%" }}>
-                            <iframe
-                                src="https://www.youtube.com/embed/oTexCiDJTfA"
-                                title="Instalación de rejas para ventanas"
-                                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                                allowFullScreen
-                                style={{
-                                    position: "absolute",
-                                    top: 0,
-                                    left: 0,
-                                    width: "100%",
-                                    height: "100%",
-                                    border: "none",
-                                }}
-                            />
-                        </div>
                     </div>
                 </div>
             </div>
