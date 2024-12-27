@@ -151,7 +151,7 @@ export const RejasParaVentanas = ({ onSelectCategory, onSelectSubcategory, categ
                         <p>
                             Las <strong>rejas para ventanas</strong> son elementos esenciales para la protección en cualquier hogar.</p>
                         <p>Además de funcionar como una barrera efectiva ante intrusiones, las rejas permiten disfrutar de la <b>ventilación</b> e <b>iluminación natural</b> sin comprometer la tranquilidad y el bienestar.</p>
-                        <MetalStructureViewer />
+                        
                         <p>
                             En este sitio encontrarás información completa sobre los diferentes <b>tipos</b>, <b>estilos</b> y <b>precios</b> de rejas para ventanas. Nuestro objetivo es ayudarte a elegir la opción más adecuada, teniendo en cuenta tanto la <b>funcionalidad</b> como la <b>estética</b>.
                         </p>
@@ -159,6 +159,7 @@ export const RejasParaVentanas = ({ onSelectCategory, onSelectSubcategory, categ
                             En nuestro catálogo exclusivo online podrás calcular el <strong>precio</strong> al instante.
                         </p>
                         <p>¡Aprovécha de los <strong>envíos gratuitos</strong> directos de fábrica!</p>
+                        <MetalStructureViewer />
                         <h2 className="h2-categories mt-5">Catálogo de rejas para ventanas</h2>
                         <div className="row">
                             {store.products && store.products.length > 0 ? (
