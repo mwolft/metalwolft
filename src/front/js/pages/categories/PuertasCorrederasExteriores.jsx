@@ -76,9 +76,10 @@ export const PuertasCorrederasExteriores = () => {
                     </script>
                 )}
             </Helmet>
-            <Breadcrumb />
-            <div className="container">
+            {/*<Breadcrumb />*/}
+            <div className="container" style={{ marginTop: "100px" }}>
                 <div className="row">
+                <h1 className="h2-categories mb-3">Puertas Correderas Exteriores</h1>
                     <div className="col-12 col-lg-3 col-xl-3 order-1">
                         <AsideCategories
                             onSelectCategory={handleCategorySelect}

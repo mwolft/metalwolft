@@ -129,11 +129,14 @@ export const RejasParaVentanas = ({ onSelectCategory, onSelectSubcategory, categ
                     </script>
                 )}
             </Helmet>
-            <Breadcrumb />
-            <div className="container">
+            {/*<Breadcrumb />*/}
+            <div className="container" style={{ marginTop: "80px" }}>
                 <div className="row">
+                        <h1 className="h2-categories mb-4">Rejas para ventanas</h1>
+                        <p>Las <strong>rejas para ventanas</strong> son elementos esenciales para la protección en cualquier hogar. En este sitio encontrarás información completa sobre los diferentes <b>tipos, estilos y precios</b> de rejas para ventanas. Nuestro objetivo es ayudarte a elegir la opción más adecuada, teniendo en cuenta tanto la <b>funcionalidad</b> como la <b>estética</b>.</p>
+                        <p>Consigue el precio al instante y ¡Aprovécha de los <strong>ENVÍOS GRATUÍTOS</strong> directos de fábrica!</p>
                     <div className="col-12 col-lg-3 col-xl-3 order-1">
-                        <div className="d-none d-lg-block">
+                        <div className="col-12 d-block d-lg-none order-1">
                             <AsideCategories
                                 onSelectCategory={handleCategorySelect}
                                 onSelectSubcategory={handleSubcategorySelect}
@@ -147,20 +150,8 @@ export const RejasParaVentanas = ({ onSelectCategory, onSelectSubcategory, categ
                     </div>
                     <div className="col-12 col-lg-9 col-xl-9 order-2 p-3">
                         {/* ------------------------------------------------------------------------------------------------------------------------ */}
-                        <h2 className="h2-categories mb-3">Rejas para ventanas</h2>
-                        <p>
-                            Las <strong>rejas para ventanas</strong> son elementos esenciales para la protección en cualquier hogar.</p>
-                        <p>Además de funcionar como una barrera efectiva ante intrusiones, las rejas permiten disfrutar de la <b>ventilación</b> e <b>iluminación natural</b> sin comprometer la tranquilidad y el bienestar.</p>
-                        
-                        <p>
-                            En este sitio encontrarás información completa sobre los diferentes <b>tipos, estilos y precios</b> de rejas para ventanas. Nuestro objetivo es ayudarte a elegir la opción más adecuada, teniendo en cuenta tanto la <b>funcionalidad</b> como la <b>estética</b>.
-                        </p>
-                        <p>
-                            En nuestro catálogo exclusivo online podrás calcular el <strong>precio</strong> al instante.
-                        </p>
-                        <p>¡Aprovécha de los <strong>envíos gratuitos</strong> directos de fábrica!</p>
-                        <MetalStructureViewer />
-                        <h2 className="h2-categories mt-5">Catálogo de rejas para ventanas</h2>
+                        {/*<MetalStructureViewer />*/}
+                        <h2 className="h2-categories">Catálogo de rejas para ventanas</h2>
                         <div className="row">
                             {store.products && store.products.length > 0 ? (
                                 store.products.map((product, index) => (
@@ -258,6 +249,13 @@ export const RejasParaVentanas = ({ onSelectCategory, onSelectSubcategory, categ
                         <p>Este tipo de reja las convierte en una opción ideal para quienes desean mantener intacto el acabado de la fachada.</p>
                         <p>Si deseas proteger tu hogar sin alterar la fachada, las <strong>rejas sin obra</strong> son la alternativa perfecta. Combina <b>seguridad y funcionalidad</b> y un diseño que se adapta a cualquier estilo de ventana.</p>
 
+
+
+                        {/* ------------------------------------------ */}
+                        <h3 className="h3-categories">Rejas para ventanas con obra</h3>
+                        <p>Las <strong>rejas para ventanas con obra</strong> son una opción perfecta para proyectos en los que <b>la fachada aún no tiene su acabado final</b>, como durante reformas o construcciones en curso.</p>
+                        <p>A diferencia de las rejas sin obra, estas <b>no utilizan tornillos especiales</b>. En su lugar, están diseñadas con <b>garras de hierro soldadas</b> al lateral del bastidor de la reja. </p>
+                        <p>Estas garras <b>se fijan directamente al muro</b> de la fachada mediante una mezcla de cemento, creando una unión resistente y permanente.</p>
                         <div className="comparison-table">
                             <table>
                                 <thead>
@@ -352,13 +350,6 @@ export const RejasParaVentanas = ({ onSelectCategory, onSelectSubcategory, categ
                                 </tbody>
                             </table>
                         </div>
-
-
-                        {/* ------------------------------------------ */}
-                        <h3 className="h3-categories">Rejas para ventanas con obra</h3>
-                        <p>Las <strong>rejas para ventanas con obra</strong> son una opción perfecta para proyectos en los que <b>la fachada aún no tiene su acabado final</b>, como durante reformas o construcciones en curso.</p>
-                        <p>A diferencia de las rejas sin obra, estas <b>no utilizan tornillos especiales</b>. En su lugar, están diseñadas con <b>garras de hierro soldadas</b> al lateral del bastidor de la reja. </p>
-                        <p>Estas garras <b>se fijan directamente al muro</b> de la fachada mediante una mezcla de cemento, creando una unión resistente y permanente.</p>
                         {/* ------------------------------------------ */}
                         <h3 className="h3-categories">Rejas abatibles para ventanas</h3>
                         <p>Las <strong>rejas abatibles para ventanas</strong> son la solución perfecta para quienes buscan <b>seguridad y comodidad en su hogar</b>.</p>

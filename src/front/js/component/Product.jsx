@@ -28,6 +28,8 @@ export const Product = ({ product }) => {
     const handleShow = () => setShowModal(true);
     const handleClose = () => setShowModal(false);
 
+    const [isHovered, setIsHovered] = useState(false);
+
     const handleSelect = (selectedIndex) => {
         setCurrentIndex(selectedIndex);
     };
@@ -96,18 +98,64 @@ export const Product = ({ product }) => {
         <>
             <div className="col">
                 <Card className="px-2 my-3">
-                    <div style={{ width: "100%", height: "auto", overflow: "hidden" }}>
+                    <div
+                        style={{
+                            position: "relative",
+                            width: "100%",
+                            height: "auto",
+                            overflow: "hidden",
+                            cursor: "pointer",
+                        }}
+                        onClick={handleShow}
+                        onMouseEnter={() => setIsHovered(true)}
+                        onMouseLeave={() => setIsHovered(false)}
+                    >
                         <Card.Img
                             variant="top"
                             src={product.imagen}
                             alt={product.nombre}
                             className="img-fluid"
-                            style={{ objectFit: "cover", maxHeight: "600px" }}
+                            style={{
+                                objectFit: "cover",
+                                maxHeight: "600px",
+                                transition: "transform 0.3s ease-in-out",
+                                transform: isHovered ? "scale(1.1)" : "scale(1)",
+                                filter: isHovered ? "brightness(50%)" : "brightness(100%)",
+                            }}
                             loading="lazy"
                         />
+                        <div
+                            style={{
+                                position: "absolute",
+                                top: "0",
+                                left: "0",
+                                width: "100%",
+                                height: "100%",
+                                display: "flex",
+                                justifyContent: "center",
+                                alignItems: "center",
+                                backgroundColor: "rgba(0, 0, 0, 0.05)",
+                                opacity: isHovered ? "1" : "0",
+                                transition: "opacity 0.3s ease-in-out",
+                            }}
+                        >
+                            <i
+                                className="fa-solid fa-magnifying-glass-plus"
+                                style={{
+                                    color: "white",
+                                    fontSize: "2rem",
+                                }}
+                            ></i>
+                        </div>
                     </div>
                     <Card.Body>
-                        <h3 className="card-title" style={{ fontSize: '14px' }}>{product.nombre}</h3>
+                        <h3
+                            className="card-title"
+                            style={{ fontSize: '14px', cursor: 'pointer' }}
+                            onClick={handleShow}
+                        >
+                            {product.nombre}
+                        </h3>
                         <p className="card-text-carrusel">
                             <span className="current-price">{product.precio} €/m²</span>
                         </p>
@@ -148,7 +196,7 @@ export const Product = ({ product }) => {
                                     <Carousel.Item key={index}>
                                         <img
                                             src={image.image_url}
-                                            alt={`${product.nombre}`} 
+                                            alt={`${product.nombre}`}
                                             className="d-block w-100 img-fluid"
                                             loading={index === 0 ? "eager" : "lazy"}
                                             width="540"
@@ -162,7 +210,7 @@ export const Product = ({ product }) => {
                                     <img
                                         key={index}
                                         src={image.image_url}
-                                        alt={`${product.nombre}`} 
+                                        alt={`${product.nombre}`}
                                         className={`img-thumbnail mx-1 ${currentIndex === index ? 'active-thumbnail' : ''}`}
                                         style={{ width: '72px', height: '80px', cursor: 'pointer' }}
                                         onClick={() => handleSelect(index)}
@@ -207,14 +255,14 @@ export const Product = ({ product }) => {
                                                             Tornillos Inviolables.
                                                         </p>
                                                         <img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSWeCVUg3hSyUQj2YKAzXEAScWZ170dqvQ_mQ&s"
-                                                            style={{ width: '70px', height: 'auto', marginBottom: '10px', marginTop: '5px'}}
+                                                            style={{ width: '70px', height: 'auto', marginBottom: '10px', marginTop: '5px' }}
                                                             alt="rejas para ventanas sin obra" />
                                                         <p className='p-popover'>
                                                             <span style={{ textDecoration: 'underline', fontWeight: 'bold' }}>Con obra: </span>
                                                             Anclaje con garras.
                                                         </p>
                                                         <img src={AlbanyImg}
-                                                            style={{ width: '110px', height: 'auto', marginBottom: '10px', marginTop: '5px'}}
+                                                            style={{ width: '110px', height: 'auto', marginBottom: '10px', marginTop: '5px' }}
                                                             alt="rejas para ventanas con obra" />
                                                     </Popover.Body>
                                                 </Popover>
