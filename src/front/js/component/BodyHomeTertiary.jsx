@@ -5,6 +5,8 @@ export const BodyHomeTertiary = () => {
     return (
         <div className="container home-info">
             <div className="row d-flex justify-content-center">
+                <h2>Contacto</h2>
+                <hr className="hr-cart"></hr>
                 <div className="pt-4 px-4 col-12 col-sm-12 col-md-6 col-lg-4 col-xl-4">
                     <div className="home-info-card d-flex flex-column justify-content-center align-items-center">
                         <div className="bg-info-icon">

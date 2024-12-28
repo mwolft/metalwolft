@@ -22,7 +22,7 @@ export const Carrusel = () => {
                     <h6 className="h6-carrusel">Vallados Metálicos</h6>
                     <p className="p-carrusel">Explora nuestra selección de vallas metálicas diseñadas para combinar seguridad y elegancia en tu hogar. Encuentra el estilo perfecto para ti.</p>
                     <div className="my-5">
-                        <Button className="btn-style" onClick={() => handleNavigate('/vallados-metalicos-exteriores')}>
+                        <Button className="btn-style-background-color" onClick={() => handleNavigate('/vallados-metalicos-exteriores')}>
                             Explorar
                         </Button>
                     </div>
@@ -33,9 +33,10 @@ export const Carrusel = () => {
                 <Carousel.Caption>
                     <p className="p-carrusel">Diseños exclusivos</p>
                     <h6 className="h6-carrusel">Rejas para Ventanas</h6>
+                    <p className="p-carrusel">Descubre nuestras rejas para ventanas fabricadas con calidad y diseño a medida. Envíos rápidos a toda España. ¡Consulta nuestro catálogo hoy!</p>
                     <div className="my-5">
-                        <Button className="btn-style" onClick={() => handleNavigate('/rejas-para-ventanas')}>
-                            Ir a categoría
+                        <Button className="btn-style-background-color" onClick={() => handleNavigate('/rejas-para-ventanas')}>
+                            Ir al catálogo
                         </Button>
                     </div>
                 </Carousel.Caption>
@@ -43,10 +44,11 @@ export const Carrusel = () => {
             <Carousel.Item>
                 <div className="carrusel-background" style={{ backgroundImage: `url(${correderasCarrusel})` }} />
                 <Carousel.Caption>
-                    <p className="p-carrusel">Consigue descuentos!</p>
+                    <p className="p-carrusel">Aprovecha nuestras ofertas especiales</p>
                     <h6 className="h6-carrusel">Puertas Correderas Exteriores</h6>
+                    <p className="p-carrusel">Diseño moderno y funcionalidad excepcional. Descubre nuestras puertas correderas exteriores con envío a toda España. ¡Consúltanos para más detalles!</p>
                     <div className="my-5">
-                        <Button className="btn-style" onClick={() => handleNavigate('/puertas-correderas-exteriores')}>
+                        <Button className="btn-style-background-color" onClick={() => handleNavigate('/puertas-correderas-exteriores')}>
                             Ver catálogo
                         </Button>
                     </div>

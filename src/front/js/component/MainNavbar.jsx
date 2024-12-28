@@ -37,7 +37,7 @@ export const MainNavbar = () => {
                 <Navbar.Brand as={Link} to="/" onClick={handleSelect}>
                     <img src={logoweb} alt="Logo" className="d-inline-block align-top" />
                 </Navbar.Brand>
-                <div className="d-flex align-items-center">
+                <div className="d-flex align-items-center justify-content-center">
                     <Nav.Link onClick={handleFavoritesClick} className="d-flex align-items-center position-relative d-lg-none">
                         <i className="fa-regular fa-heart fa-lg"></i>
                         {store.isLoged && (
@@ -70,7 +70,7 @@ export const MainNavbar = () => {
                     <Navbar.Toggle aria-controls="basic-navbar-nav" onClick={handleToggle} />
                 </div>
                 <Navbar.Collapse id="basic-navbar-nav">
-                    <Nav className="me-auto" onSelect={handleSelect}>
+                    <Nav className="m-auto" onSelect={handleSelect}>
                         <Nav.Link as={Link} to="/" onClick={handleSelect}>Inicio</Nav.Link>
                         <NavDropdown title="Productos" id="trainer-nav-dropdown">
                             <NavDropdown.Item as={Link} to="/rejas-para-ventanas" onClick={handleSelect}>Rejas para Ventanas</NavDropdown.Item>
@@ -81,7 +81,6 @@ export const MainNavbar = () => {
                             <NavDropdown.Item as={Link} to="/puertas-correderas-interiores" onClick={handleSelect}>Puertas Correderas Interiores</NavDropdown.Item>
                         </NavDropdown>
                         <Nav.Link as={Link} to="/blogs" onClick={handleSelect}>Blog</Nav.Link>
-                        <Nav.Link as={Link} to="/contact" onClick={handleSelect}>Contácto</Nav.Link>
                         {store.isLoged && store.currentUser?.is_admin && (
                             <Nav.Link as={Link} to="/admin" onClick={handleSelect} className="d-lg-none" style={{marginLeft: '1.3rem', border: 'solid 2px #ff324d', borderRadius: '10px'}}>
                                <i className="fa-solid fa-toolbox"></i> Admin

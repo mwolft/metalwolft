@@ -8,6 +8,7 @@ import { BodyHomeSecondary } from "../component/BodyHomeSecondary.jsx";
 import { useNavigate } from "react-router-dom";
 import { BodyHomeTertiary } from "../component/BodyHomeTertiary.jsx";
 import { BodyHomeQuarter } from "../component/BodyHomeQuarter.jsx";
+import { Contact } from "./Contact.jsx";
 // import { CardsCarrusel } from "../component/CardsCarrusel.jsx";
 
 export const Home = () => {
@@ -99,10 +100,10 @@ export const Home = () => {
                 <BodyHomeSecondary />
             </section>
             <section className="section">
-                <BodyHomeTertiary />
+                <BodyHomeQuarter />
             </section>
             <section className="section">
-                <BodyHomeQuarter />
+                <Contact />
             </section>
             {/*<section className="section">
                 <CardsCarrusel />

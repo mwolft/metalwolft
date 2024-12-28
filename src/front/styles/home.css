@@ -59,7 +59,7 @@ body {
 .card-img-overlay{
     background-color: rgba(74, 74, 74, 0.55);
     ;
-    width: 55%;
+    width: fit-content;
     height: 70%;
 }
 /* -----END SECONDARYNHOME ----- */

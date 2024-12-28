@@ -44,12 +44,10 @@ export const Contact = () => {
 
     return (
         <>
-            <Breadcrumb />
             <BodyHomeTertiary />
             <div className="container">
                 <div className="row" style={{ marginBottom: '50px' }}>
                     <div className="col-12 col-lg-6">
-                        <h2>Contáctanos</h2>
                         <p>Estamos listos para resolver tus dudas y atender tus necesidades. Si buscas más información sobre nuestros productos metálicos, deseas un presupuesto o simplemente quieres saludarnos, utiliza nuestro formulario de contacto.</p>
                         <p>Te responderemos rápidamente para ofrecerte la mejor solución en productos metálicos personalizados.</p>
                         <Form onSubmit={handleSubmit}>

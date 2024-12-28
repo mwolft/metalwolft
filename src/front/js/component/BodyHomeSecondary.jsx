@@ -40,7 +40,7 @@ export const BodyHomeSecondary = () => {
                                 <div className="my-5">
                                     <Button
                                         className="btn-style-background-color"
-                                        onClick={() => handleNavigate('/rejas-para-ventanas')}>Ir</Button>
+                                        onClick={() => handleNavigate('/rejas-para-ventanas')}>Ver más</Button>
                                 </div>
                             </Card.ImgOverlay>
                         </div>
@@ -65,7 +65,7 @@ export const BodyHomeSecondary = () => {
                                 <div className="my-5">
                                     <Button
                                         className="btn-style-background-color"
-                                        onClick={() => handleNavigate('/puertas-correderas-exteriores')}>Descubrir</Button>
+                                        onClick={() => handleNavigate('/puertas-correderas-exteriores')}>Ver más</Button>
                                 </div>
                             </Card.ImgOverlay>
                         </div>
@@ -90,7 +90,7 @@ export const BodyHomeSecondary = () => {
                                 <div className="my-5">
                                     <Button
                                         className="btn-style-background-color"
-                                        onClick={() => handleNavigate('/vallados-metalicos-exteriores')}>Más</Button>
+                                        onClick={() => handleNavigate('/vallados-metalicos-exteriores')}>Ver más</Button>
                                 </div>
                             </Card.ImgOverlay>
                         </div>
@@ -115,7 +115,7 @@ export const BodyHomeSecondary = () => {
                                 <div className="my-5">
                                     <Button
                                         className="btn-style-background-color"
-                                        onClick={() => handleNavigate('/puertas-peatonales-metalicas')}>Ver</Button>
+                                        onClick={() => handleNavigate('/puertas-peatonales-metalicas')}>Ver más</Button>
                                 </div>
                             </Card.ImgOverlay>
                         </div>
@@ -135,12 +135,12 @@ export const BodyHomeSecondary = () => {
                                     top: 0,
                                     left: 0, }}/>
                             <Card.ImgOverlay className="m-3">
-                                <h2 className="h2-home">Puertas Correderas Interiores</h2>
+                                <h2 className="h2-home">Puertas Interiores</h2>
                                 <p className="p-home">Con Estilo</p>
                                 <div className="my-5">
                                     <Button
                                         className="btn-style-background-color"
-                                        onClick={() => handleNavigate('/puertas-correderas-interiores')}>Explorar</Button>
+                                        onClick={() => handleNavigate('/puertas-correderas-interiores')}>Ver más</Button>
                                 </div>
                             </Card.ImgOverlay>
                         </div>
@@ -165,7 +165,7 @@ export const BodyHomeSecondary = () => {
                                 <div className="my-5">
                                     <Button
                                         className="btn-style-background-color"
-                                        onClick={() => handleNavigate('/cerramientos-de-cocina-con-cristal')}>Investigar</Button>
+                                        onClick={() => handleNavigate('/cerramientos-de-cocina-con-cristal')}>Ver más</Button>
                                 </div>
                             </Card.ImgOverlay>
                         </div>
