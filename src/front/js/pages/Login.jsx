@@ -172,8 +172,45 @@ export const Login = () => {
   };
 
   return (
-    <Container className="auth-container d-flex justify-content-center align-items-center" style={{ marginTop: '120px', marginBottom: '120px' }}>
-      <div className="auth-box p-3">
+    <Container
+      fluid
+      className="auth-container d-flex justify-content-center align-items-center" 
+      style={{
+        marginTop: '0',
+        height: '100vh',
+        position: 'relative',
+        overflow: 'hidden',
+      }}
+    >
+      {/* Fondo difuminado */}
+      <div
+        style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          width: '100%',
+          height: '100%',
+          backgroundImage: 'url(https://res.cloudinary.com/dewanllxn/image/upload/v1733817377/herrero-ciudad-real_ndf77e.jpg)',
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+          filter: 'blur(1px)',
+          zIndex: 1,
+        }}
+      />
+
+      {/* Contenedor del formulario */}
+      <div
+        className="auth-box p-3 bg-light"
+        style={{
+          borderRadius: '10px',
+          boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
+          position: 'relative',
+          zIndex: 2,
+          opacity: 0.95,
+          width: '100%',
+          maxWidth: '400px',
+        }}
+      >
         <Row className="text-center mb-3 d-flex justify-content-center">
           <Col>
             <h4>{isResetPassword ? "Restablecer Contraseña" : isForgotPassword ? "Recuperar Contraseña" : isLogin ? "INGRESAR" : "CREAR CUENTA"}</h4>

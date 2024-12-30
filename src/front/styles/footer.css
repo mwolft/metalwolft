@@ -1,68 +1,31 @@
-.footer-row {
-  padding-left: 10rem;
-  padding-right: 10rem;
-  padding-top: 2rem;
-}
-
-.footer-box {
-  padding: 2rem;
-}
-
-.footer-h5 {
-  font-size: 0.8rem;
-}
-
-.footer-p {
-  font-size: 0.8rem;
+.footer-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
   display: flex;
-  align-items: center;
-  gap: 10px;
+  flex-wrap: wrap; 
+  justify-content: center;
+}
+
+.footer-item {
+  margin: 0.5rem; 
+}
+
+.footer-link {
   text-decoration: none;
   color: white;
+  font-size: 0.9rem;
+  transition: color 0.3s ease-in-out;
 }
 
-.footer-p a:hover {
+.footer-link:hover {
   text-decoration: underline;
-  color: white;
+  color: #ccc;
 }
 
-.footer-p i {
-  min-width: 20px;
-}
-
-/* ----- START DESIGN MEDIA QUERIES ----- */
-/* ----- Pantallas pequeñas (móviles) ----- */
 @media (max-width: 575px) {
-  .footer-row {
-    padding-left: .3rem;
-    padding-right: .3rem;
-    padding-top: .03rem;
-  }
-}
-
-/* ----- Pantallas medianas (tabletas) ----- */
-@media (min-width: 576px) and (max-width: 767px) {
-  .footer-row {
-    padding-left: .4rem;
-    padding-right: .4rem;
-    padding-top: .05rem;
-  }
-}
-
-/* ----- Pantallas grandes (escritorios y laptops) ----- */
-@media (min-width: 768px) {
-  .footer-row {
-    padding-left: 4rem;
-    padding-right: 4rem;
-    padding-top: 0.6rem;
-  }
-}
-
-/* ----- Pantallas muy grandes (desktops grandes) ----- */
-@media (min-width: 1200px) {
-  .footer-row {
-    padding-left: 10rem;
-    padding-right: 10rem;
-    padding-top: 2rem;
+  .footer-list {
+    flex-direction: column; 
+    align-items: center;
   }
 }

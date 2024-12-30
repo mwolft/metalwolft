@@ -4,27 +4,27 @@ import '../../styles/footer.css';
 
 export const Footer = () => {
   return (
-    <footer className="footer-style mt-auto bg-dark text-white py-3">
+    <footer className="mt-auto bg-dark text-white py-3">
       <div className="container text-center">
-        <div className="row">
-          <div className="col-12">
-            <p className="footer-p d-flex justify-content-center align-items-center mt-3">
-              {/*<Link to="/contact" className="footer-p mx-3">Contacto</Link>*/}
-              <Link to="/informacion-recogida" className="footer-p">Información recogida</Link>
-              <Link to="/politica-cookies" className="footer-p mx-3">Política de cookies</Link>
-              <Link to="/politica-privacidad" className="footer-p mx-3">Política de privacidad</Link>
-              <Link to="/cookies-esenciales" className="footer-p">Cookies esenciales</Link>
-              <Link to="/cambios-politica-cookies" className="footer-p">Cambios en la política de cookies</Link>
-            </p>
-          </div>
-        </div>
-        <div className="row">
-          <div className="col-12 mt-3">
-            <p className="footer-p d-flex justify-content-center align-items-center">
-              © 2025 Metal Wolft. Todos los derechos reservados.
-            </p>
-          </div>
-        </div>
+        <p style={{marginTop:'20px', marginBottom:'30px'}}>© 2025 Metal Wolft. Todos los derechos reservados.</p>
+        <hr />
+        <ul className="footer-list d-flex flex-wrap justify-content-center mb-0">
+          <li className="footer-item mx-3 my-2">
+            <Link to="/informacion-recogida" className="footer-link">Información recogida</Link>
+          </li>
+          <li className="footer-item mx-3 my-2">
+            <Link to="/politica-cookies" className="footer-link">Política de cookies</Link>
+          </li>
+          <li className="footer-item mx-3 my-2">
+            <Link to="/politica-privacidad" className="footer-link">Política de privacidad</Link>
+          </li>
+          <li className="footer-item mx-3 my-2">
+            <Link to="/cookies-esenciales" className="footer-link">Cookies esenciales</Link>
+          </li>
+          <li className="footer-item mx-3 my-2">
+            <Link to="/cambios-politica-cookies" className="footer-link">Cambios en la política de cookies</Link>
+          </li>
+        </ul>
       </div>
     </footer>
   );

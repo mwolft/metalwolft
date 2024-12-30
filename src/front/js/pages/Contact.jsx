@@ -46,10 +46,10 @@ export const Contact = () => {
         <div style={{ marginTop: '80px' }}>
             <BodyHomeTertiary />
             <div className="container">
-                <div className="row" style={{ marginBottom: '50px' }}>
-                    <div className="col-12 col-lg-6">
-                        <p>Estamos listos para resolver tus dudas y atender tus necesidades. Si buscas más información sobre nuestros productos metálicos, deseas un presupuesto o simplemente quieres saludarnos, utiliza nuestro formulario de contacto.</p>
-                        <p>Te responderemos rápidamente para ofrecerte la mejor solución en productos metálicos personalizados.</p>
+                <div className="row text-center" style={{ marginBottom: '50px' }}>
+                    <p>Estamos listos para resolver tus dudas y atender tus necesidades.</p>
+                    <p style={{marginBottom: '30px'}}>Te responderemos rápidamente para ofrecerte la mejor solución.</p>
+                    <div className="col-12 col-lg-6 m-auto">
                         <Form onSubmit={handleSubmit}>
                             <div className="row">
                                 <div className="col-md-6">
