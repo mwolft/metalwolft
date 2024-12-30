@@ -360,7 +360,7 @@ def cerramiento_de_cocina_con_cristal():
 @seo_bp.route('/api/seo/blogs', methods=['GET'])
 def blog_metal_wolft():
     meta_data = {
-        "title": "Blog de Metal Wolft: Inspiración y diseño en metal y madera.",
+        "title": "Blog de Metal Wolft: Inspiración y diseño",
         "description": "Explora nuestro blog dedicado a la herrería y el diseño en metal. Inspiración, consejos y proyectos creativos para elevar la elegancia en tu hogar.",
         "keywords": "rejas para ventanas, rejas modernas, rejas rústicas, rejas sin obra, rejas ikea, rejas leroy merlin",
         "og_image": "https://res.cloudinary.com/dewanllxn/image/upload/v1733821952/herrero-soldador-ciudad-real_cc199z.jpg",
@@ -395,7 +395,7 @@ def blog_metal_wolft():
 @seo_bp.route('/api/seo/instalation-rejas-para-ventanas', methods=['GET'])
 def instalation_rejas_para_ventanas():
     meta_data = {
-        "title": "Instalación de rejas para ventanas sin obra: Tornillo Torx.",
+        "title": "Instalación de rejas para ventanas sin obra",
         "description": "Descubre cómo instalar rejas para ventanas de forma sencilla y segura sin necesidad de obra, utilizando tornillos Torx.",
         "keywords": "rejas para ventanas, rejas modernas, rejas rústicas, rejas sin obra, rejas ikea, rejas leroy merlin...",
         "og_image": "https://res.cloudinary.com/dewanllxn/image/upload/v1733562859/rejas-de-seguridad-para-ventanas-open_w0kfez.png",
@@ -448,7 +448,7 @@ def instalation_rejas_para_ventanas():
 @seo_bp.route('/api/seo/medir-hueco-rejas-para-ventanas', methods=['GET'])
 def medir_hueco_rejas_para_ventanas():
     meta_data = {
-        "title": "Medición del hueco de rejas para ventanas sin obra.",
+        "title": "Cómo medir el hueco para instalación de rejas",
         "description": "Descubre cómo medir el hueco para instalar rejas de ventanas de forma sencilla y segura sin necesidad de obra. Guía paso a paso.",
         "keywords": "rejas para ventanas, rejas modernas, rejas rústicas, rejas sin obra, rejas ikea, rejas leroy merlin...",
         "og_image": "https://res.cloudinary.com/dewanllxn/image/upload/v1733562852/rejas-para-ventanas-open_aoo6nt.avif",

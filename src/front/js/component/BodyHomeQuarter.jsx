@@ -14,7 +14,7 @@ export const BodyHomeQuarter = () => {
     return (
         <div className="container home-about-us">
             <div className="row d-flex justify-content-center align-items-center">
-                <h2>Sobre nosotros</h2>
+                <h2 className="h1-home">SOBRE NOSOTROS</h2>
                 <hr className="hr-cart"></hr>
                 <div className="d-flex flex-column justify-content-center align-items-center col-12 col-sm-12 col-md-6 col-lg-7 col-xl-5">
                     <p className="info-p mt-3 mb-2">

@@ -17,11 +17,13 @@ const getState = ({ getStore, getActions, setStore }) => {
             paymentCompleted: false,
             posts: [],  
             postsLoaded: false,
-            posts: [],
             recentPosts: [],
             subcategories: [],
             categories: [],
-            otherCategories: []
+            otherCategories: [],
+            currentPost: null,  
+            currentComments: [],
+            commentsLoaded: false  
         },
         actions: {
             loadPosts: async () => {
@@ -138,12 +140,18 @@ const getState = ({ getStore, getActions, setStore }) => {
                     }
             
                     const commentsData = await response.json();
-                    setStore({ currentComments: commentsData });
+                    setStore({ 
+                        currentComments: commentsData,
+                        commentsLoaded: true 
+                    });
                 } catch (error) {
                     console.error("Error fetching comments:", error);
-                    setStore({ error: error.message });
+                    setStore({ 
+                        error: error.message,
+                        commentsLoaded: false 
+                    });
                 }
-            },                                        
+            },                                                   
             addComment: async (postId, commentContent) => {
                 const token = localStorage.getItem("jwt");
                 if (!token) {

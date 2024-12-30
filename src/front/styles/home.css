@@ -65,8 +65,8 @@ body {
 /* -----END SECONDARYNHOME ----- */
 /* ----- START THIRDHOME ----- */
 .home-info {
-    margin-top: 100px;
-    margin-bottom: 100px;
+    margin-top: 10px;
+    margin-bottom: 10px;
     cursor: pointer;
 }
 .home-about-us{

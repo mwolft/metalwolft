@@ -161,11 +161,11 @@ export const Product = ({ product }) => {
                         </p>
                         <div className="my-1 d-flex justify-content-between align-items-center">
                             <Button className="btn-style-background-color" onClick={handleShow}>
-                                Comprar
+                            Detalles
                             </Button>
                             <i className={`fa-regular fa-heart ${actions.isFavorite(product) ? 'fa-solid' : ''}`}
                                 onClick={handleFavorite}
-                                style={{ cursor: 'pointer', color: '#ff324d', fontSize: '1.5rem' }}>
+                                style={{ cursor: 'pointer', color: '#ff324d', fontSize: '1.5rem', marginLeft: '5px' }}>
                             </i>
                         </div>
                     </Card.Body>

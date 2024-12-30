@@ -43,7 +43,7 @@ export const Contact = () => {
 
 
     return (
-        <>
+        <div style={{ marginTop: '80px' }}>
             <BodyHomeTertiary />
             <div className="container">
                 <div className="row" style={{ marginBottom: '50px' }}>
@@ -113,7 +113,7 @@ export const Contact = () => {
                             </Button>
                         </Form>
                     </div>
-                    <div className="col-12 col-lg-6 mt-5 mt-lg-0">
+{/*                    <div className="col-12 col-lg-6 mt-5 mt-lg-0">
                         <iframe
                             src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3101.0997967559592!2d-3.9339100875221473!3d38.990218671586376!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0xd6bc3694e58cfc3%3A0xd92dfe7e129cd7b5!2sC.%20de%20Pedrera%20Alta%2C%2011%2C%2013003%20Ciudad%20Real!5e0!3m2!1ses!2ses!4v1707690312958!5m2!1ses!2ses"
                             width="100%"
@@ -123,9 +123,9 @@ export const Contact = () => {
                             loading="lazy"
                             referrerPolicy="no-referrer-when-downgrade"
                         ></iframe>
-                    </div>
+                    </div>*/}
                 </div>
             </div>
-        </>
+        </div>
     );
 };

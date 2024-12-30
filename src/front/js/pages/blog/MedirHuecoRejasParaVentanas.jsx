@@ -43,10 +43,10 @@ export const MedirHuecoRejasParaVentanas = () => {
 
 
     useEffect(() => {
-        if (currentPost && currentPost.id === postId && (!currentComments || currentComments[0]?.post_id !== postId)) {
+        if (currentPost && currentPost.id === postId && !store.commentsLoaded) {
             actions.fetchComments(postId);
         }
-    }, [actions, currentPost, currentComments, postId]);
+    }, [actions, currentPost, postId, store.commentsLoaded]);    
 
     const handleCommentSubmit = async (e) => {
         e.preventDefault();
@@ -113,8 +113,7 @@ export const MedirHuecoRejasParaVentanas = () => {
                     </script>
                 )}
             </Helmet>
-            <Breadcrumb />
-            <Container className='post-page'>
+            <Container className='post-page' style={{ marginTop: '65px' }}>
                 <Row>
                     <Col xl={9}>
                         {currentPost && (
@@ -128,9 +127,11 @@ export const MedirHuecoRejasParaVentanas = () => {
                             </div>
                         )}
                         <div className="blog-text">
+                        <h2 className="h2-categories">LA IMPORTANCIA DE LAS MEDICIONES PARA INSTALAR REJAS PARA VENTANAS</h2>
                             <p>En numerosas ocasiones, nos enfrentamos a la realidad de que los huecos destinados para la instalación de rejas en ventanas presentan <b>leves variaciones en sus dimensiones.</b></p>
                             <p>Esta divergencia es completamente normal, ya que cada espacio posee sus particularidades.</p>
                             <p>Generalmente esta diferencia <b>es muy leve</b> y no nos tiene que preocupar en exceso estéticamente, pero si hay que <b>ser preciso</b> para el ensamblaje de la misma.</p>
+                            <h2 className="h2-categories">¿POR QUÉ DEJAR UN ESPACIO ENTRE LA REJA Y EL HUECO?</h2>  
                             <p>En el proceso de instalación de rejas para ventanas, es una práctica común dejar un <b>espacio de aproximadamente 3/4 de centímetros</b> entre la reja y la parte inferior del hueco, sea esta de ladrillo u otro material. </p>
                             <p>Este espacio sirve para <b>evitar la acumulación</b> de suciedad, como polvo y hojas, permitiendo un drenaje eficiente del agua y facilitando la limpieza tanto de la parte inferior del hueco como de la propia reja. </p>
                             <p>Además, contribuye a <b>mantener la integridad</b> de las rejas para ventanas al evitar el contacto directo con la superficie de la pared, <b>previniendo así la corrosión.</b></p>
@@ -138,6 +139,7 @@ export const MedirHuecoRejasParaVentanas = () => {
                             <blockquote className="blockquote_style3">
                                 <p>Los huecos donde se instalan las rejas para ventanas en muchas ocasiones no son rectángulos perfectos</p>
                             </blockquote>
+                            <h2 className="h2-categories">CÓMO MEDIR EL ANCHO DE LOS HUECOS PARA REJAS</h2>
                             <div className="row">
                                 <div className="col-sm-6">
                                     <div className="single_img">
@@ -155,6 +157,7 @@ export const MedirHuecoRejasParaVentanas = () => {
                             <p>La dimensión final del ancho del hueco para las rejas de las ventanas se determina tomando <b>la medida más estrecha</b> entre tres puntos cruciales: la parte inferior, la zona intermedia y la superior. </p>
                             <p>Esto implica que es necesario <b>medir cuidadosamente</b> cada uno de estos puntos para asegurarse de que la reja encaje perfectamente y proporcione una estética deseada.</p>
                             <p>Aunque las rejas para ventanas son rectángulos prácticamente perfectos, con muy pocas variaciones en sus medidas, la <b>albañilería,</b> en contraste, tiende a ser <b>menos precisa.</b></p>
+                            <h2 className="h2-categories">CÓMO AJUSTAR LAS REJAS EN CASO DE DISCREPANCIAS EN LAS MEDIDAS</h2>  
                             <p>Las imperfecciones en las paredes o los cambios en el grosor de los materiales utilizados pueden generar diferencias en las dimensiones del hueco. </p>
                             <p>Por lo tanto, es <b>fundamental</b> no asumir que todas las partes del hueco tienen la <b>misma medida,</b> sino <b>verificar</b> cada punto clave para asegurarse de una instalación exitosa.</p>
                             <blockquote className="blockquote_style3">
@@ -163,10 +166,12 @@ export const MedirHuecoRejasParaVentanas = () => {
                             <p>En situaciones donde las <b>medidas varían</b> algunos milímetros, es posible corregir esta disparidad rellenando el espacio posteriormente. </p>
                             <p>Esto puede lograrse mediante el <b>uso de silicona</b> en casos menores, mientras que para espacios más amplios se recurre al uso de cemento. Estas soluciones permiten <b>ajustar la reja</b> de manera efectiva al hueco y garantizar su estética.</p>
                             <p>Por eso es fundamental que la medición y la instalación se realicen <b>de manera cuidadosa</b> y con seguridad, siempre con alguien que nos ayude en la medición y hacerlo <b>varias veces</b> para estar del todo seguros.</p>
+                        <h2 className="h2-categories">CONSEJOS FINALES PARA UNA INSTALACIÓN EXITOSA DE REJAS EN VENTANAS</h2>   
                             <p>En resumen, la medición adecuada del hueco para rejas de ventanas es esencial para garantizar una instalación estéticamente agradable. Dejar un espacio entre la reja y la parte inferior del hueco permite una fácil limpieza y evita la acumulación de suciedad. </p>
                             <p>Asegurarse de medir con <b>precisión el ancho del hueco</b> y considerar las variaciones en la albañilería es fundamental para un resultado exitoso. </p>
                             <p>En caso de discrepancias en las medidas, las soluciones de relleno adecuadas son clave para garantizar un ajuste perfecto y una estética óptima en el hogar.</p>
                             <p>Más abajo <b>os presentamos un video</b> que explica al detalle cómo realizar una medida correcta del hueco de rejas para ventanas.</p>
+                        <h2 className="h2-categories">CONSULTA NUESTRO CATÁLOGO PARA MÁS INSPIRACIÓN</h2>   
                             <p>¡Si todavía tiene dudas siempre puede contar con nosotros para resolverle cuantas cuestiones necesite!</p>
                             <p><Link to="/rejas-para-ventanas" style={{ color: '#ff324d', textDecoration: 'underline', fontStyle: 'italic' }}>Ver el catálogo completo</Link></p>
                             <video controls width="100%" height="auto">

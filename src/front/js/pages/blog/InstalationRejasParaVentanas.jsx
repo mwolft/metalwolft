@@ -42,10 +42,10 @@ export const InstalationRejasParaVentanas = () => {
     }, []);
 
     useEffect(() => {
-        if (currentPost && currentPost.id === postId && (!currentComments || currentComments[0]?.post_id !== postId)) {
+        if (currentPost && currentPost.id === postId && !store.commentsLoaded) {
             actions.fetchComments(postId);
         }
-    }, [actions, currentPost, currentComments, postId]);
+    }, [actions, currentPost, postId, store.commentsLoaded]);    
 
     const handleCommentSubmit = async (e) => {
         e.preventDefault();
@@ -112,8 +112,7 @@ export const InstalationRejasParaVentanas = () => {
                     </script>
                 )}
             </Helmet>
-            <Breadcrumb />
-            <Container className='post-page'>
+            <Container className='post-page' style={{ marginTop: '65px' }}>
                 <Row>
                     <Col xl={9}>
                         {currentPost && (
@@ -127,20 +126,20 @@ export const InstalationRejasParaVentanas = () => {
                             </div>
                         )}
                         <div className="blog-text">
-                            <h3>PREPARACIÓN Y HERRAMIENTAS NECESARIAS</h3>
+                            <h2 className="h2-categories">PREPARACIÓN Y HERRAMIENTAS NECESARIAS</h2>
                             <p>Después de haber medido cuidadosamente los huecos de las ventanas, como se detalló en nuestro <u><b>artículo anterior,</b></u>
                                 y tras haber elegido el <u>estilo de rejas para ventanas</u> que mejor se adapte a tus necesidades, estás listo para recibir tus rejas. </p>
 
                             <p>Asegúrate de tener a mano las siguientes herramientas esenciales:</p>
                             <ul className="m-4">
-                                <li className="m-3"><b>Taladro manual:</b> Para perforar agujeros en la pared de forma precisa.</li>
-                                <li className="m-3"><b>Broca de pared de calibre 10:</b> Necesaria para crear los agujeros de anclaje en la pared.</li>
-                                <li className="m-3"><b>Llave con punta para tornillos TORX:</b> Para apretar los tornillos de forma segura.</li>
-                                <li className="m-3"><b>Un nivel:</b> Garantizar que la reja se instale perfectamente nivelada tanto horizontal como verticalmente.</li>
-                                <li className="m-3"><b>Un rotulador:</b> Utilizado para marcar los puntos de anclaje en la pared.</li>
-                                <li className="m-3"><b>Opcionales</b> - Listones de madera o martillo: Estos listones de madera o un martillo pueden ser útiles para ajustar la reja en su lugar y nivelarla correctamente haciendo palanca.</li>
+                                <li><b>Taladro manual:</b> Para perforar agujeros en la pared de forma precisa.</li>
+                                <li><b>Broca de pared de calibre 10:</b> Necesaria para crear los agujeros de anclaje en la pared.</li>
+                                <li><b>Llave con punta para tornillos TORX:</b> Para apretar los tornillos de forma segura.</li>
+                                <li><b>Un nivel:</b> Garantizar que la reja se instale perfectamente nivelada tanto horizontal como verticalmente.</li>
+                                <li><b>Un rotulador:</b> Utilizado para marcar los puntos de anclaje en la pared.</li>
+                                <li><b>Opcionales</b> - Listones de madera o martillo: Estos listones de madera o un martillo pueden ser útiles para ajustar la reja en su lugar y nivelarla correctamente haciendo palanca.</li>
                             </ul>
-                            <h3>PASOS PARA LA INSTALACIÓN EXITOSA</h3>
+                            <h2 className="h2-categories">PASOS PARA LA INSTALACIÓN EXITOSA</h2>
                             <ol className="m-4" start="1">
                                 <li><b>Posiciona la reja</b> en su lugar: Comienza por colocar la reja en el hueco de la ventana, asegurándote de que esté <b>al mismo nivel</b> que la
                                     superficie frontal de la pared. Utiliza las cuñas de madera o el martillo si es necesario para ajustarla adecuadamente en su lugar.</li>
@@ -172,22 +171,22 @@ export const InstalationRejasParaVentanas = () => {
                             <blockquote className="blockquote_style3">
                                 <p>La instalación de rejas para ventanas a veces necesita asistencia adicional, especialmente al manipular y ajustar la reja en su lugar.</p>
                             </blockquote>
-                            <h3>RECOMENDACIONES</h3>
+                            <h2 className="h2-categories">RECOMENDACIONES</h2>
                             <ul className="m-4">
-                                <li className="m-3"><b>Solicita ayuda:</b> La instalación de rejas para ventanas requiere la ayuda de otra persona,
+                                <li><b>Solicita ayuda:</b> La instalación de rejas para ventanas requiere la ayuda de otra persona,
                                     especialmente al manipular y ajustar la reja en su lugar.</li>
-                                <li className="m-3">El tipo de material de la pared en la que se instalarán las rejas puede afectar
+                                <li>El tipo de material de la pared en la que se instalarán las rejas puede afectar
                                     la <b>facilidad de perforación.</b> Por ejemplo, las paredes de hormigón armado pueden requerir un taladro más robusto.</li>
-                                <li className="m-3">Ubicación de la reja: Coloca la reja en el lugar que mediste anteriormente, es decir, si mediste al borde de
+                                <li>Ubicación de la reja: Coloca la reja en el lugar que mediste anteriormente, es decir, si mediste al borde de
                                     la esquina o más adentro en la pared. Generalmente, se instalan al <b>mismo nivel</b> que la superficie frontal de la vivienda.</li>
-                                <li className="m-3">Uso de taladros eléctricos:
+                                <li>Uso de taladros eléctricos:
                                     Utilizar taladros eléctricos para <b>apretar los tornillos</b> facilita la instalación y garantiza un ajuste seguro.</li>
                             </ul>
-                            <h3>CONSEJOS DE MANTENIMIENTO DE LAS REJAS PARA VENTANAS</h3>
+                            <h2 className="h2-categories">CONSEJOS DE MANTENIMIENTO DE LAS REJAS PARA VENTANAS</h2>
                             <ul className="m-4">
-                                <li className="m-3"><b>El mantenimiento</b> de tus rejas para ventanas es esencial para prolongar su <b>vida útil</b> y preservar su atractivo estético.
+                                <li><b>El mantenimiento</b> de tus rejas para ventanas es esencial para prolongar su <b>vida útil</b> y preservar su atractivo estético.
                                     Dependiendo del acabado en pintura que hayas elegido, el mantenimiento variará:</li>
-                                <li className="m-3"><b>Revestimiento termolacado:</b> Si has optado por un revestimiento termolacado, puedes disfrutar de la ventaja de una pintura
+                                <li><b>Revestimiento termolacado:</b> Si has optado por un revestimiento termolacado, puedes disfrutar de la ventaja de una pintura
                                     de alta durabilidad. No tendrás que volver a <b>pintar las rejas</b> durante muchos años, ya que este tipo de pintura <b>protege</b> contra la corrosión y el desgaste.</li>
                                 <li><b>Pintura no lacada:</b> Si la pintura no es lacada, su durabilidad dependerá de factores como la <b>ubicación geográfica.</b> En áreas cercanas al mar,
                                     la salinidad del ambiente puede <b>afectar la pintura</b> con el tiempo. Es aconsejable cubrir cualquier <b>arañazo o desgaste</b> en la pintura para evitar un deterioro acelerado del material.</li>
@@ -195,7 +194,7 @@ export const InstalationRejasParaVentanas = () => {
                             <p><b>Mantener</b> tus rejas para ventanas en buenas condiciones es <b>esencial</b> para garantizar su eficacia y aspecto atractivo <b>con el tiempo.</b></p>
                             <p>No dudes en contactárnos si tienes alguna pregunta o necesitas <b>asesoramiento adicional</b> sobre la instalación o el mantenimiento de tus rejas para ventanas.</p>
                             <p>Esperamos que esta guía haya sido útil en tu proyecto de instalación de rejas para ventanas. Si tienes alguna pregunta o necesitas más información,
-                                no dudes en<Link to="/contact" style={{ color: '#ff324d', textDecoration: 'underline', fontStyle: 'italic' }}> ponerte en contacto con nosotros.</Link> ¡Estamos aquí para ayudarte!</p>
+                                no dudes en ponerte en<Link to="/contact" style={{ color: '#ff324d', textDecoration: 'underline', fontStyle: 'italic' }}> contacto con nosotros.</Link> ¡Estamos aquí para ayudarte!</p>
                             <p><Link to="/rejas-para-ventanas" style={{ color: '#ff324d', textDecoration: 'underline', fontStyle: 'italic' }}>Ver el catálogo completo</Link></p>
                             <video controls width="100%" height="auto">
                                 <source src="https://res.cloudinary.com/dewanllxn/video/upload/v1733563618/instalacion-rejas-para-ventanas_kcno5b.webm" type="video/webm" />

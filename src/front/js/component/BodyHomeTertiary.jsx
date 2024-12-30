@@ -5,9 +5,9 @@ export const BodyHomeTertiary = () => {
     return (
         <div className="container home-info">
             <div className="row d-flex justify-content-center">
-                <h2>Contacto</h2>
+                <h2 className="h1-home">CONTÁCTANOS</h2>
                 <hr className="hr-cart"></hr>
-                <div className="pt-4 px-4 col-12 col-sm-12 col-md-6 col-lg-4 col-xl-4">
+{/*                <div className="pt-4 px-4 col-12 col-sm-12 col-md-6 col-lg-4 col-xl-4">
                     <div className="home-info-card d-flex flex-column justify-content-center align-items-center">
                         <div className="bg-info-icon">
                             <i className="my-3 info-icon fa-regular fa-map fa-2x"></i>
@@ -51,7 +51,7 @@ export const BodyHomeTertiary = () => {
                         <h3 className="info-h3">Teléfono:</h3>
                         <p className="info-p">+34 634112604</p>
                     </div>
-                </div>
+                </div>*/}
             </div>
         </div>
     );
