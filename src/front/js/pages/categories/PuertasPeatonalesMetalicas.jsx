@@ -7,6 +7,7 @@ import { AsideOthersCategories } from "../../component/AsideOthersCategories.jsx
 import { AsidePost } from "../../component/AsidePost.jsx";
 import { Context } from "../../store/appContext.js";
 import "../../../styles/categories-pages.css";
+import { WhatsAppWidget } from "../../component/WhatsAppWidget.jsx";
 
 export const PuertasPeatonalesMetalicas = () => {
     const { store, actions } = useContext(Context);
