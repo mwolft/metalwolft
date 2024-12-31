@@ -111,6 +111,12 @@ export const CerramientoDeCocinaConCristal = () => {
                     </div>
                 </div>
             </div>
+            <WhatsAppWidget
+                whatsappNumber="34634112604"
+                placeholderText="Escribenos por WhatsApp"
+                widgetText="¿Le podemos ayudar?"
+                botImage="https://res.cloudinary.com/dewanllxn/image/upload/v1735631180/welder-bot_tqxadc.png"
+            />
         </>
     );
 };

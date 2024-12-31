@@ -10,7 +10,6 @@ import { Context } from "../../store/appContext.js";
 import "../../../styles/categories-pages.css";
 import MetalStructureViewer from '../../component/MetalStructureViewer.jsx';
 import LazyLoad from "react-lazyload";
-import "../../../styles/whatsapp-bot.css";
 import { WhatsAppWidget } from "../../component/WhatsAppWidget.jsx";
 
 export const RejasParaVentanas = ({ onSelectCategory, onSelectSubcategory, categoryId }) => {
@@ -419,7 +418,12 @@ export const RejasParaVentanas = ({ onSelectCategory, onSelectSubcategory, categ
                     </div>
                 </div>
             </div>
-            <WhatsAppWidget />
+            <WhatsAppWidget
+                whatsappNumber="34634112604"
+                placeholderText="Escribenos por WhatsApp"
+                widgetText="¿Le podemos ayudar?"
+                botImage="https://res.cloudinary.com/dewanllxn/image/upload/v1735631180/welder-bot_tqxadc.png"
+            />
         </>
     );
 };
