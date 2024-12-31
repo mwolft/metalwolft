@@ -16,24 +16,11 @@ export const Carrusel = () => {
     return (
         <Carousel data-bs-theme="dark" style={{ marginTop: '65px' }}>
             <Carousel.Item>
-                <div className="carrusel-background" style={{ backgroundImage: `url(${valladosCarrusel})` }} />
-                <Carousel.Caption>
-                    <p className="p-carrusel">Nuevos diseños</p>
-                    <h6 className="h6-carrusel">Vallados Metálicos</h6>
-                    <p className="p-carrusel">Explora nuestra selección de vallas metálicas diseñadas para combinar seguridad y elegancia en tu hogar. Encuentra el estilo perfecto para ti.</p>
-                    <div className="my-5">
-                        <Button className="btn-style-background-color" onClick={() => handleNavigate('/vallados-metalicos-exteriores')}>
-                            Explorar diseños
-                        </Button>
-                    </div>
-                </Carousel.Caption>
-            </Carousel.Item>
-            <Carousel.Item>
                 <div className="carrusel-background" style={{ backgroundImage: `url(${rejasCarrusel})` }} />
                 <Carousel.Caption>
                     <p className="p-carrusel">Diseños exclusivos</p>
-                    <h6 className="h6-carrusel">Rejas para Ventanas</h6>
-                    <p className="p-carrusel">Descubre nuestras rejas para ventanas fabricadas con calidad y diseño a medida. Envíos rápidos a toda España. ¡Consulta nuestro catálogo hoy!</p>
+                    <p className="h6-carrusel">Rejas para Ventanas</p>
+                    <p className="p-carrusel">Descubre nuestras rejas para ventanas. ¡Envíos rápidos a toda España!</p>
                     <div className="my-5">
                         <Button className="btn-style-background-color" onClick={() => handleNavigate('/rejas-para-ventanas')}>
                             Diseños
@@ -42,11 +29,24 @@ export const Carrusel = () => {
                 </Carousel.Caption>
             </Carousel.Item>
             <Carousel.Item>
+                <div className="carrusel-background" style={{ backgroundImage: `url(${valladosCarrusel})` }} />
+                <Carousel.Caption>
+                    <p className="p-carrusel">Nuevos diseños</p>
+                    <p className="h6-carrusel">Vallados Metálicos</p>
+                    <p className="p-carrusel">Explora nuestra selección de vallas metálicas. Encuentra el estilo perfecto para ti.</p>
+                    <div className="my-5">
+                        <Button className="btn-style-background-color" onClick={() => handleNavigate('/vallados-metalicos-exteriores')}>
+                            Explorar diseños
+                        </Button>
+                    </div>
+                </Carousel.Caption>
+            </Carousel.Item>
+            <Carousel.Item>
                 <div className="carrusel-background" style={{ backgroundImage: `url(${correderasCarrusel})` }} />
                 <Carousel.Caption>
                     <p className="p-carrusel">Ofertas especiales</p>
-                    <h6 className="h6-carrusel">Puertas Correderas</h6>
-                    <p className="p-carrusel">Diseño moderno y funcionalidad excepcional. Descubre nuestras puertas correderas exteriores con envío a toda España. ¡Consúltanos para más detalles!</p>
+                    <p className="h6-carrusel">Puertas Correderas</p>
+                    <p className="p-carrusel">Descubre nuestras puertas correderas. ¡Consúltanos para más detalles!</p>
                     <div className="my-5">
                         <Button className="btn-style-background-color" onClick={() => handleNavigate('/puertas-correderas-exteriores')}>
                             Ofertas

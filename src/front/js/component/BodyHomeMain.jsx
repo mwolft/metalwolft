@@ -7,7 +7,7 @@ export const BodyHomeMain = () => {
             <div className="row d-flex flex-column">
                 <div className="mt-2 mx-2 col-12 col-sm-12 col-md-10 col-lg-7 col-xl-6">
                     <h1 className="h1-home">CARPINTERÍA METÁLICA  <span className="span-home">ONLINE</span> <br />
-                    <span style={{fontSize: '20px', fontStyle: 'italic'}}>Productos de Calidad con Envíos a Toda España</span></h1>
+                    <span style={{fontSize: '20px', fontStyle: 'italic'}}>Envíos GRATIS a toda España</span></h1>
                 </div>
                 <div className="mt-2 mx-3 col-3 col-sm-3 col-md-2 col-lg-1 col-xl-1">
                     <hr className="hr-home"></hr>

@@ -3,12 +3,13 @@
   padding: 0;
   margin: 0;
   display: flex;
-  flex-wrap: wrap; 
+  flex-wrap: wrap;
   justify-content: center;
+  align-items: center;
 }
 
 .footer-item {
-  margin: 0.5rem; 
+  margin: 0.5rem;
 }
 
 .footer-link {
@@ -23,9 +24,13 @@
   color: #ccc;
 }
 
-@media (max-width: 575px) {
+@media (max-width: 768px) {
   .footer-list {
-    flex-direction: column; 
-    align-items: center;
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .footer-item {
+    margin: 0.5rem 0;
   }
 }

@@ -7,7 +7,7 @@ seo_bp = Blueprint('seo', __name__)
 @seo_bp.route('/api/seo/home', methods=['GET'])
 def home():
     meta_data = {
-        "title": "Carpintería Metálica en Ciudad Real | Herrería y Soldador.",
+        "title": "Carpintería Metálica Online | 🇪🇸",
         "description": "Somos expertos en carpintería metálica en Ciudad Real. Fabricamos rejas para ventanas, puertas correderas, vallados metálicos o puertas peatonales.",
         "keywords": "carpintería metálica en Ciudad Real, soldador en ciudad real, herrero en Ciudad Real, herrería en Ciudad Real, rejas para ventanas, puertas metálicas, vallados exteriores, carpintería de aluminio...",
         "og_image": "https://res.cloudinary.com/dewanllxn/image/upload/v1733821952/herrero-soldador-ciudad-real_cc199z.jpg",

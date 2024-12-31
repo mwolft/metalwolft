@@ -17,9 +17,15 @@ export const BodyHomeQuarter = () => {
                 <h2 className="h1-home">SOBRE NOSOTROS</h2>
                 <hr className="hr-cart"></hr>
                 <div className="d-flex flex-column justify-content-center align-items-center col-12 col-sm-12 col-md-6 col-lg-7 col-xl-5">
-                    <p className="info-p mt-3 mb-2"><Link to="/rejas-para-ventanas" style={{ color: '#ff324d', textDecoration: 'none', fontWeight: 'bolder' }}>Metal Wolft</Link> se dedica al sector de la <b>Carpintería Metálica</b>, representando un referente de calidad y confianza.</p>
-                    <p className="info-p">Con más de <strong>10 años de experiencia</strong>, fabricamos rejas para ventanas, vallados metálicos, puertas peatonales, puertas correderas y más.</p> 
-                    <p className="info-p pb-3"><b>Nuestros diseños</b> en acero destacan por su durabilidad y funcionalidad, con <b style={{ color: '#ff324d'}}>ENVÍOS GRATIS</b> a <b>toda España</b>.</p>
+                    <p className="info-p mt-3 mb-2">
+                        <Link to="/rejas-para-ventanas" style={{ color: '#ff324d', textDecoration: 'none', fontWeight: 'bolder' }}>Metal Wolft</Link> es líder en la creación de <b>productos metálicos</b>, que combinan <b>calidad y funcionalidad</b>.
+                    </p>
+                    <p className="info-p">
+                        Con más de <strong>10 años de experiencia</strong>, ofrecemos soluciones metálicas como <b>rejas, vallados y puertas</b>, diseñadas para satisfacer tanto a empresas como a clientes particulares.
+                    </p>
+                    <p className="info-p pb-3">
+                        Nuestros diseños no solo destacan por su durabilidad, sino que también están pensados para facilitar su instalación. <br />¡Además contámos con <b style={{ color: '#ff324d' }}>ENVÍOS GRATUÍTOS</b> a toda <b>España</b>!
+                    </p>
                 </div>
                 <div className="col-12 col-sm-12 col-md-6 col-lg-5 col-xl-5 mt-2">
                     <Card style={{ height: '100%' }}>
