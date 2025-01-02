@@ -41,6 +41,7 @@ import { PrivacyPolicy } from "./pages/PrivacyPolicy.jsx";
 import { CookiesPolicy } from "./pages/CookiesPolicy.jsx";
 import { InformationCollected } from "./pages/InformationCollected.jsx";
 import { ChangesInCookiePolicy } from "./pages/ChangesInCookiePolicy.jsx";
+import { ReturnsPolicy } from "./pages/ReturnsPolicy.jsx";
 import ResetPassword from "./pages/ResetPassword.jsx"
 
 // Blog
@@ -108,6 +109,7 @@ const Layout = () => {
                     <Route path="/politica-cookies" element={<CookiesPolicy />} />
                     <Route path="/informacion-recogida" element={<InformationCollected />} />
                     <Route path="/cambios-politica-cookies" element={<ChangesInCookiePolicy />} />
+                    <Route path="/politica-devolucion" element={<ReturnsPolicy />} />
                 </Routes>
                 <Footer />
             </div>

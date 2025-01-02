@@ -5,9 +5,8 @@ import { Breadcrumb } from '../component/Breadcrumb.jsx';
 export const ChangesInCookiePolicy = () => {
     return (
         <>
-            <Breadcrumb />
-            <div className="container">
-                <h2>Cambios en nuestra Política de Cookies</h2>
+            <div className="container" style={{ marginTop: '65px' }}>
+                <h1 className="h1-categories">Cambios en nuestra Política de Cookies</h1>
                 <p>
                     Nos reservamos el derecho de realizar cambios en nuestra política de cookies en cualquier momento.
                     Los cambios serán efectivos tan pronto como se publiquen en esta página. Te recomendamos revisarla periódicamente
