@@ -4,7 +4,7 @@ import '../../styles/footer.css';
 
 export const Footer = () => {
   return (
-    <footer className="mt-auto bg-dark text-white py-3 px-5">
+    <footer className="mt-auto bg-dark text-white py-3 px-2">
       <div className="container text-center">
         <p style={{marginTop: '6px', marginBottom: '17px'}}>© 2025 Metal Wolft. Todos los derechos reservados.</p>
         <hr />
@@ -26,6 +26,9 @@ export const Footer = () => {
           </li>
           <li className="footer-item">
             <Link to="/politica-devolucion" className="footer-link">Política de devolución</Link>
+          </li>
+          <li className="footer-item">
+            <Link to="/license" className="footer-link">Licencia de imágenes</Link>
           </li>
         </ul>
       </div>

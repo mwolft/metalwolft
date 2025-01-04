@@ -2,6 +2,7 @@ import React from "react";
 import { BrowserRouter, Route, Routes } from "react-router-dom";
 import injectContext from "./store/appContext.js";
 import { CookieBanner } from "./component/CookieBanner.jsx";
+import { License } from "./pages/License.jsx";
 
 // Custom components
 import ScrollToTop from "./component/ScrollToTop.jsx";
@@ -110,6 +111,7 @@ const Layout = () => {
                     <Route path="/informacion-recogida" element={<InformationCollected />} />
                     <Route path="/cambios-politica-cookies" element={<ChangesInCookiePolicy />} />
                     <Route path="/politica-devolucion" element={<ReturnsPolicy />} />
+                    <Route path="/license" element={<License />} />
                 </Routes>
                 <Footer />
             </div>
