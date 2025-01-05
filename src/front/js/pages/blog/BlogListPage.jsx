@@ -85,8 +85,9 @@ export const BlogListPage = () => {
                     </script>
                 )}
             </Helmet>
-            <Breadcrumb />
-            <div className="container-fluid">
+            {/*<Breadcrumb />*/}
+            <div className="container-fluid"style={{ marginTop: '60px'}}>
+                <h1 className='h1-categories'>Blog</h1>
                 <div className="row" style={{ margin: '8px 8px', backgroundSize: 'cover' }}>
                     {posts.map(post => (
                         <div

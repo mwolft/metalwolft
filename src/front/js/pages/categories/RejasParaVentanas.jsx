@@ -21,7 +21,7 @@ export const RejasParaVentanas = ({ onSelectCategory, onSelectSubcategory, categ
     const [metaData, setMetaData] = useState({});
     const [recentPosts, setRecentPosts] = useState([]);
     const [otherCategories, setOtherCategories] = useState([]);
-    
+
 
     useEffect(() => {
         const fetchRecentPosts = async () => {
@@ -78,9 +78,9 @@ export const RejasParaVentanas = ({ onSelectCategory, onSelectSubcategory, categ
     };
 
 
-    const handleSubcategorySelect = (subcategoryId) => {
+    {/* const handleSubcategorySelect = (subcategoryId) => {
         setSelectedSubcategoryId(subcategoryId);
-    };
+    };*/}
 
 
     return (
@@ -118,7 +118,7 @@ export const RejasParaVentanas = ({ onSelectCategory, onSelectSubcategory, categ
                     <link
                         rel="preload"
                         as="image"
-                        href={store.products[0].imagen} // Cambia esto si la imagen principal está en otra posición
+                        href={store.products[0].imagen}
                     />
                 )}
 
@@ -137,13 +137,13 @@ export const RejasParaVentanas = ({ onSelectCategory, onSelectSubcategory, categ
                     <p>Las <strong>rejas para ventanas</strong> son elementos esenciales para la protección en cualquier hogar. En este sitio encontrarás información completa sobre los diferentes <b>tipos, estilos y precios</b> de rejas para ventanas. Nuestro objetivo es ayudarte a elegir la opción más adecuada, teniendo en cuenta tanto la <b>funcionalidad</b> como la <b>estética</b>.</p>
                     <p>Consigue el precio al instante y ¡Aprovécha de los <strong>ENVÍOS GRATUÍTOS</strong> directos de fábrica!</p>
                     <div className="col-12 col-lg-3 col-xl-3 order-1">
-                        <div className="col-12 d-block d-lg-none order-1">
+                        {/* <div className="col-12 d-block d-lg-none order-1">
                             <AsideCategories
                                 onSelectCategory={handleCategorySelect}
                                 onSelectSubcategory={handleSubcategorySelect}
                                 categoryId={rejasCategoryId}
                             />
-                        </div>
+                        </div>*/}
                         <div className="d-none d-lg-block">
                             <AsidePost />
                             <AsideOthersCategories currentCategoryId={rejasCategoryId} />

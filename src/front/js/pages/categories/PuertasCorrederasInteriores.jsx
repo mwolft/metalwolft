@@ -44,9 +44,9 @@ export const PuertasCorrederasInteriores = () => {
         setSelectedSubcategoryId(null);
     };
 
-    const handleSubcategorySelect = (subcategoryId) => {
+{/* const handleSubcategorySelect = (subcategoryId) => {
         setSelectedSubcategoryId(subcategoryId);
-    };
+    };*/}
 
     return (
         <>
@@ -83,11 +83,11 @@ export const PuertasCorrederasInteriores = () => {
                 <div className="row">
                 <h1 className="h2-categories mb-3">Puertas Correderas Interiores</h1>
                     <div className="col-12 col-lg-3 col-xl-3 order-1">
-                        <AsideCategories
+                        {/*<AsideCategories
                             onSelectCategory={handleCategorySelect}
                             onSelectSubcategory={handleSubcategorySelect}
                             categoryId={puertasCorrederasInterioresCategoryId}
-                        />
+                        />*/}
                         <div className="d-none d-lg-block">
                             <AsidePost />
                             <AsideOthersCategories currentCategoryId={puertasCorrederasInterioresCategoryId} />

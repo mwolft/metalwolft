@@ -22,7 +22,7 @@ export const AsidePost = ({ currentPostId }) => {
 
     return (
         <aside className="widget my-5">
-            <h2 className="widget_title">Posts Recientes</h2>
+            <p className="widget_title">Posts Recientes</p>
             <hr className="hr-home" />
             {recentPosts.length > 0 ? (
                 <ul className="widget_categories">

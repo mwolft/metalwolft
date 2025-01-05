@@ -11,7 +11,7 @@ const MetalStructure = () => {
   useEffect(() => {
     const box = new THREE.Box3().setFromObject(scene); // Crea un bounding box alrededor del modelo
     const center = box.getCenter(new THREE.Vector3()); // Calcula el centro del modelo
-    scene.position.set(-center.x, -center.y, -center.z); // Ajusta la posición para centrar el modelo
+    scene.position.set(-center.x, -center.y, -center.z); // Pposición para centrar el modelo
   }, [scene]);
 
   // Escalar el modelo
@@ -35,7 +35,7 @@ const MetalStructureViewer = () => (
   <div style={{ position: 'relative', width: '100%', height: '400px' }}>
     {/* Imagen de 360 grados */}
     <img
-      src="https://cdn-icons-png.flaticon.com/512/1758/1758455.png" // Reemplaza con tu URL de imagen
+      src="https://cdn-icons-png.flaticon.com/512/1758/1758455.png" 
       alt="rejas para ventana sin obra"
       style={{
         position: 'absolute',
@@ -49,7 +49,7 @@ const MetalStructureViewer = () => (
     {/* Visor 3D */}
     <Canvas
       style={{ height: '400px', width: '100%' }}
-      camera={{ position: [3, 1, 6] }} // Ajusta la cámara según tus necesidades
+      camera={{ position: [3, 1, 6] }} // Ajusta la cámara 
     >
       <ambientLight intensity={1} />
       <directionalLight position={[2, 5, 2]} intensity={2} />

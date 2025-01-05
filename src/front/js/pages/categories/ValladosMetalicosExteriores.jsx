@@ -43,9 +43,9 @@ export const ValladosMetalicosExteriores = () => {
         setSelectedSubcategoryId(null);
     };
 
-    const handleSubcategorySelect = (subcategoryId) => {
+{/* const handleSubcategorySelect = (subcategoryId) => {
         setSelectedSubcategoryId(subcategoryId);
-    };
+    };*/}
 
     return (
         <>
@@ -90,11 +90,11 @@ export const ValladosMetalicosExteriores = () => {
                 <div className="row">
                 <h1 className="h2-categories mb-3">Vallados Metálicos Exteriores</h1>
                     <div className="col-12 col-lg-3 col-xl-3 order-1">
-                        <AsideCategories
+{/*                        <AsideCategories
                             onSelectCategory={handleCategorySelect}
                             onSelectSubcategory={handleSubcategorySelect}
                             categoryId={valladosCategoryId}
-                        />
+                        />*/}
                         <div className="d-none d-lg-block">
                             <AsidePost />
                             <AsideOthersCategories currentCategoryId={valladosCategoryId} />
