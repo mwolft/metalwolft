@@ -114,6 +114,14 @@ body, html {
 .btn-style-background-color:focus-visible {
   outline: none; 
 }
+.btn-style-background-color:disabled {
+  background: #ff8a9c; 
+  color: white; 
+  border: 1px solid #ff8a9c; 
+  cursor: not-allowed; 
+  opacity: 0.7; 
+}
+
 /* -----END BTN ----- */
 
 p .btn-color-yellow {

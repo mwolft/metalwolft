@@ -490,29 +490,27 @@ const getState = ({ getStore, getActions, setStore }) => {
                     CIF: formData.CIF
                 }));
                 try {
-                    for (const detail of orderDetailsData) {
-                        const response = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/orderdetails`, {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                                Authorization: `Bearer ${localStorage.getItem("token")}`
-                            },
-                            body: JSON.stringify(detail)
-                        });
-                        if (!response.ok) {
-                            const errorData = await response.json();
-                            console.error("Error al guardar el detalle del pedido:", errorData.message);
-                            return { ok: false };
-                        }
+                    const response = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/orderdetails`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            Authorization: `Bearer ${localStorage.getItem("token")}`
+                        },
+                        body: JSON.stringify(orderDetailsData)
+                    });
+                    if (!response.ok) {
+                        const errorData = await response.json();
+                        console.error("Error al guardar los detalles del pedido:", errorData.message);
+                        return { ok: false };
                     }
-                    // Actualizar el store con los nuevos detalles
-                    setStore({ orderDetails: [...store.orderDetails, ...orderDetailsData] });
+                    const data = await response.json();
+                    setStore({ orderDetails: [...store.orderDetails, ...data] });
                     return { ok: true };
                 } catch (error) {
                     console.error("Error al guardar los detalles del pedido:", error);
                     return { ok: false };
                 }
-            }, 
+            },                              
             handlePaymentSuccess: async () => {
                 const store = getStore(); 
                 const actions = getActions(); 

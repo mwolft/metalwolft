@@ -12,7 +12,7 @@ export const Cart = () => {
     const navigate = useNavigate();
 
     useEffect(() => {
-        actions.loadCart();  
+        actions.loadCart();
     }, []);
 
     console.log("Carrito:", store.cart);
@@ -38,7 +38,7 @@ export const Cart = () => {
     const subtotal = store.cart.reduce((acc, product) => acc + parseFloat(product.precio_total), 0);
 
     const handleCheckout = () => {
-        navigate("/checkout-form");  
+        navigate("/checkout-form");
     };
 
 
@@ -95,18 +95,20 @@ export const Cart = () => {
 
                         {store.cart.length > 0 && (
                             <Row className="mt-4 mb-5 mx-3">
-                                <Col className="text-end"> 
-                                    <p>Envío: <u>0€</u></p>
-                                    <p className="cart-total mb-5">
-                                        <span className="sign">Subtotal: </span>
-                                        <span className="money"><u>{subtotal.toFixed(2)} € (IVA incl.)</u></span>
-                                    </p>
-                                    <div className="text-end"> 
+                                <Col className="text-end">
+                                    <p style={{fontSize: '22px', fontWeight: 'bold'}}>Total: {subtotal.toFixed(2)} € (IVA incl.)</p>
+                                    {subtotal >= 150 ? (
+                                        <p className="text-success"  style={{fontSize: '16px', fontWeight: 'bold', marginBottom: '70px'}}>Envío: GRATIS ✔️</p>
+                                    ) : (
+                                        <p className="text-danger"  style={{fontSize: '16px', fontWeight: 'bold', marginBottom: '70px'}}>Pedido mínimo de 150€ ⛔</p>
+                                    )}
+                                    <div className="text-end">
                                         <Button
                                             className="btn-style-background-color"
                                             onClick={handleCheckout}
+                                            disabled={subtotal < 150} 
                                         >
-                                            Pagar ahora
+                                            Formulario de Pago
                                         </Button>
                                     </div>
                                 </Col>
@@ -120,7 +122,7 @@ export const Cart = () => {
             {notification && (
                 <Notification
                     message={notification}
-                    duration={3000} 
+                    duration={3000}
                     onClose={() => setNotification(null)}
                 />
             )}

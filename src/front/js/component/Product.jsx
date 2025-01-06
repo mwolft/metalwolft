@@ -52,7 +52,12 @@ export const Product = ({ product }) => {
         if (store.isLoged) {
             if (height && width) {
                 const area = (parseFloat(height) * parseFloat(width)) / 10000;
-                const price = area * product.precio;
+                let price = area * product.precio;
+
+                // Aplicar precio mínimo de 50€
+                if (price < 50) {
+                    price = 50;
+                }
 
                 const productDetails = {
                     product_id: product.id,
@@ -66,7 +71,7 @@ export const Product = ({ product }) => {
                 await actions.addToCart(productDetails);
                 setNotification("Producto añadido al carrito");
 
-                // Reset values after adding to cart
+                // Reset valores después de añadir al carrito
                 setHeight('');
                 setWidth('');
                 setMounting('con obra');
@@ -79,15 +84,35 @@ export const Product = ({ product }) => {
         }
     };
 
+
     const handleCalculatePrice = () => {
-        if (height && width) {
-            const area = (parseFloat(height) * parseFloat(width)) / 10000;
-            const price = area * product.precio;
-            setCalculatedPrice(price.toFixed(2));
-        } else {
+        const parsedHeight = parseFloat(height);
+        const parsedWidth = parseFloat(width);
+    
+        if (isNaN(parsedHeight) || isNaN(parsedWidth)) {
             setNotification("Debe ingresar altura y anchura válidas");
+            return;
         }
+    
+        if (parsedHeight < 20 || parsedWidth < 20) {
+            setNotification("El alto y el ancho deben ser al menos 20 cm");
+            return;
+        }
+    
+        // Cálculo base
+        const area = (parsedHeight * parsedWidth) / 10000; // Área en metros cuadrados
+        let price = area * product.precio;
+    
+        // Aplicar precio mínimo o ajustes
+        const basePrice = 50; // Precio mínimo por producto (puedes ajustarlo)
+        const smallAreaMultiplier = area < 0.5 ? 1.2 : 1; // Multiplicador para áreas pequeñas (< 0.5 m²)
+    
+        price = Math.max(price * smallAreaMultiplier, basePrice);
+    
+        setCalculatedPrice(price.toFixed(2));
     };
+    
+
 
     const allImages = [
         { image_url: product.imagen },
@@ -161,7 +186,7 @@ export const Product = ({ product }) => {
                         </p>
                         <div className="my-1 d-flex justify-content-between align-items-center">
                             <Button className="btn-style-background-color" onClick={handleShow}>
-                            Detalles
+                                Detalles
                             </Button>
                             <i className={`fa-regular fa-heart ${actions.isFavorite(product) ? 'fa-solid' : ''}`}
                                 onClick={handleFavorite}
@@ -300,7 +325,14 @@ export const Product = ({ product }) => {
                                     <i className="fa-solid fa-calculator" style={{ marginRight: '7px' }}></i> Calcular precio
                                 </Button>
                                 {calculatedPrice && (
-                                    <h5 className="mt-3">Precio calculado: {calculatedPrice} €</h5>
+                                    <>
+                                        <h5 className="mt-3">Precio calculado: {calculatedPrice} €</h5>
+                                        {calculatedPrice <= 50 && ( 
+                                            <p className="text-warning mt-2">
+                                                Precio mínimo por producto.
+                                            </p>
+                                        )}
+                                    </>
                                 )}
                             </div>
                         </div>

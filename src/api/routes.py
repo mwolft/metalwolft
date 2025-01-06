@@ -728,6 +728,19 @@ def handle_orders():
             # Crear los detalles de la orden
             order_details = data.get('products', [])
             for detail in order_details:
+                existing_detail = OrderDetails.query.filter_by(
+                    order_id=new_order.id,
+                    product_id=detail['producto_id'],
+                    alto=detail.get('alto'),
+                    ancho=detail.get('ancho'),
+                    anclaje=detail.get('anclaje'),
+                    color=detail.get('color')
+                ).first()
+
+                if existing_detail:
+                    current_app.logger.info(f"Detalle ya existente: {existing_detail.serialize()}")
+                    continue 
+
                 new_detail = OrderDetails(
                     order_id=new_order.id,
                     product_id=detail['producto_id'],
@@ -748,6 +761,7 @@ def handle_orders():
                     CIF=data.get('CIF')
                 )
                 db.session.add(new_detail)
+
 
             db.session.commit()
 
@@ -793,7 +807,12 @@ def handle_orders():
                 pdf.setFont("Helvetica-Bold", 12)
                 pdf.drawString(50, 580, "Dirección de Envío")
                 pdf.setFont("Helvetica", 10)
-                pdf.drawString(50, 560, f"{data.get('shipping_address')}, {data.get('shipping_city')} ({data.get('shipping_postal_code')})")
+
+                # Verificar si la dirección de envío es igual a la de facturación o está vacía
+                if not data.get('shipping_address') or data.get('shipping_address') == data.get('billing_address'):
+                    pdf.drawString(50, 560, "La misma que la de facturación")
+                else:
+                    pdf.drawString(50, 560, f"{data.get('shipping_address')}, {data.get('shipping_city')} ({data.get('shipping_postal_code')})")
 
                 # Detalles del pedido
                 pdf.setFont("Helvetica-Bold", 12)
@@ -930,52 +949,50 @@ def handle_order(order_id):
 
 @api.route('/orderdetails', methods=['POST'])
 @jwt_required()
-def add_order_detail():
-    data = request.get_json()
-    current_user = get_jwt_identity()  
+def add_order_details():
+    data = request.get_json()  # Recibe una lista de detalles
+    current_user = get_jwt_identity()
     try:
-        new_order_detail = OrderDetails(
-            order_id=data['order_id'],
-            product_id=data['product_id'],
-            quantity=data['quantity'],
-            alto=data.get('alto'),
-            ancho=data.get('ancho'),
-            anclaje=data.get('anclaje'),
-            color=data.get('color'),
-            precio_total=data['precio_total'],
-            firstname=data.get('firstname'),
-            lastname=data.get('lastname'),
-            shipping_address=data.get('shipping_address'),
-            shipping_city=data.get('shipping_city'),
-            shipping_postal_code=data.get('shipping_postal_code'),
-            billing_address=data.get('billing_address'),
-            billing_city=data.get('billing_city'),
-            billing_postal_code=data.get('billing_postal_code'),
-            CIF=data.get('CIF')
-        )
-        db.session.add(new_order_detail)
-        # Actualizar los datos del usuario si son diferentes o están vacíos
-        user = Users.query.filter_by(id=current_user['user_id']).first()
-        if user:
-            user.firstname = data.get('firstname') or user.firstname
-            user.lastname = data.get('lastname') or user.lastname
-            user.shipping_address = data.get('shipping_address') or user.shipping_address
-            user.shipping_city = data.get('shipping_city') or user.shipping_city
-            user.shipping_postal_code = data.get('shipping_postal_code') or user.shipping_postal_code
-            user.billing_address = data.get('billing_address') or user.billing_address
-            user.billing_city = data.get('billing_city') or user.billing_city
-            user.billing_postal_code = data.get('billing_postal_code') or user.billing_postal_code
-            user.CIF = data.get('CIF') or user.CIF
+        added_details = []
+        for detail in data:
+            # Verifica si el detalle ya existe
+            existing_detail = OrderDetails.query.filter_by(
+                order_id=detail['order_id'],
+                product_id=detail['product_id'],
+                alto=detail.get('alto'),
+                ancho=detail.get('ancho'),
+                anclaje=detail.get('anclaje'),
+                color=detail.get('color')
+            ).first()
+            if existing_detail:
+                continue  # Saltar si ya existe
+
+            new_detail = OrderDetails(
+                order_id=detail['order_id'],
+                product_id=detail['product_id'],
+                quantity=detail['quantity'],
+                alto=detail.get('alto'),
+                ancho=detail.get('ancho'),
+                anclaje=detail.get('anclaje'),
+                color=detail.get('color'),
+                precio_total=detail['precio_total'],
+                firstname=detail.get('firstname'),
+                lastname=detail.get('lastname'),
+                shipping_address=detail.get('shipping_address'),
+                shipping_city=detail.get('shipping_city'),
+                shipping_postal_code=detail.get('shipping_postal_code'),
+                billing_address=detail.get('billing_address'),
+                billing_city=detail.get('billing_city'),
+                billing_postal_code=detail.get('billing_postal_code'),
+                CIF=detail.get('CIF')
+            )
+            db.session.add(new_detail)
+            added_details.append(new_detail)
         db.session.commit()
-        response = jsonify({
-            "message": "Order detail added successfully.",
-            "order_detail": new_order_detail.serialize(),
-        })
-        response.headers['Access-Control-Allow-Origin'] = '*'
-        return response, 201
+        return jsonify([detail.serialize() for detail in added_details]), 201
     except SQLAlchemyError as e:
         db.session.rollback()
-        return jsonify({"message": "An error occurred while adding the order detail.", "error": str(e)}), 500
+        return jsonify({"message": "An error occurred while adding order details.", "error": str(e)}), 500
 
 
 @api.route('/orderdetails', methods=['GET'])
