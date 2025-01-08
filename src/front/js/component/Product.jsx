@@ -198,7 +198,7 @@ export const Product = ({ product }) => {
             </div>
 
             {/* Modal */}
-            <Modal show={showModal} onHide={handleClose} size="lg">
+            <Modal show={showModal} onHide={handleClose} size="lg"  style={{ zIndex: 2000 }} backdropClassName="custom-backdrop">
                 <Modal.Header closeButton>
                     <Modal.Title className="d-flex align-items-center">
                         {product.nombre}

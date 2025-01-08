@@ -131,7 +131,7 @@ export const RejasParaVentanas = ({ onSelectCategory, onSelectSubcategory, categ
                 )}
             </Helmet>
             {/*<Breadcrumb />*/}
-            <div className="container" style={{ marginTop: "80px" }}>
+            <div className="container" style={{ marginTop: "100px" }}>
                 <div className="row">
                     <h1 className="h2-categories mb-4">Rejas para ventanas</h1>
                     <p>Las <strong>rejas para ventanas</strong> son elementos esenciales para la protección en cualquier hogar. En este sitio encontrarás información completa sobre los diferentes <b>tipos, estilos y precios</b> de rejas para ventanas. Nuestro objetivo es ayudarte a elegir la opción más adecuada, teniendo en cuenta tanto la <b>funcionalidad</b> como la <b>estética</b>.</p>

@@ -26,7 +26,9 @@ body, html {
   opacity: 1;
   transform: translateY(0);
 }
-
+.custom-backdrop {
+  z-index: 1999 !important;
+}
 /*Cart*/
 .form-check-input:checked {
   background-color: #ff324d; 
