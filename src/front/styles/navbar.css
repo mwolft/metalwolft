@@ -1,74 +1,86 @@
 /* ----- START NAVBAR ----- */
-.estilo-navbar {
-    position: fixed;          
-    top: 0;                  
-    width: 100%;              
-    z-index: 1000;            
-    background-color: white; 
-    margin: 0;                
-    padding: 5px 0;        
+
+
+.top-banner {
+    position: fixed; 
+    top: 0;
+    width: 100%;
+    z-index: 1050; 
+    font-size: 0.9rem;
+    color: #ffffff; 
+    background-color: #ff324d;
+    text-align: center;
+    padding: 0.5rem 0;
 }
 
+
+.estilo-navbar {
+    position: fixed; 
+    top: 36px; 
+    width: 100%;
+    z-index: 1100; 
+    background-color: white;
+    margin: 0;
+    padding: 5px 0;
+}
+
+/* Ajustar el contenido principal */
+#main-content {
+    margin-top: calc(36px + 56px); /* Altura del banner + navbar */
+}
+
+/* Estilo del navbar */
 .navbar-brand img {
-    max-height: 3rem;         
-    margin-right: 20px;       
+    max-height: 3rem;
+    margin-right: 20px;
     padding-left: 3rem;
 }
-.navbar-brand{
+.navbar-brand {
     margin-right: 0;
 }
-.button-navbar{
+.button-navbar {
     border: #ff324d solid 2px;
     border-radius: 10px;
-    padding: 6px 20px !important; 
+    padding: 6px 20px !important;
 }
 .button-navbar:hover {
-    padding: 5px 10px !important;   
+    padding: 5px 10px !important;
     border-radius: 10px;
 }
 .nav-link {
-    font-weight: 400; 
+    font-weight: 400;
     font-size: 0.9rem;
-    color: #000 !important;       
-    padding: 5px 10px !important;  
-    margin-left: 2.2rem;     
-    text-decoration: none;   
+    color: #000 !important;
+    padding: 5px 10px !important;
+    margin-left: 2.2rem;
+    text-decoration: none;
 }
-.navbar-toggler{
+.navbar-toggler {
     margin-right: 10px !important;
 }
-
 .nav-link:hover {
-    color: #ff324d !important; 
+    color: #ff324d !important;
 }
-
-.navbar-toggler {
-    border-color: #000;     
-}
-
 button.btn-outline-dark i {
-    font-size: 1.5rem;        
+    font-size: 1.5rem;
 }
-
 #user-nav-dropdown .dropdown-menu {
-    right: 0;                 
-    left: auto;               
+    right: 0;
+    left: auto;
 }
-
 .favorites-badge, .cart-badge {
     background-color: #ff324d !important;
-    top: -10px;  
-    left: 15px;  
+    top: -10px;
+    left: 15px;
     position: absolute;
     transform: translate(40%, 30%);
-    font-size: 0.8rem;  
+    font-size: 0.8rem;
     width: 20px;
     height: 20px;
     display: flex;
     align-items: center;
     justify-content: center;
 }
-
 .navbar-toggler + .d-flex {
     display: flex;
     align-items: center;
@@ -78,14 +90,14 @@ button.btn-outline-dark i {
 /* Iconos junto a la hamburguesa en pantallas pequeñas */
 @media (max-width: 991.98px) {
     .navbar-toggler + .d-flex {
-        order: -1;  
+        order: -1;
     }
     .nav-link.d-lg-none {
         margin-left: 0rem;
     }
     .navbar-brand img {
-        max-height: 2.8rem;         
-        margin-right: 0px;       
+        max-height: 2.8rem;
+        margin-right: 0px;
         padding-left: 0rem;
     }
 }
