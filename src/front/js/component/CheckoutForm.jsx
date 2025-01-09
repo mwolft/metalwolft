@@ -252,8 +252,8 @@ const CheckoutForm = () => {
 
     return (
         <Container fluid="sm" className="mt-5">
-            <div className="py-5 text-center">
-                <h2>Formulario de proceso de pago</h2>
+            <div className="text-center">
+                <h2 className='h2-categories' style={{marginTop: '80px', marginBottom: '30px'}}>Formulario de pago</h2>
             </div>
             <Row>
                 <Col md={4} className="order-md-2 mb-4">
@@ -431,7 +431,7 @@ const CheckoutForm = () => {
                         <img
                             src="https://formalba.es/wp-content/uploads/2021/04/pagos-seguros-autorizado.png"
                             alt="Pago Seguro Autorizado"
-                            style={{ maxWidth: '70%', height: 'auto' }}
+                            style={{ maxWidth: '70%', height: 'auto', marginBottom: '30px' }}
                         />
                     </div>
                 </Col>

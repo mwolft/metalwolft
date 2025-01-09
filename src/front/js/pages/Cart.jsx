@@ -3,7 +3,7 @@ import { Context } from "../store/appContext";
 import { Button, Container, Row, Col, Table } from "react-bootstrap";
 import { Notification } from "../component/Notification.jsx";
 import "../../styles/cart.css";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 
 export const Cart = () => {
     const { store, actions } = useContext(Context);
@@ -41,12 +41,11 @@ export const Cart = () => {
         navigate("/checkout-form");
     };
 
-
     return (
-        <Container className="mt-5">
-            <h2 className="text-center my-4">Carrito de compra</h2>
+        <Container  style={{marginTop: '95px'}}>
+            <h2 className="h2-categories text-center my-2">Carrito de compra</h2>
             {store.cart.length === 0 ? (
-                <p className="text-center">No tiene productos en su carrito aún.</p>
+                <p className="text-center" style={{marginTop: '100px', marginBottom: '300px'}}>No tiene productos en su carrito aún. <br /><br /><Link to="/" className="link-categories"><i className="fa-solid fa-arrow-left"></i> Volver</Link></p>
             ) : (
                 <Row>
                     <Col md={10} className="mx-auto">
@@ -94,13 +93,13 @@ export const Cart = () => {
                         </Table>
 
                         {store.cart.length > 0 && (
-                            <Row className="mt-4 mb-5 mx-3">
+                            <Row className="mt-3 mb-5 mx-3">
                                 <Col className="text-end">
                                     <p style={{fontSize: '22px', fontWeight: 'bold'}}>Total: {subtotal.toFixed(2)} € (IVA incl.)</p>
                                     {subtotal >= 150 ? (
-                                        <p className="text-success"  style={{fontSize: '16px', fontWeight: 'bold', marginBottom: '70px'}}>Envío: GRATIS ✔️</p>
+                                        <p className="text-success"  style={{fontSize: '16px', fontWeight: 'bold', marginBottom: '20px'}}>Envío: GRATIS ✔️</p>
                                     ) : (
-                                        <p className="text-danger"  style={{fontSize: '16px', fontWeight: 'bold', marginBottom: '70px'}}>Pedido mínimo de 150€ ⛔</p>
+                                        <p className="text-danger"  style={{fontSize: '16px', fontWeight: 'bold', marginBottom: '20px'}}>Pedido mínimo de 150€ ⛔</p>
                                     )}
                                     <div className="text-end">
                                         <Button
