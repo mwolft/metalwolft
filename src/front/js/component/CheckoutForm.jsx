@@ -5,13 +5,13 @@ import { Context } from "../store/appContext";
 import { Button, Container, Row, Col, Form, Accordion } from "react-bootstrap";
 import { useNavigate } from "react-router-dom";
 
-const stripePromise = loadStripe('pk_test_51I1FgUDyMBNofWjFVmq85bCUIBbzjopkQw1VWtt7I9Gp0trmFwYH0O60Heuit0BOaaa2dEJvEMzaB90uGxjr5Cuw00hVfWhV4y');
+const stripePromise = loadStripe('pk_live_51I1FgUDyMBNofWjFzagO0jTrkfQBvlt5Pshx3hLJbDLCxahT7Cn5NF9oozvey5iiH6lZhP82p3TFFmrdHGh3CQW700GiDX1dtz');
 
 const CheckoutForm = () => {
     const stripe = useStripe();
     const elements = useElements();
     const { store, actions } = useContext(Context);
-    const [paymentMethod, setPaymentMethod] = useState("stripe"); // Estado para seleccionar entre Stripe y PayPal
+    const [paymentMethod, setPaymentMethod] = useState("stripe"); 
     const [differentBilling, setDifferentBilling] = useState(false);
     const [errors, setErrors] = useState({});
     const [formData, setFormData] = useState({
