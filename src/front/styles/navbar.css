@@ -101,4 +101,23 @@ button.btn-outline-dark i {
         padding-left: 0rem;
     }
 }
+@media (max-width: 450px) {
+    .nav-link i.fa-heart, 
+    .nav-link .favorites-badge { 
+        display: none;
+        padding-left: 0 !important;
+    }
+}
+@media (max-width: 351px) {
+    .nav-link i.fa-cart-shopping, 
+    .nav-link .cart-badge, .fa-right-to-bracket { 
+        display: none;
+        padding-left: 0 !important;
+    }
+}
+@media (max-width: 305px) {
+    .navbar-brand{ 
+        display: none;
+    }
+}
 /* ----- END NAVBAR ----- */

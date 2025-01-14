@@ -1,11 +1,29 @@
 .wishlist_table {
     margin-top: 2rem;
-    margin-bottom: 2rem;
+    margin-bottom: 12rem;
 }
 
 .wishlist_table .table {
     width: 100%;
     margin-bottom: 0;
+    border-collapse: collapse;
+}
+th {
+    font-weight: bold;
+}
+.wishlist_table .table th, .wishlist_table .table td {
+    padding: 15px;
+    text-align: center;
+    vertical-align: middle;
+    border-bottom: 1px solid #ddd;
+    white-space: nowrap; 
+}
+
+.wishlist_table .table-responsive {
+    overflow-x: auto;
+    padding: 20px;
+    box-shadow: 0px 0px 15px rgba(0, 0, 0, 0.1);
+    border-radius: 10px;
 }
 
 .wishlist_table .product-thumbnail img {
@@ -48,23 +66,12 @@
     color: #e62941;
 }
 
-.badge.text-bg-success {
-    background-color: #28a745;
-    color: white;
-}
+@media (max-width: 576px) {
+    .wishlist_table .table-responsive {
+        overflow-x: auto;
+    }
 
-.badge.text-bg-danger {
-    background-color: #dc3545;
-    color: white;
-}
-
-.table th, .table td {
-    vertical-align: middle;
-    text-align: center;
-}
-
-.table-responsive {
-    padding: 20px;
-    box-shadow: 0px 0px 15px rgba(0, 0, 0, 0.1);
-    border-radius: 10px;
+    .wishlist_table .table {
+        display: block; 
+    }
 }
