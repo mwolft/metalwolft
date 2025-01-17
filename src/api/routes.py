@@ -1297,21 +1297,6 @@ def handle_cart():
             response.headers['Access-Control-Expose-Headers'] = 'Authorization'
             return response, 400
         try:
-            # Verificar si ya existe un producto con las mismas especificaciones en el carrito
-            existing_item = Cart.query.filter_by(
-                usuario_id=current_user['user_id'],
-                producto_id=product_id,
-                alto=data.get('alto'),
-                ancho=data.get('ancho'),
-                anclaje=data.get('anclaje'),
-                color=data.get('color')
-            ).first()
-            if existing_item:
-                response = jsonify({"message": "Producto ya está en el carrito con las mismas especificaciones"})
-                response.headers['Access-Control-Allow-Origin'] = '*'
-                response.headers['Access-Control-Expose-Headers'] = 'Authorization'
-                return response, 409
-            # Añadir el producto al carrito con los detalles personalizados
             new_cart_item = Cart(
                 usuario_id=current_user['user_id'],
                 producto_id=product_id,
