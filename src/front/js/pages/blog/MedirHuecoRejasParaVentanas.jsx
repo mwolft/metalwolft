@@ -113,12 +113,12 @@ export const MedirHuecoRejasParaVentanas = () => {
                     </script>
                 )}
             </Helmet>
-            <Container className='post-page' style={{ marginTop: '65px' }}>
+            <Container className='post-page' style={{ marginTop: '20px' }}>
                 <Row>
                     <Col xl={9}>
                         {currentPost && (
                             <div className="single_post">
-                                <h1 className="blog_title">{currentPost.title}</h1>
+                                <h1 className="h1-categories">{currentPost.title}</h1>
                                 <p className="p-coments-single-post">
                                     <i className="fa-regular fa-calendar mx-1" style={{ color: '#ff324d' }}></i> {new Date(currentPost.created_at).toLocaleDateString()}
                                     <i className="fa-regular fa-comments mx-1" style={{ color: '#ff324d', paddingLeft: '10px' }}></i> {currentComments?.length || 0} Comentarios

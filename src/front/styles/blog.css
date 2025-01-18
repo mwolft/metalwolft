@@ -71,13 +71,30 @@
     text-decoration: none;
 }
 
+.title-link {
+    text-decoration: none; 
+    color: black; 
+    transition: color 0.3s ease; 
+}
+
+.title-link:hover {
+    color: red; 
+}
+
 .h2-title-blog {
     font-size: 1rem;
     margin-top: 1rem;
     margin: 15px;
-    color: black !important;
+    text-decoration: none;
+    color: inherit; 
+}
+.image-link img {
+    transition: transform 0.3s ease; 
 }
 
+.image-link:hover img {
+    transform: scale(0.95);
+}
 .p-coments {
     display: flex;
     justify-content: flex-start;

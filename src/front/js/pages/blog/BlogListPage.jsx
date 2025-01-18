@@ -86,20 +86,25 @@ export const BlogListPage = () => {
                 )}
             </Helmet>
             {/*<Breadcrumb />*/}
-            <div className="container-fluid"style={{ marginTop: '60px'}}>
-                <h1 className='h1-categories'>Blog</h1>
+            <div className="container-fluid" style={{ marginTop: '60px' }}>
+                <h1 className='h1-categories mx-5'>Blog</h1>
                 <div className="row" style={{ margin: '8px 8px', backgroundSize: 'cover' }}>
                     {posts.map(post => (
                         <div
                             className="card-blog col-12 col-sm-12 col-md-4 col-lg-4 col-xl-4 mb-4"
                             key={post.id}
                             onMouseEnter={() => fetchCommentsForPost(post.id)}>
-                            <img
-                                src={post.image_url}
-                                alt={post.title}
-                                className="img-blog img-fluid w-100"
-                                style={{ objectFit: 'cover', height: '200px' }} />
-                            <h2 className='h2-title-blog'>{post.title}</h2>
+                            <Link to={`/${post.slug}`} className="image-link">
+                                <img
+                                    src={post.image_url}
+                                    alt={post.title}
+                                    className="img-blog img-fluid w-100"
+                                    style={{ objectFit: 'cover', height: '200px' }}
+                                />
+                            </Link>
+                            <Link to={`/${post.slug}`} className="title-link">
+                                <h2 className='h2-title-blog'>{post.title}</h2>
+                            </Link>
                             <p className='p-coments'>
                                 <div className='p-comments-single'>
                                     <i className="fa-regular fa-calendar" style={{ color: '#ff324d' }}></i> {formatDate(post.created_at)}

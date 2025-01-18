@@ -142,6 +142,7 @@ p .btn-color-yellow:hover {
   max-width: 450px; 
   width: 100%;
   padding: 30px; 
+  margin-top: 50px;
 }
 .auth-header {
   color: #007bff; 
