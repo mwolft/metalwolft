@@ -22,7 +22,7 @@ export const AsideOthersCategories = ({ currentCategoryId }) => {
     
     return (
         <aside className="widget my-5">
-            <p className="widget_title">Otras Categorías</p>
+            <p className="widget_title"><b>Otras Categorías</b></p>
             <hr className="hr-home" />
             {otherCategories.length > 0 ? (
                 <ul className="widget_categories">

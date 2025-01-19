@@ -78,9 +78,9 @@ export const RejasParaVentanas = ({ onSelectCategory, onSelectSubcategory, categ
     };
 
 
-    {/* const handleSubcategorySelect = (subcategoryId) => {
+    const handleSubcategorySelect = (subcategoryId) => {
         setSelectedSubcategoryId(subcategoryId);
-    };*/}
+    };
 
 
     return (
@@ -137,13 +137,13 @@ export const RejasParaVentanas = ({ onSelectCategory, onSelectSubcategory, categ
                     <p>Las <strong>rejas para ventanas</strong> son elementos esenciales para la protección en cualquier hogar. En este sitio encontrarás información completa sobre los diferentes <b>tipos, estilos y precios</b> de rejas para ventanas. Nuestro objetivo es ayudarte a elegir la opción más adecuada, teniendo en cuenta tanto la <b>funcionalidad</b> como la <b>estética</b>.</p>
                     <p>Consigue el precio al instante y ¡Aprovécha de los <strong>ENVÍOS GRATUÍTOS</strong> directos de fábrica!</p>
                     <div className="col-12 col-lg-3 col-xl-3 order-1">
-                        {/* <div className="col-12 d-block d-lg-none order-1">
+                        <div className="col-12 d-block order-1">
                             <AsideCategories
                                 onSelectCategory={handleCategorySelect}
                                 onSelectSubcategory={handleSubcategorySelect}
                                 categoryId={rejasCategoryId}
                             />
-                        </div>*/}
+                        </div>
                         <div className="d-none d-lg-block">
                             <AsidePost />
                             <AsideOthersCategories currentCategoryId={rejasCategoryId} />
@@ -166,8 +166,8 @@ export const RejasParaVentanas = ({ onSelectCategory, onSelectSubcategory, categ
                         </div>
                     </div>
                     <div className="col-12 d-block d-lg-none order-3 p-3" aria-hidden="true">
-                        <aside className="widget my-5">
-                            <p className="widget_title">Posts Recientes</p>
+                        <aside className="widget mb-5">
+                            <p className="widget_title"><b>Posts Recientes</b></p>
                             <hr className="hr-home" />
                             {recentPosts.length > 0 ? (
                                 <ul className="widget_categories">
@@ -192,9 +192,8 @@ export const RejasParaVentanas = ({ onSelectCategory, onSelectSubcategory, categ
                                 <p>Cargando posts recientes...</p>
                             )}
                         </aside>
-
                         <aside className="widget my-2">
-                            <p className="widget_title">Otras Categorías</p>
+                            <p className="widget_title"><b>Otras Categorías</b></p>
                             <hr className="hr-home" />
                             {otherCategories.length > 0 ? (
                                 <ul className="widget_categories">
