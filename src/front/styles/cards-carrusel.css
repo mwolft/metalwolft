@@ -65,3 +65,6 @@
 .p-popover{
     margin-bottom: 0 !important;
 }
+.popover {
+    z-index: 5200; 
+}

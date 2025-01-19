@@ -20,7 +20,7 @@ export const Product = ({ product }) => {
     const [notification, setNotification] = useState(null);
     const [height, setHeight] = useState('');
     const [width, setWidth] = useState('');
-    const [mounting, setMounting] = useState('con obra');
+    const [mounting, setMounting] = useState('Sin obra: con pletinas');
     const [color, setColor] = useState('blanco');
     const [calculatedPrice, setCalculatedPrice] = useState(null);
     const { store, actions } = useContext(Context);
@@ -88,30 +88,33 @@ export const Product = ({ product }) => {
     const handleCalculatePrice = () => {
         const parsedHeight = parseFloat(height);
         const parsedWidth = parseFloat(width);
-    
+
         if (isNaN(parsedHeight) || isNaN(parsedWidth)) {
             setNotification("Debe ingresar altura y anchura válidas");
             return;
         }
-    
+
         if (parsedHeight < 20 || parsedWidth < 20) {
             setNotification("El alto y el ancho deben ser al menos 20 cm");
             return;
         }
-    
+
         // Cálculo base
         const area = (parsedHeight * parsedWidth) / 10000; // Área en metros cuadrados
         let price = area * product.precio;
-    
+
         // Aplicar precio mínimo o ajustes
         const basePrice = 50; // Precio mínimo por producto (puedes ajustarlo)
         const smallAreaMultiplier = area < 0.5 ? 1.2 : 1; // Multiplicador para áreas pequeñas (< 0.5 m²)
-    
+
         price = Math.max(price * smallAreaMultiplier, basePrice);
-    
+
         setCalculatedPrice(price.toFixed(2));
     };
-    
+
+    const determinePlacement = () => {
+        return window.innerWidth > 768 ? "right" : "top";
+    };
 
 
     const allImages = [
@@ -198,7 +201,7 @@ export const Product = ({ product }) => {
             </div>
 
             {/* Modal */}
-            <Modal show={showModal} onHide={handleClose} size="lg"  style={{ zIndex: 2000 }} backdropClassName="custom-backdrop">
+            <Modal show={showModal} onHide={handleClose} size="lg" style={{ zIndex: 2000 }} backdropClassName="custom-backdrop">
                 <Modal.Header closeButton>
                     <Modal.Title className="d-flex align-items-center">
                         {product.nombre}
@@ -269,7 +272,7 @@ export const Product = ({ product }) => {
                                     <Form.Group controlId="mounting" className="me-3" style={{ flex: 1 }}>
                                         <OverlayTrigger
                                             trigger={['hover', 'focus']}
-                                            placement="top"
+                                            placement={determinePlacement()}
                                             rootClose={false}
                                             overlay={
                                                 <Popover id="popover-mounting">
@@ -277,16 +280,23 @@ export const Product = ({ product }) => {
                                                     <Popover.Body>
                                                         <p className='p-popover'>
                                                             <span style={{ textDecoration: 'underline', fontWeight: 'bold' }}>Sin obra: </span>
-                                                            Tornillos Inviolables.
+                                                            con pletinas. <br /><b>(Opción recomendada)</b>
                                                         </p>
-                                                        <img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSWeCVUg3hSyUQj2YKAzXEAScWZ170dqvQ_mQ&s"
-                                                            style={{ width: '70px', height: 'auto', marginBottom: '10px', marginTop: '5px' }}
+                                                        <img src="https://res.cloudinary.com/dewanllxn/image/upload/v1737278219/albany-pletinas-_e4ct2v.png"
+                                                            style={{ width: '110px', height: 'auto', marginBottom: '10px', marginTop: '5px' }}
+                                                            alt="rejas para ventanas sin obra" />
+                                                        <p className='p-popover'>
+                                                            <span style={{ textDecoration: 'underline', fontWeight: 'bold' }}>Sin obra: </span>
+                                                            con agujeros interiores. <br /> (Recomendada si no hay espacio en la profundidad del muro)
+                                                        </p>
+                                                        <img src="https://res.cloudinary.com/dewanllxn/image/upload/v1737278219/albany-agujeros-interiores_akhaeg.png"
+                                                            style={{ width: '110px', height: 'auto', marginBottom: '10px', marginTop: '5px' }}
                                                             alt="rejas para ventanas sin obra" />
                                                         <p className='p-popover'>
                                                             <span style={{ textDecoration: 'underline', fontWeight: 'bold' }}>Con obra: </span>
-                                                            Anclaje con garras.
+                                                            con garras metálicas. <br />(Recomendada para muro en construcción)
                                                         </p>
-                                                        <img src={AlbanyImg}
+                                                        <img src="https://res.cloudinary.com/dewanllxn/image/upload/v1734888241/rejas-para-ventanas-sin-obra_wukdzi.png"
                                                             style={{ width: '110px', height: 'auto', marginBottom: '10px', marginTop: '5px' }}
                                                             alt="rejas para ventanas con obra" />
                                                     </Popover.Body>
@@ -302,8 +312,9 @@ export const Product = ({ product }) => {
                                             value={mounting}
                                             onChange={(e) => setMounting(e.target.value)}
                                         >
-                                            <option value="sin obra">Sin obra</option>
-                                            <option value="con obra">Con obra</option>
+                                            <option value="Sin obra: con agujeros interiores">Sin obra: con agujeros interiores</option>
+                                            <option value="Sin obra: con pletinas">Sin obra: con pletinas</option>
+                                            <option value="Con obra: con garras metálicas">Con obra: con garras metálicas</option>
                                         </Form.Control>
                                     </Form.Group>
                                     <Form.Group controlId="color" style={{ flex: 1 }}>
@@ -327,7 +338,7 @@ export const Product = ({ product }) => {
                                 {calculatedPrice && (
                                     <>
                                         <h5 className="mt-3">Precio calculado: {calculatedPrice} €</h5>
-                                        {calculatedPrice <= 50 && ( 
+                                        {calculatedPrice <= 50 && (
                                             <p className="text-warning mt-2">
                                                 Precio mínimo por producto.
                                             </p>
