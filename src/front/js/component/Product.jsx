@@ -52,7 +52,9 @@ export const Product = ({ product }) => {
         if (store.isLoged) {
             if (height && width) {
                 const area = (parseFloat(height) * parseFloat(width)) / 10000;
-                let price = area * product.precio;
+                const pricePerM2 = product.precio_rebajado || product.precio; 
+                let price = area * pricePerM2;
+
 
                 // Aplicar precio mínimo de 50€
                 if (price < 50) {
@@ -74,7 +76,7 @@ export const Product = ({ product }) => {
                 // Reset valores después de añadir al carrito
                 setHeight('');
                 setWidth('');
-                setMounting('con obra');
+                setMounting('Sin obra: con pletinas');
                 setColor('blanco');
             } else {
                 setNotification("Debe ingresar altura y anchura para calcular el precio");
@@ -88,30 +90,34 @@ export const Product = ({ product }) => {
     const handleCalculatePrice = () => {
         const parsedHeight = parseFloat(height);
         const parsedWidth = parseFloat(width);
-
+    
         if (isNaN(parsedHeight) || isNaN(parsedWidth)) {
             setNotification("Debe ingresar altura y anchura válidas");
             return;
         }
-
+    
         if (parsedHeight < 20 || parsedWidth < 20) {
             setNotification("El alto y el ancho deben ser al menos 20 cm");
             return;
         }
-
+    
+        // Seleccionar el precio correcto
+        const basePricePerM2 = product.precio_rebajado || product.precio;
+    
         // Cálculo base
         const area = (parsedHeight * parsedWidth) / 10000; // Área en metros cuadrados
-        let price = area * product.precio;
-
+        let price = area * basePricePerM2;
+    
         // Aplicar precio mínimo o ajustes
         const basePrice = 50; // Precio mínimo por producto (puedes ajustarlo)
         const smallAreaMultiplier = area < 0.5 ? 1.2 : 1; // Multiplicador para áreas pequeñas (< 0.5 m²)
-
+    
         price = Math.max(price * smallAreaMultiplier, basePrice);
-
+    
         setCalculatedPrice(price.toFixed(2));
     };
 
+    
     const determinePlacement = () => {
         return window.innerWidth > 768 ? "right" : "top";
     };
@@ -121,6 +127,10 @@ export const Product = ({ product }) => {
         { image_url: product.imagen },
         ...product.images.filter(image => image.image_url !== product.imagen),
     ];
+
+    const formatPrice = (price) => {
+        return Number.isInteger(price) ? price : price.toFixed(2);
+    };
 
     return (
         <>
@@ -152,6 +162,24 @@ export const Product = ({ product }) => {
                             }}
                             loading="lazy"
                         />
+                        {product.precio_rebajado && (
+                            <div
+                                style={{
+                                    position: "absolute",
+                                    top: "10px",
+                                    left: "10px",
+                                    backgroundColor: "#28a745",
+                                    color: "#fff",
+                                    padding: "4px 8px",
+                                    borderRadius: "4px",
+                                    fontSize: "12px",
+                                    fontWeight: "bold",
+                                    zIndex: 10,
+                                }}
+                            >
+                                En oferta
+                            </div>
+                        )}
                         <div
                             style={{
                                 position: "absolute",
@@ -185,7 +213,21 @@ export const Product = ({ product }) => {
                             {product.nombre}
                         </h3>
                         <p className="card-text-carrusel">
-                            <span className="current-price">{product.precio} €/m²</span>
+                            {product.precio_rebajado ? (
+                                <>
+                                    <span className="price-original" style={{ textDecoration: 'line-through', color: '#999' }}>
+                                        {formatPrice(product.precio)} €
+                                    </span>
+                                    <span className="price-discounted" style={{ color: '#e63946', fontWeight: 'bold', marginLeft: '8px' }}>
+                                        {formatPrice(product.precio_rebajado)} €
+                                    </span>
+                                    <span className="discount-percentage" style={{ color: '#28a745', padding: '2px 6px', marginLeft: '2px' }}>
+                                        -{product.porcentaje_rebaja}%
+                                    </span>
+                                </>
+                            ) : (
+                                <span className="current-price">{formatPrice(product.precio)} €/m²</span>
+                            )}
                         </p>
                         <div className="my-1 d-flex justify-content-between align-items-center">
                             <Button className="btn-style-background-color" onClick={handleShow}>
@@ -248,7 +290,24 @@ export const Product = ({ product }) => {
                         </div>
                         <div className="col-lg-6 col-md-6">
                             <div className="pr_detail">
-                                <h5>Precio: {product.precio} €/m²</h5>
+                                <h5>
+                                    Precio:
+                                    {product.precio_rebajado ? (
+                                        <>
+                                            <span className="price-original" style={{ textDecoration: 'line-through', color: '#999', marginLeft: '8px' }}>
+                                                {formatPrice(product.precio)} €
+                                            </span>
+                                            <span className="price-discounted" style={{ color: '#e63946', fontWeight: 'bold', marginLeft: '8px' }}>
+                                                {formatPrice(product.precio_rebajado)} €
+                                            </span>
+                                            <span className="discount-percentage" style={{ color: '#28a745', padding: '2px 6px', marginLeft: '8px' }}>
+                                                -{product.porcentaje_rebaja}% 
+                                            </span>
+                                        </>
+                                    ) : (
+                                        <span className="current-price" style={{ marginLeft: '8px' }}>{formatPrice(product.precio)} €/m²</span>
+                                    )}
+                                </h5>
                                 <p>{product.descripcion}</p>
                                 <div className="d-flex mt-4">
                                     <Form.Group controlId="height" className="me-3" style={{ flex: 1 }}>

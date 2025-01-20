@@ -109,6 +109,8 @@ class Products(db.Model):
     nombre = db.Column(db.String(100), nullable=False)
     descripcion = db.Column(db.Text, nullable=False)
     precio = db.Column(db.Float, nullable=False)
+    precio_rebajado = db.Column(db.Float, nullable=True)
+    porcentaje_rebaja = db.Column(db.Integer, nullable=True)
     categoria_id = db.Column(db.Integer, db.ForeignKey('categories.id'), nullable=False)
     subcategoria_id = db.Column(db.Integer, db.ForeignKey('subcategories.id'), nullable=True)
     imagen = db.Column(db.String(200), nullable=True)
@@ -121,11 +123,19 @@ class Products(db.Model):
         return f'<Product {self.id}: {self.nombre}>'
 
     def serialize(self):
+        rebajado = self.precio_rebajado if self.precio_rebajado else None
+        porcentaje = (
+            round(100 - (rebajado / self.precio * 100), 2)
+            if rebajado
+            else None
+        )
         return {
             "id": self.id,
             "nombre": self.nombre,
             "descripcion": self.descripcion,
-            "precio": self.precio,
+            "precio": int(self.precio) if self.precio == int(self.precio) else self.precio,
+            "precio_rebajado": int(rebajado) if rebajado and rebajado == int(rebajado) else rebajado,
+            "porcentaje_rebaja": porcentaje,
             "categoria_id": self.categoria_id,
             "subcategoria_id": self.subcategoria_id,
             "imagen": self.imagen,
