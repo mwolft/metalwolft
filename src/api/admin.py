@@ -1,9 +1,12 @@
 import os
+from flask import Blueprint, request
 from flask_admin import Admin
 from flask_admin.contrib.sqla import ModelView
 from wtforms.fields import SelectField, StringField
+from api.auth_decorators import admin_required  
 from .models import db, Users, Products, ProductImages, Categories, Subcategories, Cart, Orders, OrderDetails, Favorites, Posts, Comments, Invoices
 
+admin_bp = Blueprint('admin_blueprint', __name__)
 
 class ProductAdminView(ModelView):
     form_extra_fields = {
@@ -75,3 +78,8 @@ def setup_admin(app):
     admin.add_view(ModelView(Comments, db.session))
     admin.add_view(InvoiceAdminView(Invoices, db.session))  
 
+# Rutas protegidas para el blueprint admin
+@admin_bp.before_request
+@admin_required
+def protect_admin():
+    pass

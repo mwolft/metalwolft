@@ -4,7 +4,7 @@ from flask_migrate import Migrate, upgrade
 from flask_cors import CORS
 from api.utils import APIException, generate_sitemap, mail
 from api.routes import api
-from api.admin import setup_admin
+from api.admin import setup_admin, admin_bp
 from api.commands import setup_commands
 from api.models import db
 from flask_jwt_extended import JWTManager
@@ -64,6 +64,7 @@ app.register_blueprint(api, url_prefix='/api')
 app.register_blueprint(seo_bp)
 app.register_blueprint(email_bp, url_prefix='/api/email')
 app.register_blueprint(auth_bp, url_prefix='/api/auth')
+app.register_blueprint(admin_bp, url_prefix='/admin')
 
 # Configuración de Prerender.io
 BOT_USER_AGENTS = [
