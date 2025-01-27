@@ -31,8 +31,8 @@ load_dotenv()
 @api.route('/create-payment-intent', methods=['POST'])
 def create_payment_intent():
     try:
-        import stripe  # Import Stripe solo cuando se utiliza
-        stripe.api_key = os.getenv('STRIPE_SECRET_KEY')  # Configurar la clave aquí
+        import stripe 
+        stripe.api_key = os.getenv('STRIPE_SECRET_KEY') 
 
         data = request.get_json()
         payment_intent_id = data.get('payment_intent_id')
@@ -89,7 +89,7 @@ def add_comment(post_id):
         new_comment = Comments(
             content=data["content"],
             post_id=post_id,
-            user_id=user_id  # Usar el user_id extraído
+            user_id=user_id  
         )
         db.session.add(new_comment)
         db.session.commit()
@@ -245,7 +245,7 @@ def login():
     }
     response = jsonify(response_body)
     response.headers.add("Access-Control-Allow-Origin", "*")
-    return response, 200  # Cambié el código de estado a 200 OK
+    return response, 200  
 
 
 @api.route("/protected", methods=["GET"])
@@ -788,20 +788,20 @@ def handle_orders():
 
                 # Información del proveedor
                 pdf.setFont("Helvetica-Bold", 12)
-                pdf.drawString(400, 700, "Información del Proveedor")
+                pdf.drawString(400, 700, "PROVEEDOR")
                 pdf.setFont("Helvetica", 10)
                 pdf.drawString(400, 680, "Sergio Arias Fernández")
-                pdf.drawString(400, 660, "DNI 05703874N")
-                pdf.drawString(400, 640, "Francisco Fernández Ordoñez 32")
-                pdf.drawString(400, 620, "13170 Miguelturra")
+                pdf.drawString(400, 665, "05703874N")
+                pdf.drawString(400, 650, "Francisco Fernández Ordoñez 32")
+                pdf.drawString(400, 635, "13170 Miguelturra")
 
                 # Información del cliente
                 pdf.setFont("Helvetica-Bold", 12)
-                pdf.drawString(50, 700, "Información del Cliente")
+                pdf.drawString(50, 700, "CLIENTE")
                 pdf.setFont("Helvetica", 10)
                 pdf.drawString(50, 680, f"{data.get('firstname')} {data.get('lastname')}")
-                pdf.drawString(50, 660, f"{data.get('billing_address')}, {data.get('billing_city')} ({data.get('billing_postal_code')})")
-                pdf.drawString(50, 640, f"{data.get('CIF')}")
+                pdf.drawString(50, 665, f"{data.get('billing_address')}, {data.get('billing_city')} ({data.get('billing_postal_code')})")
+                pdf.drawString(50, 650, f"{data.get('CIF')}")
 
                 # Dirección de envío
                 pdf.setFont("Helvetica-Bold", 12)
@@ -833,7 +833,7 @@ def handle_orders():
 
 
                 # Crear la tabla
-                table = Table(data_table, colWidths=[6*cm, 2*cm, 2*cm, 2*cm, 2*cm, 2*cm])
+                table = Table(data_table, colWidths=[4*cm, 2*cm, 2*cm, 5*cm, 2*cm, 2*cm])
                 table.setStyle(TableStyle([
                     ('BACKGROUND', (0, 0), (-1, 0), colors.Color(1, 0.196, 0.302)),
                     ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
@@ -1059,20 +1059,20 @@ def create_manual_invoice():
 
         # Información del proveedor
         pdf.setFont("Helvetica-Bold", 12)
-        pdf.drawString(400, 700, "Información del Proveedor")
+        pdf.drawString(400, 700, "PROVEEDOR")
         pdf.setFont("Helvetica", 10)
         pdf.drawString(400, 680, "Sergio Arias Fernández")
-        pdf.drawString(400, 660, "DNI 05703874N")
-        pdf.drawString(400, 640, "Francisco Fernández Ordoñez 32")
-        pdf.drawString(400, 620, "13170 Miguelturra")
+        pdf.drawString(400, 665, "DNI 05703874N")
+        pdf.drawString(400, 650, "Francisco Fernández Ordoñez 32")
+        pdf.drawString(400, 635, "13170 Miguelturra")
 
         # Información del cliente
         pdf.setFont("Helvetica-Bold", 12)
-        pdf.drawString(50, 700, "Información del Cliente")
+        pdf.drawString(50, 700, "Cliente")
         pdf.setFont("Helvetica", 10)
         pdf.drawString(50, 680, client_name)
-        pdf.drawString(50, 660, client_address)
-        pdf.drawString(50, 640, f"CIF: {client_cif}")
+        pdf.drawString(50, 665, client_address)
+        pdf.drawString(50, 650, f"CIF: {client_cif}")
 
         # Detalles del pedido (Tabla)
         pdf.setFont("Helvetica-Bold", 12)
