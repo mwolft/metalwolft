@@ -11,9 +11,10 @@ const CheckoutForm = () => {
     const stripe = useStripe();
     const elements = useElements();
     const { store, actions } = useContext(Context);
-    const [paymentMethod, setPaymentMethod] = useState("stripe"); 
+    const [paymentMethod, setPaymentMethod] = useState("stripe");
     const [differentBilling, setDifferentBilling] = useState(false);
     const [errors, setErrors] = useState({});
+    const [isProcessing, setIsProcessing] = useState(false);
     const [formData, setFormData] = useState({
         firstname: "",
         lastname: "",
@@ -80,7 +81,7 @@ const CheckoutForm = () => {
         }
 
         if (!stripe || !elements) return;
-
+        setIsProcessing(true); 
         const cardElement = elements.getElement(CardElement);
         const { error, paymentMethod } = await stripe.createPaymentMethod({
             type: 'card',
@@ -88,6 +89,7 @@ const CheckoutForm = () => {
         });
         if (error) {
             alert(`Error en el pago: ${error.message}`);
+            setIsProcessing(false); 
             return;
         }
 
@@ -183,7 +185,7 @@ const CheckoutForm = () => {
                 }
             });
 
-            console.log("Carrito vaciado");
+            setIsProcessing(false);
             navigate("/thank-you");
             return;
         }
@@ -193,6 +195,7 @@ const CheckoutForm = () => {
 
         if (confirmError) {
             alert(`Error en la confirmación del pago: ${confirmError.message}`);
+            setIsProcessing(false); 
             return;
         }
 
@@ -222,7 +225,7 @@ const CheckoutForm = () => {
                 }
             });
 
-            console.log("Carrito vaciado");
+            setIsProcessing(false);
             navigate("/thank-you");
         }
     };
@@ -422,8 +425,12 @@ const CheckoutForm = () => {
                                     </div>
                                 </Form.Group>
                             </div>
-                            <Button className="btn btn-style-background-color btn-block my-5" type="submit" disabled={!stripe}>
-                                Pagar
+                            <Button
+                                className="btn btn-style-background-color btn-block my-5"
+                                type="submit"
+                                disabled={isProcessing || !stripe}
+                            >
+                                {isProcessing ? "Pagando..." : "Pagar"}
                             </Button>
                         </div>
                     </Form>

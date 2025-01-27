@@ -219,7 +219,7 @@ export const Product = ({ product }) => {
                                         {formatPrice(product.precio)} €
                                     </span>
                                     <span className="price-discounted" style={{ color: '#e63946', fontWeight: 'bold', marginLeft: '8px' }}>
-                                        {formatPrice(product.precio_rebajado)} €
+                                        {formatPrice(product.precio_rebajado)}€/m²
                                     </span>
                                     <span className="discount-percentage" style={{ color: '#28a745', padding: '2px 6px', marginLeft: '2px' }}>
                                         -{product.porcentaje_rebaja}%
@@ -298,7 +298,7 @@ export const Product = ({ product }) => {
                                                 {formatPrice(product.precio)} €
                                             </span>
                                             <span className="price-discounted" style={{ color: '#e63946', fontWeight: 'bold', marginLeft: '8px' }}>
-                                                {formatPrice(product.precio_rebajado)} €
+                                                {formatPrice(product.precio_rebajado)}€/m²
                                             </span>
                                             <span className="discount-percentage" style={{ color: '#28a745', padding: '2px 6px', marginLeft: '8px' }}>
                                                 -{product.porcentaje_rebaja}% 
