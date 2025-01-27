@@ -13,7 +13,6 @@ export const authProvider = {
         return response.json();
       })
       .then(auth => {
-        console.log("Login successful.");
         localStorage.setItem('token', auth.access_token);
         localStorage.setItem('user', JSON.stringify(auth.results));
       })
@@ -23,7 +22,6 @@ export const authProvider = {
       });
   },
   logout: () => {
-    console.log("Logging out...");
     localStorage.removeItem('token');
     localStorage.removeItem('user');
     return Promise.resolve();
@@ -33,7 +31,6 @@ export const authProvider = {
     const user = JSON.parse(localStorage.getItem('user') || "{}");
 
     if (token && user && user.is_admin) {
-      console.log("User authenticated.");
       return Promise.resolve();
     } else {
       console.warn("User not authenticated or unauthorized.");

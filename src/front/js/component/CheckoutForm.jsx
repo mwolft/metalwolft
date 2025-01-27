@@ -37,7 +37,6 @@ const CheckoutForm = () => {
     };
 
     const handlePayPalSuccess = (details) => {
-        console.log("Pago exitoso con PayPal:", details);
         // Guardar la orden y vaciar el carrito
         actions.saveOrder();
         actions.clearCart();
@@ -105,12 +104,11 @@ const CheckoutForm = () => {
             body: JSON.stringify({
                 amount: convertedAmount,
                 payment_method_id: paymentMethod.id,
-                payment_intent_id: store.paymentIntentId  // Si ya tienes un paymentIntent guardado
+                payment_intent_id: store.paymentIntentId  
             }),
         });
 
         const data = await response.json();
-        console.log("Response from create-payment-intent:", data);  // Para depuración
 
         if (!data || !data.clientSecret) {
             alert("Hubo un error en la creación del intento de pago.");
@@ -119,35 +117,13 @@ const CheckoutForm = () => {
 
         // Verificar si el PaymentIntent ya ha sido confirmado
         if (data.paymentIntent && data.paymentIntent.status === 'succeeded') {
-            console.log("El PaymentIntent ya está completado.");
-
-            console.log("Datos que se envían al backend:", {
-                total_amount: total,
-                products: store.cart,
-                ...formData
-            });
 
             // Guardar la orden en el backend
             const { ok, order, error } = await actions.saveOrder({
                 total_amount: total,
                 products: store.cart.map(product => ({
                     producto_id: product.producto_id,
-                    quantity: product.quantity || 1, // Asignar 1 como predeterminado si no existe
-                    alto: product.alto,
-                    ancho: product.ancho,
-                    anclaje: product.anclaje,
-                    color: product.color,
-                    precio_total: product.precio_total
-                })),
-                ...formData
-            });
-
-            // Log para depuración
-            console.log("Datos que se envían al backend:", {
-                total_amount: total,
-                products: store.cart.map(product => ({
-                    producto_id: product.producto_id,
-                    quantity: product.quantity || 1,
+                    quantity: product.quantity || 1, 
                     alto: product.alto,
                     ancho: product.ancho,
                     anclaje: product.anclaje,
@@ -164,7 +140,6 @@ const CheckoutForm = () => {
                 return;
             }
 
-            // Enviar los datos de facturación y envío junto con los detalles de la orden
             const result = await actions.saveOrderDetails(order.id, formData);
             if (!result.ok) {
                 console.error("Error al guardar los detalles de la orden.");
@@ -172,8 +147,6 @@ const CheckoutForm = () => {
                 return;
             }
 
-
-            // Limpiar el carrito en el frontend y backend
             actions.clearCart();
             localStorage.removeItem("cart");
 
@@ -190,7 +163,6 @@ const CheckoutForm = () => {
             return;
         }
 
-        // Confirmar el pago con Stripe
         const { error: confirmError, paymentIntent: confirmedPaymentIntent } = await stripe.confirmCardPayment(data.clientSecret);
 
         if (confirmError) {
@@ -200,8 +172,6 @@ const CheckoutForm = () => {
         }
 
         if (confirmedPaymentIntent && confirmedPaymentIntent.status === 'succeeded') {
-            console.log("Pago completado con éxito, creando la orden...");
-
             const { ok, order } = await actions.saveOrder();
             if (!ok) {
                 alert("Error al guardar la orden.");

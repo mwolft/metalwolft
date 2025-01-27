@@ -216,7 +216,6 @@ const getState = ({ getStore, getActions, setStore }) => {
                 if (isLogin) {
                     setStore({ isLoged: true });
                 } else {
-                    console.log("Cerrando sesión y limpiando carrito"); 
                     setStore({ isLoged: false, isAdmin: false, favorites: [] }); 
                     getActions().clearCart(); 
                     localStorage.removeItem("token");
@@ -240,7 +239,6 @@ const getState = ({ getStore, getActions, setStore }) => {
                     if (!response.ok) throw new Error("Error fetching categories");
             
                     const data = await response.json();
-                    console.log("Categories data:", data); 
                     setStore({ categories: data });
                 } catch (error) {
                     console.error("Error fetching categories:", error);
@@ -292,7 +290,6 @@ const getState = ({ getStore, getActions, setStore }) => {
                         throw new Error(`Error al cargar el carrito: ${errorText}`);
                     }
                     const data = await response.json();  
-                    console.log("Datos del carrito recibidos del backend:", data);
                     setStore({ cart: data });  
                 } catch (error) {
                     console.error("Error al cargar el carrito:", error);
@@ -405,7 +402,6 @@ const getState = ({ getStore, getActions, setStore }) => {
                     if (!response.ok) throw new Error("Error al obtener las órdenes");
             
                     const data = await response.json();
-                    console.log("Órdenes recibidas:", data);
             
                     setStore({ orders: data });
                     return { ok: true };
@@ -418,7 +414,6 @@ const getState = ({ getStore, getActions, setStore }) => {
             saveOrder: async (orderData) => {
                 const store = getStore();
                 try {
-                    console.log("Datos de la orden que se envían al backend:", orderData); // Para depuración
                     const response = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/orders`, {
                         method: 'POST',
                         headers: {
@@ -435,7 +430,6 @@ const getState = ({ getStore, getActions, setStore }) => {
                     }
             
                     const data = await response.json();
-                    console.log("Orden creada:", data.data);
             
                     // Actualizar el store con la nueva orden
                     setStore({ orders: [...store.orders, data.data] });
@@ -458,7 +452,6 @@ const getState = ({ getStore, getActions, setStore }) => {
                     if (!response.ok) throw new Error("Error al obtener los detalles de las órdenes");
             
                     const data = await response.json();
-                    console.log("Detalles de las órdenes recibidos:", data);
             
                     setStore({ orderDetails: data });
                     return { ok: true };
@@ -525,7 +518,6 @@ const getState = ({ getStore, getActions, setStore }) => {
                     return;
                 }
                 actions.clearCart();
-                console.log("Pago exitoso, orden y detalles guardados, carrito vaciado.");
             },                                                    
             loadFavorites: async () => {
                 const store = getStore();
