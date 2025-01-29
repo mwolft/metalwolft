@@ -258,19 +258,91 @@ export const RejasParaVentanas = ({ onSelectCategory, onSelectSubcategory, categ
                         <p>Nuestra filosofía se centra en la creación de <b>diseños</b> que no solo cumplen con su propósito principal, sino que también <b>realzan la estética de su hogar</b>.</p>
                         {/* ------------------------------------------ */}
                         <h3 className="h3-categories">Rejas para ventanas sin obra</h3>
-                        {/*<img className="img-fluid my-2" style={{ width: '100%', height: 'auto' }} src="https://res.cloudinary.com/dewanllxn/image/upload/v1733674435/rejas-para-ventanas-modernas-2023_ifvzpo.avif" alt="rejas para ventanas sencillas y bonitas" />*/}
-                        <p><strong>Las rejas para ventanas sin obra</strong> se fijan directamente en el marco de la ventana con <Link to="https://todoanclajes.com/producto/tornillo-inviolable-torx-7-x-30/?gad_source=1&gclid=CjwKCAiAjp-7BhBZEiwAmh9rBX_pS1jYu9WcRXkLhOVUreLYelh3cFK1xX7rnxMQv4ru8xcZ-6YLmRoCnEsQAvD_BwE" className="link-categories">tornillos especiales inviolables</Link>, diseñados para ofrecer una sujeción segura y resistente. Al no requerir intervención en los muros, el resultado es más <b>limpio</b>.</p>
-                        <p>La <Link to="https://www.metalwolft.com/instalation-rejas-para-ventanas" className="link-categories">instalación de las rejas sin obra</Link> es rápida y sencilla, lo que permite reducir tanto los tiempos como los costes asociados.</p>
+
+                        <p>
+                            <strong>Las rejas para ventanas sin obra</strong> se fijan directamente en el marco de la ventana con
+                            <Link to="https://todoanclajes.com/producto/tornillo-inviolable-torx-7-x-30/?gad_source=1&gclid=CjwKCAiAjp-7BhBZEiwAmh9rBX_pS1jYu9WcRXkLhOVUreLYelh3cFK1xX7rnxMQv4ru8xcZ-6YLmRoCnEsQAvD_BwE" className="link-categories">
+                                tornillos especiales inviolables
+                            </Link>, diseñados para ofrecer una sujeción segura y resistente. Al no requerir intervención en los muros, el resultado es más <b>limpio</b>.
+                        </p>
+                        <p>
+                            La <Link to="https://www.metalwolft.com/instalation-rejas-para-ventanas" className="link-categories">instalación de las rejas sin obra</Link> es rápida y sencilla, lo que permite reducir tanto los tiempos como los costes asociados.
+                        </p>
                         <p>Este tipo de reja las convierte en una opción ideal para quienes desean mantener intacto el acabado de la fachada.</p>
-                        <p>Si deseas proteger tu hogar sin alterar la fachada, las <strong>rejas sin obra</strong> son la alternativa perfecta. Combina <b>seguridad y funcionalidad</b> y un diseño que se adapta a cualquier estilo de ventana.</p>
-
-
+                        <p>
+                            Si deseas proteger tu hogar sin alterar la fachada, las <strong>rejas sin obra</strong> son la alternativa perfecta. Combina <b>seguridad y funcionalidad</b> y un diseño que se adapta a cualquier estilo de ventana.
+                        </p>
+                        <div className="container">
+                            <div className="row text-center mt-4 d-flex flex-column flex-lg-row">
+                                {[
+                                    {
+                                        src: "https://res.cloudinary.com/dewanllxn/image/upload/v1738176285/agujeros-en-pletinas_tlosu0.png",
+                                        alt: "Rejas con pletinas",
+                                        title: "Con pletinas",
+                                        description: "Fijación rápida y segura sin necesidad de obra."
+                                    },
+                                    {
+                                        src: "https://res.cloudinary.com/dewanllxn/image/upload/v1738176285/agujeros-interiores_xa0onj.png",
+                                        alt: "Rejas con agujeros interiores",
+                                        title: "Con agujeros interiores",
+                                        description: "Ideal para marcos con profundidad reducida."
+                                    },
+                                    {
+                                        src: "https://res.cloudinary.com/dewanllxn/image/upload/v1738176286/agujeros-frontales_low9pi.png",
+                                        alt: "Rejas con agujeros frontales",
+                                        title: "Con agujeros frontales",
+                                        description: "Fijación directamente en la parte frontal de la pared."
+                                    }
+                                ].map((item, index) => (
+                                    <div key={index} className="col-12 col-lg-12 mb-4 text-center">
+                                        <img
+                                            src={item.src}
+                                            alt={item.alt}
+                                            className="img-fluid img-large"
+                                            style={{ cursor: 'zoom-in' }}
+                                        />
+                                        <h6 className="mt-2">{item.title}</h6>
+                                        <p>{item.description}</p>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
 
                         {/* ------------------------------------------ */}
                         <h3 className="h3-categories">Rejas para ventanas con obra</h3>
-                        <p>Las <strong>rejas para ventanas con obra</strong> son una opción perfecta para proyectos en los que <b>la fachada aún no tiene su acabado final</b>, como durante reformas o construcciones en curso.</p>
-                        <p>A diferencia de las rejas sin obra, estas <b>no utilizan tornillos especiales</b>. En su lugar, están diseñadas con <b>garras de hierro soldadas</b> al lateral del bastidor de la reja. </p>
-                        <p>Estas garras <b>se fijan directamente al muro</b> de la fachada mediante una mezcla de cemento, creando una unión resistente y permanente.</p>
+                        <p>
+                            Las <strong>rejas para ventanas con obra</strong> son una opción perfecta para proyectos en los que <b>la fachada aún no tiene su acabado final</b>, como durante reformas o construcciones en curso.
+                        </p>
+                        <p>
+                            A diferencia de las rejas sin obra, estas <b>no utilizan tornillos especiales</b>. En su lugar, están diseñadas con <b>garras de hierro soldadas</b> al lateral del bastidor de la reja.
+                        </p>
+                        <p>
+                            Estas garras <b>se fijan directamente al muro</b> de la fachada mediante una mezcla de cemento, creando una unión resistente y permanente.
+                        </p>
+
+                        <div className="container">
+                            <div className="row text-center mt-4 d-flex flex-column flex-lg-row">
+                                {[
+                                    {
+                                        src: "https://res.cloudinary.com/dewanllxn/image/upload/v1734888241/rejas-para-ventanas-sin-obra_wukdzi.png",
+                                        alt: "Rejas con obra",
+                                        title: "Con garras metálicas",
+                                        description: "Fijación resistente con cemento en el muro."
+                                    }
+                                ].map((item, index) => (
+                                    <div key={index} className="col-12 col-lg-12 mb-4 text-center">
+                                        <img
+                                            src={item.src}
+                                            alt={item.alt}
+                                            className="img-fluid img-large"
+                                            style={{ cursor: 'zoom-in' }}
+                                        />
+                                        <h6 className="mt-2">{item.title}</h6>
+                                        <p>{item.description}</p>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
                         <div className="comparison-table">
                             <table>
                                 <thead>
@@ -342,25 +414,6 @@ export const RejasParaVentanas = ({ onSelectCategory, onSelectSubcategory, categ
                                         </td>
                                         <td>Más elevado por el coste de mano de obra y materiales.</td>
                                         <td>Más económico, solo se necesitan los tornillos y herramientas básicas.</td>
-                                    </tr>
-                                    <tr>
-                                        <td>
-                                            <strong>Ejemplo</strong>
-                                        </td>
-                                        <td>
-                                            <img
-                                                src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSWeCVUg3hSyUQj2YKAzXEAScWZ170dqvQ_mQ&s"
-                                                alt="Instalacion de rejas para ventanas con obra"
-                                                className="comparison-image"
-                                            />
-                                        </td>
-                                        <td>
-                                            <img
-                                                src="https://res.cloudinary.com/dewanllxn/image/upload/v1734888241/rejas-para-ventanas-sin-obra_wukdzi.png"
-                                                alt="Instalacion de rejas para ventanas sin obra"
-                                                className="comparison-image"
-                                            />
-                                        </td>
                                     </tr>
                                 </tbody>
                             </table>

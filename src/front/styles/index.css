@@ -228,3 +228,15 @@ select:-webkit-autofill:active {
 @media (min-width: 1200px) {
 
 }
+.img-large {
+  max-width: 100%; 
+  height: auto;
+}
+
+@media (min-width: 992px) {
+  .img-large {
+      max-width: 80%; 
+      display: block;
+      margin: 0 auto; 
+  }
+}

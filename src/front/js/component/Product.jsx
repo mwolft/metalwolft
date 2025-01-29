@@ -341,29 +341,29 @@ export const Product = ({ product }) => {
                                                             <span style={{ textDecoration: 'underline', fontWeight: 'bold' }}>Sin obra: </span>
                                                             con pletinas. <br /><b>(Opción recomendada)</b>
                                                         </p>
-                                                        <img src="https://res.cloudinary.com/dewanllxn/image/upload/v1737278219/albany-pletinas-_e4ct2v.png"
-                                                            style={{ width: '110px', height: 'auto', marginBottom: '10px', marginTop: '5px' }}
+                                                        <img src="https://res.cloudinary.com/dewanllxn/image/upload/v1738176285/agujeros-en-pletinas_tlosu0.png"
+                                                            style={{ width: '160px', height: 'auto', marginBottom: '10px', marginTop: '5px' }}
                                                             alt="rejas para ventanas sin obra" />
                                                         <p className='p-popover'>
                                                             <span style={{ textDecoration: 'underline', fontWeight: 'bold' }}>Sin obra: </span>
-                                                            con agujeros interiores. <br /> (Recomendada si no hay espacio en la profundidad del muro)
+                                                            con agujeros interiores. <br /> 
                                                         </p>
-                                                        <img src="https://res.cloudinary.com/dewanllxn/image/upload/v1738143860/albany-agujeros-interiores_f0ookm.png"
-                                                            style={{ width: '110px', height: 'auto', marginBottom: '10px', marginTop: '5px' }}
+                                                        <img src="https://res.cloudinary.com/dewanllxn/image/upload/v1738176285/agujeros-interiores_xa0onj.png"
+                                                            style={{ width: '160px', height: 'auto', marginBottom: '10px', marginTop: '5px' }}
                                                             alt="rejas para ventanas sin obra" />
                                                         <p className='p-popover'>
                                                             <span style={{ textDecoration: 'underline', fontWeight: 'bold' }}>Sin obra: </span>
-                                                            con agujeros frontales. <br /> (Recomendada si la ventana esta al ras del muro)
+                                                            con agujeros frontales. <br /> 
                                                         </p>
-                                                        <img src="https://res.cloudinary.com/dewanllxn/image/upload/v1738143860/albany-agujeros-frontales_ppk2b9.png"
-                                                            style={{ width: '110px', height: 'auto', marginBottom: '10px', marginTop: '5px' }}
+                                                        <img src="https://res.cloudinary.com/dewanllxn/image/upload/v1738176286/agujeros-frontales_low9pi.png"
+                                                            style={{ width: '160px', height: 'auto', marginBottom: '10px', marginTop: '5px' }}
                                                             alt="rejas para ventanas sin obra" />
                                                         <p className='p-popover'>
                                                             <span style={{ textDecoration: 'underline', fontWeight: 'bold' }}>Con obra: </span>
-                                                            con garras metálicas. <br />(Recomendada para muro en construcción)
+                                                            con garras metálicas. <br />
                                                         </p>
                                                         <img src="https://res.cloudinary.com/dewanllxn/image/upload/v1734888241/rejas-para-ventanas-sin-obra_wukdzi.png"
-                                                            style={{ width: '110px', height: 'auto', marginBottom: '10px', marginTop: '5px' }}
+                                                            style={{ width: '160px', height: 'auto', marginBottom: '10px', marginTop: '5px' }}
                                                             alt="rejas para ventanas con obra" />
                                                     </Popover.Body>
                                                 </Popover>
