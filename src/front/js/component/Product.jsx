@@ -52,7 +52,7 @@ export const Product = ({ product }) => {
         if (store.isLoged) {
             if (height && width) {
                 const area = (parseFloat(height) * parseFloat(width)) / 10000;
-                const pricePerM2 = product.precio_rebajado || product.precio; 
+                const pricePerM2 = product.precio_rebajado || product.precio;
                 let price = area * pricePerM2;
 
 
@@ -90,34 +90,34 @@ export const Product = ({ product }) => {
     const handleCalculatePrice = () => {
         const parsedHeight = parseFloat(height);
         const parsedWidth = parseFloat(width);
-    
+
         if (isNaN(parsedHeight) || isNaN(parsedWidth)) {
             setNotification("Debe ingresar altura y anchura válidas");
             return;
         }
-    
+
         if (parsedHeight < 20 || parsedWidth < 20) {
             setNotification("El alto y el ancho deben ser al menos 20 cm");
             return;
         }
-    
+
         // Seleccionar el precio correcto
         const basePricePerM2 = product.precio_rebajado || product.precio;
-    
+
         // Cálculo base
         const area = (parsedHeight * parsedWidth) / 10000; // Área en metros cuadrados
         let price = area * basePricePerM2;
-    
+
         // Aplicar precio mínimo o ajustes
         const basePrice = 50; // Precio mínimo por producto (puedes ajustarlo)
         const smallAreaMultiplier = area < 0.5 ? 1.2 : 1; // Multiplicador para áreas pequeñas (< 0.5 m²)
-    
+
         price = Math.max(price * smallAreaMultiplier, basePrice);
-    
+
         setCalculatedPrice(price.toFixed(2));
     };
 
-    
+
     const determinePlacement = () => {
         return window.innerWidth > 768 ? "right" : "top";
     };
@@ -216,7 +216,7 @@ export const Product = ({ product }) => {
                             {product.precio_rebajado ? (
                                 <>
                                     <span className="price-original" style={{ textDecoration: 'line-through', color: '#999' }}>
-                                        {formatPrice(product.precio)} 
+                                        {formatPrice(product.precio)}
                                     </span>
                                     <span className="price-discounted" style={{ color: '#e63946', fontWeight: 'bold', marginLeft: '8px' }}>
                                         {formatPrice(product.precio_rebajado)}€/m²
@@ -295,13 +295,13 @@ export const Product = ({ product }) => {
                                     {product.precio_rebajado ? (
                                         <>
                                             <span className="price-original" style={{ textDecoration: 'line-through', color: '#999', marginLeft: '8px' }}>
-                                                {formatPrice(product.precio)} 
+                                                {formatPrice(product.precio)}
                                             </span>
                                             <span className="price-discounted" style={{ color: '#e63946', fontWeight: 'bold', marginLeft: '8px' }}>
                                                 {formatPrice(product.precio_rebajado)}€/m²
                                             </span>
                                             <span className="discount-percentage" style={{ color: '#28a745', padding: '2px 6px', marginLeft: '8px' }}>
-                                                -{product.porcentaje_rebaja}% 
+                                                -{product.porcentaje_rebaja}%
                                             </span>
                                         </>
                                     ) : (
@@ -348,7 +348,14 @@ export const Product = ({ product }) => {
                                                             <span style={{ textDecoration: 'underline', fontWeight: 'bold' }}>Sin obra: </span>
                                                             con agujeros interiores. <br /> (Recomendada si no hay espacio en la profundidad del muro)
                                                         </p>
-                                                        <img src="https://res.cloudinary.com/dewanllxn/image/upload/v1737278219/albany-agujeros-interiores_akhaeg.png"
+                                                        <img src="https://res.cloudinary.com/dewanllxn/image/upload/v1738143860/albany-agujeros-interiores_f0ookm.png"
+                                                            style={{ width: '110px', height: 'auto', marginBottom: '10px', marginTop: '5px' }}
+                                                            alt="rejas para ventanas sin obra" />
+                                                        <p className='p-popover'>
+                                                            <span style={{ textDecoration: 'underline', fontWeight: 'bold' }}>Sin obra: </span>
+                                                            con agujeros frontales. <br /> (Recomendada si la ventana esta al ras del muro)
+                                                        </p>
+                                                        <img src="https://res.cloudinary.com/dewanllxn/image/upload/v1738143860/albany-agujeros-frontales_ppk2b9.png"
                                                             style={{ width: '110px', height: 'auto', marginBottom: '10px', marginTop: '5px' }}
                                                             alt="rejas para ventanas sin obra" />
                                                         <p className='p-popover'>
@@ -372,6 +379,7 @@ export const Product = ({ product }) => {
                                             onChange={(e) => setMounting(e.target.value)}
                                         >
                                             <option value="Sin obra: con agujeros interiores">Sin obra: con agujeros interiores</option>
+                                            <option value="Sin obra: con agujeros frontales">Sin obra: con agujeros frontales</option>
                                             <option value="Sin obra: con pletinas">Sin obra: con pletinas</option>
                                             <option value="Con obra: con garras metálicas">Con obra: con garras metálicas</option>
                                         </Form.Control>
