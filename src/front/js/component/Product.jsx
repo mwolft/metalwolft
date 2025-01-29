@@ -216,7 +216,7 @@ export const Product = ({ product }) => {
                             {product.precio_rebajado ? (
                                 <>
                                     <span className="price-original" style={{ textDecoration: 'line-through', color: '#999' }}>
-                                        {formatPrice(product.precio)} €
+                                        {formatPrice(product.precio)} 
                                     </span>
                                     <span className="price-discounted" style={{ color: '#e63946', fontWeight: 'bold', marginLeft: '8px' }}>
                                         {formatPrice(product.precio_rebajado)}€/m²
@@ -295,7 +295,7 @@ export const Product = ({ product }) => {
                                     {product.precio_rebajado ? (
                                         <>
                                             <span className="price-original" style={{ textDecoration: 'line-through', color: '#999', marginLeft: '8px' }}>
-                                                {formatPrice(product.precio)} €
+                                                {formatPrice(product.precio)} 
                                             </span>
                                             <span className="price-discounted" style={{ color: '#e63946', fontWeight: 'bold', marginLeft: '8px' }}>
                                                 {formatPrice(product.precio_rebajado)}€/m²

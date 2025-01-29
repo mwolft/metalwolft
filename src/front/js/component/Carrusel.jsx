@@ -20,7 +20,7 @@ export const Carrusel = () => {
                 <Carousel.Caption>
                     <p className="p-carrusel">Diseños exclusivos</p>
                     <p className="h6-carrusel">Rejas para Ventanas</p>
-                    <p className="p-carrusel">Descubre nuestras rejas para ventanas. ¡Envíos rápidos a toda España!</p>
+                    <p className="p-carrusel">Descubre nuestras rejas para ventanas. ¡Envíos GRATIS!</p>
                     <div className="my-5">
                         <Button className="btn-style-background-color" onClick={() => handleNavigate('/rejas-para-ventanas')}>
                             Diseños
@@ -33,7 +33,7 @@ export const Carrusel = () => {
                 <Carousel.Caption>
                     <p className="p-carrusel">Nuevos diseños</p>
                     <p className="h6-carrusel">Vallados Metálicos</p>
-                    <p className="p-carrusel">Explora nuestra selección de vallas metálicas. Encuentra el estilo perfecto para ti.</p>
+                    <p className="p-carrusel">Explora nuestra selección de vallas metálicas.</p>
                     <div className="my-5">
                         <Button className="btn-style-background-color" onClick={() => handleNavigate('/vallados-metalicos-exteriores')}>
                             Explorar diseños
