@@ -165,21 +165,6 @@ export const RejasParaVentanas = ({ onSelectCategory, onSelectSubcategory, categ
                             )}
                         </div>
                     </div>
-                    <div className="alert alert-primary" role="alert">
-                        <p><b><i className="fa-regular fa-circle-question"></i> PREGUNTAS FRECUENTES</b></p>
-                        <ul>
-                            <li><b>¿Los precios incluyen IVA?</b> Sí, todos nuestros precios incluyen IVA.</li>
-                            <li>
-                                <b>¿Cuál es el tiempo de fabricación y entrega?</b> Nuestro tiempo estimado de fabricación y entrega es de <b>20 días hábiles</b>. Sin embargo, este plazo puede variar dependiendo de nuestra carga de trabajo. En caso de que haya un aumento en los tiempos, te lo notificaremos con anticipación para que estés informado.
-                            </li>
-                            <li>
-                                <b>¿Qué sucede después de realizar mi compra?</b> Tras completar tu compra, recibirás un correo de confirmación con todos los detalles. Además, nos pondremos en contacto contigo para orientarte en la instalación y ofrecerte asistencia personalizada, asegurándonos de que tengas una experiencia satisfactoria con tu compra.
-                            </li>
-                            <li>
-                                <b>¿Cómo puedo ponerme en contacto después de la compra?</b> Puedes hacerlo a través de nuestro <a href="/contact" target="_blank" rel="noopener noreferrer">formulario de contacto</a>, enviándonos un mensaje por <a href="https://wa.me/634112604" target="_blank" rel="noopener noreferrer">WhatsApp</a> o llamándonos al <a href="tel:634112604">634112604</a>.
-                            </li>
-                        </ul>
-                    </div>
                     <div className="col-12 d-block d-lg-none order-3 p-3" aria-hidden="true">
                         <aside className="widget mb-5">
                             <p className="widget_title"><b>Posts Recientes</b></p>
@@ -247,8 +232,22 @@ export const RejasParaVentanas = ({ onSelectCategory, onSelectSubcategory, categ
                     <div className="col-12 col-lg-3 col-xl-3 order-1">
                     </div>
                     <div className="col-12 col-lg-9 col-xl-9 order-2 my-4 p-3">
+                        <div className="alert alert-primary" role="alert">
+                            <p><b><i className="fa-regular fa-circle-question"></i> PREGUNTAS FRECUENTES</b></p>
+                            <ul>
+                                <li><b>¿Los precios incluyen IVA?</b> Sí, todos nuestros precios incluyen IVA.</li>
+                                <li>
+                                    <b>¿Cuál es el tiempo de fabricación y entrega?</b> Nuestro tiempo estimado de fabricación y entrega es de <b>20 días hábiles</b>. Sin embargo, este plazo puede variar dependiendo de nuestra carga de trabajo. En caso de que haya un aumento en los tiempos, te lo notificaremos con anticipación para que estés informado.
+                                </li>
+                                <li>
+                                    <b>¿Qué sucede después de realizar mi compra?</b> Tras completar tu compra, recibirás un correo de confirmación con todos los detalles. Además, nos pondremos en contacto contigo para orientarte en la instalación y ofrecerte asistencia personalizada, asegurándonos de que tengas una experiencia satisfactoria con tu compra.
+                                </li>
+                                <li>
+                                    <b>¿Cómo puedo ponerme en contacto después de la compra?</b> Puedes hacerlo a través de nuestro <a href="/contact" target="_blank" rel="noopener noreferrer">formulario de contacto</a>, enviándonos un mensaje por <a href="https://wa.me/634112604" target="_blank" rel="noopener noreferrer">WhatsApp</a> o llamándonos al <a href="tel:634112604">634112604</a>.
+                                </li>
+                            </ul>
+                        </div>
                         {/* ------------------------------------------------------------------------------------------------------------------------ */}
-                        <hr className="hr-categories" />
                         <h2 className="h2-categories">Tipos de rejas para ventanas</h2>
                         {/* ------------------------------------------ */}
                         <h3 className="h3-categories">Rejas para ventanas modernas</h3>
