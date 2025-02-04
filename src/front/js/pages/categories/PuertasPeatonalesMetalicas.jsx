@@ -43,7 +43,7 @@ export const PuertasPeatonalesMetalicas = () => {
         setSelectedSubcategoryId(null);
     };
 
-{/* const handleSubcategorySelect = (subcategoryId) => {
+    {/* const handleSubcategorySelect = (subcategoryId) => {
         setSelectedSubcategoryId(subcategoryId);
     };*/}
 
@@ -81,7 +81,7 @@ export const PuertasPeatonalesMetalicas = () => {
             {/*<Breadcrumb />*/}
             <div className="container" style={{ marginTop: "100px" }}>
                 <div className="row">
-                <h1 className="h2-categories mb-3">Puertas Peatonales Metálicas</h1>
+                    <h1 className="h2-categories mb-3">Puertas Peatonales Metálicas</h1>
                     <div className="col-12 col-lg-3 col-xl-3 order-1">
                         {/*<AsideCategories
                             onSelectCategory={handleCategorySelect}
@@ -94,6 +94,39 @@ export const PuertasPeatonalesMetalicas = () => {
                         </div>
                     </div>
                     <div className="col-12 col-lg-9 col-xl-9 order-2">
+                        <div className="alert alert-primary" role="alert">
+                            <p><b><i className="fa-regular fa-circle-question"></i> PREGUNTAS FRECUENTES</b></p>
+                            <ul>
+                                <li>
+                                    <b>¿Qué incluye la puerta?</b>
+                                    <ul className="list-unstyled">
+                                        <li>✔ <b>Tirador redondo de acero inoxidable.</b></li>
+                                        <li>✔ <b>Maneta interior</b> en color negro o blanco (según preferencia).</li>
+                                        <li>✔ <b>Cerradura</b>, disponible en opción manual o electrónica.</li>
+                                        <li>✔ <b>Tornillería necesaria</b> para su instalación.</li>
+                                    </ul>
+                                </li>
+                                <li>
+                                    <b>¿Qué no se incluye?</b>
+                                    <ul className="list-unstyled">
+                                        <li>❌ <b>Número de la puerta.</b></li>
+                                        <li>❌ <b>Buzón integrado.</b></li>
+                                        <li>❌ <b>Cableado para la cerradura electrónica.</b></li>
+                                    </ul>
+                                </li>
+                                <li>
+                                    <b>¿Dónde puedo elegir la cerradura electrónica?</b>  Actualmente, estamos implementando esta opción en nuestro sistema de compra.
+                                    Por ahora, nos pondremos en contacto contigo tras la compra para asesorarte
+                                    y asegurarnos de que eliges la mejor opción según tus necesidades.
+                                </li>
+                                <li>
+                                    <b>¿Qué tipo de instalación es más aconsejable?</b> La opción más recomendada es con <b>agujeros interiores</b>, ya que ofrece una estética más limpia y discreta, manteniendo la seguridad sin afectar el diseño de la puerta.
+                                </li>
+                                <li>
+                                    <b>¿Cómo puedo ponerme en contacto?</b> Puedes hacerlo a través de nuestro <a href="/contact" target="_blank" rel="noopener noreferrer">formulario de contacto</a>, enviándonos un mensaje por <a href="https://wa.me/634112604" target="_blank" rel="noopener noreferrer">WhatsApp</a> o llamándonos al <a href="tel:634112604">634112604</a>.
+                                </li>
+                            </ul>
+                        </div>
                         <div className="row">
                             {store.products && store.products.length > 0 ? (
                                 store.products.map((product, index) => (

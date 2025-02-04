@@ -243,7 +243,7 @@ export const RejasParaVentanas = ({ onSelectCategory, onSelectSubcategory, categ
                                     <b>¿Qué sucede después de realizar mi compra?</b> Tras completar tu compra, recibirás un correo de confirmación con todos los detalles. Además, nos pondremos en contacto contigo para orientarte en la instalación y ofrecerte asistencia personalizada, asegurándonos de que tengas una experiencia satisfactoria con tu compra.
                                 </li>
                                 <li>
-                                    <b>¿Cómo puedo ponerme en contacto después de la compra?</b> Puedes hacerlo a través de nuestro <a href="/contact" target="_blank" rel="noopener noreferrer">formulario de contacto</a>, enviándonos un mensaje por <a href="https://wa.me/634112604" target="_blank" rel="noopener noreferrer">WhatsApp</a> o llamándonos al <a href="tel:634112604">634112604</a>.
+                                    <b>¿Cómo puedo ponerme en contacto?</b> Puedes hacerlo a través de nuestro <a href="/contact" target="_blank" rel="noopener noreferrer">formulario de contacto</a>, enviándonos un mensaje por <a href="https://wa.me/634112604" target="_blank" rel="noopener noreferrer">WhatsApp</a> o llamándonos al <a href="tel:634112604">634112604</a>.
                                 </li>
                             </ul>
                         </div>
