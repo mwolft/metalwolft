@@ -165,7 +165,7 @@ export const RejasParaVentanas = ({ onSelectCategory, onSelectSubcategory, categ
                             )}
                         </div>
                     </div>
-                    <div className="col-12 d-block d-lg-none order-3 p-3" aria-hidden="true">
+                    <div className="col-12 d-block d-lg-none order-3 p-3">
                         <aside className="widget mb-5">
                             <p className="widget_title"><b>Posts Recientes</b></p>
                             <hr className="hr-home" />
