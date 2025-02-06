@@ -27,6 +27,7 @@ const CheckoutForm = () => {
         CIF: ""
     });
     const navigate = useNavigate();
+    const total = store.cart.reduce((acc, product) => acc + parseFloat(product.precio_total), 0);
     // Manejar cambios en los campos del formulario
     const handleInputChange = (e) => {
         const { name, value } = e.target;
@@ -74,131 +75,123 @@ const CheckoutForm = () => {
     // Pago con Stripe
     const handleSubmit = async (event) => {
         event.preventDefault();
-
+    
         if (!validateForm()) {
+            console.error("El formulario no pasó la validación.");
             return;
         }
-
-        if (!stripe || !elements) return;
-        setIsProcessing(true); 
-        const cardElement = elements.getElement(CardElement);
-        const { error, paymentMethod } = await stripe.createPaymentMethod({
-            type: 'card',
-            card: cardElement,
-        });
-        if (error) {
-            alert(`Error en el pago: ${error.message}`);
-            setIsProcessing(false); 
+    
+        if (!stripe || !elements) {
+            console.error("Stripe o Elements no están cargados.");
             return;
         }
-
-        // Convertir el total a un número entero para evitar errores con Stripe
-        const convertedAmount = Math.round(total * 100);
-
-        // Enviar la solicitud de creación de Payment Intent a tu backend
-        const response = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/create-payment-intent`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                amount: convertedAmount,
-                payment_method_id: paymentMethod.id,
-                payment_intent_id: store.paymentIntentId  
-            }),
-        });
-
-        const data = await response.json();
-
-        if (!data || !data.clientSecret) {
-            alert("Hubo un error en la creación del intento de pago.");
-            return;
-        }
-
-        // Verificar si el PaymentIntent ya ha sido confirmado
-        if (data.paymentIntent && data.paymentIntent.status === 'succeeded') {
-
-            // Guardar la orden en el backend
-            const { ok, order, error } = await actions.saveOrder({
-                total_amount: total,
-                products: store.cart.map(product => ({
-                    producto_id: product.producto_id,
-                    quantity: product.quantity || 1, 
-                    alto: product.alto,
-                    ancho: product.ancho,
-                    anclaje: product.anclaje,
-                    color: product.color,
-                    precio_total: product.precio_total
-                })),
-                ...formData
+    
+        setIsProcessing(true);
+        console.log("Iniciando el proceso de pago...");
+    
+        try {
+            // Obtén el elemento de la tarjeta y crea el PaymentMethod
+            const cardElement = elements.getElement(CardElement);
+            const { error, paymentMethod } = await stripe.createPaymentMethod({
+                type: 'card',
+                card: cardElement,
             });
-
-
-            if (!ok) {
-                console.error("Error al guardar la orden:", error);
-                alert("No se pudo procesar tu pedido. Por favor, inténtalo nuevamente.");
+    
+            if (error) {
+                console.error("Error al crear PaymentMethod:", error);
+                alert(`Error en el pago: ${error.message}`);
                 return;
             }
-
-            const result = await actions.saveOrderDetails(order.id, formData);
-            if (!result.ok) {
-                console.error("Error al guardar los detalles de la orden.");
-                alert("Error al guardar los detalles de la orden.");
-                return;
-            }
-
-            actions.clearCart();
-            localStorage.removeItem("cart");
-
-            await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/cart/clear`, {
+            
+            console.log("PaymentMethod creado correctamente:", paymentMethod);
+    
+            // Convertir el total a un número entero (en la unidad mínima)
+            const convertedAmount = Math.round(total * 100);
+    
+            // Solicitud al backend para crear el PaymentIntent
+            console.log("Solicitando creación del PaymentIntent al backend...");
+            const response = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/create-payment-intent`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    Authorization: `Bearer ${localStorage.getItem("token")}`
-                }
+                },
+                body: JSON.stringify({
+                    amount: convertedAmount,
+                    payment_method_id: paymentMethod.id,
+                    payment_intent_id: store.paymentIntentId  
+                }),
             });
-
-            setIsProcessing(false);
-            navigate("/thank-you");
-            return;
-        }
-
-        const { error: confirmError, paymentIntent: confirmedPaymentIntent } = await stripe.confirmCardPayment(data.clientSecret);
-
-        if (confirmError) {
-            alert(`Error en la confirmación del pago: ${confirmError.message}`);
-            setIsProcessing(false); 
-            return;
-        }
-
-        if (confirmedPaymentIntent && confirmedPaymentIntent.status === 'succeeded') {
-            const { ok, order } = await actions.saveOrder();
-            if (!ok) {
-                alert("Error al guardar la orden.");
+            
+            if (!response.ok) {
+                console.error("Error en la respuesta del backend al crear el PaymentIntent.", response.statusText);
+                alert("Error al crear el PaymentIntent. Por favor, inténtalo nuevamente.");
                 return;
             }
-
-            const result = await actions.saveOrderDetails(order.id, formData);
-            if (!result.ok) {
-                alert("Error al guardar los detalles de la orden.");
+            
+            const data = await response.json();
+            console.log("Respuesta del backend:", data);
+            
+            if (!data || !data.clientSecret) {
+                console.error("La respuesta no contiene clientSecret.");
+                alert("Hubo un error en la creación del intento de pago.");
                 return;
             }
-
-            actions.clearCart();
-            localStorage.removeItem("cart");
-
-            await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/cart/clear`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    Authorization: `Bearer ${localStorage.getItem("token")}`
+    
+            // Si el PaymentIntent ya fue confirmado
+            if (data.paymentIntent && data.paymentIntent.status === 'succeeded') {
+                console.log("El PaymentIntent ya se encuentra confirmado en el backend.");
+                const { ok, order, error } = await actions.saveOrder({
+                    total_amount: total,
+                    products: store.cart.map(product => ({
+                        producto_id: product.producto_id,
+                        quantity: product.quantity || 1, 
+                        alto: product.alto,
+                        ancho: product.ancho,
+                        anclaje: product.anclaje,
+                        color: product.color,
+                        precio_total: product.precio_total
+                    })),
+                    ...formData
+                });
+                if (!ok) {
+                    console.error("Error al guardar la orden:", error);
+                    alert("No se pudo procesar tu pedido. Por favor, inténtalo nuevamente.");
+                    return;
                 }
-            });
-
+                await handleOrderCompletion(order.id, formData);
+                return;
+            }
+    
+            // Confirmar el pago (esto ejecutará 3D Secure si es necesario)
+            console.log("Confirmando el pago con stripe.confirmCardPayment...");
+            const { error: confirmError, paymentIntent: confirmedPaymentIntent } = await stripe.confirmCardPayment(data.clientSecret);
+            
+            if (confirmError) {
+                console.error("Error en la confirmación del pago:", confirmError);
+                alert(`Error en la confirmación del pago: ${confirmError.message}`);
+                return;
+            }
+    
+            console.log("Respuesta de confirmCardPayment:", confirmedPaymentIntent);
+    
+            if (confirmedPaymentIntent && confirmedPaymentIntent.status === 'succeeded') {
+                console.log("El pago fue confirmado exitosamente.");
+                const { ok, order } = await actions.saveOrder();
+                if (!ok) {
+                    console.error("Error al guardar la orden tras confirmación del pago.");
+                    alert("Error al guardar la orden.");
+                    return;
+                }
+                await handleOrderCompletion(order.id, formData);
+            }
+        } catch (err) {
+            console.error("Error inesperado en el flujo de pago:", err);
+            alert("Se produjo un error inesperado. Por favor, inténtalo nuevamente.");
+        } finally {
             setIsProcessing(false);
-            navigate("/thank-you");
+            console.log("Proceso de pago finalizado. isProcessing reestablecido a false.");
         }
-    };
+    };    
 
 
     const handleCheckboxChange = (e) => {
@@ -221,7 +214,23 @@ const CheckoutForm = () => {
     };
 
 
-    const total = store.cart.reduce((acc, product) => acc + parseFloat(product.precio_total), 0);
+    const handleOrderCompletion = async (orderId, formData) => {
+        const { ok, order, error } = await actions.saveOrderDetails(orderId, formData);
+        if (!ok) {
+            throw new Error("Error al guardar los detalles de la orden.");
+        }
+        actions.clearCart();
+        localStorage.removeItem("cart");
+        await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/cart/clear`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${localStorage.getItem("token")}`
+            }
+        });
+        navigate("/thank-you");
+    };
+    
 
     return (
         <Container fluid="sm" className="mt-5">
