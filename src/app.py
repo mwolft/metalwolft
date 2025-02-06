@@ -13,6 +13,8 @@ from api.seo_routes import seo_bp
 from api.email_routes import email_bp
 from api.password_recovery_endpoints import auth_bp
 import requests
+from flask_talisman import Talisman
+
 
 # Configuración de la aplicación
 ENV = "development" if os.getenv("FLASK_DEBUG") == "1" else "production"
@@ -20,6 +22,18 @@ static_file_dir = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'pub
 
 app = Flask(__name__)
 app.url_map.strict_slashes = False
+
+# Configuración de Content Security Policy (CSP) usando Flask-Talisman
+csp = {
+    'default-src': ["'self'"],
+    'script-src': [
+        "'self'",
+        "'nonce-1a12a484-04e3-48bb-9ab9-06bbefd67b71'",
+        "*.redsys.es",
+        "'sha256-nmdWpNZtfW/g70FiD8aVMrYnm6eHHzPr1+Bs1kHTXWA='"  # Incluye el hash indicado en el error
+    ]
+}
+Talisman(app, content_security_policy=csp)
 
 # Configuración de CORS
 CORS(app, resources={r"/*": {"origins": "*"}}, supports_credentials=True, allow_headers=["Content-Type", "Authorization"])
