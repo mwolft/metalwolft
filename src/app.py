@@ -29,7 +29,8 @@ csp = {
         "'self'",
         "'nonce-1a12a484-04e3-48bb-9ab9-06bbefd67b71'",
         "*.redsys.es",
-        "'sha256-nmdWpNZtfW/g70FiD8aVMrYnm6eHHzPr1+Bs1kHTXWA='"
+        "'sha256-nmdWpNZtfW/g70FiD8aVMrYnm6eHHzPr1+Bs1kHTXWA='",
+        "'sha256-L/bgcJk7dMrzaGC8frU560Om/mGzl/NWZt9OsuF0fr8='"
     ],
     'style-src': [
         "'self'",
