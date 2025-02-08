@@ -23,14 +23,22 @@ static_file_dir = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'pub
 app = Flask(__name__)
 app.url_map.strict_slashes = False
 
-# Configuración de Content Security Policy (CSP) usando Flask-Talisman
 csp = {
     'default-src': ["'self'"],
     'script-src': [
         "'self'",
         "'nonce-1a12a484-04e3-48bb-9ab9-06bbefd67b71'",
         "*.redsys.es",
-        "'sha256-nmdWpNZtfW/g70FiD8aVMrYnm6eHHzPr1+Bs1kHTXWA='"  # Incluye el hash indicado en el error
+        "'sha256-nmdWpNZtfW/g70FiD8aVMrYnm6eHHzPr1+Bs1kHTXWA='"
+    ],
+    'style-src': [
+        "'self'",
+        "'unsafe-inline'",
+        "https://fonts.googleapis.com"
+    ],
+    'font-src': [
+        "'self'",
+        "https://fonts.gstatic.com"
     ]
 }
 Talisman(app, content_security_policy=csp)
