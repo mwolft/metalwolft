@@ -75,20 +75,20 @@ const CheckoutForm = () => {
     // Pago con Stripe
     const handleSubmit = async (event) => {
         event.preventDefault();
-    
+
         if (!validateForm()) {
             console.error("El formulario no pasó la validación.");
             return;
         }
-    
+
         if (!stripe || !elements) {
             console.error("Stripe o Elements no están cargados.");
             return;
         }
-    
+
         setIsProcessing(true);
         console.log("Iniciando el proceso de pago...");
-    
+
         try {
             // Obtén el elemento de la tarjeta y crea el PaymentMethod
             const cardElement = elements.getElement(CardElement);
@@ -96,18 +96,18 @@ const CheckoutForm = () => {
                 type: 'card',
                 card: cardElement,
             });
-    
+
             if (error) {
                 console.error("Error al crear PaymentMethod:", error);
                 alert(`Error en el pago: ${error.message}`);
                 return;
             }
-            
+
             console.log("PaymentMethod creado correctamente:", paymentMethod);
-    
+
             // Convertir el total a un número entero (en la unidad mínima)
             const convertedAmount = Math.round(total * 100);
-    
+
             // Solicitud al backend para crear el PaymentIntent
             console.log("Solicitando creación del PaymentIntent al backend...");
             const response = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/create-payment-intent`, {
@@ -118,25 +118,25 @@ const CheckoutForm = () => {
                 body: JSON.stringify({
                     amount: convertedAmount,
                     payment_method_id: paymentMethod.id,
-                    payment_intent_id: store.paymentIntentId  
+                    payment_intent_id: store.paymentIntentId
                 }),
             });
-            
+
             if (!response.ok) {
                 console.error("Error en la respuesta del backend al crear el PaymentIntent.", response.statusText);
                 alert("Error al crear el PaymentIntent. Por favor, inténtalo nuevamente.");
                 return;
             }
-            
+
             const data = await response.json();
             console.log("Respuesta del backend:", data);
-            
+
             if (!data || !data.clientSecret) {
                 console.error("La respuesta no contiene clientSecret.");
                 alert("Hubo un error en la creación del intento de pago.");
                 return;
             }
-    
+
             // Si el PaymentIntent ya fue confirmado
             if (data.paymentIntent && data.paymentIntent.status === 'succeeded') {
                 console.log("El PaymentIntent ya se encuentra confirmado en el backend.");
@@ -144,7 +144,7 @@ const CheckoutForm = () => {
                     total_amount: total,
                     products: store.cart.map(product => ({
                         producto_id: product.producto_id,
-                        quantity: product.quantity || 1, 
+                        quantity: product.quantity || 1,
                         alto: product.alto,
                         ancho: product.ancho,
                         anclaje: product.anclaje,
@@ -163,24 +163,39 @@ const CheckoutForm = () => {
                 await handleOrderCompletion(order.id, formData);
                 return;
             }
-    
+
             // Confirmar el pago (esto ejecutará 3D Secure si es necesario)
             console.log("Confirmando el pago con stripe.confirmCardPayment...");
             const { error: confirmError, paymentIntent: confirmedPaymentIntent } = await stripe.confirmCardPayment(data.clientSecret);
-            
+
             if (confirmError) {
                 console.error("Error en la confirmación del pago:", confirmError);
                 alert(`Error en la confirmación del pago: ${confirmError.message}`);
                 return;
             }
-    
+
             console.log("Respuesta de confirmCardPayment:", confirmedPaymentIntent);
-    
+
             if (confirmedPaymentIntent && confirmedPaymentIntent.status === 'succeeded') {
                 console.log("El pago fue confirmado exitosamente.");
-                const { ok, order } = await actions.saveOrder();
+                // Construir el objeto orderData de la misma forma que en la otra rama:
+                const orderData = {
+                    total_amount: total,
+                    products: store.cart.map(product => ({
+                        producto_id: product.producto_id,
+                        quantity: product.quantity || 1,
+                        alto: product.alto,
+                        ancho: product.ancho,
+                        anclaje: product.anclaje,
+                        color: product.color,
+                        precio_total: product.precio_total
+                    })),
+                    ...formData
+                };
+                console.log("orderData a enviar:", orderData);
+                const { ok, order, error } = await actions.saveOrder(orderData);
                 if (!ok) {
-                    console.error("Error al guardar la orden tras confirmación del pago.");
+                    console.error("Error al guardar la orden tras confirmación del pago:", error);
                     alert("Error al guardar la orden.");
                     return;
                 }
@@ -193,7 +208,7 @@ const CheckoutForm = () => {
             setIsProcessing(false);
             console.log("Proceso de pago finalizado. isProcessing reestablecido a false.");
         }
-    };    
+    };
 
 
     const handleCheckboxChange = (e) => {
@@ -232,12 +247,12 @@ const CheckoutForm = () => {
         });
         navigate("/thank-you");
     };
-    
+
 
     return (
         <Container fluid="sm" className="mt-5">
             <div className="text-center">
-                <h2 className='h2-categories' style={{marginTop: '80px', marginBottom: '30px'}}>Formulario de pago</h2>
+                <h2 className='h2-categories' style={{ marginTop: '80px', marginBottom: '30px' }}>Formulario de pago</h2>
             </div>
             <Row>
                 <Col md={4} className="order-md-2 mb-4">
