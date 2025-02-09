@@ -140,7 +140,7 @@ const CheckoutForm = () => {
             // Si el PaymentIntent ya fue confirmado
             if (data.paymentIntent && data.paymentIntent.status === 'succeeded') {
                 console.log("El PaymentIntent ya se encuentra confirmado en el backend.");
-                const { ok, order, error } = await actions.saveOrder({
+                const orderData = {
                     total_amount: total,
                     products: store.cart.map(product => ({
                         producto_id: product.producto_id,
@@ -152,7 +152,9 @@ const CheckoutForm = () => {
                         precio_total: product.precio_total
                     })),
                     ...formData
-                });
+                };
+                console.log("orderData a enviar:", orderData);
+                const { ok, order, error } = await actions.saveOrder(orderData);
                 if (!ok) {
                     console.error("Error al guardar la orden:", error);
                     alert("No se pudo procesar tu pedido. Por favor, inténtalo nuevamente.");

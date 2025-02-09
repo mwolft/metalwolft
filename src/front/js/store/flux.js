@@ -413,6 +413,7 @@ const getState = ({ getStore, getActions, setStore }) => {
             },  
             saveOrder: async (orderData) => {
                 const store = getStore();
+                console.log("Payload orderData enviado:", orderData);
                 try {
                     const response = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/orders`, {
                         method: 'POST',
