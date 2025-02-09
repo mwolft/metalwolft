@@ -31,7 +31,7 @@ def contact():
         message = Message(
             subject="Nuevo mensaje de contacto",
             sender=os.getenv('MAIL_DEFAULT_SENDER'),
-            recipients=['admin@example.com'],
+            recipients=['admin@metalwolft.com'],
             body=(
                 f"Nombre: {data['name']} {data['firstname']}\n"
                 f"Teléfono: {data['phone']}\n"
