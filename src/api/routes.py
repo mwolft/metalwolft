@@ -785,6 +785,9 @@ def handle_orders():
                 pdf.setFont("Helvetica-Bold", 12)
                 pdf.drawString(50, 800, f"Factura No: {invoice_number}")
 
+                pdf.setFont("Helvetica", 10)
+                fecha_emision = datetime.now().strftime("%d/%m/%Y")
+                pdf.drawString(50, 780, f"Fecha: {fecha_emision}")
 
                 # Información del proveedor
                 pdf.setFont("Helvetica-Bold", 12)
@@ -794,6 +797,7 @@ def handle_orders():
                 pdf.drawString(400, 665, "05703874N")
                 pdf.drawString(400, 650, "Francisco Fernández Ordoñez 32")
                 pdf.drawString(400, 635, "13170 Miguelturra")
+                pdf.drawString(400, 620, "634112604")
 
                 # Información del cliente
                 pdf.setFont("Helvetica-Bold", 12)
@@ -802,6 +806,7 @@ def handle_orders():
                 pdf.drawString(50, 680, f"{data.get('firstname')} {data.get('lastname')}")
                 pdf.drawString(50, 665, f"{data.get('billing_address')}, {data.get('billing_city')} ({data.get('billing_postal_code')})")
                 pdf.drawString(50, 650, f"{data.get('CIF')}")
+                pdf.drawString(50, 635, f"{data.get('phone', 'No proporcionado')}")
 
                 # Dirección de envío
                 pdf.setFont("Helvetica-Bold", 12)
@@ -882,6 +887,7 @@ def handle_orders():
                     client_name=f"{data.get('firstname')} {data.get('lastname')}",
                     client_address=data.get('billing_address'),
                     client_cif=data.get('CIF'),
+                    client_phone=data.get('phone'),
                     amount=new_order.total_amount,
                     order_details=[detail.serialize() for detail in new_order.order_details]
                 )
@@ -1056,6 +1062,9 @@ def create_manual_invoice():
         pdf.setTitle(f"Factura_{invoice_number}")
         pdf.setFont("Helvetica-Bold", 12)
         pdf.drawString(50, 800, f"Factura No: {invoice_number}")
+        pdf.setFont("Helvetica", 10)
+        fecha_emision = datetime.now().strftime("%d/%m/%Y")
+        pdf.drawString(50, 780, f"Fecha: {fecha_emision}")
 
         # Información del proveedor
         pdf.setFont("Helvetica-Bold", 12)
@@ -1073,6 +1082,7 @@ def create_manual_invoice():
         pdf.drawString(50, 680, client_name)
         pdf.drawString(50, 665, client_address)
         pdf.drawString(50, 650, f"CIF: {client_cif}")
+        pdf.drawString(50, 635, f"{data.get('phone', 'No proporcionado')}")
 
         # Detalles del pedido (Tabla)
         pdf.setFont("Helvetica-Bold", 12)
@@ -1131,6 +1141,7 @@ def create_manual_invoice():
             client_name=client_name,
             client_address=client_address,
             client_cif=client_cif,
+            client_phone=data.get("phone"),
             amount=amount,
             order_details=order_details
         )

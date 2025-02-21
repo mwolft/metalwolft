@@ -203,6 +203,24 @@ export const Product = ({ product }) => {
                                 }}
                             ></i>
                         </div>
+                        {(product.has_abatible || product.has_door_model) && (
+                            <div style={{
+                                position: 'absolute',
+                                bottom: '8px',
+                                right: '8px',
+                                backgroundColor: '#17a2b8', 
+                                color: '#fff',
+                                padding: '4px 8px',
+                                borderRadius: '4px',
+                                fontSize: '6px',
+                                fontWeight: 'bold',
+                                zIndex: 10,
+                                textAlign: 'right'
+                            }}>
+                                {product.has_abatible && <div>Disponible en versión abatible</div>}
+                                {product.has_door_model && <div>Disponible en versión para puerta</div>}
+                            </div>
+                        )}
                     </div>
                     <Card.Body>
                         <h3
@@ -346,14 +364,14 @@ export const Product = ({ product }) => {
                                                             alt="rejas para ventanas sin obra" />
                                                         <p className='p-popover'>
                                                             <span style={{ textDecoration: 'underline', fontWeight: 'bold' }}>Sin obra: </span>
-                                                            con agujeros interiores. <br /> 
+                                                            con agujeros interiores. <br />
                                                         </p>
                                                         <img src="https://res.cloudinary.com/dewanllxn/image/upload/v1738176285/agujeros-interiores_xa0onj.png"
                                                             style={{ width: '160px', height: 'auto', marginBottom: '10px', marginTop: '5px' }}
                                                             alt="rejas para ventanas sin obra" />
                                                         <p className='p-popover'>
                                                             <span style={{ textDecoration: 'underline', fontWeight: 'bold' }}>Sin obra: </span>
-                                                            con agujeros frontales. <br /> 
+                                                            con agujeros frontales. <br />
                                                         </p>
                                                         <img src="https://res.cloudinary.com/dewanllxn/image/upload/v1738176286/agujeros-frontales_low9pi.png"
                                                             style={{ width: '160px', height: 'auto', marginBottom: '10px', marginTop: '5px' }}

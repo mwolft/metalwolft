@@ -29,7 +29,7 @@ def contact():
 
         # Preparar el correo
         message = Message(
-            subject="Nuevo mensaje de contacto",
+            subject="Mensaje desde la web",
             sender=os.getenv('MAIL_DEFAULT_SENDER'),
             recipients=['admin@metalwolft.com'],
             body=(

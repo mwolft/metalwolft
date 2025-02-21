@@ -58,6 +58,7 @@ export const InvoiceList = (props) => (
     <Datagrid rowClick="edit">
       <TextField source="invoice_number" label="Número de Factura" />
       <TextField source="client_name" label="Cliente" />
+      <TextField source="client_phone" label="Teléfono" />
       <NumberField source="amount" label="Total" options={{ style: "currency", currency: "EUR" }} />
       <DateField source="created_at" label="Fecha" />
       <TextField source="pdf_path" label="Ruta del PDF" />
@@ -72,6 +73,7 @@ export const InvoiceCreate = (props) => (
       <TextInput source="client_name" label="Nombre del Cliente" />
       <TextInput source="client_address" label="Dirección del Cliente" />
       <TextInput source="client_cif" label="CIF del Cliente" />
+      <TextInput source="client_phone" label="Teléfono" />
       <NumberInput source="amount" label="Monto Total (€)" />
       <ArrayInput source="order_details" label="Detalles del Pedido">
         <SimpleFormIterator>
@@ -90,6 +92,7 @@ export const InvoiceEdit = (props) => (
       <TextInput source="client_name" label="Nombre del Cliente" />
       <TextInput source="client_address" label="Dirección del Cliente" />
       <TextInput source="client_cif" label="CIF del Cliente" />
+      <TextInput source="client_phone" label="Teléfono" />
       <NumberInput source="amount" label="Monto Total (€)" />
       <ArrayInput source="order_details" label="Detalles del Pedido">
         <SimpleFormIterator>

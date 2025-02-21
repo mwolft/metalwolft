@@ -115,6 +115,10 @@ class Products(db.Model):
     subcategoria_id = db.Column(db.Integer, db.ForeignKey('subcategories.id'), nullable=True)
     imagen = db.Column(db.String(200), nullable=True)
 
+    # Nuevos campos para las variantes de rejas:
+    has_abatible = db.Column(db.Boolean, default=False)
+    has_door_model = db.Column(db.Boolean, default=False)
+
     images = db.relationship('ProductImages', backref='product', lazy=True)
     categoria = db.relationship('Categories', backref='products', lazy=True)
     subcategoria = db.relationship('Subcategories', backref='products', lazy=True)
@@ -139,6 +143,8 @@ class Products(db.Model):
             "categoria_id": self.categoria_id,
             "subcategoria_id": self.subcategoria_id,
             "imagen": self.imagen,
+            "has_abatible": self.has_abatible,      # Nuevo campo
+            "has_door_model": self.has_door_model,  # Nuevo campo
         }
 
     def serialize_with_images(self):
@@ -342,7 +348,7 @@ class Invoices(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     invoice_number = db.Column(db.String(50), nullable=False, unique=True)
-    order_id = db.Column(db.Integer, db.ForeignKey('orders.id'), nullable=True)  # Clave foránea
+    order_id = db.Column(db.Integer, db.ForeignKey('orders.id'), nullable=True)
     created_at = db.Column(db.DateTime, default=db.func.current_timestamp())
     pdf_path = db.Column(db.String(255), nullable=False)
     amount = db.Column(db.Float, nullable=False)
@@ -350,8 +356,9 @@ class Invoices(db.Model):
     client_name = db.Column(db.String(255), nullable=False)
     client_address = db.Column(db.String(255), nullable=False)
     client_cif = db.Column(db.String(50), nullable=True)
+    client_phone = db.Column(db.String(50), nullable=True)
     order_details = db.Column(db.JSON, nullable=False)
-    order = db.relationship('Orders', backref='invoice', lazy=True)  # Relación
+    order = db.relationship('Orders', backref='invoice', lazy=True)
 
     def __repr__(self):
         return f'<Invoice {self.invoice_number}>'
@@ -385,6 +392,7 @@ class Invoices(db.Model):
             "client_name": self.client_name,
             "client_address": self.client_address,
             "client_cif": self.client_cif,
+            "client_phone": self.client_phone,
             "order_details": self.order_details,
         }
 

@@ -18,6 +18,7 @@ const CheckoutForm = () => {
     const [formData, setFormData] = useState({
         firstname: "",
         lastname: "",
+        phone: "",
         shipping_address: "",
         shipping_city: "",
         shipping_postal_code: "",
@@ -47,12 +48,13 @@ const CheckoutForm = () => {
         const requiredFields = [
             "firstname",
             "lastname",
+            "phone", 
             "billing_address",
             "billing_city",
             "billing_postal_code",
             "CIF"
         ];
-
+    
         if (differentBilling) {
             requiredFields.push(
                 "shipping_address",
@@ -60,14 +62,14 @@ const CheckoutForm = () => {
                 "shipping_postal_code"
             );
         }
-
+    
         const newErrors = {};
         requiredFields.forEach((field) => {
             if (!formData[field]) {
-                newErrors[field] = `Campo  obligatorio.`;
+                newErrors[field] = `Campo obligatorio.`;
             }
         });
-
+    
         setErrors(newErrors);
         return Object.keys(newErrors).length === 0;
     };
@@ -313,7 +315,7 @@ const CheckoutForm = () => {
                             </div>
                         </div>
                         <div className="row">
-                            <div className="col-md-8">
+                            <div className="col-md-12">
                                 <Form.Label></Form.Label>
                                 <Form.Control
                                     name="billing_address"
@@ -325,7 +327,9 @@ const CheckoutForm = () => {
                                     <p className="text-danger">{errors.billing_address}</p>
                                 )}
                             </div>
-                            <div className="col-md-4">
+                        </div>
+                        <div className="row">
+                            <div className="col-md-6">
                                 <Form.Label></Form.Label>
                                 <Form.Control
                                     name="billing_postal_code"
@@ -337,8 +341,6 @@ const CheckoutForm = () => {
                                     <p className="text-danger">{errors.billing_postal_code}</p>
                                 )}
                             </div>
-                        </div>
-                        <div className="row">
                             <div className="col-md-6">
                                 <Form.Label></Form.Label>
                                 <Form.Control
@@ -351,6 +353,8 @@ const CheckoutForm = () => {
                                     <p className="text-danger">{errors.billing_city}</p>
                                 )}
                             </div>
+                        </div>
+                        <div className="row">
                             <div className="col-md-6 mb-3">
                                 <Form.Label></Form.Label>
                                 <Form.Control
@@ -362,6 +366,18 @@ const CheckoutForm = () => {
                                 {errors.CIF && (
                                     <p className="text-danger">{errors.CIF}</p>
                                 )}
+                            </div>
+                            <div className="col-md-6 mb-3">
+                                    <Form.Label></Form.Label>
+                                    <Form.Control
+                                        name="phone"
+                                        placeholder="Teléfono"
+                                        onChange={handleInputChange}
+                                        value={formData.phone}
+                                    />
+                                    {errors.phone && (
+                                        <p className="text-danger">{errors.phone}</p>
+                                    )}
                             </div>
                         </div>
                         <Form.Check type="checkbox" label="La dirección de envío es diferente a la de facturación"
