@@ -177,7 +177,7 @@ export const Product = ({ product }) => {
                                     zIndex: 10,
                                 }}
                             >
-                                En oferta
+                                <i className="fa-solid fa-tag"></i> En oferta 
                             </div>
                         )}
                         <div
@@ -206,18 +206,18 @@ export const Product = ({ product }) => {
                         {(product.has_abatible || product.has_door_model) && (
                             <div style={{
                                 position: 'absolute',
-                                bottom: '8px',
-                                right: '8px',
-                                backgroundColor: '#17a2b8', 
+                                bottom: '3px',
+                                right: '3px',
+                                backgroundColor: '#2b2d42', 
                                 color: '#fff',
-                                padding: '4px 8px',
+                                padding: '4px 4px',
                                 borderRadius: '4px',
                                 fontSize: '6px',
                                 fontWeight: 'bold',
                                 zIndex: 10,
-                                textAlign: 'right'
+                                textAlign: 'center'
                             }}>
-                                {product.has_abatible && <div>Disponible en versión abatible</div>}
+                                {product.has_abatible && <div>Disponible abatible <i className="fa-solid fa-door-open"></i></div>}
                                 {product.has_door_model && <div>Disponible en versión para puerta</div>}
                             </div>
                         )}

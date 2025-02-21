@@ -152,7 +152,7 @@ export const RejasParaVentanas = ({ onSelectCategory, onSelectSubcategory, categ
                     <div className="col-12 col-lg-9 col-xl-9 order-2 p-3">
                         {/* ------------------------------------------------------------------------------------------------------------------------ */}
                         {/*<MetalStructureViewer />*/}
-                        <h2 className="h2-categories">Catálogo de rejas para ventanas</h2>
+                        <h2 className="h2-categories">Catálogo de Rejas</h2>
                         <div className="row">
                             {store.products && store.products.length > 0 ? (
                                 store.products.map((product, index) => (

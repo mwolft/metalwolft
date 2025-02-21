@@ -777,7 +777,7 @@ def handle_orders():
                 pdf = canvas.Canvas(pdf_buffer, pagesize=A4)
 
                 # Agregar logo
-                image_url = "https://res.cloudinary.com/dewanllxn/image/upload/v1734079825/herrero-soldador-en-ciudad-real_yzq1f3_bszzj8.png"
+                image_url = "https://res.cloudinary.com/dewanllxn/image/upload/v1740167674/logo_uxlqof.png"
                 pdf.drawImage(image_url, 300, 750, width=250, height=64)
 
                 # Información de la factura
@@ -1057,7 +1057,7 @@ def create_manual_invoice():
         pdf = canvas.Canvas(pdf_buffer, pagesize=A4)
 
         # Encabezado: Logo e información del proveedor
-        image_url = "https://res.cloudinary.com/dewanllxn/image/upload/v1734079825/herrero-soldador-en-ciudad-real_yzq1f3_bszzj8.png"
+        image_url = "https://res.cloudinary.com/dewanllxn/image/upload/v1740167674/logo_uxlqof.png"
         pdf.drawImage(image_url, 300, 750, width=250, height=64)
         pdf.setTitle(f"Factura_{invoice_number}")
         pdf.setFont("Helvetica-Bold", 12)
