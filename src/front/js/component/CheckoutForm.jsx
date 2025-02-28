@@ -48,13 +48,13 @@ const CheckoutForm = () => {
         const requiredFields = [
             "firstname",
             "lastname",
-            "phone", 
+            "phone",
             "billing_address",
             "billing_city",
             "billing_postal_code",
             "CIF"
         ];
-    
+
         if (differentBilling) {
             requiredFields.push(
                 "shipping_address",
@@ -62,14 +62,14 @@ const CheckoutForm = () => {
                 "shipping_postal_code"
             );
         }
-    
+
         const newErrors = {};
         requiredFields.forEach((field) => {
             if (!formData[field]) {
                 newErrors[field] = `Campo obligatorio.`;
             }
         });
-    
+
         setErrors(newErrors);
         return Object.keys(newErrors).length === 0;
     };
@@ -112,6 +112,10 @@ const CheckoutForm = () => {
 
             // Solicitud al backend para crear el PaymentIntent
             console.log("Solicitando creación del PaymentIntent al backend...");
+            // Generar o reutilizar la idempotencyKey
+            const idempotencyKey = store.idempotencyKey || (typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).substring(2));
+            actions.setIdempotencyKey(idempotencyKey);
+
             const response = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/create-payment-intent`, {
                 method: 'POST',
                 headers: {
@@ -120,8 +124,9 @@ const CheckoutForm = () => {
                 body: JSON.stringify({
                     amount: convertedAmount,
                     payment_method_id: paymentMethod.id,
-                    payment_intent_id: store.paymentIntentId
-                }),
+                    payment_intent_id: store.paymentIntentId,
+                    idempotency_key: idempotencyKey
+                }),                
             });
 
             if (!response.ok) {
@@ -132,6 +137,10 @@ const CheckoutForm = () => {
 
             const data = await response.json();
             console.log("Respuesta del backend:", data);
+
+            if (data.paymentIntent && data.paymentIntent.id) {
+                actions.setPaymentIntentId(data.paymentIntent.id);
+            }
 
             if (!data || !data.clientSecret) {
                 console.error("La respuesta no contiene clientSecret.");
@@ -368,16 +377,16 @@ const CheckoutForm = () => {
                                 )}
                             </div>
                             <div className="col-md-6 mb-3">
-                                    <Form.Label></Form.Label>
-                                    <Form.Control
-                                        name="phone"
-                                        placeholder="Teléfono"
-                                        onChange={handleInputChange}
-                                        value={formData.phone}
-                                    />
-                                    {errors.phone && (
-                                        <p className="text-danger">{errors.phone}</p>
-                                    )}
+                                <Form.Label></Form.Label>
+                                <Form.Control
+                                    name="phone"
+                                    placeholder="Teléfono"
+                                    onChange={handleInputChange}
+                                    value={formData.phone}
+                                />
+                                {errors.phone && (
+                                    <p className="text-danger">{errors.phone}</p>
+                                )}
                             </div>
                         </div>
                         <Form.Check type="checkbox" label="La dirección de envío es diferente a la de facturación"

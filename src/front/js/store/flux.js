@@ -14,6 +14,8 @@ const getState = ({ getStore, getActions, setStore }) => {
             orders: [],  
             orderDetails: [],
             cart: [],
+            paymentIntentId: null,
+            idempotencyKey: null,
             paymentCompleted: false,
             posts: [],  
             postsLoaded: false,
@@ -601,7 +603,13 @@ const getState = ({ getStore, getActions, setStore }) => {
             isFavorite: (product) => {
                 const store = getStore();
                 return store.favorites.some(favorite => favorite.id === product.id);
-            }               
+            },
+            setPaymentIntentId: (paymentIntentId) => {
+                setStore({ paymentIntentId });
+            },
+            setIdempotencyKey: (idempotencyKey) => {
+                setStore({ idempotencyKey });
+            }                                   
         }
     };
 };

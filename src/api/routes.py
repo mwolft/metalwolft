@@ -35,6 +35,13 @@ def create_payment_intent():
         stripe.api_key = os.getenv('STRIPE_SECRET_KEY') 
 
         data = request.get_json()
+
+        import uuid  
+
+        idempotency_key = data.get('idempotency_key')
+        if not idempotency_key:
+            idempotency_key = str(uuid.uuid4())
+
         payment_intent_id = data.get('payment_intent_id')
 
         if payment_intent_id:
@@ -47,8 +54,10 @@ def create_payment_intent():
             currency='eur',
             payment_method=data['payment_method_id'],
             confirm=True,
-            return_url=os.getenv('STRIPE_RETURN_URL')  
+            return_url=os.getenv('STRIPE_RETURN_URL'),
+            idempotency_key=idempotency_key
         )
+
         return jsonify({
             'clientSecret': intent['client_secret'],
             'paymentIntent': intent
