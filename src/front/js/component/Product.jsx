@@ -24,6 +24,7 @@ export const Product = ({ product }) => {
     const [color, setColor] = useState('blanco');
     const [calculatedPrice, setCalculatedPrice] = useState(null);
     const { store, actions } = useContext(Context);
+    const [calcError, setCalcError] = useState("");
 
     const handleShow = () => setShowModal(true);
     const handleClose = () => setShowModal(false);
@@ -91,31 +92,43 @@ export const Product = ({ product }) => {
         const parsedHeight = parseFloat(height);
         const parsedWidth = parseFloat(width);
 
+        // Reiniciamos el error antes de la validación
+        setCalcError("");
+
         if (isNaN(parsedHeight) || isNaN(parsedWidth)) {
-            setNotification("Debe ingresar altura y anchura válidas");
+            setCalcError("Debe ingresar altura y anchura válidas");
             return;
         }
 
         if (parsedHeight < 20 || parsedWidth < 20) {
-            setNotification("El alto y el ancho deben ser al menos 20 cm");
+            setCalcError("El alto y el ancho deben ser al menos 20 cm");
+            return;
+        }
+
+        // Restricciones máximas para transporte:
+        if (parsedHeight > 200 || parsedWidth > 200) {
+            setCalcError("El alto y el ancho deben ser como máximo 200 cm");
+            return;
+        }
+
+        if (parsedHeight + parsedWidth > 250) {
+            setCalcError("La suma del alto y ancho no debe superar los 250 cm");
             return;
         }
 
         // Seleccionar el precio correcto
         const basePricePerM2 = product.precio_rebajado || product.precio;
-
-        // Cálculo base
-        const area = (parsedHeight * parsedWidth) / 10000; // Área en metros cuadrados
+        const area = (parsedHeight * parsedWidth) / 10000;
         let price = area * basePricePerM2;
 
         // Aplicar precio mínimo o ajustes
-        const basePrice = 50; // Precio mínimo por producto (puedes ajustarlo)
-        const smallAreaMultiplier = area < 0.5 ? 1.2 : 1; // Multiplicador para áreas pequeñas (< 0.5 m²)
-
+        const basePrice = 50;
+        const smallAreaMultiplier = area < 0.5 ? 1.2 : 1;
         price = Math.max(price * smallAreaMultiplier, basePrice);
 
         setCalculatedPrice(price.toFixed(2));
     };
+
 
 
     const determinePlacement = () => {
@@ -177,7 +190,7 @@ export const Product = ({ product }) => {
                                     zIndex: 10,
                                 }}
                             >
-                                <i className="fa-solid fa-tag"></i> En oferta 
+                                <i className="fa-solid fa-tag"></i> En oferta
                             </div>
                         )}
                         <div
@@ -208,7 +221,7 @@ export const Product = ({ product }) => {
                                 position: 'absolute',
                                 bottom: '3px',
                                 right: '3px',
-                                backgroundColor: '#2b2d42', 
+                                backgroundColor: '#2b2d42',
                                 color: '#fff',
                                 padding: '4px 4px',
                                 borderRadius: '4px',
@@ -345,6 +358,11 @@ export const Product = ({ product }) => {
                                             placeholder="cm" />
                                     </Form.Group>
                                 </div>
+                                {calcError && (
+                                    <p style={{ color: 'red', fontSize: '0.9rem', marginTop: '4px' }}>
+                                        {calcError}
+                                    </p>
+                                )}
                                 <div className="d-flex mt-2">
                                     <Form.Group controlId="mounting" className="me-3" style={{ flex: 1 }}>
                                         <OverlayTrigger
