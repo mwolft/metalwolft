@@ -25,6 +25,7 @@ export const Product = ({ product }) => {
     const [calculatedPrice, setCalculatedPrice] = useState(null);
     const { store, actions } = useContext(Context);
     const [calcError, setCalcError] = useState("");
+    const [calculatedArea, setCalculatedArea] = useState(null);
 
     const handleShow = () => setShowModal(true);
     const handleClose = () => setShowModal(false);
@@ -48,32 +49,28 @@ export const Product = ({ product }) => {
             setNotification("Debe registrarse para añadir favoritos");
         }
     };
-
+    
     const handleAddToCart = async () => {
         if (store.isLoged) {
             if (height && width) {
-                const area = (parseFloat(height) * parseFloat(width)) / 10000;
-                const pricePerM2 = product.precio_rebajado || product.precio;
-                let price = area * pricePerM2;
-
-
-                // Aplicar precio mínimo de 50€
-                if (price < 50) {
-                    price = 50;
+                // Verificamos que ya se haya calculado el precio
+                if (!calculatedPrice) {
+                    setNotification("Primero calcule el precio");
+                    return;
                 }
-
+    
                 const productDetails = {
                     product_id: product.id,
                     alto: parseFloat(height),
                     ancho: parseFloat(width),
                     anclaje: mounting,
                     color: color,
-                    precio_total: price.toFixed(2),
+                    precio_total: calculatedPrice, // Utilizamos el precio calculado previamente
                 };
-
+    
                 await actions.addToCart(productDetails);
                 setNotification("Producto añadido al carrito");
-
+    
                 // Reset valores después de añadir al carrito
                 setHeight('');
                 setWidth('');
@@ -91,44 +88,64 @@ export const Product = ({ product }) => {
     const handleCalculatePrice = () => {
         const parsedHeight = parseFloat(height);
         const parsedWidth = parseFloat(width);
-
-        // Reiniciamos el error antes de la validación
-        setCalcError("");
-
+    
         if (isNaN(parsedHeight) || isNaN(parsedWidth)) {
-            setCalcError("Debe ingresar altura y anchura válidas");
+            setNotification("Debe ingresar altura y anchura válidas");
             return;
         }
-
-        if (parsedHeight < 20 || parsedWidth < 20) {
-            setCalcError("El alto y el ancho deben ser al menos 20 cm");
+    
+        if (parsedHeight < 30 || parsedWidth < 30) {
+            setNotification("El alto y el ancho deben ser al menos 30 cm");
             return;
         }
-
+    
         // Restricciones máximas para transporte:
         if (parsedHeight > 200 || parsedWidth > 200) {
-            setCalcError("El alto y el ancho deben ser como máximo 200 cm");
+            setNotification("El alto y el ancho deben ser como máximo 200 cm");
             return;
         }
-
-        if (parsedHeight + parsedWidth > 250) {
-            setCalcError("La suma del alto y ancho no debe superar los 250 cm");
+    
+        if (parsedHeight + parsedWidth > 300) {
+            setNotification("La suma del alto y ancho no debe superar los 300 cm");
             return;
         }
-
-        // Seleccionar el precio correcto
+    
+        // Seleccionar el precio correcto (rebajado si existe, sino el normal)
         const basePricePerM2 = product.precio_rebajado || product.precio;
-        const area = (parsedHeight * parsedWidth) / 10000;
+        const area = (parsedHeight * parsedWidth) / 10000; // Área en m²
+        setCalculatedArea(area); // Guardamos el área para usarla en el render
         let price = area * basePricePerM2;
-
-        // Aplicar precio mínimo o ajustes
-        const basePrice = 50;
-        const smallAreaMultiplier = area < 0.5 ? 1.2 : 1;
-        price = Math.max(price * smallAreaMultiplier, basePrice);
-
+    
+        // Precio mínimo
+        const basePrice = 80;
+    
+        // Aplicar efecto multiplicador según rangos del área (solo si es menor a 1 m²)
+        let multiplier = 1;
+        if (area >= 0.9) {
+            multiplier = 1;
+        } else if (area >= 0.8) {
+            multiplier = 1.1;
+        } else if (area >= 0.7) {
+            multiplier = 1.15;
+        } else if (area >= 0.6) {
+            multiplier = 1.2;
+        } else if (area >= 0.5) {
+            multiplier = 1.3;
+        } else if (area >= 0.4) {
+            multiplier = 1.55;
+        } else if (area >= 0.3) {
+            multiplier = 1.90;
+        } else if (area >= 0.2) {
+            multiplier = 2.5;
+        } else {
+            multiplier = 3.0;
+        }
+    
+        // Se asegura que el precio final no sea inferior a basePrice (80€)
+        price = Math.max(price * multiplier, basePrice);
         setCalculatedPrice(price.toFixed(2));
     };
-
+    
 
 
     const determinePlacement = () => {
@@ -441,9 +458,14 @@ export const Product = ({ product }) => {
                                 {calculatedPrice && (
                                     <>
                                         <h5 className="mt-3">Precio calculado: {calculatedPrice} €</h5>
-                                        {calculatedPrice <= 50 && (
+                                        {calculatedPrice <= 80 && (
                                             <p className="text-warning mt-2">
                                                 Precio mínimo por producto.
+                                            </p>
+                                        )}
+                                        {calculatedPrice && calculatedArea !== null && calculatedArea < 1 && (
+                                            <p className="text-warning mt-2" style={{ fontSize: "0.9rem" }}>
+                                                Atención: El precio se calcula en base a un área inferior a 1 m², lo que puede incrementar el coste.
                                             </p>
                                         )}
                                     </>

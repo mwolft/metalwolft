@@ -696,7 +696,7 @@ def get_product_images():
 @jwt_required()
 def handle_orders():
     current_user = get_jwt_identity()
-    
+
     if request.method == 'GET':
         try:
             # Si el usuario es administrador, devolver todas las órdenes
@@ -725,17 +725,18 @@ def handle_orders():
         data = request.get_json()
         current_app.logger.info(f"Datos recibidos para crear la orden: {data}")
         try:
-            # Crear la orden
+            # Crear la orden inicialmente sin total_amount definitivo
             new_order = Orders(
                 user_id=current_user['user_id'],
-                total_amount=data['total_amount'],
+                total_amount=0,  # Temporalmente 0, lo recalcularemos
                 locator=Orders.generate_locator()
             )
             db.session.add(new_order)
-            db.session.flush()
+            db.session.flush()  # Nos da el id de la orden
 
-            # Crear los detalles de la orden
+            # Crear los detalles de la orden y calcular subtotal
             order_details = data.get('products', [])
+            subtotal = 0
             for detail in order_details:
                 existing_detail = OrderDetails.query.filter_by(
                     order_id=new_order.id,
@@ -770,7 +771,20 @@ def handle_orders():
                     CIF=data.get('CIF')
                 )
                 db.session.add(new_detail)
+                subtotal += float(detail['precio_total'])
 
+            # Configuración de envío:
+            shippingThreshold = 350  # Envío gratuito a partir de 350€
+            weightPerProduct = 10     # 10 kg por reja (valor estimado)
+            shippingRatePerKg = 1.70  # €/kg
+            if subtotal >= shippingThreshold:
+                shipping_cost = 0.00
+            else:
+                shipping_cost = len(order_details) * (weightPerProduct * shippingRatePerKg)
+
+            # Total final de la orden
+            total_final = subtotal + shipping_cost
+            new_order.total_amount = total_final
 
             db.session.commit()
 
@@ -834,14 +848,14 @@ def handle_orders():
                 pdf.setFont("Helvetica", 10)
                 data_table = [["Producto", "Alto", "Ancho", "Anclaje", "Color", "Precio"]]
                 for detail in order_details:
-                    product = Products.query.get(detail['producto_id']) 
+                    prod = Products.query.get(detail['producto_id'])
                     row = [
-                        product.nombre if product else "Producto desconocido",  
+                        prod.nombre if prod else "Producto desconocido",
                         f"{detail['alto']} cm",
                         f"{detail['ancho']} cm",
                         detail['anclaje'],
                         detail['color'],
-                        f"{detail['precio_total']:.2f} €"
+                        f"{float(detail['precio_total']):.2f} €"
                     ]
                     data_table.append(row)
 
@@ -855,32 +869,29 @@ def handle_orders():
                     ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
                     ('GRID', (0, 0), (-1, -1), 1, colors.black),
                 ]))
-
-                # Renderizar la tabla y calcular su altura
-                y_position = 480  # Posición inicial de la tabla
+                y_position = 480
                 table.wrapOn(pdf, 50, y_position)
                 table_height = table._height
-
-                # Dibujar la tabla en el PDF
                 table.drawOn(pdf, 50, y_position - table_height)
 
-                # Calcular la posición para los totales debajo de la tabla
-                totals_y_position = y_position - table_height - 30  # Margen adicional para separar totales
-                if totals_y_position < 50:  # Si no hay suficiente espacio, mover los totales a una nueva página
+                totals_y_position = y_position - table_height - 30
+                if (totals_y_position < 50):
                     pdf.showPage()
-                    totals_y_position = 750  # Reiniciar posición en la nueva página
+                    totals_y_position = 750
 
                 # Totales
-                total = new_order.total_amount
-                iva = total - (total / 1.21)
-                base_imponible = total - iva
-                envio = 0.00
+                total = new_order.total_amount  
+                base_productos = subtotal / 1.21
+                base_envio = shipping_cost / 1.21
+                base_total = base_productos + base_envio
+                iva_calculado = total - base_total
 
+                pdf.setFont("Helvetica", 10)
+                pdf.drawString(50, totals_y_position, f"Base Imponible: {base_productos:.2f} €")
+                pdf.drawString(50, totals_y_position - 15, f"Envío: {base_envio:.2f} €")
+                pdf.drawString(50, totals_y_position - 30, f"IVA (21%): {iva_calculado:.2f} €")
                 pdf.setFont("Helvetica-Bold", 12)
-                pdf.drawString(50, totals_y_position, f"Base Imponible: {base_imponible:.2f} €")
-                pdf.drawString(50, totals_y_position - 20, f"IVA (21%): {iva:.2f} €")
-                pdf.drawString(50, totals_y_position - 40, f"Total: {total:.2f} €")
-
+                pdf.drawString(50, totals_y_position - 50, f"Total: {total:.2f} €")
 
                 # Guardar el PDF
                 pdf.save()

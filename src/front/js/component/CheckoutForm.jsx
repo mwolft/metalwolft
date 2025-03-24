@@ -28,7 +28,16 @@ const CheckoutForm = () => {
         CIF: ""
     });
     const navigate = useNavigate();
+    
+    // Calcular el total de los productos en el carrito
     const total = store.cart.reduce((acc, product) => acc + parseFloat(product.precio_total), 0);
+    // Configuración de envío:
+    const shippingThreshold = 350;
+    const shippingRatePerKg = 1.70; // €/kg
+    const weightPerProduct = 10; // kg por reja
+    const shippingCost = total >= shippingThreshold ? 0 : store.cart.length * (weightPerProduct * shippingRatePerKg);
+    const finalTotal = total + shippingCost;
+
     // Manejar cambios en los campos del formulario
     const handleInputChange = (e) => {
         const { name, value } = e.target;
@@ -44,6 +53,7 @@ const CheckoutForm = () => {
         actions.clearCart();
         navigate("/thank-you");
     };
+
     const validateForm = () => {
         const requiredFields = [
             "firstname",
@@ -107,8 +117,8 @@ const CheckoutForm = () => {
 
             console.log("PaymentMethod creado correctamente:", paymentMethod);
 
-            // Convertir el total a un número entero (en la unidad mínima)
-            const convertedAmount = Math.round(total * 100);
+            // Convertir el total final a la unidad mínima (por ejemplo, centavos)
+            const convertedAmount = Math.round(finalTotal * 100);
 
             // Solicitud al backend para crear el PaymentIntent
             console.log("Solicitando creación del PaymentIntent al backend...");
@@ -152,7 +162,7 @@ const CheckoutForm = () => {
             if (data.paymentIntent && data.paymentIntent.status === 'succeeded') {
                 console.log("El PaymentIntent ya se encuentra confirmado en el backend.");
                 const orderData = {
-                    total_amount: total,
+                    total_amount: finalTotal,
                     products: store.cart.map(product => ({
                         producto_id: product.producto_id,
                         quantity: product.quantity || 1,
@@ -189,9 +199,8 @@ const CheckoutForm = () => {
 
             if (confirmedPaymentIntent && confirmedPaymentIntent.status === 'succeeded') {
                 console.log("El pago fue confirmado exitosamente.");
-                // Construir el objeto orderData de la misma forma que en la otra rama:
                 const orderData = {
-                    total_amount: total,
+                    total_amount: finalTotal,
                     products: store.cart.map(product => ({
                         producto_id: product.producto_id,
                         quantity: product.quantity || 1,
@@ -221,7 +230,6 @@ const CheckoutForm = () => {
         }
     };
 
-
     const handleCheckboxChange = (e) => {
         setDifferentBilling(e.target.checked);
         if (!e.target.checked) {
@@ -241,7 +249,6 @@ const CheckoutForm = () => {
         }
     };
 
-
     const handleOrderCompletion = async (orderId, formData) => {
         const { ok, order, error } = await actions.saveOrderDetails(orderId, formData);
         if (!ok) {
@@ -258,7 +265,6 @@ const CheckoutForm = () => {
         });
         navigate("/thank-you");
     };
-
 
     return (
         <Container fluid="sm" className="mt-5">
@@ -285,11 +291,15 @@ const CheckoutForm = () => {
                         ))}
                         <li className="list-group-item d-flex justify-content-between">
                             <span>Envío: </span>
-                            <strong>GRATIS</strong>
+                            {total >= shippingThreshold ? (
+                                <strong>GRATIS</strong>
+                            ) : (
+                                <strong>{shippingCost.toFixed(2)} €</strong>
+                            )}
                         </li>
                         <li className="list-group-item d-flex justify-content-between">
                             <span>Total (EUR)</span>
-                            <strong>{total.toFixed(2)} €</strong>
+                            <strong>{finalTotal.toFixed(2)} €</strong>
                         </li>
                     </ul>
                 </Col>
@@ -475,6 +485,5 @@ const CheckoutWrapper = () => {
         </Elements>
     );
 };
-
 
 export default CheckoutWrapper;

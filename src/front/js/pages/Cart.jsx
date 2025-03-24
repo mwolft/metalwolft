@@ -25,7 +25,15 @@ export const Cart = () => {
         setNotification("Producto eliminado del carrito");
     };
 
+    // Calcular el subtotal de todos los productos
     const subtotal = store.cart.reduce((acc, product) => acc + parseFloat(product.precio_total), 0);
+
+    // Configuración de envío
+    const shippingThreshold = 350;
+    const shippingRatePerKg = 1.70; // €/kg
+    const weightPerProduct = 10; // kg por reja
+    const shippingCost = subtotal >= shippingThreshold ? 0 : store.cart.length * (weightPerProduct * shippingRatePerKg);
+    const finalTotal = subtotal + shippingCost;
 
     const handleCheckout = () => {
         navigate("/checkout-form");
@@ -84,16 +92,15 @@ export const Cart = () => {
                         </Table>
                         <Row className="mt-3 mb-5 mx-3">
                             <Col className="text-end">
-                                <p style={{ fontSize: "22px", fontWeight: "bold" }}>
-                                    Total: {subtotal.toFixed(2)} € (IVA incl.)
+                                <p style={{ fontSize: "16px", marginBottom: "0px"}}>
+                                    {subtotal.toFixed(2)} € (IVA incl.)
                                 </p>
-                                {subtotal >= 150 ? (
+                                {subtotal >= shippingThreshold ? (
                                     <p
                                         className="text-success"
                                         style={{
                                             fontSize: "16px",
-                                            fontWeight: "bold",
-                                            marginBottom: "20px",
+                                            marginBottom: "0px"
                                         }}
                                     >
                                         Envío: GRATIS ✔️
@@ -103,17 +110,19 @@ export const Cart = () => {
                                         className="text-danger"
                                         style={{
                                             fontSize: "16px",
-                                            fontWeight: "bold",
-                                            marginBottom: "20px",
+                                            marginBottom: "0px"
                                         }}
                                     >
-                                        Pedido mínimo de 150€ ⛔
+                                        Envío: {shippingCost.toFixed(2)} € 
                                     </p>
                                 )}
+                                <hr />
+                                <p style={{ fontSize: "22px", fontWeight: "bold" }}>
+                                    Total: {finalTotal.toFixed(2)} € (IVA incl.)
+                                </p>
                                 <Button
                                     className="btn-style-background-color"
                                     onClick={handleCheckout}
-                                    disabled={subtotal < 150}
                                 >
                                     Formulario de Pago
                                 </Button>
