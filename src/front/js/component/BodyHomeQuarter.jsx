@@ -18,7 +18,7 @@ export const BodyHomeQuarter = () => {
                 <hr className="hr-cart"></hr>
                 <div className="d-flex flex-column justify-content-center align-items-center col-12 col-sm-12 col-md-6 col-lg-7 col-xl-5">
                     <p className="info-p mt-3 mb-2">
-                        <Link to="/rejas-para-ventanas" style={{ color: '#ff324d', textDecoration: 'none', fontWeight: 'bolder' }}>Metal Wolft</Link> es líder en la creación de <b>productos metálicos</b>, que combinan <b>calidad y funcionalidad</b>.
+                        <Link to="/rejas-para-ventanas" style={{ color: '#ff324d', textDecoration: 'none', fontWeight: 'bolder' }}>Metal Wolft</Link> se dedica a la fabricación y distribución de <b>productos metálicos</b>, que combinan <b>calidad y funcionalidad</b>.
                     </p>
                     <p className="info-p">
                         Con más de <strong>10 años de experiencia</strong>, ofrecemos soluciones metálicas como <b>rejas, vallados y puertas</b>, diseñadas para satisfacer tanto a empresas como a clientes particulares.

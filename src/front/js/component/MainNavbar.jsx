@@ -34,7 +34,7 @@ export const MainNavbar = () => {
     return (
         <>
             <div className="top-banner text-center py-2">
-                <i className="fa-solid fa-truck-fast"></i> Envíos Gratis a partir de 350€ 
+                <i className="fa-solid fa-truck-fast"></i> Envíos gratuítos a partir de 350€ 
             </div>
             <Navbar expand="lg" className="estilo-navbar fixed-top text-uppercase" data-bs-theme="light" expanded={expanded}>
                 <Container fluid>
