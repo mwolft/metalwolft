@@ -95,21 +95,22 @@ BOT_USER_AGENTS = [
     "twitterbot", "rogerbot", "linkedinbot", "embedly", "quora link preview",
     "showyoubot", "outbrain", "pinterest", "slackbot", "vkShare", "W3C_Validator"
 ]
-PRERENDER_URL = "https://service.prerender.io/"
-PRERENDER_TOKEN = os.getenv("PRERENDER_TOKEN")
+PRERENDER_SERVICE_URL = os.getenv("PRERENDER_SERVICE_URL", "https://service.prerender.io/")
+PRERENDER_TOKEN       = os.getenv("PRERENDER_TOKEN")
 
 
 @app.before_request
 def prerender_io():
     user_agent = request.headers.get("User-Agent", "").lower()
-    is_bot = any(bot in user_agent for bot in BOT_USER_AGENTS)
-    is_html = "text/html" in request.headers.get("Accept", "")
+    accept_hdr = request.headers.get("Accept", "").lower()
+    is_bot  = any(bot in user_agent for bot in BOT_USER_AGENTS)
+    is_html = "text/html" in accept_hdr
 
-    if is_bot and is_html:
-        prerender_url = f"{PRERENDER_URL}{request.url}"
+    if request.method == "GET" and is_bot and is_html:
+        target_url = f"{PRERENDER_SERVICE_URL}{request.url}"
         headers = {"X-Prerender-Token": PRERENDER_TOKEN}
-        response = requests.get(prerender_url, headers=headers)
-        return response.content, response.status_code, response.headers.items()
+        resp = requests.get(target_url, headers=headers, timeout=10)
+        return resp.content, resp.status_code, resp.headers.items()
 
 
 @app.errorhandler(APIException)
