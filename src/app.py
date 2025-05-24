@@ -117,6 +117,16 @@ def prerender_io():
         except Exception as e:
             current_app.logger.error(f"[Prerender] ERROR fetching snapshot: {e}")
 
+@app.route('/_debug_build_files', methods=['GET'])
+def debug_build_files():
+    # Lista recursivamente los archivos bajo static_file_dir
+    files = []
+    for root, dirs, filenames in os.walk(static_file_dir):
+        for name in filenames:
+            rel = os.path.relpath(os.path.join(root, name), static_file_dir)
+            files.append(rel)
+    return jsonify(sorted(files))
+
 
 # Manejo de errores personalizados
 @app.errorhandler(APIException)
