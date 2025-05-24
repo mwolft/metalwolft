@@ -18,7 +18,7 @@ from flask_talisman import Talisman
 
 # Configuración de la aplicación
 env = "development" if os.getenv("FLASK_DEBUG") == "1" else "production"
-static_file_dir = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'public')
+static_file_dir = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'build')
 
 app = Flask(__name__)
 app.url_map.strict_slashes = False
