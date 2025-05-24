@@ -109,7 +109,7 @@ def prerender_io():
     ua = request.headers.get("User-Agent", "").lower()
     accept = request.headers.get("Accept", "").lower()
     is_bot = any(bot in ua for bot in BOT_USER_AGENTS)
-    is_html = "text/html" in accept
+    is_html = "text/html" in accept or "*/*" in accept
 
     current_app.logger.info(f"[Prerender] UA={ua!r} is_bot={is_bot} is_html={is_html} path={request.path}")
     if request.method == "GET" and is_bot and is_html:
