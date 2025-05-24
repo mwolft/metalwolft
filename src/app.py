@@ -142,7 +142,7 @@ def debug_build_files():
     return jsonify(sorted(files))
 
 # Endpoints auxiliares
-t@app.route('/db-check', methods=['GET'])
+@app.route('/db-check', methods=['GET'])
 def db_check():
     try:
         result = db.session.execute("SELECT 1").fetchall()
