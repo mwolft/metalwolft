@@ -18,7 +18,10 @@ from flask_talisman import Talisman
 
 # Configuración de la aplicación
 env = "development" if os.getenv("FLASK_DEBUG") == "1" else "production"
-static_file_dir = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'build')
+# Servir archivos estáticos desde el build de React (raíz)
+static_file_dir = os.path.abspath(
+    os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'build')
+)
 
 app = Flask(__name__)
 app.url_map.strict_slashes = False
@@ -75,11 +78,9 @@ app.config['FRONTEND_URL'] = os.getenv('FRONTEND_URL', 'http://localhost:3000')
 app.config['INVOICE_FOLDER'] = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'src', 'assets', 'invoices')
 
 mail.init_app(app)
-
 # Configuración adicional
 setup_admin(app)
 setup_commands(app)
-
 # Registro de Blueprints
 app.register_blueprint(api, url_prefix='/api')
 app.register_blueprint(seo_bp)
@@ -87,26 +88,23 @@ app.register_blueprint(email_bp, url_prefix='/api/email')
 app.register_blueprint(auth_bp, url_prefix='/api/auth')
 app.register_blueprint(admin_bp, url_prefix='/admin')
 
-# Integración de Prerender.io
+# Configuración de Prerender.io
 BOT_USER_AGENTS = [
     "googlebot", "bingbot", "yandex", "baiduspider", "facebookexternalhit",
     "twitterbot", "rogerbot", "linkedinbot", "embedly", "quora link preview",
     "showyoubot", "outbrain", "pinterest", "slackbot", "vkShare", "W3C_Validator"
 ]
 PRERENDER_SERVICE_URL = os.getenv("PRERENDER_SERVICE_URL", "https://service.prerender.io/")
-PRERENDER_TOKEN       = os.getenv("PRERENDER_TOKEN")
+PRERENDER_TOKEN = os.getenv("PRERENDER_TOKEN")
 
 @app.before_request
 def prerender_io():
-    ua     = request.headers.get("User-Agent", "").lower()
+    ua = request.headers.get("User-Agent", "").lower()
     accept = request.headers.get("Accept", "").lower()
-    is_bot  = any(bot in ua for bot in BOT_USER_AGENTS)
+    is_bot = any(bot in ua for bot in BOT_USER_AGENTS)
     is_html = "text/html" in accept
 
-    # --- LOGGING ---
-    current_app.logger.info(f"[Prerender] UA={ua!r}  is_bot={is_bot}  is_html={is_html}  path={request.path}")
-    # -------------
-
+    current_app.logger.info(f"[Prerender] UA={ua!r} is_bot={is_bot} is_html={is_html} path={request.path}")
     if request.method == "GET" and is_bot and is_html:
         target = f"{PRERENDER_SERVICE_URL}{request.url}"
         current_app.logger.info(f"[Prerender] Fetching snapshot from {target}")
@@ -117,9 +115,25 @@ def prerender_io():
         except Exception as e:
             current_app.logger.error(f"[Prerender] ERROR fetching snapshot: {e}")
 
+# Manejo de errores
+@app.errorhandler(APIException)
+def handle_invalid_usage(error):
+    return jsonify(error.to_dict()), error.status_code
+
+# Rutas para servir SPA
+@app.route('/', defaults={'path': ''})
+@app.route('/<path:path>')
+def serve_spa(path):
+    # Archivos estáticos
+    full_path = os.path.join(static_file_dir, path)
+    if path and os.path.isfile(full_path):
+        return send_from_directory(static_file_dir, path)
+    # Si no existe, sirve index.html
+    return send_from_directory(static_file_dir, 'index.html')
+
+# Endpoint de debug para listar archivos del build (temp)
 @app.route('/_debug_build_files', methods=['GET'])
 def debug_build_files():
-    # Lista recursivamente los archivos bajo static_file_dir
     files = []
     for root, dirs, filenames in os.walk(static_file_dir):
         for name in filenames:
@@ -127,28 +141,8 @@ def debug_build_files():
             files.append(rel)
     return jsonify(sorted(files))
 
-
-# Manejo de errores personalizados
-@app.errorhandler(APIException)
-def handle_invalid_usage(error):
-    return jsonify(error.to_dict()), error.status_code
-
-# Rutas principales
-@app.route('/')
-def sitemap():
-    if env == "development":
-        return generate_sitemap(app)
-    return send_from_directory(static_file_dir, 'index.html')
-
-@app.route('/<path:path>', methods=['GET'])
-def serve_any_other_file(path):
-    if os.path.isfile(os.path.join(static_file_dir, path)):
-        return send_from_directory(static_file_dir, path)
-    if path.startswith("api/"):
-        return jsonify({"error": "Endpoint not found"}), 404
-    return send_from_directory(static_file_dir, 'index.html')
-
-@app.route('/db-check', methods=['GET'])
+# Endpoints auxiliares
+t@app.route('/db-check', methods=['GET'])
 def db_check():
     try:
         result = db.session.execute("SELECT 1").fetchall()
@@ -166,5 +160,5 @@ def run_migrations():
         return {"error": "Failed to apply migrations", "details": str(e)}, 500
 
 if __name__ == '__main__':
-    PORT = int(os.environ.get('PORT', 3001))
-    app.run(host='0.0.0.0', port=PORT, debug=(env == "development"))
+    port = int(os.environ.get('PORT', 3001))
+    app.run(host='0.0.0.0', port=port, debug=(env == "development"))
