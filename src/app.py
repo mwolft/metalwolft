@@ -107,20 +107,23 @@ PRERENDER_TOKEN = os.getenv("PRERENDER_TOKEN")
 @app.before_request
 def prerender_io():
     ua = request.headers.get("User-Agent", "").lower()
-    accept = request.headers.get("Accept", "").lower()
     is_bot = any(bot in ua for bot in BOT_USER_AGENTS)
-    is_html = "text/html" in accept or "*/*" in accept
+    current_app.logger.info(f"[Prerender] UA={ua!r} is_bot={is_bot} path={request.path}")
 
-    current_app.logger.info(f"[Prerender] UA={ua!r} is_bot={is_bot} is_html={is_html} path={request.path}")
-    if request.method == "GET" and is_bot and is_html:
+    if request.method == "GET" and is_bot:
         target = f"{PRERENDER_SERVICE_URL}{request.url}"
         current_app.logger.info(f"[Prerender] Fetching snapshot from {target}")
         try:
-            resp = requests.get(target, headers={"X-Prerender-Token": PRERENDER_TOKEN}, timeout=30)
+            resp = session.get(
+                target,
+                headers={"X-Prerender-Token": PRERENDER_TOKEN},
+                timeout=30
+            )
             current_app.logger.info(f"[Prerender] Got status {resp.status_code}")
             return resp.content, resp.status_code, resp.headers.items()
         except Exception as e:
             current_app.logger.error(f"[Prerender] ERROR fetching snapshot: {e}")
+
 
 # Manejo de errores
 @app.errorhandler(APIException)
