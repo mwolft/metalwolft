@@ -1,5 +1,5 @@
 import React, { useEffect, useContext, useState } from "react";
-import { Helmet } from "react-helmet";
+import { Helmet } from "react-helmet-async";
 import { Container, Row, Col, Form, Button, Alert } from 'react-bootstrap';
 import { Context } from '../../store/appContext';
 import { Breadcrumb } from '../../component/Breadcrumb.jsx';

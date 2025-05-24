@@ -1,5 +1,5 @@
 import React, { useEffect, useContext, useState } from "react";
-import { Helmet } from "react-helmet";
+import { Helmet } from "react-helmet-async";
 import { Breadcrumb } from "../../component/Breadcrumb.jsx";
 import { Product } from "../../component/Product.jsx";
 import { AsideCategories } from "../../component/AsideCategories.jsx";

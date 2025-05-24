@@ -12,7 +12,7 @@ import { Notification } from "./Notification.jsx";
 import OverlayTrigger from 'react-bootstrap/OverlayTrigger';
 import Popover from 'react-bootstrap/Popover';
 import AlbanyImg from '../../img/rejas-para-ventanas-sin-obra.png'
-import { Helmet } from "react-helmet";
+import { Helmet } from "react-helmet-async";
 
 export const Product = ({ product }) => {
     const [showModal, setShowModal] = useState(false);

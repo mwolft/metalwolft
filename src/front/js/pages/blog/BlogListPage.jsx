@@ -1,5 +1,5 @@
 import React, { useEffect, useContext, useState } from "react";
-import { Helmet } from "react-helmet";
+import { Helmet } from "react-helmet-async";
 import { Link } from 'react-router-dom';
 import { Breadcrumb } from '../../component/Breadcrumb.jsx';
 import "../../../styles/blog.css";

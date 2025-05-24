@@ -1,5 +1,5 @@
 import React, { useEffect, useContext, useState } from "react";
-import { Helmet } from "react-helmet";
+import { Helmet } from "react-helmet-async";
 import "../../styles/index.css";
 import "../../styles/home.css";
 import { Carrusel } from "../component/Carrusel.jsx";
