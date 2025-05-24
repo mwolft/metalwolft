@@ -13,6 +13,8 @@ from api.seo_routes import seo_bp
 from api.email_routes import email_bp
 from api.password_recovery_endpoints import auth_bp
 import requests
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
 from flask_talisman import Talisman
 
 
@@ -22,6 +24,11 @@ env = "development" if os.getenv("FLASK_DEBUG") == "1" else "production"
 static_file_dir = os.path.abspath(
     os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'build')
 )
+
+# Configura sesión de requests con reintentos
+session = requests.Session()
+retries = Retry(total=3, backoff_factor=0.5, status_forcelist=[502, 503, 504])
+session.mount('https://', HTTPAdapter(max_retries=retries))
 
 app = Flask(__name__)
 app.url_map.strict_slashes = False
@@ -109,7 +116,7 @@ def prerender_io():
         target = f"{PRERENDER_SERVICE_URL}{request.url}"
         current_app.logger.info(f"[Prerender] Fetching snapshot from {target}")
         try:
-            resp = requests.get(target, headers={"X-Prerender-Token": PRERENDER_TOKEN}, timeout=10)
+            resp = requests.get(target, headers={"X-Prerender-Token": PRERENDER_TOKEN}, timeout=30)
             current_app.logger.info(f"[Prerender] Got status {resp.status_code}")
             return resp.content, resp.status_code, resp.headers.items()
         except Exception as e:
