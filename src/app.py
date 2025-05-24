@@ -1,4 +1,5 @@
 import os
+import logging
 from flask import Flask, jsonify, send_from_directory, request, current_app
 from flask_migrate import Migrate, upgrade
 from flask_cors import CORS
@@ -31,6 +32,7 @@ retries = Retry(total=3, backoff_factor=0.5, status_forcelist=[502, 503, 504])
 session.mount('https://', HTTPAdapter(max_retries=retries))
 
 app = Flask(__name__)
+app.logger.setLevel(logging.INFO)
 app.url_map.strict_slashes = False
 
 # Política de Content Security Policy
