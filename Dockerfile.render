@@ -1,13 +1,50 @@
-FROM node:16
-
-RUN apt update \
-    && apt install software-properties-common \
-    && add-apt-repository ppa:deadsnakes/ppa \
-    && apt update \
-    && apt install python3.10
+# 1) Etapa de build de React
+FROM node:16 AS frontend-builder
 
 WORKDIR /opt/app
-COPY --from=build /opt/app/venv /venv
 
+# Copia package.json y lock, instala dependencias y construye
+COPY package.json package-lock.json ./
+RUN npm ci
+COPY webpack.common.js webpack.prod.js webpack.dev.js public/ src/front/ ./
+RUN npm run build
+
+# 2) Etapa de runtime de Python/Flask
+FROM python:3.10-slim
+
+# Instala dependencias de sistema
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+       build-essential \
+    && rm -rf /var/lib/apt/lists/*
+
+# Crea y activa virtualenv
+WORKDIR /opt/app
+RUN python3 -m venv venv
 ENV PATH="/opt/app/venv/bin:$PATH"
-ENV NODE_ENV=container
+
+# Copia requisitos y instala
+COPY requirements.txt Pipfile* ./
+RUN pip install --upgrade pip \
+    && pip install pipenv \
+    && pipenv lock --requirements > requirements.txt 2>/dev/null || true \
+    && pip install -r requirements.txt
+
+# Copia el backend
+COPY src/ src/
+COPY api/ api/
+COPY app.py render.yaml render_build.sh template.html ./
+# (Ajusta estas rutas según tu estructura real)
+
+# Copia el build de React desde la etapa 1
+COPY --from=frontend-builder /opt/app/build /opt/app/build
+
+# Variables de entorno necesarias
+ENV PRERENDER_SERVICE_URL=https://service.prerender.io/
+ENV PRERENDER_TOKEN=${PRERENDER_TOKEN}
+
+# Expone el puerto que use tu Flask (3001)
+EXPOSE 3001
+
+# Comando de arranque usando gunicorn
+CMD ["gunicorn", "app:app", "--workers", "3", "--bind", "0.0.0.0:3001"]
