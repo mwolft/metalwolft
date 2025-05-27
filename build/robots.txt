@@ -1,7 +1,7 @@
 User-agent: *
-Disallow: /admin/             # Suponiendo que /admin/ es un panel de administración
-Disallow: /login/            # Páginas de inicio de sesión
-Disallow: /reset-password/   # Páginas de restablecimiento de contraseña
-Disallow: /thank-you/        # Páginas de agradecimiento post-compra/registro (si no tienen contenido único SEO)
+Disallow: /admin/         
+Disallow: /login/           
+Disallow: /reset-password/   
+Disallow: /thank-you/        
 
 Sitemap: https://www.metalwolft.com/sitemap.xml
