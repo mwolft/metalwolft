@@ -1,26 +1,7 @@
 User-agent: *
-Disallow: /admin/
-Disallow: /body-home-main/
-Disallow: /body-home-secondary/
-Disallow: /body-home-tertiary/
-Disallow: /body-home-quarter/
-Disallow: /cards-carrusel/
-Disallow: /carrusel/
-Disallow: /aside-categories/
-Disallow: /aside-otherscategories/
-Disallow: /aside-post/
-Disallow: /breadcrumb/
-Disallow: /notification/
-Disallow: /sidebar/
-Disallow: /pay-pal-button/
-Disallow: /login/
-Disallow: /reset-password/
-Disallow: /thank-you/
-Disallow: /product/
-Disallow: /cookies-esenciales/
-Disallow: /politica-privacidad/
-Disallow: /politica-cookies/
-Disallow: /informacion-recogida/
-Disallow: /cambios-politica-cookies/
+Disallow: /admin/             # Suponiendo que /admin/ es un panel de administración
+Disallow: /login/            # Páginas de inicio de sesión
+Disallow: /reset-password/   # Páginas de restablecimiento de contraseña
+Disallow: /thank-you/        # Páginas de agradecimiento post-compra/registro (si no tienen contenido único SEO)
 
 Sitemap: https://www.metalwolft.com/sitemap.xml
