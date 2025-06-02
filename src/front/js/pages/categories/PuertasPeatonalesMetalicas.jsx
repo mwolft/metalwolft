@@ -49,13 +49,19 @@ export const PuertasPeatonalesMetalicas = () => {
 
     return (
         <>
-            <Helmet>
+            <Helmet htmlAttributes={{ lang: metaData.lang || "es" }}>
                 <title>{metaData.title}</title>
                 <meta name="description" content={metaData.description} />
                 <meta name="keywords" content={metaData.keywords} />
                 <meta name="robots" content={metaData.robots || "index, follow"} />
                 <meta name="theme-color" content={metaData.theme_color || "#ffffff"} />
-                {/* Open Graph Meta Tags */}
+                <meta name="twitter:card" content={metaData.twitter_card_type} />
+                <meta name="twitter:site" content={metaData.twitter_site} />
+                <meta name="twitter:creator" content={metaData.twitter_creator} />
+                <meta name="twitter:title" content={metaData.twitter_title || metaData.title} />
+                <meta name="twitter:description" content={metaData.twitter_description || metaData.description} />
+                <meta name="twitter:image" content={metaData.twitter_image || metaData.og_image} />
+                <meta name="twitter:image:alt" content={metaData.twitter_image_alt || metaData.og_image_alt} />
                 <meta property="og:type" content={metaData.og_type || "article"} />
                 <meta property="og:title" content={metaData.title} />
                 <meta property="og:description" content={metaData.description} />
@@ -69,9 +75,7 @@ export const PuertasPeatonalesMetalicas = () => {
                 <meta property="og:locale" content={metaData.og_locale || "es_ES"} />
                 <meta property="og:locale:alternate" content={metaData.og_locale_alternate || "en_US"} />
                 <meta property="og:updated_time" content={metaData.og_updated_time} />
-                {/* Canonical Link */}
                 <link rel="canonical" href={metaData.canonical} />
-                {/* JSON-LD Schema */}
                 {metaData.json_ld && (
                     <script type="application/ld+json">
                         {JSON.stringify(metaData.json_ld)}

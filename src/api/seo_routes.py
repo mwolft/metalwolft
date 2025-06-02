@@ -7,6 +7,14 @@ seo_bp = Blueprint('seo', __name__)
 @seo_bp.route('/api/seo/home', methods=['GET'])
 def home():
     meta_data = {
+        "lang": "es",
+        "twitter_card_type": "summary_large_image",
+        "twitter_site": "@MetalWolft",
+        "twitter_creator": "@MetalWolft",
+        "twitter_title": "Carpintería Metálica Online | 🇪🇸",
+        "twitter_description": "Somos expertos en carpintería metálica en Ciudad Real. Fabricamos rejas para ventanas, puertas correderas, vallados metálicos o puertas peatonales.",
+        "twitter_image": "https://res.cloudinary.com/dewanllxn/image/upload/v1733821952/herrero-soldador-ciudad-real_cc199z.jpg",
+        "twitter_image_alt": "Carpintería metálica en Ciudad Real",
         "title": "Carpintería Metálica Online | 🇪🇸",
         "description": "Somos expertos en carpintería metálica en Ciudad Real. Fabricamos rejas para ventanas, puertas correderas, vallados metálicos o puertas peatonales.",
         "keywords": "carpintería metálica en Ciudad Real, soldador en ciudad real, herrero en Ciudad Real, herrería en Ciudad Real, rejas para ventanas, puertas metálicas, vallados exteriores, carpintería de aluminio...",
@@ -48,6 +56,14 @@ def home():
 @seo_bp.route('/api/seo/rejas-para-ventanas', methods=['GET'])
 def rejas_para_ventanas():
     meta_data = {
+        "lang": "es",
+        "twitter_card_type": "summary_large_image",
+        "twitter_site": "@MetalWolft",
+        "twitter_creator": "@MetalWolft",
+        "twitter_title": "Rejas para Ventanas Modernas al Mejor Precio",
+        "twitter_description": "Descubre rejas para ventanas modernas, abatibles y sin obra. Precios accesibles y modelos exclusivos en hierro y aluminio. ¡Pide tu catálogo hoy!",
+        "twitter_image": "https://res.cloudinary.com/dewanllxn/image/upload/v1733821800/rejas-para-ventanas_opusgz.png",
+        "twitter_image_alt": "Rejas para ventanas",
         "title": "Rejas para Ventanas Modernas al Mejor Precio",
         "description": "Descubre rejas para ventanas modernas, abatibles y sin obra. Precios accesibles y modelos exclusivos en hierro y aluminio. ¡Pide tu catálogo hoy!",
         "keywords": "rejas para ventanas, rejas modernas, rejas rusticas...",
@@ -184,6 +200,14 @@ def rejas_para_ventanas():
 @seo_bp.route('/api/seo/vallados-metalicos-exteriores', methods=['GET'])
 def vallados_metalicos():
     meta_data = {
+        "lang": "es",
+        "twitter_card_type": "summary_large_image",
+        "twitter_site": "@MetalWolft",
+        "twitter_creator": "@MetalWolft",
+        "twitter_title": "Vallados Metálicos: Seguridad y Estilo Exterior",
+        "twitter_description": "Descubre nuestra amplia gama de vallados metálicos diseñados para proteger y embellecer tu espacio exterior. ¡Visítanos hoy mismo!",
+        "twitter_image": "https://res.cloudinary.com/dewanllxn/image/upload/v1733821751/vallados-metalicos-open_lemviq.png",
+        "twitter_image_alt": "vallados metalicos",
         "title": "Vallados Metálicos: Seguridad y Estilo Exterior",
         "description": "Descubre nuestra amplia gama de vallados metálicos diseñados para proteger y embellecer tu espacio exterior. ¡Visítanos hoy mismo!",
         "keywords": "vallados metalicos, tipos de vallados metálicos, cerramientos metalicos exteriores, vallado exterior moderno, valla metálica, valla metalica jardin, valla metálica leroy merlin, valla metálica bricomart, vallas metálicas baratas, precio valla metalica, valla metálica bricodepot, vallado metalico, valla metalica precio, vallas metalicas precios",
@@ -219,6 +243,14 @@ def vallados_metalicos():
 @seo_bp.route('/api/seo/puertas-peatonales-metalicas', methods=['GET'])
 def puertas_peatonales_metalicas():
     meta_data = {
+        "lang": "es",
+        "twitter_card_type": "summary_large_image",
+        "twitter_site": "@MetalWolft",
+        "twitter_creator": "@MetalWolft",
+        "twitter_title": "Puertas Peatonales Metálicas. Diseños para exteriores.",
+        "twitter_description": "Explora nuestras puertas peatonales metálicas diseñadas para resistir y embellecer tu entrada. ¡Descúbrelas ahora!",
+        "twitter_image": "https://res.cloudinary.com/dewanllxn/image/upload/v1733821886/puertas-peatonales-open_e9vsu8.jpg",
+        "twitter_image_alt": "Puertas Peatonales Metálicas",
         "title": "Puertas Peatonales Metálicas. Diseños para exteriores.",
         "description": "Explora nuestras puertas peatonales metálicas diseñadas para resistir y embellecer tu entrada. ¡Descúbrelas ahora!",
         "keywords": "puertas peatonales, puerta peatonal exterior, puerta peatonal en puerta de garaje, puerta peatonal automática...",
@@ -290,6 +322,14 @@ def puertas_correderas_interiores():
 @seo_bp.route('/api/seo/puertas-correderas-exteriores', methods=['GET'])
 def puertas_correderas_exteriores():
     meta_data = {
+        "lang": "es",
+        "twitter_card_type": "summary_large_image",
+        "twitter_site": "@MetalWolft",
+        "twitter_creator": "@MetalWolft",
+        "twitter_title": "Puertas Correderas Exterior: funcionalidad, estilo y confort",
+        "twitter_description": "Descubre nuestra gama de puertas correderas exteriores que combinan funcionalidad y estilo, ideales para tu espacio exterior.",
+        "twitter_image": "https://res.cloudinary.com/dewanllxn/image/upload/v1733823037/puertas-correderas-open_so6hji.jpg",
+        "twitter_image_alt": "puertas correderas exteriores",
         "title": "Puertas Correderas Exterior: funcionalidad, estilo y confort",
         "description": "Descubre nuestra gama de puertas correderas exteriores que combinan funcionalidad y estilo, ideales para tu espacio exterior.",
         "keywords": "puertas correderas exteriores, puerta corredera exterior, puertas correderas chalet exterior, puerta corredera exterior jardin...",
@@ -325,6 +365,14 @@ def puertas_correderas_exteriores():
 @seo_bp.route('/api/seo/cerramientos-de-cocina-con-cristal', methods=['GET'])
 def cerramiento_de_cocina_con_cristal():
     meta_data = {
+        "lang": "es",
+        "twitter_card_type": "summary_large_image",
+        "twitter_site": "@MetalWolft",
+        "twitter_creator": "@MetalWolft",
+        "twitter_title": "Cerramientos cocina con cristal",
+        "twitter_description": "Descubre nuestra gama de cerramientos de cocina y salon diseñados para embellecer tu espacio interior.",
+        "twitter_image": "https://res.cloudinary.com/dewanllxn/image/upload/v1733821952/herrero-soldador-ciudad-real_cc199z.jpg",
+        "twitter_image_alt": "cerramientos de cocina con cristal",
         "title": "Cerramientos cocina con cristal",
         "description": "Descubre nuestra gama de cerramientos de cocina y salon diseñados para embellecer tu espacio interior.",
         "keywords": "cerramiento cocina con cristal, cerramiento cocina con cristal leroy merlin, cerramiento cocina salon, cerramiento cocina aluminio...",
@@ -360,6 +408,14 @@ def cerramiento_de_cocina_con_cristal():
 @seo_bp.route('/api/seo/blogs', methods=['GET'])
 def blog_metal_wolft():
     meta_data = {
+        "lang": "es",
+        "twitter_card_type": "summary_large_image",
+        "twitter_site": "@MetalWolft",
+        "twitter_creator": "@MetalWolft",
+        "twitter_title": "Blog de Metal Wolft: Inspiración y diseño",
+        "twitter_description": "Explora nuestro blog dedicado a la herrería y el diseño en metal. Inspiración, consejos y proyectos creativos para elevar la elegancia en tu hogar.",
+        "twitter_image": "https://res.cloudinary.com/dewanllxn/image/upload/v1733821952/herrero-soldador-ciudad-real_cc199z.jpg",
+        "twitter_image_alt": "herrero soldador ciudad real",
         "title": "Blog de Metal Wolft: Inspiración y diseño",
         "description": "Explora nuestro blog dedicado a la herrería y el diseño en metal. Inspiración, consejos y proyectos creativos para elevar la elegancia en tu hogar.",
         "keywords": "rejas para ventanas, rejas modernas, rejas rústicas, rejas sin obra, rejas ikea, rejas leroy merlin",
@@ -395,6 +451,14 @@ def blog_metal_wolft():
 @seo_bp.route('/api/seo/instalation-rejas-para-ventanas', methods=['GET'])
 def instalation_rejas_para_ventanas():
     meta_data = {
+        "lang": "es",
+        "twitter_card_type": "summary_large_image",
+        "twitter_site": "@MetalWolft",
+        "twitter_creator": "@MetalWolft",
+        "twitter_title": "Instalación de rejas para ventanas sin obra",
+        "twitter_description": "Descubre cómo instalar rejas para ventanas de forma sencilla y segura sin necesidad de obra, utilizando tornillos Torx.",
+        "twitter_image": "https://res.cloudinary.com/dewanllxn/image/upload/v1733562859/rejas-de-seguridad-para-ventanas-open_w0kfez.png",
+        "twitter_image_alt": "Instalación de rejas para ventanas",
         "title": "Instalación de rejas para ventanas sin obra",
         "description": "Descubre cómo instalar rejas para ventanas de forma sencilla y segura sin necesidad de obra, utilizando tornillos Torx.",
         "keywords": "rejas para ventanas, rejas modernas, rejas rústicas, rejas sin obra, rejas ikea, rejas leroy merlin...",
@@ -448,6 +512,14 @@ def instalation_rejas_para_ventanas():
 @seo_bp.route('/api/seo/medir-hueco-rejas-para-ventanas', methods=['GET'])
 def medir_hueco_rejas_para_ventanas():
     meta_data = {
+        "lang": "es",
+        "twitter_card_type": "summary_large_image",
+        "twitter_site": "@MetalWolft",
+        "twitter_creator": "@MetalWolft",
+        "twitter_title": "Cómo medir el hueco para instalación de rejas",
+        "twitter_description": "Descubre cómo medir el hueco para instalar rejas de ventanas de forma sencilla y segura sin necesidad de obra. Guía paso a paso.",
+        "twitter_image": "https://res.cloudinary.com/dewanllxn/image/upload/v1733562852/rejas-para-ventanas-open_aoo6nt.avif",
+        "twitter_image_alt": "Medición hueco rejas para ventanas",
         "title": "Cómo medir el hueco para instalación de rejas",
         "description": "Descubre cómo medir el hueco para instalar rejas de ventanas de forma sencilla y segura sin necesidad de obra. Guía paso a paso.",
         "keywords": "rejas para ventanas, rejas modernas, rejas rústicas, rejas sin obra, rejas ikea, rejas leroy merlin...",
@@ -481,12 +553,12 @@ def medir_hueco_rejas_para_ventanas():
                 {
                     "@type": "HowToStep",
                     "name": "Medir ancho y alto",
-                    "text": "Mide el ancho y alto del hueco donde instalarás la reja.",
+                    "text": "Mide el ancho y alto del hueco donde instalarás la reja."
                 },
                 {
                     "@type": "HowToStep",
                     "name": "Anotar medidas",
-                    "text": "Registra las medidas en milímetros para mayor precisión.",
+                    "text": "Registra las medidas en milímetros para mayor precisión."
                 }
             ],
             "author": {

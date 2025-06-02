@@ -45,7 +45,7 @@ export const InstalationRejasParaVentanas = () => {
         if (currentPost && currentPost.id === postId && !store.commentsLoaded) {
             actions.fetchComments(postId);
         }
-    }, [actions, currentPost, postId, store.commentsLoaded]);    
+    }, [actions, currentPost, postId, store.commentsLoaded]);
 
     const handleCommentSubmit = async (e) => {
         e.preventDefault();
@@ -84,28 +84,32 @@ export const InstalationRejasParaVentanas = () => {
 
     return (
         <>
-            <Helmet>
+            <Helmet htmlAttributes={{ lang: metaData.lang || "es" }}>
                 <title>{metaData.title}</title>
                 <meta name="description" content={metaData.description} />
                 <meta name="keywords" content={metaData.keywords} />
                 <meta name="robots" content={metaData.robots || "index, follow"} />
                 <meta name="theme-color" content={metaData.theme_color || "#ffffff"} />
-                {/* Open Graph Meta Tags */}
+                <meta name="twitter:card" content={metaData.twitter_card_type} />
+                <meta name="twitter:site" content={metaData.twitter_site} />
+                <meta name="twitter:creator" content={metaData.twitter_creator} />
+                <meta name="twitter:title" content={metaData.twitter_title || metaData.title} />
+                <meta name="twitter:description" content={metaData.twitter_description || metaData.description} />
+                <meta name="twitter:image" content={metaData.twitter_image || metaData.og_image} />
+                <meta name="twitter:image:alt" content={metaData.twitter_image_alt || metaData.og_image_alt} />
                 <meta property="og:type" content={metaData.og_type || "article"} />
                 <meta property="og:title" content={metaData.title} />
                 <meta property="og:description" content={metaData.description} />
                 <meta property="og:image" content={metaData.og_image} />
                 <meta property="og:image:width" content={metaData.og_image_width || "400"} />
                 <meta property="og:image:height" content={metaData.og_image_height || "300"} />
-                <meta property="og:image:type" content={metaData.og_image_type || "image/png"} />
-                <meta property="og:image:alt" content={metaData.og_image_alt || "Instalación de rejas para ventanas"} />
+                <meta property="og:image:type" content={metaData.og_image_type || "image/avif"} />
+                <meta property="og:image:alt" content={metaData.og_image_alt || "Medición hueco rejas para ventanas"} />
                 <meta property="og:url" content={metaData.og_url} />
                 <meta property="og:site_name" content={metaData.og_site_name || "Metal Wolft"} />
                 <meta property="og:locale" content={metaData.og_locale || "es_ES"} />
                 <meta property="og:locale:alternate" content={metaData.og_locale_alternate || "en_US"} />
-                {/* Canonical Link */}
                 <link rel="canonical" href={metaData.canonical} />
-                {/* JSON-LD Schema */}
                 {metaData.json_ld && (
                     <script type="application/ld+json">
                         {JSON.stringify(metaData.json_ld)}

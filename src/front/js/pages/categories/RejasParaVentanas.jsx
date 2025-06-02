@@ -85,19 +85,19 @@ export const RejasParaVentanas = ({ onSelectCategory, onSelectSubcategory, categ
 
     return (
         <>
-            <Helmet>
-                {/* Título y Descripción */}
+            <Helmet htmlAttributes={{ lang: metaData.lang || "es" }}>
                 <title>{metaData.title}</title>
                 <meta name="description" content={metaData.description} />
                 <meta name="keywords" content={metaData.keywords} />
-
-                {/* Robots */}
                 <meta name="robots" content={metaData.robots || "index, follow"} />
-
-                {/* Theme Color */}
                 <meta name="theme-color" content={metaData.theme_color || "#ffffff"} />
-
-                {/* Open Graph Meta Tags */}
+                <meta name="twitter:card" content={metaData.twitter_card_type} />
+                <meta name="twitter:site" content={metaData.twitter_site} />
+                <meta name="twitter:creator" content={metaData.twitter_creator} />
+                <meta name="twitter:title" content={metaData.twitter_title || metaData.title} />
+                <meta name="twitter:description" content={metaData.twitter_description || metaData.description} />
+                <meta name="twitter:image" content={metaData.twitter_image || metaData.og_image} />
+                <meta name="twitter:image:alt" content={metaData.twitter_image_alt || metaData.og_image_alt} />
                 <meta property="og:type" content={metaData.og_type || "website"} />
                 <meta property="og:title" content={metaData.title} />
                 <meta property="og:description" content={metaData.description} />
@@ -110,20 +110,10 @@ export const RejasParaVentanas = ({ onSelectCategory, onSelectSubcategory, categ
                 <meta property="og:site_name" content={metaData.og_site_name || "Metal Wolft"} />
                 <meta property="og:locale" content={metaData.og_locale || "es_ES"} />
                 <meta property="og:updated_time" content={metaData.og_updated_time || "2024-12-10T12:00:00"} />
-
-                {/* Canonical */}
                 <link rel="canonical" href={metaData.canonical} />
-
                 {store.products && store.products.length > 0 && (
-                    <link
-                        rel="preload"
-                        as="image"
-                        href={store.products[0].imagen}
-                    />
+                    <link rel="preload" as="image" href={store.products[0].imagen} />
                 )}
-
-
-                {/* JSON-LD Schema */}
                 {metaData.json_ld && (
                     <script type="application/ld+json">
                         {JSON.stringify(metaData.json_ld)}
