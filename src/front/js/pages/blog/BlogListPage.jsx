@@ -21,7 +21,7 @@ export const BlogListPage = () => {
             ? process.env.REACT_APP_BACKEND_URL
             : process.env.NODE_ENV === "production"
                 ? "https://api.metalwolft.com"
-                : "https://scaling-umbrella-976gwrg7664j3grx-3001.app.github.dev";
+                : "https://fuzzy-space-eureka-7v7jw6jv7v5jhp945-3001.app.github.dev/";
 
         fetch(`${apiBaseUrl}/api/seo/blogs`)
             .then((response) => {

@@ -1,24 +1,19 @@
 import React, { useEffect, useContext, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { Context } from "../store/appContext.js";
 import "../../styles/categories-pages.css";
 
 export const AsidePost = ({ currentPostId }) => {
     const { store, actions } = useContext(Context);
     const [recentPosts, setRecentPosts] = useState([]);
-    const navigate = useNavigate();
 
     useEffect(() => {
         const fetchRecentPosts = async () => {
             const posts = await actions.getRecentPosts();
-            setRecentPosts(posts.filter(post => post.id !== currentPostId)); // Excluir el post actual
+            setRecentPosts(posts.filter(post => post.id !== currentPostId));
         };
         fetchRecentPosts();
     }, [currentPostId]);
-
-    const handlePostNavigation = (postSlug) => {
-        navigate(`/${postSlug}`);
-    };
 
     return (
         <aside className="widget my-5">
@@ -36,13 +31,13 @@ export const AsidePost = ({ currentPostId }) => {
                             <p className="p-other-categories">
                                 {post.title}<br />
                                 <span className="other-categories-span">{post.date}</span>
-                                <button 
-                                    className="buton-other-categories" 
-                                    onClick={() => handlePostNavigation(post.slug)}
+                                <Link 
+                                    to={`/${post.slug}`} 
+                                    className="buton-other-categories"
                                     aria-label={`Leer más sobre ${post.title}`}
                                 >
                                     Leer más
-                                </button>
+                                </Link>
                             </p>
                         </li>
                     ))}

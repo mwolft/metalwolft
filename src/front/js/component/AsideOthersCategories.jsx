@@ -1,12 +1,11 @@
 import React, { useEffect, useContext, useState } from "react";
 import { Context } from "../store/appContext.js";
-import { useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import "../../styles/categories-pages.css";
 
 export const AsideOthersCategories = ({ currentCategoryId }) => {
     const { store, actions } = useContext(Context);
     const [otherCategories, setOtherCategories] = useState([]);
-    const navigate = useNavigate();
 
     useEffect(() => {
         const fetchOtherCategories = async () => {
@@ -16,10 +15,6 @@ export const AsideOthersCategories = ({ currentCategoryId }) => {
         fetchOtherCategories();
     }, [currentCategoryId]);
 
-    const handleCategoryNavigation = (categorySlug) => {
-        navigate(`/${categorySlug}`);
-    };
-    
     return (
         <aside className="widget my-5">
             <p className="widget_title"><b>Otras Categorías</b></p>
@@ -32,21 +27,17 @@ export const AsideOthersCategories = ({ currentCategoryId }) => {
                                 className="img-other-categories" 
                                 src={category.image_url || "/path/to/default/image.jpg"} 
                                 alt={category.nombre} 
-                                style={{
-                                    width: "80px",
-                                    height: "100%",
-                                    objectFit: "cover"
-                                }}
+                                style={{ width: "80px", height: "100%", objectFit: "cover" }}
                             />
                             <p className="p-other-categories">
                                 {category.nombre}<br />
-                                <button 
-                                    className="buton-other-categories" 
-                                    onClick={() => handleCategoryNavigation(category.slug)}
+                                <Link 
+                                    to={`/${category.slug}`} 
+                                    className="buton-other-categories"
                                     aria-label={`Ir a categoría ${category.nombre}`}
                                 >
                                     Ir a categoría
-                                </button>
+                                </Link>
                             </p>
                         </li>
                     ))}
@@ -55,5 +46,5 @@ export const AsideOthersCategories = ({ currentCategoryId }) => {
                 <p>Cargando otras categorías...</p>
             )}
         </aside>
-    );    
+    );
 };

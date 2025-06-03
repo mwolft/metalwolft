@@ -4,7 +4,8 @@
     margin: 0;
 }
 
-.category-button, .subcategory-button {
+.category-button,
+.subcategory-button {
     display: flex;
     align-items: center;
     background-color: white;
@@ -14,6 +15,8 @@
     text-align: left;
     cursor: pointer;
     font-size: 16px;
+    text-decoration: none;
+    color: inherit;
 }
 
 .widget_categories li .category-button:hover i,
@@ -25,10 +28,11 @@
     color: #ff324d;
 }
 
-.category-icon, .subcategory-icon {
+.category-icon,
+.subcategory-icon {
     margin-right: 8px;
     color: #555;
-    font-size: 10px; 
+    font-size: 10px;
 }
 
 .categories_name {
@@ -44,32 +48,46 @@
     list-style-type: none;
     padding-left: 20px;
 }
-.others-categories{
+
+.others-categories {
     display: flex;
     margin-top: 15px;
 }
-.img-other-categories{
+
+.img-other-categories {
     width: 90px;
     height: 100%;
     object-fit: cover;
 }
-.p-other-categories{
+
+.p-other-categories {
     width: 70%;
     height: auto;
     padding: 0 0 0 7px;
     font-size: 14px;
 }
+
 .buton-other-categories {
-    padding: 2px 3px 2px 3px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    text-decoration: none;
+    color: white;
+    padding: 2px 3px;
     margin: 3px 0 0 5px;
     font-size: 10px;
-    color: white;
     background-color: #ff324d;
     border: 0;
     width: 6rem;
     border-radius: 4px;
 }
-.other-categories-span{
+
+.buton-other-categories:hover {
+    background-color: #e22a42;
+    color: white;
+}
+
+.other-categories-span {
     font-size: 10px;
     color: grey;
 }
