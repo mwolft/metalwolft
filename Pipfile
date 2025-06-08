@@ -56,6 +56,7 @@ werkzeug = "==3.0.6"
 wtforms = "==3.1.2"
 zopfli = "==0.2.3"
 flask-talisman = "==1.1.0"
+flask-httpauth = "*"
 
 [dev-packages]
 pytest = "*"

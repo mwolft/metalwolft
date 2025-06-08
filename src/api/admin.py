@@ -1,85 +1,112 @@
 import os
-from flask import Blueprint, request
-from flask_admin import Admin
+from flask import request, Response
+from flask_admin import Admin, AdminIndexView, expose
 from flask_admin.contrib.sqla import ModelView
 from wtforms.fields import SelectField, StringField
-from api.auth_decorators import admin_required  
-from .models import db, Users, Products, ProductImages, Categories, Subcategories, Cart, Orders, OrderDetails, Favorites, Posts, Comments, Invoices
+from .models import (
+    db, Users, Products, ProductImages,
+    Categories, Subcategories, Cart,
+    Orders, OrderDetails, Favorites,
+    Posts, Comments, Invoices
+)
 
-admin_bp = Blueprint('admin_blueprint', __name__)
+# Credenciales desde ENV
+ADMIN_USER = os.getenv('ADMIN_USER')
+ADMIN_PW   = os.getenv('ADMIN_PW')
 
-class ProductAdminView(ModelView):
+# Vista principal protegida
+class SecureAdminIndexView(AdminIndexView):
+    @expose('/')
+    def index(self):
+        auth = request.authorization or {}
+        if auth.get('username') != ADMIN_USER or auth.get('password') != ADMIN_PW:
+            return Response(
+                'Login required', 401,
+                {'WWW-Authenticate': 'Basic realm="Login Required"'}
+            )
+        return super().index()
+
+# ModelView seguro
+class SecureModelView(ModelView):
+    def is_accessible(self):
+        auth = request.authorization or {}
+        return auth.get('username') == ADMIN_USER and auth.get('password') == ADMIN_PW
+
+    def inaccessible_callback(self, name, **kwargs):
+        return Response(
+            'Login required', 401,
+            {'WWW-Authenticate': 'Basic realm="Login Required"'}
+        )
+
+# Vistas personalizadas
+class ProductAdminView(SecureModelView):
     form_extra_fields = {
         'categoria_id': SelectField('Categoría', choices=[])
     }
-
     def on_form_prefill(self, form, id):
         form.categoria_id.choices = [(c.id, c.nombre) for c in Categories.query.all()]
-
     def create_form(self, obj=None):
-        form = super(ProductAdminView, self).create_form(obj)
+        form = super().create_form(obj)
         form.categoria_id.choices = [(c.id, c.nombre) for c in Categories.query.all()]
         return form
-
     def edit_form(self, obj=None):
-        form = super(ProductAdminView, self).edit_form(obj)
+        form = super().edit_form(obj)
         form.categoria_id.choices = [(c.id, c.nombre) for c in Categories.query.all()]
         return form
 
-
-class OrderAdminView(ModelView):
+class OrderAdminView(SecureModelView):
     form_columns = ['user_id', 'total_amount', 'order_date', 'invoice_number', 'locator']
-    column_list = ['id', 'user_id', 'total_amount', 'order_date', 'invoice_number', 'locator']
+    column_list =  ['id', 'user_id', 'total_amount', 'order_date', 'invoice_number', 'locator']
     column_editable_list = ['total_amount']
     form_extra_fields = {
         'invoice_number': StringField('Número de Factura', render_kw={'readonly': True}),
-        'locator': StringField('Localizador', render_kw={'readonly': True})
+        'locator':        StringField('Localizador',      render_kw={'readonly': True})
     }
-
     def create_form(self, obj=None):
-        form = super(OrderAdminView, self).create_form(obj)
+        form = super().create_form(obj)
         if not form.invoice_number.data:
-            form.invoice_number.data = Orders.generate_invoice_number()
+            form.invoice_number.data = Orders.generate_next_invoice_number()
         if not form.locator.data:
             form.locator.data = Orders.generate_locator()
         return form
 
-
-class InvoiceAdminView(ModelView):
-    form_columns = ['invoice_number', 'client_name', 'client_address', 'client_cif', 'amount', 'order_id', 'created_at']
-    column_list = ['id', 'invoice_number', 'client_name', 'amount', 'created_at', 'order_id']
-    column_editable_list = ['client_name', 'client_address', 'client_cif', 'amount']
+class InvoiceAdminView(SecureModelView):
+    form_columns = ['invoice_number','client_name','client_address','client_cif','amount','order_id','created_at']
+    column_list    = ['id','invoice_number','client_name','amount','created_at','order_id']
+    column_editable_list = ['client_name','client_address','client_cif','amount']
     form_extra_fields = {
         'invoice_number': StringField('Número de Factura', render_kw={'readonly': True})
     }
-
     def create_form(self, obj=None):
-        form = super(InvoiceAdminView, self).create_form(obj)
+        form = super().create_form(obj)
         if not form.invoice_number.data:
             form.invoice_number.data = Invoices.generate_next_invoice_number()
         return form
 
-
 def setup_admin(app):
-    app.secret_key = os.environ.get('FLASK_APP_KEY', 'sample key')
+    # Secret key y tema
+    app.secret_key = os.getenv('FLASK_APP_KEY', 'sample key')
     app.config['FLASK_ADMIN_SWATCH'] = 'sandstone'
-    admin = Admin(app, name='MetalWolft.com', template_mode='bootstrap3')
 
-    admin.add_view(ModelView(Users, db.session))
-    admin.add_view(ModelView(Categories, db.session))
-    admin.add_view(ModelView(Subcategories, db.session))
+    # Monta Flask-Admin en /admin
+    admin = Admin(
+        app,
+        name='MetalWolft.com',
+        index_view=SecureAdminIndexView(),
+        template_mode='bootstrap3',
+        url='/admin'
+    )
+
+    # Registra vistas
+    admin.add_view(SecureModelView(Users, db.session))
+    admin.add_view(SecureModelView(Categories, db.session))
+    admin.add_view(SecureModelView(Subcategories, db.session))
     admin.add_view(ProductAdminView(Products, db.session))
-    admin.add_view(ModelView(ProductImages, db.session))
-    admin.add_view(ModelView(Cart, db.session))
-    admin.add_view(OrderAdminView(Orders, db.session))  
-    admin.add_view(ModelView(OrderDetails, db.session))
-    admin.add_view(ModelView(Favorites, db.session))
-    admin.add_view(ModelView(Posts, db.session))
-    admin.add_view(ModelView(Comments, db.session))
-    admin.add_view(InvoiceAdminView(Invoices, db.session))  
-
-# Rutas protegidas para el blueprint admin
-@admin_bp.before_request
-@admin_required
-def protect_admin():
-    pass
+    admin.add_view(SecureModelView(ProductImages, db.session))
+    admin.add_view(SecureModelView(Cart, db.session))
+    admin.add_view(OrderAdminView(Orders, db.session))
+    admin.add_view(SecureModelView(OrderDetails, db.session))
+    admin.add_view(SecureModelView(Favorites, db.session))
+    admin.add_view(SecureModelView(Posts, db.session))
+    admin.add_view(SecureModelView(Comments, db.session))
+    admin.add_view(InvoiceAdminView(Invoices, db.session))
