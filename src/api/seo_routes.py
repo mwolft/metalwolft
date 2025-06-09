@@ -1,9 +1,11 @@
 from flask import Blueprint, jsonify
 from api.models import Products, Categories 
 from datetime import datetime, timezone
+import logging 
+
+logger = logging.getLogger(__name__)
 
 seo_bp = Blueprint('seo', __name__)
-
 
 @seo_bp.route('/api/seo/home', methods=['GET'])
 def home():
@@ -65,15 +67,26 @@ def seo_product_new(category_slug, product_slug):
         category = Categories.query.filter_by(slug=category_slug).first()
         if not category:
             # Si la categoría no se encuentra, retornamos un 404
-            current_app.logger.warning(f"SEO: Category not found for slug: {category_slug}")
+            # --- CÓDIGO A MODIFICAR ---
+            logger.warning(f"SEO: Category not found for slug: {category_slug}")
+            # --------------------------
             return jsonify({"message": "Category not found for SEO"}), 404
 
         # 2. Buscar el producto por su slug Y aseguramos que pertenezca a la categoría
-        # .first_or_404() es de SQLAlchemy, pero aquí es mejor manejarlo explícitamente para el JSON.
         product = Products.query.filter_by(slug=product_slug, categoria_id=category.id).first()
         if not product:
-            current_app.logger.warning(f"SEO: Product not found for slug: {product_slug} in category: {category_slug}")
+            # --- CÓDIGO A MODIFICAR ---
+            logger.warning(f"SEO: Product not found for slug: {product_slug} in category: {category_slug}")
+            # --------------------------
             return jsonify({"message": "Product not found for SEO"}), 404
+
+        # ... (resto de la lógica de construcción de metadatos) ...
+
+    except Exception as e:
+        # --- CÓDIGO A MODIFICAR ---
+        logger.error(f"Error en seo_product_new para {category_slug}/{product_slug}: {str(e)}")
+        # --------------------------
+        return jsonify({"message": "Error fetching SEO data", "error": str(e)}), 500
 
         # 3. Construir la URL completa del producto
         # Asegúrate de que 'www.metalwolft.com' sea el dominio correcto o usa una variable de entorno si aplica
@@ -147,10 +160,7 @@ def seo_product_new(category_slug, product_slug):
         }
         return jsonify(meta)
     except Exception as e:
-        # --- Mantenemos el uso de current_app.logger; es el patrón correcto ---
-        current_app.logger.error(f"Error en seo_product_new para {category_slug}/{product_slug}: {str(e)}")
-        # Retorna un conjunto de metadatos por defecto o un error para que el frontend lo maneje
-        return jsonify({"message": "Error fetching SEO data", "error": str(e)}), 500
+        logger.error(f"Error en seo_product_new para {category_slug}/{product_slug}: {str(e)}")
 
 
 @seo_bp.route('/api/seo/rejas-para-ventanas', methods=['GET'])
