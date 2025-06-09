@@ -70,9 +70,22 @@ export const Cart = () => {
                                 {store.cart.map((product, index) => (
                                     <tr key={index} className="cart-line-item">
                                         <td className="table-shopping-cart-img">
-                                            <img src={product.imagen} alt={product.nombre} />
+                                            {/* --- CAMBIO 1: Envolver la imagen en un Link --- */}
+                                            <Link to={`/${product.category_slug}/${product.slug}`}>
+                                                <img 
+                                                    src={product.imagen} 
+                                                    alt={product.nombre} 
+                                                    // Añade estilos si es necesario para el tamaño dentro del enlace
+                                                    style={{ maxWidth: '80px', height: 'auto', display: 'block' }} 
+                                                />
+                                            </Link>
                                         </td>
-                                        <td>{product.nombre}</td>
+                                        <td>
+                                            {/* --- CAMBIO 2: Envolver el nombre del producto en un Link --- */}
+                                            <Link to={`/${product.category_slug}/${product.slug}`} style={{ textDecoration: 'none', color: 'inherit' }}>
+                                                {product.nombre}
+                                            </Link>
+                                        </td>
                                         <td>{product.alto}</td>
                                         <td>{product.ancho}</td>
                                         <td>{product.anclaje}</td>

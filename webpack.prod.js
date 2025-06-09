@@ -36,8 +36,7 @@ module.exports = merge(common, {
         new CopyWebpackPlugin({
             patterns: [
                 { from: path.resolve(__dirname, 'public/_redirects'), to: path.resolve(__dirname, 'build') },
-                { from: path.resolve(__dirname, 'public/robots.txt'), to: path.resolve(__dirname, 'build') },
-                { from: path.resolve(__dirname, 'public/sitemap.xml'), to: path.resolve(__dirname, 'build') }
+                { from: path.resolve(__dirname, 'public/robots.txt'), to: path.resolve(__dirname, 'build') }
             ]
         })
     ],

@@ -83,7 +83,7 @@ const Layout = () => {
                         <Route path="/body-home-quarter" element={<BodyHomeQuarter />} />
                         <Route path="/product" element={<Product />} />
                         <Route path="/favoritos" element={<Favoritos />} />
-                        <Route path="/product/:id" element={<ProductDetail />} />
+                        <Route path="/:category_slug/:product_slug" element={<ProductDetail />} />
                         <Route path="/cart" element={<Cart />} />
                         <Route path="/checkout-form" element={<CheckoutForm />} />
                         <Route path="/pay-pal-button" element={<PayPalButton />} />

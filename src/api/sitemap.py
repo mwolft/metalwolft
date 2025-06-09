@@ -1,6 +1,171 @@
-def generate_sitemap(app):
-    output = []
-    for rule in app.url_map.iter_rules():
-        if rule.endpoint != 'static':
-            output.append(str(rule))
-    return "\n".join(output)
+from flask import Blueprint, current_app, Response
+from datetime import datetime, timezone 
+from sqlalchemy.orm import joinedload 
+from api.models import db, Products, Categories, Posts 
+
+sitemap_bp = Blueprint('sitemap_bp', __name__)
+
+@sitemap_bp.route('/sitemap.xml', methods=['GET'])
+def sitemap():
+    """
+    Ruta para generar y servir el archivo sitemap.xml dinámicamente.
+    Este sitemap incluirá URLs estáticas, categorías, productos y posts,
+    con sus respectivos metadatos y etiquetas de imagen, basándose en los modelos.
+    """
+    try:
+        with current_app.app_context():
+            urls = []
+            base_url = "https://www.metalwolft.com" 
+
+            # --- 1. URLs Estáticas (de tu sitemap manual) ---
+            urls.append({
+                "loc": f"{base_url}/",
+                "lastmod": "2025-05-29T00:00:00+00:00", 
+                "changefreq": "daily",
+                "priority": "1.00",
+                "image": [{"loc": "https://res.cloudinary.com/dewanllxn/image/upload/v1733817377/herrero-ciudad-real_ndf77e.jpg", "caption": "Carpintería Metálica"}]
+            })
+            urls.append({
+                "loc": f"{base_url}/blogs",
+                "lastmod": "2025-05-29T00:00:00+00:00",
+                "changefreq": "daily",
+                "priority": "0.70"
+            })
+            urls.append({
+                "loc": f"{base_url}/medir-hueco-rejas-para-ventanas",
+                "lastmod": "2025-05-29T00:00:00+00:00",
+                "changefreq": "monthly",
+                "priority": "0.60"
+            })
+            urls.append({
+                "loc": f"{base_url}/instalation-rejas-para-ventanas",
+                "lastmod": "2025-05-29T00:00:00+00:00",
+                "changefreq": "monthly",
+                "priority": "0.60"
+            })
+            urls.append({
+                "loc": f"{base_url}/contact",
+                "lastmod": "2025-05-29T00:00:00+00:00",
+                "changefreq": "yearly",
+                "priority": "0.50"
+            })
+            urls.append({
+                "loc": f"{base_url}/politica-privacidad",
+                "lastmod": "2025-05-29T00:00:00+00:00",
+                "changefreq": "yearly",
+                "priority": "0.30"
+            })
+            urls.append({
+                "loc": f"{base_url}/politica-cookies",
+                "lastmod": "2025-05-29T00:00:00+00:00",
+                "changefreq": "yearly",
+                "priority": "0.30"
+            })
+            urls.append({
+                "loc": f"{base_url}/informacion-recogida",
+                "lastmod": "2025-05-29T00:00:00+00:00",
+                "changefreq": "yearly",
+                "priority": "0.30"
+            })
+            urls.append({
+                "loc": f"{base_url}/politica-devolucion",
+                "lastmod": "2025-05-29T00:00:00+00:00",
+                "changefreq": "yearly",
+                "priority": "0.30"
+            })
+            urls.append({
+                "loc": f"{base_url}/cambios-politica-cookies",
+                "lastmod": "2025-05-29T00:00:00+00:00",
+                "changefreq": "yearly",
+                "priority": "0.30"
+            })
+            urls.append({
+                "loc": f"{base_url}/license",
+                "lastmod": "2025-05-29T00:00:00+00:00",
+                "changefreq": "yearly",
+                "priority": "0.20"
+            })
+
+            # --- 2. URLs Dinámicas de Categorías ---
+            categories = Categories.query.all()
+            for category in categories:
+                cat_url = f"{base_url}/{category.slug}"
+                # Usamos category.image_url según tu modelo
+                cat_image_loc = category.image_url if category.image_url else None
+                
+                urls.append({
+                    "loc": cat_url,
+                    "lastmod": datetime.now(timezone.utc).isoformat(timespec='seconds'), 
+                    "changefreq": "weekly",
+                    "priority": "0.80",
+                    "image": [{"loc": cat_image_loc, "caption": category.nombre}] if cat_image_loc else None
+                })
+
+            # --- 3. URLs Dinámicas de Productos ---
+            # Cargamos productos y sus categorías para evitar N+1 queries.
+            # 'Products.categoria' es el nombre de la relación en tu modelo Products.
+            products = Products.query.options(joinedload(Products.categoria)).all()
+            for product in products:
+                # Solo si el producto tiene una categoría válida con slug
+                if product.categoria and product.categoria.slug:
+                    product_url = f"{base_url}/{product.categoria.slug}/{product.slug}"
+                    product_images = []
+                    # Añadir la imagen principal del producto (campo 'imagen' en Products)
+                    if product.imagen:
+                        product_images.append({"loc": product.imagen, "caption": product.nombre})
+                    # Añadir imágenes adicionales del producto (desde la relación 'images' a ProductImages)
+                    for img in product.images: 
+                        if img.image_url:
+                            product_images.append({"loc": img.image_url, "caption": f"{product.nombre} - Imagen {img.id}"})
+
+                    urls.append({
+                        "loc": product_url,
+                        "lastmod": datetime.now(timezone.utc).isoformat(timespec='seconds'), 
+                        "changefreq": "monthly",
+                        "priority": "0.70",
+                        "image": product_images if product_images else None
+                    })
+
+            # --- 4. URLs Dinámicas de Posts de Blog ---
+            posts = Posts.query.all() 
+            for post in posts:
+                post_url = f"{base_url}/blogs/{post.slug}"
+                post_image_loc = post.image_url if post.image_url else None
+                urls.append({
+                    "loc": post_url,
+                    # Usar updated_at si existe, si no created_at
+                    "lastmod": (post.updated_at if post.updated_at else post.created_at).isoformat(timespec='seconds'),
+                    "changefreq": "weekly",
+                    "priority": "0.60",
+                    "image": [{"loc": post_image_loc, "caption": post.title}] if post_image_loc else None
+                })
+
+
+            # --- CONSTRUCCIÓN DEL XML FINAL DEL SITEMAP ---
+            xml_output = '<?xml version="1.0" encoding="UTF-8"?>\n'
+            xml_output += '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">\n'
+
+            for url_info in urls:
+                xml_output += '  <url>\n'
+                xml_output += f'    <loc>{url_info["loc"]}</loc>\n'
+                xml_output += f'    <lastmod>{url_info["lastmod"]}</lastmod>\n'
+                xml_output += f'    <changefreq>{url_info["changefreq"]}</changefreq>\n'
+                xml_output += f'    <priority>{url_info["priority"]}</priority>\n'
+                
+                if url_info.get("image"):
+                    for img in url_info["image"]:
+                        if img and img.get("loc"): 
+                            xml_output += '    <image:image>\n'
+                            xml_output += f'      <image:loc>{img["loc"]}</image:loc>\n'
+                            if img.get("caption"):
+                                xml_output += f'      <image:caption>{img["caption"]}</image:caption>\n'
+                            xml_output += '    </image:image>\n'
+                
+                xml_output += '  </url>\n'
+            xml_output += '</urlset>'
+
+            return Response(xml_output, mimetype='application/xml')
+
+    except Exception as e:
+        current_app.logger.error(f"Error al generar el sitemap: {str(e)}")
+        return Response('<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" />', mimetype='application/xml', status=500)

@@ -1,9 +1,10 @@
 from flask_sqlalchemy import SQLAlchemy
-from sqlalchemy import Enum
+from sqlalchemy import Enum, event
 import random
 import string
 from datetime import datetime
 from flask import current_app
+from slugify import slugify
 
 db = SQLAlchemy()
 
@@ -106,6 +107,7 @@ class Comments(db.Model):
 class Products(db.Model):
     __tablename__ = "products"
     id = db.Column(db.Integer, primary_key=True)
+    slug = db.Column(db.String(120), unique=True, nullable=False)
     nombre = db.Column(db.String(100), nullable=False)
     descripcion = db.Column(db.Text, nullable=False)
     precio = db.Column(db.Float, nullable=False)
@@ -126,6 +128,12 @@ class Products(db.Model):
     def __repr__(self):
         return f'<Product {self.id}: {self.nombre}>'
 
+
+    def generate_slug(self):
+        from slugify import slugify
+        self.slug = slugify(self.nombre)
+
+
     def serialize(self):
         rebajado = self.precio_rebajado if self.precio_rebajado else None
         porcentaje = (
@@ -135,16 +143,18 @@ class Products(db.Model):
         )
         return {
             "id": self.id,
+            "slug": self.slug,
             "nombre": self.nombre,
             "descripcion": self.descripcion,
             "precio": int(self.precio) if self.precio == int(self.precio) else self.precio,
             "precio_rebajado": int(rebajado) if rebajado and rebajado == int(rebajado) else rebajado,
             "porcentaje_rebaja": porcentaje,
             "categoria_id": self.categoria_id,
+            "category_slug": self.categoria.slug, 
             "subcategoria_id": self.subcategoria_id,
             "imagen": self.imagen,
-            "has_abatible": self.has_abatible,      # Nuevo campo
-            "has_door_model": self.has_door_model,  # Nuevo campo
+            "has_abatible": self.has_abatible,
+            "has_door_model": self.has_door_model,
         }
 
     def serialize_with_images(self):
@@ -435,9 +445,33 @@ class Cart(db.Model):
             "nombre": self.product.nombre,  
             "descripcion": self.product.descripcion, 
             "imagen": self.product.imagen, 
+            "slug": self.product.slug,
+            "category_slug": self.product.categoria.slug if self.product.categoria else None, 
             "alto": self.alto,
             "ancho": self.ancho,
             "anclaje": self.anclaje,
             "color": self.color,
             "precio_total": self.precio_total
         }
+
+
+@event.listens_for(Products, 'before_insert')
+@event.listens_for(Products, 'before_update')
+def generate_product_slug(mapper, connection, target):
+    if not target.nombre:
+        return
+
+    base = slugify(target.nombre)
+    slug = base
+    i = 1
+
+    products_table = Products.__table__
+    while connection.execute(
+        products_table.select()
+            .where(products_table.c.slug == slug)
+            .where(products_table.c.id != (target.id or 0))
+    ).first():
+        i += 1
+        slug = f"{base}-{i}"
+
+    target.slug = slug

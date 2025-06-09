@@ -17,7 +17,6 @@ from sqlalchemy import func
 from flask_mail import Message
 from dotenv import load_dotenv
 from api.exceptions import APIException
-from api.sitemap import generate_sitemap
 from api.utils import mail
 from sqlalchemy.exc import IntegrityError
 
@@ -598,6 +597,25 @@ def create_product():
     except SQLAlchemyError as e:
         db.session.rollback()
         return jsonify({"message": "Error al crear el producto", "error": str(e)}), 500
+
+
+@api.route('/<string:category_slug>/<string:product_slug>', methods=['GET'])
+def get_product_by_category_and_slug(category_slug, product_slug):
+    try:
+        category = Categories.query.filter_by(slug=category_slug).first()
+        if not category:
+            return jsonify({"message": "Category not found"}), 404
+        product = Products.query.filter_by(slug=product_slug, categoria_id=category.id).first()
+
+        if not product:
+            return jsonify({"message": "Product not found in this category"}), 404
+        response = jsonify(product.serialize_with_images())
+        response.headers['Access-Control-Allow-Origin'] = '*'
+        response.headers['Access-Control-Expose-Headers'] = 'Authorization'
+        return response, 200
+    except Exception as e:
+        current_app.logger.error(f"Error al obtener el producto por categoría y slug: {str(e)}")
+        return jsonify({"message": "Error fetching product", "error": str(e)}), 500
 
 
 @api.route('/products/<int:product_id>', methods=['GET', 'PUT', 'DELETE'])
