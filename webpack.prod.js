@@ -31,7 +31,8 @@ module.exports = merge(common, {
         }),
         new Dotenv({
             systemvars: true,
-            silent: true 
+            silent: true,
+            path: null 
         }),
         new CopyWebpackPlugin({
             patterns: [
