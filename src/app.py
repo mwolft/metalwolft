@@ -11,15 +11,15 @@ from flask_jwt_extended import JWTManager
 from flask_talisman import Talisman
 from flask import Response 
 
-from api.utils import APIException, mail
-from api.routes import api
-from api.admin import setup_admin
-from api.commands import setup_commands
-from api.models import db
-from api.seo_routes import seo_bp
-from api.email_routes import email_bp
-from api.password_recovery_endpoints import auth_bp
-from api.sitemap import sitemap_bp, generate_sitemap_file 
+from src.api.utils import APIException, mail
+from src.api.routes import api
+from src.api.admin import setup_admin
+from src.api.commands import setup_commands
+from src.api.models import db
+from src.api.seo_routes import seo_bp
+from src.api.email_routes import email_bp
+from src.api.password_recovery_endpoints import auth_bp
+from src.api.sitemap import sitemap_bp, generate_sitemap_file
 
 logger = logging.getLogger(__name__) 
 logger.setLevel(logging.INFO) 
