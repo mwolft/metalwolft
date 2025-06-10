@@ -25,7 +25,7 @@ def home():
         "og_url": "https://www.metalwolft.com/",
         "og_type": "website",
         "og_locale": "es_ES",
-        "og_updated_time": "2024-12-10T12:00:00",
+        "og_updated_time": datetime.now(timezone.utc).isoformat(),
         "og_image_type": "image/jpeg",
         "og_image_width": "400",
         "og_image_height": "300",
@@ -58,87 +58,56 @@ def home():
 
 @seo_bp.route('/api/seo/<string:category_slug>/<string:product_slug>', methods=['GET'])
 def seo_product_new(category_slug, product_slug):
-    """
-    Genera metadatos SEO para una página de producto específica,
-    utilizando el slug de la categoría y el slug del producto.
-    """
     try:
-        # 1. Buscar la categoría por su slug
         category = Categories.query.filter_by(slug=category_slug).first()
         if not category:
-            # Si la categoría no se encuentra, retornamos un 404
-            # --- CÓDIGO A MODIFICAR ---
             logger.warning(f"SEO: Category not found for slug: {category_slug}")
-            # --------------------------
             return jsonify({"message": "Category not found for SEO"}), 404
-
-        # 2. Buscar el producto por su slug Y aseguramos que pertenezca a la categoría
         product = Products.query.filter_by(slug=product_slug, categoria_id=category.id).first()
         if not product:
-            # --- CÓDIGO A MODIFICAR ---
             logger.warning(f"SEO: Product not found for slug: {product_slug} in category: {category_slug}")
-            # --------------------------
             return jsonify({"message": "Product not found for SEO"}), 404
-
-        # ... (resto de la lógica de construcción de metadatos) ...
-
-    except Exception as e:
-        # --- CÓDIGO A MODIFICAR ---
-        logger.error(f"Error en seo_product_new para {category_slug}/{product_slug}: {str(e)}")
-        # --------------------------
-        return jsonify({"message": "Error fetching SEO data", "error": str(e)}), 500
-
-        # 3. Construir la URL completa del producto
-        # Asegúrate de que 'www.metalwolft.com' sea el dominio correcto o usa una variable de entorno si aplica
         product_full_url = f"https://www.metalwolft.com/{category.slug}/{product.slug}" 
-
-        # 4. Generamos los metadatos
         meta = {
             "lang": "es",
             "title": f"{product.nombre} – {category.nombre} | Metal Wolft",
             "description": f"Descubre {product.nombre}, una {product.descripcion[:150]}... en Metal Wolft. Precios inigualables en {category.nombre}.",
             "keywords": f"{product.nombre}, {category.nombre}, {product.slug}, rejas, carpintería metálica, precio, online",
-            
-            # Twitter Card
+
             "twitter_card_type": "summary_large_image",
-            "twitter_site": "@MetalWolft", # Reemplaza con tu usuario de Twitter real
-            "twitter_creator": "@MetalWolft", # Reemplaza con tu usuario de Twitter real
+            "twitter_site": "@MetalWolft", 
+            "twitter_creator": "@MetalWolft", 
             "twitter_title": f"{product.nombre} | {category.nombre} | Metal Wolft",
             "twitter_description": f"Mira {product.nombre} en Metal Wolft. {product.descripcion[:150]}...",
-            # --- CAMBIO: Usar product.imagen para la imagen de Twitter ---
-            "twitter_image": product.imagen if product.imagen else "https://placehold.co/1200x630/cccccc/000000?text=Metal+Wolft", # Fallback si no hay imagen
+            "twitter_image": product.imagen if product.imagen else "https://placehold.co/1200x630/cccccc/000000?text=Metal+Wolft", 
             "twitter_image_alt": f"Imagen de {product.nombre} de Metal Wolft",
 
-            # Open Graph
-            "og_type": "product", # Tipo específico para productos
+            "og_type": "product", 
             "og_title": f"{product.nombre} | {category.nombre} | Metal Wolft",
             "og_description": f"Descubre {product.nombre}, una {product.descripcion[:150]}... en Metal Wolft. Precios inigualables en {category.nombre}.",
-            # --- CAMBIO: Usar product.imagen para la imagen Open Graph ---
-            "og_image": product.imagen if product.imagen else "https://placehold.co/1200x630/cccccc/000000?text=Metal+Wolft", # Fallback si no hay imagen
-            "og_image_width": "1200", # Dimensiones recomendadas para OG
+            "og_image": product.imagen if product.imagen else "https://placehold.co/1200x630/cccccc/000000?text=Metal+Wolft", 
+            "og_image_width": "1200", 
             "og_image_height": "630",
             "og_image_alt": f"Imagen de {product.nombre} de Metal Wolft",
-            "og_image_type": "image/jpeg", # Ajusta si usas otros tipos de imagen
+            "og_image_type": "image/jpeg", 
             "og_url": product_full_url,
             "og_site_name": "Metal Wolft",
             "og_locale": "es_ES",
-            # --- CAMBIO: Usar datetime.now(timezone.utc) ---
             "og_updated_time": datetime.now(timezone.utc).isoformat(), 
 
             "canonical": product_full_url,
             "robots": "index, follow",
-            "theme_color": "#ff324d", # O el color principal de tu web
+            "theme_color": "#ff324d", 
 
             "json_ld": {
                 "@context": "https://schema.org/",
                 "@type": "Product",
-                "@id": product_full_url,  # Usar la URL completa del producto
+                "@id": product_full_url,  
                 "name": product.nombre,
-                # Asegúrate de que product.images no sea None si lo usas en la lista
                 "image": ([product.imagen] if product.imagen else []) + [img.image_url for img in product.images if img.image_url], 
                 "description": product.descripcion,
-                "sku": product.slug, # O un SKU real si tienes uno
-                "mpn": str(product.id), # MPN (Manufacturer Part Number) puede ser el ID o un campo dedicado
+                "sku": product.slug, 
+                "mpn": str(product.id), 
                 "brand": {
                     "@type": "Brand",
                     "name": "Metal Wolft"
@@ -147,7 +116,7 @@ def seo_product_new(category_slug, product_slug):
                     "@type": "Offer",
                     "priceCurrency": "EUR",
                     "price": product.precio_rebajado or product.precio,
-                    "availability": "https://schema.org/InStock", # O StockLimited, OutOfStock
+                    "availability": "https://schema.org/InStock", 
                     "url": product_full_url,
                     "itemCondition": "https://schema.org/NewCondition",
                     "seller": {
@@ -155,12 +124,13 @@ def seo_product_new(category_slug, product_slug):
                         "name": "Metal Wolft"
                     }
                 }
-                # Puedes añadir "aggregateRating" y "review" aquí si tienes datos de reseñas
             }
         }
-        return jsonify(meta)
+        return jsonify(meta) 
+
     except Exception as e:
         logger.error(f"Error en seo_product_new para {category_slug}/{product_slug}: {str(e)}")
+        return jsonify({"message": "Error fetching SEO data", "error": str(e)}), 500
 
 
 @seo_bp.route('/api/seo/rejas-para-ventanas', methods=['GET'])
@@ -186,123 +156,11 @@ def rejas_para_ventanas():
         "og_type": "article",
         "og_locale": "es_ES",
         "og_locale_alternate": "en_US",
-        "og_updated_time": "2024-12-10T12:00:00",
+        "og_updated_time": datetime.now(timezone.utc).isoformat(),
         "og_site_name": "Metal Wolft ",
         "canonical": "https://www.metalwolft.com/rejas-para-ventanas",
         "robots": "index, follow",
-        "theme_color": "#ff324d",
-        "json_ld": [
-            {
-                "@context": "https://schema.org/",
-                "@type": "ImageObject",
-                "contentUrl": "https://res.cloudinary.com/dewanllxn/image/upload/v1733561338/rejas-para-ventanas_qyj5nq.png",
-                "creditText": "Rejas para ventanas",
-                "creator": { "@type": "Person", "name": "ESSEX" },
-                "copyrightNotice": "Metal Wolft",
-                "acquireLicensePage": "https://www.metalwolft.com/license",
-                "license": "https://www.metalwolft.com/license"
-            },
-            {
-                "@context": "https://schema.org/",
-                "@type": "ImageObject",
-                "contentUrl": "https://res.cloudinary.com/dewanllxn/image/upload/v1733560989/rejas-para-ventanas_vwhwjy.avif",
-                "creditText": "Rejas para ventanas",
-                "creator": { "@type": "Person", "name": "ALBANY" },
-                "copyrightNotice": "Metal Wolft",
-                "acquireLicensePage": "https://www.metalwolft.com/license",
-                "license": "https://www.metalwolft.com/license"
-            },
-                      {
-            "@context": "https://schema.org/",
-            "@type": "ImageObject",
-            "contentUrl": "https://res.cloudinary.com/dewanllxn/image/upload/v1733561486/rejas-para-ventanas_grlync.png",
-            "creditText": "Reja para ventana",
-            "creator": { "@type": "Person", "name": "LUTON" },
-            "copyrightNotice": "Metal Wolft",
-            "acquireLicensePage": "https://www.metalwolft.com/license",
-            "license": "https://www.metalwolft.com/license"
-          },
-          {
-            "@context": "https://schema.org/",
-            "@type": "ImageObject",
-            "contentUrl": "https://res.cloudinary.com/dewanllxn/image/upload/v1733561452/rejas-para-ventanas_bjs0kt.png",
-            "creditText": "Rejas para ventanas",
-            "creator": { "@type": "Person", "name": "POOLE" },
-            "copyrightNotice": "Metal Wolft",
-            "acquireLicensePage": "https://www.metalwolft.com/license",
-            "license": "https://www.metalwolft.com/license"
-          },
-          {
-            "@context": "https://schema.org/",
-            "@type": "ImageObject",
-            "contentUrl": "https://res.cloudinary.com/dewanllxn/image/upload/v1733561584/rejas-para-ventanas_d8ojmp.avif",
-            "creditText": "Rejas para ventanas",
-            "creator": { "@type": "Person", "name": "DELHI" },
-            "copyrightNotice": "Metal Wolft",
-            "acquireLicensePage": "https://www.metalwolft.com/license",
-            "license": "https://www.metalwolft.com/license"
-          },
-          {
-            "@context": "https://schema.org/",
-            "@type": "ImageObject",
-            "contentUrl": "https://res.cloudinary.com/dewanllxn/image/upload/v1733561547/rejas-para-ventanas_agh7r0.png",
-            "creditText": "Rejas para ventanas",
-            "creator": { "@type": "Person", "name": "ERIE" },
-            "copyrightNotice": "Metal Wolft",
-            "acquireLicensePage": "https://www.metalwolft.com/license",
-            "license": "https://www.metalwolft.com/license"
-          },
-          {
-            "@context": "https://schema.org/",
-            "@type": "ImageObject",
-            "contentUrl": "https://res.cloudinary.com/dewanllxn/image/upload/v1733561465/rejas-para-ventanas_suhqkg.png",
-            "creditText": "Rejas para ventanas",
-            "creator": { "@type": "Person", "name": "PITTSBURGH" },
-            "copyrightNotice": "Metal Wolft",
-            "acquireLicensePage": "https://www.metalwolft.com/license",
-            "license": "https://www.metalwolft.com/license"
-          },
-          {
-            "@context": "https://schema.org/",
-            "@type": "ImageObject",
-            "contentUrl": "https://res.cloudinary.com/dewanllxn/image/upload/v1733561500/rejas-para-ventanas_fzz2wp.png",
-            "creditText": "Rejas para ventanas",
-            "creator": { "@type": "Person", "name": "LANCASTER" },
-            "copyrightNotice": "Metal Wolft",
-            "acquireLicensePage": "https://www.metalwolft.com/license",
-            "license": "https://www.metalwolft.com/license"
-          },
-          {
-            "@context": "https://schema.org/",
-            "@type": "ImageObject",
-            "contentUrl": "https://res.cloudinary.com/dewanllxn/image/upload/v1733561600/rejas-para-ventanas_c9ctly.png",
-            "creditText": "Rejas para ventanas",
-            "creator": { "@type": "Person", "name": "CORTLAND" },
-            "copyrightNotice": "Metal Wolft",
-            "acquireLicensePage": "https://www.metalwolft.com/license",
-            "license": "https://www.metalwolft.com/license"
-          },
-          {
-            "@context": "https://schema.org/",
-            "@type": "ImageObject",
-            "contentUrl": "https://res.cloudinary.com/dewanllxn/image/upload/v1733561562/rejas-para-ventanas_ybx4oj.avif",
-            "creditText": "Rejas para ventanas",
-            "creator": { "@type": "Person", "name": "GENESEE" },
-            "copyrightNotice": "Metal Wolft",
-            "acquireLicensePage": "https://www.metalwolft.com/license",
-            "license": "https://www.metalwolft.com/license"
-          },
-          {
-            "@context": "https://schema.org/",
-            "@type": "ImageObject",
-            "contentUrl": "https://res.cloudinary.com/dewanllxn/image/upload/v1733561526/rejas-para-ventanas_kkeagu.png",
-            "creditText": "Rejas para ventanas",
-            "creator": { "@type": "Person", "name": "LIVINGSTON" },
-            "copyrightNotice": "Metal Wolft",
-            "acquireLicensePage": "https://www.metalwolft.com/license",
-            "license": "https://www.metalwolft.com/license"
-          }
-        ]
+        "theme_color": "#ff324d"
     }
     return jsonify(meta_data)
 
@@ -325,7 +183,7 @@ def vallados_metalicos():
         "og_url": "https://www.metalwolft.com/vallados-metalicos-exteriores",
         "og_type": "web",
         "og_locale": "es_ES",
-        "og_updated_time": "2024-12-10T12:00:00",
+        "og_updated_time": datetime.now(timezone.utc).isoformat(),
         "og_image_type": "image/jpg",
         "og_image_width": "400",
         "og_image_height": "300",
@@ -333,19 +191,7 @@ def vallados_metalicos():
         "og_site_name": "Metal Wolft ",
         "canonical": "https://www.metalwolft.com/vallados-metalicos-exteriores",
         "robots": "index, follow", 
-        "theme_color": "#ff324d",  
-        "json_ld": {
-            "@context": "https://schema.org",
-            "@type": "Article",
-            "headline": "Vallados Metálicos: Seguridad y Estilo Exterior",
-            "description": "Descubre nuestra amplia gama de vallados metálicos diseñados para proteger y embellecer tu espacio exterior.",
-            "image": "https://res.cloudinary.com/dewanllxn/image/upload/v1749024437/vallados-metalicos_vziaoe.png",
-            "url": "https://www.metalwolft.com/vallados-metalicos-exteriores",
-            "author": {
-                "@type": "Person",
-                "name": "Metal Wolft"
-            }
-        }
+        "theme_color": "#ff324d"
     }
     return jsonify(meta_data)
 
@@ -373,23 +219,11 @@ def puertas_peatonales_metalicas():
         "og_type": "article",
         "og_locale": "es_ES",
         "og_locale_alternate": "en_US",
-        "og_updated_time": "2024-12-10T12:00:00",
+        "og_updated_time": datetime.now(timezone.utc).isoformat(),
         "og_site_name": "Metal Wolft ",
         "canonical": "https://www.metalwolft.com/puertas-peatonales-metalicas",
         "robots": "index, follow",
-        "theme_color": "#ff324d",
-        "json_ld": {
-            "@context": "https://schema.org",
-            "@type": "Article",
-            "headline": "Puertas Peatonales Metálicas. Diseños para exteriores.",
-            "description": "Explora nuestras puertas peatonales Metálicas diseñadas para resistir y embellecer tu entrada. ¡Descúbrelas ahora!",
-            "image": "https://res.cloudinary.com/dewanllxn/image/upload/v1749024437/puertas-metalicas_lu24dj.png",
-            "url": "https://www.metalwolft.com/puertas-peatonales-metalicas",
-            "author": {
-                "@type": "Person",
-                "name": "Metal Wolft"
-            }
-        }
+        "theme_color": "#ff324d"
     }
     return jsonify(meta_data)
 
@@ -412,19 +246,7 @@ def puertas_correderas_interiores():
         "og_site_name": "Metal Wolft ",
         "canonical": "https://www.metalwolft.com/puertas-correderas-interiores",
         "robots": "index, follow",
-        "theme_color": "#ff324d",
-        "json_ld": {
-            "@context": "https://schema.org",
-            "@type": "Article",
-            "headline": "Puertas Correderas con Cristal: a medida.",
-            "description": "Descubre nuestra gama de puertas correderas interiores diseñadas para embellecer tu espacio interior.",
-            "image": "https://res.cloudinary.com/dewanllxn/image/upload/v1749024438/puertas-correderas-interiores_ho9knt.png",
-            "url": "https://www.metalwolft.com/puertas-correderas-interiores",
-            "author": {
-                "@type": "Person",
-                "name": "Metal Wolft"
-            }
-        }
+        "theme_color": "#ff324d"
     }
     return jsonify(meta_data)
 
@@ -455,19 +277,7 @@ def puertas_correderas_exteriores():
         "og_site_name": "Metal Wolft ",
         "canonical": "https://www.metalwolft.com/puertas-correderas-exteriores",
         "robots": "index, follow",
-        "theme_color": "#ff324d",
-        "json_ld": {
-            "@context": "https://schema.org",
-            "@type": "Article",
-            "headline": "Puertas Correderas Exterior: funcionalidad, estilo y confort",
-            "description": "Descubre nuestra gama de puertas correderas exteriores que combinan funcionalidad y estilo, ideales para tu espacio exterior.",
-            "image": "https://res.cloudinary.com/dewanllxn/image/upload/v1749024437/puertas-correderas-exteriores_acr6ma.png",
-            "url": "https://www.metalwolft.com/puertas-correderas-exteriores",
-            "author": {
-                "@type": "Person",
-                "name": "Metal Wolft"
-            }
-        }
+        "theme_color": "#ff324d"
     }
     return jsonify(meta_data)
 
@@ -498,19 +308,7 @@ def cerramiento_de_cocina_con_cristal():
         "og_site_name": "Metal Wolft ",
         "canonical": "https://www.metalwolft.com/cerramientos-de-cocina-con-cristal",
         "robots": "index, follow",
-        "theme_color": "#ff324d",
-        "json_ld": {
-            "@context": "https://schema.org",
-            "@type": "Article",
-            "headline": "Cerramientos cocina con cristal",
-            "description": "Descubre nuestra gama de cerramientos de cocina y salon diseñados para embellecer tu espacio interior.",
-            "image": "https://res.cloudinary.com/dewanllxn/image/upload/v1749024437/cerramientos-de-cocina-con-cristal_nprdml.png",
-            "url": "https://www.metalwolft.com/cerramientos-de-cocina-con-cristal",
-            "author": {
-                "@type": "Person",
-                "name": "Metal Wolft"
-            }
-        }
+        "theme_color": "#ff324d"
     }
     return jsonify(meta_data)
 

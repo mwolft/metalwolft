@@ -4,11 +4,12 @@ import requests
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 from datetime import timedelta
-from flask import Flask, jsonify, send_from_directory, request, current_app
+from flask import Flask, jsonify, send_from_directory, request, current_app 
 from flask_migrate import Migrate, upgrade
 from flask_cors import CORS
 from flask_jwt_extended import JWTManager
 from flask_talisman import Talisman
+from flask import Response 
 
 from api.utils import APIException, mail
 from api.routes import api
@@ -18,12 +19,15 @@ from api.models import db
 from api.seo_routes import seo_bp
 from api.email_routes import email_bp
 from api.password_recovery_endpoints import auth_bp
-from api.sitemap import sitemap_bp 
+from api.sitemap import sitemap_bp, generate_sitemap_file 
+
+logger = logging.getLogger(__name__) 
+logger.setLevel(logging.INFO) 
 
 # 1) Entorno y paths
 env = "development" if os.getenv("FLASK_DEBUG") == "1" else "production"
 static_file_dir = os.path.abspath(
-    os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'build')
+    os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'build') # Assuming build is parallel to src
 )
 
 # 2) Sesión requests con reintentos (para Prerender)
@@ -33,7 +37,6 @@ session.mount('https://', HTTPAdapter(max_retries=retries))
 
 # 3) Creación de la app
 app = Flask(__name__)
-app.logger.setLevel(logging.INFO)
 app.url_map.strict_slashes = False
 
 # 4) Content Security Policy
@@ -113,21 +116,49 @@ PRERENDER_TOKEN = os.getenv("PRERENDER_TOKEN")
 def prerender_io():
     ua = request.headers.get("User-Agent", "").lower()
     is_bot = any(bot in ua for bot in BOT_USER_AGENTS)
-    current_app.logger.info(f"[Prerender] UA={ua!r} is_bot={is_bot} path={request.path}")
+    
+    logger.info(f"[Prerender] UA={ua!r} is_bot={is_bot} path={request.path}")
+
+    if request.path.startswith('/api/') or \
+       request.path.startswith('/assets/') or \
+       request.path.endswith('.js') or \
+       request.path.endswith('.css') or \
+       request.path.endswith('.png') or \
+       request.path.endswith('.jpg') or \
+       request.path.endswith('.jpeg') or \
+       request.path.endswith('.gif') or \
+       request.path.endswith('.ico') or \
+       request.path.endswith('.svg') or \
+       request.path.endswith('.xml') or \
+       request.path.endswith('.txt'): 
+
+        logger.info(f"[Prerender] Skipping prerender for static/API path: {request.path}")
+        return None 
 
     if request.method == "GET" and is_bot:
         target = f"{PRERENDER_SERVICE_URL}{request.url}"
-        current_app.logger.info(f"[Prerender] Fetching snapshot from {target}")
+        logger.info(f"[Prerender] Fetching snapshot from {target}")
         try:
             resp = session.get(
                 target,
                 headers={"X-Prerender-Token": PRERENDER_TOKEN},
                 timeout=30
             )
-            current_app.logger.info(f"[Prerender] Got status {resp.status_code}")
+            logger.info(f"[Prerender] Got status {resp.status_code}")
             return resp.content, resp.status_code, resp.headers.items()
         except Exception as e:
-            current_app.logger.error(f"[Prerender] ERROR fetching snapshot: {e}")
+            logger.error(f"[Prerender] ERROR fetching snapshot: {e}")
+            return None 
+        
+# --- NUEVA RUTA PARA SERVIR EL SITEMAP ESTÁTICO ---
+@app.route('/sitemap.xml', methods=['GET'])
+def serve_sitemap_file():
+    try:
+        # Asegúrate de que 'SITEMAP_FOLDER' apunte a la ubicación correcta del archivo sitemap.xml
+        return send_from_directory(current_app.config['SITEMAP_FOLDER'], 'sitemap.xml', mimetype='application/xml')
+    except Exception as e:
+        logger.error(f"Error al servir sitemap.xml desde el disco: {str(e)}")
+        return Response('<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" />', mimetype='application/xml', status=500)
 
 # 12) Manejo de errores
 @app.errorhandler(APIException)
@@ -143,7 +174,7 @@ def serve_spa(path):
         return send_from_directory(static_file_dir, path)
     return send_from_directory(static_file_dir, 'index.html')
 
-# 14) Debug build files (sin cambios)
+# 14) Debug build files
 @app.route('/_debug_build_files', methods=['GET'])
 def debug_build_files():
     files = []
@@ -160,7 +191,7 @@ def db_check():
         result = db.session.execute("SELECT 1").fetchall()
         return {"message": "Database connection successful", "result": [dict(row) for row in result]}, 200
     except Exception as e:
-        current_app.logger.error(f"Database connection error: {e}")
+        logger.error(f"Database connection error: {e}")
         return {"error": "Database connection failed", "details": str(e)}, 500
 
 @app.route('/run-migrations', methods=['GET'])
@@ -173,5 +204,8 @@ def run_migrations():
 
 # 16) Lanzamiento local
 if __name__ == '__main__':
+    logger.info("Intentando generar sitemap.xml en el inicio de la app...")
+    with app.app_context():
+        generate_sitemap_file(app) 
     port = int(os.environ.get('PORT', 3001))
     app.run(host='0.0.0.0', port=port, debug=(env == "development"))

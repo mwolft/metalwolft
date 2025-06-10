@@ -19,8 +19,10 @@ from dotenv import load_dotenv
 from api.exceptions import APIException
 from api.utils import mail
 from sqlalchemy.exc import IntegrityError
+import logging
 
 
+logger = logging.getLogger(__name__)
 
 api = Blueprint('api', __name__)
 
@@ -614,8 +616,8 @@ def get_product_by_category_and_slug(category_slug, product_slug):
         response.headers['Access-Control-Expose-Headers'] = 'Authorization'
         return response, 200
     except Exception as e:
-        current_app.logger.error(f"Error al obtener el producto por categoría y slug: {str(e)}")
-        return jsonify({"message": "Error fetching product", "error": str(e)}), 500
+        logger.error(f"Error al obtener el producto por categoría y slug: {str(e)}")
+    return jsonify({"message": "Error fetching product", "error": str(e)}), 500
 
 
 @api.route('/products/<int:product_id>', methods=['GET', 'PUT', 'DELETE'])
@@ -736,12 +738,12 @@ def handle_orders():
             response.headers['Access-Control-Allow-Origin'] = '*'
             return response, 200
         except Exception as e:
-            current_app.logger.error(f"Error al obtener las órdenes: {str(e)}")
-            return jsonify({"message": "Error fetching orders", "error": str(e)}), 500
+            logger.error(f"Error al obtener las órdenes: {str(e)}")
+            return jsonify({"message": "Error fetching orders", "error": str(e)}), 500 
 
     if request.method == 'POST':
         data = request.get_json()
-        current_app.logger.info(f"Datos recibidos para crear la orden: {data}")
+        logger.info(f"Datos recibidos para crear la orden: {data}")
         try:
             # Crear la orden inicialmente sin total_amount definitivo
             new_order = Orders(
@@ -766,7 +768,7 @@ def handle_orders():
                 ).first()
 
                 if existing_detail:
-                    current_app.logger.info(f"Detalle ya existente: {existing_detail.serialize()}")
+                    logger.info(f"Detalle ya existente: {existing_detail.serialize()}")
                     continue 
 
                 new_detail = OrderDetails(
@@ -936,15 +938,15 @@ def handle_orders():
                 # Enviar el correo con la factura
                 email_sent = send_email(
                     subject=f"Factura de tu pedido #{invoice_number}",
-                    recipients=[current_user['email'], current_app.config['MAIL_USERNAME']],
+                    recipients=[current_user['email'], current_app.config['MAIL_USERNAME']], # <--- current_app.config aquí
                     body=f"Hola {data.get('firstname')} {data.get('lastname')},\n\nAdjuntamos la factura {invoice_number} de tu compra.\n\nGracias por tu confianza.",
                     attachment_path=file_path
                 )
 
                 if not email_sent:
-                    current_app.logger.error(f"Error al enviar el correo con la factura {invoice_number}.")
+                    logger.error(f"Error al enviar el correo con la factura {invoice_number}.")
                 else:
-                    current_app.logger.info(f"Correo enviado correctamente con la factura {invoice_number}.")
+                    logger.info(f"Correo enviado correctamente con la factura {invoice_number}.")
 
                 # Crear la respuesta con encabezados CORS
                 response = jsonify({
@@ -957,12 +959,12 @@ def handle_orders():
 
             except Exception as e:
                 db.session.rollback()
-                current_app.logger.error(f"Error al generar la factura: {str(e)}")
+                logger.error(f"Error al generar la factura: {str(e)}")
                 return jsonify({"message": "An error occurred while generating the invoice.", "error": str(e)}), 500
 
         except SQLAlchemyError as e:
             db.session.rollback()
-            current_app.logger.error(f"Error al crear la orden: {str(e)}")
+            logger.error(f"Error al crear la orden: {str(e)}")
             return jsonify({"message": "An error occurred while creating the order.", "error": str(e)}), 500
 
 
