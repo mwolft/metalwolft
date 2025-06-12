@@ -9,6 +9,7 @@ from flask_migrate import Migrate, upgrade
 from flask_cors import CORS
 from flask_jwt_extended import JWTManager
 from flask_talisman import Talisman
+from api.models import Products
 
 from api.utils import APIException, mail
 from api.routes import api
@@ -170,6 +171,24 @@ def run_migrations():
         return {"message": "Migrations applied successfully"}, 200
     except Exception as e:
         return {"error": "Failed to apply migrations", "details": str(e)}, 500
+    
+
+@app.cli.command("sitemap_productos")
+def sitemap_productos():
+    from datetime import datetime
+    from api.models import Products  
+
+    productos = Products.query.all()
+    for producto in productos:
+        slug = producto.slug
+        categoria_slug = producto.categoria.slug  
+        print(f"""  <url>
+    <loc>https://www.metalwolft.com/{categoria_slug}/{slug}</loc>
+    <lastmod>{datetime.today().date()}T00:00:00+00:00</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.50</priority>
+  </url>""")
+
 
 # 16) Lanzamiento local
 if __name__ == '__main__':

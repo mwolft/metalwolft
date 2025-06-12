@@ -538,6 +538,16 @@ def get_subcategories(category_id):
         return response, 500
 
 
+@api.route("/category/<string:slug>/products", methods=["GET"])
+def get_products_by_category(slug):
+    category = Categories.query.filter_by(slug=slug).first()
+    if not category:
+        return jsonify({"message": "Categoría no encontrada"}), 404
+
+    products = Products.query.filter_by(categoria_id=category.id).limit(8).all()
+    return jsonify([p.serialize() for p in products]), 200
+
+
 @api.route('/products', methods=['GET'])
 def get_products():
     category_id = request.args.get('category_id', type=int)

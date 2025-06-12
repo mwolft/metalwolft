@@ -12,14 +12,14 @@ module.exports = merge(common, {
     output: {
         path: path.resolve(__dirname, 'build'),
         filename: '[name].[contenthash].js',
-        publicPath: '/', 
+        publicPath: '/',
     },
     module: {
         rules: [
             {
                 test: /\.(css|scss)$/,
                 use: [
-                    MiniCssExtractPlugin.loader, 
+                    MiniCssExtractPlugin.loader,
                     'css-loader'
                 ]
             }
@@ -32,7 +32,7 @@ module.exports = merge(common, {
         new Dotenv({
             systemvars: true,
             silent: true,
-            path: null 
+            path: null
         }),
         new CopyWebpackPlugin({
             patterns: [
@@ -46,9 +46,12 @@ module.exports = merge(common, {
         minimize: true,
         minimizer: [
             new TerserPlugin({
-                parallel: true,
+                parallel: false,
             }),
-            new CssMinimizerPlugin()
+            new CssMinimizerPlugin({
+                parallel: false
+            })
+
         ],
     }
 });
