@@ -67,47 +67,60 @@ def seo_product_new(category_slug, product_slug):
         if not product:
             logger.warning(f"SEO: Product not found for slug: {product_slug} in category: {category_slug}")
             return jsonify({"message": "Product not found for SEO"}), 404
-        product_full_url = f"https://www.metalwolft.com/{category.slug}/{product.slug}" 
+        product_full_url = f"https://www.metalwolft.com/{category.slug}/{product.slug}"
+
+        # --- Título y descripción acotados ---
+        base_title = f"{product.nombre} – {category.nombre} | Metal Wolft"
+        title = base_title[:60]
+
+        base_description = f"Descubre {product.nombre}, una {product.descripcion}"
+        description = (base_description[:137] + "...") if len(base_description) > 140 else base_description
+
+        twitter_description = f"Mira {product.nombre} en Metal Wolft. {product.descripcion}"
+        twitter_description = (twitter_description[:137] + "...") if len(twitter_description) > 140 else twitter_description
+
+        og_description = description
+
         meta = {
             "lang": "es",
-            "title": f"{product.nombre} – {category.nombre} | Metal Wolft",
-            "description": f"Descubre {product.nombre}, una {product.descripcion[:150]}... en Metal Wolft. Precios inigualables en {category.nombre}.",
+            "title": title,
+            "description": description,
             "keywords": f"{product.nombre}, {category.nombre}, {product.slug}, rejas, carpintería metálica, precio, online",
 
             "twitter_card_type": "summary_large_image",
-            "twitter_site": "@MetalWolft", 
-            "twitter_creator": "@MetalWolft", 
-            "twitter_title": f"{product.nombre} | {category.nombre} | Metal Wolft",
-            "twitter_description": f"Mira {product.nombre} en Metal Wolft. {product.descripcion[:150]}...",
-            "twitter_image": product.imagen if product.imagen else "https://placehold.co/1200x630/cccccc/000000?text=Metal+Wolft", 
+            "twitter_site": "@MetalWolft",
+            "twitter_creator": "@MetalWolft",
+            "twitter_title": title,
+            "twitter_description": twitter_description,
+            "twitter_image": product.imagen if product.imagen else "https://placehold.co/1200x630/cccccc/000000?text=Metal+Wolft",
             "twitter_image_alt": f"Imagen de {product.nombre} de Metal Wolft",
 
-            "og_type": "product", 
-            "og_title": f"{product.nombre} | {category.nombre} | Metal Wolft",
-            "og_description": f"Descubre {product.nombre}, una {product.descripcion[:150]}... en Metal Wolft. Precios inigualables en {category.nombre}.",
-            "og_image": product.imagen if product.imagen else "https://placehold.co/1200x630/cccccc/000000?text=Metal+Wolft", 
-            "og_image_width": "1200", 
+            "og_type": "product",
+            "og_title": title,
+            "og_description": og_description,
+            "og_image": product.imagen if product.imagen else "https://placehold.co/1200x630/cccccc/000000?text=Metal+Wolft",
+            "og_image_width": "1200",
             "og_image_height": "630",
             "og_image_alt": f"Imagen de {product.nombre} de Metal Wolft",
-            "og_image_type": "image/jpeg", 
+            "og_image_type": "image/jpeg",
             "og_url": product_full_url,
             "og_site_name": "Metal Wolft",
             "og_locale": "es_ES",
-            "og_updated_time": datetime.now(timezone.utc).isoformat(), 
+            "og_updated_time": datetime.now(timezone.utc).isoformat(),
 
             "canonical": product_full_url,
             "robots": "index, follow",
-            "theme_color": "#ff324d", 
+            "theme_color": "#ff324d",
 
             "json_ld": {
                 "@context": "https://schema.org/",
                 "@type": "Product",
-                "@id": product_full_url,  
+                "@id": product_full_url,
                 "name": product.nombre,
-                "image": ([product.imagen] if product.imagen else []) + [img.image_url for img in product.images if img.image_url], 
+                "image": ([product.imagen] if product.imagen else []) + [img.image_url for img in product.images if img.image_url],
                 "description": product.descripcion,
-                "sku": product.slug, 
-                "mpn": str(product.id), 
+                "sku": product.slug,
+                "mpn": str(product.id),
                 "brand": {
                     "@type": "Brand",
                     "name": "Metal Wolft"
@@ -116,7 +129,7 @@ def seo_product_new(category_slug, product_slug):
                     "@type": "Offer",
                     "priceCurrency": "EUR",
                     "price": product.precio_rebajado or product.precio,
-                    "availability": "https://schema.org/InStock", 
+                    "availability": "https://schema.org/InStock",
                     "url": product_full_url,
                     "itemCondition": "https://schema.org/NewCondition",
                     "seller": {
@@ -126,7 +139,7 @@ def seo_product_new(category_slug, product_slug):
                 }
             }
         }
-        return jsonify(meta) 
+        return jsonify(meta)
 
     except Exception as e:
         logger.error(f"Error en seo_product_new para {category_slug}/{product_slug}: {str(e)}")

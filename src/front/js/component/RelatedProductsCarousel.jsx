@@ -11,8 +11,7 @@ export const RelatedProductsCarousel = ({ categorySlug, categoryName, currentPro
                 if (!res.ok) throw new Error("Error al cargar productos relacionados.");
                 const data = await res.json();
 
-                // Filtramos el producto actual si viene por props
-                const filtered = data.filter(p => p.id !== currentProductId).slice(0, 8);
+                const filtered = data.filter(p => p.id !== currentProductId);
                 setRelatedProducts(filtered);
             } catch (err) {
                 console.error(err);
@@ -21,6 +20,7 @@ export const RelatedProductsCarousel = ({ categorySlug, categoryName, currentPro
 
         if (categorySlug) fetchRelatedProducts();
     }, [categorySlug, currentProductId]);
+
 
     return (
         <div className="related-carousel-wrapper">

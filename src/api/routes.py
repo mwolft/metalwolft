@@ -544,7 +544,7 @@ def get_products_by_category(slug):
     if not category:
         return jsonify({"message": "Categoría no encontrada"}), 404
 
-    products = Products.query.filter_by(categoria_id=category.id).limit(8).all()
+    products = Products.query.filter_by(categoria_id=category.id).all()
     return jsonify([p.serialize() for p in products]), 200
 
 

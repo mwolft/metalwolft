@@ -23,16 +23,16 @@ export const AsidePost = ({ currentPostId }) => {
                 <ul className="widget_categories">
                     {recentPosts.map((post, index) => (
                         <li key={index} className="others-categories">
-                            <img 
-                                className="img-other-categories" 
-                                src={post.image_url} 
-                                alt={post.title} 
+                            <img
+                                className="img-other-categories"
+                                src={post.image_url}
+                                alt={post.title}
                             />
                             <p className="p-other-categories">
                                 {post.title}<br />
                                 <span className="other-categories-span">{post.date}</span>
-                                <Link 
-                                    to={`/${post.slug}`} 
+                                <Link
+                                    to={`/${post.slug}`}
                                     className="buton-other-categories"
                                     aria-label={`Leer más sobre ${post.title}`}
                                 >
@@ -43,8 +43,12 @@ export const AsidePost = ({ currentPostId }) => {
                     ))}
                 </ul>
             ) : (
-                <p>Cargando posts recientes...</p>
+                <div className="skeleton-post-list">
+                    {Array.from({ length: 3 }).map((_, index) => (
+                        <div key={index} className="skeleton-post mb-3 d-flex" />
+                    ))}
+                </div>
             )}
         </aside>
-    );    
+    );
 };

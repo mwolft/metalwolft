@@ -8,6 +8,8 @@ import { AsidePost } from "../../component/AsidePost.jsx";
 import { Context } from "../../store/appContext.js";
 import "../../../styles/categories-pages.css";
 import { WhatsAppWidget } from "../../component/WhatsAppWidget.jsx";
+import Skeleton from 'react-loading-skeleton';
+import 'react-loading-skeleton/dist/skeleton.css';
 
 export const PuertasPeatonalesMetalicas = () => {
     const { store, actions } = useContext(Context);
@@ -139,7 +141,11 @@ export const PuertasPeatonalesMetalicas = () => {
                                     </div>
                                 ))
                             ) : (
-                                <p>Cargando productos o no hay productos disponibles para esta categoría.</p>
+                                Array.from({ length: 9 }).map((_, index) => (
+                                    <div key={index} className="col-6 col-sm-6 col-md-4 col-lg-4 col-xl-4 mb-4 d-flex">
+                                        <div className="w-100 skeleton-card" />
+                                    </div>
+                                ))
                             )}
                         </div>
                     </div>

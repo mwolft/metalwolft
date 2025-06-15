@@ -23,16 +23,16 @@ export const AsideOthersCategories = ({ currentCategoryId }) => {
                 <ul className="widget_categories">
                     {otherCategories.map((category, index) => (
                         <li key={index} className="others-categories">
-                            <img 
-                                className="img-other-categories" 
-                                src={category.image_url || "/path/to/default/image.jpg"} 
-                                alt={category.nombre} 
+                            <img
+                                className="img-other-categories"
+                                src={category.image_url || "/path/to/default/image.jpg"}
+                                alt={category.nombre}
                                 style={{ width: "80px", height: "100%", objectFit: "cover" }}
                             />
                             <p className="p-other-categories">
                                 {category.nombre}<br />
-                                <Link 
-                                    to={`/${category.slug}`} 
+                                <Link
+                                    to={`/${category.slug}`}
                                     className="buton-other-categories"
                                     aria-label={`Ir a categoría ${category.nombre}`}
                                 >
@@ -43,7 +43,11 @@ export const AsideOthersCategories = ({ currentCategoryId }) => {
                     ))}
                 </ul>
             ) : (
-                <p>Cargando otras categorías...</p>
+                <div className="skeleton-other-category-list">
+                    {Array.from({ length: 3 }).map((_, index) => (
+                        <div key={index} className="skeleton-other-category mb-3 d-flex" />
+                    ))}
+                </div>
             )}
         </aside>
     );

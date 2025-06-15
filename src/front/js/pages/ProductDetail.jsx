@@ -2,6 +2,9 @@ import React, { useContext, useEffect, useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { RelatedProductsCarousel } from "../component/RelatedProductsCarousel.jsx";
 import { Context } from '../store/appContext';
+import { Heart, HeartOff, Share2, ShoppingCart } from 'lucide-react';
+import Skeleton from 'react-loading-skeleton';
+import 'react-loading-skeleton/dist/skeleton.css';
 import {
     Button,
     Container,
@@ -175,11 +178,53 @@ export const ProductDetail = () => {
     const determinePlacement = () =>
         window.innerWidth > 768 ? 'right' : 'top';
 
-    if (loading)
+    if (loading) {
         return (
-            <div className="text-center mt-5">Cargando producto...</div>
+            <Container style={{ marginTop: '100px', marginBottom: '100px' }}>
+                <Row>
+                    <Col md={6}>
+                        <Skeleton height={400} borderRadius={10} />
+                        <div className="mt-3">
+                            <Skeleton height={20} width={`80%`} />
+                            <Skeleton height={20} width={`60%`} className="mt-2" />
+                        </div>
+                    </Col>
+                    <Col md={6}>
+                        <Skeleton height={30} width={250} />
+                        <Skeleton height={20} width={180} className="mt-2" />
+                        <Skeleton height={20} width={220} className="mt-2" />
+                        <div className="mt-4">
+                            <Skeleton height={40} width={200} />
+                            <Skeleton height={40} width={200} className="mt-2" />
+                            <Skeleton height={40} width={200} className="mt-2" />
+                        </div>
+                        <div className="mt-5 d-flex gap-3">
+                            <Skeleton circle height={36} width={36} />
+                            <Skeleton height={36} width={150} />
+                        </div>
+                    </Col>
+                </Row>
+            </Container>
         );
-    if (!product) return null;
+    }
+
+    const handleShare = async () => {
+        const url = window.location.href;
+        try {
+            if (navigator.share) {
+                await navigator.share({
+                    title: document.title,
+                    url
+                });
+            } else {
+                await navigator.clipboard.writeText(url);
+                alert("Enlace copiado al portapapeles");
+            }
+        } catch (err) {
+            console.error("Error al compartir:", err);
+        }
+    };
+
 
     const categoryName = product?.categoria_nombre || category_slug.replaceAll("-", " ");
 
@@ -396,14 +441,22 @@ export const ProductDetail = () => {
                             )}
 
                             <hr />
-                            <div className="d-flex justify-content-end align-items-center mt-4">
+                            <div className="d-flex justify-content-end align-items-center mt-4 gap-3">
+                                <Share2
+                                    onClick={handleShare}
+                                    size={24}
+                                    color="#ff324d"
+                                    style={{ cursor: 'pointer' }}
+                                />
                                 <i
                                     className={`fa-regular fa-heart ${actions.isFavorite(product) ? 'fa-solid' : ''}`}
                                     onClick={handleFavorite}
                                     style={{ cursor: 'pointer', color: '#ff324d', fontSize: '1.5rem', marginRight: '8px' }}
                                 />
+
                                 <Button className="btn-style-background-color" onClick={handleAddToCart}>
-                                    <i className="fa-solid fa-cart-shopping me-2" /> Añadir al carrito
+                                    <ShoppingCart size={18} className="me-2" />
+                                    Añadir al carrito
                                 </Button>
                             </div>
                         </Form>

@@ -18,9 +18,9 @@ export const AsideCategories = ({ onSelectCategory, onSelectSubcategory, categor
             {category ? (
                 <ul className="widget_categories">
                     <li key={category.id}>
-                        <button 
-                            type="button" 
-                            onClick={() => onSelectCategory(category.id)} 
+                        <button
+                            type="button"
+                            onClick={() => onSelectCategory(category.id)}
                             className="category-button"
                             aria-label={`Seleccionar categoría ${category.nombre}`}
                         >
@@ -32,9 +32,9 @@ export const AsideCategories = ({ onSelectCategory, onSelectSubcategory, categor
                             <ul className="subcategory-list">
                                 {category.subcategories.map(sub => (
                                     <li key={sub.id}>
-                                        <button 
-                                            type="button" 
-                                            onClick={() => onSelectSubcategory(sub.id)} 
+                                        <button
+                                            type="button"
+                                            onClick={() => onSelectSubcategory(sub.id)}
                                             className="subcategory-button"
                                             aria-label={`Seleccionar subcategoría ${sub.nombre}`}
                                         >
@@ -49,8 +49,12 @@ export const AsideCategories = ({ onSelectCategory, onSelectSubcategory, categor
                     </li>
                 </ul>
             ) : (
-                <p>Cargando categorías...</p>
+                <div className="skeleton-category-list">
+                    {Array.from({ length: 3 }).map((_, index) => (
+                        <div key={index} className="skeleton-category mb-3" />
+                    ))}
+                </div>
             )}
         </aside>
-    );    
+    );
 };
