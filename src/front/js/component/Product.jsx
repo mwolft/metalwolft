@@ -1,5 +1,5 @@
 import React, { useState, useContext } from 'react';
-import { useNavigate, Link } from 'react-router-dom'; 
+import { useNavigate, Link } from 'react-router-dom';
 import "../../styles/cards-carrusel.css";
 import Button from 'react-bootstrap/Button';
 import Rating from 'react-rating';
@@ -15,7 +15,7 @@ import AlbanyImg from '../../img/rejas-para-ventanas-sin-obra.png';
 import { Helmet } from "react-helmet-async";
 
 export const Product = ({ product }) => {
-    const navigate = useNavigate(); 
+    const navigate = useNavigate();
     const [showModal, setShowModal] = useState(false);
     const [currentIndex, setCurrentIndex] = useState(0);
     const [notification, setNotification] = useState(null);
@@ -102,13 +102,13 @@ export const Product = ({ product }) => {
         const basePrice = 80;
         let multiplier = area >= 0.9 ? 1
             : area >= 0.8 ? 1.1
-            : area >= 0.7 ? 1.15
-            : area >= 0.6 ? 1.2
-            : area >= 0.5 ? 1.3
-            : area >= 0.4 ? 1.55
-            : area >= 0.3 ? 1.9
-            : area >= 0.2 ? 2.5
-            : 3.0;
+                : area >= 0.7 ? 1.15
+                    : area >= 0.6 ? 1.2
+                        : area >= 0.5 ? 1.3
+                            : area >= 0.4 ? 1.55
+                                : area >= 0.3 ? 1.9
+                                    : area >= 0.2 ? 2.5
+                                        : 3.0;
         price = Math.max(price * multiplier, basePrice);
         setCalculatedPrice(price.toFixed(2));
     };
@@ -128,8 +128,8 @@ export const Product = ({ product }) => {
         <>
             <div className="col">
                 <Card className="px-2 my-3">
-                    <Link 
-                        to={productDetailUrl} 
+                    <Link
+                        to={productDetailUrl}
                         style={{
                             position: "relative",
                             width: "100%",
@@ -142,10 +142,13 @@ export const Product = ({ product }) => {
                             variant="top"
                             src={product.imagen}
                             alt={product.nombre}
+                            width="540"
+                            height="600"
                             className="img-fluid"
                             style={{
                                 objectFit: "cover",
-                                maxHeight: "600px",
+                                width: "100%",
+                                height: "auto",
                                 transition: "transform 0.3s ease-in-out",
                                 transform: isHovered ? "scale(1.1)" : "scale(1)",
                                 filter: isHovered ? "brightness(50%)" : "brightness(100%)",
@@ -211,7 +214,7 @@ export const Product = ({ product }) => {
                                 {product.has_door_model && <div>Disponible en versión para puerta</div>}
                             </div>
                         )}
-                    </Link> 
+                    </Link>
                     <Card.Body>
                         <Link to={productDetailUrl} style={{ textDecoration: 'none', color: 'inherit' }}>
                             <h3
@@ -220,7 +223,7 @@ export const Product = ({ product }) => {
                             >
                                 {product.nombre}
                             </h3>
-                        </Link> 
+                        </Link>
                         <p className="card-text-carrusel">
                             {product.precio_rebajado ? (
                                 <>
@@ -239,7 +242,7 @@ export const Product = ({ product }) => {
                             )}
                         </p>
                         <div className="d-flex justify-content-between align-items-center">
-                            <Link to={productDetailUrl} className="btn-style-background-color" style={{textDecoration: 'none'}}>
+                            <Link to={productDetailUrl} className="btn-style-background-color" style={{ textDecoration: 'none' }}>
                                 Detalles
                             </Link>
                             <i className={`fa-regular fa-heart ${actions.isFavorite(product) ? 'fa-solid' : ''}`}

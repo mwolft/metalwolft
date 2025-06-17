@@ -1,13 +1,26 @@
-import React, { useEffect, useContext } from "react";
+import React, { useEffect, useContext, useState } from "react";
 import { Context } from "../store/appContext.js";
 import "../../styles/categories-pages.css";
 
 export const AsideCategories = ({ onSelectCategory, onSelectSubcategory, categoryId }) => {
     const { store, actions } = useContext(Context);
+    const [selectedSubcategory, setSelectedSubcategory] = useState(null);
 
     useEffect(() => {
         actions.getCategories();
     }, []);
+
+    useEffect(() => {
+        // Al cambiar de categoría, reiniciar subcategoría seleccionada
+        setSelectedSubcategory(null);
+        onSelectSubcategory(null); // Mostrar todos los productos
+    }, [categoryId]);
+
+    const handleChange = (subId) => {
+        const newValue = subId === selectedSubcategory ? null : subId;
+        setSelectedSubcategory(newValue);
+        onSelectSubcategory(newValue);
+    };
 
     const category = store.categories?.find(cat => cat.id === categoryId);
 
@@ -20,28 +33,33 @@ export const AsideCategories = ({ onSelectCategory, onSelectSubcategory, categor
                     <li key={category.id}>
                         <button
                             type="button"
-                            onClick={() => onSelectCategory(category.id)}
+                            onClick={() => {
+                                setSelectedSubcategory(null);
+                                onSelectCategory(category.id);
+                                onSelectSubcategory(null);
+                            }}
                             className="category-button"
                             aria-label={`Seleccionar categoría ${category.nombre}`}
                         >
-                            <i className="fas fa-chevron-right category-icon"></i>
-                            <span className="categories_name">{category.nombre}</span>
+                            <span className="categories_name">Todas las Rejas</span>
                             <span className="categories_num"> ({category.product_count || 0})</span>
                         </button>
                         {category.subcategories && category.subcategories.length > 0 && (
-                            <ul className="subcategory-list">
+                            <ul className="subcategory-list mt-2">
                                 {category.subcategories.map(sub => (
-                                    <li key={sub.id}>
-                                        <button
-                                            type="button"
-                                            onClick={() => onSelectSubcategory(sub.id)}
-                                            className="subcategory-button"
-                                            aria-label={`Seleccionar subcategoría ${sub.nombre}`}
-                                        >
-                                            <i className="fas fa-caret-right subcategory-icon"></i>
+                                    <li key={sub.id} className="d-flex align-items-center mb-2">
+                                        <input
+                                            type="radio"
+                                            id={`subcat-${sub.id}`}
+                                            name="subcategories"
+                                            checked={selectedSubcategory === sub.id}
+                                            onChange={() => handleChange(sub.id)}
+                                            className="subcategory-radio"
+                                        />
+                                        <label htmlFor={`subcat-${sub.id}`} className="subcategory-button ms-2">
                                             <span className="categories_name">{sub.nombre}</span>
                                             <span className="categories_num"> ({sub.product_count || 0})</span>
-                                        </button>
+                                        </label>
                                     </li>
                                 ))}
                             </ul>
