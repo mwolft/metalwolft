@@ -234,547 +234,561 @@ export const ProductDetail = () => {
     ];
 
     return (
-        <Container style={{ marginTop: '100px', marginBottom: '100px' }}>
-            {seoData && (
-                <Helmet htmlAttributes={{ lang: seoData.lang || "es" }}>
-                    <title>{seoData.title}</title>
-                    <meta name="description" content={seoData.description} />
-                    <meta name="keywords" content={seoData.keywords} />
-                    <meta name="robots" content={seoData.robots || "index, follow"} />
-                    <meta name="theme-color" content={seoData.theme_color || "#ffffff"} />
+        <div className="product-page-wrapper">
+            <Container style={{ marginTop: '100px', marginBottom: '0' }}>
+                {seoData && (
+                    <Helmet htmlAttributes={{ lang: seoData.lang || "es" }}>
+                        <title>{seoData.title}</title>
+                        <meta name="description" content={seoData.description} />
+                        <meta name="keywords" content={seoData.keywords} />
+                        <meta name="robots" content={seoData.robots || "index, follow"} />
+                        <meta name="theme-color" content={seoData.theme_color || "#ffffff"} />
 
-                    {/* Open Graph Tags */}
-                    <meta property="og:type" content={seoData.og_type || "product"} />
-                    <meta property="og:title" content={seoData.og_title || seoData.title} />
-                    <meta property="og:description" content={seoData.og_description || seoData.description} />
-                    <meta property="og:image" content={seoData.og_image} />
-                    <meta property="og:image:width" content={seoData.og_image_width || "1200"} />
-                    <meta property="og:image:height" content={seoData.og_image_height || "630"} />
-                    <meta property="og:image:alt" content={seoData.og_image_alt || seoData.title} />
-                    <meta property="og:image:type" content={seoData.og_image_type || "image/jpeg"} />
-                    <meta property="og:url" content={seoData.og_url} />
-                    <meta property="og:site_name" content={seoData.og_site_name || "Metal Wolft"} />
-                    <meta property="og:locale" content={seoData.og_locale || "es_ES"} />
-                    {seoData.og_updated_time && <meta property="og:updated_time" content={seoData.og_updated_time} />}
+                        {/* Open Graph Tags */}
+                        <meta property="og:type" content={seoData.og_type || "product"} />
+                        <meta property="og:title" content={seoData.og_title || seoData.title} />
+                        <meta property="og:description" content={seoData.og_description || seoData.description} />
+                        <meta property="og:image" content={seoData.og_image} />
+                        <meta property="og:image:width" content={seoData.og_image_width || "1200"} />
+                        <meta property="og:image:height" content={seoData.og_image_height || "630"} />
+                        <meta property="og:image:alt" content={seoData.og_image_alt || seoData.title} />
+                        <meta property="og:image:type" content={seoData.og_image_type || "image/jpeg"} />
+                        <meta property="og:url" content={seoData.og_url} />
+                        <meta property="og:site_name" content={seoData.og_site_name || "Metal Wolft"} />
+                        <meta property="og:locale" content={seoData.og_locale || "es_ES"} />
+                        {seoData.og_updated_time && <meta property="og:updated_time" content={seoData.og_updated_time} />}
 
-                    {/* Twitter Card Tags */}
-                    <meta name="twitter:card" content={seoData.twitter_card_type || "summary_large_image"} />
-                    <meta name="twitter:site" content={seoData.twitter_site} />
-                    <meta name="twitter:creator" content={seoData.twitter_creator} />
-                    <meta name="twitter:title" content={seoData.twitter_title || seoData.title} />
-                    <meta name="twitter:description" content={seoData.twitter_description || seoData.description} />
-                    <meta name="twitter:image" content={seoData.twitter_image} />
-                    <meta name="twitter:image:alt" content={seoData.twitter_image_alt || seoData.title} />
+                        {/* Twitter Card Tags */}
+                        <meta name="twitter:card" content={seoData.twitter_card_type || "summary_large_image"} />
+                        <meta name="twitter:site" content={seoData.twitter_site} />
+                        <meta name="twitter:creator" content={seoData.twitter_creator} />
+                        <meta name="twitter:title" content={seoData.twitter_title || seoData.title} />
+                        <meta name="twitter:description" content={seoData.twitter_description || seoData.description} />
+                        <meta name="twitter:image" content={seoData.twitter_image} />
+                        <meta name="twitter:image:alt" content={seoData.twitter_image_alt || seoData.title} />
 
-                    {/* Canonical URL */}
-                    <link rel="canonical" href={seoData.canonical} />
+                        {/* Canonical URL */}
+                        <link rel="canonical" href={seoData.canonical} />
 
-                    {/* JSON-LD Schema */}
-                    {seoData.json_ld && (
-                        <script type="application/ld+json">
-                            {JSON.stringify(seoData.json_ld)}
-                        </script>
-                    )}
-                </Helmet>
-            )}
+                        {/* JSON-LD Schema */}
+                        {seoData.json_ld && (
+                            <script type="application/ld+json">
+                                {JSON.stringify(seoData.json_ld)}
+                            </script>
+                        )}
+                    </Helmet>
+                )}
 
-            <Row className="justify-content-center">
-                {/* Columna de imágenes: 12 en xs, 5 en lg, centrada */}
-                <Col xs={12} lg={5} className="d-flex flex-column align-items-center">
-                    <Carousel activeIndex={currentIndex} onSelect={handleSelect} className="w-100">
-                        {allImages.map((img, i) => (
-                            <Carousel.Item key={i}>
+                <Row className="justify-content-center">
+                    {/* Columna de imágenes: 12 en xs, 5 en lg, centrada */}
+                    <Col xs={12} lg={5} className="d-flex flex-column align-items-center">
+                        <Carousel activeIndex={currentIndex} onSelect={handleSelect} className="w-100">
+                            {allImages.map((img, i) => (
+                                <Carousel.Item key={i}>
+                                    <img
+                                        src={img.image_url}
+                                        alt={product.nombre}
+                                        width="540"
+                                        height="600"
+                                        className="d-block img-fluid"
+                                        style={{ borderRadius: '5px', objectFit: 'cover' }}
+                                    />
+                                </Carousel.Item>
+                            ))}
+                        </Carousel>
+                        <div className="thumbnail-gallery d-flex justify-content-center mt-3">
+                            {allImages.map((img, i) => (
                                 <img
+                                    key={i}
                                     src={img.image_url}
                                     alt={product.nombre}
-                                    className="d-block w-100 img-fluid"
-                                    style={{ borderRadius: '5px' }}
+                                    width="72"
+                                    height="80"
+                                    className={`img-thumbnail mx-1 ${currentIndex === i ? 'active-thumbnail' : ''}`}
+                                    style={{ cursor: 'pointer', objectFit: 'cover' }}
+                                    onClick={() => setCurrentIndex(i)}
                                 />
-                            </Carousel.Item>
-                        ))}
-                    </Carousel>
-                    <div className="thumbnail-gallery d-flex justify-content-center mt-3">
-                        {allImages.map((img, i) => (
-                            <img
-                                key={i}
-                                src={img.image_url}
-                                alt={product.nombre}
-                                className={`img-thumbnail mx-1 ${currentIndex === i ? 'active-thumbnail' : ''}`}
-                                style={{ width: '72px', height: '80px', cursor: 'pointer' }}
-                                onClick={() => setCurrentIndex(i)}
-                            />
-                        ))}
-                    </div>
-                </Col>
-
-                {/* Columna de detalles: 12 en xs, 5 en lg, con margen top solo en xs */}
-                <Col xs={12} lg={5} className="mt-4 mt-lg-0">
-                    <div className="pr_detail">
-                        <h1>{product.nombre}</h1>
-                        <hr />
-                        <div className="product-price" style={{ fontSize: '1.1rem', fontWeight: '500', marginBottom: '1rem' }}>
-                            Precio:
-                            {product.precio_rebajado ? (
-                                <>
-                                    <span className="price-original" style={{ textDecoration: 'line-through', color: '#999' }}> {product.precio}€/m²</span>
-                                    <span className="price-discounted" style={{ color: '#e63946', fontWeight: 'bold', marginLeft: '8px' }}> {product.precio_rebajado}€/m²</span>
-                                    <span className="discount-percentage" style={{ color: '#28a745', padding: '2px 6px', marginLeft: '2px' }}> -{product.porcentaje_rebaja}%</span>
-                                </>
-                            ) : (
-                                <span className="current-price ms-2"> {product.precio} €/m²</span>
-                            )}
+                            ))}
                         </div>
-                        <p>{product.descripcion}</p>
+                    </Col>
 
-                        <Form>
-                            {/* Dimensiones */}
-                            <Row>
-                                <Col>
-                                    <Form.Group>
-                                        <Form.Label>Alto (cm)</Form.Label>
-                                        <Form.Control
-                                            type="number"
-                                            value={height}
-                                            onChange={e => setHeight(e.target.value)}
-                                        />
-                                    </Form.Group>
-                                </Col>
-                                <Col>
-                                    <Form.Group>
-                                        <Form.Label>Ancho (cm)</Form.Label>
-                                        <Form.Control
-                                            type="number"
-                                            value={width}
-                                            onChange={e => setWidth(e.target.value)}
-                                        />
-                                    </Form.Group>
-                                </Col>
-                            </Row>
-                            {calcError && <p className="text-danger mt-2">{calcError}</p>}
-
-                            {/* Instalación & Color */}
-                            <Row className="mt-3">
-                                <Col>
-                                    <Form.Group>
-                                        <OverlayTrigger
-                                            trigger={['hover', 'focus']}
-                                            placement={determinePlacement()}
-                                            overlay={
-                                                <Popover id="popover-install">
-                                                    <Popover.Header as="h3">Instalación</Popover.Header>
-                                                    <Popover.Body style={{ maxWidth: '300px', overflowX: 'hidden' }}>
-                                                        <p><b>Sin obra:</b> con pletinas.</p>
-                                                        <img
-                                                            src="https://res.cloudinary.com/dewanllxn/image/upload/v1738176285/agujeros-en-pletinas_tlosu0.png"
-                                                            alt="pletinas"
-                                                            // --- CAMBIO 2: Asegurar max-width: 100% y height: auto ---
-                                                            style={{ width: '100%', height: 'auto', marginBottom: '10px', display: 'block' }}
-                                                        />
-                                                        <p><b>Sin obra:</b> con agujeros interiores.</p>
-                                                        <img
-                                                            src="https://res.cloudinary.com/dewanllxn/image/upload/v1738176285/agujeros-interiores_xa0onj.png"
-                                                            alt="interiores"
-                                                            // --- CAMBIO 2: Asegurar max-width: 100% y height: auto ---
-                                                            style={{ width: '100%', height: 'auto', marginBottom: '10px', display: 'block' }}
-                                                        />
-                                                        <p><b>Sin obra:</b> con agujeros frontales.</p>
-                                                        <img
-                                                            src="https://res.cloudinary.com/dewanllxn/image/upload/v1738176286/agujeros-frontales_low9pi.png"
-                                                            alt="frontales"
-                                                            // --- CAMBIO 2: Asegurar max-width: 100% y height: auto ---
-                                                            style={{ width: '100%', height: 'auto', marginBottom: '10px', display: 'block' }}
-                                                        />
-                                                        <p><b>Con obra:</b> con garras metálicas.</p>
-                                                        <img
-                                                            src="https://res.cloudinary.com/dewanllxn/image/upload/v1734888241/rejas-para-ventanas-sin-obra_wukdzi.png"
-                                                            alt="garras"
-                                                            // --- CAMBIO 2: Asegurar max-width: 100% y height: auto ---
-                                                            style={{ width: '100%', height: 'auto', display: 'block' }}
-                                                        />
-                                                    </Popover.Body>
-                                                </Popover>
-                                            }
-                                        >
-                                            <Form.Label>
-                                                Instalación <i className="fa-solid fa-info-circle ms-2 text-primary" />
-                                            </Form.Label>
-                                        </OverlayTrigger>
-                                        <Form.Select
-                                            value={mounting}
-                                            onChange={e => setMounting(e.target.value)}
-                                        >
-                                            <option>Sin obra: con agujeros interiores</option>
-                                            <option>Sin obra: con agujeros frontales</option>
-                                            <option>Sin obra: con pletinas</option>
-                                            <option>Con obra: con garras metálicas</option>
-                                        </Form.Select>
-                                    </Form.Group>
-                                </Col>
-                                <Col>
-                                    <Form.Group>
-                                        <Form.Label>Color</Form.Label>
-                                        <Form.Select
-                                            value={color}
-                                            onChange={e => setColor(e.target.value)}
-                                        >
-                                            <option>blanco</option>
-                                            <option>negro</option>
-                                            <option>gris</option>
-                                            <option>verde</option>
-                                            <option>marrón</option>
-                                        </Form.Select>
-                                    </Form.Group>
-                                </Col>
-                            </Row>
-
-                            {/* Botón Calcular */}
-                            <Button className="btn-style-background-color mt-3" onClick={handleCalculatePrice}>
-                                <i className="fa-solid fa-calculator me-2" /> Calcular precio
-                            </Button>
-
-                            {/* Resultado de cálculo */}
-                            {calculatedPrice && (
-                                <div className="mt-3">
-                                    <h5>Precio calculado: {calculatedPrice} €</h5>
-                                    {calculatedArea < 1 && <p className="text-warning">Área &lt; 1 m² incrementa coste.</p>}
-                                </div>
-                            )}
-
+                    {/* Columna de detalles: 12 en xs, 5 en lg, con margen top solo en xs */}
+                    <Col xs={12} lg={5} className="mt-4 mt-lg-0">
+                        <div className="pr_detail">
+                            <h1>{product.nombre}</h1>
                             <hr />
-                            <div className="d-flex justify-content-end align-items-center mt-4 gap-3">
-                                <Share2
-                                    onClick={handleShare}
-                                    size={24}
-                                    color="#ff324d"
-                                    style={{ cursor: 'pointer' }}
-                                />
-                                <i
-                                    className={`fa-regular fa-heart ${actions.isFavorite(product) ? 'fa-solid' : ''}`}
-                                    onClick={handleFavorite}
-                                    style={{ cursor: 'pointer', color: '#ff324d', fontSize: '1.5rem', marginRight: '8px' }}
-                                />
+                            <div className="product-price" style={{ fontSize: '1.1rem', fontWeight: '500', marginBottom: '1rem' }}>
+                                Precio:
+                                {product.precio_rebajado ? (
+                                    <>
+                                        <span className="price-original" style={{ textDecoration: 'line-through', color: '#999' }}> {product.precio}€/m²</span>
+                                        <span className="price-discounted" style={{ color: '#e63946', fontWeight: 'bold', marginLeft: '8px' }}> {product.precio_rebajado}€/m²</span>
+                                        <span className="discount-percentage" style={{ color: '#28a745', padding: '2px 6px', marginLeft: '2px' }}> -{product.porcentaje_rebaja}%</span>
+                                    </>
+                                ) : (
+                                    <span className="current-price ms-2"> {product.precio} €/m²</span>
+                                )}
+                            </div>
+                            <p>{product.descripcion}</p>
 
-                                <Button className="btn-style-background-color" onClick={handleAddToCart}>
-                                    <ShoppingCart size={18} className="me-2" />
-                                    Añadir al carrito
+                            <Form>
+                                {/* Dimensiones */}
+                                <Row>
+                                    <Col>
+                                        <Form.Group>
+                                            <Form.Label>Alto (cm)</Form.Label>
+                                            <Form.Control
+                                                type="number"
+                                                value={height}
+                                                onChange={e => setHeight(e.target.value)}
+                                            />
+                                        </Form.Group>
+                                    </Col>
+                                    <Col>
+                                        <Form.Group>
+                                            <Form.Label>Ancho (cm)</Form.Label>
+                                            <Form.Control
+                                                type="number"
+                                                value={width}
+                                                onChange={e => setWidth(e.target.value)}
+                                            />
+                                        </Form.Group>
+                                    </Col>
+                                </Row>
+                                {calcError && <p className="text-danger mt-2">{calcError}</p>}
+
+                                {/* Instalación & Color */}
+                                <Row className="mt-3">
+                                    <Col>
+                                        <Form.Group>
+                                            <OverlayTrigger
+                                                trigger={['hover', 'focus']}
+                                                placement={determinePlacement()}
+                                                overlay={
+                                                    <Popover id="popover-install">
+                                                        <Popover.Header as="h3">Instalación</Popover.Header>
+                                                        <Popover.Body style={{ maxWidth: '300px', overflowX: 'hidden' }}>
+                                                            <p><b>Sin obra:</b> con pletinas.</p>
+                                                            <img
+                                                                src="https://res.cloudinary.com/dewanllxn/image/upload/v1738176285/agujeros-en-pletinas_tlosu0.png"
+                                                                alt="pletinas"
+                                                                // --- CAMBIO 2: Asegurar max-width: 100% y height: auto ---
+                                                                width="1140"
+                                                                height="536"
+                                                                style={{ width: '100%', height: 'auto', marginBottom: '10px', display: 'block' }}
+                                                            />
+                                                            <p><b>Sin obra:</b> con agujeros interiores.</p>
+                                                            <img
+                                                                src="https://res.cloudinary.com/dewanllxn/image/upload/v1738176285/agujeros-interiores_xa0onj.png"
+                                                                alt="interiores"
+                                                                // --- CAMBIO 2: Asegurar max-width: 100% y height: auto ---
+                                                                width="1140"
+                                                                height="536"
+                                                                style={{ width: '100%', height: 'auto', marginBottom: '10px', display: 'block' }}
+                                                            />
+                                                            <p><b>Sin obra:</b> con agujeros frontales.</p>
+                                                            <img
+                                                                src="https://res.cloudinary.com/dewanllxn/image/upload/v1738176286/agujeros-frontales_low9pi.png"
+                                                                alt="frontales"
+                                                                // --- CAMBIO 2: Asegurar max-width: 100% y height: auto ---
+                                                                width="1140"
+                                                                height="536"
+                                                                style={{ width: '100%', height: 'auto', marginBottom: '10px', display: 'block' }}
+                                                            />
+                                                            <p><b>Con obra:</b> con garras metálicas.</p>
+                                                            <img
+                                                                src="https://res.cloudinary.com/dewanllxn/image/upload/v1734888241/rejas-para-ventanas-sin-obra_wukdzi.png"
+                                                                alt="garras"
+                                                                // --- CAMBIO 2: Asegurar max-width: 100% y height: auto ---
+                                                                width="1140"
+                                                                height="536"
+                                                                style={{ width: '100%', height: 'auto', marginBottom: '10px', display: 'block' }}
+                                                            />
+                                                        </Popover.Body>
+                                                    </Popover>
+                                                }
+                                            >
+                                                <Form.Label>
+                                                    Instalación <i className="fa-solid fa-info-circle ms-2 text-primary" />
+                                                </Form.Label>
+                                            </OverlayTrigger>
+                                            <Form.Select
+                                                value={mounting}
+                                                onChange={e => setMounting(e.target.value)}
+                                            >
+                                                <option>Sin obra: con agujeros interiores</option>
+                                                <option>Sin obra: con agujeros frontales</option>
+                                                <option>Sin obra: con pletinas</option>
+                                                <option>Con obra: con garras metálicas</option>
+                                            </Form.Select>
+                                        </Form.Group>
+                                    </Col>
+                                    <Col>
+                                        <Form.Group>
+                                            <Form.Label>Color</Form.Label>
+                                            <Form.Select
+                                                value={color}
+                                                onChange={e => setColor(e.target.value)}
+                                            >
+                                                <option>blanco</option>
+                                                <option>negro</option>
+                                                <option>gris</option>
+                                                <option>verde</option>
+                                                <option>marrón</option>
+                                            </Form.Select>
+                                        </Form.Group>
+                                    </Col>
+                                </Row>
+
+                                {/* Botón Calcular */}
+                                <Button className="btn-style-background-color mt-3" onClick={handleCalculatePrice}>
+                                    <i className="fa-solid fa-calculator me-2" /> Calcular precio
                                 </Button>
-                            </div>
-                        </Form>
-                    </div>
-                </Col>
-                <Link
-                    to={`/${category_slug}`}
-                    className="mb-3 d-inline-block text-decoration-none"
-                    style={{ fontWeight: 'bold', color: '#ff324d', marginTop: '50px' }}
-                >
-                    ← Catálogo de {product?.categoria_nombre || 'la categoría'}
-                </Link>
-                <div className="custom-accordion mt-5">
-                    {/* Acordeón 1 */}
-                    <div className="accordion-item">
-                        <input type="checkbox" id="accordion-1" />
-                        <label htmlFor="accordion-1" className="accordion-header with-arrow d-flex justify-content-between align-items-center">
-                            <span>
-                                <i className="fa-solid fa-screwdriver-wrench me-2"></i>
-                                Instalación y consejos prácticos
-                            </span>
-                            <i className="fa-solid fa-chevron-down arrow-icon"></i>
-                        </label>
-                        <h2 className="visually-hidden">Instalación y consejos prácticos</h2>
-                        <div className="accordion-content">
-                            <h3 className="h3-categories">¿Cómo elegir la reja perfecta para tu ventana?</h3>
-                            <p>En cuanto a estética y estilo es cuestión de <b>gustos</b> porque todas cumplen con la premisa fundamental de la <strong>seguridad</strong>.</p>
-                            <p>Para elegir la reja perfecta hay que fijarse en que la instalación sea lo más favorable para cada caso.</p>
-                            <p>Se recomienda <b>con garras</b> en el caso de que la ubicación se encuentre <b>en fase de obra y esté en bruto la fachada</b>, simplemente porque coge <b>más fuerza el anclaje</b>. Para todos los demás casos, el <b>anclaje con tornillos especiales</b> es suficiente, siendo más <b>limpio y económico</b>.</p>
 
-                            <h3 className="h3-categories mt-4">¿Cómo Medir el Hueco para Rejas de Ventanas?</h3>
-                            <ul>
-                                <li><strong>Mide el ancho:</strong> Mide de un lado al otro del marco de la ventana, asegurándote de tomar la medida en varios puntos (arriba, en el centro y abajo). La <b>medida más pequeña</b> es la que debes tomar. Resta medio centímetro para asegurar el encaje.</li>
-                                <li><strong>Mide la altura:</strong> Desde la base hasta la parte superior del marco. Resta 2-3 cm para permitir limpieza del vierteaguas y evitar acumulación de suciedad.</li>
-                            </ul>
-                            <p>Si tienes dudas, <a href="https://www.metalwolft.com/contact" className="link-categories" target="_blank" rel="noopener noreferrer">consúltanos</a> para evitar errores.</p>
-                            <p>Consulta nuestro <a href="https://www.metalwolft.com/medir-hueco-rejas-para-ventanas" className="link-categories" target="_blank" rel="noopener noreferrer">artículo dedicado</a> en el blog.</p>
-                            <p>Tomar medidas precisas es esencial para garantizar que las rejas se ajusten correctamente.</p>
+                                {/* Resultado de cálculo */}
+                                {calculatedPrice && (
+                                    <div className="mt-3">
+                                        <h5>Precio calculado: {calculatedPrice} €</h5>
+                                        {calculatedArea < 1 && <p className="text-warning">Área &lt; 1 m² incrementa coste.</p>}
+                                    </div>
+                                )}
 
-                            <h3 className="h3-categories mt-4">¿Cómo instalar rejas para ventanas?</h3>
-                            <p>La <strong>instalación de rejas para ventanas</strong> no solo garantiza la <strong>seguridad</strong> de tu hogar, sino que también puede mejorar su estética.</p>
-                            <p>Dependiendo del <b>tipo de instalación</b> (con obra o sin obra), se requerirán herramientas diferentes.</p>
-                            <p>La instalación con obra suele realizarla un albañil. La sin obra es más accesible y cualquier persona con pocas herramientas puede hacerla.</p>
-                            <p>Tenemos un artículo dedicado con todos los pasos 👉 <a href="https://www.metalwolft.com/instalation-rejas-para-ventanas" className="link-categories" target="_blank" rel="noopener noreferrer">Instalación de rejas para ventanas sin obra</a>.</p>
-                        </div>
-                    </div>
+                                <hr />
+                                <div className="d-flex justify-content-end align-items-center mt-4 gap-3">
+                                    <Share2
+                                        onClick={handleShare}
+                                        size={24}
+                                        color="#ff324d"
+                                        style={{ cursor: 'pointer' }}
+                                    />
+                                    <i
+                                        className={`fa-regular fa-heart ${actions.isFavorite(product) ? 'fa-solid' : ''}`}
+                                        onClick={handleFavorite}
+                                        style={{ cursor: 'pointer', color: '#ff324d', fontSize: '1.5rem', marginRight: '8px' }}
+                                    />
 
-                    {/* Acordeón 2 */}
-                    <div className="accordion-item">
-                        <input type="checkbox" id="accordion-2" />
-                        <label htmlFor="accordion-2" className="accordion-header with-arrow d-flex justify-content-between align-items-center">
-                            <span>
-                                <i className="fa-regular fa-circle-question me-2"></i>
-                                Preguntas frecuentes
-                            </span>
-                            <i className="fa-solid fa-chevron-down arrow-icon"></i>
-                        </label>
-                        <h2 className="visually-hidden">Preguntas frecuentes</h2>
-                        <div className="accordion-content">
-                            <ul>
-                                <li><b>¿Los precios incluyen IVA?</b> Sí, todos nuestros precios incluyen IVA.</li>
-                                <li>
-                                    <b>¿Cuál es el tiempo de fabricación y entrega?</b> Nuestro tiempo estimado de fabricación y entrega es de <b>20 días hábiles</b>. Sin embargo, este plazo puede variar dependiendo de nuestra carga de trabajo. En caso de que haya un aumento en los tiempos, te lo notificaremos con anticipación para que estés informado.
-                                </li>
-                                <li>
-                                    <b>¿Qué sucede después de realizar mi compra?</b> Tras completar tu compra, recibirás un correo de confirmación con todos los detalles. Además, nos pondremos en contacto contigo para orientarte en la instalación y ofrecerte asistencia personalizada, asegurándonos de que tengas una experiencia satisfactoria con tu compra.
-                                </li>
-                                <li>
-                                    <b>¿Cómo puedo ponerme en contacto?</b> Puedes hacerlo a través de nuestro <a href="/contact" target="_blank" rel="noopener noreferrer">formulario de contacto</a>, enviándonos un mensaje por <a href="https://wa.me/634112604" target="_blank" rel="noopener noreferrer">WhatsApp</a> o llamándonos al <a href="tel:634112604">634112604</a>.
-                                </li>
-                            </ul>
-                        </div>
-                    </div>
-
-                    {/* Acordeón 3 */}
-                    <div className="accordion-item">
-                        <input type="checkbox" id="accordion-3" />
-                        <label htmlFor="accordion-3" className="accordion-header with-arrow d-flex justify-content-between align-items-center">
-                            <span>
-                                <i className="fa-solid fa-th-large me-2"></i>
-                                Tipos de rejas para ventanas
-                            </span>
-                            <i className="fa-solid fa-chevron-down arrow-icon"></i>
-                        </label>
-                        <h2 className="visually-hidden">Tipos de rejas para ventanas</h2>
-                        <div className="accordion-content">
-                            <h4 className="h3-categories">Rejas para ventanas modernas</h4>
-                            <p>Las <strong>rejas para ventanas modernas</strong> han experimentado una transformación en su estilo y materiales, siguiendo líneas más <strong>sencillas</strong> siendo igual de <strong>bonitas</strong>, ofreciendo un equilibrio perfecto entre <b>seguridad y estética</b>.</p>
-                            <p>Aunque el hierro sigue siendo el material predominante, se han incorporado otros materiales, como el acero inoxidable, para satisfacer las necesidades cambiantes de los propietarios.</p>
-                            <p>En <Link to="/" className="link-categories">Metal Wolf</Link>, nos enorgullece presentar una selección de <strong>rejas para ventanas modernas</strong> que destacan tanto por su estilo como por su capacidad de brindar <b>protección efectiva</b>.</p>
-                            <p>Nuestra filosofía se centra en la creación de <b>diseños</b> que no solo cumplen con su propósito principal, sino que también <b>realzan la estética de su hogar</b>.</p>
-                            {/* ------------------------------------------ */}
-                            <h4 className="h3-categories">Rejas para ventanas sin obra</h4>
-
-                            <p>
-                                <strong>Las rejas para ventanas sin obra</strong> se fijan directamente en el marco de la ventana con
-                                <Link to="https://todoanclajes.com/producto/tornillo-inviolable-torx-7-x-30/?gad_source=1&gclid=CjwKCAiAjp-7BhBZEiwAmh9rBX_pS1jYu9WcRXkLhOVUreLYelh3cFK1xX7rnxMQv4ru8xcZ-6YLmRoCnEsQAvD_BwE" className="link-categories">
-                                    tornillos especiales inviolables
-                                </Link>, diseñados para ofrecer una sujeción segura y resistente. Al no requerir intervención en los muros, el resultado es más <b>limpio</b>.
-                            </p>
-                            <p>
-                                La <Link to="https://www.metalwolft.com/instalation-rejas-para-ventanas" className="link-categories">instalación de las rejas sin obra</Link> es rápida y sencilla, lo que permite reducir tanto los tiempos como los costes asociados.
-                            </p>
-                            <p>Este tipo de reja las convierte en una opción ideal para quienes desean mantener intacto el acabado de la fachada.</p>
-                            <p>
-                                Si deseas proteger tu hogar sin alterar la fachada, las <strong>rejas sin obra</strong> son la alternativa perfecta. Combina <b>seguridad y funcionalidad</b> y un diseño que se adapta a cualquier estilo de ventana.
-                            </p>
-                            <div className="container">
-                                <div className="row text-center mt-4 d-flex flex-column flex-lg-row">
-                                    {[
-                                        {
-                                            src: "https://res.cloudinary.com/dewanllxn/image/upload/v1738176285/agujeros-en-pletinas_tlosu0.png",
-                                            alt: "Rejas con pletinas",
-                                            title: "Con pletinas",
-                                            description: "Fijación rápida y segura sin necesidad de obra."
-                                        },
-                                        {
-                                            src: "https://res.cloudinary.com/dewanllxn/image/upload/v1738176285/agujeros-interiores_xa0onj.png",
-                                            alt: "Rejas con agujeros interiores",
-                                            title: "Con agujeros interiores",
-                                            description: "Ideal para marcos con profundidad reducida."
-                                        },
-                                        {
-                                            src: "https://res.cloudinary.com/dewanllxn/image/upload/v1738176286/agujeros-frontales_low9pi.png",
-                                            alt: "Rejas con agujeros frontales",
-                                            title: "Con agujeros frontales",
-                                            description: "Fijación directamente en la parte frontal de la pared."
-                                        }
-                                    ].map((item, index) => (
-                                        <div key={index} className="col-12 col-lg-12 mb-4 text-center">
-                                            <img
-                                                src={item.src}
-                                                alt={item.alt}
-                                                className="img-fluid img-large"
-                                                style={{ cursor: 'zoom-in' }}
-                                            />
-                                            <h6 className="mt-2">{item.title}</h6>
-                                            <p>{item.description}</p>
-                                        </div>
-                                    ))}
+                                    <Button className="btn-style-background-color" onClick={handleAddToCart}>
+                                        <ShoppingCart size={18} className="me-2" />
+                                        Añadir al carrito
+                                    </Button>
                                 </div>
+                            </Form>
+                        </div>
+                    </Col>
+                    <Link
+                        to={`/${category_slug}`}
+                        className="mb-3 d-inline-block text-decoration-none"
+                        style={{ fontWeight: 'bold', color: '#ff324d', marginTop: '50px' }}
+                    >
+                        ← Catálogo de {product?.categoria_nombre || 'la categoría'}
+                    </Link>
+                    <div className="custom-accordion mt-5">
+                        {/* Acordeón 1 */}
+                        <div className="accordion-item">
+                            <input type="checkbox" id="accordion-1" />
+                            <label htmlFor="accordion-1" className="accordion-header with-arrow d-flex justify-content-between align-items-center">
+                                <span>
+                                    <i className="fa-solid fa-screwdriver-wrench me-2"></i>
+                                    Instalación y consejos prácticos
+                                </span>
+                                <i className="fa-solid fa-chevron-down arrow-icon"></i>
+                            </label>
+                            <h2 className="visually-hidden">Instalación y consejos prácticos</h2>
+                            <div className="accordion-content">
+                                <h3 className="h3-categories">¿Cómo elegir la reja perfecta para tu ventana?</h3>
+                                <p>En cuanto a estética y estilo es cuestión de <b>gustos</b> porque todas cumplen con la premisa fundamental de la <strong>seguridad</strong>.</p>
+                                <p>Para elegir la reja perfecta hay que fijarse en que la instalación sea lo más favorable para cada caso.</p>
+                                <p>Se recomienda <b>con garras</b> en el caso de que la ubicación se encuentre <b>en fase de obra y esté en bruto la fachada</b>, simplemente porque coge <b>más fuerza el anclaje</b>. Para todos los demás casos, el <b>anclaje con tornillos especiales</b> es suficiente, siendo más <b>limpio y económico</b>.</p>
+
+                                <h3 className="h3-categories mt-4">¿Cómo Medir el Hueco para Rejas de Ventanas?</h3>
+                                <ul>
+                                    <li><strong>Mide el ancho:</strong> Mide de un lado al otro del marco de la ventana, asegurándote de tomar la medida en varios puntos (arriba, en el centro y abajo). La <b>medida más pequeña</b> es la que debes tomar. Resta medio centímetro para asegurar el encaje.</li>
+                                    <li><strong>Mide la altura:</strong> Desde la base hasta la parte superior del marco. Resta 2-3 cm para permitir limpieza del vierteaguas y evitar acumulación de suciedad.</li>
+                                </ul>
+                                <p>Si tienes dudas, <a href="https://www.metalwolft.com/contact" className="link-categories" target="_blank" rel="noopener noreferrer">consúltanos</a> para evitar errores.</p>
+                                <p>Consulta nuestro <a href="https://www.metalwolft.com/medir-hueco-rejas-para-ventanas" className="link-categories" target="_blank" rel="noopener noreferrer">artículo dedicado</a> en el blog.</p>
+                                <p>Tomar medidas precisas es esencial para garantizar que las rejas se ajusten correctamente.</p>
+
+                                <h3 className="h3-categories mt-4">¿Cómo instalar rejas para ventanas?</h3>
+                                <p>La <strong>instalación de rejas para ventanas</strong> no solo garantiza la <strong>seguridad</strong> de tu hogar, sino que también puede mejorar su estética.</p>
+                                <p>Dependiendo del <b>tipo de instalación</b> (con obra o sin obra), se requerirán herramientas diferentes.</p>
+                                <p>La instalación con obra suele realizarla un albañil. La sin obra es más accesible y cualquier persona con pocas herramientas puede hacerla.</p>
+                                <p>Tenemos un artículo dedicado con todos los pasos 👉 <a href="https://www.metalwolft.com/instalation-rejas-para-ventanas" className="link-categories" target="_blank" rel="noopener noreferrer">Instalación de rejas para ventanas sin obra</a>.</p>
                             </div>
+                        </div>
 
-                            {/* ------------------------------------------ */}
-                            <h4 className="h3-categories">Rejas para ventanas con obra</h4>
-                            <p>
-                                Las <strong>rejas para ventanas con obra</strong> son una opción perfecta para proyectos en los que <b>la fachada aún no tiene su acabado final</b>, como durante reformas o construcciones en curso.
-                            </p>
-                            <p>
-                                A diferencia de las rejas sin obra, estas <b>no utilizan tornillos especiales</b>. En su lugar, están diseñadas con <b>garras de hierro soldadas</b> al lateral del bastidor de la reja.
-                            </p>
-                            <p>
-                                Estas garras <b>se fijan directamente al muro</b> de la fachada mediante una mezcla de cemento, creando una unión resistente y permanente.
-                            </p>
+                        {/* Acordeón 2 */}
+                        <div className="accordion-item">
+                            <input type="checkbox" id="accordion-2" />
+                            <label htmlFor="accordion-2" className="accordion-header with-arrow d-flex justify-content-between align-items-center">
+                                <span>
+                                    <i className="fa-regular fa-circle-question me-2"></i>
+                                    Preguntas frecuentes
+                                </span>
+                                <i className="fa-solid fa-chevron-down arrow-icon"></i>
+                            </label>
+                            <h2 className="visually-hidden">Preguntas frecuentes</h2>
+                            <div className="accordion-content">
+                                <ul>
+                                    <li><b>¿Los precios incluyen IVA?</b> Sí, todos nuestros precios incluyen IVA.</li>
+                                    <li>
+                                        <b>¿Cuál es el tiempo de fabricación y entrega?</b> Nuestro tiempo estimado de fabricación y entrega es de <b>20 días hábiles</b>. Sin embargo, este plazo puede variar dependiendo de nuestra carga de trabajo. En caso de que haya un aumento en los tiempos, te lo notificaremos con anticipación para que estés informado.
+                                    </li>
+                                    <li>
+                                        <b>¿Qué sucede después de realizar mi compra?</b> Tras completar tu compra, recibirás un correo de confirmación con todos los detalles. Además, nos pondremos en contacto contigo para orientarte en la instalación y ofrecerte asistencia personalizada, asegurándonos de que tengas una experiencia satisfactoria con tu compra.
+                                    </li>
+                                    <li>
+                                        <b>¿Cómo puedo ponerme en contacto?</b> Puedes hacerlo a través de nuestro <a href="/contact" target="_blank" rel="noopener noreferrer">formulario de contacto</a>, enviándonos un mensaje por <a href="https://wa.me/634112604" target="_blank" rel="noopener noreferrer">WhatsApp</a> o llamándonos al <a href="tel:634112604">634112604</a>.
+                                    </li>
+                                </ul>
+                            </div>
+                        </div>
 
-                            <div className="container">
-                                <div className="row text-center mt-4 d-flex flex-column flex-lg-row">
-                                    {[
-                                        {
-                                            src: "https://res.cloudinary.com/dewanllxn/image/upload/v1734888241/rejas-para-ventanas-sin-obra_wukdzi.png",
-                                            alt: "Rejas con obra",
-                                            title: "Con garras metálicas",
-                                            description: "Fijación resistente con cemento en el muro."
-                                        }
-                                    ].map((item, index) => (
-                                        <div key={index} className="col-12 col-lg-12 mb-4 text-center">
-                                            <img
-                                                src={item.src}
-                                                alt={item.alt}
-                                                className="img-fluid img-large"
-                                                style={{ cursor: 'zoom-in' }}
-                                            />
-                                            <p className="fw-bold mt-2">{item.title}</p>
-                                            <p>{item.description}</p>
-                                        </div>
-                                    ))}
+                        {/* Acordeón 3 */}
+                        <div className="accordion-item">
+                            <input type="checkbox" id="accordion-3" />
+                            <label htmlFor="accordion-3" className="accordion-header with-arrow d-flex justify-content-between align-items-center">
+                                <span>
+                                    <i className="fa-solid fa-th-large me-2"></i>
+                                    Tipos de rejas para ventanas
+                                </span>
+                                <i className="fa-solid fa-chevron-down arrow-icon"></i>
+                            </label>
+                            <h2 className="visually-hidden">Tipos de rejas para ventanas</h2>
+                            <div className="accordion-content">
+                                <h4 className="h3-categories">Rejas para ventanas modernas</h4>
+                                <p>Las <strong>rejas para ventanas modernas</strong> han experimentado una transformación en su estilo y materiales, siguiendo líneas más <strong>sencillas</strong> siendo igual de <strong>bonitas</strong>, ofreciendo un equilibrio perfecto entre <b>seguridad y estética</b>.</p>
+                                <p>Aunque el hierro sigue siendo el material predominante, se han incorporado otros materiales, como el acero inoxidable, para satisfacer las necesidades cambiantes de los propietarios.</p>
+                                <p>En <Link to="/" className="link-categories">Metal Wolf</Link>, nos enorgullece presentar una selección de <strong>rejas para ventanas modernas</strong> que destacan tanto por su estilo como por su capacidad de brindar <b>protección efectiva</b>.</p>
+                                <p>Nuestra filosofía se centra en la creación de <b>diseños</b> que no solo cumplen con su propósito principal, sino que también <b>realzan la estética de su hogar</b>.</p>
+                                {/* ------------------------------------------ */}
+                                <h4 className="h3-categories">Rejas para ventanas sin obra</h4>
+
+                                <p>
+                                    <strong>Las rejas para ventanas sin obra</strong> se fijan directamente en el marco de la ventana con
+                                    <Link to="https://todoanclajes.com/producto/tornillo-inviolable-torx-7-x-30/?gad_source=1&gclid=CjwKCAiAjp-7BhBZEiwAmh9rBX_pS1jYu9WcRXkLhOVUreLYelh3cFK1xX7rnxMQv4ru8xcZ-6YLmRoCnEsQAvD_BwE" className="link-categories">
+                                        tornillos especiales inviolables
+                                    </Link>, diseñados para ofrecer una sujeción segura y resistente. Al no requerir intervención en los muros, el resultado es más <b>limpio</b>.
+                                </p>
+                                <p>
+                                    La <Link to="https://www.metalwolft.com/instalation-rejas-para-ventanas" className="link-categories">instalación de las rejas sin obra</Link> es rápida y sencilla, lo que permite reducir tanto los tiempos como los costes asociados.
+                                </p>
+                                <p>Este tipo de reja las convierte en una opción ideal para quienes desean mantener intacto el acabado de la fachada.</p>
+                                <p>
+                                    Si deseas proteger tu hogar sin alterar la fachada, las <strong>rejas sin obra</strong> son la alternativa perfecta. Combina <b>seguridad y funcionalidad</b> y un diseño que se adapta a cualquier estilo de ventana.
+                                </p>
+                                <div className="container">
+                                    <div className="row text-center mt-4 d-flex flex-column flex-lg-row">
+                                        {[
+                                            {
+                                                src: "https://res.cloudinary.com/dewanllxn/image/upload/v1738176285/agujeros-en-pletinas_tlosu0.png",
+                                                alt: "Rejas con pletinas",
+                                                title: "Con pletinas",
+                                                description: "Fijación rápida y segura sin necesidad de obra."
+                                            },
+                                            {
+                                                src: "https://res.cloudinary.com/dewanllxn/image/upload/v1738176285/agujeros-interiores_xa0onj.png",
+                                                alt: "Rejas con agujeros interiores",
+                                                title: "Con agujeros interiores",
+                                                description: "Ideal para marcos con profundidad reducida."
+                                            },
+                                            {
+                                                src: "https://res.cloudinary.com/dewanllxn/image/upload/v1738176286/agujeros-frontales_low9pi.png",
+                                                alt: "Rejas con agujeros frontales",
+                                                title: "Con agujeros frontales",
+                                                description: "Fijación directamente en la parte frontal de la pared."
+                                            }
+                                        ].map((item, index) => (
+                                            <div key={index} className="col-12 col-lg-12 mb-4 text-center">
+                                                <img
+                                                    src={item.src}
+                                                    alt={item.alt}
+                                                    className="img-fluid img-large"
+                                                    style={{ cursor: 'zoom-in' }}
+                                                />
+                                                <h6 className="mt-2">{item.title}</h6>
+                                                <p>{item.description}</p>
+                                            </div>
+                                        ))}
+                                    </div>
                                 </div>
-                            </div>
 
-                            <div className="comparison-table">
-                                <table>
-                                    <thead>
-                                        <tr>
-                                            <th></th>
-                                            <th>INSTALACIÓN CON OBRA</th>
-                                            <th>INSTALACIÓN SIN OBRA</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        <tr>
-                                            <td>
-                                                <strong>Descripción</strong>
-                                            </td>
-                                            <td>
-                                                Las rejas se fijan directamente a los muros mediante garras de hierro
-                                                y cemento, proporcionando una unión resistente y permanente.
-                                            </td>
-                                            <td>
-                                                Las rejas se fijan al marco de la ventana con tornillos especiales,
-                                                evitando la necesidad de modificar los muros.
-                                            </td>
-                                        </tr>
-                                        <tr>
-                                            <td>
-                                                <strong>Ventajas</strong>
-                                            </td>
-                                            <td>
-                                                <ul>
-                                                    <li>Mayor resistencia.</li>
-                                                    <li>Adecuado para proyectos en construcción o reforma.</li>
-                                                </ul>
-                                            </td>
-                                            <td>
-                                                <ul>
-                                                    <li>Rápida instalación.</li>
-                                                    <li>No afecta la estética de la fachada.</li>
-                                                    <li>Más económico.</li>
-                                                </ul>
-                                            </td>
-                                        </tr>
-                                        <tr>
-                                            <td>
-                                                <strong>Desventajas</strong>
-                                            </td>
-                                            <td>
-                                                <ul>
-                                                    <li>Requiere albañilería.</li>
-                                                    <li>Proceso más costoso.</li>
-                                                </ul>
-                                            </td>
-                                            <td>
-                                                <ul>
-                                                    <li>Menor resistencia a impactos fuertes.</li>
-                                                    <li>No adecuado para fachadas en construcción.</li>
-                                                </ul>
-                                            </td>
-                                        </tr>
-                                        <tr>
-                                            <td>
-                                                <strong>Tiempo de Instalación</strong>
-                                            </td>
-                                            <td>1-2 días (dependiendo de la obra).</td>
-                                            <td>1-2 horas (sin necesidad de obra).</td>
-                                        </tr>
-                                        <tr>
-                                            <td>
-                                                <strong>Precio Aproximado</strong>
-                                            </td>
-                                            <td>Más elevado por el coste de mano de obra y materiales.</td>
-                                            <td>Más económico, solo se necesitan los tornillos y herramientas básicas.</td>
-                                        </tr>
-                                    </tbody>
-                                </table>
-                            </div>
-                            {/* ------------------------------------------ */}
-                            <h4 className="h3-categories">Rejas abatibles para ventanas</h4>
-                            <p>Las <strong>rejas abatibles para ventanas</strong> son la solución perfecta para quienes buscan <b>seguridad y comodidad en su hogar</b>.</p>
-                            <p>Gracias a su sistema de apertura y cierre, estas rejas permiten un acceso sencillo para limpiar las ventanas o disfrutar de una ventilación sin restricciones.</p>
-                            {/* ------------------------------------------ */}
-                            <h4 className="h3-categories">Rejas para gatos y mascotas</h4>
-                            <p>Las <strong>rejas para gatos y mascotas</strong> son una solución perfecta para proteger a tus animales de compañía, asegurando su bienestar sin comprometer la ventilación o la estética de tu hogar.</p>
-                            <p>Este tipo de reja está diseñado especialmente para <b>evitar accidentes</b>, como caídas desde ventanas abiertas o balcones, sin limitar la libertad de movimiento de tus mascotas.</p>
-                            <p>A diferencia de las rejas convencionales, las rejas para mascotas cuentan con un <b>diseño especial</b> que reduce el espacio entre los barrotes. </p>
-                            <p>Esta característica evita que gatos, perros pequeños u otros animales puedan atravesarlas, ofreciendo una protección efectiva sin limitar su libertad de movimiento.</p>
-                            {/* ------------------------------------------ */}
-                            <h4 className="h3-categories">Rejas rústicas</h4>
-                            <p>Las <strong>rejas rústicas</strong> son ideales para quienes buscan un <b>estilo tradicional</b> en la decoración de sus ventanas. Inspiradas en la arquitectura <b>clásica</b>, estas rejas destacan por sus <b>detalles ornamentales</b> y su robustez.</p>
-                            <p>Aportan un encanto histórico y una elegancia atemporal a cualquier edificación. Estas piezas, a menudo elaboradas en <b>hierro forjado</b>, reflejan la artesanía de épocas pasadas y son ideales para quienes buscan un estilo clásico en sus ventanas o puertas.</p>
+                                {/* ------------------------------------------ */}
+                                <h4 className="h3-categories">Rejas para ventanas con obra</h4>
+                                <p>
+                                    Las <strong>rejas para ventanas con obra</strong> son una opción perfecta para proyectos en los que <b>la fachada aún no tiene su acabado final</b>, como durante reformas o construcciones en curso.
+                                </p>
+                                <p>
+                                    A diferencia de las rejas sin obra, estas <b>no utilizan tornillos especiales</b>. En su lugar, están diseñadas con <b>garras de hierro soldadas</b> al lateral del bastidor de la reja.
+                                </p>
+                                <p>
+                                    Estas garras <b>se fijan directamente al muro</b> de la fachada mediante una mezcla de cemento, creando una unión resistente y permanente.
+                                </p>
 
-                            {/* ------------------------------------------------------------------------------------------------------------------------ */}
-                            <hr className="hr-categories mt-5" />
-                            <h2 className="h2-categories my-3">Precios de rejas para ventanas</h2>
-                            <p>El <strong>precio de las rejas para ventanas</strong> puede variar considerablemente dependiendo de diversos factores, como el <b>material utilizado, el tipo de diseño, las dimensiones de la ventana y el método de instalación</b> requerido.</p>
-                            <p>Los materiales más comunes, como el hierro, el aluminio y el acero inoxidable, tienen precios diferentes. El <b>hierro suele ser la opción más económica</b>, mientras que el acero inoxidable es una de las más costosas debido a su alta resistencia y durabilidad.</p>
-                            <p>También influye el <b>nivel de personalización</b>. Las rejas estándar suelen ser más económicas, mientras que las rejas con <b>diseños ornamentales o personalizados tienden a incrementar su coste</b>.</p>
-                            <p>En cuanto a la instalación, las rejas que requieren <b>obra suelen tener un precio más alto</b> debido al tiempo y materiales adicionales necesarios, mientras que las <strong>rejas sin obra son más rápidas y económicas</strong> de colocar.</p>
-                            <p>Además, algunos proveedores ofrecen servicios adicionales, como acabados especiales o tratamientos anticorrosión, que pueden agregar valor y durabilidad a las rejas, aunque con un coste extra.</p>
-                            <p>En nuestra página web, puedes <b>calcular al instante el precio de cada reja</b>, lo que te permitirá explorar diferentes opciones y encontrar la que mejor se ajuste a tu presupuesto y necesidades. </p>
-                            <p>Consulta nuestro <strong>catálogo</strong> para obtener más detalles y solicita un presupuesto personalizado si necesitas asesoramiento adicional.</p>
-                            {/* ------------------------------------------ */}
-                            <h3 className="h3-categories">¿Cuánto vale poner una reja en una ventana?</h3>
-                            <p>El coste de <strong>instalar una reja en una ventana</strong> puede variar significativamente en función del tipo de instalación. </p>
-                            <p>Si la instalación requiere obra de albañilería el coste es mayor con respecto a la instalación de rejas para ventana sin obra que su instalación es mucho más simple.</p>
-                            {/* ------------------------------------------ */}
-                            <h3 className="h3-categories">Consejos para ahorrar en la instalación</h3>
-                            <p>Las <strong>rejas sin obra</strong> son una opción <b>económica y práctica</b>, ya que su instalación es <b>rápida</b>, requiere menos mano de obra y <b>reduce significativamente el coste total</b>. </p>
-                            <p>Además, están diseñadas para que <b>reduce significativamente el coste total</b>x, sin necesidad de conocimientos especializados.</p>
-                            <p>Nuestras <strong>rejas para ventanas sin obra</strong> incluyen todos los elementos necesarios para una <strong>instalación sencilla</strong>: tacos y tornillos especialmente diseñados. </p>
-                            <p>Con solo un <b>taladro</b>, puedes perforar los agujeros, fijar la reja y ajustar los tornillos para que quede perfectamente instalada. </p>
-                            {/* ------------------------------------------ */}
-                            <h3 className="h3-categories">Consigue el precio exacto</h3>
-                            <p>Para obtener un <strong>precio</strong> exacto de las rejas para tus ventanas...</p>
-                            <p>Te recomendamos que, si tiene dudas, <Link to="https://www.metalwolft.com/contact" className="link-categories">contáctenos</Link> para que podamos asesorarle y ofrecerle toda la información necesaria.</p>
+                                <div className="container">
+                                    <div className="row text-center mt-4 d-flex flex-column flex-lg-row">
+                                        {[
+                                            {
+                                                src: "https://res.cloudinary.com/dewanllxn/image/upload/v1734888241/rejas-para-ventanas-sin-obra_wukdzi.png",
+                                                alt: "Rejas con obra",
+                                                title: "Con garras metálicas",
+                                                description: "Fijación resistente con cemento en el muro."
+                                            }
+                                        ].map((item, index) => (
+                                            <div key={index} className="col-12 col-lg-12 mb-4 text-center">
+                                                <img
+                                                    src={item.src}
+                                                    alt={item.alt}
+                                                    className="img-fluid img-large"
+                                                    style={{ cursor: 'zoom-in' }}
+                                                />
+                                                <p className="fw-bold mt-2">{item.title}</p>
+                                                <p>{item.description}</p>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                <div className="comparison-table">
+                                    <table>
+                                        <thead>
+                                            <tr>
+                                                <th></th>
+                                                <th>INSTALACIÓN CON OBRA</th>
+                                                <th>INSTALACIÓN SIN OBRA</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr>
+                                                <td>
+                                                    <strong>Descripción</strong>
+                                                </td>
+                                                <td>
+                                                    Las rejas se fijan directamente a los muros mediante garras de hierro
+                                                    y cemento, proporcionando una unión resistente y permanente.
+                                                </td>
+                                                <td>
+                                                    Las rejas se fijan al marco de la ventana con tornillos especiales,
+                                                    evitando la necesidad de modificar los muros.
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <td>
+                                                    <strong>Ventajas</strong>
+                                                </td>
+                                                <td>
+                                                    <ul>
+                                                        <li>Mayor resistencia.</li>
+                                                        <li>Adecuado para proyectos en construcción o reforma.</li>
+                                                    </ul>
+                                                </td>
+                                                <td>
+                                                    <ul>
+                                                        <li>Rápida instalación.</li>
+                                                        <li>No afecta la estética de la fachada.</li>
+                                                        <li>Más económico.</li>
+                                                    </ul>
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <td>
+                                                    <strong>Desventajas</strong>
+                                                </td>
+                                                <td>
+                                                    <ul>
+                                                        <li>Requiere albañilería.</li>
+                                                        <li>Proceso más costoso.</li>
+                                                    </ul>
+                                                </td>
+                                                <td>
+                                                    <ul>
+                                                        <li>Menor resistencia a impactos fuertes.</li>
+                                                        <li>No adecuado para fachadas en construcción.</li>
+                                                    </ul>
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <td>
+                                                    <strong>Tiempo de Instalación</strong>
+                                                </td>
+                                                <td>1-2 días (dependiendo de la obra).</td>
+                                                <td>1-2 horas (sin necesidad de obra).</td>
+                                            </tr>
+                                            <tr>
+                                                <td>
+                                                    <strong>Precio Aproximado</strong>
+                                                </td>
+                                                <td>Más elevado por el coste de mano de obra y materiales.</td>
+                                                <td>Más económico, solo se necesitan los tornillos y herramientas básicas.</td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                                {/* ------------------------------------------ */}
+                                <h4 className="h3-categories">Rejas abatibles para ventanas</h4>
+                                <p>Las <strong>rejas abatibles para ventanas</strong> son la solución perfecta para quienes buscan <b>seguridad y comodidad en su hogar</b>.</p>
+                                <p>Gracias a su sistema de apertura y cierre, estas rejas permiten un acceso sencillo para limpiar las ventanas o disfrutar de una ventilación sin restricciones.</p>
+                                {/* ------------------------------------------ */}
+                                <h4 className="h3-categories">Rejas para gatos y mascotas</h4>
+                                <p>Las <strong>rejas para gatos y mascotas</strong> son una solución perfecta para proteger a tus animales de compañía, asegurando su bienestar sin comprometer la ventilación o la estética de tu hogar.</p>
+                                <p>Este tipo de reja está diseñado especialmente para <b>evitar accidentes</b>, como caídas desde ventanas abiertas o balcones, sin limitar la libertad de movimiento de tus mascotas.</p>
+                                <p>A diferencia de las rejas convencionales, las rejas para mascotas cuentan con un <b>diseño especial</b> que reduce el espacio entre los barrotes. </p>
+                                <p>Esta característica evita que gatos, perros pequeños u otros animales puedan atravesarlas, ofreciendo una protección efectiva sin limitar su libertad de movimiento.</p>
+                                {/* ------------------------------------------ */}
+                                <h4 className="h3-categories">Rejas rústicas</h4>
+                                <p>Las <strong>rejas rústicas</strong> son ideales para quienes buscan un <b>estilo tradicional</b> en la decoración de sus ventanas. Inspiradas en la arquitectura <b>clásica</b>, estas rejas destacan por sus <b>detalles ornamentales</b> y su robustez.</p>
+                                <p>Aportan un encanto histórico y una elegancia atemporal a cualquier edificación. Estas piezas, a menudo elaboradas en <b>hierro forjado</b>, reflejan la artesanía de épocas pasadas y son ideales para quienes buscan un estilo clásico en sus ventanas o puertas.</p>
+
+                                {/* ------------------------------------------------------------------------------------------------------------------------ */}
+                                <hr className="hr-categories mt-5" />
+                                <h2 className="h2-categories my-3">Precios de rejas para ventanas</h2>
+                                <p>El <strong>precio de las rejas para ventanas</strong> puede variar considerablemente dependiendo de diversos factores, como el <b>material utilizado, el tipo de diseño, las dimensiones de la ventana y el método de instalación</b> requerido.</p>
+                                <p>Los materiales más comunes, como el hierro, el aluminio y el acero inoxidable, tienen precios diferentes. El <b>hierro suele ser la opción más económica</b>, mientras que el acero inoxidable es una de las más costosas debido a su alta resistencia y durabilidad.</p>
+                                <p>También influye el <b>nivel de personalización</b>. Las rejas estándar suelen ser más económicas, mientras que las rejas con <b>diseños ornamentales o personalizados tienden a incrementar su coste</b>.</p>
+                                <p>En cuanto a la instalación, las rejas que requieren <b>obra suelen tener un precio más alto</b> debido al tiempo y materiales adicionales necesarios, mientras que las <strong>rejas sin obra son más rápidas y económicas</strong> de colocar.</p>
+                                <p>Además, algunos proveedores ofrecen servicios adicionales, como acabados especiales o tratamientos anticorrosión, que pueden agregar valor y durabilidad a las rejas, aunque con un coste extra.</p>
+                                <p>En nuestra página web, puedes <b>calcular al instante el precio de cada reja</b>, lo que te permitirá explorar diferentes opciones y encontrar la que mejor se ajuste a tu presupuesto y necesidades. </p>
+                                <p>Consulta nuestro <strong>catálogo</strong> para obtener más detalles y solicita un presupuesto personalizado si necesitas asesoramiento adicional.</p>
+                                {/* ------------------------------------------ */}
+                                <h3 className="h3-categories">¿Cuánto vale poner una reja en una ventana?</h3>
+                                <p>El coste de <strong>instalar una reja en una ventana</strong> puede variar significativamente en función del tipo de instalación. </p>
+                                <p>Si la instalación requiere obra de albañilería el coste es mayor con respecto a la instalación de rejas para ventana sin obra que su instalación es mucho más simple.</p>
+                                {/* ------------------------------------------ */}
+                                <h3 className="h3-categories">Consejos para ahorrar en la instalación</h3>
+                                <p>Las <strong>rejas sin obra</strong> son una opción <b>económica y práctica</b>, ya que su instalación es <b>rápida</b>, requiere menos mano de obra y <b>reduce significativamente el coste total</b>. </p>
+                                <p>Además, están diseñadas para que <b>reduce significativamente el coste total</b>x, sin necesidad de conocimientos especializados.</p>
+                                <p>Nuestras <strong>rejas para ventanas sin obra</strong> incluyen todos los elementos necesarios para una <strong>instalación sencilla</strong>: tacos y tornillos especialmente diseñados. </p>
+                                <p>Con solo un <b>taladro</b>, puedes perforar los agujeros, fijar la reja y ajustar los tornillos para que quede perfectamente instalada. </p>
+                                {/* ------------------------------------------ */}
+                                <h3 className="h3-categories">Consigue el precio exacto</h3>
+                                <p>Para obtener un <strong>precio</strong> exacto de las rejas para tus ventanas...</p>
+                                <p>Te recomendamos que, si tiene dudas, <Link to="https://www.metalwolft.com/contact" className="link-categories">contáctenos</Link> para que podamos asesorarle y ofrecerle toda la información necesaria.</p>
+                            </div>
                         </div>
                     </div>
-                </div>
-                <RelatedProductsCarousel
-                    categorySlug={category_slug}
-                    categoryName={categoryName}
-                    currentProductId={product.id}
-                    productName={product.nombre}
+                    <RelatedProductsCarousel
+                        categorySlug={category_slug}
+                        categoryName={categoryName}
+                        currentProductId={product.id}
+                        productName={product.nombre}
+                    />
+                </Row>
+                <WhatsAppWidget
+                    whatsappNumber="34634112604"
+                    placeholderText="Escribenos por WhatsApp"
+                    widgetText="¿Le podemos ayudar?"
+                    botImage="https://res.cloudinary.com/dewanllxn/image/upload/v1735631180/welder-bot_tqxadc.png"
                 />
-            </Row>
-            <WhatsAppWidget
-                whatsappNumber="34634112604"
-                placeholderText="Escribenos por WhatsApp"
-                widgetText="¿Le podemos ayudar?"
-                botImage="https://res.cloudinary.com/dewanllxn/image/upload/v1735631180/welder-bot_tqxadc.png"
-            />
 
-            {/* Notificación */}
-            {notification && (
-                <Notification
-                    message={notification}
-                    duration={3000}
-                    onClose={() => setNotification(null)}
-                />
-            )}
-        </Container>
+                {/* Notificación */}
+                {notification && (
+                    <Notification
+                        message={notification}
+                        duration={3000}
+                        onClose={() => setNotification(null)}
+                    />
+                )}
+            </Container>
+        </div>
     );
 };

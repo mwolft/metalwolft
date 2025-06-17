@@ -41,7 +41,7 @@ export const MainNavbar = () => {
                     <Navbar.Brand as={Link} to="/" onClick={handleSelect}>
                     {/* <img src={logoweb} alt="Logo" className="d-inline-block align-top" />*/}
                         <img
-                            src="https://res.cloudinary.com/dewanllxn/image/upload/v1750056756/logo_mrgauq.avif"
+                            src="https://res.cloudinary.com/dewanllxn/image/upload/v1750127736/logo-metal-wolft_zlbzng.avif"
                             alt="rejas para ventanas logo"
                             className="navbar-logo"
                             width="182" 
