@@ -112,6 +112,23 @@ PRERENDER_TOKEN = os.getenv("PRERENDER_TOKEN")
 
 @app.before_request
 def prerender_io():
+    # Rutas excluidas de prerender
+    excluded_paths = [
+        '/sitemap.xml',
+        '/robots.txt',
+        '/favicon.ico',
+        '/_debug_build_files',
+        '/db-check',
+        '/run-migrations'
+    ]
+
+    # Si es una ruta API o static, tampoco prerenderizamos
+    if request.path.startswith('/api/') or request.path.startswith('/static/'):
+        return
+
+    if request.path in excluded_paths:
+        return
+
     ua = request.headers.get("User-Agent", "").lower()
     is_bot = any(bot in ua for bot in BOT_USER_AGENTS)
     current_app.logger.info(f"[Prerender] UA={ua!r} is_bot={is_bot} path={request.path}")
