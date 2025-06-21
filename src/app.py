@@ -190,23 +190,6 @@ def run_migrations():
         return {"error": "Failed to apply migrations", "details": str(e)}, 500
     
 
-@app.cli.command("sitemap_productos")
-def sitemap_productos():
-    from datetime import datetime
-    from api.models import Products  
-
-    productos = Products.query.all()
-    for producto in productos:
-        slug = producto.slug
-        categoria_slug = producto.categoria.slug  
-        print(f"""  <url>
-    <loc>https://www.metalwolft.com/{categoria_slug}/{slug}</loc>
-    <lastmod>{datetime.today().date()}T00:00:00+00:00</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.50</priority>
-  </url>""")
-
-
 # 16) Lanzamiento local
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 3001))
