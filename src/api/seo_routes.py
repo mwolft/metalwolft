@@ -182,7 +182,10 @@ def seo_product_new(category_slug, product_slug):
                 "review": [
                     {
                         "@type": "Review",
-                        "author": "Cliente verificado",
+                        "author": {
+                            "@type": "Person",
+                            "name": "Cliente verificado"
+                        },
                         "datePublished": "2024-12-01",
                         "reviewBody": "Reja muy resistente y fácil de instalar. Llegó en buen estado.",
                         "name": "Muy satisfecho con la compra",
