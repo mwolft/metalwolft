@@ -101,11 +101,11 @@ app.register_blueprint(email_bp,  url_prefix='/api/email')
 app.register_blueprint(auth_bp,   url_prefix='/api/auth')
 
 
-# 11) Prerender.io para bots (sin cambios)
+# 11) Prerender.io para bots
 BOT_USER_AGENTS = [
     "googlebot", "bingbot", "yandex", "baiduspider", "facebookexternalhit",
     "twitterbot", "rogerbot", "linkedinbot", "embedly", "quora link preview",
-    "showyoubot", "outbrain", "pinterest", "slackbot", "vkShare", "W3C_Validator"
+    "showyoubot", "outbrain", "pinterest", "vkShare", "W3C_Validator"
 ]
 PRERENDER_SERVICE_URL = os.getenv("PRERENDER_SERVICE_URL", "https://service.prerender.io/")
 PRERENDER_TOKEN = os.getenv("PRERENDER_TOKEN")
@@ -152,6 +152,17 @@ def prerender_io():
 def handle_invalid_usage(error):
     return jsonify(error.to_dict()), error.status_code
 
+
+# servir el sitemap de forma directa
+@app.route('/sitemap.xml')
+def serve_sitemap():
+    return send_from_directory(
+        static_file_dir,
+        'sitemap.xml',
+        mimetype='application/xml'
+    )
+
+
 # 13) Servir la SPA React
 @app.route('/', defaults={'path': ''})
 @app.route('/<path:path>')
@@ -161,7 +172,8 @@ def serve_spa(path):
         return send_from_directory(static_file_dir, path)
     return send_from_directory(static_file_dir, 'index.html')
 
-# 14) Debug build files (sin cambios)
+
+# 14) Debug build files
 @app.route('/_debug_build_files', methods=['GET'])
 def debug_build_files():
     files = []
@@ -170,6 +182,7 @@ def debug_build_files():
             rel = os.path.relpath(os.path.join(root, name), static_file_dir)
             files.append(rel)
     return jsonify(sorted(files))
+
 
 # 15) Endpoints auxiliares
 @app.route('/db-check', methods=['GET'])
