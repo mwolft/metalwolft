@@ -48,4 +48,4 @@ ENV PRERENDER_TOKEN=${PRERENDER_TOKEN}
 EXPOSE 3001
 
 # Arranca con Gunicorn
-CMD ["gunicorn", "app:app", "--workers", "3", "--bind", "0.0.0.0:3001"]
+CMD ["gunicorn", "app:app", "--workers", "3", "--bind", "0.0.0.0:3001", "--timeout", "120", "--keep-alive", "60"]
