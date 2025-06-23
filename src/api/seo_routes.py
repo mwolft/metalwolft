@@ -118,7 +118,12 @@ def seo_product_new(category_slug, product_slug):
                 "@type": "Product",
                 "@id": product_full_url,
                 "name": product.nombre,
-                "image": ([product.imagen] if product.imagen else []) + [img.image_url for img in product.images if img.image_url],
+                "image": (
+                    [product.imagen] if product.imagen and product.imagen.lower().endswith(('.jpg', '.jpeg', '.png')) else []
+                ) + [
+                    img.image_url for img in product.images 
+                    if img.image_url and img.image_url.lower().endswith(('.jpg', '.jpeg', '.png'))
+                ],
                 "description": product.descripcion,
                 "sku": product.slug,
                 "mpn": str(product.id),
@@ -144,7 +149,8 @@ def seo_product_new(category_slug, product_slug):
                         "returnPolicyCategory": "https://schema.org/MerchantReturnFiniteReturnWindow",
                         "merchantReturnDays": 7,
                         "returnMethod": "https://schema.org/ReturnByMail",
-                        "returnFees": "https://schema.org/FreeReturn"
+                        "returnFees": "https://schema.org/FreeReturn",
+                        "refundType": "https://schema.org/RefundTypeFullRefund"
                     },
                     "shippingDetails": {
                         "@type": "OfferShippingDetails",
