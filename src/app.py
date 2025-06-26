@@ -4,7 +4,7 @@ import requests
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 from datetime import timedelta
-from flask import Flask, jsonify, send_from_directory, request, current_app
+from flask import Flask, jsonify, send_from_directory, request, current_app, redirect
 from flask_migrate import Migrate, upgrade
 from flask_cors import CORS
 from flask_jwt_extended import JWTManager
@@ -159,14 +159,9 @@ def handle_invalid_usage(error):
     return jsonify(error.to_dict()), error.status_code
 
 
-# servir el sitemap de forma directa
 @app.route('/sitemap.xml')
-def serve_sitemap():
-    return send_from_directory(
-        static_file_dir,
-        'sitemap.xml',
-        mimetype='application/xml'
-    )
+def redirect_sitemap():
+    return redirect("https://api.metalwolft.com/sitemap.xml", code=301)
 
 
 # 13) Servir la SPA React
