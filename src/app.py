@@ -22,7 +22,8 @@ from api.password_recovery_endpoints import auth_bp
 
 
 # 1) Entorno y paths
-env = "development" if os.getenv("FLASK_DEBUG") == "1" else "production"
+env = os.getenv("FLASK_ENV", "production")
+print(f"⚙️  Flask env: {env}")
 static_file_dir = os.path.abspath(
     os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'build')
 )
@@ -50,7 +51,8 @@ talisman_csp = {
     'style-src': ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
     'font-src': ["'self'", "https://fonts.gstatic.com"]
 }
-Talisman(app, content_security_policy=talisman_csp)
+force_https = env == "production"
+Talisman(app, content_security_policy=talisman_csp, force_https=force_https)
 
 # 5) CORS
 CORS(
@@ -132,7 +134,7 @@ def prerender_io():
     current_app.logger.info(f"[Prerender] UA={ua!r} is_bot={is_bot} path={request.path}")
 
     if request.method == "GET" and is_bot:
-        target = f"{PRERENDER_SERVICE_URL}{request.url}"
+        target = f"{PRERENDER_SERVICE_URL}https://www.metalwolft.com{request.path}"
         current_app.logger.info(f"[Prerender] Fetching snapshot from {target}")
 
         try:
