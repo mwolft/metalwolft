@@ -4,4 +4,4 @@ Disallow: /login/
 Disallow: /reset-password/   
 Disallow: /thank-you/        
 
-Sitemap: https://www.metalwolft.com/sitemap.xml
+Sitemap: https://api.metalwolft.com/sitemap.xml
