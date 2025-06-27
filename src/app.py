@@ -159,11 +159,6 @@ def handle_invalid_usage(error):
     return jsonify(error.to_dict()), error.status_code
 
 
-@app.route('/sitemap.xml')
-def redirect_sitemap():
-    return redirect("https://api.metalwolft.com/sitemap.xml", code=301)
-
-
 # 13) Servir la SPA React
 @app.route('/', defaults={'path': ''})
 @app.route('/<path:path>')
@@ -203,6 +198,15 @@ def run_migrations():
     except Exception as e:
         return {"error": "Failed to apply migrations", "details": str(e)}, 500
     
+
+@app.route('/sitemap.xml')
+def serve_sitemap():
+    return send_from_directory(
+        os.path.join(os.path.dirname(os.path.realpath(__file__)), 'static'),
+        'sitemap.xml',
+        mimetype='application/xml'
+    )
+
 
 # 16) Lanzamiento local
 if __name__ == '__main__':
