@@ -202,7 +202,7 @@ def run_migrations():
 @app.route('/sitemap.xml')
 def serve_sitemap():
     return send_from_directory(
-        os.path.join(os.path.dirname(os.path.realpath(__file__)), 'static'),
+        os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'static'),
         'sitemap.xml',
         mimetype='application/xml'
     )
