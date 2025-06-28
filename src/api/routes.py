@@ -1,4 +1,4 @@
-from flask import request, jsonify, Blueprint, send_file, send_from_directory, current_app
+from flask import request, jsonify, Blueprint, send_file, send_from_directory, current_app, redirect, abort
 from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity
 from api.models import db, Users, Products, ProductImages, Categories, Subcategories, Orders, OrderDetails, Favorites, Cart, Posts, Comments, Invoices
 from api.utils import send_email
@@ -27,6 +27,44 @@ logger = logging.getLogger(__name__)
 api = Blueprint('api', __name__)
 
 load_dotenv()
+
+
+from flask import redirect, abort
+
+redirect_map = {
+    "/rejas/rejas-para-ventanas-pittsburgh": "/rejas-para-ventanas",
+    "/rejas/rejas-para-ventanas-livingston": "/rejas-para-ventanas",
+    "/rejas/rejas-para-ventanas-delhi": "/rejas-para-ventanas",
+    "/rejas/rejas-para-ventanas-lancaster": "/rejas-para-ventanas",
+    "/puertas-correderas/puerta-corredera-perth": "/puertas-correderas-metalicas",
+    "/puertas-correderas/puerta-corredera-adelaida": "/puertas-correderas-metalicas",
+    "/puertas-correderas/puerta-corredera-canberra": "/puertas-correderas-metalicas",
+    "/puertas-correderas-interiores": "/puertas-correderas-metalicas",
+    "/puertas-correderas-exteriores": "/puertas-correderas-metalicas",
+    "/puertas-peatonales": "/puertas-peatonales-metalicas",
+    "/vallados-metalicos-exteriores": "/vallados-metalicos",
+    "/vallados-metalicos/vallado-metalico-geelong": "/vallados-metalicos",
+    "/vallados-metalicos": "/vallados-metalicos",
+    "/preguntas-frecuentes": "/faq",
+}
+
+gone_list = [
+    "/blog/instalation-rejas-para-ventanas",
+    "/index.php",
+    "/blog/medir_hueco_rejas_para_ventanas.php",
+    "/blog/medir-hueco-rejas-para-ventanas.php",
+    "/blog/instalation-rejas-para-ventanas.php",
+    "/rejas-para-ventanas.php",
+    "/blog/blog-metal-wolft.php",
+    "/",
+]
+
+@api.before_request
+def handle_legacy_urls():
+    if request.path in redirect_map:
+        return redirect(redirect_map[request.path], code=301)
+    if request.path in gone_list:
+        return "Página obsoleta", 410
 
 
 @api.route('/create-payment-intent', methods=['POST'])

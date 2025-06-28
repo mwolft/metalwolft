@@ -1,7 +1,5 @@
 User-agent: *
-Disallow: /admin/         
-Disallow: /login/           
-Disallow: /reset-password/   
-Disallow: /thank-you/        
+Disallow: /
 
 Sitemap: https://api.metalwolft.com/sitemap.xml
+

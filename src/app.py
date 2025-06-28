@@ -4,7 +4,7 @@ import requests
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 from datetime import timedelta
-from flask import Flask, jsonify, send_from_directory, request, current_app, redirect
+from flask import Flask, jsonify, send_from_directory, request, current_app, redirect, abort
 from flask_migrate import Migrate, upgrade
 from flask_cors import CORS
 from flask_jwt_extended import JWTManager
@@ -206,6 +206,42 @@ def serve_sitemap():
         'sitemap.xml',
         mimetype='application/xml'
     )
+
+
+redirect_map = {
+    "/rejas/rejas-para-ventanas-pittsburgh": "/rejas-para-ventanas",
+    "/rejas/rejas-para-ventanas-livingston": "/rejas-para-ventanas",
+    "/rejas/rejas-para-ventanas-delhi": "/rejas-para-ventanas",
+    "/rejas/rejas-para-ventanas-lancaster": "/rejas-para-ventanas",
+    "/puertas-correderas/puerta-corredera-perth": "/puertas-correderas-metalicas",
+    "/puertas-correderas/puerta-corredera-adelaida": "/puertas-correderas-metalicas",
+    "/puertas-correderas/puerta-corredera-canberra": "/puertas-correderas-metalicas",
+    "/puertas-correderas-interiores": "/puertas-correderas-metalicas",
+    "/puertas-correderas-exteriores": "/puertas-correderas-metalicas",
+    "/puertas-peatonales": "/puertas-peatonales-metalicas",
+    "/vallados-metalicos-exteriores": "/vallados-metalicos",
+    "/vallados-metalicos/vallado-metalico-geelong": "/vallados-metalicos",
+    "/vallados-metalicos": "/vallados-metalicos",
+    "/preguntas-frecuentes": "/faq",
+}
+
+gone_list = [
+    "/blog/instalation-rejas-para-ventanas",
+    "/index.php",
+    "/blog/medir_hueco_rejas_para_ventanas.php",
+    "/blog/medir-hueco-rejas-para-ventanas.php",
+    "/blog/instalation-rejas-para-ventanas.php",
+    "/rejas-para-ventanas.php",
+    "/blog/blog-metal-wolft.php",
+    "/",
+]
+
+@app.before_request
+def handle_legacy_urls():
+    if request.path in redirect_map:
+        return redirect(redirect_map[request.path], code=301)
+    if request.path in gone_list:
+        return "Página obsoleta", 410
 
 
 # 16) Lanzamiento local
