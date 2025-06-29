@@ -1,5 +1,4 @@
 User-agent: *
-Disallow: /
+Disallow:
 
 Sitemap: https://api.metalwolft.com/sitemap.xml
-
