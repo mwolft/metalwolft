@@ -39,6 +39,9 @@ export const Cart = () => {
         navigate("/checkout-form");
     };
 
+    const lastCategorySlug = store.cart.length > 0 ? store.cart[store.cart.length - 1].category_slug : null;
+
+
     return (
         <Container style={{ marginTop: "95px" }}>
             <h2 className="h2-categories text-center my-2">Carrito de compra</h2>
@@ -72,11 +75,11 @@ export const Cart = () => {
                                         <td className="table-shopping-cart-img">
                                             {/* --- CAMBIO 1: Envolver la imagen en un Link --- */}
                                             <Link to={`/${product.category_slug}/${product.slug}`}>
-                                                <img 
-                                                    src={product.imagen} 
-                                                    alt={product.nombre} 
+                                                <img
+                                                    src={product.imagen}
+                                                    alt={product.nombre}
                                                     // Añade estilos si es necesario para el tamaño dentro del enlace
-                                                    style={{ maxWidth: '80px', height: 'auto', display: 'block' }} 
+                                                    style={{ maxWidth: '80px', height: 'auto', display: 'block' }}
                                                 />
                                             </Link>
                                         </td>
@@ -105,7 +108,7 @@ export const Cart = () => {
                         </Table>
                         <Row className="mt-3 mb-5 mx-3">
                             <Col className="text-end">
-                                <p style={{ fontSize: "16px", marginBottom: "0px"}}>
+                                <p style={{ fontSize: "16px", marginBottom: "0px" }}>
                                     {subtotal.toFixed(2)} € (IVA incl.)
                                 </p>
                                 {subtotal >= shippingThreshold ? (
@@ -126,7 +129,7 @@ export const Cart = () => {
                                             marginBottom: "0px"
                                         }}
                                     >
-                                        Envío: {shippingCost.toFixed(2)} € 
+                                        Envío: {shippingCost.toFixed(2)} €
                                     </p>
                                 )}
                                 <hr />
@@ -140,6 +143,15 @@ export const Cart = () => {
                                     Formulario de Pago
                                 </Button>
                             </Col>
+                            {lastCategorySlug && (
+                                <Link
+                                    to={`/${lastCategorySlug}`}
+                                    className="mt-5 d-inline-block text-decoration-none"
+                                    style={{ fontWeight: 'bold', color: '#ff324d' }}
+                                >
+                                    ← Volver al catálogo de {lastCategorySlug.replaceAll("-", " ")}
+                                </Link>
+                            )}
                         </Row>
                     </Col>
                 </Row>

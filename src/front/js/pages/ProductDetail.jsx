@@ -483,6 +483,87 @@ export const ProductDetail = () => {
                         ← Catálogo de {product?.categoria_nombre || 'la categoría'}
                     </Link>
                     <div className="custom-accordion mt-5">
+
+                        {/* Acordeón 4 */}
+                        <div className="accordion-item">
+                            <input type="checkbox" id="accordion-4" />
+                            <label htmlFor="accordion-4" className="accordion-header with-arrow d-flex justify-content-between align-items-center">
+                                <span>
+                                    <i className="fa-solid fa-toolbox me-2"></i>
+                                    Herramientas Recomendadas
+                                </span>
+                                <i className="fa-solid fa-chevron-down arrow-icon"></i>
+                            </label>
+                            <h2 className="visually-hidden">Herramientas recomendadas</h2>
+                            <div className="accordion-content">
+                                <div className="container mt-5">
+                                    <div className="row text-center d-flex flex-column flex-lg-row justify-content-center align-items-stretch gap-3">
+
+                                        {/* Herramienta 1 */}
+                                        <div className="col-12 col-lg-3 mb-4">
+                                            <img
+                                                src="https://m.media-amazon.com/images/I/710L8PQsrkL._AC_SX569_.jpg"
+                                                alt="Taladro Bosch Professional"
+                                                className="img-fluid rounded"
+                                                style={{ objectFit: "contain", maxHeight: "200px" }}
+                                            />
+                                            <h6 className="mt-2">Einhell Taladro Percutor sin cable</h6>
+                                            <p>Compacto y potente para perforar materiales como piedra o ladrillo.</p>
+                                            <a
+                                                href="https://amzn.to/3TWBpNO"
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="btn btn-sm btn-warning mt-2"
+                                            >
+                                                Ver en Amazon
+                                            </a>
+                                        </div>
+
+                                        {/* Herramienta 2 */}
+                                        <div className="col-12 col-lg-3 mb-4">
+                                            <img
+                                                src="https://m.media-amazon.com/images/I/31Izs0l3NcS._AC_SY879_.jpg"
+                                                alt="Brocas para pared"
+                                                className="img-fluid rounded"
+                                                style={{ objectFit: "contain", maxHeight: "200px" }}
+                                            />
+                                            <h6 className="mt-2">Brocas para mampostería de 12</h6>
+                                            <p>Brocas de alto rendimiento resistente a la percusión.</p>
+                                            <a
+                                                href="https://amzn.to/46l6bYb"
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="btn btn-sm btn-warning mt-2"
+                                            >
+                                                Ver en Amazon
+                                            </a>
+                                        </div>
+
+                                        {/* Herramienta 3 */}
+                                        <div className="col-12 col-lg-3 mb-4">
+                                            <img
+                                                src="https://m.media-amazon.com/images/I/71-iVl4GBSL._AC_SX569_.jpg"
+                                                alt="Juego de llaves Torx"
+                                                className="img-fluid rounded"
+                                                style={{ objectFit: "contain", maxHeight: "200px" }}
+                                            />
+                                            <h6 className="mt-2"> Juego de Llave Torx Profesional T10</h6>
+                                            <p>Ideal para fijaciones con tornillos de seguridad Torx.</p>
+                                            <a
+                                                href="https://amzn.to/44nC6Vq"
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="btn btn-sm btn-warning mt-2"
+                                            >
+                                                Ver en Amazon
+                                            </a>
+                                        </div>
+
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
                         {/* Acordeón 1 */}
                         <div className="accordion-item">
                             <input type="checkbox" id="accordion-1" />
@@ -765,6 +846,7 @@ export const ProductDetail = () => {
                                 <p>Te recomendamos que, si tiene dudas, <Link to="https://www.metalwolft.com/contact" className="link-categories">contáctenos</Link> para que podamos asesorarle y ofrecerle toda la información necesaria.</p>
                             </div>
                         </div>
+
                     </div>
                     <RelatedProductsCarousel
                         categorySlug={category_slug}
