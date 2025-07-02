@@ -74,6 +74,13 @@ export const RejasParaVentanas = ({ onSelectCategory, onSelectSubcategory, categ
     }, []);
 
 
+    useEffect(() => {
+        if (typeof window.gtag === "function") {
+            window.gtag("event", "conversion_event_page_view");
+        }
+    }, []);
+
+
     const handleCategorySelect = (categoryId) => {
         setSelectedCategoryId(categoryId);
         setSelectedSubcategoryId(null);
