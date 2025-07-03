@@ -29,7 +29,7 @@ export const Cart = () => {
     const subtotal = store.cart.reduce((acc, product) => acc + parseFloat(product.precio_total), 0);
 
     // Configuración de envío
-    const shippingThreshold = 350;
+    const shippingThreshold = 150;
     const shippingRatePerKg = 1.70; // €/kg
     const weightPerProduct = 10; // kg por reja
     const shippingCost = subtotal >= shippingThreshold ? 0 : store.cart.length * (weightPerProduct * shippingRatePerKg);

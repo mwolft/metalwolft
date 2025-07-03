@@ -1,4 +1,4 @@
-from flask import request, jsonify, Blueprint, send_file, send_from_directory, current_app, redirect, abort
+from flask import request, jsonify, Blueprint, send_file, send_from_directory, current_app, redirect, abort, Response
 from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity
 from api.models import db, Users, Products, ProductImages, Categories, Subcategories, Orders, OrderDetails, Favorites, Cart, Posts, Comments, Invoices
 from api.utils import send_email
@@ -29,7 +29,6 @@ api = Blueprint('api', __name__)
 load_dotenv()
 
 
-from flask import redirect, abort
 
 redirect_map = {
     "/rejas/rejas-para-ventanas-pittsburgh": "/rejas-para-ventanas",
@@ -57,7 +56,16 @@ gone_list = [
     "/rejas-para-ventanas.php",
     "/blog/blog-metal-wolft.php",
     "/",
+    "/vallados-metalicos",
+    "/puertas-correderas/puerta-corredera-adelaida",
+    "/puertas-correderas/puerta-corredera-canberra",
+    "/rejas/rejas-para-ventanas-delhi",
+    "/rejas/rejas-para-ventanas-lancaster",
+    "/puertas-peatonales",
+    "/preguntas-frecuentes",
+    "/vallados-metalicos/vallado-metalico-geelong",
 ]
+
 
 @api.before_request
 def handle_legacy_urls():
@@ -842,7 +850,7 @@ def handle_orders():
                 subtotal += float(detail['precio_total'])
 
             # Configuración de envío:
-            shippingThreshold = 350  # Envío gratuito a partir de 350€
+            shippingThreshold = 150  # Envío gratuito a partir de 150€
             weightPerProduct = 10     # 10 kg por reja (valor estimado)
             shippingRatePerKg = 1.70  # €/kg
             if subtotal >= shippingThreshold:

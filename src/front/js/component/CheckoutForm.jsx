@@ -32,7 +32,7 @@ const CheckoutForm = () => {
     // Calcular el total de los productos en el carrito
     const total = store.cart.reduce((acc, product) => acc + parseFloat(product.precio_total), 0);
     // Configuración de envío:
-    const shippingThreshold = 350;
+    const shippingThreshold = 150;
     const shippingRatePerKg = 1.70; // €/kg
     const weightPerProduct = 10; // kg por reja
     const shippingCost = total >= shippingThreshold ? 0 : store.cart.length * (weightPerProduct * shippingRatePerKg);

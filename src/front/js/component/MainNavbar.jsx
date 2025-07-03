@@ -1,5 +1,5 @@
 import React, { useContext, useState } from "react";
-{/* import logoweb from "../../img/logo.png"; */}
+{/* import logoweb from "../../img/logo.png"; */ }
 import Container from 'react-bootstrap/Container';
 import Nav from 'react-bootstrap/Nav';
 import Navbar from 'react-bootstrap/Navbar';
@@ -34,19 +34,19 @@ export const MainNavbar = () => {
     return (
         <>
             <div className="top-banner text-center py-2">
-                <i className="fa-solid fa-truck-fast"></i> Envíos gratuítos a partir de 350€
+                ⏰ Envío gratis a partir de 150€ solo hasta el 20 de julio 🎉
             </div>
             <Navbar expand="lg" className="estilo-navbar fixed-top text-uppercase" data-bs-theme="light" expanded={expanded}>
                 <Container fluid>
                     <Navbar.Brand as={Link} to="/" onClick={handleSelect}>
-                    {/* <img src={logoweb} alt="Logo" className="d-inline-block align-top" />*/}
+                        {/* <img src={logoweb} alt="Logo" className="d-inline-block align-top" />*/}
                         <img
                             src="https://res.cloudinary.com/dewanllxn/image/upload/v1750127736/logo-metal-wolft_zlbzng.avif"
                             alt="rejas para ventanas logo"
                             className="navbar-logo"
-                            width="182" 
-                            height="47" 
-                            loading="eager" 
+                            width="182"
+                            height="47"
+                            loading="eager"
                         />
                     </Navbar.Brand>
                     <div className="d-flex align-items-center justify-content-center">
