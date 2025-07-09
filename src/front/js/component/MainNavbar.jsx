@@ -34,7 +34,16 @@ export const MainNavbar = () => {
     return (
         <>
             <div className="top-banner text-center py-2">
-                ⏰ Envío gratis a partir de 150€ solo hasta el 20 de julio 🎉
+                🚚 Envío gratis a partir de 150€{' '}
+                <span
+                    style={{ cursor: 'pointer' }}
+                    onClick={() =>
+                        alert(`No se aplica a productos que superen las dimensiones máximas estándar.\n\nSe consideran grandes si la suma de largo + ancho + alto excede los 300 cm.\n\nEstos productos tienen tarifa especial de envío.`)
+                    }
+                >
+                    *
+                </span>{' '}
+                🎉
             </div>
             <Navbar expand="lg" className="estilo-navbar fixed-top text-uppercase" data-bs-theme="light" expanded={expanded}>
                 <Container fluid>

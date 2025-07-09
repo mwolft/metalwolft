@@ -5,6 +5,24 @@ import { Notification } from "../component/Notification.jsx";
 import "../../styles/cart.css";
 import "../../styles/favorites.css";
 import { Link, useNavigate } from "react-router-dom";
+import { calcularEnvio } from "../../utils/shippingCalculator.js";
+
+// Función auxiliar para determinar tipo de envío según SEUR
+const getShippingType = (product) => {
+    const alto = parseFloat(product.alto);
+    const ancho = parseFloat(product.ancho);
+    const profundidad = 4; // cm
+    const peso = 10; // kg estimado
+    const sumaDimensiones = alto + ancho + profundidad;
+
+    if (peso > 60 || sumaDimensiones > 500) {
+        return { tipo: 'B', coste: 99, motivo: 'Excede dimensiones máximas permitidas (500 cm)' };
+    }
+    if (peso > 40 || alto > 175 || sumaDimensiones > 300) {
+        return { tipo: 'A', coste: 49, motivo: 'Excede altura o volumen permitido (300 cm)' };
+    }
+    return { tipo: 'normal', coste: null, motivo: null };
+};
 
 export const Cart = () => {
     const { store, actions } = useContext(Context);
@@ -25,15 +43,7 @@ export const Cart = () => {
         setNotification("Producto eliminado del carrito");
     };
 
-    // Calcular el subtotal de todos los productos
-    const subtotal = store.cart.reduce((acc, product) => acc + parseFloat(product.precio_total), 0);
-
-    // Configuración de envío
-    const shippingThreshold = 150;
-    const shippingRatePerKg = 1.70; // €/kg
-    const weightPerProduct = 10; // kg por reja
-    const shippingCost = subtotal >= shippingThreshold ? 0 : store.cart.length * (weightPerProduct * shippingRatePerKg);
-    const finalTotal = subtotal + shippingCost;
+    const { totalShipping: shippingCost, subtotal, finalTotal } = calcularEnvio(store.cart);
 
     const handleCheckout = () => {
         navigate("/checkout-form");
@@ -41,14 +51,12 @@ export const Cart = () => {
 
     const lastCategorySlug = store.cart.length > 0 ? store.cart[store.cart.length - 1].category_slug : null;
 
-
     return (
         <Container style={{ marginTop: "95px" }}>
             <h2 className="h2-categories text-center my-2">Carrito de compra</h2>
             {store.cart.length === 0 ? (
                 <p className="text-center" style={{ marginTop: "100px", marginBottom: "300px" }}>
-                    No tiene productos en su carrito aún. <br />
-                    <br />
+                    No tiene productos en su carrito aún. <br /><br />
                     <Link to="/" className="link-categories">
                         <i className="fa-solid fa-arrow-left"></i> Volver
                     </Link>
@@ -70,65 +78,79 @@ export const Cart = () => {
                                 </tr>
                             </thead>
                             <tbody>
-                                {store.cart.map((product, index) => (
-                                    <tr key={index} className="cart-line-item">
-                                        <td className="table-shopping-cart-img">
-                                            {/* --- CAMBIO 1: Envolver la imagen en un Link --- */}
-                                            <Link to={`/${product.category_slug}/${product.slug}`}>
-                                                <img
-                                                    src={product.imagen}
-                                                    alt={product.nombre}
-                                                    // Añade estilos si es necesario para el tamaño dentro del enlace
-                                                    style={{ maxWidth: '80px', height: 'auto', display: 'block' }}
-                                                />
-                                            </Link>
-                                        </td>
-                                        <td>
-                                            {/* --- CAMBIO 2: Envolver el nombre del producto en un Link --- */}
-                                            <Link to={`/${product.category_slug}/${product.slug}`} style={{ textDecoration: 'none', color: 'inherit' }}>
+                                {store.cart.map((product, index) => {
+                                    const shippingInfo = getShippingType(product);
+                                    return (
+                                        <tr key={index} className="cart-line-item">
+                                            <td className="table-shopping-cart-img">
+                                                <Link to={`/${product.category_slug}/${product.slug}`}>
+                                                    <img
+                                                        src={product.imagen}
+                                                        alt={product.nombre}
+                                                        style={{ maxWidth: '80px', height: 'auto', display: 'block' }}
+                                                    />
+                                                </Link>
+                                            </td>
+                                            <td>
+                                            <Link
+                                                to={`/${product.category_slug}/${product.slug}`}
+                                                style={{ textDecoration: 'none', color: 'inherit' }}
+                                            >
                                                 {product.nombre}
                                             </Link>
-                                        </td>
-                                        <td>{product.alto}</td>
-                                        <td>{product.ancho}</td>
-                                        <td>{product.anclaje}</td>
-                                        <td>{product.color}</td>
-                                        <td>{product.precio_total} €</td>
-                                        <td className="cart_remove">
-                                            <Button
-                                                className="btn-style-background-color"
-                                                onClick={() => handleRemoveFromCart(product)}
-                                            >
-                                                Eliminar
-                                            </Button>
-                                        </td>
-                                    </tr>
-                                ))}
+
+                                            {shippingInfo.tipo !== 'normal' && (
+                                                <>
+                                                {/* Pantallas grandes: mostrar texto completo */}
+                                                <p className="d-none d-md-block text-warning mt-1" style={{ fontSize: '0.85rem' }}>
+                                                    🚚 Este producto requiere envío especial ({shippingInfo.coste} €)<br />
+                                                    Supera el tamaño máximo estándar permitido para envío normal.<br />
+                                                    (más de 300 cm entre largo, ancho y alto).
+                                                </p>
+
+                                                {/* Pantallas pequeñas: solo icono ℹ️ con alert al hacer clic */}
+                                                <span
+                                                    className="d-inline d-md-none text-warning mt-1"
+                                                    style={{ fontSize: '1rem', cursor: 'pointer' }}
+                                                    onClick={() =>
+                                                    alert(`🚚 Este producto requiere envío especial (${shippingInfo.coste} €).\n\nSupera el tamaño máximo estándar permitido para envío normal (más de 300 cm entre largo, ancho y alto).`)
+                                                    }
+                                                >
+                                                    ⚠️
+                                                </span>
+                                                </>
+                                            )}
+                                            </td>
+                                            <td>{product.alto}</td>
+                                            <td>{product.ancho}</td>
+                                            <td>{product.anclaje}</td>
+                                            <td>{product.color}</td>
+                                            <td>{product.precio_total} €</td>
+                                            <td className="cart_remove">
+                                                <Button
+                                                    className="btn-style-background-color"
+                                                    onClick={() => handleRemoveFromCart(product)}
+                                                >
+                                                    Eliminar
+                                                </Button>
+                                            </td>
+                                        </tr>
+                                    );
+                                })}
                             </tbody>
                         </Table>
+
                         <Row className="mt-3 mb-5 mx-3">
                             <Col className="text-end">
                                 <p style={{ fontSize: "16px", marginBottom: "0px" }}>
                                     {subtotal.toFixed(2)} € (IVA incl.)
                                 </p>
-                                {subtotal >= shippingThreshold ? (
-                                    <p
-                                        className="text-success"
-                                        style={{
-                                            fontSize: "16px",
-                                            marginBottom: "0px"
-                                        }}
-                                    >
+                                {shippingCost === 0 ? (
+                                    <p className="text-success" style={{ fontSize: "16px", marginBottom: "0px" }}>
                                         Envío: GRATIS ✔️
                                     </p>
                                 ) : (
-                                    <p
-                                        className="text-danger"
-                                        style={{
-                                            fontSize: "16px",
-                                            marginBottom: "0px"
-                                        }}
-                                    >
+                                    <p className="text-danger" style={{ fontSize: "16px", marginBottom: "0px" }}>
                                         Envío: {shippingCost.toFixed(2)} €
                                     </p>
                                 )}

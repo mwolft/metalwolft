@@ -326,6 +326,8 @@ class OrderDetails(db.Model):
     billing_address = db.Column(db.String(200), nullable=True)
     billing_city = db.Column(db.String(100), nullable=True)
     billing_postal_code = db.Column(db.String(20), nullable=True)
+    shipping_type = db.Column(db.String(10), nullable=True)
+    shipping_cost = db.Column(db.Float, nullable=True)
     CIF = db.Column(db.String(20), nullable=True)
     product = db.relationship('Products', backref='order_details', lazy=True)  
     def __repr__(self):
@@ -349,7 +351,9 @@ class OrderDetails(db.Model):
             "billing_address": self.billing_address,
             "billing_city": self.billing_city,
             "billing_postal_code": self.billing_postal_code,
-            "CIF": self.CIF
+            "CIF": self.CIF,
+            "shipping_type": self.shipping_type,
+            "shipping_cost": self.shipping_cost
         }
 
 

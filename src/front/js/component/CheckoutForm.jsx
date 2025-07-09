@@ -4,6 +4,8 @@ import { Elements, CardElement, useStripe, useElements } from '@stripe/react-str
 import { Context } from "../store/appContext";
 import { Button, Container, Row, Col, Form, Accordion } from "react-bootstrap";
 import { useNavigate } from "react-router-dom";
+import { calcularEnvio } from "../../utils/shippingCalculator";
+
 
 const stripePromise = loadStripe('pk_live_51I1FgUDyMBNofWjFzagO0jTrkfQBvlt5Pshx3hLJbDLCxahT7Cn5NF9oozvey5iiH6lZhP82p3TFFmrdHGh3CQW700GiDX1dtz');
 
@@ -28,15 +30,25 @@ const CheckoutForm = () => {
         CIF: ""
     });
     const navigate = useNavigate();
-    
-    // Calcular el total de los productos en el carrito
-    const total = store.cart.reduce((acc, product) => acc + parseFloat(product.precio_total), 0);
-    // Configuración de envío:
-    const shippingThreshold = 150;
-    const shippingRatePerKg = 1.70; // €/kg
-    const weightPerProduct = 10; // kg por reja
-    const shippingCost = total >= shippingThreshold ? 0 : store.cart.length * (weightPerProduct * shippingRatePerKg);
-    const finalTotal = total + shippingCost;
+
+    const { products, totalShipping: shippingCost, subtotal: total, finalTotal } = calcularEnvio(store.cart);
+
+    const calcularTipoEnvio = (producto) => {
+        const area = (producto.alto * producto.ancho) / 10000;
+        if (Math.max(producto.alto, producto.ancho) > 220) return "B";
+        if (area > 1) return "A";
+        return "normal";
+    };
+
+
+    const obtenerTarifaPorTipo = (tipo) => {
+        switch (tipo) {
+            case "normal": return 10;
+            case "A": return 20;
+            case "B": return 30;
+            default: return 10;
+        }
+    };
 
     // Manejar cambios en los campos del formulario
     const handleInputChange = (e) => {
@@ -136,7 +148,7 @@ const CheckoutForm = () => {
                     payment_method_id: paymentMethod.id,
                     payment_intent_id: store.paymentIntentId,
                     idempotency_key: idempotencyKey
-                }),                
+                }),
             });
 
             if (!response.ok) {
@@ -275,15 +287,24 @@ const CheckoutForm = () => {
                 <Col md={4} className="order-md-2 mb-4">
                     <ul className="list-group mb-3">
                         <h6>Resumen:</h6>
-                        {store.cart.map((product, index) => (
+                        {products.map((product, index) => (
                             <li key={index} className="list-group-item d-flex justify-content-between lh-condensed">
                                 <div className="d-flex align-items-start">
                                     <div>
                                         <img src={product.imagen} alt={product.nombre} className="img-thumbnail me-3" style={{ width: "80px", height: "80px" }} />
-                                        <h6 className="my-0">{product.nombre}</h6>
+                                        <h6 className="my-2">
+                                            {product.nombre}
+                                        </h6>
                                         <small className="text-muted d-block mt-1 mx-1">Alto: {product.alto}cm | Ancho: {product.ancho}cm</small>
                                         <small className="text-muted d-block mx-1">Anclaje: {product.anclaje}</small>
                                         <small className="text-muted d-block mx-1">Color: {product.color}</small>
+                                        {product.shipping_type !== 'normal' && (
+                                            <>
+                                                <small className="text-danger d-block mx-1">
+                                                    🚚 Este producto requiere envío especial ({product.shipping_cost.toFixed(2)} €)
+                                                </small>
+                                            </>
+                                        )}
                                     </div>
                                 </div>
                                 <span className="text-muted">{product.precio_total} €</span>
@@ -291,11 +312,7 @@ const CheckoutForm = () => {
                         ))}
                         <li className="list-group-item d-flex justify-content-between">
                             <span>Envío: </span>
-                            {total >= shippingThreshold ? (
-                                <strong>GRATIS</strong>
-                            ) : (
-                                <strong>{shippingCost.toFixed(2)} €</strong>
-                            )}
+                            <strong>{shippingCost === 0 ? "GRATIS" : `${shippingCost.toFixed(2)} €`}</strong>
                         </li>
                         <li className="list-group-item d-flex justify-content-between">
                             <span>Total (EUR)</span>

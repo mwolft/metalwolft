@@ -956,18 +956,29 @@ def handle_orders():
                     totals_y_position = 750
 
                 # Totales
-                total = new_order.total_amount  
-                base_productos = subtotal / 1.21
-                base_envio = shipping_cost / 1.21
-                base_total = base_productos + base_envio
+                total = new_order.total_amount
+                base_total = total / 1.21
                 iva_calculado = total - base_total
+                base_productos = subtotal / 1.21
+                base_envio = base_total - base_productos
 
                 pdf.setFont("Helvetica", 10)
-                pdf.drawString(50, totals_y_position, f"Base Imponible: {base_productos:.2f} €")
-                pdf.drawString(50, totals_y_position - 15, f"Envío: {base_envio:.2f} €")
+                pdf.drawString(50, totals_y_position, f"Base Imponible: {base_total:.2f} €")
+                pdf.drawString(50, totals_y_position - 15, f"Envío (base): {base_envio:.2f} €")
                 pdf.drawString(50, totals_y_position - 30, f"IVA (21%): {iva_calculado:.2f} €")
+
+                # Indicar tipo de envío si aplica
+                if shipping_cost == 49:
+                    pdf.drawString(50, totals_y_position - 45, "Tipo de envío aplicado: Tarifa A – 49 €")
+                elif shipping_cost == 99:
+                    pdf.drawString(50, totals_y_position - 45, "Tipo de envío aplicado: Tarifa B – 99 €")
+                elif shipping_cost == 17:
+                    pdf.drawString(50, totals_y_position - 45, "Tipo de envío estándar – 17 €")
+                elif shipping_cost == 0:
+                    pdf.drawString(50, totals_y_position - 45, "Envío gratuito")
+
                 pdf.setFont("Helvetica-Bold", 12)
-                pdf.drawString(50, totals_y_position - 50, f"Total: {total:.2f} €")
+                pdf.drawString(50, totals_y_position - 65, f"Total: {total:.2f} €")
 
                 # Guardar el PDF
                 pdf.save()
@@ -1086,7 +1097,9 @@ def add_order_details():
                 billing_address=detail.get('billing_address'),
                 billing_city=detail.get('billing_city'),
                 billing_postal_code=detail.get('billing_postal_code'),
-                CIF=detail.get('CIF')
+                CIF=detail.get('CIF'),
+                shipping_type=detail.get('shipping_type'),
+                shipping_cost=detail.get('shipping_cost')
             )
             db.session.add(new_detail)
             added_details.append(new_detail)

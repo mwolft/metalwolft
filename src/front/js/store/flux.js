@@ -1,31 +1,34 @@
+import { calcularEnvio } from '../../utils/shippingCalculator';
+
+
 const getState = ({ getStore, getActions, setStore }) => {
     return {
         store: {
             message: null,
             currentUser: null,
             isLoged: false,
-            isAdmin: false,  
+            isAdmin: false,
             alert: { visible: false, back: 'danger', text: 'Mensaje del back' },
             error: null,
             loading: false,
-            products: [],  
+            products: [],
             favorites: [],
             favoritesLoaded: false,
-            orders: [],  
+            orders: [],
             orderDetails: [],
             cart: [],
             paymentIntentId: null,
             idempotencyKey: null,
             paymentCompleted: false,
-            posts: [],  
+            posts: [],
             postsLoaded: false,
             recentPosts: [],
             subcategories: [],
             categories: [],
             otherCategories: [],
-            currentPost: null,  
+            currentPost: null,
             currentComments: [],
-            commentsLoaded: false  
+            commentsLoaded: false
         },
         actions: {
             loadPosts: async () => {
@@ -36,16 +39,16 @@ const getState = ({ getStore, getActions, setStore }) => {
                             'Content-Type': 'application/json'
                         }
                     });
-            
+
                     if (!response.ok) throw new Error("Error loading posts");
-            
+
                     const data = await response.json();
                     setStore({ posts: data, postsLoaded: true });
                 } catch (error) {
                     console.error("Error fetching posts:", error);
                     setStore({ error: error.message });
                 }
-            },            
+            },
             addPost: async (postData) => {
                 const token = localStorage.getItem("token");
                 try {
@@ -57,17 +60,17 @@ const getState = ({ getStore, getActions, setStore }) => {
                         },
                         body: JSON.stringify(postData)
                     });
-            
+
                     if (!response.ok) throw new Error("Error adding post");
-            
+
                     const newPost = await response.json();
                     const store = getStore();
-                    setStore({ posts: [...store.posts, newPost] }); 
+                    setStore({ posts: [...store.posts, newPost] });
                 } catch (error) {
                     console.error("Error adding post:", error);
                     setStore({ error: error.message });
                 }
-            },   
+            },
             fetchPost: async (postId) => {
                 try {
                     const response = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/posts/${postId}`, {
@@ -76,9 +79,9 @@ const getState = ({ getStore, getActions, setStore }) => {
                             'Content-Type': 'application/json'
                         }
                     });
-            
+
                     if (!response.ok) throw new Error("Error fetching post");
-            
+
                     const postData = await response.json();
                     setStore({ currentPost: postData });
                     getActions().fetchComments(postData.id);
@@ -86,7 +89,7 @@ const getState = ({ getStore, getActions, setStore }) => {
                     console.error("Error fetching post:", error);
                     setStore({ error: error.message });
                 }
-            },  
+            },
             getRecentPosts: async () => {
                 try {
                     const response = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/posts?limit=5`, {
@@ -103,7 +106,7 @@ const getState = ({ getStore, getActions, setStore }) => {
                     console.error("Error fetching recent posts:", error);
                     return [];
                 }
-            },   
+            },
             getOtherCategories: async (currentCategoryId) => {
                 try {
                     const response = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/categories`, {
@@ -124,8 +127,8 @@ const getState = ({ getStore, getActions, setStore }) => {
                 }
             },
             navigateToCategory: (categoryId) => {
-                window.location.href = `/category/${categoryId}`; 
-            },      
+                window.location.href = `/category/${categoryId}`;
+            },
             fetchComments: async (postId) => {
                 try {
                     const response = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/posts/${postId}/comments`, {
@@ -134,33 +137,33 @@ const getState = ({ getStore, getActions, setStore }) => {
                             'Content-Type': 'application/json'
                         }
                     });
-            
+
                     if (!response.ok) {
                         const errorText = await response.text();
                         console.error(`Error fetching comments: ${response.status} - ${errorText}`);
                         throw new Error(`Error ${response.status}: ${response.statusText}`);
                     }
-            
+
                     const commentsData = await response.json();
-                    setStore({ 
+                    setStore({
                         currentComments: commentsData,
-                        commentsLoaded: true 
+                        commentsLoaded: true
                     });
                 } catch (error) {
                     console.error("Error fetching comments:", error);
-                    setStore({ 
+                    setStore({
                         error: error.message,
-                        commentsLoaded: false 
+                        commentsLoaded: false
                     });
                 }
-            },                                                   
+            },
             addComment: async (postId, commentContent) => {
                 const token = localStorage.getItem("jwt");
                 if (!token) {
                     console.error("No JWT token found");
                     return;
                 }
-            
+
                 try {
                     const response = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/posts/${postId}/comments`, {
                         method: 'POST',
@@ -170,13 +173,13 @@ const getState = ({ getStore, getActions, setStore }) => {
                         },
                         body: JSON.stringify({ content: commentContent })
                     });
-            
+
                     if (!response.ok) {
                         const errorText = await response.text();
                         console.error(`Error posting comment: ${response.status} - ${errorText}`);
                         throw new Error(`Error ${response.status}: ${response.statusText}`);
                     }
-            
+
                     const newComment = await response.json();
                     const store = getStore();
                     setStore({ currentComments: [...store.currentComments, newComment] });
@@ -192,9 +195,9 @@ const getState = ({ getStore, getActions, setStore }) => {
                 });
                 getActions().loadFavorites();
                 getActions().loadCart();
-            },                                        
+            },
             updateUserProfile: async (userId, updatedData) => {
-                const store = getStore(); 
+                const store = getStore();
                 try {
                     const response = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/users/${userId}`, {
                         method: 'PUT',
@@ -218,12 +221,12 @@ const getState = ({ getStore, getActions, setStore }) => {
                 if (isLogin) {
                     setStore({ isLoged: true });
                 } else {
-                    setStore({ isLoged: false, isAdmin: false, favorites: [] }); 
-                    getActions().clearCart(); 
+                    setStore({ isLoged: false, isAdmin: false, favorites: [] });
+                    getActions().clearCart();
                     localStorage.removeItem("token");
                     localStorage.removeItem("user");
                 }
-            },                
+            },
             setIsAdmin: (isAdmin) => {
                 setStore({ isAdmin });
             },
@@ -239,25 +242,25 @@ const getState = ({ getStore, getActions, setStore }) => {
                         }
                     });
                     if (!response.ok) throw new Error("Error fetching categories");
-            
+
                     const data = await response.json();
                     setStore({ categories: data });
                 } catch (error) {
                     console.error("Error fetching categories:", error);
                     setStore({ error: error.message, categories: [] });
                 }
-            },                                    
+            },
             fetchProducts: async (categoryId = null, subcategoryId = null) => {
                 let url = `${process.env.REACT_APP_BACKEND_URL}/api/products`;
-            
+
                 const queryParams = new URLSearchParams();
                 if (categoryId) queryParams.append('category_id', categoryId);
                 if (subcategoryId) queryParams.append('subcategory_id', subcategoryId);
-            
+
                 if (queryParams.toString()) {
                     url += `?${queryParams.toString()}`;
                 }
-            
+
                 try {
                     const response = await fetch(url, {
                         method: 'GET',
@@ -265,19 +268,19 @@ const getState = ({ getStore, getActions, setStore }) => {
                             'Content-Type': 'application/json'
                         }
                     });
-            
+
                     if (!response.ok) throw new Error("Error fetching products");
-            
+
                     const data = await response.json();
                     setStore({ products: data });
                 } catch (error) {
                     console.error("Error fetching products:", error);
                     setStore({ error: error.message, products: [] });
                 }
-            },                                    
+            },
             loadCart: async () => {
                 const store = getStore();
-                if (!store.isLoged) return; 
+                if (!store.isLoged) return;
                 try {
                     const response = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/cart`, {
                         method: 'GET',
@@ -291,12 +294,12 @@ const getState = ({ getStore, getActions, setStore }) => {
                         console.error("Error al cargar el carrito:", errorText);
                         throw new Error(`Error al cargar el carrito: ${errorText}`);
                     }
-                    const data = await response.json();  
-                    setStore({ cart: data });  
+                    const data = await response.json();
+                    setStore({ cart: data });
                 } catch (error) {
                     console.error("Error al cargar el carrito:", error);
                 }
-            },                                 
+            },
             addToCart: async (product) => {
                 const store = getStore();
                 if (!store.isLoged) {
@@ -324,12 +327,12 @@ const getState = ({ getStore, getActions, setStore }) => {
                         alert(data.message || "Error al añadir al carrito");
                         return;
                     }
-                    const newProduct = await response.json();  
+                    const newProduct = await response.json();
                     setStore({ cart: [...store.cart, newProduct] });
                 } catch (error) {
                     console.error("Error al añadir al carrito:", error);
                 }
-            },                    
+            },
             removeFromCart: async (product) => {
                 const store = getStore();
                 if (!store.isLoged) {
@@ -368,7 +371,7 @@ const getState = ({ getStore, getActions, setStore }) => {
                 } catch (error) {
                     console.error("Error al eliminar del carrito:", error);
                 }
-            },  
+            },
             clearCart: async () => {
                 const store = getStore();
                 if (!store.isLoged) return;
@@ -390,7 +393,7 @@ const getState = ({ getStore, getActions, setStore }) => {
                 } catch (error) {
                     console.error("Error al vaciar el carrito:", error);
                 }
-            },                                                              
+            },
             fetchOrders: async () => {
                 try {
                     const response = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/orders`, {
@@ -400,11 +403,11 @@ const getState = ({ getStore, getActions, setStore }) => {
                             Authorization: `Bearer ${localStorage.getItem("token")}`
                         }
                     });
-            
+
                     if (!response.ok) throw new Error("Error al obtener las órdenes");
-            
+
                     const data = await response.json();
-            
+
                     setStore({ orders: data });
                     return { ok: true };
                 } catch (error) {
@@ -412,7 +415,7 @@ const getState = ({ getStore, getActions, setStore }) => {
                     console.error("Error al obtener las órdenes:", error.message);
                     return { ok: false };
                 }
-            },  
+            },
             saveOrder: async (orderData) => {
                 const store = getStore();
                 console.log("Payload orderData enviado:", orderData);
@@ -425,15 +428,15 @@ const getState = ({ getStore, getActions, setStore }) => {
                         },
                         body: JSON.stringify(orderData)
                     });
-            
+
                     if (!response.ok) {
                         const errorData = await response.json();
                         console.error("Error al guardar el pedido:", errorData.message);
                         return { ok: false, error: errorData.message };
                     }
-            
+
                     const data = await response.json();
-            
+
                     // Actualizar el store con la nueva orden
                     setStore({ orders: [...store.orders, data.data] });
                     return { ok: true, order: data.data };
@@ -441,7 +444,7 @@ const getState = ({ getStore, getActions, setStore }) => {
                     console.error("Error al guardar el pedido:", error.message);
                     return { ok: false, error: error.message };
                 }
-            },                       
+            },
             fetchOrderDetails: async () => {
                 try {
                     const response = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/orderdetails`, {
@@ -451,11 +454,11 @@ const getState = ({ getStore, getActions, setStore }) => {
                             Authorization: `Bearer ${localStorage.getItem("token")}`
                         }
                     });
-            
+
                     if (!response.ok) throw new Error("Error al obtener los detalles de las órdenes");
-            
+
                     const data = await response.json();
-            
+
                     setStore({ orderDetails: data });
                     return { ok: true };
                 } catch (error) {
@@ -466,7 +469,9 @@ const getState = ({ getStore, getActions, setStore }) => {
             },
             saveOrderDetails: async (orderId, formData) => {
                 const store = getStore();
-                const orderDetailsData = store.cart.map(product => ({
+                const { products: enrichedCart } = calcularEnvio(store.cart);  
+
+                const orderDetailsData = enrichedCart.map(product => ({
                     order_id: orderId,
                     product_id: product.producto_id,
                     quantity: 1,
@@ -475,6 +480,8 @@ const getState = ({ getStore, getActions, setStore }) => {
                     anclaje: product.anclaje,
                     color: product.color,
                     precio_total: product.precio_total,
+                    shipping_type: product.shipping_type,    
+                    shipping_cost: product.shipping_cost,    
                     firstname: formData.firstname,
                     lastname: formData.lastname,
                     shipping_address: formData.shipping_address,
@@ -485,6 +492,7 @@ const getState = ({ getStore, getActions, setStore }) => {
                     billing_postal_code: formData.billing_postal_code,
                     CIF: formData.CIF
                 }));
+
                 try {
                     const response = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/orderdetails`, {
                         method: 'POST',
@@ -494,11 +502,13 @@ const getState = ({ getStore, getActions, setStore }) => {
                         },
                         body: JSON.stringify(orderDetailsData)
                     });
+
                     if (!response.ok) {
                         const errorData = await response.json();
                         console.error("Error al guardar los detalles del pedido:", errorData.message);
                         return { ok: false };
                     }
+
                     const data = await response.json();
                     setStore({ orderDetails: [...store.orderDetails, ...data] });
                     return { ok: true };
@@ -506,10 +516,10 @@ const getState = ({ getStore, getActions, setStore }) => {
                     console.error("Error al guardar los detalles del pedido:", error);
                     return { ok: false };
                 }
-            },                              
+            },
             handlePaymentSuccess: async () => {
-                const store = getStore(); 
-                const actions = getActions(); 
+                const store = getStore();
+                const actions = getActions();
                 const { ok, order } = await actions.saveOrder();
                 if (!ok) {
                     console.error("Error al guardar la orden.");
@@ -521,10 +531,10 @@ const getState = ({ getStore, getActions, setStore }) => {
                     return;
                 }
                 actions.clearCart();
-            },                                                    
+            },
             loadFavorites: async () => {
                 const store = getStore();
-                if (!store.isLoged) return; 
+                if (!store.isLoged) return;
 
                 try {
                     const response = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/favorites`, {
@@ -609,7 +619,7 @@ const getState = ({ getStore, getActions, setStore }) => {
             },
             setIdempotencyKey: (idempotencyKey) => {
                 setStore({ idempotencyKey });
-            }                                   
+            }
         }
     };
 };

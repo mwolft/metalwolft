@@ -115,9 +115,9 @@ export const ProductDetail = () => {
             setCalcError('Debe ingresar dimensiones válidas');
             return;
         }
-        if (h < 30 || w < 30 || h > 220 || w > 220 || h + w > 400) {
+        if (h < 30 || w < 30 || h > 250 || w > 250 || h + w > 400) {
             setCalcError(
-                'Dimensiones fuera de rango (30–220 cm, suma ≤ 400 cm)'
+                'Dimensiones fuera de rango (30–250 cm, suma ≤ 400 cm)'
             );
             return;
         }
