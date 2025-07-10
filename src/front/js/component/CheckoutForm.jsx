@@ -175,14 +175,16 @@ const CheckoutForm = () => {
                 console.log("El PaymentIntent ya se encuentra confirmado en el backend.");
                 const orderData = {
                     total_amount: finalTotal,
-                    products: store.cart.map(product => ({
+                    products: products.map(product => ({
                         producto_id: product.producto_id,
                         quantity: product.quantity || 1,
                         alto: product.alto,
                         ancho: product.ancho,
                         anclaje: product.anclaje,
                         color: product.color,
-                        precio_total: product.precio_total
+                        precio_total: product.precio_total,
+                        shipping_type: product.shipping_type,
+                        shipping_cost: product.shipping_cost
                     })),
                     ...formData
                 };
@@ -213,14 +215,16 @@ const CheckoutForm = () => {
                 console.log("El pago fue confirmado exitosamente.");
                 const orderData = {
                     total_amount: finalTotal,
-                    products: store.cart.map(product => ({
+                    products: products.map(product => ({
                         producto_id: product.producto_id,
                         quantity: product.quantity || 1,
                         alto: product.alto,
                         ancho: product.ancho,
                         anclaje: product.anclaje,
                         color: product.color,
-                        precio_total: product.precio_total
+                        precio_total: product.precio_total,
+                        shipping_type: product.shipping_type, 
+                        shipping_cost: product.shipping_cost   
                     })),
                     ...formData
                 };

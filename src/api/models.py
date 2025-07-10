@@ -235,7 +235,8 @@ class Orders(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     order_date = db.Column(db.DateTime, default=db.func.current_timestamp())
     total_amount = db.Column(db.Float, nullable=False)
-    invoice_number = db.Column(db.String(50), nullable=True, unique=True)  # Permitir valores nulos
+    shipping_cost = db.Column(db.Float, nullable=True, default=0.0)
+    invoice_number = db.Column(db.String(50), nullable=True, unique=True)  
     locator = db.Column(db.String(10), nullable=False, unique=True)
 
     user = db.relationship('Users', backref='orders', lazy=True)

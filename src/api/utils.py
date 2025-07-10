@@ -52,3 +52,37 @@ def send_email(subject, recipients, body, attachment_path=None):
         current_app.logger.error(f"Error al enviar el correo: {e}")
         return False
 
+
+def calcular_precio_reja(alto_cm, ancho_cm, precio_m2):
+    if not all([alto_cm, ancho_cm, precio_m2]):
+        raise ValueError("Faltan datos para calcular el precio")
+
+    alto = float(alto_cm)
+    ancho = float(ancho_cm)
+    area = (alto * ancho) / 10000  # cm² → m²
+
+    if alto < 30 or ancho < 30 or alto > 250 or ancho > 250 or alto + ancho > 400:
+        raise ValueError("Dimensiones fuera de rango permitido")
+
+    base_price = 80
+    if area >= 0.9:
+        multiplier = 1
+    elif area >= 0.8:
+        multiplier = 1.1
+    elif area >= 0.7:
+        multiplier = 1.15
+    elif area >= 0.6:
+        multiplier = 1.2
+    elif area >= 0.5:
+        multiplier = 1.3
+    elif area >= 0.4:
+        multiplier = 1.55
+    elif area >= 0.3:
+        multiplier = 1.9
+    elif area >= 0.2:
+        multiplier = 2.5
+    else:
+        multiplier = 3.0
+
+    precio = area * precio_m2 * multiplier
+    return round(max(precio, base_price), 2)

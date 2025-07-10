@@ -1,7 +1,7 @@
 from flask import request, jsonify, Blueprint, send_file, send_from_directory, current_app, redirect, abort, Response
 from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity
 from api.models import db, Users, Products, ProductImages, Categories, Subcategories, Orders, OrderDetails, Favorites, Cart, Posts, Comments, Invoices
-from api.utils import send_email
+from api.utils import send_email, calcular_precio_reja
 from sqlalchemy.exc import SQLAlchemyError
 import bcrypt
 import os
@@ -827,6 +827,17 @@ def handle_orders():
                     logger.info(f"Detalle ya existente: {existing_detail.serialize()}")
                     continue 
 
+                # Obtener producto y calcular precio exacto según dimensiones
+                prod = Products.query.get(detail['producto_id'])
+                if not prod:
+                    raise ValueError(f"Producto con ID {detail['producto_id']} no encontrado")
+
+                precio_recalculado = calcular_precio_reja(
+                    alto_cm=detail.get('alto'),
+                    ancho_cm=detail.get('ancho'),
+                    precio_m2=prod.precio_rebajado or prod.precio
+                )
+
                 new_detail = OrderDetails(
                     order_id=new_order.id,
                     product_id=detail['producto_id'],
@@ -835,7 +846,7 @@ def handle_orders():
                     ancho=detail.get('ancho'),
                     anclaje=detail.get('anclaje'),
                     color=detail.get('color'),
-                    precio_total=detail['precio_total'],
+                    precio_total=precio_recalculado,
                     firstname=data.get('firstname'),
                     lastname=data.get('lastname'),
                     shipping_address=data.get('shipping_address'),
@@ -844,22 +855,23 @@ def handle_orders():
                     billing_address=data.get('billing_address'),
                     billing_city=data.get('billing_city'),
                     billing_postal_code=data.get('billing_postal_code'),
-                    CIF=data.get('CIF')
+                    CIF=data.get('CIF'),
+                    shipping_type=detail.get('shipping_type'),
+                    shipping_cost=detail.get('shipping_cost')
                 )
-                db.session.add(new_detail)
-                subtotal += float(detail['precio_total'])
 
-            # Configuración de envío:
-            shippingThreshold = 150  # Envío gratuito a partir de 150€
-            weightPerProduct = 10     # 10 kg por reja (valor estimado)
-            shippingRatePerKg = 1.70  # €/kg
-            if subtotal >= shippingThreshold:
-                shipping_cost = 0.00
-            else:
-                shipping_cost = len(order_details) * (weightPerProduct * shippingRatePerKg)
+                db.session.add(new_detail)
+                subtotal += precio_recalculado
+
+
+            # Usar el coste de envío más alto entre los productos recibidos
+            shipping_cost = max(
+                float(detail.get('shipping_cost', 0)) for detail in order_details
+            )
 
             # Total final de la orden
             total_final = subtotal + shipping_cost
+            new_order.shipping_cost = shipping_cost
             new_order.total_amount = total_final
 
             db.session.commit()
@@ -959,8 +971,19 @@ def handle_orders():
                 total = new_order.total_amount
                 base_total = total / 1.21
                 iva_calculado = total - base_total
-                base_productos = subtotal / 1.21
-                base_envio = base_total - base_productos
+                base_envio = new_order.shipping_cost / 1.21
+                base_productos = base_total - base_envio
+
+                # DEBUG - Verifica valores reales antes de escribir el PDF
+                print("🧾 DEBUG FACTURA")
+                print("Subtotal productos:", subtotal)
+                print("Coste de envío:", shipping_cost)
+                print("Total final (con envío):", total)
+                print("Base imponible total:", base_total)
+                print("Base envío:", base_envio)
+                print("Base productos:", base_productos)
+                print("IVA calculado:", iva_calculado)
+
 
                 pdf.setFont("Helvetica", 10)
                 pdf.drawString(50, totals_y_position, f"Base Imponible: {base_total:.2f} €")
@@ -968,12 +991,12 @@ def handle_orders():
                 pdf.drawString(50, totals_y_position - 30, f"IVA (21%): {iva_calculado:.2f} €")
 
                 # Indicar tipo de envío si aplica
-                if shipping_cost == 49:
-                    pdf.drawString(50, totals_y_position - 45, "Tipo de envío aplicado: Tarifa A – 49 €")
+                if new_order.shipping_cost == 49:
+                    pdf.drawString(50, totals_y_position - 45, "Tipo de envío aplicado: Tarifa A - 49 €")
                 elif shipping_cost == 99:
-                    pdf.drawString(50, totals_y_position - 45, "Tipo de envío aplicado: Tarifa B – 99 €")
+                    pdf.drawString(50, totals_y_position - 45, "Tipo de envío aplicado: Tarifa B - 99 €")
                 elif shipping_cost == 17:
-                    pdf.drawString(50, totals_y_position - 45, "Tipo de envío estándar – 17 €")
+                    pdf.drawString(50, totals_y_position - 45, "Tipo de envío estándar - 17 €")
                 elif shipping_cost == 0:
                     pdf.drawString(50, totals_y_position - 45, "Envío gratuito")
 
@@ -1080,6 +1103,14 @@ def add_order_details():
             if existing_detail:
                 continue  # Saltar si ya existe
 
+            prod = Products.query.get(detail['producto_id'])
+
+            precio_recalculado = calcular_precio_reja(
+                alto_cm=detail.get('alto'),
+                ancho_cm=detail.get('ancho'),
+                precio_m2=prod.precio_rebajado or prod.precio
+            )
+
             new_detail = OrderDetails(
                 order_id=detail['order_id'],
                 product_id=detail['product_id'],
@@ -1088,7 +1119,7 @@ def add_order_details():
                 ancho=detail.get('ancho'),
                 anclaje=detail.get('anclaje'),
                 color=detail.get('color'),
-                precio_total=detail['precio_total'],
+                precio_total=precio_recalculado,
                 firstname=detail.get('firstname'),
                 lastname=detail.get('lastname'),
                 shipping_address=detail.get('shipping_address'),
