@@ -13,6 +13,8 @@ import LazyLoad from "react-lazyload";
 import { WhatsAppWidget } from "../../component/WhatsAppWidget.jsx";
 import Skeleton from 'react-loading-skeleton';
 import 'react-loading-skeleton/dist/skeleton.css';
+import MaintenancePopup from "../../component/MaintenancePopup";
+
 
 export const RejasParaVentanas = ({ onSelectCategory, onSelectSubcategory, categoryId }) => {
     const { store, actions } = useContext(Context);
@@ -129,6 +131,7 @@ export const RejasParaVentanas = ({ onSelectCategory, onSelectSubcategory, categ
                     </script>
                 )}
             </Helmet>
+            <MaintenancePopup />
             {/*<Breadcrumb />*/}
             <div className="container" style={{ marginTop: "100px" }}>
                 <div className="row">
