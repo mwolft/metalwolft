@@ -131,7 +131,7 @@ export const RejasParaVentanas = ({ onSelectCategory, onSelectSubcategory, categ
                     </script>
                 )}
             </Helmet>
-            <MaintenancePopup />
+            {/*<MaintenancePopup />*/}
             {/*<Breadcrumb />*/}
             <div className="container" style={{ marginTop: "100px" }}>
                 <div className="row">
