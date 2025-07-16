@@ -144,11 +144,10 @@ export const Product = ({ product }) => {
                             alt={product.nombre}
                             width="540"
                             height="600"
-                            className="img-fluid"
+                            className="img-fluid card-img-top"
                             style={{
                                 objectFit: "cover",
                                 width: "100%",
-                                height: "auto",
                                 transition: "transform 0.3s ease-in-out",
                                 transform: isHovered ? "scale(1.1)" : "scale(1)",
                                 filter: isHovered ? "brightness(50%)" : "brightness(100%)",
@@ -243,7 +242,7 @@ export const Product = ({ product }) => {
                         </p>
                         <div className="d-flex justify-content-between align-items-center">
                             <Link to={productDetailUrl} className="btn-style-background-color" style={{ textDecoration: 'none' }}>
-                                Detalles
+                                <i class="fa-solid fa-calculator"></i> Ajustar
                             </Link>
                             <i className={`fa-regular fa-heart ${actions.isFavorite(product) ? 'fa-solid' : ''}`}
                                 onClick={handleFavorite}

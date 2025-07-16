@@ -55,7 +55,42 @@ body {
 .card{
     border-radius: 0;
     border: 0;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
 }
+
+.card-body {
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    border: 1px solid #e0e0e0;
+    border-top: none;
+    border-bottom-left-radius: 5px;
+    border-bottom-right-radius: 5px;
+}
+/* Por defecto (móviles pequeños) */
+.card-img-top {
+  height: 200px;
+  object-fit: cover;
+}
+
+/* Móviles grandes (≥576px) */
+@media (min-width: 576px) {
+  .card-img-top {
+    height: 240px;
+  }
+}
+
+/* Pantallas medias y grandes (≥768px) */
+@media (min-width: 768px) {
+  .card-img-top {
+    height: auto;
+    max-height: 400px; /* o el valor que veas mejor */
+  }
+}
+
 .card-img-overlay{
     background-color: rgba(74, 74, 74, 0.55);
     ;
