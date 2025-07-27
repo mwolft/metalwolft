@@ -126,8 +126,8 @@ export const Product = ({ product }) => {
 
     return (
         <>
-            <div className="col">
-                <Card className="px-2 my-3">
+            <div className="w-100 h-100">
+                <Card className="h-100 d-flex flex-column px-0 my-3">
                     <Link
                         to={productDetailUrl}
                         style={{
@@ -233,7 +233,7 @@ export const Product = ({ product }) => {
                                         {formatPrice(product.precio_rebajado)}€/m²
                                     </span>
                                     <span className="discount-percentage" style={{ color: '#28a745', padding: '2px 6px', marginLeft: '2px' }}>
-                                        -{product.porcentaje_rebaja}%
+                                        -{Math.round(product.porcentaje_rebaja)}%
                                     </span>
                                 </>
                             ) : (

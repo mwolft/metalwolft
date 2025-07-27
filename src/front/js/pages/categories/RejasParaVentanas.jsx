@@ -151,14 +151,18 @@ export const RejasParaVentanas = ({ onSelectCategory, onSelectSubcategory, categ
                             <AsideOthersCategories currentCategoryId={rejasCategoryId} />
                         </div>
                     </div>
-                    <div className="col-12 col-lg-9 col-xl-9 order-2 p-3">
+                    <div className="col-12 col-lg-9 col-xl-9 order-2">
                         {/* ------------------------------------------------------------------------------------------------------------------------ */}
                         {/*<MetalStructureViewer />*/}
                         <h2 className="h2-categories">Catálogo de Rejas</h2>
                         <div className="row">
                             {store.products && store.products.length > 0 ? (
                                 store.products.map((product, index) => (
-                                    <div key={index} className="col-6 col-sm-6 col-md-4 col-lg-4 col-xl-4 mb-4 d-flex">
+                                    <div
+                                        key={index}
+                                        className="col-6 col-sm-6 col-md-4 col-lg-4 col-xl-4 mb-4 d-flex"
+                                        style={{ minWidth: "180px", padding: '3px' }}
+                                    >
                                         <Product product={product} className="w-100" />
                                     </div>
                                 ))
