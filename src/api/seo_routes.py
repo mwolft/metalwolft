@@ -556,3 +556,59 @@ def medir_hueco_rejas_para_ventanas():
         }
     }
     return jsonify(meta_data)
+
+
+@seo_bp.route('/api/seo/plazos-entrega-rejas-a-medida', methods=['GET'])
+def plazos_entrega_rejas_a_medida():
+    meta_data = {
+        "lang": "es",
+        "twitter_card_type": "summary_large_image",
+        "twitter_site": "@MetalWolft",
+        "twitter_creator": "@MetalWolft",
+        "twitter_title": "¿Cuánto tardan las rejas a medida? | Metal Wolft",
+        "twitter_description": "Descubre cuánto tardamos en fabricar y enviar tu reja a medida. Conoce nuestros plazos de producción según la época del año.",
+        "twitter_image": "https://res.cloudinary.com/dewanllxn/image/upload/v1753771758/plazos-de-entrega_eursc3.avif",
+        "twitter_image_alt": "Plazos de entrega rejas a medida",
+        "title": "¿Cuánto tardan las rejas a medida? | Metal Wolft",
+        "description": "Descubre cuánto tardamos en fabricar y enviar tu reja a medida. Conoce nuestros plazos de producción según la época del año.",
+        "keywords": "rejas a medida, entrega rejas metálicas, fabricación rejas, plazos rejas personalizadas, producción rejas hierro",
+        "og_image": "https://res.cloudinary.com/dewanllxn/image/upload/v1753771758/plazos-de-entrega_eursc3.avif",
+        "og_image_width": "400",
+        "og_image_height": "300",
+        "og_image_type": "image/avif",
+        "og_image_alt": "Plazos de entrega rejas a medida",
+        "og_url": "https://www.metalwolft.com/plazos-entrega-rejas-a-medida",
+        "og_type": "article",
+        "og_locale": "es_ES",
+        "og_locale_alternate": "en_US",
+        "og_site_name": "Metal Wolft",
+        "canonical": "https://www.metalwolft.com/plazos-entrega-rejas-a-medida",
+        "robots": "index, follow",
+        "theme_color": "#ff324d",
+        "json_ld": {
+            "@context": "https://schema.org",
+            "@type": "Article",
+            "name": "¿Cuánto tardan las rejas a medida?",
+            "description": "Descubre cuánto tardamos en fabricar y enviar tu reja a medida. Conoce nuestros plazos de producción según la época del año.",
+            "image": "https://res.cloudinary.com/dewanllxn/image/upload/v1753771758/plazos-de-entrega_eursc3.avif",
+            "url": "https://www.metalwolft.com/plazos-entrega-rejas-a-medida",
+            "author": {
+                "@type": "Organization",
+                "name": "Metal Wolft"
+            },
+            "publisher": {
+                "@type": "Organization",
+                "name": "Metal Wolft",
+                "logo": {
+                    "@type": "ImageObject",
+                    "url": "https://res.cloudinary.com/dewanllxn/image/upload/v1735631180/welder-bot_tqxadc.png"
+                }
+            },
+            "mainEntityOfPage": {
+                "@type": "WebPage",
+                "@id": "https://www.metalwolft.com/plazos-entrega-rejas-a-medida"
+            },
+            "datePublished": "2025-07-29"
+        }
+    }
+    return jsonify(meta_data)
