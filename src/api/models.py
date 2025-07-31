@@ -236,6 +236,7 @@ class Orders(db.Model):
     order_date = db.Column(db.DateTime, default=db.func.current_timestamp())
     total_amount = db.Column(db.Float, nullable=False)
     shipping_cost = db.Column(db.Float, nullable=True, default=0.0)
+    order_status = db.Column(db.String(50), nullable=False, default="pendiente")
     invoice_number = db.Column(db.String(50), nullable=True, unique=True)  
     locator = db.Column(db.String(10), nullable=False, unique=True)
 
@@ -253,6 +254,7 @@ class Orders(db.Model):
             "total_amount": self.total_amount,
             "invoice_number": self.invoice_number,
             "locator": self.locator,
+            "order_status": self.order_status,
             "order_details": [detail.serialize() for detail in self.order_details] 
         }
 

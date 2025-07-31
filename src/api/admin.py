@@ -9,6 +9,7 @@ from .models import (
     Orders, OrderDetails, Favorites,
     Posts, Comments, Invoices
 )
+from api.email_routes import send_order_status_email
 
 # Credenciales desde ENV
 ADMIN_USER = os.getenv('ADMIN_USER')
@@ -55,13 +56,26 @@ class ProductAdminView(SecureModelView):
         return form
 
 class OrderAdminView(SecureModelView):
-    form_columns = ['user_id', 'total_amount', 'order_date', 'invoice_number', 'locator']
-    column_list =  ['id', 'user_id', 'total_amount', 'order_date', 'invoice_number', 'locator']
-    column_editable_list = ['total_amount']
+    form_columns = ['user_id', 'total_amount', 'order_date', 'invoice_number', 'locator', 'order_status']
+    column_list =  ['id', 'user_id', 'total_amount', 'order_date', 'invoice_number', 'locator', 'order_status']
+    column_editable_list = ['total_amount', 'order_status']
+
     form_extra_fields = {
         'invoice_number': StringField('Número de Factura', render_kw={'readonly': True}),
-        'locator':        StringField('Localizador',      render_kw={'readonly': True})
+        'locator': StringField('Localizador', render_kw={'readonly': True}),
+        'order_status': SelectField(
+            'Estado del Pedido',
+            choices=[
+                ('pendiente', 'Pendiente'),
+                ('fabricacion', 'En fabricación'),
+                ('pintura', 'En pintura'),
+                ('embalaje', 'En embalaje'),
+                ('enviado', 'Enviado'),
+                ('entregado', 'Entregado')
+            ]
+        )
     }
+
     def create_form(self, obj=None):
         form = super().create_form(obj)
         if not form.invoice_number.data:
@@ -69,6 +83,18 @@ class OrderAdminView(SecureModelView):
         if not form.locator.data:
             form.locator.data = Orders.generate_locator()
         return form
+
+    def on_model_change(self, form, model, is_created):
+        if not is_created:
+            original = Orders.query.get(model.id)
+            if original.order_status != model.order_status:
+                send_order_status_email(
+                    user_email=model.user.email,
+                    order_status=model.order_status,
+                    locator=model.locator
+                )
+
+
 
 class InvoiceAdminView(SecureModelView):
     form_columns = ['invoice_number','client_name','client_address','client_cif','amount','order_id','created_at']

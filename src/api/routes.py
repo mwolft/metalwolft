@@ -805,7 +805,8 @@ def handle_orders():
             new_order = Orders(
                 user_id=current_user['user_id'],
                 total_amount=0,  # Temporalmente 0, lo recalcularemos
-                locator=Orders.generate_locator()
+                locator=Orders.generate_locator(),
+                order_status="pendiente"
             )
             db.session.add(new_order)
             db.session.flush()  # Nos da el id de la orden
