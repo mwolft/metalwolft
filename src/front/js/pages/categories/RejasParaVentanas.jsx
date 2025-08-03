@@ -14,6 +14,7 @@ import { WhatsAppWidget } from "../../component/WhatsAppWidget.jsx";
 import Skeleton from 'react-loading-skeleton';
 import 'react-loading-skeleton/dist/skeleton.css';
 import MaintenancePopup from "../../component/MaintenancePopup";
+import { DeliveryEstimateBanner } from "../../component/DeliveryEstimateBanner.jsx"
 
 
 export const RejasParaVentanas = ({ onSelectCategory, onSelectSubcategory, categoryId }) => {
@@ -131,8 +132,9 @@ export const RejasParaVentanas = ({ onSelectCategory, onSelectSubcategory, categ
                     </script>
                 )}
             </Helmet>
-            {/*<MaintenancePopup />*/}
+            <MaintenancePopup />
             {/*<Breadcrumb />*/}
+            {/* <DeliveryEstimateBanner /> */}
             <div className="container" style={{ marginTop: "100px" }}>
                 <div className="row">
                     <h1 className="h2-categories mb-4">Rejas para ventanas</h1>

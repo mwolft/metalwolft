@@ -1,6 +1,6 @@
 from flask import request, jsonify, Blueprint, send_file, send_from_directory, current_app, redirect, abort, Response
 from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity
-from api.models import db, Users, Products, ProductImages, Categories, Subcategories, Orders, OrderDetails, Favorites, Cart, Posts, Comments, Invoices
+from api.models import db, Users, Products, ProductImages, Categories, Subcategories, Orders, OrderDetails, Favorites, Cart, Posts, Comments, Invoices, DeliveryEstimateConfig
 from api.utils import send_email, calcular_precio_reja
 from sqlalchemy.exc import SQLAlchemyError
 import bcrypt
@@ -73,6 +73,27 @@ def handle_legacy_urls():
         return redirect(redirect_map[request.path], code=301)
     if request.path in gone_list:
         return "Página obsoleta", 410
+
+
+@api.route('/delivery-estimate', methods=['GET'])
+def get_delivery_estimate():
+    try:
+        config = DeliveryEstimateConfig.query.filter_by(is_active=True).first()
+        if not config:
+            response = jsonify({"is_active": False})
+            response.headers['Access-Control-Allow-Origin'] = '*'
+            response.headers['Access-Control-Expose-Headers'] = 'Authorization'
+            return response, 404
+
+        response = jsonify(config.to_dict())
+        response.headers['Access-Control-Allow-Origin'] = '*'
+        response.headers['Access-Control-Expose-Headers'] = 'Authorization'
+        return response, 200
+    except Exception as e:
+        response = jsonify({"message": "Error al obtener la estimación", "error": str(e)})
+        response.headers['Access-Control-Allow-Origin'] = '*'
+        response.headers['Access-Control-Expose-Headers'] = 'Authorization'
+        return response, 500
 
 
 @api.route('/create-payment-intent', methods=['POST'])

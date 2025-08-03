@@ -8,6 +8,25 @@ from slugify import slugify
 
 db = SQLAlchemy()
 
+class DeliveryEstimateConfig(db.Model):
+    __tablename__ = 'delivery_estimate_config'
+    id = db.Column(db.Integer, primary_key=True)
+    delivery_days = db.Column(db.Integer, nullable=False, default=15) 
+    range_days = db.Column(db.Integer, nullable=False, default=7)   
+    is_active = db.Column(db.Boolean, default=True)
+
+    def to_dict(self):
+        from datetime import date, timedelta
+        today = date.today()
+        start_date = today + timedelta(days=self.delivery_days)
+        end_date = start_date + timedelta(days=self.range_days)
+        return {
+            "start_date": start_date.strftime("%Y-%m-%d"),
+            "end_date": end_date.strftime("%Y-%m-%d"),
+            "is_active": self.is_active
+        }
+
+
 class Users(db.Model):
     __tablename__ = 'users'
     id = db.Column(db.Integer, primary_key=True)

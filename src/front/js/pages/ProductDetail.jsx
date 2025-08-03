@@ -613,7 +613,12 @@ export const ProductDetail = () => {
                                 <ul>
                                     <li><b>¿Los precios incluyen IVA?</b> Sí, todos nuestros precios incluyen IVA.</li>
                                     <li>
-                                        <b>¿Cuál es el tiempo de fabricación y entrega?</b> Nuestro tiempo estimado de fabricación y entrega es de <b>20 días hábiles</b>. Sin embargo, este plazo puede variar dependiendo de nuestra carga de trabajo. En caso de que haya un aumento en los tiempos, te lo notificaremos con anticipación para que estés informado.
+                                        <b>¿Cuál es el tiempo de fabricación y entrega?</b> Nuestro tiempo estimado de fabricación y entrega es de <b>20 días hábiles</b>. Sin embargo, este plazo puede variar dependiendo de nuestra carga de trabajo.
+                                        En caso de que haya un aumento en los tiempos, te lo notificaremos con anticipación para que estés informado.
+                                        Puedes consultar más detalles en nuestra sección de
+                                        <Link to="/plazos-entrega-rejas-a-medida" style={{ color: '#ff324d', textDecoration: 'underline', marginLeft: '5px' }}>
+                                            Plazos de Entrega.
+                                        </Link>
                                     </li>
                                     <li>
                                         <b>¿Qué sucede después de realizar mi compra?</b> Tras completar tu compra, recibirás un correo de confirmación con todos los detalles. Además, nos pondremos en contacto contigo para orientarte en la instalación y ofrecerte asistencia personalizada, asegurándonos de que tengas una experiencia satisfactoria con tu compra.

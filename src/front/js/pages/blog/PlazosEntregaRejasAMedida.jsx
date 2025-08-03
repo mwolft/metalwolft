@@ -13,6 +13,7 @@ export const PlazosEntregaRejasAMedida = () => {
     const [successMessage, setSuccessMessage] = useState("");
     const { currentPost, currentComments } = store;
     const postId = 3;
+    const [estimate, setEstimate] = useState(null);
 
     useEffect(() => {
         if (!currentPost || currentPost.id !== postId) {
@@ -68,6 +69,37 @@ export const PlazosEntregaRejasAMedida = () => {
         }
     };
 
+
+    useEffect(() => {
+        fetch('https://fuzzy-space-eureka-7v7jw6jv7v5jhp945-3001.app.github.dev/api/delivery-estimate')
+            .then((response) => {
+                if (!response.ok) throw new Error('Error fetching delivery estimate');
+                return response.json();
+            })
+            .then((data) => setEstimate(data))
+            .catch((error) => console.error(error));
+    }, []);
+
+    const formatDeliveryRange = (startDateStr, endDateStr) => {
+        const startDate = new Date(startDateStr);
+        const endDate = new Date(endDateStr);
+
+        const startDay = startDate.getDate();
+        const endDay = endDate.getDate();
+
+        const startMonth = startDate.toLocaleDateString('es-ES', { month: 'long' });
+        const endMonth = endDate.toLocaleDateString('es-ES', { month: 'long' });
+
+        if (startMonth === endMonth) {
+            return `entre el ${startDay} y el ${endDay} de ${startMonth}`;
+        } else {
+            return `entre el ${startDay} de ${startMonth} y el ${endDay} de ${endMonth}`;
+        }
+    };
+
+    const today = new Date().toLocaleDateString('es-ES');
+
+
     return (
         <>
             <Helmet htmlAttributes={{ lang: metaData.lang || "es" }}>
@@ -119,19 +151,54 @@ export const PlazosEntregaRejasAMedida = () => {
                         )}
                         <div className="blog-text">
                             <h2 className="h2-categories">¿CUÁL ES EL PLAZO DE ENTREGA?</h2>
-                            <p>Nuestras rejas a medida se fabrican una a una desde cero, según las dimensiones que introduces. El plazo medio de entrega suele ser de <strong>entre 7 y 15 días naturales</strong>, dependiendo de la carga de trabajo.</p>
-                            <p>En épocas de alta demanda (como primavera y otoño), este plazo puede extenderse ligeramente, aunque siempre te mantendremos informado del estado del pedido.</p>
+                            <p>
+                                Todas nuestras rejas se fabrican a medida, desde cero, según las dimensiones que introduces.
+                                Por eso, el plazo de entrega puede variar ligeramente en función de la carga de trabajo y el modelo seleccionado.
+                            </p>
+                            <p>
+                                La estimación de entrega se actualiza diariamente y podrás consultarla en todo momento durante tu proceso de compra.
+                                De forma general, solemos entregar en un plazo de <strong>15 días hábiles</strong>.
+                                Sin embargo, en periodos de alta demanda (como primavera u otoño) este rango puede ajustarse.
+                            </p>
+                            <p>
+                                Nuestro compromiso es mantenerte informado y ofrecerte la previsión más precisa desde el primer momento.
+                            </p>
+                            {estimate && estimate.is_active && (
+                                <div style={{
+                                    backgroundColor: '#fff5f5',
+                                    border: '1px solid #ff324d',
+                                    padding: '15px 20px',
+                                    borderRadius: '10px',
+                                    color: '#333',
+                                    marginBottom: '30px',
+                                    fontSize: '16px',
+                                    textAlign: 'center'
+                                }}>
+                                    El plazo de entrega a día de hoy ({today}) está {formatDeliveryRange(estimate.start_date, estimate.end_date)}.
+                                </div>
+                            )}
+
                             <h2 className="h2-categories">¿QUÉ FACTORES AFECTAN AL PLAZO?</h2>
                             <ul className="m-4">
                                 <li><strong>Volumen de pedidos:</strong> Los meses con más solicitudes suelen tener más tiempo de espera.</li>
                                 <li><strong>Tipo de reja:</strong> Modelos especiales, acabados o estructuras complejas pueden requerir más días.</li>
                                 <li><strong>Ubicación de entrega:</strong> Algunas zonas geográficas pueden requerir más tiempo logístico.</li>
                             </ul>
-                            <h2 className="h2-categories">¿PUEDO CONSULTAR EL ESTADO DEL PEDIDO?</h2>
-                            <p>Claro. Puedes escribirnos por <Link to="/contact" style={{ color: '#ff324d', textDecoration: 'underline' }}>el formulario de contacto</Link> o directamente por <a href="https://wa.me/34634112604" target="_blank" rel="noopener noreferrer" style={{ color: '#ff324d', textDecoration: 'underline' }}>WhatsApp</a>. Estaremos encantados de darte una actualización.</p>
-                            <p>También puedes ver ejemplos de trabajos anteriores y tiempos reales de entrega en nuestras <Link to="/rejas-para-ventanas" style={{ color: '#ff324d', textDecoration: 'underline' }}>rejas para ventanas</Link>.</p>
+
+                            <h2 className="h2-categories">¿PUEDO CONSULTAR EL ESTADO DE MI PEDIDO?</h2>
+                            <p>
+                                Sí, por supuesto. Si necesitas información adicional sobre tu pedido o deseas coordinar la entrega para una fecha concreta, puedes escribirnos a través del
+                                <Link to="/contact" style={{ color: '#ff324d', textDecoration: 'underline' }}> formulario de contacto</Link> o directamente a nuestro
+                                <a href="https://wa.me/34634112604" target="_blank" rel="noopener noreferrer" style={{ color: '#ff324d', textDecoration: 'underline' }}> WhatsApp</a>.
+                            </p>
+                            <p>
+                                También puedes ver ejemplos de trabajos anteriores y tiempos reales de entrega en nuestra sección de
+                                <Link to="/rejas-para-ventanas" style={{ color: '#ff324d', textDecoration: 'underline' }}> Rejas para Ventanas</Link>.
+                            </p>
                         </div>
+
                         <hr style={{ marginTop: '30px' }} />
+
                         <div className="comment-area" style={{ marginTop: '50px', marginBottom: '50px' }}>
                             <div className="content_title">
                                 <p>Comentarios ({currentComments?.length || 0})</p>

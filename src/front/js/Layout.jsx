@@ -11,6 +11,7 @@ import { BackendURL } from "./component/BackendURL.jsx";
 import { Footer } from "./component/Footer.jsx";
 import { MainNavbar } from "./component/MainNavbar.jsx";
 import MaintenancePopup from "./component/MaintenancePopup.jsx"
+import { DeliveryEstimateBanner } from "./component/DeliveryEstimateBanner.jsx";
 import { Sidebar } from "./component/Sidebar.jsx";
 import { BodyHomeMain } from "./component/BodyHomeMain.jsx";
 import { BodyHomeSecondary } from "./component/BodyHomeSecondary.jsx";
@@ -116,6 +117,7 @@ const Layout = () => {
                         <Route path="/cambios-politica-cookies" element={<ChangesInCookiePolicy />} />
                         <Route path="/politica-devolucion" element={<ReturnsPolicy />} />
                         <Route path="/license" element={<License />} />
+                        <Route path="/delivery-estimate-banner" element={<DeliveryEstimateBanner />} />
                     </Routes>
                     <Footer />
                 </div>

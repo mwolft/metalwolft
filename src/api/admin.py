@@ -7,7 +7,7 @@ from .models import (
     db, Users, Products, ProductImages,
     Categories, Subcategories, Cart,
     Orders, OrderDetails, Favorites,
-    Posts, Comments, Invoices
+    Posts, Comments, Invoices, DeliveryEstimateConfig
 )
 from api.email_routes import send_order_status_email
 
@@ -136,3 +136,4 @@ def setup_admin(app):
     admin.add_view(SecureModelView(Posts, db.session))
     admin.add_view(SecureModelView(Comments, db.session))
     admin.add_view(InvoiceAdminView(Invoices, db.session))
+    admin.add_view(ModelView(DeliveryEstimateConfig, db.session))
