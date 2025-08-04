@@ -5,6 +5,7 @@ import { Context } from '../../store/appContext.js';
 import { AsidePost } from "../../component/AsidePost.jsx";
 import { AsideOthersCategories } from "../../component/AsideOthersCategories.jsx";
 import { Link } from "react-router-dom";
+import DeliveryEstimateBanner from "../../component/DeliveryEstimateBanner.jsx";
 
 export const PlazosEntregaRejasAMedida = () => {
     const { store, actions } = useContext(Context);
@@ -13,7 +14,6 @@ export const PlazosEntregaRejasAMedida = () => {
     const [successMessage, setSuccessMessage] = useState("");
     const { currentPost, currentComments } = store;
     const postId = 3;
-    const [estimate, setEstimate] = useState(null);
 
     useEffect(() => {
         if (!currentPost || currentPost.id !== postId) {
@@ -21,18 +21,6 @@ export const PlazosEntregaRejasAMedida = () => {
         }
     }, [actions, currentPost, postId]);
 
-    useEffect(() => {
-        const apiBaseUrl = process.env.REACT_APP_BACKEND_URL
-            ? process.env.REACT_APP_BACKEND_URL
-            : process.env.NODE_ENV === "production"
-                ? "https://api.metalwolft.com"
-                : "https://fuzzy-space-eureka-7v7jw6jv7v5jhp945-3001.app.github.dev/";
-
-        fetch(`${apiBaseUrl}/api/seo/plazos-entrega-rejas-a-medida`)
-            .then(res => res.json())
-            .then(data => setMetaData(data))
-            .catch(err => console.error("Error fetching SEO data:", err));
-    }, []);
 
     useEffect(() => {
         if (currentPost && currentPost.id === postId && !store.commentsLoaded) {
@@ -158,31 +146,43 @@ export const PlazosEntregaRejasAMedida = () => {
                         <div className="blog-text">
                             <h2 className="h2-categories">¿CUÁL ES EL PLAZO DE ENTREGA?</h2>
                             <p>
+                                Hemos desarrollado un sistema de <strong>estimación automática</strong> que te muestra, en tiempo real, un rango de <strong>fechas</strong> ajustado a nuestra <strong>carga de trabajo actual</strong>.
+                            </p>
+                            <DeliveryEstimateBanner />
+                            <p style={{ marginTop: '20px' }}>
+                                Esto te permitirá tener una previsión <strong>más fiable</strong>, incluso en periodos donde la demanda puede incrementarse de forma puntual.
+                            </p>
+                            <div style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                minHeight: '150px'
+                            }}>
+                                <img
+                                    src="https://res.cloudinary.com/dewanllxn/image/upload/v1754155736/estado-de-envio_uglnqu.jpg"
+                                    alt="Entrega"
+                                    style={{
+                                        width: '100%',
+                                        height: 'auto',
+                                        maxWidth: '750px',
+                                        objectFit: 'contain',
+                                        borderRadius: '12px'
+                                    }}
+                                />
+                            </div>
+                            <p>
                                 Todas nuestras rejas se fabrican a medida, desde cero, según las dimensiones que introduces.
                                 Por eso, el plazo de entrega puede variar ligeramente en función de la carga de trabajo y el modelo seleccionado.
                             </p>
                             <p>
                                 La estimación de entrega se actualiza diariamente y podrás consultarla en todo momento durante tu proceso de compra.
-                                De forma general, solemos entregar en un plazo de <strong>15 días hábiles</strong>.
+                                De forma general, solemos entregar en un plazo de <strong>20 días naturales</strong>.
                                 Sin embargo, en periodos de alta demanda (como primavera u otoño) este rango puede ajustarse.
                             </p>
                             <p>
                                 Nuestro compromiso es mantenerte informado y ofrecerte la previsión más precisa desde el primer momento.
                             </p>
-                            {estimate && estimate.is_active && (
-                                <div style={{
-                                    backgroundColor: '#fff5f5',
-                                    border: '1px solid #ff324d',
-                                    padding: '15px 20px',
-                                    borderRadius: '10px',
-                                    color: '#333',
-                                    marginBottom: '30px',
-                                    fontSize: '16px',
-                                    textAlign: 'center'
-                                }}>
-                                    El plazo de entrega a día de hoy ({today}) está {formatDeliveryRange(estimate.start_date, estimate.end_date)}.
-                                </div>
-                            )}
+
 
                             <h2 className="h2-categories">¿QUÉ FACTORES AFECTAN AL PLAZO?</h2>
                             <ul className="m-4">

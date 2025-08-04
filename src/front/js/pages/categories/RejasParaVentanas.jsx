@@ -14,7 +14,7 @@ import { WhatsAppWidget } from "../../component/WhatsAppWidget.jsx";
 import Skeleton from 'react-loading-skeleton';
 import 'react-loading-skeleton/dist/skeleton.css';
 import MaintenancePopup from "../../component/MaintenancePopup";
-import { DeliveryEstimateBanner } from "../../component/DeliveryEstimateBanner.jsx"
+import DeliveryEstimateBanner from "../../component/DeliveryEstimateBanner"
 
 
 export const RejasParaVentanas = ({ onSelectCategory, onSelectSubcategory, categoryId }) => {
@@ -132,9 +132,8 @@ export const RejasParaVentanas = ({ onSelectCategory, onSelectSubcategory, categ
                     </script>
                 )}
             </Helmet>
-            <MaintenancePopup />
-            {/*<Breadcrumb />*/}
-            {/* <DeliveryEstimateBanner /> */}
+            {/* <MaintenancePopup /> */}
+            {/* <Breadcrumb /> */}
             <div className="container" style={{ marginTop: "100px" }}>
                 <div className="row">
                     <h1 className="h2-categories mb-4">Rejas para ventanas</h1>
@@ -156,7 +155,8 @@ export const RejasParaVentanas = ({ onSelectCategory, onSelectSubcategory, categ
                     <div className="col-12 col-lg-9 col-xl-9 order-2">
                         {/* ------------------------------------------------------------------------------------------------------------------------ */}
                         {/*<MetalStructureViewer />*/}
-                        <h2 className="h2-categories">Catálogo de Rejas</h2>
+                        <h2 className="h2-categories" style={{ marginBottom: '20px' }}>Catálogo de Rejas</h2>
+                        <DeliveryEstimateBanner />
                         <div className="row">
                             {store.products && store.products.length > 0 ? (
                                 store.products.map((product, index) => (
@@ -249,7 +249,8 @@ export const RejasParaVentanas = ({ onSelectCategory, onSelectSubcategory, categ
                             <ul>
                                 <li><b>¿Los precios incluyen IVA?</b> Sí, todos nuestros precios incluyen IVA.</li>
                                 <li>
-                                    <b>¿Cuál es el tiempo de fabricación y entrega?</b> Nuestro tiempo estimado de fabricación y entrega es de <b>20 días hábiles</b>. Sin embargo, este plazo puede variar dependiendo de nuestra carga de trabajo. En caso de que haya un aumento en los tiempos, te lo notificaremos con anticipación para que estés informado.
+                                    <b>¿Cuál es el tiempo de fabricación y entrega?</b> El plazo de entrega se calcula automáticamente según la carga de trabajo actual y suele estar en <b>20 días naturales</b>.
+                                    Para que tengas siempre la información más actualizada, hemos desarrollado un sistema de <Link to="/plazos-entrega-rejas-a-medida" style={{ color: '#ff324d', textDecoration: 'underline' }}>estimación de plazos en tiempo real</Link>.
                                 </li>
                                 <li>
                                     <b>¿Qué sucede después de realizar mi compra?</b> Tras completar tu compra, recibirás un correo de confirmación con todos los detalles. Además, nos pondremos en contacto contigo para orientarte en la instalación y ofrecerte asistencia personalizada, asegurándonos de que tengas una experiencia satisfactoria con tu compra.
