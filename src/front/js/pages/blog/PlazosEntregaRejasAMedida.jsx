@@ -58,42 +58,6 @@ export const PlazosEntregaRejasAMedida = () => {
     };
 
 
-    useEffect(() => {
-        const apiBaseUrl = process.env.REACT_APP_BACKEND_URL
-            ? process.env.REACT_APP_BACKEND_URL
-            : process.env.NODE_ENV === "production"
-                ? "https://api.metalwolft.com"
-                : "https://fuzzy-space-eureka-7v7jw6jv7v5jhp945-3001.app.github.dev/";
-
-        fetch(`${apiBaseUrl}/api/delivery-estimate`)
-            .then((response) => {
-                if (!response.ok) throw new Error('Error fetching delivery estimate');
-                return response.json();
-            })
-            .then((data) => setEstimate(data))
-            .catch((error) => console.error(error));
-    }, []);
-
-    const formatDeliveryRange = (startDateStr, endDateStr) => {
-        const startDate = new Date(startDateStr);
-        const endDate = new Date(endDateStr);
-
-        const startDay = startDate.getDate();
-        const endDay = endDate.getDate();
-
-        const startMonth = startDate.toLocaleDateString('es-ES', { month: 'long' });
-        const endMonth = endDate.toLocaleDateString('es-ES', { month: 'long' });
-
-        if (startMonth === endMonth) {
-            return `entre el ${startDay} y el ${endDay} de ${startMonth}`;
-        } else {
-            return `entre el ${startDay} de ${startMonth} y el ${endDay} de ${endMonth}`;
-        }
-    };
-
-    const today = new Date().toLocaleDateString('es-ES');
-
-
     return (
         <>
             <Helmet htmlAttributes={{ lang: metaData.lang || "es" }}>
