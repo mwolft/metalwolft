@@ -95,6 +95,37 @@ class OrderAdminView(SecureModelView):
                 )
 
 
+class CartAdminView(SecureModelView):
+    column_list = ('usuario_email', 'product_display', 'alto', 'ancho', 'anclaje', 'color', 'precio_total', 'added_at')
+
+    column_labels = {
+        'usuario_email': 'Usuario (Email)',
+        'product_display': 'Producto',
+        'alto': 'Alto',
+        'ancho': 'Ancho',
+        'anclaje': 'Anclaje',
+        'color': 'Color',
+        'precio_total': 'Precio Total',
+        'added_at': 'Añadido el'
+    }
+
+    form_columns = ['usuario_id', 'producto_id', 'alto', 'ancho', 'anclaje', 'color', 'precio_total', 'added_at']
+
+    column_formatters = {
+        'usuario_email': lambda v, c, m, p: m.user.email if m.user else 'Sin usuario',
+        'product_display': lambda v, c, m, p: m.product.nombre if m.product else f'ID {m.producto_id}',
+        'added_at': lambda v, c, m, p: m.added_at.strftime("%d/%m/%Y %H:%M") if m.added_at else ''
+    }
+
+    def scaffold_list_columns(self):
+        columns = super().scaffold_list_columns()
+        if 'usuario_email' not in columns:
+            columns.append('usuario_email')
+        if 'product_display' not in columns:
+            columns.append('product_display')
+        return columns
+
+    column_default_sort = ('added_at', True)
 
 class InvoiceAdminView(SecureModelView):
     form_columns = ['invoice_number','client_name','client_address','client_cif','amount','order_id','created_at']
@@ -129,7 +160,7 @@ def setup_admin(app):
     admin.add_view(SecureModelView(Subcategories, db.session))
     admin.add_view(ProductAdminView(Products, db.session))
     admin.add_view(SecureModelView(ProductImages, db.session))
-    admin.add_view(SecureModelView(Cart, db.session))
+    admin.add_view(CartAdminView(Cart, db.session))
     admin.add_view(OrderAdminView(Orders, db.session))
     admin.add_view(SecureModelView(OrderDetails, db.session))
     admin.add_view(SecureModelView(Favorites, db.session))

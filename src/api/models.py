@@ -455,11 +455,14 @@ class Cart(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     usuario_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     producto_id = db.Column(db.Integer, db.ForeignKey('products.id'), nullable=False)
-    alto = db.Column(db.Float, nullable=True)  
-    ancho = db.Column(db.Float, nullable=True)  
-    anclaje = db.Column(db.String(50), nullable=True)  
-    color = db.Column(db.String(50), nullable=True)  
-    precio_total = db.Column(db.Float, nullable=False)  
+    alto = db.Column(db.Float, nullable=True)
+    ancho = db.Column(db.Float, nullable=True)
+    anclaje = db.Column(db.String(50), nullable=True)
+    color = db.Column(db.String(50), nullable=True)
+    precio_total = db.Column(db.Float, nullable=False)
+    added_at = db.Column(db.DateTime, nullable=False)
+    
+    user = db.relationship('Users', backref='cart_items', lazy=True)
 
     product = db.relationship('Products', backref='cart_items', lazy=True)
 
@@ -468,16 +471,17 @@ class Cart(db.Model):
             "id": self.id,
             "usuario_id": self.usuario_id,
             "producto_id": self.producto_id,
-            "nombre": self.product.nombre,  
-            "descripcion": self.product.descripcion, 
-            "imagen": self.product.imagen, 
+            "nombre": self.product.nombre,
+            "descripcion": self.product.descripcion,
+            "imagen": self.product.imagen,
             "slug": self.product.slug,
-            "category_slug": self.product.categoria.slug if self.product.categoria else None, 
+            "category_slug": self.product.categoria.slug if self.product.categoria else None,
             "alto": self.alto,
             "ancho": self.ancho,
             "anclaje": self.anclaje,
             "color": self.color,
-            "precio_total": self.precio_total
+            "precio_total": self.precio_total,
+            "added_at": self.added_at
         }
 
 
