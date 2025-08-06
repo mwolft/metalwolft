@@ -4,6 +4,7 @@ from api.models import db, Users, Products, ProductImages, Categories, Subcatego
 from api.utils import send_email, calcular_precio_reja
 from sqlalchemy.exc import SQLAlchemyError
 import bcrypt
+from datetime import datetime, timezone
 import os
 from io import BytesIO
 from reportlab.pdfgen import canvas
@@ -1477,7 +1478,8 @@ def handle_cart():
                 ancho=data.get('ancho'),
                 anclaje=data.get('anclaje'),
                 color=data.get('color'),
-                precio_total=data.get('precio_total')  # Guardar el precio total calculado
+                precio_total=data.get('precio_total'),
+                added_at=datetime.now(timezone.utc) 
             )
             db.session.add(new_cart_item)
             db.session.commit()
