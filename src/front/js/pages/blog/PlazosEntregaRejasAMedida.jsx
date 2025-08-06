@@ -16,6 +16,25 @@ export const PlazosEntregaRejasAMedida = () => {
     const postId = 3;
 
     useEffect(() => {
+        const apiBaseUrl = process.env.REACT_APP_BACKEND_URL
+            ? process.env.REACT_APP_BACKEND_URL
+            : process.env.NODE_ENV === "production"
+                ? "https://api.metalwolft.com"
+                : "https://fuzzy-space-eureka-7v7jw6jv7v5jhp945-3001.app.github.dev/";
+
+        fetch(`${apiBaseUrl}/api/seo/plazos-entrega-rejas-a-medida`)
+            .then((response) => {
+                if (!response.ok) {
+                    throw new Error(`Error: ${response.status} ${response.statusText}`);
+                }
+                return response.json();
+            })
+            .then((data) => setMetaData(data))
+            .catch((error) => console.error("Error fetching SEO data:", error));
+    }, []);
+
+
+    useEffect(() => {
         if (!currentPost || currentPost.id !== postId) {
             actions.fetchPost(postId);
         }
