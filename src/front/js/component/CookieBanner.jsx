@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import CookieConsent, { Cookies } from 'react-cookie-consent';
+import CookieConsent from 'react-cookie-consent';
 
 export const CookieBanner = () => {
     const [cookiesAccepted, setCookiesAccepted] = useState(false);
@@ -9,21 +9,36 @@ export const CookieBanner = () => {
         const consentStatus = localStorage.getItem('cookiesConsent');
         if (consentStatus === 'all') {
             setCookiesAccepted(true);
+            updateGoogleConsent('granted');
         } else if (consentStatus === 'essential') {
             setOnlyEssentialCookies(true);
+            updateGoogleConsent('denied');
         }
     }, []);
+
+    const updateGoogleConsent = (status) => {
+        if (window.gtag) {
+            window.gtag('consent', 'update', {
+                'ad_storage': status,
+                'analytics_storage': status,
+                'ad_user_data': status,
+                'ad_personalization': status
+            });
+        }
+    };
 
     const handleAcceptAll = () => {
         localStorage.setItem('cookiesConsent', 'all');
         setCookiesAccepted(true);
         setOnlyEssentialCookies(false);
+        updateGoogleConsent('granted');
     };
 
     const handleAcceptEssential = () => {
         localStorage.setItem('cookiesConsent', 'essential');
         setOnlyEssentialCookies(true);
         setCookiesAccepted(false);
+        updateGoogleConsent('denied');
     };
 
     return (
