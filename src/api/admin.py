@@ -96,7 +96,7 @@ class OrderAdminView(SecureModelView):
 
 
 class CartAdminView(SecureModelView):
-    column_list = ('usuario_email', 'product_display', 'alto', 'ancho', 'anclaje', 'color', 'precio_total', 'added_at')
+    column_list = ('usuario_email', 'product_display', 'alto', 'ancho', 'anclaje', 'color', 'quantity', 'precio_total', 'added_at')
 
     column_labels = {
         'usuario_email': 'Usuario (Email)',
@@ -105,14 +105,15 @@ class CartAdminView(SecureModelView):
         'ancho': 'Ancho',
         'anclaje': 'Anclaje',
         'color': 'Color',
+        'quantity': 'Ud.',
         'precio_total': 'Precio Total',
         'added_at': 'Añadido el'
     }
 
-    form_columns = ['usuario_id', 'producto_id', 'alto', 'ancho', 'anclaje', 'color', 'precio_total', 'added_at']
-
+    form_columns = ['usuario_id', 'producto_id', 'alto', 'ancho', 'anclaje', 'color', 'quantity', 'precio_total', 'added_at']
     column_formatters = {
         'usuario_email': lambda v, c, m, p: m.user.email if m.user else 'Sin usuario',
+        'precio_total': lambda v, c, m, p: f"{(m.precio_total * m.quantity):.2f} €" if m.precio_total and m.quantity else '0.00 €',
         'product_display': lambda v, c, m, p: m.product.nombre if m.product else f'ID {m.producto_id}',
         'added_at': lambda v, c, m, p: m.added_at.strftime("%d/%m/%Y %H:%M") if m.added_at else ''
     }
@@ -126,6 +127,46 @@ class CartAdminView(SecureModelView):
         return columns
 
     column_default_sort = ('added_at', True)
+
+class OrderDetailsAdminView(SecureModelView):
+    column_list = [
+        'order_id', 'locator', 'cliente', 'product_name',
+        'quantity', 'alto', 'ancho', 'anclaje', 'color',
+        'precio_total'
+    ]
+
+    column_labels = {
+        'order_id': 'Pedido ID',
+        'locator': 'Localizador',
+        'cliente': 'Cliente',
+        'product_name': 'Producto',
+        'quantity': 'Ud.',
+        'alto': 'Alto',
+        'ancho': 'Ancho',
+        'anclaje': 'Anclaje',
+        'color': 'Color',
+        'precio_total': 'Precio Total'
+    }
+
+    column_formatters = {
+        'locator': lambda v, c, m, p: m.order.locator if m.order else '',
+        'cliente': lambda v, c, m, p: f"{m.order.user.email}" if m.order and m.order.user else '',
+        'product_name': lambda v, c, m, p: m.product.nombre if m.product else '',
+        'precio_total': lambda v, c, m, p: f"{m.precio_total * m.quantity:.2f} €" if m.precio_total and m.quantity else '0.00 €'
+    }
+
+    def scaffold_list_columns(self):
+        columns = super().scaffold_list_columns()
+        if 'locator' not in columns:
+            columns.append('locator')
+        if 'cliente' not in columns:
+            columns.append('cliente')
+        if 'product_name' not in columns:
+            columns.append('product_name')
+        return columns
+
+    column_default_sort = ('order_id', True)
+
 
 class InvoiceAdminView(SecureModelView):
     form_columns = ['invoice_number','client_name','client_address','client_cif','amount','order_id','created_at']
@@ -162,7 +203,7 @@ def setup_admin(app):
     admin.add_view(SecureModelView(ProductImages, db.session))
     admin.add_view(CartAdminView(Cart, db.session))
     admin.add_view(OrderAdminView(Orders, db.session))
-    admin.add_view(SecureModelView(OrderDetails, db.session))
+    admin.add_view(OrderDetailsAdminView(OrderDetails, db.session))
     admin.add_view(SecureModelView(Favorites, db.session))
     admin.add_view(SecureModelView(Posts, db.session))
     admin.add_view(SecureModelView(Comments, db.session))

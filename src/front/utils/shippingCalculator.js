@@ -35,7 +35,7 @@ export const calcularEnvio = (cart, threshold = 150) => {
             coste = 49;
         }
 
-        subtotal += parseFloat(product.precio_total);
+        subtotal += parseFloat(product.precio_total) * (product.quantity || 1);
 
         // Determinar el tipo y coste final más alto
         if (tipo === "B") {

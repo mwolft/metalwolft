@@ -223,8 +223,8 @@ const CheckoutForm = () => {
                         anclaje: product.anclaje,
                         color: product.color,
                         precio_total: product.precio_total,
-                        shipping_type: product.shipping_type, 
-                        shipping_cost: product.shipping_cost   
+                        shipping_type: product.shipping_type,
+                        shipping_cost: product.shipping_cost
                     })),
                     ...formData
                 };
@@ -311,7 +311,9 @@ const CheckoutForm = () => {
                                         )}
                                     </div>
                                 </div>
-                                <span className="text-muted">{product.precio_total} €</span>
+                                <span style={{ color: "#6c757d", opacity: 1, fontSize: "0.875rem", textAlign: "right", display: "block" }}>
+                                    {product.precio_total.toFixed(2)}€ <br /> {product.quantity ?? 1} und<br /> {(product.precio_total * (product.quantity ?? 1)).toFixed(2)} €
+                                </span>
                             </li>
                         ))}
                         <li className="list-group-item d-flex justify-content-between">

@@ -73,6 +73,8 @@ export const Cart = () => {
                                     <th>Ancho(cm)</th>
                                     <th>Anclaje</th>
                                     <th>Color</th>
+                                    <th>Cantidad</th>
+                                    <th>Precio</th>
                                     <th>Total</th>
                                     <th></th>
                                 </tr>
@@ -92,40 +94,42 @@ export const Cart = () => {
                                                 </Link>
                                             </td>
                                             <td>
-                                            <Link
-                                                to={`/${product.category_slug}/${product.slug}`}
-                                                style={{ textDecoration: 'none', color: 'inherit' }}
-                                            >
-                                                {product.nombre}
-                                            </Link>
-
-                                            {shippingInfo.tipo !== 'normal' && (
-                                                <>
-                                                {/* Pantallas grandes: mostrar texto completo */}
-                                                <p className="d-none d-md-block text-warning mt-1" style={{ fontSize: '0.85rem' }}>
-                                                    🚚 Este producto requiere envío especial ({shippingInfo.coste} €)<br />
-                                                    Supera el tamaño máximo estándar permitido para envío normal.<br />
-                                                    (más de 300 cm entre largo, ancho y alto).
-                                                </p>
-
-                                                {/* Pantallas pequeñas: solo icono ℹ️ con alert al hacer clic */}
-                                                <span
-                                                    className="d-inline d-md-none text-warning mt-1"
-                                                    style={{ fontSize: '1rem', cursor: 'pointer' }}
-                                                    onClick={() =>
-                                                    alert(`🚚 Este producto requiere envío especial (${shippingInfo.coste} €).\n\nSupera el tamaño máximo estándar permitido para envío normal (más de 300 cm entre largo, ancho y alto).`)
-                                                    }
+                                                <Link
+                                                    to={`/${product.category_slug}/${product.slug}`}
+                                                    style={{ textDecoration: 'none', color: 'inherit' }}
                                                 >
-                                                    ⚠️
-                                                </span>
-                                                </>
-                                            )}
+                                                    {product.nombre}
+                                                </Link>
+
+                                                {shippingInfo.tipo !== 'normal' && (
+                                                    <>
+                                                        {/* Pantallas grandes: mostrar texto completo */}
+                                                        <p className="d-none d-md-block text-warning mt-1" style={{ fontSize: '0.85rem' }}>
+                                                            🚚 Este producto requiere envío especial ({shippingInfo.coste} €)<br />
+                                                            Supera el tamaño máximo estándar permitido para envío normal.<br />
+                                                            (más de 300 cm entre largo, ancho y alto).
+                                                        </p>
+
+                                                        {/* Pantallas pequeñas: solo icono ℹ️ con alert al hacer clic */}
+                                                        <span
+                                                            className="d-inline d-md-none text-warning mt-1"
+                                                            style={{ fontSize: '1rem', cursor: 'pointer' }}
+                                                            onClick={() =>
+                                                                alert(`🚚 Este producto requiere envío especial (${shippingInfo.coste} €).\n\nSupera el tamaño máximo estándar permitido para envío normal (más de 300 cm entre largo, ancho y alto).`)
+                                                            }
+                                                        >
+                                                            ⚠️
+                                                        </span>
+                                                    </>
+                                                )}
                                             </td>
                                             <td>{product.alto}</td>
                                             <td>{product.ancho}</td>
                                             <td>{product.anclaje}</td>
                                             <td>{product.color}</td>
-                                            <td>{product.precio_total} €</td>
+                                            <td>{product.quantity ?? 1}</td>
+                                            <td>{(product.precio_total ?? 0).toFixed(2)} €</td>
+                                            <td>{((product.precio_total ?? 0) * (product.quantity ?? 1)).toFixed(2)} €</td>
                                             <td className="cart_remove">
                                                 <Button
                                                     className="btn-style-background-color"

@@ -306,31 +306,76 @@ const getState = ({ getStore, getActions, setStore }) => {
                     alert("Debe estar logueado para añadir productos al carrito");
                     return;
                 }
-                try {
-                    const response = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/cart`, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            Authorization: `Bearer ${localStorage.getItem("token")}`
-                        },
-                        body: JSON.stringify({
-                            product_id: product.product_id,
-                            alto: product.alto,
-                            ancho: product.ancho,
-                            anclaje: product.anclaje,
-                            color: product.color,
-                            precio_total: product.precio_total
-                        })
-                    });
-                    if (!response.ok) {
-                        const data = await response.json();
-                        alert(data.message || "Error al añadir al carrito");
-                        return;
+
+                const existing = store.cart.find(item =>
+                    item.producto_id === product.product_id &&
+                    item.alto === product.alto &&
+                    item.ancho === product.ancho &&
+                    item.anclaje === product.anclaje &&
+                    item.color === product.color
+                );
+
+                if (existing) {
+                    // Si ya existe, actualizar cantidad
+                    try {
+                        const response = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/cart/${existing.producto_id}`, {
+                            method: 'PUT',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                Authorization: `Bearer ${localStorage.getItem("token")}`
+                            },
+                            body: JSON.stringify({
+                                alto: existing.alto,
+                                ancho: existing.ancho,
+                                anclaje: existing.anclaje,
+                                color: existing.color,
+                                quantity: (existing.quantity || 1) + 1 
+                            })
+                        });
+
+                        if (!response.ok) {
+                            const data = await response.json();
+                            alert(data.message || "Error al actualizar el carrito");
+                            return;
+                        }
+
+                        const updatedCart = await response.json();
+                        setStore({ cart: updatedCart });
+                    } catch (error) {
+                        console.error("Error al actualizar el carrito:", error);
                     }
-                    const newProduct = await response.json();
-                    setStore({ cart: [...store.cart, newProduct] });
-                } catch (error) {
-                    console.error("Error al añadir al carrito:", error);
+
+                } else {
+                    // Si no existe, añadir nuevo
+                    try {
+                        const response = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/cart`, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                Authorization: `Bearer ${localStorage.getItem("token")}`
+                            },
+                            body: JSON.stringify({
+                                product_id: product.product_id,
+                                alto: product.alto,
+                                ancho: product.ancho,
+                                anclaje: product.anclaje,
+                                color: product.color,
+                                precio_total: product.precio_total,
+                                quantity: 1 
+                            })
+                        });
+
+                        if (!response.ok) {
+                            const data = await response.json();
+                            alert(data.message || "Error al añadir al carrito");
+                            return;
+                        }
+
+                        const newProduct = await response.json();
+                        setStore({ cart: [...store.cart, newProduct] });
+                    } catch (error) {
+                        console.error("Error al añadir al carrito:", error);
+                    }
                 }
             },
             removeFromCart: async (product) => {
@@ -469,7 +514,7 @@ const getState = ({ getStore, getActions, setStore }) => {
             },
             saveOrderDetails: async (orderId, formData) => {
                 const store = getStore();
-                const { products: enrichedCart } = calcularEnvio(store.cart);  
+                const { products: enrichedCart } = calcularEnvio(store.cart);
 
                 const orderDetailsData = enrichedCart.map(product => ({
                     order_id: orderId,
@@ -480,8 +525,8 @@ const getState = ({ getStore, getActions, setStore }) => {
                     anclaje: product.anclaje,
                     color: product.color,
                     precio_total: product.precio_total,
-                    shipping_type: product.shipping_type,    
-                    shipping_cost: product.shipping_cost,    
+                    shipping_type: product.shipping_type,
+                    shipping_cost: product.shipping_cost,
                     firstname: formData.firstname,
                     lastname: formData.lastname,
                     shipping_address: formData.shipping_address,

@@ -848,7 +848,11 @@ def handle_orders():
 
                 if existing_detail:
                     logger.info(f"Detalle ya existente: {existing_detail.serialize()}")
-                    continue 
+                    existing_detail.quantity += detail['quantity']
+                    existing_detail.precio_total = precio_recalculado  
+                    subtotal += precio_recalculado * detail['quantity']
+                    continue
+
 
                 # Obtener producto y calcular precio exacto según dimensiones
                 prod = Products.query.get(detail['producto_id'])
@@ -884,7 +888,7 @@ def handle_orders():
                 )
 
                 db.session.add(new_detail)
-                subtotal += precio_recalculado
+                subtotal += precio_recalculado * detail.get("quantity", 1)
 
 
             # Usar el coste de envío más alto entre los productos recibidos
@@ -957,22 +961,47 @@ def handle_orders():
                 pdf.setFont("Helvetica-Bold", 12)
                 pdf.drawString(50, 510, "Detalles del Pedido")
                 pdf.setFont("Helvetica", 10)
-                data_table = [["Producto", "Alto", "Ancho", "Anclaje", "Color", "Precio"]]
+
+                from collections import defaultdict
+
+                data_table = [["Prod.", "Alto", "Ancho", "Anc.", "Col.", "Ud.", "Importe (€)"]]
+
+                # Agrupar productos iguales
+                grouped_details = defaultdict(lambda: {"quantity": 0, "precio_unitario": 0.0})
+
                 for detail in order_details:
-                    prod = Products.query.get(detail['producto_id'])
+                    key = (
+                        detail['producto_id'],
+                        detail.get('alto'),
+                        detail.get('ancho'),
+                        detail.get('anclaje'),
+                        detail.get('color')
+                    )
+                    grouped_details[key]["quantity"] += detail.get("quantity", 1)
+                    grouped_details[key]["precio_unitario"] = float(detail["precio_total"])
+
+                # Añadir filas agrupadas a la tabla
+                for (producto_id, alto, ancho, anclaje, color), values in grouped_details.items():
+                    prod = Products.query.get(producto_id)
+                    cantidad = values["quantity"]
+                    precio_unitario = values["precio_unitario"]
+                    importe_total = precio_unitario * cantidad
+
                     row = [
-                        prod.nombre if prod else "Producto desconocido",
-                        f"{detail['alto']} cm",
-                        f"{detail['ancho']} cm",
-                        detail['anclaje'],
-                        detail['color'],
-                        f"{float(detail['precio_total']):.2f} €"
+                        prod.nombre[:20] if prod else "Desconocido",
+                        f"{alto} cm",
+                        f"{ancho} cm",
+                        detail['anclaje'] if detail.get('anclaje') else '',
+                        color[:10] if color else '',
+                        str(cantidad),
+                        f"{importe_total:.2f}"
                     ]
                     data_table.append(row)
 
 
+
                 # Crear la tabla
-                table = Table(data_table, colWidths=[4*cm, 2*cm, 2*cm, 5*cm, 2*cm, 2*cm])
+                table = Table(data_table, colWidths=[4*cm, 1.5*cm, 1.5*cm, 5*cm, 2*cm, 1*cm, 3*cm])
                 table.setStyle(TableStyle([
                     ('BACKGROUND', (0, 0), (-1, 0), colors.Color(1, 0.196, 0.302)),
                     ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
@@ -1479,6 +1508,7 @@ def handle_cart():
                 anclaje=data.get('anclaje'),
                 color=data.get('color'),
                 precio_total=data.get('precio_total'),
+                quantity=data.get('quantity', 1),  
                 added_at=datetime.now(timezone.utc) 
             )
             db.session.add(new_cart_item)
@@ -1499,6 +1529,47 @@ def handle_cart():
             response.headers['Access-Control-Allow-Origin'] = '*'
             response.headers['Access-Control-Expose-Headers'] = 'Authorization'
             return response, 500
+
+
+@api.route('/cart/<int:product_id>', methods=['PUT'])
+@jwt_required()
+def update_cart_item(product_id):
+    current_user = get_jwt_identity()
+    data = request.get_json()
+
+    try:
+        cart_item = Cart.query.filter_by(
+            usuario_id=current_user['user_id'],
+            producto_id=product_id,
+            alto=data.get('alto'),
+            ancho=data.get('ancho'),
+            anclaje=data.get('anclaje'),
+            color=data.get('color')
+        ).first()
+
+        if not cart_item:
+            response = jsonify({"message": "Producto no encontrado en el carrito con esas especificaciones"})
+            response.headers['Access-Control-Allow-Origin'] = '*'
+            response.headers['Access-Control-Expose-Headers'] = 'Authorization'
+            return response, 404
+
+        cart_item.quantity = data.get('quantity', cart_item.quantity)
+        db.session.commit()
+
+        updated_cart_items = Cart.query.filter_by(usuario_id=current_user['user_id']).all()
+        updated_cart = [item.serialize() for item in updated_cart_items]
+
+        response = jsonify(updated_cart)
+        response.headers['Access-Control-Allow-Origin'] = '*'
+        response.headers['Access-Control-Expose-Headers'] = 'Authorization'
+        return response, 200
+
+    except Exception as e:
+        db.session.rollback()
+        response = jsonify({"message": f"Error al actualizar el carrito: {str(e)}"})
+        response.headers['Access-Control-Allow-Origin'] = '*'
+        response.headers['Access-Control-Expose-Headers'] = 'Authorization'
+        return response, 500
 
 
 @api.route('/cart/<int:product_id>', methods=['DELETE'])

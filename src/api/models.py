@@ -460,10 +460,9 @@ class Cart(db.Model):
     anclaje = db.Column(db.String(50), nullable=True)
     color = db.Column(db.String(50), nullable=True)
     precio_total = db.Column(db.Float, nullable=False)
+    quantity = db.Column(db.Integer, nullable=False, default=1)  
     added_at = db.Column(db.DateTime, nullable=False)
-    
     user = db.relationship('Users', backref='cart_items', lazy=True)
-
     product = db.relationship('Products', backref='cart_items', lazy=True)
 
     def serialize(self):
@@ -481,6 +480,7 @@ class Cart(db.Model):
             "anclaje": self.anclaje,
             "color": self.color,
             "precio_total": self.precio_total,
+            "quantity": self.quantity,
             "added_at": self.added_at
         }
 
