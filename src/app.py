@@ -22,6 +22,7 @@ from api.models import db
 from api.seo_routes import seo_bp
 from api.email_routes import email_bp
 from api.password_recovery_endpoints import auth_bp
+from api.invoice_preview import api_invoice_preview
 
 
 # 1) Entorno y paths
@@ -105,6 +106,8 @@ app.register_blueprint(api,       url_prefix='/api')
 app.register_blueprint(seo_bp)
 app.register_blueprint(email_bp,  url_prefix='/api/email')
 app.register_blueprint(auth_bp,   url_prefix='/api/auth')
+app.register_blueprint(api_invoice_preview, url_prefix='/api')
+
 
 
 # 11) Prerender.io para bots

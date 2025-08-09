@@ -1,6 +1,7 @@
 import os
 from flask import request, Response
 from flask_admin import Admin, AdminIndexView, expose
+from markupsafe import Markup
 from flask_admin.contrib.sqla import ModelView
 from wtforms.fields import SelectField, StringField
 from .models import (
@@ -27,7 +28,7 @@ class SecureAdminIndexView(AdminIndexView):
             )
         return super().index()
 
-# ModelView seguro
+# -------------------------- ModelView seguro
 class SecureModelView(ModelView):
     def is_accessible(self):
         auth = request.authorization or {}
@@ -39,8 +40,66 @@ class SecureModelView(ModelView):
             {'WWW-Authenticate': 'Basic realm="Login Required"'}
         )
 
-# Vistas personalizadas
+
+
+
+# -------------------------- Vistas personalizadas
+class UsersAdminView(SecureModelView):
+    # Nuevos primero usando el ID
+    column_default_sort = ('id', True)  # True = DESC
+
+    # Ordenables
+    column_sortable_list = ('id', 'email')
+
+    # Búsqueda básica por email (añade otros si existen en tu modelo)
+    column_searchable_list = ('email',)
+
+    # Email clicable (opcional)
+    column_formatters = {
+        'email': lambda v, c, m, p: Markup(f'<a href="mailto:{m.email}">{m.email}</a>') if m.email else ''
+    }
+
 class ProductAdminView(SecureModelView):
+    # Calidad de vida en la lista
+    column_sortable_list = ('id', 'nombre', 'precio', 'precio_rebajado', 'categoria_id')
+    column_searchable_list = ('nombre',)
+    column_filters = ('categoria_id',)
+    page_size = 50
+    can_set_page_size = True
+
+    # ------- PRIORIDAD: categorías de rejas primero -------
+    PRIORITY_CATEGORY_NAMES = ['rejas', 'rejas para ventanas']  # ajuste libre
+
+    def _priority_category_ids(self):
+        # Devuelve IDs de categorías cuyo nombre contiene cualquiera de los textos anteriores
+        q = Categories.query.with_entities(Categories.id, Categories.nombre)
+        ids = []
+        for cid, nombre in q:
+            nom = (nombre or '').lower()
+            if any(token in nom for token in self.PRIORITY_CATEGORY_NAMES):
+                ids.append(cid)
+        return ids
+
+    def get_query(self):
+        from sqlalchemy import case
+        ids = self._priority_category_ids()
+        if not ids:
+            ids = [-1]  # ningún match -> no prioriza nada
+
+        priority = case((Products.categoria_id.in_(ids), 0), else_=1)
+
+        return (super().get_query()
+                .order_by(
+                    priority.asc(),           # 0 primero = rejas
+                    Products.categoria_id.asc(),
+                    Products.nombre.asc(),
+                    Products.id.asc()
+                ))
+
+    def get_count_query(self):
+        return super().get_count_query()
+
+    # ------- tus choices tal cual -------
     form_extra_fields = {
         'categoria_id': SelectField('Categoría', choices=[])
     }
@@ -55,10 +114,18 @@ class ProductAdminView(SecureModelView):
         form.categoria_id.choices = [(c.id, c.nombre) for c in Categories.query.all()]
         return form
 
+    column_formatters = {
+        'descripcion': lambda v, c, m, p: (m.descripcion[:30] + '…') if m.descripcion and len(m.descripcion) > 30 else (m.descripcion or '')
+    }
+
 class OrderAdminView(SecureModelView):
     form_columns = ['user_id', 'total_amount', 'order_date', 'invoice_number', 'locator', 'order_status']
     column_list =  ['id', 'user_id', 'total_amount', 'order_date', 'invoice_number', 'locator', 'order_status']
     column_editable_list = ['total_amount', 'order_status']
+
+    column_formatters = {
+        'total_amount': lambda v, c, m, p: f"{m.total_amount:.2f}€" if m.total_amount is not None else "0.00 €"
+    }
 
     form_extra_fields = {
         'invoice_number': StringField('Número de Factura', render_kw={'readonly': True}),
@@ -94,7 +161,6 @@ class OrderAdminView(SecureModelView):
                     locator=model.locator
                 )
 
-
 class CartAdminView(SecureModelView):
     column_list = ('usuario_email', 'product_display', 'alto', 'ancho', 'anclaje', 'color', 'quantity', 'precio_total', 'added_at')
 
@@ -113,7 +179,7 @@ class CartAdminView(SecureModelView):
     form_columns = ['usuario_id', 'producto_id', 'alto', 'ancho', 'anclaje', 'color', 'quantity', 'precio_total', 'added_at']
     column_formatters = {
         'usuario_email': lambda v, c, m, p: m.user.email if m.user else 'Sin usuario',
-        'precio_total': lambda v, c, m, p: f"{(m.precio_total * m.quantity):.2f} €" if m.precio_total and m.quantity else '0.00 €',
+        'precio_total': lambda v, c, m, p: f"{(m.precio_total * m.quantity):.2f}€" if m.precio_total and m.quantity else '0.00 €',
         'product_display': lambda v, c, m, p: m.product.nombre if m.product else f'ID {m.producto_id}',
         'added_at': lambda v, c, m, p: m.added_at.strftime("%d/%m/%Y %H:%M") if m.added_at else ''
     }
@@ -167,7 +233,6 @@ class OrderDetailsAdminView(SecureModelView):
 
     column_default_sort = ('order_id', True)
 
-
 class InvoiceAdminView(SecureModelView):
     form_columns = ['invoice_number','client_name','client_address','client_cif','amount','order_id','created_at']
     column_list    = ['id','invoice_number','client_name','amount','created_at','order_id']
@@ -181,6 +246,10 @@ class InvoiceAdminView(SecureModelView):
             form.invoice_number.data = Invoices.generate_next_invoice_number()
         return form
 
+
+
+
+# -------------------------- setup admin
 def setup_admin(app):
     # Secret key y tema
     app.secret_key = os.getenv('FLASK_APP_KEY', 'sample key')
@@ -196,7 +265,7 @@ def setup_admin(app):
     )
 
     # Registra vistas
-    admin.add_view(SecureModelView(Users, db.session))
+    admin.add_view(UsersAdminView(Users, db.session))
     admin.add_view(SecureModelView(Categories, db.session))
     admin.add_view(SecureModelView(Subcategories, db.session))
     admin.add_view(ProductAdminView(Products, db.session))
