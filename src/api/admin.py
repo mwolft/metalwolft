@@ -11,6 +11,7 @@ from .models import (
     Posts, Comments, Invoices, DeliveryEstimateConfig
 )
 from api.email_routes import send_order_status_email
+from datetime import timedelta
 
 # Credenciales desde ENV
 ADMIN_USER = os.getenv('ADMIN_USER')
@@ -39,12 +40,111 @@ class SecureModelView(ModelView):
             'Login required', 401,
             {'WWW-Authenticate': 'Basic realm="Login Required"'}
         )
+    
 
+# -------------------------- SafeModelView seguro
+
+class SafeModelView(SecureModelView):
+    """
+    Como SecureModelView pero sin botón de borrar por fila.
+    Se mantiene el borrado masivo (checkbox + acción Delete).
+    """
+    can_delete = True  # habilita el borrado por selección
+
+    def get_list_row_actions(self):
+        actions = super().get_list_row_actions()
+        # quita la acción de borrar por fila
+        return [a for a in actions if 'delete' not in type(a).__name__.lower()]
 
 
 
 # -------------------------- Vistas personalizadas
-class UsersAdminView(SecureModelView):
+# Vista principal protegida
+class SecureAdminIndexView(AdminIndexView):
+    @expose('/')
+    def index(self):
+        auth = request.authorization or {}
+        if auth.get('username') != ADMIN_USER or auth.get('password') != ADMIN_PW:
+            return Response('Login required', 401, {'WWW-Authenticate': 'Basic realm="Login Required"'})
+
+        from datetime import timedelta
+        from sqlalchemy import func
+
+        # Métricas globales (totales)
+        products_count = db.session.scalar(db.select(func.count(Products.id))) or 0
+        invoices_count = db.session.scalar(db.select(func.count(Invoices.id))) or 0
+        users_count    = db.session.scalar(db.select(func.count(Users.id))) or 0
+        orders_count   = db.session.scalar(db.select(func.count(Orders.id))) or 0
+        # Ticket medio (media del total_amount de todos los pedidos)
+        avg_ticket = db.session.scalar(
+            db.select(func.avg(Orders.total_amount)).where(Orders.total_amount.isnot(None))
+        ) or 0
+
+        # 📊 Ingresos del mes actual y anterior
+        from datetime import datetime
+        from sqlalchemy import extract
+
+        now = datetime.now()
+
+        ingresos_mes_actual = db.session.scalar(
+            db.select(func.sum(Orders.total_amount))
+            .where(Orders.order_date.isnot(None))
+            .where(extract('year', Orders.order_date) == now.year)
+            .where(extract('month', Orders.order_date) == now.month)
+        ) or 0
+
+        mes_anterior = now.month - 1 or 12
+        anio_anterior = now.year if now.month != 1 else now.year - 1
+
+        ingresos_mes_anterior = db.session.scalar(
+            db.select(func.sum(Orders.total_amount))
+            .where(Orders.order_date.isnot(None))
+            .where(extract('year', Orders.order_date) == anio_anterior)
+            .where(extract('month', Orders.order_date) == mes_anterior)
+        ) or 0
+
+        if ingresos_mes_anterior > 0:
+            variacion_porcentual = ((ingresos_mes_actual - ingresos_mes_anterior) / ingresos_mes_anterior) * 100
+        else:
+            variacion_porcentual = 0
+
+
+
+        # Listas COMPLETAS (ordenadas descendente)
+        recent_orders = db.session.execute(
+            db.select(Orders).order_by(Orders.id.desc())
+        ).scalars().all()
+
+        recent_invoices = db.session.execute(
+            db.select(Invoices).order_by(Invoices.id.desc())
+        ).scalars().all()
+
+        # Helper: hora local ES (+2 verano)
+        def tz_es(dt):
+            if not dt:
+                return ""
+            return (dt + timedelta(hours=2)).strftime("%d/%m %H:%M")
+
+        return self.render(
+            'admin/dashboard.html',
+        metrics={
+            'products_count': products_count,
+            'orders_count': orders_count,
+            'invoices_count': invoices_count,
+            'users_count': users_count,
+            'avg_ticket': avg_ticket,
+            'ingresos_mes_actual': ingresos_mes_actual,
+            'variacion_porcentual': variacion_porcentual
+        },
+            recent_orders=recent_orders,       
+            recent_invoices=recent_invoices,   
+            tz_es=tz_es,
+            now=now,
+        )
+
+
+
+class UsersAdminView(SafeModelView):
     # Nuevos primero usando el ID
     column_default_sort = ('id', True)  # True = DESC
 
@@ -59,7 +159,7 @@ class UsersAdminView(SecureModelView):
         'email': lambda v, c, m, p: Markup(f'<a href="mailto:{m.email}">{m.email}</a>') if m.email else ''
     }
 
-class ProductAdminView(SecureModelView):
+class ProductAdminView(SafeModelView):
     # Calidad de vida en la lista
     column_sortable_list = ('id', 'nombre', 'precio', 'precio_rebajado', 'categoria_id')
     column_searchable_list = ('nombre',)
@@ -118,7 +218,7 @@ class ProductAdminView(SecureModelView):
         'descripcion': lambda v, c, m, p: (m.descripcion[:30] + '…') if m.descripcion and len(m.descripcion) > 30 else (m.descripcion or '')
     }
 
-class OrderAdminView(SecureModelView):
+class OrderAdminView(SafeModelView):
     form_columns = ['user_id', 'total_amount', 'order_date', 'invoice_number', 'locator', 'order_status']
     column_list =  ['id', 'user_id', 'total_amount', 'order_date', 'invoice_number', 'locator', 'order_status']
     column_editable_list = ['total_amount', 'order_status']
@@ -161,7 +261,19 @@ class OrderAdminView(SecureModelView):
                     locator=model.locator
                 )
 
-class CartAdminView(SecureModelView):
+    # Orden descendente por fecha de pedido
+    column_default_sort = ('order_date', True)
+
+    column_formatters = {
+        'total_amount': lambda v, c, m, p: f"{m.total_amount:.2f}€" if m.total_amount is not None else "0.00 €",
+        'order_date': lambda v, c, m, p: (
+            (m.order_date + timedelta(hours=2)).strftime("%d/%m/%Y %H:%M") if m.order_date else ''
+        )
+    }
+
+    column_default_sort = ('order_date', True)    
+
+class CartAdminView(SafeModelView):
     column_list = ('usuario_email', 'product_display', 'alto', 'ancho', 'anclaje', 'color', 'quantity', 'precio_total', 'added_at')
 
     column_labels = {
@@ -194,7 +306,7 @@ class CartAdminView(SecureModelView):
 
     column_default_sort = ('added_at', True)
 
-class OrderDetailsAdminView(SecureModelView):
+class OrderDetailsAdminView(SafeModelView):
     column_list = [
         'order_id', 'locator', 'cliente', 'product_name',
         'quantity', 'alto', 'ancho', 'anclaje', 'color',
@@ -233,13 +345,23 @@ class OrderDetailsAdminView(SecureModelView):
 
     column_default_sort = ('order_id', True)
 
-class InvoiceAdminView(SecureModelView):
+class InvoiceAdminView(SafeModelView):
     form_columns = ['invoice_number','client_name','client_address','client_cif','amount','order_id','created_at']
     column_list    = ['id','invoice_number','client_name','amount','created_at','order_id']
     column_editable_list = ['client_name','client_address','client_cif','amount']
     form_extra_fields = {
         'invoice_number': StringField('Número de Factura', render_kw={'readonly': True})
     }
+
+    column_formatters = {
+        'amount': lambda v, c, m, p: f"{m.amount:.2f}€" if m.amount is not None else "0.00€",
+        'created_at': lambda v, c, m, p: (
+            (m.created_at + timedelta(hours=2)).strftime("%d/%m %H:%M") if m.created_at else ''
+        )
+    }
+
+    column_default_sort = ('created_at', True)
+
     def create_form(self, obj=None):
         form = super().create_form(obj)
         if not form.invoice_number.data:
@@ -266,15 +388,15 @@ def setup_admin(app):
 
     # Registra vistas
     admin.add_view(UsersAdminView(Users, db.session))
-    admin.add_view(SecureModelView(Categories, db.session))
-    admin.add_view(SecureModelView(Subcategories, db.session))
+    admin.add_view(SafeModelView(Categories, db.session))
+    admin.add_view(SafeModelView(Subcategories, db.session))
     admin.add_view(ProductAdminView(Products, db.session))
-    admin.add_view(SecureModelView(ProductImages, db.session))
+    admin.add_view(SafeModelView(ProductImages, db.session))
     admin.add_view(CartAdminView(Cart, db.session))
     admin.add_view(OrderAdminView(Orders, db.session))
     admin.add_view(OrderDetailsAdminView(OrderDetails, db.session))
-    admin.add_view(SecureModelView(Favorites, db.session))
-    admin.add_view(SecureModelView(Posts, db.session))
-    admin.add_view(SecureModelView(Comments, db.session))
+    admin.add_view(SafeModelView(Favorites, db.session))
+    admin.add_view(SafeModelView(Posts, db.session))
+    admin.add_view(SafeModelView(Comments, db.session))
     admin.add_view(InvoiceAdminView(Invoices, db.session))
-    admin.add_view(ModelView(DeliveryEstimateConfig, db.session))
+    admin.add_view(SafeModelView(DeliveryEstimateConfig, db.session))  # <-- antes era ModelView

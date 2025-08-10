@@ -1,0 +1,123 @@
+{% extends 'admin/master.html' %}
+
+{% block body %}
+<div class="container-fluid" style="margin-top:10px;">
+    <h3 style="margin-bottom:15px;"><b>RESUMEN:</b></h3>
+
+    <div class="row">
+        <div class="col-sm-3">
+            <div class="panel panel-primary">
+                <div class="panel-heading">Productos</div>
+                <div class="panel-body"><strong>{{ metrics.products_count }}</strong></div>
+            </div>
+        </div>
+        <div class="col-sm-3">
+            <div class="panel panel-primary">
+                <div class="panel-heading">Pedidos</div>
+                <div class="panel-body"><strong>{{ metrics.orders_count }}</strong></div>
+            </div>
+        </div>
+        <div class="col-sm-3">
+            <div class="panel panel-primary">
+                <div class="panel-heading">Facturas</div>
+                <div class="panel-body"><strong>{{ metrics.invoices_count }}</strong></div>
+            </div>
+        </div>
+        <div class="col-sm-3">
+            <div class="panel panel-primary">
+                <div class="panel-heading">Usuarios</div>
+                <div class="panel-body"><strong>{{ metrics.users_count }}</strong></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+
+        <div class="col-md-6 col-sm-12">
+            <div class="panel panel-primary">
+                <div class="panel-heading">Últimos pedidos</div>
+                <div class="panel-body" style="padding:0;">
+                    <table class="table table-striped" style="margin:0;">
+                        <thead>
+                            <tr>
+                                <th>Cliente</th>
+                                <th>Fecha</th>
+                                <th>Estado</th>
+                                <th>Total</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for o in recent_orders %}
+                            <tr>
+                                <td>{{ (o.user.email if o.user else '—') }}</td>
+                                <td>{{ tz_es(o.order_date) if o.order_date else '' }}</td>
+                                <td>{{ o.order_status }}</td>
+                                <td>{{ "{:.2f}".format(o.total_amount or 0) }}€</td>
+                            </tr>
+                            {% else %}
+                            <tr>
+                                <td colspan="5" class="text-muted">Sin datos</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6 col-sm-12">
+            <div class="panel panel-primary">
+                <div class="panel-heading">Últimas facturas</div>
+                <div class="panel-body" style="padding:0;">
+                    <table class="table table-striped" style="margin:0;">
+                        <thead>
+                            <tr>
+                                <th>Nro. Factura</th>
+                                <th>Cliente</th>
+                                <th>Importe</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for f in recent_invoices %}
+                            <tr>
+                                <td>{{ f.invoice_number }}</td>
+                                <td>{{ f.client_name or '—' }}</td>
+                                <td>{{ "{:.2f}".format(f.amount or 0) }}€</td>
+                            </tr>
+                            {% else %}
+                            <tr>
+                                <td colspan="4" class="text-muted">Sin datos</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 col-sm-6">
+            <div class="panel panel-primary">
+                <div class="panel-heading">Ticket medio</div>
+                <div class="panel-body">
+                    <h3><b>{{ "%.2f"|format(metrics.avg_ticket) }}€</b></h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-9 col-sm-6">
+            <div class="panel panel-success">
+                <div class="panel-heading">Ingresos {{ now.strftime('%B %Y') }}</div>
+                <div class="panel-body">
+                    <h3><b>{{ "%.2f"|format(metrics.ingresos_mes_actual) }}€</b></h3>
+                    <small>
+                        {% if metrics.variacion_porcentual >= 0 %}
+                        <span style="color:green;">▲ {{ "%.2f"|format(metrics.variacion_porcentual) }}%</span>
+                        {% else %}
+                        <span style="color:red;">▼ {{ "%.2f"|format(metrics.variacion_porcentual) }}%</span>
+                        {% endif %}
+                        respecto al mes anterior
+                    </small>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
