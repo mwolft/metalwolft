@@ -32,35 +32,36 @@
     </div>
 
     <div class="row">
-
         <div class="col-md-6 col-sm-12">
             <div class="panel panel-primary">
                 <div class="panel-heading">Últimos pedidos</div>
                 <div class="panel-body" style="padding:0;">
-                    <table class="table table-striped" style="margin:0;">
-                        <thead>
-                            <tr>
-                                <th>Cliente</th>
-                                <th>Fecha</th>
-                                <th>Estado</th>
-                                <th>Total</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for o in recent_orders %}
-                            <tr>
-                                <td>{{ (o.user.email if o.user else '—') }}</td>
-                                <td>{{ tz_es(o.order_date) if o.order_date else '' }}</td>
-                                <td>{{ o.order_status }}</td>
-                                <td>{{ "{:.2f}".format(o.total_amount or 0) }}€</td>
-                            </tr>
-                            {% else %}
-                            <tr>
-                                <td colspan="5" class="text-muted">Sin datos</td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
+                    <div class="table-responsive"> <!-- 🔥 Scroll horizontal en móvil -->
+                        <table class="table table-striped" style="margin:0;">
+                            <thead>
+                                <tr>
+                                    <th>Cliente</th>
+                                    <th>Fecha</th>
+                                    <th>Estado</th>
+                                    <th>Total</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for o in recent_orders %}
+                                <tr>
+                                    <td>{{ (o.user.email if o.user else '—') }}</td>
+                                    <td>{{ tz_es(o.order_date) if o.order_date else '' }}</td>
+                                    <td>{{ o.order_status }}</td>
+                                    <td>{{ "{:.2f}".format(o.total_amount or 0) }}€</td>
+                                </tr>
+                                {% else %}
+                                <tr>
+                                    <td colspan="5" class="text-muted">Sin datos</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
         </div>
@@ -69,28 +70,30 @@
             <div class="panel panel-primary">
                 <div class="panel-heading">Últimas facturas</div>
                 <div class="panel-body" style="padding:0;">
-                    <table class="table table-striped" style="margin:0;">
-                        <thead>
-                            <tr>
-                                <th>Nro. Factura</th>
-                                <th>Cliente</th>
-                                <th>Importe</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for f in recent_invoices %}
-                            <tr>
-                                <td>{{ f.invoice_number }}</td>
-                                <td>{{ f.client_name or '—' }}</td>
-                                <td>{{ "{:.2f}".format(f.amount or 0) }}€</td>
-                            </tr>
-                            {% else %}
-                            <tr>
-                                <td colspan="4" class="text-muted">Sin datos</td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
+                    <div class="table-responsive"> <!-- 🔥 Scroll horizontal en móvil -->
+                        <table class="table table-striped" style="margin:0;">
+                            <thead>
+                                <tr>
+                                    <th>Nro. Factura</th>
+                                    <th>Cliente</th>
+                                    <th>Importe</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for f in recent_invoices %}
+                                <tr>
+                                    <td>{{ f.invoice_number }}</td>
+                                    <td>{{ f.client_name or '—' }}</td>
+                                    <td>{{ "{:.2f}".format(f.amount or 0) }}€</td>
+                                </tr>
+                                {% else %}
+                                <tr>
+                                    <td colspan="4" class="text-muted">Sin datos</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
         </div>
@@ -104,16 +107,24 @@
         </div>
         <div class="col-md-9 col-sm-6">
             <div class="panel panel-success">
-                <div class="panel-heading">Ingresos {{ now.strftime('%B %Y') }}</div>
+                <div class="panel-heading">Ingresos últimos 30 días</div>
                 <div class="panel-body">
-                    <h3><b>{{ "%.2f"|format(metrics.ingresos_mes_actual) }}€</b></h3>
-                    <small>
-                        {% if metrics.variacion_porcentual >= 0 %}
-                        <span style="color:green;">▲ {{ "%.2f"|format(metrics.variacion_porcentual) }}%</span>
+                    <h3 style="display:inline-block; margin:0;">
+                        <b>{{ "%.2f"|format(metrics.ingresos_30d) }}€</b>
+                    </h3>
+                    <small style="display:inline-block; margin-left:10px;">
+                        {% if metrics.variacion_es_nueva %}
+                        <span style="color:green;">▲ {{ metrics.variacion_label }}</span>
+                        <span class="text-muted"> (sin periodo anterior)</span>
                         {% else %}
-                        <span style="color:red;">▼ {{ "%.2f"|format(metrics.variacion_porcentual) }}%</span>
+                        {% if metrics.variacion_up %}
+                        <span style="color:green;">▲ {{ metrics.variacion_label }}</span>
+                        {% else %}
+                        <span style="color:red;">▼ {{ metrics.variacion_label }}</span>
                         {% endif %}
-                        respecto al mes anterior
+                        respecto a los 30 días anteriores
+                        {% endif %}
+                        
                     </small>
                 </div>
             </div>

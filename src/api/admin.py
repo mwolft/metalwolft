@@ -67,50 +67,59 @@ class SecureAdminIndexView(AdminIndexView):
         if auth.get('username') != ADMIN_USER or auth.get('password') != ADMIN_PW:
             return Response('Login required', 401, {'WWW-Authenticate': 'Basic realm="Login Required"'})
 
-        from datetime import timedelta
+        from datetime import datetime, timezone, timedelta
         from sqlalchemy import func
 
-        # Métricas globales (totales)
+        # ==== Métricas globales ====
         products_count = db.session.scalar(db.select(func.count(Products.id))) or 0
         invoices_count = db.session.scalar(db.select(func.count(Invoices.id))) or 0
         users_count    = db.session.scalar(db.select(func.count(Users.id))) or 0
         orders_count   = db.session.scalar(db.select(func.count(Orders.id))) or 0
-        # Ticket medio (media del total_amount de todos los pedidos)
+
+        # Ticket medio (media de total_amount)
         avg_ticket = db.session.scalar(
             db.select(func.avg(Orders.total_amount)).where(Orders.total_amount.isnot(None))
         ) or 0
 
-        # 📊 Ingresos del mes actual y anterior
-        from datetime import datetime
-        from sqlalchemy import extract
+        # ==== Ingresos últimos 30 días vs 30 días previos ====
+        now = datetime.now(timezone.utc)       # aware en UTC
+        hace_30 = now - timedelta(days=30)
+        hace_60 = now - timedelta(days=60)
 
-        now = datetime.now()
-
-        ingresos_mes_actual = db.session.scalar(
+        ingresos_30d = db.session.scalar(
             db.select(func.sum(Orders.total_amount))
-            .where(Orders.order_date.isnot(None))
-            .where(extract('year', Orders.order_date) == now.year)
-            .where(extract('month', Orders.order_date) == now.month)
+              .where(Orders.order_date.isnot(None))
+              .where(Orders.order_date >= hace_30)
+              .where(Orders.order_date <= now)
         ) or 0
 
-        mes_anterior = now.month - 1 or 12
-        anio_anterior = now.year if now.month != 1 else now.year - 1
-
-        ingresos_mes_anterior = db.session.scalar(
+        ingresos_previos_30d = db.session.scalar(
             db.select(func.sum(Orders.total_amount))
-            .where(Orders.order_date.isnot(None))
-            .where(extract('year', Orders.order_date) == anio_anterior)
-            .where(extract('month', Orders.order_date) == mes_anterior)
+              .where(Orders.order_date.isnot(None))
+              .where(Orders.order_date >= hace_60)
+              .where(Orders.order_date <  hace_30)
         ) or 0
 
-        if ingresos_mes_anterior > 0:
-            variacion_porcentual = ((ingresos_mes_actual - ingresos_mes_anterior) / ingresos_mes_anterior) * 100
+        # Variación con manejo de "sin periodo anterior"
+        if ingresos_previos_30d > 0:
+            variacion_porcentual = ((ingresos_30d - ingresos_previos_30d) / ingresos_previos_30d) * 100
+            variacion_label = f"{variacion_porcentual:.2f}%"
+            variacion_up = variacion_porcentual >= 0
+            variacion_es_nueva = False
         else:
-            variacion_porcentual = 0
+            if ingresos_30d > 0:
+                # No había ingresos en el periodo previo -> "nuevo"
+                variacion_porcentual = None
+                variacion_label = "nuevo"  # o "+∞%" si lo prefieres
+                variacion_up = True
+                variacion_es_nueva = True
+            else:
+                variacion_porcentual = 0.0
+                variacion_label = "0.00%"
+                variacion_up = False
+                variacion_es_nueva = False
 
-
-
-        # Listas COMPLETAS (ordenadas descendente)
+        # ==== Listados completos (más recientes primero) ====
         recent_orders = db.session.execute(
             db.select(Orders).order_by(Orders.id.desc())
         ).scalars().all()
@@ -119,7 +128,7 @@ class SecureAdminIndexView(AdminIndexView):
             db.select(Invoices).order_by(Invoices.id.desc())
         ).scalars().all()
 
-        # Helper: hora local ES (+2 verano)
+        # Helper simple: pasar a hora local ES (+2 en verano)
         def tz_es(dt):
             if not dt:
                 return ""
@@ -127,19 +136,22 @@ class SecureAdminIndexView(AdminIndexView):
 
         return self.render(
             'admin/dashboard.html',
-        metrics={
-            'products_count': products_count,
-            'orders_count': orders_count,
-            'invoices_count': invoices_count,
-            'users_count': users_count,
-            'avg_ticket': avg_ticket,
-            'ingresos_mes_actual': ingresos_mes_actual,
-            'variacion_porcentual': variacion_porcentual
-        },
-            recent_orders=recent_orders,       
-            recent_invoices=recent_invoices,   
+            metrics={
+                'products_count': products_count,
+                'orders_count': orders_count,
+                'invoices_count': invoices_count,
+                'users_count': users_count,
+                'avg_ticket': avg_ticket,
+                'ingresos_30d': ingresos_30d,
+                'variacion_porcentual': variacion_porcentual,  # puede ser None
+                'variacion_label': variacion_label,            # string listo para pintar
+                'variacion_up': variacion_up,                  # True/False
+                'variacion_es_nueva': variacion_es_nueva,      # True si no hay periodo previo
+            },
+            recent_orders=recent_orders,
+            recent_invoices=recent_invoices,
             tz_es=tz_es,
-            now=now,
+            now=now, 
         )
 
 
@@ -399,4 +411,4 @@ def setup_admin(app):
     admin.add_view(SafeModelView(Posts, db.session))
     admin.add_view(SafeModelView(Comments, db.session))
     admin.add_view(InvoiceAdminView(Invoices, db.session))
-    admin.add_view(SafeModelView(DeliveryEstimateConfig, db.session))  # <-- antes era ModelView
+    admin.add_view(SafeModelView(DeliveryEstimateConfig, db.session))  
