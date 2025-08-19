@@ -55,7 +55,8 @@
     text-decoration: none;
 }
 .navbar-toggler {
-    margin-right: 10px !important;
+    margin-right: 1px !important;
+    margin-left: 2px !important;
 }
 .nav-link:hover {
     color: #ff324d !important;
@@ -93,11 +94,18 @@ button.btn-outline-dark i {
     }
     .nav-link.d-lg-none {
         margin-left: 0rem;
+        margin-right: 7px;
     }
     .navbar-brand img {
         max-height: 2.8rem;
         margin-right: 0px;
         padding-left: 0rem;
+    }
+    .nav-link.d-lg-none{
+        margin-right: 7px;
+    }
+    #carrito{
+        margin-right: 7px;
     }
 }
 @media (max-width: 450px) {

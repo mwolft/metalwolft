@@ -797,15 +797,15 @@ def handle_orders():
 
     if request.method == 'GET':
         try:
-            # Si el usuario es administrador, devolver todas las órdenes
-            if current_user.get("is_admin"):
-                orders = db.session.execute(db.select(Orders)).scalars()
-            else:
+            # ------------ Si el usuario es administrador, devolver todas las órdenes
+            # if current_user.get("is_admin"):
+                # orders = db.session.execute(db.select(Orders)).scalars()
+            # else:
                 # Si no, devolver solo las órdenes del usuario autenticado
-                orders = db.session.execute(
-                    db.select(Orders).where(Orders.user_id == current_user['user_id'])
-                ).scalars()
-            
+            # 🔑 ----------Siempre filtrar por user_id del token
+            orders = db.session.execute(
+                db.select(Orders).where(Orders.user_id == current_user['user_id'])
+            ).scalars()
             results = [order.serialize() for order in orders]
             total_count = len(results)
             

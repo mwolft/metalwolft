@@ -131,9 +131,7 @@ export const InstalationRejasParaVentanas = () => {
                         )}
                         <div className="blog-text">
                             <h2 className="h2-categories">PREPARACIÓN Y HERRAMIENTAS NECESARIAS</h2>
-                            <p>Después de haber medido cuidadosamente los huecos de las ventanas, como se detalló en nuestro <u><b>artículo anterior,</b></u>
-                                y tras haber elegido el <u>estilo de rejas para ventanas</u> que mejor se adapte a tus necesidades, estás listo para recibir tus rejas. </p>
-
+                            <p>Después de haber medido cuidadosamente los huecos de las ventanas, como se detalló en nuestro <b>artículo anterior,</b> y tras haber elegido el estilo de rejas para ventanas que mejor se adapte a tus necesidades, estás listo para recibir tus rejas. </p>
                             <p>Asegúrate de tener a mano las siguientes herramientas esenciales:</p>
                             <ul className="m-4">
                                 <li><b>Taladro manual:</b> Para perforar agujeros en la pared de forma precisa.</li>

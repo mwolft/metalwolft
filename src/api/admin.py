@@ -13,53 +13,13 @@ from .models import (
 from api.email_routes import send_order_status_email
 from datetime import timedelta
 
+
 # Credenciales desde ENV
 ADMIN_USER = os.getenv('ADMIN_USER')
 ADMIN_PW   = os.getenv('ADMIN_PW')
 
-# Vista principal protegida
-class SecureAdminIndexView(AdminIndexView):
-    @expose('/')
-    def index(self):
-        auth = request.authorization or {}
-        if auth.get('username') != ADMIN_USER or auth.get('password') != ADMIN_PW:
-            return Response(
-                'Login required', 401,
-                {'WWW-Authenticate': 'Basic realm="Login Required"'}
-            )
-        return super().index()
 
-# -------------------------- ModelView seguro
-class SecureModelView(ModelView):
-    def is_accessible(self):
-        auth = request.authorization or {}
-        return auth.get('username') == ADMIN_USER and auth.get('password') == ADMIN_PW
-
-    def inaccessible_callback(self, name, **kwargs):
-        return Response(
-            'Login required', 401,
-            {'WWW-Authenticate': 'Basic realm="Login Required"'}
-        )
-    
-
-# -------------------------- SafeModelView seguro
-
-class SafeModelView(SecureModelView):
-    """
-    Como SecureModelView pero sin botón de borrar por fila.
-    Se mantiene el borrado masivo (checkbox + acción Delete).
-    """
-    can_delete = True  # habilita el borrado por selección
-
-    def get_list_row_actions(self):
-        actions = super().get_list_row_actions()
-        # quita la acción de borrar por fila
-        return [a for a in actions if 'delete' not in type(a).__name__.lower()]
-
-
-
-# -------------------------- Vistas personalizadas
-# Vista principal protegida
+# ========================== VISTA PRINCIPAL PROTEGIDA (ÚNICA) ==========================
 class SecureAdminIndexView(AdminIndexView):
     @expose('/')
     def index(self):
@@ -108,9 +68,8 @@ class SecureAdminIndexView(AdminIndexView):
             variacion_es_nueva = False
         else:
             if ingresos_30d > 0:
-                # No había ingresos en el periodo previo -> "nuevo"
                 variacion_porcentual = None
-                variacion_label = "nuevo"  # o "+∞%" si lo prefieres
+                variacion_label = "nuevo"
                 variacion_up = True
                 variacion_es_nueva = True
             else:
@@ -151,39 +110,50 @@ class SecureAdminIndexView(AdminIndexView):
             recent_orders=recent_orders,
             recent_invoices=recent_invoices,
             tz_es=tz_es,
-            now=now, 
+            now=now,
         )
 
 
+# ========================== BASE SEGURA PARA MODELOS ==========================
+class SecureModelView(ModelView):
+    def is_accessible(self):
+        auth = request.authorization or {}
+        return auth.get('username') == ADMIN_USER and auth.get('password') == ADMIN_PW
 
+    def inaccessible_callback(self, name, **kwargs):
+        return Response('Login required', 401, {'WWW-Authenticate': 'Basic realm="Login Required"'})
+
+
+# ========================== SAFE MODEL VIEW (CON PAPELERA Y MASIVO) ==========================
+class SafeModelView(SecureModelView):
+    """
+    Igual que SecureModelView pero con icono de borrar por fila
+    y borrado masivo habilitado.
+    """
+    can_delete = True
+    action_disallowed_list = []   # asegura que 'delete' esté permitido
+
+
+# ========================== VISTAS ==========================
 class UsersAdminView(SafeModelView):
-    # Nuevos primero usando el ID
-    column_default_sort = ('id', True)  # True = DESC
-
-    # Ordenables
+    column_default_sort = ('id', True)  # DESC
     column_sortable_list = ('id', 'email')
-
-    # Búsqueda básica por email (añade otros si existen en tu modelo)
     column_searchable_list = ('email',)
-
-    # Email clicable (opcional)
     column_formatters = {
         'email': lambda v, c, m, p: Markup(f'<a href="mailto:{m.email}">{m.email}</a>') if m.email else ''
     }
 
+
 class ProductAdminView(SafeModelView):
-    # Calidad de vida en la lista
     column_sortable_list = ('id', 'nombre', 'precio', 'precio_rebajado', 'categoria_id')
     column_searchable_list = ('nombre',)
     column_filters = ('categoria_id',)
     page_size = 50
     can_set_page_size = True
 
-    # ------- PRIORIDAD: categorías de rejas primero -------
-    PRIORITY_CATEGORY_NAMES = ['rejas', 'rejas para ventanas']  # ajuste libre
+    PRIORITY_CATEGORY_NAMES = ['rejas', 'rejas para ventanas']
 
     def _priority_category_ids(self):
-        # Devuelve IDs de categorías cuyo nombre contiene cualquiera de los textos anteriores
         q = Categories.query.with_entities(Categories.id, Categories.nombre)
         ids = []
         for cid, nombre in q:
@@ -194,15 +164,11 @@ class ProductAdminView(SafeModelView):
 
     def get_query(self):
         from sqlalchemy import case
-        ids = self._priority_category_ids()
-        if not ids:
-            ids = [-1]  # ningún match -> no prioriza nada
-
+        ids = self._priority_category_ids() or [-1]
         priority = case((Products.categoria_id.in_(ids), 0), else_=1)
-
         return (super().get_query()
                 .order_by(
-                    priority.asc(),           # 0 primero = rejas
+                    priority.asc(),
                     Products.categoria_id.asc(),
                     Products.nombre.asc(),
                     Products.id.asc()
@@ -211,16 +177,18 @@ class ProductAdminView(SafeModelView):
     def get_count_query(self):
         return super().get_count_query()
 
-    # ------- tus choices tal cual -------
     form_extra_fields = {
         'categoria_id': SelectField('Categoría', choices=[])
     }
+
     def on_form_prefill(self, form, id):
         form.categoria_id.choices = [(c.id, c.nombre) for c in Categories.query.all()]
+
     def create_form(self, obj=None):
         form = super().create_form(obj)
         form.categoria_id.choices = [(c.id, c.nombre) for c in Categories.query.all()]
         return form
+
     def edit_form(self, obj=None):
         form = super().edit_form(obj)
         form.categoria_id.choices = [(c.id, c.nombre) for c in Categories.query.all()]
@@ -230,9 +198,10 @@ class ProductAdminView(SafeModelView):
         'descripcion': lambda v, c, m, p: (m.descripcion[:30] + '…') if m.descripcion and len(m.descripcion) > 30 else (m.descripcion or '')
     }
 
+
 class OrderAdminView(SafeModelView):
     form_columns = ['user_id', 'total_amount', 'order_date', 'invoice_number', 'locator', 'order_status']
-    column_list =  ['id', 'user_id', 'total_amount', 'order_date', 'invoice_number', 'locator', 'order_status']
+    column_list   = ['id', 'user_id', 'total_amount', 'order_date', 'invoice_number', 'locator', 'order_status']
     column_editable_list = ['total_amount', 'order_status']
 
     column_formatters = {
@@ -273,7 +242,10 @@ class OrderAdminView(SafeModelView):
                     locator=model.locator
                 )
 
-    # Orden descendente por fecha de pedido
+    # Hook para evitar errores al borrar por FK: eliminar detalles primero
+    def on_model_delete(self, model):
+        self.session.query(OrderDetails).filter_by(order_id=model.id).delete(synchronize_session=False)
+
     column_default_sort = ('order_date', True)
 
     column_formatters = {
@@ -283,7 +255,6 @@ class OrderAdminView(SafeModelView):
         )
     }
 
-    column_default_sort = ('order_date', True)    
 
 class CartAdminView(SafeModelView):
     column_list = ('usuario_email', 'product_display', 'alto', 'ancho', 'anclaje', 'color', 'quantity', 'precio_total', 'added_at')
@@ -317,6 +288,7 @@ class CartAdminView(SafeModelView):
         return columns
 
     column_default_sort = ('added_at', True)
+
 
 class OrderDetailsAdminView(SafeModelView):
     column_list = [
@@ -357,6 +329,7 @@ class OrderDetailsAdminView(SafeModelView):
 
     column_default_sort = ('order_id', True)
 
+
 class InvoiceAdminView(SafeModelView):
     form_columns = ['invoice_number','client_name','client_address','client_cif','amount','order_id','created_at']
     column_list    = ['id','invoice_number','client_name','amount','created_at','order_id']
@@ -381,9 +354,7 @@ class InvoiceAdminView(SafeModelView):
         return form
 
 
-
-
-# -------------------------- setup admin
+# ========================== SETUP ADMIN ==========================
 def setup_admin(app):
     # Secret key y tema
     app.secret_key = os.getenv('FLASK_APP_KEY', 'sample key')
@@ -411,4 +382,4 @@ def setup_admin(app):
     admin.add_view(SafeModelView(Posts, db.session))
     admin.add_view(SafeModelView(Comments, db.session))
     admin.add_view(InvoiceAdminView(Invoices, db.session))
-    admin.add_view(SafeModelView(DeliveryEstimateConfig, db.session))  
+    admin.add_view(SafeModelView(DeliveryEstimateConfig, db.session))

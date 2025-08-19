@@ -46,6 +46,7 @@ import { InformationCollected } from "./pages/InformationCollected.jsx";
 import { ChangesInCookiePolicy } from "./pages/ChangesInCookiePolicy.jsx";
 import { ReturnsPolicy } from "./pages/ReturnsPolicy.jsx";
 import ResetPassword from "./pages/ResetPassword.jsx"
+import { AccountPage } from "./pages/AccountPage";
 
 // Blog
 import { BlogListPage } from "./pages/blog/BlogListPage.jsx";
@@ -118,6 +119,7 @@ const Layout = () => {
                         <Route path="/politica-devolucion" element={<ReturnsPolicy />} />
                         <Route path="/license" element={<License />} />
                         <Route path="/delivery-estimate-banner" element={<DeliveryEstimateBanner />} />
+                        <Route path="/mi-cuenta" element={<AccountPage />} />
                     </Routes>
                     <Footer />
                 </div>

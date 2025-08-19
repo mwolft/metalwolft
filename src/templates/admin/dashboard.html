@@ -3,7 +3,32 @@
 {% block body %}
 <div class="container-fluid" style="margin-top:10px;">
     <h3 style="margin-bottom:15px;"><b>RESUMEN:</b></h3>
+    <div class="row">
+        <div class="col-md-12 col-sm-12">
+            <div class="panel panel-success">
+                <div class="panel-heading">Ingresos últimos 30 días</div>
+                <div class="panel-body">
+                    <h3 style="display:inline-block; margin:0;">
+                        <b>{{ "%.2f"|format(metrics.ingresos_30d) }}€</b>
+                    </h3>
+                    <small style="display:inline-block; margin-left:10px;">
+                        {% if metrics.variacion_es_nueva %}
+                        <span style="color:green;">▲ {{ metrics.variacion_label }}</span>
+                        <span class="text-muted"> (sin periodo anterior)</span>
+                        {% else %}
+                        {% if metrics.variacion_up %}
+                        <span style="color:green;">▲ {{ metrics.variacion_label }}</span>
+                        {% else %}
+                        <span style="color:red;">▼ {{ metrics.variacion_label }}</span>
+                        {% endif %}
+                        respecto a los 30 días anteriores
+                        {% endif %}
 
+                    </small>
+                </div>
+            </div>
+        </div>
+    </div>
     <div class="row">
         <div class="col-sm-3">
             <div class="panel panel-primary">
@@ -102,30 +127,6 @@
                 <div class="panel-heading">Ticket medio</div>
                 <div class="panel-body">
                     <h3><b>{{ "%.2f"|format(metrics.avg_ticket) }}€</b></h3>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-9 col-sm-6">
-            <div class="panel panel-success">
-                <div class="panel-heading">Ingresos últimos 30 días</div>
-                <div class="panel-body">
-                    <h3 style="display:inline-block; margin:0;">
-                        <b>{{ "%.2f"|format(metrics.ingresos_30d) }}€</b>
-                    </h3>
-                    <small style="display:inline-block; margin-left:10px;">
-                        {% if metrics.variacion_es_nueva %}
-                        <span style="color:green;">▲ {{ metrics.variacion_label }}</span>
-                        <span class="text-muted"> (sin periodo anterior)</span>
-                        {% else %}
-                        {% if metrics.variacion_up %}
-                        <span style="color:green;">▲ {{ metrics.variacion_label }}</span>
-                        {% else %}
-                        <span style="color:red;">▼ {{ metrics.variacion_label }}</span>
-                        {% endif %}
-                        respecto a los 30 días anteriores
-                        {% endif %}
-                        
-                    </small>
                 </div>
             </div>
         </div>
