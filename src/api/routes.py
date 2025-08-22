@@ -4,7 +4,7 @@ from api.models import db, Users, Products, ProductImages, Categories, Subcatego
 from api.utils import send_email, calcular_precio_reja
 from sqlalchemy.exc import SQLAlchemyError
 import bcrypt
-from datetime import datetime, timezone
+from datetime import datetime, timezone, date
 import os
 from io import BytesIO
 from reportlab.pdfgen import canvas
@@ -13,7 +13,6 @@ from reportlab.lib.pagesizes import A4
 from reportlab.lib import colors
 from reportlab.lib.units import cm
 from reportlab.lib.styles import getSampleStyleSheet
-from datetime import datetime
 from sqlalchemy import func
 from flask_mail import Message
 from dotenv import load_dotenv
@@ -1133,6 +1132,70 @@ def handle_order(order_id):
         except SQLAlchemyError as e:
             db.session.rollback()
             return jsonify({"message": "An error occurred while deleting the order.", "error": str(e)}), 500
+        
+@api.route('/orders/<int:order_id>/estimated-delivery', methods=['GET'])
+@jwt_required()
+def get_estimated_delivery(order_id):
+    current_user = get_jwt_identity()
+
+    order = db.session.execute(
+        db.select(Orders).where(Orders.id == order_id)
+    ).scalar()
+
+    if not order:
+        return jsonify({"message": "Order not found"}), 404
+
+    # Autorización
+    if not (current_user.get("is_admin") or order.user_id == current_user['user_id']):
+        return jsonify({"message": "Not authorized"}), 403
+
+    return jsonify({
+        "order_id": order.id,
+        "estimated_delivery_at": order.estimated_delivery_at.isoformat() if order.estimated_delivery_at else None,
+        "estimated_delivery_note": order.estimated_delivery_note
+    }), 200
+
+
+@api.route('/orders/<int:order_id>/estimated-delivery', methods=['PATCH'])
+@jwt_required()
+def set_estimated_delivery(order_id):
+    current_user = get_jwt_identity()
+    if not current_user.get("is_admin"):
+        return jsonify({"message": "Access forbidden: Admins only"}), 403
+
+    order = db.session.execute(
+        db.select(Orders).where(Orders.id == order_id)
+    ).scalar()
+
+    if not order:
+        return jsonify({"message": "Order not found"}), 404
+
+    data = request.get_json() or {}
+    date_str = data.get("estimated_delivery_at")  # "YYYY-MM-DD" o None
+    note = data.get("estimated_delivery_note")    # str o None
+
+    # Fecha: setear o limpiar
+    if date_str is not None:
+        if date_str == "" or date_str is False:
+            order.estimated_delivery_at = None
+        else:
+            try:
+                y, m, d = map(int, date_str.split("-"))
+                order.estimated_delivery_at = date(y, m, d)
+            except Exception:
+                return jsonify({"message": "Invalid date format. Use YYYY-MM-DD"}), 400
+
+    # Nota: setear o limpiar
+    order.estimated_delivery_note = note if (note or note == "") else order.estimated_delivery_note
+
+    db.session.commit()
+
+    return jsonify({
+        "message": "Estimated delivery updated",
+        "order_id": order.id,
+        "estimated_delivery_at": order.estimated_delivery_at.isoformat() if order.estimated_delivery_at else None,
+        "estimated_delivery_note": order.estimated_delivery_note
+    }), 200
 
 
 @api.route('/orderdetails', methods=['POST'])

@@ -1,4 +1,9 @@
 User-agent: *
-Disallow:
+Disallow: /mi-cuenta
+Disallow: /cart
+Disallow: /checkout
+Disallow: /admin
+Disallow: /api/
+Disallow: /static/
 
 Sitemap: https://api.metalwolft.com/sitemap.xml

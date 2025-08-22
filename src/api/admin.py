@@ -1,9 +1,9 @@
 import os
-from flask import request, Response
+from flask import request, Response, current_app
 from flask_admin import Admin, AdminIndexView, expose
 from markupsafe import Markup
 from flask_admin.contrib.sqla import ModelView
-from wtforms.fields import SelectField, StringField
+from wtforms.fields import SelectField, StringField, DateField, TextAreaField
 from .models import (
     db, Users, Products, ProductImages,
     Categories, Subcategories, Cart,
@@ -12,6 +12,7 @@ from .models import (
 )
 from api.email_routes import send_order_status_email
 from datetime import timedelta
+from sqlalchemy import inspect 
 
 
 # Credenciales desde ENV
@@ -200,12 +201,43 @@ class ProductAdminView(SafeModelView):
 
 
 class OrderAdminView(SafeModelView):
-    form_columns = ['user_id', 'total_amount', 'order_date', 'invoice_number', 'locator', 'order_status']
-    column_list   = ['id', 'user_id', 'total_amount', 'order_date', 'invoice_number', 'locator', 'order_status']
-    column_editable_list = ['total_amount', 'order_status']
+    form_columns = [
+        'user_id',
+        'total_amount',
+        'order_date',
+        'invoice_number',
+        'locator',
+        'order_status',
+        'estimated_delivery_at',
+        'estimated_delivery_note',
+    ]
+
+    # Columnas visibles en la tabla
+    column_list = [
+        'id',
+        'user_id',
+        'total_amount',
+        'order_date',
+        'invoice_number',
+        'locator',
+        'order_status',
+        'estimated_delivery_at',
+        'estimated_delivery_note',
+    ]
+
+    column_editable_list = ['total_amount', 'order_status']  
+
+    column_searchable_list = ['invoice_number', 'locator']
+    column_filters = ['order_status', 'order_date', 'estimated_delivery_at']
 
     column_formatters = {
-        'total_amount': lambda v, c, m, p: f"{m.total_amount:.2f}€" if m.total_amount is not None else "0.00 €"
+        'total_amount': lambda v, c, m, p: f"{(m.total_amount or 0):.2f}€",
+        'order_date': lambda v, c, m, p: (
+            (m.order_date + timedelta(hours=2)).strftime("%d/%m/%Y %H:%M") if m.order_date else ''
+        ),
+        'estimated_delivery_at': lambda v, c, m, p: (
+            m.estimated_delivery_at.strftime("%d/%m/%Y") if m.estimated_delivery_at else '—'
+        ),
     }
 
     form_extra_fields = {
@@ -221,7 +253,17 @@ class OrderAdminView(SafeModelView):
                 ('enviado', 'Enviado'),
                 ('entregado', 'Entregado')
             ]
-        )
+        ),
+
+        'estimated_delivery_at': DateField(
+            'Fecha estimada de entrega',
+            format='%Y-%m-%d',
+            render_kw={'placeholder': 'YYYY-MM-DD'}
+        ),
+        'estimated_delivery_note': TextAreaField(
+            'Nota (opcional)',
+            render_kw={'rows': 2, 'maxlength': 255, 'placeholder': 'p.ej. Retraso por pintura'}
+        ),
     }
 
     def create_form(self, obj=None):
@@ -232,15 +274,6 @@ class OrderAdminView(SafeModelView):
             form.locator.data = Orders.generate_locator()
         return form
 
-    def on_model_change(self, form, model, is_created):
-        if not is_created:
-            original = Orders.query.get(model.id)
-            if original.order_status != model.order_status:
-                send_order_status_email(
-                    user_email=model.user.email,
-                    order_status=model.order_status,
-                    locator=model.locator
-                )
 
     # Hook para evitar errores al borrar por FK: eliminar detalles primero
     def on_model_delete(self, model):
@@ -248,12 +281,6 @@ class OrderAdminView(SafeModelView):
 
     column_default_sort = ('order_date', True)
 
-    column_formatters = {
-        'total_amount': lambda v, c, m, p: f"{m.total_amount:.2f}€" if m.total_amount is not None else "0.00 €",
-        'order_date': lambda v, c, m, p: (
-            (m.order_date + timedelta(hours=2)).strftime("%d/%m/%Y %H:%M") if m.order_date else ''
-        )
-    }
 
 
 class CartAdminView(SafeModelView):

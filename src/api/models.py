@@ -256,11 +256,13 @@ class Orders(db.Model):
     total_amount = db.Column(db.Float, nullable=False)
     shipping_cost = db.Column(db.Float, nullable=True, default=0.0)
     order_status = db.Column(db.String(50), nullable=False, default="pendiente")
-    invoice_number = db.Column(db.String(50), nullable=True, unique=True)  
+    invoice_number = db.Column(db.String(50), nullable=True, unique=True)
     locator = db.Column(db.String(10), nullable=False, unique=True)
+    estimated_delivery_at = db.Column(db.Date, nullable=True)             
+    estimated_delivery_note = db.Column(db.String(255), nullable=True)     
 
     user = db.relationship('Users', backref='orders', lazy=True)
-    order_details = db.relationship('OrderDetails', backref='order', lazy=True)  
+    order_details = db.relationship('OrderDetails', backref='order', lazy=True)
 
     def __repr__(self):
         return f'<Order {self.id} by User {self.user_id}>'
@@ -274,7 +276,9 @@ class Orders(db.Model):
             "invoice_number": self.invoice_number,
             "locator": self.locator,
             "order_status": self.order_status,
-            "order_details": [detail.serialize() for detail in self.order_details] 
+            "estimated_delivery_at": self.estimated_delivery_at.isoformat() if self.estimated_delivery_at else None,
+            "estimated_delivery_note": self.estimated_delivery_note,
+            "order_details": [detail.serialize() for detail in self.order_details]
         }
 
         

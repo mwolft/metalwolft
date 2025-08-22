@@ -1,6 +1,6 @@
 from flask import Blueprint, request, jsonify, current_app
 from flask_mail import Mail, Message
-from sqlalchemy import event
+from sqlalchemy import event, inspect as sqla_inspect
 from api.models import db, Orders
 import os
 
@@ -62,17 +62,43 @@ def contact():
     
 
 @event.listens_for(Orders, 'after_update')
-def enviar_correo_cambio_estado(mapper, connection, target):
+def enviar_correo_cambio_estado_o_entrega(mapper, connection, target: Orders):
+    """
+    Envía correo SOLO cuando:
+    - Cambia el estado (order_status): email de progreso (incluye fecha estimada si existe).
+    - Cambia la entrega estimada (estimated_delivery_at / estimated_delivery_note): email específico.
+    """
     try:
-        if target.order_status == 'pendiente':
+        # Detecta cambios reales en este UPDATE
+        insp = sqla_inspect(target)
+        changed = {attr.key for attr in insp.attrs if attr.history.has_changes()}
+
+        # Campos de entrega (solo si existen ya en el modelo)
+        campos_entrega = set()
+        if hasattr(target, 'estimated_delivery_at'):
+            campos_entrega.add('estimated_delivery_at')
+        if hasattr(target, 'estimated_delivery_note'):
+            campos_entrega.add('estimated_delivery_note')
+
+        cambio_estado = 'order_status' in changed
+        cambio_entrega = len(changed.intersection(campos_entrega)) > 0
+
+        # Si no cambió nada relevante, salimos
+        if not cambio_estado and not cambio_entrega:
             return
 
-        estado_actual = target.order_status
-        email = target.user.email
-        locator = target.locator
+        # Datos comunes
+        try:
+            email = target.user.email  # relación ya cargada normalmente
+        except Exception:
+            email = None
 
+        locator = getattr(target, 'locator', None) or '—'
+        estado_actual = getattr(target, 'order_status', None)
+
+        # Estados en el mismo orden que usas en frontend/admin
         estados = [
-            ('recibido', 'Recibido'),
+            ('pendiente', 'Pendiente'),
             ('fabricacion', 'Fabricación'),
             ('pintura', 'Pintura'),
             ('embalaje', 'Embalaje'),
@@ -80,68 +106,112 @@ def enviar_correo_cambio_estado(mapper, connection, target):
             ('entregado', 'Entregado'),
         ]
 
-        # Determina índice del estado actual
-        indice_actual = next((i for i, (valor, _) in enumerate(estados) if valor == estado_actual), -1)
+        # Helpers de entrega estimada
+        def fmt_fecha_estimada():
+            if hasattr(target, 'estimated_delivery_at') and target.estimated_delivery_at:
+                return target.estimated_delivery_at.strftime("%d/%m/%Y")
+            return None
 
-        if indice_actual == -1:
-            raise ValueError(f"Estado '{estado_actual}' no reconocido.")
+        def bloque_entrega_html():
+            fecha = fmt_fecha_estimada()
+            nota = getattr(target, 'estimated_delivery_note', None) if hasattr(target, 'estimated_delivery_note') else None
+            if not fecha and not nota:
+                return ""
+            extra = []
+            if fecha:
+                extra.append(f"<div>📅 <strong>Fecha estimada de entrega:</strong> {fecha}</div>")
+            if nota:
+                extra.append(f"<div>📝 <em>{nota}</em></div>")
+            return f"""<div style="margin-top:12px;">{''.join(extra)}</div>"""
 
-        # Genera HTML de los círculos
-        circulos = ""
-        etiquetas = ""
-        for i, (valor, texto) in enumerate(estados):
-            if i < indice_actual:
-                color = "#4CAF50"  # Verde completado
-                icono = "✔"
-            elif i == indice_actual:
-                color = "#ff324d"  # Azul actual
-                icono = str(i + 1)
-            else:
-                color = "#ccc"     # Gris pendiente
-                icono = str(i + 1)
+        # 1) Cambio de estado: email con barra de progreso + bloque de entrega si existe
+        if cambio_estado and estado_actual and email:
+            # si sigue en 'pendiente', opcionalmente puedes no enviar:
+            # if estado_actual == 'pendiente': return
 
-            circulos += f"""
-                <td>
-                    <div style="margin: auto; background-color: {color}; color: white; width: 30px; height: 30px;
-                                border-radius: 50%; line-height: 30px; font-weight: bold;">
-                        {icono}
-                    </div>
-                </td>
+            indice_actual = next((i for i, (val, _) in enumerate(estados) if val == estado_actual), -1)
+            if indice_actual == -1:
+                return  # estado no reconocido
+
+            circulos = ""
+            etiquetas = ""
+            for i, (valor, texto) in enumerate(estados):
+                if i < indice_actual:
+                    color = "#4CAF50"  # Completado
+                    icono = "✔"
+                elif i == indice_actual:
+                    color = "#ff324d"  # Actual (tu color)
+                    icono = str(i + 1)
+                else:
+                    color = "#ccc"     # Pendiente
+                    icono = str(i + 1)
+
+                circulos += f"""
+                    <td>
+                        <div style="margin: auto; background-color: {color}; color: white; width: 30px; height: 30px;
+                                    border-radius: 50%; line-height: 30px; font-weight: bold;">
+                            {icono}
+                        </div>
+                    </td>
+                """
+                etiquetas += f"""<td style="padding-top: 5px; font-size: 12px;">{texto}</td>"""
+
+            html_body = f"""
+            <p style="font-weight: bold; font-size: 18px; margin-bottom: 10px;">📦 Estado de su pedido</p>
+            <p>Estimado cliente,</p>
+            <p>Su pedido ha cambiado de estado y ahora se encuentra en la fase: <strong>{estados[indice_actual][1]}</strong>.</p>
+
+            <table style="width: 100%; text-align: center; margin: 30px 0;">
+              <tr>{circulos}</tr>
+              <tr>{etiquetas}</tr>
+            </table>
+
+            <p style="margin-top: 10px;">📍 <strong>Localizador:</strong> {locator}</p>
+            {bloque_entrega_html()}
+
+            <p style="margin-top: 20px; font-size: 14px; color: #333;">
+              Gracias por confiar en <span style="font-weight: bold; color: #000;">Metal Wolft</span>.<br>
+              Si tienes cualquier duda, puedes responder directamente a este correo.
+            </p>
             """
 
-            etiquetas += f"""
-                <td style="padding-top: 5px; font-size: 12px;">{texto}</td>
-            """
+            send_email(
+                subject=f"Actualización de tu pedido: {estados[indice_actual][1]}",
+                recipients=[email],
+                body="",
+                html=html_body
+            )
 
-        # HTML completo
-        html_body = f"""
-        <p style="font-weight: bold; font-size: 18px; margin-bottom: 10px;">📦 Estado de Su pedido:</p>
-        <p>Estimado cliente,</p>
-        <p>Su pedido ha cambiado de estado y ahora se encuentra en la fase: <strong>{estados[indice_actual][1]}</strong>.</p>
+        # 2) Cambio de entrega estimada (fecha/nota) sin cambio de estado: email breve
+        elif cambio_entrega and email:
+            fecha = fmt_fecha_estimada()
+            nota = getattr(target, 'estimated_delivery_note', None) if hasattr(target, 'estimated_delivery_note') else None
 
-        <table style="width: 100%; text-align: center; margin: 30px 0;">
-          <tr>{circulos}</tr>
-          <tr>{etiquetas}</tr>
-        </table>
+            partes = ["<p>Estimado cliente,</p>"]
+            if fecha:
+                partes.append(f"<p>Hemos actualizado la <strong>fecha estimada de entrega</strong> a: <strong>{fecha}</strong>.</p>")
+            if nota:
+                partes.append(f"<p>Nota: <em>{nota}</em></p>")
+            partes.append(f"<p>📍 <strong>Localizador:</strong> {locator}</p>")
+            partes.append("""
+              <p style="margin-top: 20px; font-size: 14px; color: #333;">
+                Gracias por confiar en <span style="font-weight: bold; color: #000;">Metal Wolft</span>.
+              </p>
+            """)
+            html_body = "\n".join(partes)
 
-        <p style="margin-top: 20px;">📍 <strong>Localizador:</strong> {locator}</p>
-
-        <p style="margin-top: 30px; font-size: 14px; color: #333;">
-        Gracias por confiar en <span style="font-weight: bold; color: #000;">Metal Wolft</span>.<br>
-        Si tienes cualquier duda, puedes responder directamente a este correo.
-        </p>
-
-        """
-
-        send_email(
-            subject=f"Actualización de tu pedido: {estados[indice_actual][1]}",
-            recipients=[email],
-            body="",  # requerido aunque se use html
-            html=html_body
-        )
+            send_email(
+                subject="Actualización: entrega estimada de tu pedido",
+                recipients=[email],
+                body="",
+                html=html_body
+            )
 
     except Exception as e:
-        current_app.logger.error(f"❌ Error al enviar correo por cambio de estado '{estado_actual}': {str(e)}")
+        try:
+            current_app.logger.error(f"❌ Error en listener after_update: {str(e)}")
+        except Exception:
+            pass
 
 
 @email_bp.route('/test-change-order-status', methods=['POST'])
