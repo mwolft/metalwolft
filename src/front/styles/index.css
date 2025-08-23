@@ -17,6 +17,35 @@ body, html {
   padding: 0;
   overflow-x: hidden;
 }
+/* product overlay */
+.popover-hint {
+  background-color: #CFE2FF;
+  border: 1px solid #052C65;
+  color: #052C65;
+  border-radius: 10px;
+}
+.popover-hint .popover-body {
+  color: #052C65;
+  padding: 12px 16px;
+  font-size: 14px;
+}
+
+/* Flecha para placement=bottom */
+.popover-hint.bs-popover-bottom .arrow::after,
+.popover-hint.bs-popover-bottom .popover-arrow::after {
+  border-bottom-color: #CFE2FF !important; 
+}
+.popover-hint.bs-popover-bottom .arrow::before,
+.popover-hint.bs-popover-bottom .popover-arrow::before {
+  border-bottom-color: #052C65 !important; 
+}
+.footer-trust img {
+  opacity: 0.85;
+  transition: opacity 0.3s ease;
+}
+.footer-trust img:hover {
+  opacity: 1;
+}
 .product-page-wrapper {
   overflow-x: hidden;
   position: relative;
@@ -286,8 +315,7 @@ select:-webkit-autofill:active {
 }
 
 .related-carousel-wrapper {
-    margin-top: 3rem;
-    margin-bottom: 3rem;
+    margin-bottom: 1.5rem;
     padding: 0 1rem;
     overflow: hidden;
 }
@@ -320,11 +348,9 @@ select:-webkit-autofill:active {
 }
 
 .related-card-image {
-    width: 100%;
-    height: 100px;
-    object-fit: cover;
-    border-top-left-radius: 8px;
-    border-top-right-radius: 8px;
+    height: 150px;
+    object-fit: contain;   /* encaja la imagen entera */
+    background: #fff;      /* o un gris clarito para el espacio sobrante */
 }
 
 .related-card-info {

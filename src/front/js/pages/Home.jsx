@@ -9,7 +9,7 @@ import { useNavigate } from "react-router-dom";
 import { BodyHomeTertiary } from "../component/BodyHomeTertiary.jsx";
 import { BodyHomeQuarter } from "../component/BodyHomeQuarter.jsx";
 import { Contact } from "./Contact.jsx";
-// import { CardsCarrusel } from "../component/CardsCarrusel.jsx";
+import { RelatedProductsCarousel } from "../component/RelatedProductsCarousel.jsx";
 
 export const Home = () => {
     const navigate = useNavigate();
@@ -92,6 +92,16 @@ export const Home = () => {
             <section className="section">
                 <BodyHomeMain />
             </section>
+            <section
+                className="section"
+                style={{ display: "flex", justifyContent: "center" }}
+            >
+                <RelatedProductsCarousel
+                    categorySlug="rejas-para-ventanas"
+                    title="Rejas para ventanas más vendidas"
+                    limit={8}
+                />
+            </section>
             <section className="section">
                 <BodyHomeSecondary />
             </section>
@@ -101,9 +111,6 @@ export const Home = () => {
             <section className="section">
                 <Contact />
             </section>
-            {/*<section className="section">
-                <CardsCarrusel />
-            </section>*/}
         </div>
     );
 };

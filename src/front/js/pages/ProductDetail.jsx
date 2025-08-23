@@ -1,4 +1,4 @@
-import React, { useContext, useEffect, useState } from 'react';
+import React, { useContext, useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { RelatedProductsCarousel } from "../component/RelatedProductsCarousel.jsx";
 import { Context } from '../store/appContext';
@@ -13,6 +13,7 @@ import {
     Carousel,
     Form,
     OverlayTrigger,
+    Overlay,
     Popover
 } from 'react-bootstrap';
 import { Notification } from '../component/Notification.jsx';
@@ -39,6 +40,10 @@ export const ProductDetail = () => {
     const [calculatedPrice, setCalculatedPrice] = useState(null);
     const [calculatedArea, setCalculatedArea] = useState(null);
     const [calcError, setCalcError] = useState('');
+
+    // Estados “overlay”
+    const [showHint, setShowHint] = useState(false);
+    const altoRef = useRef(null);
 
     useEffect(() => {
         const fetchProductAndSeoData = async () => {
@@ -177,6 +182,10 @@ export const ProductDetail = () => {
 
     const determinePlacement = () =>
         window.innerWidth > 768 ? 'right' : 'top';
+
+    useEffect(() => {
+        setShowHint(true);
+    }, []);
 
     if (loading) {
         return (
@@ -335,13 +344,44 @@ export const ProductDetail = () => {
                                 {/* Dimensiones */}
                                 <Row>
                                     <Col>
-                                        <Form.Group>
+                                        <Form.Group className="position-relative">
                                             <Form.Label>Alto (cm)</Form.Label>
                                             <Form.Control
                                                 type="number"
                                                 value={height}
-                                                onChange={e => setHeight(e.target.value)}
+                                                ref={altoRef}
+                                                onChange={(e) => setHeight(e.target.value)}
+                                                placeholder="Ej.: 120.1"
+                                                onFocus={() => setShowHint(true)}
+                                                onBlur={() => setTimeout(() => setShowHint(false), 120)}
                                             />
+                                            <Overlay target={altoRef.current} show={showHint} placement="bottom">
+                                                {(props) => (
+                                                    <Popover {...props} id="popover-alto" className="popover-hint">
+                                                        <Popover.Body style={{ position: "relative", paddingRight: "2rem" }}>
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => setShowHint(false)}
+                                                                aria-label="Cerrar"
+                                                                style={{
+                                                                    position: "absolute",
+                                                                    top: 6,
+                                                                    right: 8,
+                                                                    border: "none",
+                                                                    background: "transparent",
+                                                                    color: "#052C65",
+                                                                    fontSize: "1rem",
+                                                                    lineHeight: 1,
+                                                                    cursor: "pointer"
+                                                                }}
+                                                            >
+                                                                ✕
+                                                            </button>
+                                                            Introduce <b>las medidas</b> para calcular <strong>el precio</strong>.
+                                                        </Popover.Body>
+                                                    </Popover>
+                                                )}
+                                            </Overlay>
                                         </Form.Group>
                                     </Col>
                                     <Col>
@@ -482,8 +522,7 @@ export const ProductDetail = () => {
                     >
                         ← Catálogo de {product?.categoria_nombre || 'la categoría'}
                     </Link>
-                    <div className="custom-accordion mt-5">
-
+                    <div className="custom-accordion my-5">
                         {/* Acordeón 4 */}
                         <div className="accordion-item">
                             <input type="checkbox" id="accordion-4" />
@@ -851,7 +890,6 @@ export const ProductDetail = () => {
                                 <p>Te recomendamos que, si tiene dudas, <Link to="https://www.metalwolft.com/contact" className="link-categories">contáctenos</Link> para que podamos asesorarle y ofrecerle toda la información necesaria.</p>
                             </div>
                         </div>
-
                     </div>
                     <RelatedProductsCarousel
                         categorySlug={category_slug}
