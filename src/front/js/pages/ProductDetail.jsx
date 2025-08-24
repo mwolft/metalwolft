@@ -1,4 +1,4 @@
-import React, { useContext, useEffect, useState, useRef } from 'react';
+import React, { useContext, useEffect, useLayoutEffect, useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { RelatedProductsCarousel } from "../component/RelatedProductsCarousel.jsx";
 import { Context } from '../store/appContext';
@@ -43,7 +43,18 @@ export const ProductDetail = () => {
 
     // Estados “overlay”
     const [showHint, setShowHint] = useState(false);
-    const altoRef = useRef(null);
+    const [anchorReady, setAnchorReady] = useState(false);
+    const [altoEl, setAltoEl] = useState(null);
+
+    // Dispositivo y control de visibilidad mínima
+    const isMobile =
+        typeof window !== 'undefined' &&
+        window.matchMedia?.('(pointer: coarse)').matches;
+
+    const MIN_VISIBLE_MS = 700; // ajustable
+    const [visibleSince, setVisibleSince] = useState(null);
+
+
 
     useEffect(() => {
         const fetchProductAndSeoData = async () => {
@@ -183,9 +194,100 @@ export const ProductDetail = () => {
     const determinePlacement = () =>
         window.innerWidth > 768 ? 'right' : 'top';
 
+    // Cuando el input existe en DOM, marcamos listo ANTES del paint (sin parpadeo)
+    useLayoutEffect(() => {
+        if (!altoEl) return;
+        setAnchorReady(true);
+    }, [altoEl]);
+
+
+    // Mostrar al cargar (desktop) o al entrar en viewport (móvil)
     useEffect(() => {
-        setShowHint(true);
-    }, []);
+        setShowHint(false);
+        setAnchorReady(false);
+        setVisibleSince(null);
+
+        if (!altoEl) return;
+
+        if (!isMobile) {
+            // Desktop: pequeño delay
+            const t = setTimeout(() => {
+                setAnchorReady(true);
+                setShowHint(true);
+                setVisibleSince(Date.now());
+            }, 150);
+            return () => clearTimeout(t);
+        }
+
+        // Móvil: cuando el input entra en viewport
+        const io = new IntersectionObserver(
+            ([entry]) => {
+                if (entry.isIntersecting) {
+                    setAnchorReady(true);
+                    setShowHint(true);
+                    setVisibleSince(Date.now());
+                }
+            },
+            { root: null, rootMargin: '0px 0px -20% 0px', threshold: 0.3 }
+        );
+
+        io.observe(altoEl);
+        return () => io.disconnect();
+    }, [category_slug, product_slug, altoEl, isMobile]);
+
+
+    // Cerrar el overlay solo si el gesto supera un umbral (rueda/touch/tecla)
+    useEffect(() => {
+        if (!showHint) return;
+
+        const canHide = () => !visibleSince || (Date.now() - visibleSince) >= MIN_VISIBLE_MS;
+
+        // Umbrales “suaves”
+        const HIDE_DELAY_MS = 350;
+        const WHEEL_DELTA_THRESHOLD = 150;  // sube si quieres que aguante más
+        const TOUCH_DELTA_THRESHOLD = 120;
+
+        let wheelAccum = 0;
+        let touchStartY = null;
+        let hideTimer = null;
+
+        const delayedHide = () => {
+            if (hideTimer || !canHide()) return;
+            hideTimer = setTimeout(() => { setShowHint(false); }, HIDE_DELAY_MS);
+        };
+
+        const onWheel = (e) => { wheelAccum += Math.abs(e.deltaY || 0); if (wheelAccum >= WHEEL_DELTA_THRESHOLD) delayedHide(); };
+        const onTouchStart = (e) => { touchStartY = e.touches?.[0]?.clientY ?? null; };
+        const onTouchMove = (e) => {
+            if (touchStartY == null) return;
+            const dy = Math.abs((e.touches?.[0]?.clientY ?? 0) - touchStartY);
+            if (dy >= TOUCH_DELTA_THRESHOLD) delayedHide();
+        };
+        const onKeyDown = (e) => {
+            if (['PageDown', 'PageUp', 'Home', 'End', 'ArrowDown', 'ArrowUp', ' '].includes(e.key)) delayedHide();
+        };
+        const onScroll = delayedHide;
+        const onResize = delayedHide;
+
+        window.addEventListener('wheel', onWheel, { passive: true });
+        window.addEventListener('touchstart', onTouchStart, { passive: true });
+        window.addEventListener('touchmove', onTouchMove, { passive: true });
+        window.addEventListener('keydown', onKeyDown, { capture: true });
+        window.addEventListener('scroll', onScroll, { passive: true });
+        window.addEventListener('resize', onResize);
+
+        return () => {
+            clearTimeout(hideTimer);
+            window.removeEventListener('wheel', onWheel);
+            window.removeEventListener('touchstart', onTouchStart);
+            window.removeEventListener('touchmove', onTouchMove);
+            window.removeEventListener('keydown', onKeyDown, { capture: true });
+            window.removeEventListener('scroll', onScroll);
+            window.removeEventListener('resize', onResize);
+        };
+    }, [showHint, visibleSince, MIN_VISIBLE_MS]);
+
+
 
     if (loading) {
         return (
@@ -349,13 +451,29 @@ export const ProductDetail = () => {
                                             <Form.Control
                                                 type="number"
                                                 value={height}
-                                                ref={altoRef}
-                                                onChange={(e) => setHeight(e.target.value)}
+                                                ref={setAltoEl}                 
+                                                onChange={(e) => setHeight(e.target.value.replace(',', '.'))}
                                                 placeholder="Ej.: 120.1"
-                                                onFocus={() => setShowHint(true)}
-                                                onBlur={() => setTimeout(() => setShowHint(false), 120)}
+                                                min="0"
+                                                step="0.1"
+                                                inputMode="decimal"
+                                                onWheel={(e) => e.currentTarget.blur()}
                                             />
-                                            <Overlay target={altoRef.current} show={showHint} placement="bottom">
+
+                                            <Overlay
+                                                target={altoEl}
+                                                show={showHint && anchorReady}
+                                                placement="bottom"
+                                                container={typeof document !== 'undefined' ? document.body : undefined}
+                                                popperConfig={{
+                                                    strategy: "fixed",
+                                                    modifiers: [
+                                                        { name: "offset", options: { offset: [0, 8] } },
+                                                        { name: "preventOverflow", options: { boundary: "viewport" } },
+                                                        { name: "computeStyles", options: { adaptive: false } },
+                                                    ],
+                                                }}
+                                            >
                                                 {(props) => (
                                                     <Popover {...props} id="popover-alto" className="popover-hint">
                                                         <Popover.Body style={{ position: "relative", paddingRight: "2rem" }}>
@@ -363,17 +481,7 @@ export const ProductDetail = () => {
                                                                 type="button"
                                                                 onClick={() => setShowHint(false)}
                                                                 aria-label="Cerrar"
-                                                                style={{
-                                                                    position: "absolute",
-                                                                    top: 6,
-                                                                    right: 8,
-                                                                    border: "none",
-                                                                    background: "transparent",
-                                                                    color: "#052C65",
-                                                                    fontSize: "1rem",
-                                                                    lineHeight: 1,
-                                                                    cursor: "pointer"
-                                                                }}
+                                                                style={{ position: "absolute", top: 6, right: 8, border: "none", background: "transparent", cursor: "pointer" }}
                                                             >
                                                                 ✕
                                                             </button>
@@ -390,7 +498,11 @@ export const ProductDetail = () => {
                                             <Form.Control
                                                 type="number"
                                                 value={width}
-                                                onChange={e => setWidth(e.target.value)}
+                                                onChange={(e) => setWidth(e.target.value.replace(',', '.'))}
+                                                min="0"
+                                                step="0.1"
+                                                inputMode="decimal"
+                                                onWheel={(e) => e.currentTarget.blur()}
                                             />
                                         </Form.Group>
                                     </Col>
