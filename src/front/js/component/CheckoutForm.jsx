@@ -175,6 +175,7 @@ const CheckoutForm = () => {
                 console.log("El PaymentIntent ya se encuentra confirmado en el backend.");
                 const orderData = {
                     total_amount: finalTotal,
+                    shipping_cost: shippingCost,
                     products: products.map(product => ({
                         producto_id: product.producto_id,
                         quantity: product.quantity || 1,
@@ -215,6 +216,7 @@ const CheckoutForm = () => {
                 console.log("El pago fue confirmado exitosamente.");
                 const orderData = {
                     total_amount: finalTotal,
+                    shipping_cost: shippingCost,
                     products: products.map(product => ({
                         producto_id: product.producto_id,
                         quantity: product.quantity || 1,

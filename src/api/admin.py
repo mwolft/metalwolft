@@ -321,7 +321,7 @@ class OrderDetailsAdminView(SafeModelView):
     column_list = [
         'order_id', 'locator', 'cliente', 'product_name',
         'quantity', 'alto', 'ancho', 'anclaje', 'color',
-        'precio_total'
+        'precio_total', 'shipping_cost', 'total_con_envio'
     ]
 
     column_labels = {
@@ -334,14 +334,18 @@ class OrderDetailsAdminView(SafeModelView):
         'ancho': 'Ancho',
         'anclaje': 'Anclaje',
         'color': 'Color',
-        'precio_total': 'Precio Total'
+        'precio_total': 'Precio Total',
+        'shipping_cost': 'Coste Envío',
+        'total_con_envio': 'Total con Envío'
     }
 
     column_formatters = {
         'locator': lambda v, c, m, p: m.order.locator if m.order else '',
         'cliente': lambda v, c, m, p: f"{m.order.user.email}" if m.order and m.order.user else '',
         'product_name': lambda v, c, m, p: m.product.nombre if m.product else '',
-        'precio_total': lambda v, c, m, p: f"{m.precio_total * m.quantity:.2f} €" if m.precio_total and m.quantity else '0.00 €'
+        'precio_total': lambda v, c, m, p: f"{m.precio_total * m.quantity:.2f} €" if m.precio_total and m.quantity else '0.00 €',
+        'shipping_cost': lambda v, c, m, p: f"{m.shipping_cost:.2f} €" if m.shipping_cost else "0.00 €",
+        'total_con_envio': lambda v, c, m, p: f"{(m.precio_total * m.quantity + (m.shipping_cost or 0)):.2f} €"
     }
 
     def scaffold_list_columns(self):

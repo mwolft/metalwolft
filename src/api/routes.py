@@ -890,8 +890,8 @@ def handle_orders():
                 subtotal += precio_recalculado * detail.get("quantity", 1)
 
 
-            # Usar el coste de envío más alto entre los productos recibidos
-            shipping_cost = max(
+            # Usar shipping_cost global si está presente, o calcularlo como máximo entre detalles
+            shipping_cost = float(data.get('shipping_cost')) if data.get('shipping_cost') is not None else max(
                 float(detail.get('shipping_cost', 0)) for detail in order_details
             )
 
@@ -1201,10 +1201,12 @@ def set_estimated_delivery(order_id):
 @api.route('/orderdetails', methods=['POST'])
 @jwt_required()
 def add_order_details():
-    data = request.get_json()  # Recibe una lista de detalles
+    data = request.get_json()  
     current_user = get_jwt_identity()
     try:
         added_details = []
+        shipping_assigned = False 
+
         for detail in data:
             # Verifica si el detalle ya existe
             existing_detail = OrderDetails.query.filter_by(
@@ -1226,6 +1228,15 @@ def add_order_details():
                 precio_m2=prod.precio_rebajado or prod.precio
             )
 
+            # Recoger el coste de envío enviado desde el frontend
+            shipping_cost = float(detail.get('shipping_cost') or 0)
+
+            # Solo permitir que una línea reciba el coste de envío
+            if shipping_assigned or shipping_cost == 0:
+                shipping_cost = 0
+            else:
+                shipping_assigned = True
+
             new_detail = OrderDetails(
                 order_id=detail['order_id'],
                 product_id=detail['product_id'],
@@ -1245,15 +1256,21 @@ def add_order_details():
                 billing_postal_code=detail.get('billing_postal_code'),
                 CIF=detail.get('CIF'),
                 shipping_type=detail.get('shipping_type'),
-                shipping_cost=detail.get('shipping_cost')
+                shipping_cost=shipping_cost
             )
+
             db.session.add(new_detail)
             added_details.append(new_detail)
+
         db.session.commit()
         return jsonify([detail.serialize() for detail in added_details]), 201
+
     except SQLAlchemyError as e:
         db.session.rollback()
-        return jsonify({"message": "An error occurred while adding order details.", "error": str(e)}), 500
+        return jsonify({
+            "message": "An error occurred while adding order details.",
+            "error": str(e)
+        }), 500
 
 
 @api.route('/orderdetails', methods=['GET'])
