@@ -52,7 +52,7 @@ export const Cart = () => {
     const lastCategorySlug = store.cart.length > 0 ? store.cart[store.cart.length - 1].category_slug : null;
 
     return (
-        <Container style={{ marginTop: "95px" }}>
+        <Container fluid style={{ marginTop: "95px" }}>
             <h2 className="h2-categories text-center my-2">Carrito de compra</h2>
             {store.cart.length === 0 ? (
                 <p className="text-center" style={{ marginTop: "100px", marginBottom: "300px" }}>
@@ -172,7 +172,7 @@ export const Cart = () => {
                             {lastCategorySlug && (
                                 <Link
                                     to={`/${lastCategorySlug}`}
-                                    className="mt-5 d-inline-block text-decoration-none"
+                                    className="my-3 d-inline-block text-decoration-none"
                                     style={{ fontWeight: 'bold', color: '#ff324d' }}
                                 >
                                     ← Volver al catálogo de {lastCategorySlug.replaceAll("-", " ")}

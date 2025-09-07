@@ -1,4 +1,5 @@
 import { calcularEnvio } from '../../utils/shippingCalculator';
+import { authenticatedFetch } from '../../utils/authenticatedFetch';
 
 
 const getState = ({ getStore, getActions, setStore }) => {
@@ -199,11 +200,10 @@ const getState = ({ getStore, getActions, setStore }) => {
             updateUserProfile: async (userId, updatedData) => {
                 const store = getStore();
                 try {
-                    const response = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/users/${userId}`, {
+                    const response = await authenticatedFetch(`${process.env.REACT_APP_BACKEND_URL}/api/users/${userId}`, {
                         method: 'PUT',
                         headers: {
-                            'Content-Type': 'application/json',
-                            Authorization: `Bearer ${localStorage.getItem("token")}`
+                            'Content-Type': 'application/json'
                         },
                         body: JSON.stringify(updatedData)
                     });
@@ -280,20 +280,28 @@ const getState = ({ getStore, getActions, setStore }) => {
             },
             loadCart: async () => {
                 const store = getStore();
+                const actions = getActions();
+
                 if (!store.isLoged) return;
+
                 try {
-                    const response = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/cart`, {
-                        method: 'GET',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            Authorization: `Bearer ${localStorage.getItem("token")}`
-                        }
-                    });
+                    const response = await authenticatedFetch(
+                        `${process.env.REACT_APP_BACKEND_URL}/api/cart`,
+                        {
+                            method: 'GET'
+                        },
+                        actions,
+                        setStore
+                    );
+
+                    if (!response) return;
+
                     if (!response.ok) {
                         const errorText = await response.text();
                         console.error("Error al cargar el carrito:", errorText);
-                        throw new Error(`Error al cargar el carrito: ${errorText}`);
+                        return;
                     }
+
                     const data = await response.json();
                     setStore({ cart: data });
                 } catch (error) {
@@ -302,6 +310,7 @@ const getState = ({ getStore, getActions, setStore }) => {
             },
             addToCart: async (product) => {
                 const store = getStore();
+                const actions = getActions();
                 if (!store.isLoged) {
                     alert("Debe estar logueado para añadir productos al carrito");
                     return;
@@ -316,22 +325,25 @@ const getState = ({ getStore, getActions, setStore }) => {
                 );
 
                 if (existing) {
-                    // Si ya existe, actualizar cantidad
+                    // Producto ya en carrito: actualizar cantidad
                     try {
-                        const response = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/cart/${existing.producto_id}`, {
-                            method: 'PUT',
-                            headers: {
-                                'Content-Type': 'application/json',
-                                Authorization: `Bearer ${localStorage.getItem("token")}`
+                        const response = await authenticatedFetch(
+                            `${process.env.REACT_APP_BACKEND_URL}/api/cart/${existing.producto_id}`,
+                            {
+                                method: 'PUT',
+                                body: JSON.stringify({
+                                    alto: existing.alto,
+                                    ancho: existing.ancho,
+                                    anclaje: existing.anclaje,
+                                    color: existing.color,
+                                    quantity: (existing.quantity || 1) + 1
+                                })
                             },
-                            body: JSON.stringify({
-                                alto: existing.alto,
-                                ancho: existing.ancho,
-                                anclaje: existing.anclaje,
-                                color: existing.color,
-                                quantity: (existing.quantity || 1) + 1 
-                            })
-                        });
+                            actions,
+                            setStore
+                        );
+
+                        if (!response) return;
 
                         if (!response.ok) {
                             const data = await response.json();
@@ -346,24 +358,27 @@ const getState = ({ getStore, getActions, setStore }) => {
                     }
 
                 } else {
-                    // Si no existe, añadir nuevo
+                    // Nuevo producto: añadir al carrito
                     try {
-                        const response = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/cart`, {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                                Authorization: `Bearer ${localStorage.getItem("token")}`
+                        const response = await authenticatedFetch(
+                            `${process.env.REACT_APP_BACKEND_URL}/api/cart`,
+                            {
+                                method: 'POST',
+                                body: JSON.stringify({
+                                    product_id: product.product_id,
+                                    alto: product.alto,
+                                    ancho: product.ancho,
+                                    anclaje: product.anclaje,
+                                    color: product.color,
+                                    precio_total: product.precio_total,
+                                    quantity: 1
+                                })
                             },
-                            body: JSON.stringify({
-                                product_id: product.product_id,
-                                alto: product.alto,
-                                ancho: product.ancho,
-                                anclaje: product.anclaje,
-                                color: product.color,
-                                precio_total: product.precio_total,
-                                quantity: 1 
-                            })
-                        });
+                            actions,
+                            setStore
+                        );
+
+                        if (!response) return;
 
                         if (!response.ok) {
                             const data = await response.json();
@@ -380,37 +395,46 @@ const getState = ({ getStore, getActions, setStore }) => {
             },
             removeFromCart: async (product) => {
                 const store = getStore();
+                const actions = getActions();
+
                 if (!store.isLoged) {
                     alert("Debe estar logueado para eliminar productos del carrito");
                     return;
                 }
+
                 try {
                     if (!product.producto_id) {
                         console.error("Faltan especificaciones del producto");
                         alert("Faltan especificaciones para eliminar el producto del carrito");
                         return;
                     }
-                    const response = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/cart/${product.producto_id}`, {
-                        method: 'DELETE',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            Authorization: `Bearer ${localStorage.getItem("token")}`
+
+                    const response = await authenticatedFetch(
+                        `${process.env.REACT_APP_BACKEND_URL}/api/cart/${product.producto_id}`,
+                        {
+                            method: 'DELETE',
+                            body: JSON.stringify({
+                                alto: product.alto,
+                                ancho: product.ancho,
+                                anclaje: product.anclaje,
+                                color: product.color,
+                                precio_total: product.precio_total,
+                                imagen: product.imagen
+                            })
                         },
-                        body: JSON.stringify({
-                            alto: product.alto,
-                            ancho: product.ancho,
-                            anclaje: product.anclaje,
-                            color: product.color,
-                            precio_total: product.precio_total,
-                            imagen: product.imagen
-                        })
-                    });
+                        actions,
+                        setStore
+                    );
+
+                    if (!response) return;
+
                     if (!response.ok) {
                         const data = await response.text();
                         console.error("Error al eliminar del carrito:", data);
                         alert("Error al eliminar del carrito");
                         return;
                     }
+
                     const data = await response.json();
                     setStore({ cart: data.updated_cart });
                 } catch (error) {
@@ -419,20 +443,28 @@ const getState = ({ getStore, getActions, setStore }) => {
             },
             clearCart: async () => {
                 const store = getStore();
+                const actions = getActions();
+
                 if (!store.isLoged) return;
+
                 try {
-                    const response = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/cart/clear`, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            Authorization: `Bearer ${localStorage.getItem("token")}`
-                        }
-                    });
+                    const response = await authenticatedFetch(
+                        `${process.env.REACT_APP_BACKEND_URL}/api/cart/clear`,
+                        {
+                            method: 'POST'
+                        },
+                        actions,
+                        setStore
+                    );
+
+                    if (!response) return;
+
                     if (!response.ok) {
                         const errorText = await response.text();
                         console.error("Error al vaciar el carrito:", errorText);
                         throw new Error(`Error al vaciar el carrito: ${errorText}`);
                     }
+
                     setStore({ cart: [], paymentCompleted: true });
                     localStorage.removeItem("cart");
                 } catch (error) {
@@ -441,11 +473,10 @@ const getState = ({ getStore, getActions, setStore }) => {
             },
             fetchOrders: async () => {
                 try {
-                    const response = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/orders`, {
+                    const response = await authenticatedFetch(`${process.env.REACT_APP_BACKEND_URL}/api/orders`, {
                         method: 'GET',
                         headers: {
-                            'Content-Type': 'application/json',
-                            Authorization: `Bearer ${localStorage.getItem("token")}`
+                            'Content-Type': 'application/json'
                         }
                     });
 
@@ -465,11 +496,10 @@ const getState = ({ getStore, getActions, setStore }) => {
                 const store = getStore();
                 console.log("Payload orderData enviado:", orderData);
                 try {
-                    const response = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/orders`, {
+                    const response = await authenticatedFetch(`${process.env.REACT_APP_BACKEND_URL}/api/orders`, {
                         method: 'POST',
                         headers: {
-                            'Content-Type': 'application/json',
-                            Authorization: `Bearer ${localStorage.getItem("token")}`
+                            'Content-Type': 'application/json'
                         },
                         body: JSON.stringify(orderData)
                     });
@@ -492,11 +522,10 @@ const getState = ({ getStore, getActions, setStore }) => {
             },
             fetchOrderDetails: async () => {
                 try {
-                    const response = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/orderdetails`, {
+                    const response = await authenticatedFetch(`${process.env.REACT_APP_BACKEND_URL}/api/orderdetails`, {
                         method: 'GET',
                         headers: {
-                            'Content-Type': 'application/json',
-                            Authorization: `Bearer ${localStorage.getItem("token")}`
+                            'Content-Type': 'application/json'
                         }
                     });
 
@@ -539,11 +568,10 @@ const getState = ({ getStore, getActions, setStore }) => {
                 }));
 
                 try {
-                    const response = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/orderdetails`, {
+                    const response = await authenticatedFetch(`${process.env.REACT_APP_BACKEND_URL}/api/orderdetails`, {
                         method: 'POST',
                         headers: {
-                            'Content-Type': 'application/json',
-                            Authorization: `Bearer ${localStorage.getItem("token")}`
+                            'Content-Type': 'application/json'
                         },
                         body: JSON.stringify(orderDetailsData)
                     });
@@ -582,11 +610,10 @@ const getState = ({ getStore, getActions, setStore }) => {
                 if (!store.isLoged) return;
 
                 try {
-                    const response = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/favorites`, {
+                    const response = await authenticatedFetch(`${process.env.REACT_APP_BACKEND_URL}/api/favorites`, {
                         method: 'GET',
                         headers: {
-                            'Content-Type': 'application/json',
-                            Authorization: `Bearer ${localStorage.getItem("token")}`
+                            'Content-Type': 'application/json'
                         }
                     });
                     if (!response.ok) throw new Error("Error al cargar los favoritos");
@@ -608,11 +635,10 @@ const getState = ({ getStore, getActions, setStore }) => {
                 }
 
                 try {
-                    const response = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/favorites`, {
+                    const response = await authenticatedFetch(`${process.env.REACT_APP_BACKEND_URL}/api/favorites`, {
                         method: 'POST',
                         headers: {
-                            'Content-Type': 'application/json',
-                            Authorization: `Bearer ${localStorage.getItem("token")}`
+                            'Content-Type': 'application/json'
                         },
                         body: JSON.stringify({ product_id: product.id })
                     });
@@ -636,11 +662,10 @@ const getState = ({ getStore, getActions, setStore }) => {
                 }
 
                 try {
-                    const response = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/favorites/${productId}`, {
+                    const response = await authenticatedFetch(`${process.env.REACT_APP_BACKEND_URL}/api/favorites/${productId}`, {
                         method: 'DELETE',
                         headers: {
-                            'Content-Type': 'application/json',
-                            Authorization: `Bearer ${localStorage.getItem("token")}`
+                            'Content-Type': 'application/json'
                         }
                     });
 

@@ -20,6 +20,7 @@ from api.exceptions import APIException
 from api.utils import mail
 from sqlalchemy.exc import IntegrityError
 import logging
+from datetime import timedelta
 
 
 logger = logging.getLogger(__name__)
@@ -309,11 +310,14 @@ def login():
         return response, 401
 
     # Crear el token JWT con los datos del usuario
-    access_token = create_access_token(identity={
-        'user_id': user.id,
-        'email': user.email,
-        'is_admin': user.is_admin
-    })
+    access_token = create_access_token(
+        identity={
+            'user_id': user.id,
+            'email': user.email,
+            'is_admin': user.is_admin
+        },
+        expires_delta=timedelta(hours=24)
+    )
 
     response_body = {
         'results': user.serialize(),

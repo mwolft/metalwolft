@@ -107,14 +107,14 @@ export const BlogListPage = () => {
                             <Link to={`/${post.slug}`} className="title-link">
                                 <h2 className='h2-title-blog'>{post.title}</h2>
                             </Link>
-                            <p className='p-coments'>
+                            <div className='p-coments'>
                                 <div className='p-comments-single'>
                                     <i className="fa-regular fa-calendar" style={{ color: '#ff324d' }}></i> {formatDate(post.created_at)}
                                 </div>
                                 <div className='p-comments-single'>
                                     <i className="fa-regular fa-comments" style={{ color: '#ff324d' }}></i> {store.currentComments?.filter(comment => comment.post_id === post.id).length || 0} Comentarios
                                 </div>
-                            </p>
+                            </div>
                             <p className='p-content'>{post.content.substring(0, 100)}...</p>
                             <Link className="slug" to={`/${post.slug}`}>Leer más</Link>
                         </div>
