@@ -4,12 +4,12 @@ export const calcularEnvio = (cart, threshold = 150) => {
     let costeFinal = 0;
 
     const processedCart = cart.map(product => {
-        const alto = parseFloat(product.alto);
-        const ancho = parseFloat(product.ancho);
-        const largo = Math.max(alto, ancho); // asumimos que el mayor lado es el largo
+        const alto = parseFloat(product.alto) || 0;
+        const ancho = parseFloat(product.ancho) || 0;
+        const largo = Math.max(alto, ancho);
         const profundidad = 4; // fijo
         const peso = 10; // estimado en kg
-        const sumaDimensiones = largo + ancho + profundidad;
+        const sumaDimensiones = largo + Math.min(alto, ancho) + profundidad;
 
         let tipo = "normal";
         let coste = 0;
@@ -29,15 +29,14 @@ export const calcularEnvio = (cart, threshold = 150) => {
             peso > 40 ||
             largo > 175 ||
             sumaDimensiones > 300 ||
-            largo >= 315 // Consideramos barras entre 315–500 cm
+            largo >= 315
         ) {
             tipo = "A";
             coste = 49;
         }
 
-        subtotal += parseFloat(product.precio_total) * (product.quantity || 1);
+        subtotal += parseFloat(product.precio_total || 0) * (product.quantity || 1);
 
-        // Determinar el tipo y coste final más alto
         if (tipo === "B") {
             tipoEnvioFinal = "B";
             costeFinal = Math.max(costeFinal, 99);
@@ -53,14 +52,13 @@ export const calcularEnvio = (cart, threshold = 150) => {
         };
     });
 
-    // Si todos son normales y supera 150 €, envío gratis
     let totalShipping = 0;
     if (tipoEnvioFinal === "normal" && subtotal >= threshold) {
         totalShipping = 0;
     } else if (tipoEnvioFinal !== "normal") {
         totalShipping = costeFinal;
     } else {
-        totalShipping = 17; // envío normal por defecto
+        totalShipping = 17;
     }
 
     return {
