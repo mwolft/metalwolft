@@ -152,7 +152,7 @@ export const MedirHuecoRejasParaVentanas = () => {
                                 </div>
                                 <div className="col-sm-6">
                                     <div className="single_img">
-                                        <img className="w-100 mb-4" src="https://res.cloudinary.com/dewanllxn/image/upload/v1733562856/rejas-para-ventanas-sin-obra_imfqrq.avif" alt="rejas para ventanas sin obra" />
+                                        <img className="w-100 mb-4" src="https://res.cloudinary.com/dewanllxn/image/upload/v1757842246/rejas-para-ventanas-sin-obra_-_2__jsnqjx.avif" alt="rejas para ventanas sin obra" />
                                     </div>
                                 </div>
                             </div>

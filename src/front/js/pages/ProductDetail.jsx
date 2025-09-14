@@ -35,7 +35,7 @@ export const ProductDetail = () => {
     const [currentIndex, setCurrentIndex] = useState(0);
     const [height, setHeight] = useState('');
     const [width, setWidth] = useState('');
-    const [mounting, setMounting] = useState('Sin obra: con pletinas');
+    const [mounting, setMounting] = useState('Sin obra: con agujeros interiores');
     const [color, setColor] = useState('blanco');
     const [calculatedPrice, setCalculatedPrice] = useState(null);
     const [calculatedArea, setCalculatedArea] = useState(null);

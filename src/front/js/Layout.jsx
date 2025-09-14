@@ -53,6 +53,7 @@ import { BlogListPage } from "./pages/blog/BlogListPage.jsx";
 import { MedirHuecoRejasParaVentanas } from "./pages/blog/MedirHuecoRejasParaVentanas.jsx";
 import { InstalationRejasParaVentanas } from "./pages/blog/InstalationRejasParaVentanas.jsx";
 import { PlazosEntregaRejasAMedida } from "./pages/blog/PlazosEntregaRejasAMedida.jsx";
+import { RecepcionPedidosRevisarAntesFirmar } from "./pages/blog/RecepcionPedidosRevisarAntesFirmar.jsx";
 
 // Custom categories
 import { RejasParaVentanas } from './pages/categories/RejasParaVentanas.jsx';
@@ -110,6 +111,7 @@ const Layout = () => {
                         <Route path="/medir-hueco-rejas-para-ventanas" element={<MedirHuecoRejasParaVentanas />} />
                         <Route path="/instalation-rejas-para-ventanas" element={<InstalationRejasParaVentanas />} />
                         <Route path="/plazos-entrega-rejas-a-medida" element={<PlazosEntregaRejasAMedida />} />
+                        <Route path="/recepcion-pedidos-revisar-antes-firmar" element={<RecepcionPedidosRevisarAntesFirmar />} />
                         <Route path="*" element={<Error404 />} />
                         <Route path="/cookies-esenciales" element={<PrivacyCookiesHome />} />
                         <Route path="/politica-privacidad" element={<PrivacyPolicy />} />

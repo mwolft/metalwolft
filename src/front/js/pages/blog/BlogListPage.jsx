@@ -101,7 +101,6 @@ export const BlogListPage = () => {
                                     src={post.image_url}
                                     alt={post.title}
                                     className="img-blog img-fluid w-100"
-                                    style={{ objectFit: 'cover', height: '200px' }}
                                 />
                             </Link>
                             <Link to={`/${post.slug}`} className="title-link">

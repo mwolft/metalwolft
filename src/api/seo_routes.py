@@ -612,3 +612,59 @@ def plazos_entrega_rejas_a_medida():
         }
     }
     return jsonify(meta_data)
+
+
+@seo_bp.route('/api/seo/recepcion-pedidos-revisar-antes-firmar', methods=['GET'])
+def recepcion_pedidos_revisar_antes_firmar():
+    meta_data = {
+        "lang": "es",
+        "twitter_card_type": "summary_large_image",
+        "twitter_site": "@MetalWolft",
+        "twitter_creator": "@MetalWolft",
+        "twitter_title": "Recepción de pedidos: revisa antes de firmar, reclama a tiempo | Metal Wolft",
+        "twitter_description": "Aprende a revisar tus pedidos al recibirlos y reclamar daños de transporte a tiempo. Consejos y pasos para proteger tu compra.",
+        "twitter_image": "https://res.cloudinary.com/dewanllxn/image/upload/v1757829775/recepcion-pedidos-revisar-antes-firmar_qkkjhb.png",
+        "twitter_image_alt": "Recepción de pedidos y revisión de daños",
+        "title": "Recepción de pedidos: revisa antes de firmar, reclama a tiempo | Metal Wolft",
+        "description": "Aprende a revisar tus pedidos al recibirlos y reclamar daños de transporte a tiempo. Consejos y pasos para proteger tu compra.",
+        "keywords": "revisión pedidos, reclamar daños transporte, recepción paquete, SEUR España, consejos entrega paquetes",
+        "og_image": "https://res.cloudinary.com/dewanllxn/image/upload/v1757829775/recepcion-pedidos-revisar-antes-firmar_qkkjhb.png",
+        "og_image_width": "400",
+        "og_image_height": "300",
+        "og_image_type": "image/avif",
+        "og_image_alt": "Recepción de pedidos y revisión de daños",
+        "og_url": "https://www.metalwolft.com/recepcion-pedidos-revisar-antes-firmar",
+        "og_type": "article",
+        "og_locale": "es_ES",
+        "og_locale_alternate": "en_US",
+        "og_site_name": "Metal Wolft",
+        "canonical": "https://www.metalwolft.com/recepcion-pedidos-revisar-antes-firmar",
+        "robots": "index, follow",
+        "theme_color": "#ff324d",
+        "json_ld": {
+            "@context": "https://schema.org",
+            "@type": "Article",
+            "name": "Recepción de pedidos: revisa antes de firmar, reclama a tiempo",
+            "description": "Aprende a revisar tus pedidos al recibirlos y reclamar daños de transporte a tiempo. Consejos y pasos para proteger tu compra.",
+            "image": "https://res.cloudinary.com/dewanllxn/image/upload/v1757829775/recepcion-pedidos-revisar-antes-firmar_qkkjhb.png",
+            "url": "https://www.metalwolft.com/recepcion-pedidos-revisar-antes-firmar",
+            "author": {
+                "@type": "Organization",
+                "name": "Metal Wolft"
+            },
+            "publisher": {
+                "@type": "Organization",
+                "name": "Metal Wolft",
+                "logo": {
+                    "@type": "ImageObject",
+                    "url": "https://res.cloudinary.com/dewanllxn/image/upload/v1735631180/welder-bot_tqxadc.png"
+                }
+            },
+            "mainEntityOfPage": {
+                "@type": "WebPage",
+                "@id": "https://res.cloudinary.com/dewanllxn/image/upload/v1757829775/recepcion-pedidos-revisar-antes-firmar_qkkjhb.png"
+            },
+            "datePublished": "2025-09-14"
+        }
+    }
+    return jsonify(meta_data)
