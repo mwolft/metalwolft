@@ -21,6 +21,7 @@ from api.utils import mail
 from sqlalchemy.exc import IntegrityError
 import logging
 from datetime import timedelta
+from api.email_routes import send_email, get_admin_recipients
 
 
 logger = logging.getLogger(__name__)
@@ -347,36 +348,102 @@ def protected():
 @api.route("/signup", methods=["OPTIONS", "POST"])
 def signup():
     if request.method == "OPTIONS":
-        # Manejar el preflight de CORS
         response = jsonify({"message": "Preflight request successful"})
         response.headers.add("Access-Control-Allow-Origin", "*")
         response.headers.add("Access-Control-Allow-Headers", "Content-Type, Authorization")
         response.headers.add("Access-Control-Allow-Methods", "POST, OPTIONS")
         return response, 200
 
-    # Lógica de registro de usuario
     data = request.json
-    email = data.get("email", None)
-    password = data.get("password", None)
+    email = data.get("email")
+    password = data.get("password")
     rol = data.get("rol", "user")
-    # Verificar si el usuario ya existe
+
     existing_user = db.session.execute(db.select(Users).where(Users.email == email)).scalar()
     if existing_user:
-        response_body = {'message': 'Ya existe un usuario registrado con este correo'}
-        response = jsonify(response_body)
+        response = jsonify({'message': 'Ya existe un usuario registrado con este correo'})
         response.headers.add("Access-Control-Allow-Origin", "*")
         return response, 409
-    # Encriptar la contraseña
+
     hashed_password = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt())
-    # Crear nuevo usuario
-    user = Users()
-    user.email = email
-    user.password = hashed_password.decode('utf-8')
+
+    user = Users(email=email, password=hashed_password.decode('utf-8'))
     user.is_admin = True if rol == "admin" else False
-    # Guardar en la base de datos
     db.session.add(user)
     db.session.commit()
-    # Crear el token JWT
+
+    # --- Emails ---
+    # 1) Bienvenida al usuario
+    html_body_user = f"""
+    <h2 style="color:#ff324d; font-family:Arial, sans-serif; text-align:center;">
+    ¡Bienvenido a Metal Wolft!
+    </h2>
+
+    <p style="font-size:16px; font-family:Arial, sans-serif;">
+    Hola,
+    </p>
+
+    <p style="font-size:16px; font-family:Arial, sans-serif;">
+    Tu cuenta ha sido creada correctamente. Ahora puedes iniciar sesión, explorar nuestros productos y seguir tus pedidos en todo momento.
+    </p>
+
+    <p style="font-size:16px; font-family:Arial, sans-serif;">
+    Para comenzar, accede a tu cuenta haciendo clic aquí:
+    </p>
+
+    <p style="text-align:center;">
+    <a href="https://www.metalwolft.com/login" 
+        style="display:inline-block; padding:10px 20px; background-color:#ff324d; color:white; 
+                text-decoration:none; border-radius:5px; font-weight:bold;">
+        Iniciar Sesión
+    </a>
+    </p>
+
+    <p style="font-size:16px; font-family:Arial, sans-serif;">
+    Gracias por registrarte en <strong>Metal Wolft</strong>.  
+    Si tienes alguna pregunta, responde directamente a este correo o visita nuestra sección de ayuda.
+    </p>
+
+    <hr style="border:none; border-top:1px solid #ddd; margin:20px 0;">
+
+    <p style="font-size:12px; color:#777; font-family:Arial, sans-serif; text-align:center;">
+    Metal Wolft © 2025 · Ciudad Real, España
+    </p>
+
+    """
+    try:
+        send_email(
+            subject="¡Bienvenido a Metal Wolft!",
+            recipients=[email],
+            body="Gracias por registrarte en Metal Wolft.",
+            html=html_body_user
+        )
+    except Exception as e:
+        current_app.logger.warning(f"No se pudo enviar el email de bienvenida a {email}: {e}")
+
+    # 2) Notificación a admins
+    try:
+        admin_recipients = get_admin_recipients()
+        if admin_recipients:
+            ip = request.headers.get("X-Forwarded-For", request.remote_addr)
+            html_body_admin = f"""
+            <h3>Nuevo registro</h3>
+            <ul>
+              <li>Email: <b>{email}</b></li>
+              <li>Rol: {"admin" if user.is_admin else "user"}</li>
+              <li>IP: {ip}</li>
+              <li>User ID: {user.id}</li>
+            </ul>
+            """
+            send_email(
+                subject="Nuevo registro en la web",
+                recipients=admin_recipients,
+                body=f"Nuevo registro: {email} (rol={'admin' if user.is_admin else 'user'})",
+                html=html_body_admin
+            )
+    except Exception as e:
+        current_app.logger.warning(f"No se pudo notificar a admins del registro de {email}: {e}")
+
     access_token = create_access_token(identity={
         'user_id': user.id,
         'email': user.email,

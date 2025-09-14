@@ -31,6 +31,17 @@ def send_email(subject, recipients, body, attachment_path=None, html=None):
         current_app.logger.error(f"❌ Error enviando correo: {str(e)}")
         return False
 
+
+def get_admin_recipients():
+    """
+    Devuelve lista de correos de admin desde ADMIN_NOTIFICATION_EMAILS.
+    Puede contener varios separados por comas.
+    """
+    raw = os.getenv('ADMIN_NOTIFICATION_EMAILS', '')
+    emails = [e.strip() for e in raw.split(',') if e.strip()]
+    return emails
+
+
 @email_bp.route('/contact', methods=['POST'])
 def contact():
     try:
