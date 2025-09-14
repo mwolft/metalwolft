@@ -466,11 +466,30 @@ def get_users():
     if not current_user.get("is_admin"):
         return jsonify({"message": "Access forbidden: Admins only"}), 403
 
-    users = Users.query.all()
-    total_count = len(users)
+    # Parámetros para paginación y orden desde React-Admin
+    start = request.args.get('_start', type=int, default=0)
+    end   = request.args.get('_end', type=int, default=10)
+    sort  = request.args.get('_sort', default='id')
+    order = request.args.get('_order', default='DESC').upper()
+
+    # 🔥 Fuerza DESC cuando el sort es por ID
+    if sort == 'id':
+        order = 'DESC'
+
+    sort_col = getattr(Users, sort, Users.id)
+    query = Users.query.order_by(
+        sort_col.desc() if order == 'DESC' else sort_col.asc()
+    )
+
+    total_count = query.count()
+
+    if start is not None and end is not None and end > start:
+        query = query.offset(start).limit(end - start)
+
+    users = query.all()
 
     response = jsonify([user.serialize() for user in users])
-    response.headers['X-Total-Count'] = total_count
+    response.headers['X-Total-Count'] = str(total_count)
     response.headers['Access-Control-Expose-Headers'] = 'X-Total-Count'
     response.headers['Access-Control-Allow-Origin'] = '*'
     return response, 200
@@ -859,7 +878,6 @@ def get_product_images():
     response.headers['Access-Control-Allow-Origin'] = '*'
     return response, 200
 
-
 @api.route('/orders', methods=['GET', 'POST'])
 @jwt_required()
 def handle_orders():
@@ -867,19 +885,38 @@ def handle_orders():
 
     if request.method == 'GET':
         try:
-            # ------------ Si el usuario es administrador, devolver todas las órdenes
-            # if current_user.get("is_admin"):
-                # orders = db.session.execute(db.select(Orders)).scalars()
-            # else:
-                # Si no, devolver solo las órdenes del usuario autenticado
-            # 🔑 ----------Siempre filtrar por user_id del token
-            orders = db.session.execute(
-                db.select(Orders).where(Orders.user_id == current_user['user_id'])
-            ).scalars()
+            # 🔥 Soporte de paginación y orden
+            start = request.args.get('_start', type=int, default=0)
+            end = request.args.get('_end', type=int, default=10)
+            sort = request.args.get('_sort', default='id')
+            order = request.args.get('_order', default='DESC').upper()
+
+            # 🔥 Si el sort es por ID, forzamos DESC
+            if sort == 'id':
+                order = 'DESC'
+
+            sort_col = getattr(Orders, sort, Orders.id)
+
+            # 🔑 Admin ve todo, usuarios solo lo suyo
+            if current_user.get("is_admin"):
+                query = Orders.query
+            else:
+                query = Orders.query.filter_by(user_id=current_user['user_id'])
+
+            query = query.order_by(
+                sort_col.desc() if order == 'DESC' else sort_col.asc()
+            )
+
+            total_count = query.count()
+
+            # 🔥 Paginación real
+            if start is not None and end is not None and end > start:
+                query = query.offset(start).limit(end - start)
+
+            orders = query.all()
             results = [order.serialize() for order in orders]
-            total_count = len(results)
-            
-            # Crear respuesta con encabezados requeridos por React Admin
+
+            # Respuesta con headers para React-Admin
             response = jsonify(results)
             response.headers['X-Total-Count'] = str(total_count)
             response.headers['Access-Control-Expose-Headers'] = 'X-Total-Count'
@@ -887,7 +924,7 @@ def handle_orders():
             return response, 200
         except Exception as e:
             logger.error(f"Error al obtener las órdenes: {str(e)}")
-            return jsonify({"message": "Error fetching orders", "error": str(e)}), 500 
+            return jsonify({"message": "Error fetching orders", "error": str(e)}), 500
 
     if request.method == 'POST':
         data = request.get_json()
@@ -972,6 +1009,50 @@ def handle_orders():
             new_order.total_amount = total_final
 
             db.session.commit()
+
+            # 🔥 Intentar actualizar datos del usuario sin bloquear la compra
+            try:
+                user = Users.query.get(current_user['user_id'])
+                if user:
+                    updated = False
+
+                    # Solo completar campos vacíos con datos del pedido
+                    if not user.firstname and data.get('firstname'):
+                        user.firstname = data['firstname']
+                        updated = True
+                    if not user.lastname and data.get('lastname'):
+                        user.lastname = data['lastname']
+                        updated = True
+                    if not user.shipping_address and data.get('shipping_address'):
+                        user.shipping_address = data['shipping_address']
+                        updated = True
+                    if not user.shipping_city and data.get('shipping_city'):
+                        user.shipping_city = data['shipping_city']
+                        updated = True
+                    if not user.shipping_postal_code and data.get('shipping_postal_code'):
+                        user.shipping_postal_code = data['shipping_postal_code']
+                        updated = True
+                    if not user.billing_address and data.get('billing_address'):
+                        user.billing_address = data['billing_address']
+                        updated = True
+                    if not user.billing_city and data.get('billing_city'):
+                        user.billing_city = data['billing_city']
+                        updated = True
+                    if not user.billing_postal_code and data.get('billing_postal_code'):
+                        user.billing_postal_code = data['billing_postal_code']
+                        updated = True
+                    if not user.CIF and data.get('CIF'):
+                        user.CIF = data['CIF']
+                        updated = True
+
+                    # Guardar cambios solo si hay algo nuevo
+                    if updated:
+                        db.session.commit()
+                        logger.info(f"Datos del usuario {user.email} actualizados desde la compra")
+
+            except Exception as e:
+                db.session.rollback()
+                logger.error(f"Error al actualizar datos del usuario: {str(e)}")
 
             # Generar la factura
             try:
@@ -1184,14 +1265,21 @@ def handle_orders():
 @jwt_required()
 def handle_order(order_id):
     current_user = get_jwt_identity()
-    order = db.session.execute(db.select(Orders).where(Orders.id == order_id, Orders.user_id == current_user['user_id'])).scalar()
+    # 🔑 Admin puede ver cualquiera, usuarios solo los suyos
+    if current_user.get("is_admin"):
+        order = Orders.query.get(order_id)
+    else:
+        order = Orders.query.filter_by(id=order_id, user_id=current_user['user_id']).first()
+
     if not order:
         return jsonify({"message": "Order not found or not authorized"}), 404
+
     if request.method == 'GET':
         response = jsonify(order.serialize())
         response.headers['Access-Control-Allow-Origin'] = '*'
         response.headers['Access-Control-Expose-Headers'] = 'X-Total-Count'
         return response, 200
+
     if request.method == 'DELETE':
         try:
             db.session.delete(order)
@@ -1203,6 +1291,7 @@ def handle_order(order_id):
         except SQLAlchemyError as e:
             db.session.rollback()
             return jsonify({"message": "An error occurred while deleting the order.", "error": str(e)}), 500
+
         
 @api.route('/orders/<int:order_id>/estimated-delivery', methods=['GET'])
 @jwt_required()
@@ -1350,15 +1439,69 @@ def get_order_details():
     current_user = get_jwt_identity()
     if not current_user.get("is_admin"):
         return jsonify({"message": "Access forbidden: Admins only"}), 403
-    # Obtener todos los detalles de pedidos
-    order_details = db.session.execute(db.select(OrderDetails)).scalars()
+
+    # 🔥 Parámetros de paginación y orden
+    start = request.args.get('_start', type=int, default=0)
+    end = request.args.get('_end', type=int, default=10)
+    sort = request.args.get('_sort', default='id')
+    order = request.args.get('_order', default='DESC').upper()
+
+    # 🔥 Ordenar siempre por ID descendente por defecto
+    if sort == 'id':
+        order = 'DESC'
+
+    sort_col = getattr(OrderDetails, sort, OrderDetails.id)
+
+    query = OrderDetails.query.order_by(
+        sort_col.desc() if order == 'DESC' else sort_col.asc()
+    )
+
+    total_count = query.count()
+
+    # 🔥 Paginación
+    if start is not None and end is not None and end > start:
+        query = query.offset(start).limit(end - start)
+
+    order_details = query.all()
     results = [detail.serialize() for detail in order_details]
-    total_count = len(results)
+
     response = jsonify(results)
     response.headers['X-Total-Count'] = str(total_count)
     response.headers['Access-Control-Expose-Headers'] = 'X-Total-Count'
     response.headers['Access-Control-Allow-Origin'] = '*'
     return response, 200
+
+@api.route('/orderdetails/<int:detail_id>', methods=['GET', 'DELETE'])
+@jwt_required()
+def handle_order_detail(detail_id):
+    current_user = get_jwt_identity()
+
+    # 🔑 Buscar detalle
+    detail = OrderDetails.query.get(detail_id)
+    if not detail:
+        return jsonify({"message": "OrderDetail not found"}), 404
+
+    # 🔒 Solo admin puede ver/borrar cualquier detalle
+    if not current_user.get("is_admin"):
+        # Comprobar que es suyo
+        if not detail.order or detail.order.user_id != current_user['user_id']:
+            return jsonify({"message": "Access forbidden"}), 403
+
+    if request.method == 'GET':
+        response = jsonify(detail.serialize())
+        response.headers['Access-Control-Allow-Origin'] = '*'
+        response.headers['Access-Control-Expose-Headers'] = 'X-Total-Count'
+        return response, 200
+
+    if request.method == 'DELETE':
+        try:
+            db.session.delete(detail)
+            db.session.commit()
+            return jsonify({"message": "OrderDetail deleted successfully"}), 200
+        except SQLAlchemyError as e:
+            db.session.rollback()
+            return jsonify({"message": "An error occurred while deleting", "error": str(e)}), 500
+
 
 # crear una factura sin una orden asociada
 @api.route('/manual-invoice', methods=['POST'])

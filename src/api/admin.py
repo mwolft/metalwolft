@@ -140,9 +140,27 @@ class UsersAdminView(SafeModelView):
     column_default_sort = ('id', True)  # DESC
     column_sortable_list = ('id', 'email')
     column_searchable_list = ('email',)
+    column_list = (
+        'id',
+        'email',
+        'firstname',
+        'lastname',
+        'is_active',
+        'is_admin',
+        'shipping_address',
+        'shipping_city',
+        'shipping_postal_code',
+        'billing_address',
+        'billing_city',
+        'billing_postal_code',
+        'CIF',
+    )
+    form_excluded_columns = ('password', 'orders', 'favorites', 'cart')
+
     column_formatters = {
         'email': lambda v, c, m, p: Markup(f'<a href="mailto:{m.email}">{m.email}</a>') if m.email else ''
     }
+
 
 
 class ProductAdminView(SafeModelView):

@@ -3,9 +3,12 @@ import { List, Datagrid, TextField, EmailField, BooleanField, EditButton, Delete
 
 // Lista de usuarios: muestra todos los usuarios
 export const UserList = (props) => (
-  <List {...props}>
+  <List
+    {...props}
+    sort={{ field: 'id', order: 'DESC' }} 
+  >
     <Datagrid>
-      <TextField source="id" label="ID" />
+      <TextField source="id" label="ID" sortable={false} />
       <TextField source="firstname" label="Nombre" />
       <TextField source="lastname" label="Apellido" />
       <EmailField source="email" label="Correo Electrónico" />
@@ -15,6 +18,7 @@ export const UserList = (props) => (
     </Datagrid>
   </List>
 );
+
 
 // Editar un usuario existente
 export const UserEdit = (props) => (

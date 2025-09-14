@@ -48,7 +48,7 @@ const AdminPanel = () => {
   }
 
   return (
-    <div className="admin-box" style={{ marginTop: '65px', paddingBottom: '35px' }}>
+    <div className="admin-box" style={{ marginTop: '100px', paddingBottom: '35px' }}>
       <div className="admin-header">
         <h3 className="text-center pt-2">PANEL DE ADMINISTRACIÓN</h3>
       </div>

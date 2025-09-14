@@ -3,7 +3,7 @@ import { List, Datagrid, TextField, NumberField, EditButton, DeleteButton, Edit,
 
 // Lista de órdenes: muestra todas las órdenes
 export const OrderList = (props) => (
-  <List {...props}>
+  <List {...props} sort={{ field: 'id', order: 'DESC' }}>
     <Datagrid>
       <TextField source="id" label="ID" />
       <TextField source="user_id" label="ID del Usuario" />
@@ -16,6 +16,7 @@ export const OrderList = (props) => (
     </Datagrid>
   </List>
 );
+
 
 // Editar una orden existente
 export const OrderEdit = (props) => (

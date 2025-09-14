@@ -24,11 +24,6 @@
     padding: 5px 0;
 }
 
-/* Ajustar el contenido principal */
-#main-content {
-    margin-top: calc(36px + 56px); /* Altura del banner + navbar */
-}
-
 /* Estilo del navbar */
 .navbar-brand img {
     max-height: 3rem;
