@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Admin, Resource, Layout } from "react-admin";
-import dataProvider from '../../../../src/dataProvider.js'; 
+import dataProvider from '../../../../src/dataProvider.js';
 import jsonServerProvider from "ra-data-json-server";
 import { fetchUtils } from 'ra-core';
 import { useNavigate } from "react-router-dom";
@@ -56,7 +56,7 @@ const AdminPanel = () => {
         <Admin
           dataProvider={dataProvider}
           authProvider={authProvider}
-          title="Admin Panel"
+          title="Panel de Administración"
           basename="/admin"
         >
           <Resource
@@ -65,13 +65,7 @@ const AdminPanel = () => {
             edit={UserEdit}
             create={UserCreate}
             icon={() => <FaUser size={19} />}
-          />
-          <Resource
-            name="products"
-            list={ProductList}
-            edit={ProductEdit}
-            create={ProductCreate}
-            icon={() => <FaBoxOpen size={19} />}
+            options={{ label: "Usuarios" }}
           />
           <Resource
             name="orders"
@@ -79,13 +73,7 @@ const AdminPanel = () => {
             edit={OrderEdit}
             create={OrderCreate}
             icon={() => <FaShoppingCart size={19} />}
-          />
-          <Resource
-            name="product_images"
-            list={ProductImagesList}
-            edit={ProductImagesEdit}
-            create={ProductImagesCreate}
-            icon={() => <FaImages size={19} />}
+            options={{ label: "Pedidos" }}
           />
           <Resource
             name="orderdetails"
@@ -93,13 +81,15 @@ const AdminPanel = () => {
             edit={OrderDetailsEdit}
             create={OrderDetailsCreate}
             icon={() => <TbListDetails size={19} />}
+            options={{ label: "Detalles Pedido" }}
           />
           <Resource
             name="invoices"
             list={InvoiceList}
             edit={InvoiceEdit}
             create={InvoiceCreate}
-            icon={() => <FaFileInvoice size={19} />} 
+            icon={() => <FaFileInvoice size={19} />}
+            options={{ label: "Facturas" }}
           />
         </Admin>
       </div>

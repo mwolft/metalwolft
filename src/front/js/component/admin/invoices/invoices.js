@@ -31,7 +31,10 @@ const DownloadButton = () => {
     }
 
     const backendUrl = process.env.REACT_APP_BACKEND_URL || "http://localhost:3001";
-    const downloadUrl = `${backendUrl}${record.pdf_path}`;
+    const downloadUrl = record.pdf_path?.startsWith('http')
+      ? record.pdf_path
+      : `${backendUrl}${record.pdf_path}`;
+
 
     window.open(downloadUrl, "_blank");
   };

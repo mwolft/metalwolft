@@ -5,17 +5,19 @@ import { List, Datagrid, TextField, EmailField, BooleanField, EditButton, Delete
 export const UserList = (props) => (
   <List
     {...props}
-    sort={{ field: 'id', order: 'DESC' }} 
+    sort={{ field: 'id', order: 'DESC' }}
   >
-    <Datagrid>
-      <TextField source="id" label="ID" sortable={false} />
-      <TextField source="firstname" label="Nombre" />
-      <TextField source="lastname" label="Apellido" />
-      <EmailField source="email" label="Correo Electrónico" />
-      <BooleanField source="is_admin" label="Administrador" />
-      <EditButton />
-      <DeleteButton />
-    </Datagrid>
+    <div style={{ overflowX: 'auto', width: '100%' }}>
+      <Datagrid>
+        <TextField source="id" label="ID" sortable={false} />
+        <TextField source="firstname" label="Nombre" />
+        <TextField source="lastname" label="Apellido" />
+        <EmailField source="email" label="Correo Electrónico" />
+        <BooleanField source="is_admin" label="Administrador" />
+        <EditButton />
+        <DeleteButton />
+      </Datagrid>
+    </div>
   </List>
 );
 

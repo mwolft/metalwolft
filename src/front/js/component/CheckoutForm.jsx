@@ -29,6 +29,7 @@ const CheckoutForm = () => {
         billing_postal_code: "",
         CIF: ""
     });
+    const [acceptedPolicy, setAcceptedPolicy] = useState(false);
     const navigate = useNavigate();
 
     const { products, totalShipping: shippingCost, subtotal: total, finalTotal } = calcularEnvio(store.cart);
@@ -99,6 +100,11 @@ const CheckoutForm = () => {
     // Pago con Stripe
     const handleSubmit = async (event) => {
         event.preventDefault();
+
+        if (!acceptedPolicy) {
+            alert("Debes aceptar la Política de Devoluciones y Garantías antes de continuar.");
+            return;
+        }
 
         if (!validateForm()) {
             console.error("El formulario no pasó la validación.");
@@ -481,6 +487,29 @@ const CheckoutForm = () => {
                                     </div>
                                 </Form.Group>
                             </div>
+                            <Form.Group className="mt-4">
+                                <Form.Check
+                                    type="checkbox"
+                                    id="accept-policy"
+                                    label={
+                                        <>
+                                            Confirmo que he leído y acepto la{" "}
+                                            <a
+                                                href="/politica-devolucion"
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                style={{ textDecoration: "underline" }}
+                                            >
+                                                Política de Devoluciones y Garantías
+                                            </a>.
+                                        </>
+                                    }
+                                    checked={acceptedPolicy}
+                                    onChange={(e) => setAcceptedPolicy(e.target.checked)}
+                                    required
+                                />
+                            </Form.Group>
+
                             <Button
                                 className="btn btn-style-background-color btn-block my-5"
                                 type="submit"

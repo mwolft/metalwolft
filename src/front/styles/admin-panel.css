@@ -33,3 +33,6 @@
   color: white !important;
   border-radius: 5px;
 }
+.RaDatagrid-table {
+  min-width: fit-content;
+}

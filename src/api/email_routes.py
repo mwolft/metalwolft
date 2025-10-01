@@ -266,3 +266,67 @@ def send_order_status_email(user_email, order_status, locator):
         current_app.logger.error(f"Error al enviar correo de estado del pedido: {str(e)}")
         return False
 
+
+@email_bp.route('/report-issue', methods=['POST'])
+def report_issue():
+    """
+    Recibe incidencias desde el formulario de devolución/pintura.
+    Permite adjuntar imágenes y envía un correo al administrador.
+    """
+    try:
+        # ✅ Si el frontend usa multipart/form-data
+        data = request.form
+        files = request.files
+
+        nombre = data.get('name')
+        email = data.get('email')
+        order_number = data.get('order_number')
+        issue_type = data.get('issue_type')
+        message_text = data.get('message')
+
+        # Validación básica
+        if not nombre or not email or not order_number or not issue_type:
+            return jsonify({"error": "Faltan campos obligatorios."}), 400
+
+        # 🧾 Cuerpo del correo
+        body = f"""
+        INCIDENCIA DE CLIENTE - METALWOLFT
+
+        Nombre completo: {nombre}
+        Correo electrónico: {email}
+        Número de pedido: {order_number}
+        Tipo de incidencia: {issue_type}
+
+        Descripción del problema:
+        {message_text or '(sin descripción)'}
+
+        -----------------------------------------
+        Este mensaje se ha generado automáticamente
+        desde el formulario de incidencias de MetalWolft.
+        Por favor, revise la información y adjuntos.
+        """
+
+
+        msg = Message(
+            subject=f"🧾 Incidencia de cliente #{order_number} - {issue_type}",
+            sender=os.getenv('MAIL_DEFAULT_SENDER'),
+            recipients=['admin@metalwolft.com'],
+            body=body
+        )
+
+        # 📎 Adjuntar imágenes si las hay
+        for key in files:
+            file = files[key]
+            if file and file.filename:
+                msg.attach(
+                    filename=file.filename,
+                    content_type=file.content_type,
+                    data=file.read()
+                )
+
+        mail.send(msg)
+        return jsonify({"message": "Incidencia enviada correctamente."}), 200
+
+    except Exception as e:
+        current_app.logger.error(f"❌ Error al enviar incidencia: {str(e)}")
+        return jsonify({"error": str(e)}), 500

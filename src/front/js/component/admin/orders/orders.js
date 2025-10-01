@@ -6,7 +6,6 @@ export const OrderList = (props) => (
   <List {...props} sort={{ field: 'id', order: 'DESC' }}>
     <Datagrid>
       <TextField source="id" label="ID" />
-      <TextField source="user_id" label="ID del Usuario" />
       <NumberField source="total_amount" label="Monto Total" />
       <DateField source="order_date" label="Fecha de Orden" />
       <TextField source="invoice_number" label="Número de Factura" />
@@ -23,7 +22,6 @@ export const OrderEdit = (props) => (
   <Edit {...props}>
     <SimpleForm>
       <TextInput disabled source="id" label="ID" />
-      <TextInput source="user_id" label="ID del Usuario" />
       <NumberInput source="total_amount" label="Monto Total" />
       <TextInput source="order_date" label="Fecha de Orden" />
       <TextInput source="invoice_number" label="Número de Factura" disabled />
@@ -36,7 +34,6 @@ export const OrderEdit = (props) => (
 export const OrderCreate = (props) => (
   <Create {...props}>
     <SimpleForm>
-      <TextInput source="user_id" label="ID del Usuario" />
       <NumberInput source="total_amount" label="Monto Total" />
       <TextInput source="order_date" label="Fecha de Orden" />
       <TextInput source="invoice_number" label="Número de Factura" disabled />

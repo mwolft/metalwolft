@@ -4,32 +4,34 @@ import { List, Datagrid, TextField, NumberField, EditButton, DeleteButton, Edit,
 // Lista de detalles de órdenes: muestra todos los detalles de órdenes
 export const OrderDetailsList = (props) => (
   <List {...props}>
-    <Datagrid>
-      <TextField source="id" label="ID" />
-      <ReferenceField source="order_id" reference="orders" label="Número de Orden">
-        <TextField source="id" />
-      </ReferenceField>
-      <ReferenceField source="product_id" reference="products" label="Producto">
-        <TextField source="nombre" />
-      </ReferenceField>
-      <NumberField source="quantity" label="Cantidad" />
-      <NumberField source="alto" label="Alto" />
-      <NumberField source="ancho" label="Ancho" />
-      <TextField source="anclaje" label="Anclaje" />
-      <TextField source="color" label="Color" />
-      <NumberField source="precio_total" label="Precio Total" />
-      <TextField source="firstname" label="Nombre" />
-      <TextField source="lastname" label="Apellido" />
-      <TextField source="shipping_address" label="Dirección de Envío" />
-      <TextField source="shipping_city" label="Ciudad de Envío" />
-      <TextField source="shipping_postal_code" label="Código Postal de Envío" />
-      <TextField source="billing_address" label="Dirección de Facturación" />
-      <TextField source="billing_city" label="Ciudad de Facturación" />
-      <TextField source="billing_postal_code" label="Código Postal de Facturación" />
-      <TextField source="CIF" label="CIF" />
-      <EditButton />
-      <DeleteButton />
-    </Datagrid>
+    <div style={{ overflowX: 'auto', width: '100%' }}>
+      <Datagrid>
+        <TextField source="id" label="ID" />
+        <ReferenceField source="order_id" reference="orders" label="Número de Orden">
+          <TextField source="id" />
+        </ReferenceField>
+        <ReferenceField source="product_id" reference="products" label="Producto">
+          <TextField source="nombre" />
+        </ReferenceField>
+        <NumberField source="quantity" label="Cantidad" />
+        <NumberField source="alto" label="Alto" />
+        <NumberField source="ancho" label="Ancho" />
+        <TextField source="anclaje" label="Anclaje" />
+        <TextField source="color" label="Color" />
+        <NumberField source="precio_total" label="Precio Total" />
+        <TextField source="firstname" label="Nombre" />
+        <TextField source="lastname" label="Apellido" />
+        <TextField source="shipping_address" label="Dirección de Envío" />
+        <TextField source="shipping_city" label="Ciudad de Envío" />
+        <TextField source="shipping_postal_code" label="Código Postal de Envío" />
+        <TextField source="billing_address" label="Dirección de Facturación" />
+        <TextField source="billing_city" label="Ciudad de Facturación" />
+        <TextField source="billing_postal_code" label="Código Postal de Facturación" />
+        <TextField source="CIF" label="CIF" />
+        <EditButton />
+        <DeleteButton />
+      </Datagrid>
+    </div>
   </List>
 );
 
