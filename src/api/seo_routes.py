@@ -724,3 +724,101 @@ def donde_comprar_rejas_leroy_ikea():
         }
     }
     return jsonify(meta_data)
+
+
+@seo_bp.route('/api/seo/rejas-para-ventanas-sin-obra', methods=['GET'])
+def rejas_para_ventanas_sin_obra():
+    meta_data = {
+        "lang": "es",
+        "title": "Rejas para ventanas sin obra | Metal Wolft",
+        "description": "Descubre cómo funcionan las rejas para ventanas sin obra. Instálalas sin taladros, seguras, resistentes y a medida con Metal Wolft.",
+        "keywords": "rejas sin obra, rejas para ventanas sin taladrar, rejas desmontables, rejas seguridad ventanas, Metal Wolft",
+        "twitter_card_type": "summary_large_image",
+        "twitter_site": "@MetalWolft",
+        "twitter_creator": "@MetalWolft",
+        "twitter_title": "Rejas para ventanas sin obra | Metal Wolft",
+        "twitter_description": "Protege tus ventanas sin hacer obras. Rejas seguras, estéticas y fáciles de instalar. Fabricadas a medida en Metal Wolft.",
+        "twitter_image": "https://res.cloudinary.com/dewanllxn/image/upload/v1760109829/rejas-para-ventanas-sin-obra_zk4o4q.png",
+        "twitter_image_alt": "Rejas para ventanas sin obra Metal Wolft",
+        "og_image": "https://res.cloudinary.com/dewanllxn/image/upload/v1760109829/rejas-para-ventanas-sin-obra_zk4o4q.png",
+        "og_image_width": "825",
+        "og_image_height": "550",
+        "og_image_type": "image/png",
+        "og_image_alt": "Rejas para ventanas sin obra Metal Wolft",
+        "og_url": "https://www.metalwolft.com/rejas-para-ventanas-sin-obra",
+        "og_type": "article",
+        "og_locale": "es_ES",
+        "og_locale_alternate": "en_US",
+        "og_site_name": "Metal Wolft",
+        "canonical": "https://www.metalwolft.com/rejas-para-ventanas-sin-obra",
+        "robots": "index, follow",
+        "theme_color": "#ff324d",
+        "json_ld": {
+            "@context": "https://schema.org",
+            "@type": "Article",
+            "name": "Rejas para ventanas sin obra",
+            "description": "Descubre cómo funcionan las rejas para ventanas sin obra, una solución segura y estética sin necesidad de perforar ni hacer reformas.",
+            "image": "https://res.cloudinary.com/dewanllxn/image/upload/v1760109829/rejas-para-ventanas-sin-obra_zk4o4q.png",
+            "url": "https://www.metalwolft.com/rejas-para-ventanas-sin-obra",
+            "author": {"@type": "Organization", "name": "Metal Wolft"},
+            "publisher": {
+                "@type": "Organization",
+                "name": "Metal Wolft",
+                "logo": {
+                    "@type": "ImageObject",
+                    "url": "https://res.cloudinary.com/dewanllxn/image/upload/v1735631180/welder-bot_tqxadc.png"
+                }
+            },
+            "datePublished": "2025-10-10"
+        }
+    }
+    return jsonify(meta_data)
+
+
+@seo_bp.route('/api/seo/rejas-para-ventanas-modernas', methods=['GET'])
+def rejas_para_ventanas_modernas():
+    meta_data = {
+        "lang": "es",
+        "title": "Rejas para ventanas modernas | Metal Wolft",
+        "description": "Rejas modernas para ventanas: combina seguridad y diseño. Fabricadas en hierro con acabados contemporáneos y a medida.",
+        "keywords": "rejas para ventanas modernas, rejas de diseño, rejas decorativas, rejas modernas hierro, Metal Wolft",
+        "twitter_card_type": "summary_large_image",
+        "twitter_site": "@MetalWolft",
+        "twitter_creator": "@MetalWolft",
+        "twitter_title": "Rejas para ventanas modernas | Metal Wolft",
+        "twitter_description": "Diseños modernos, materiales resistentes y pintura al horno. Rejas a medida que aportan estilo y seguridad.",
+        "twitter_image": "https://res.cloudinary.com/dewanllxn/image/upload/v1760109829/rejas-para-ventanas-modernas_aeijuk.png",
+        "twitter_image_alt": "Rejas para ventanas modernas Metal Wolft",
+        "og_image": "https://res.cloudinary.com/dewanllxn/image/upload/v1760109829/rejas-para-ventanas-modernas_aeijuk.png",
+        "og_image_width": "825",
+        "og_image_height": "550",
+        "og_image_type": "image/png",
+        "og_image_alt": "Rejas modernas Metal Wolft",
+        "og_url": "https://www.metalwolft.com/rejas-para-ventanas-modernas",
+        "og_type": "article",
+        "og_locale": "es_ES",
+        "og_locale_alternate": "en_US",
+        "og_site_name": "Metal Wolft",
+        "canonical": "https://www.metalwolft.com/rejas-para-ventanas-modernas",
+        "robots": "index, follow",
+        "theme_color": "#ff324d",
+        "json_ld": {
+            "@context": "https://schema.org",
+            "@type": "Article",
+            "name": "Rejas para ventanas modernas",
+            "description": "Descubre diseños de rejas modernas para ventanas: seguras, elegantes y personalizables. Fabricadas a medida por Metal Wolft.",
+            "image": "https://res.cloudinary.com/dewanllxn/image/upload/v1760109829/rejas-para-ventanas-modernas_aeijuk.png",
+            "url": "https://www.metalwolft.com/rejas-para-ventanas-modernas",
+            "author": {"@type": "Organization", "name": "Metal Wolft"},
+            "publisher": {
+                "@type": "Organization",
+                "name": "Metal Wolft",
+                "logo": {
+                    "@type": "ImageObject",
+                    "url": "https://res.cloudinary.com/dewanllxn/image/upload/v1735631180/welder-bot_tqxadc.png"
+                }
+            },
+            "datePublished": "2025-10-10"
+        }
+    }
+    return jsonify(meta_data)

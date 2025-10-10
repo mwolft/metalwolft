@@ -56,6 +56,8 @@ import { InstalationRejasParaVentanas } from "./pages/blog/InstalationRejasParaV
 import { PlazosEntregaRejasAMedida } from "./pages/blog/PlazosEntregaRejasAMedida.jsx";
 import { RecepcionPedidosRevisarAntesFirmar } from "./pages/blog/RecepcionPedidosRevisarAntesFirmar.jsx";
 import { DondeComprarRejasLeroyIkea } from "./pages/blog/DondeComprarRejasLeroyIkea.jsx";
+import { RejasParaVentanasSinObra } from "./pages/blog/RejasParaVentanasSinObra.jsx";
+import { RejasParaVentanasModernas } from "./pages/blog/RejasParaVentanasModernas.jsx";
 
 // Custom categories
 import { RejasParaVentanas } from './pages/categories/RejasParaVentanas.jsx';
@@ -115,6 +117,8 @@ const Layout = () => {
                         <Route path="/plazos-entrega-rejas-a-medida" element={<PlazosEntregaRejasAMedida />} />
                         <Route path="/recepcion-pedidos-revisar-antes-firmar" element={<RecepcionPedidosRevisarAntesFirmar />} />
                         <Route path="/donde-comprar-rejas-leroy-ikea" element={<DondeComprarRejasLeroyIkea />} />
+                        <Route path="/rejas-para-ventanas-sin-obra" element={<RejasParaVentanasSinObra />} />
+                        <Route path="/rejas-para-ventanas-modernas" element={<RejasParaVentanasModernas />} />
                         <Route path="*" element={<Error404 />} />
                         <Route path="/cookies-esenciales" element={<PrivacyCookiesHome />} />
                         <Route path="/politica-privacidad" element={<PrivacyPolicy />} />

@@ -185,7 +185,7 @@ def add_comment(post_id):
 @jwt_required(optional=True)
 def get_posts():
     try:
-        posts = Posts.query.all()
+        posts = Posts.query.order_by(Posts.created_at.asc()).all()
         total_count = len(posts)
 
         response = jsonify([post.serialize() for post in posts])
