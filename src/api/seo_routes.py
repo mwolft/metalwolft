@@ -668,3 +668,59 @@ def recepcion_pedidos_revisar_antes_firmar():
         }
     }
     return jsonify(meta_data)
+
+
+@seo_bp.route('/api/seo/donde-comprar-rejas-leroy-ikea', methods=['GET'])
+def donde_comprar_rejas_leroy_ikea():
+    meta_data = {
+        "lang": "es",
+        "twitter_card_type": "summary_large_image",
+        "twitter_site": "@MetalWolft",
+        "twitter_creator": "@MetalWolft",
+        "twitter_title": "Ikea, Leroy Merlin o a medida: ¿Dónde comprar rejas para ventanas? | Metal Wolft",
+        "twitter_description": "Comparamos rejas para ventanas de Ikea, Leroy Merlin y las fabricadas a medida. Descubre diferencias en calidad, precio y seguridad.",
+        "twitter_image": "https://res.cloudinary.com/dewanllxn/image/upload/v1760079525/donde-comprar-rejas-leroy-ikea_-_copia_ztsabu.png",
+        "twitter_image_alt": "Comparativa de rejas para ventanas: Ikea, Leroy Merlin o a medida",
+        "title": "Ikea, Leroy Merlin o a medida: ¿Dónde comprar rejas para ventanas? | Metal Wolft",
+        "description": "Comparamos Ikea, Leroy Merlin y las rejas a medida para ayudarte a elegir la mejor opción en precio, calidad y durabilidad.",
+        "keywords": "rejas para ventanas Leroy Merlin, rejas para ventanas Ikea, rejas a medida, comparativa rejas, precios rejas, seguridad ventanas",
+        "og_image": "https://res.cloudinary.com/dewanllxn/image/upload/v1760079525/donde-comprar-rejas-leroy-ikea_-_copia_ztsabu.png",
+        "og_image_width": "825",
+        "og_image_height": "550",
+        "og_image_type": "image/avif",
+        "og_image_alt": "Comparativa de rejas para ventanas: Ikea, Leroy Merlin o a medida",
+        "og_url": "https://www.metalwolft.com/donde-comprar-rejas-leroy-ikea",
+        "og_type": "article",
+        "og_locale": "es_ES",
+        "og_locale_alternate": "en_US",
+        "og_site_name": "Metal Wolft",
+        "canonical": "https://www.metalwolft.com/donde-comprar-rejas-leroy-ikea",
+        "robots": "index, follow",
+        "theme_color": "#ff324d",
+        "json_ld": {
+            "@context": "https://schema.org",
+            "@type": "Article",
+            "name": "Ikea, Leroy Merlin o a medida: ¿Dónde comprar rejas para ventanas?",
+            "description": "Comparamos Ikea, Leroy Merlin y las rejas a medida para ayudarte a elegir la mejor opción según tu ventana, presupuesto y seguridad.",
+            "image": "https://res.cloudinary.com/dewanllxn/image/upload/v1760079525/donde-comprar-rejas-leroy-ikea_-_copia_ztsabu.png",
+            "url": "https://www.metalwolft.com/donde-comprar-rejas-leroy-ikea",
+            "author": {
+                "@type": "Organization",
+                "name": "Metal Wolft"
+            },
+            "publisher": {
+                "@type": "Organization",
+                "name": "Metal Wolft",
+                "logo": {
+                    "@type": "ImageObject",
+                    "url": "https://res.cloudinary.com/dewanllxn/image/upload/v1735631180/welder-bot_tqxadc.png"
+                }
+            },
+            "mainEntityOfPage": {
+                "@type": "WebPage",
+                "@id": "https://www.metalwolft.com/donde-comprar-rejas-leroy-ikea"
+            },
+            "datePublished": "2025-10-10"
+        }
+    }
+    return jsonify(meta_data)

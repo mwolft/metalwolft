@@ -55,6 +55,7 @@ import { MedirHuecoRejasParaVentanas } from "./pages/blog/MedirHuecoRejasParaVen
 import { InstalationRejasParaVentanas } from "./pages/blog/InstalationRejasParaVentanas.jsx";
 import { PlazosEntregaRejasAMedida } from "./pages/blog/PlazosEntregaRejasAMedida.jsx";
 import { RecepcionPedidosRevisarAntesFirmar } from "./pages/blog/RecepcionPedidosRevisarAntesFirmar.jsx";
+import { DondeComprarRejasLeroyIkea } from "./pages/blog/DondeComprarRejasLeroyIkea.jsx";
 
 // Custom categories
 import { RejasParaVentanas } from './pages/categories/RejasParaVentanas.jsx';
@@ -113,6 +114,7 @@ const Layout = () => {
                         <Route path="/instalation-rejas-para-ventanas" element={<InstalationRejasParaVentanas />} />
                         <Route path="/plazos-entrega-rejas-a-medida" element={<PlazosEntregaRejasAMedida />} />
                         <Route path="/recepcion-pedidos-revisar-antes-firmar" element={<RecepcionPedidosRevisarAntesFirmar />} />
+                        <Route path="/donde-comprar-rejas-leroy-ikea" element={<DondeComprarRejasLeroyIkea />} />
                         <Route path="*" element={<Error404 />} />
                         <Route path="/cookies-esenciales" element={<PrivacyCookiesHome />} />
                         <Route path="/politica-privacidad" element={<PrivacyPolicy />} />
