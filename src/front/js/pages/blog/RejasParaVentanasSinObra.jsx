@@ -5,6 +5,7 @@ import { Context } from '../../store/appContext.js';
 import { AsidePost } from "../../component/AsidePost.jsx";
 import { AsideOthersCategories } from "../../component/AsideOthersCategories.jsx";
 import { Link } from "react-router-dom";
+import { RelatedProductsCarousel } from "../../component/RelatedProductsCarousel.jsx";
 
 export const RejasParaVentanasSinObra = () => {
     const { store, actions } = useContext(Context);
@@ -144,56 +145,118 @@ export const RejasParaVentanasSinObra = () => {
                         <div className="blog-text">
                             <h2 className="h2-categories">¿Qué son las rejas para ventanas sin obra?</h2>
                             <p>
-                                Las <strong>rejas para ventanas sin obra</strong> son una solución moderna y práctica para reforzar
-                                la seguridad de tu hogar sin necesidad de hacer agujeros ni modificar la fachada.
-                                Se instalan mediante <strong>anclajes interiores o sistemas de presión</strong> que se fijan al marco
-                                o al hueco de la ventana, sin cemento ni albañilería.
+                                Las <strong>rejas para ventanas sin obra</strong> son una solución sencilla y moderna para proteger tus ventanas
+                                sin tener que hacer rozas ni obras de albañilería.
                             </p>
-
                             <p>
-                                Este tipo de rejas se han vuelto muy populares porque combinan seguridad, estética y facilidad de montaje.
-                                Son ideales para viviendas en alquiler, segundas residencias o para quien quiere proteger sin meterse en obras.
-                                En MetalWolft fabricamos cada modelo a medida, para que quede ajustado al milímetro y mantenga una sujeción firme.
+                                Son rejas que ya vienen preparadas para atornillar directamente
+                                al muro de la fachada, sin necesidad de cemento ni soldadura.
+                            </p>
+                            <p>
+                                Este tipo de rejas se instalan fácilmente porque incluyen <strong>agujeros interiores</strong> o pequeñas
+                                <strong> pletinas metálicas</strong> (también llamadas “orejetas”) que salen del propio marco.
+                            </p>
+                            <blockquote className="blockquote_style3">
+                                Son la forma más práctica de proteger tus ventanas sin tener que hacer ningún tipo de reforma.
+                            </blockquote>
+                            <p>
+                                En ellas se colocan tornillos especiales de seguridad que garantizan una fijación firme sin dañar la fachada.
+                            </p>
+                            <p>
+                                En <strong>MetalWolft</strong> fabricamos cada reja a medida, adaptándola exactamente al hueco de tu ventana.
+                            </p>
+                            <p>
+                                Así queda perfectamente encajada, sin holguras y con un acabado limpio que no altera la estética de la vivienda.
+                                Todo el sistema está pensado para que puedas reforzar tus ventanas sin complicaciones ni obras.
                             </p>
 
-                            <h2 className="h2-categories">Ventajas frente a las rejas tradicionales</h2>
+                            <RelatedProductsCarousel
+                                categorySlug="rejas-para-ventanas"
+                                categoryName="Rejas para ventanas"
+                                currentProductId={null}  
+                                productName="rejas sin obra"
+                            />
+
+                            <h2 className="h2-categories">Ventajas frente a las rejas con obra</h2>
+                            <p>
+                                Las <strong>rejas para ventanas sin obra</strong> tienen varias ventajas claras frente a las rejas tradicionales que van empotradas o soldadas al muro.
+                                Aquí te resumimos las principales:
+                            </p>
                             <ul className="m-4">
-                                <li><strong>Instalación limpia y rápida:</strong> no requiere perforar paredes ni manchar la fachada.</li>
-                                <li><strong>Desmontables:</strong> se pueden retirar fácilmente si cambias de vivienda o quieres pintar.</li>
-                                <li><strong>Seguras:</strong> aunque no van “empotradas”, los anclajes internos de acero y los tornillos de seguridad
-                                    ofrecen una resistencia muy superior a las rejas decorativas de gran superficie.</li>
-                                <li><strong>Estéticas:</strong> disponibles en varios estilos y colores, sin perder armonía con el diseño de la casa.</li>
+                                <li>
+                                    <strong>Instalación limpia y rápida:</strong> no hace falta abrir huecos ni hacer rozas.
+                                    En menos de una hora puedes tener tu reja colocada, sin polvo ni ruidos.
+                                </li>
+                                <li>
+                                    <strong>Sin albañilería:</strong> todo se fija con tornillos de seguridad, evitando cemento, soldadura o herramientas pesadas.
+                                </li>
+                                <li>
+                                    <strong>Reversibles:</strong> si algún día quieres desmontarlas para pintar o mudarte, se retiran (con herramientas especiales) sin dejar marcas en la pared.
+                                </li>
+                                <li>
+                                    <strong>Mismo resultado visual:</strong> una vez instalada, la reja sin obra ofrece el mismo acabado que una reja empotrada.
+                                </li>
+                                <li>
+                                    <strong>Más cómodas:</strong> puedes instalarlas tú mismo con un taladro y una llave, sin depender de un albañil ni esperar días de obra.
+                                </li>
                             </ul>
 
                             <h2 className="h2-categories">¿Cómo se fijan las rejas sin obra?</h2>
                             <p>
-                                Las rejas sin obra se apoyan directamente sobre el hueco de la ventana.
-                                Se ajustan con <strong>tornillería interior y tacos de presión</strong> invisibles desde el exterior.
-                                En MetalWolft utilizamos <strong>tornillos galvanizados de alta resistencia</strong>, los mismos que se emplean
-                                en carpintería metálica profesional, para garantizar una fijación sólida incluso con el paso de los años.
+                                Las <strong>rejas para ventanas sin obra</strong> se fijan con <strong>tornillos de seguridad inviolables</strong>,
+                                diseñados para que una vez colocados no puedan desatornillarse desde fuera. Son los mismos que se utilizan
+                                en cerramientos metálicos profesionales.
                             </p>
+                            <p>
+                                Este tipo de tornillos lleva una tapa metálica que se incrusta despues de apretarse, cubriendo la cabeza del tornillo.
+                                De esta forma, el sistema queda totalmente protegido y no se puede manipular ni extraer sin herramientas especializadas.
+                            </p>
+                            <blockquote className="blockquote_style3">
+                                Se fijan con tornillos de seguridad inviolables, creando una sujeción firme y protegida.
+                            </blockquote>
 
                             <p>
-                                A diferencia de las rejas prefabricadas de grandes superficies, nuestras rejas a medida se diseñan según tu hueco,
-                                asegurando que no queden holguras ni puntos débiles. Cada pieza se pinta con pintura al horno para resistir
-                                la intemperie y mantener su aspecto durante años.
+                                En <strong>MetalWolft</strong> utilizamos la tornillería más robusta del mercado, con materiales galvanizados
+                                y tratamiento anticorrosión, para garantizar una sujeción firme incluso con los años y la exposición al exterior.
+                            </p>
+                            <p>
+                                Todo el conjunto —marco, anclajes y tornillos— forma una estructura sólida y discreta que proporciona seguridad real
+                                sin afectar al aspecto del edificio.
                             </p>
 
                             <h2 className="h2-categories">¿Cuándo conviene elegir una reja sin obra?</h2>
-                            <ul className="m-4">
-                                <li>Si vives de alquiler y no puedes modificar la fachada.</li>
-                                <li>Si quieres reforzar ventanas sin obras ni permisos.</li>
-                                <li>Si buscas una opción segura y estética para segundas viviendas.</li>
-                                <li>O si simplemente prefieres un sistema que puedas quitar o trasladar fácilmente.</li>
-                            </ul>
+                            <p>
+                                Las <strong>rejas sin obra</strong> son perfectas cuando el muro o el interior de la ventana ya está terminado,
+                                por ejemplo, con yeso, piedra o azulejos, y no quieres hacer una roza o dañar el acabado.
+                            </p>
+                            <p>
+                                También son una opción ideal si vives de alquiler o en una vivienda donde no puedes modificar la fachada.
+                                Su instalación es rápida, limpia y no requiere permisos ni trabajos de albañilería.
+                            </p>
+                            <blockquote className="blockquote_style3">
+                                Son una solución económica, limpia y duradera.
+                            </blockquote>
+
+                            <p>
+                                Otra situación muy común es cuando quieres reforzar una segunda residencia o una casa de campo,
+                                pero sin meterte en obras ni dejar la vivienda abierta varios días.
+                                Con una reja sin obra puedes instalarla en una mañana y olvidarte.
+                            </p>
+                            <p>
+                                En resumen, las <strong>rejas para ventanas sin obra</strong> son una solución económica, limpia y duradera.
+                                Protegen igual que una reja empotrada, pero con la ventaja de poder instalarse de forma sencilla,
+                                sin afectar la estética ni el muro de la casa.
+                            </p>
 
                             <p className="mt-4">
-                                Puedes ver todos nuestros modelos de <Link to="/rejas-para-ventanas" style={{ color: "#ff324d" }}>rejas a medida</Link>,
-                                comparar estilos y precios al instante según tus medidas.
-                                Fabricamos en hierro, con pintura profesional y envío a toda España.
+                                Si quieres ver modelos reales y calcular el precio al instante, visita nuestra sección de{" "}
+                                <Link to="/rejas-para-ventanas" style={{ color: "#ff324d" }}>
+                                    rejas para ventanas a medida
+                                </Link>.
+                                Encontrarás diferentes estilos, colores y tipos de instalación, todos fabricados en hierro con pintura al horno
+                                y envío a toda España.
                             </p>
                         </div>
-
 
                         <hr style={{ marginTop: '30px' }} />
 

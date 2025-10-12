@@ -141,7 +141,7 @@ export const MedirHuecoRejasParaVentanas = () => {
                             <p>Además, contribuye a <b>mantener la integridad</b> de las rejas para ventanas al evitar el contacto directo con la superficie de la pared, <b>previniendo así la corrosión.</b></p>
                             <p>En consecuencia, la <b>medición más crítica</b> se centra en el ancho, que debe realizarse con <b>precisión,</b> como veremos más adelante. </p>
                             <blockquote className="blockquote_style3">
-                                <p>Los huecos donde se instalan las rejas para ventanas en muchas ocasiones no son rectángulos perfectos</p>
+                                Los huecos donde se instalan las rejas para ventanas en muchas ocasiones no son rectángulos perfectos.
                             </blockquote>
                             <h2 className="h2-categories">CÓMO MEDIR EL ANCHO DE LOS HUECOS PARA REJAS</h2>
                             <div className="row">
@@ -165,7 +165,7 @@ export const MedirHuecoRejasParaVentanas = () => {
                             <p>Las imperfecciones en las paredes o los cambios en el grosor de los materiales utilizados pueden generar diferencias en las dimensiones del hueco. </p>
                             <p>Por lo tanto, es <b>fundamental</b> no asumir que todas las partes del hueco tienen la <b>misma medida,</b> sino <b>verificar</b> cada punto clave para asegurarse de una instalación exitosa.</p>
                             <blockquote className="blockquote_style3">
-                                <p>La dimensión final del ancho la determina la medida más estrecha</p>
+                                La dimensión final del ancho la determina la medida más estrecha.
                             </blockquote>
                             <p>En situaciones donde las <b>medidas varían</b> algunos milímetros, es posible corregir esta disparidad rellenando el espacio posteriormente. </p>
                             <p>Esto puede lograrse mediante el <b>uso de silicona</b> en casos menores, mientras que para espacios más amplios se recurre al uso de cemento. Estas soluciones permiten <b>ajustar la reja</b> de manera efectiva al hueco y garantizar su estética.</p>

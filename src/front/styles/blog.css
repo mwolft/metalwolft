@@ -130,9 +130,11 @@ h1{
     font-size: 2rem;
 }
 .blockquote_style3 {
+    font-weight: bold;
     font-style: italic;
+    color: rgb(135, 135, 135);
     background-color: #fafafa;
-    padding: 20px;
+    padding: 55px 20px 20px 45px;
     border-left: 2px solid #ff324d;
     margin-bottom: 25px;
     font-size: 16px;
@@ -140,7 +142,25 @@ h1{
     margin-top: 5px;
     display: inline-block;
     width: 100%;
+    position: relative; 
+}
+
+.blockquote_style3::before {
+    content: "\201C"; 
+    font-size: 180px; 
+    line-height: 1; 
+    color: #ff324d; 
+    position: absolute;
+    left: 0px; 
+    top: -10px; 
+    opacity: 0.8; 
+    z-index: 1; 
+}
+
+.blockquote_style3 p {
     position: relative;
+    z-index: 2; 
+    margin-top: 30px; 
 }
 .blog_text p{
     margin-top: 35px;

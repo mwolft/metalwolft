@@ -5,6 +5,7 @@ import { Context } from "../../store/appContext.js";
 import { AsidePost } from "../../component/AsidePost.jsx";
 import { AsideOthersCategories } from "../../component/AsideOthersCategories.jsx";
 import { Link } from "react-router-dom";
+import { RelatedProductsCarousel } from "../../component/RelatedProductsCarousel.jsx";
 
 export const DondeComprarRejasLeroyIkea = () => {
     const { store, actions } = useContext(Context);
@@ -218,6 +219,13 @@ export const DondeComprarRejasLeroyIkea = () => {
                                     te permiten elegir el tipo de perfil, el color, el grosor e incluso el sistema de apertura.
                                 </li>
                             </ul>
+
+                            <RelatedProductsCarousel
+                                categorySlug="rejas-para-ventanas"
+                                categoryName="Rejas para ventanas"
+                                currentProductId={null}  
+                                productName="rejas Leroy Merlin"
+                            />
 
                             <h2 className="h2-categories">Precio, calidad y durabilidad</h2>
                             <p>

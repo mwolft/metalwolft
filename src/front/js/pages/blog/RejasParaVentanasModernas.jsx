@@ -6,6 +6,7 @@ import { AsidePost } from "../../component/AsidePost.jsx";
 import { AsideOthersCategories } from "../../component/AsideOthersCategories.jsx";
 import { Link } from "react-router-dom";
 import MetalStructureViewer from '../../component/MetalStructureViewer.jsx';
+import { RelatedProductsCarousel } from "../../component/RelatedProductsCarousel.jsx";
 
 export const RejasParaVentanasModernas = () => {
     const { store, actions } = useContext(Context);
@@ -146,12 +147,11 @@ export const RejasParaVentanasModernas = () => {
                             <p>
                                 En <strong>MetalWolft</strong> fabricamos rejas de diseño a medida, combinando seguridad, estética y durabilidad.
                             </p>
-
-                            <p>
+                            <blockquote className="blockquote_style3">
                                 Estas rejas no solo cumplen una función de protección; también aportan un toque decorativo.
-                            </p>
+                            </blockquote>
                             <p>
-                                Gracias al corte preciso, la pintura al horno y los perfiles de acero seleccionados,
+                                Gracias al corte preciso, la pintura profesional y los perfiles de acero seleccionados,
                                 conseguimos un acabado elegante y contemporáneo, ideal para viviendas modernas o rehabilitaciones con estilo.
                             </p>
                             <MetalStructureViewer />
@@ -163,23 +163,28 @@ export const RejasParaVentanasModernas = () => {
                                 <li><strong>Rejas decorativas modernas:</strong> combinan seguridad con formas geométricas o paneles personalizados por láser.</li>
                             </ul>
 
+                            <RelatedProductsCarousel
+                                categorySlug="rejas-para-ventanas"
+                                categoryName="Rejas para ventanas"
+                                currentProductId={null}  
+                                productName="rejas modernas"
+                            />
+
                             <h2 className="h2-categories">Materiales y acabados</h2>
                             <p>
-                                Todas nuestras <strong>rejas modernas</strong> se fabrican en hierro, con soldadura reforzada y pintura profesional
-                                aplicada al horno.
+                                Todas nuestras <strong>rejas modernas</strong> se fabrican en hierro, con soldadura reforzada y pintura profesional.
                             </p>
-                            <p> 
+                            <p>
                                 Puedes elegir entre acabados en negro mate, blanco, grafito o incluso colores personalizados
                                 según tu fachada o carpintería.
                             </p>
-
                             <p>
                                 También ofrecemos la opción de <strong>rejas abatibles con cerradura</strong> para mantener la estética moderna sin renunciar
-                                a la funcionalidad. 
+                                a la funcionalidad.
                             </p>
-                            <p>
-                                Todos los sistemas incluyen <strong>tornillería oculta y anclajes de seguridad</strong> para un acabado limpio y discreto.
-                            </p>
+                            <blockquote className="blockquote_style3">
+                                Todos los sistemas incluyen <strong>tornillería y anclajes de seguridad</strong> para un acabado limpio y discreto.
+                            </blockquote>
 
                             <h2 className="h2-categories">¿Por qué elegir rejas modernas a medida?</h2>
                             <ul className="m-4">

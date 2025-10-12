@@ -11,8 +11,11 @@ export const RelatedProductsCarousel = ({ categorySlug, categoryName, currentPro
                 if (!res.ok) throw new Error("Error al cargar productos relacionados.");
                 const data = await res.json();
 
-                const filtered = data.filter(p => p.id !== currentProductId);
-                setRelatedProducts(filtered);
+                const filtered = currentProductId
+                    ? data.filter(p => p.id !== currentProductId)
+                    : data; 
+                setRelatedProducts(filtered.slice(0, 8)); 
+
             } catch (err) {
                 console.error(err);
             }
@@ -43,6 +46,7 @@ export const RelatedProductsCarousel = ({ categorySlug, categoryName, currentPro
                         key={product.id}
                         to={`/${categorySlug}/${product.slug}`}
                         className="related-card"
+                        aria-label={`Ver detalles del producto ${product.nombre} en la categoría ${categoryName}`}
                     >
                         <img
                             src={product.imagen}

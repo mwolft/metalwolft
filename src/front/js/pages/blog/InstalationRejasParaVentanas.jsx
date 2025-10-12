@@ -7,6 +7,7 @@ import "../../../styles/blog.css";
 import { AsidePost } from "../../component/AsidePost.jsx";
 import { AsideOthersCategories } from "../../component/AsideOthersCategories.jsx";
 import { Link } from "react-router-dom";
+import { RelatedProductsCarousel } from "../../component/RelatedProductsCarousel.jsx";
 
 export const InstalationRejasParaVentanas = () => {
     const { store, actions } = useContext(Context);
@@ -135,7 +136,7 @@ export const InstalationRejasParaVentanas = () => {
                             <p>Asegúrate de tener a mano las siguientes herramientas esenciales:</p>
                             <ul className="m-4">
                                 <li><b>Taladro manual:</b> Para perforar agujeros en la pared de forma precisa.</li>
-                                <li><b>Broca de pared de calibre 10:</b> Necesaria para crear los agujeros de anclaje en la pared.</li>
+                                <li><b>Broca de pared de calibre 12:</b> Necesaria para crear los agujeros de anclaje en la pared.</li>
                                 <li><b>Llave con punta para tornillos TORX:</b> Para apretar los tornillos de forma segura.</li>
                                 <li><b>Un nivel:</b> Garantizar que la reja se instale perfectamente nivelada tanto horizontal como verticalmente.</li>
                                 <li><b>Un rotulador:</b> Utilizado para marcar los puntos de anclaje en la pared.</li>
@@ -171,8 +172,14 @@ export const InstalationRejasParaVentanas = () => {
                                 </div>
                             </div>
                             <blockquote className="blockquote_style3">
-                                <p>La instalación de rejas para ventanas a veces necesita asistencia adicional, especialmente al manipular y ajustar la reja en su lugar.</p>
+                                La instalación de rejas para ventanas a veces necesita asistencia adicional, especialmente al manipular y ajustar la reja en su lugar.
                             </blockquote>
+                            <RelatedProductsCarousel
+                                categorySlug="rejas-para-ventanas"
+                                categoryName="Rejas para ventanas"
+                                currentProductId={null}  
+                                productName="la instalación"
+                            />
                             <h2 className="h2-categories">RECOMENDACIONES</h2>
                             <ul className="m-4">
                                 <li><b>Solicita ayuda:</b> La instalación de rejas para ventanas requiere la ayuda de otra persona,
