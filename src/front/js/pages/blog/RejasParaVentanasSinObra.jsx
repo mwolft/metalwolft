@@ -136,8 +136,8 @@ export const RejasParaVentanasSinObra = () => {
                                     <i className="fa-regular fa-comments mx-1" style={{ color: '#ff324d', paddingLeft: '10px' }}></i> {currentComments?.length || 0} Comentarios
                                 </p>
                                 <img
-                                    src="https://res.cloudinary.com/dewanllxn/image/upload/v1760109829/rejas-para-ventanas-sin-obra_dzoea9.avif"
-                                    alt="plazos de entrega de rejas para ventanas"
+                                    src="https://res.cloudinary.com/dewanllxn/image/upload/v1760282424/rejas-para-ventanas-sin-obra_s8mzho.avif"
+                                    alt="rejas para venanas sin obra"
                                     className="img-fluid my-3"
                                 />
                             </div>

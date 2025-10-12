@@ -153,7 +153,7 @@ export const DondeComprarRejasLeroyIkea = () => {
                                 </p>
                                 <img
                                     src="https://res.cloudinary.com/dewanllxn/image/upload/v1760079525/donde-comprar-rejas-leroy-ikea_rsquhp.avif"
-                                    alt="¿Dónde comprar rejas? Ikea, Leroy Merlin o a medida"
+                                    alt="¿Dónde comprar rejas para ventanas? Ikea, Leroy Merlin o a medida"
                                     className="img-fluid my-3"
                                     width="825"
                                     height="550"

@@ -129,8 +129,8 @@ export const RejasParaVentanasModernas = () => {
                                     <i className="fa-regular fa-comments mx-1" style={{ color: '#ff324d', paddingLeft: '10px' }}></i> {currentComments?.length || 0} Comentarios
                                 </p>
                                 <img
-                                    src="https://res.cloudinary.com/dewanllxn/image/upload/v1760109829/rejas-para-ventanas-modernas_gukhtn.avif"
-                                    alt="plazos de entrega de rejas para ventanas"
+                                    src="https://res.cloudinary.com/dewanllxn/image/upload/v1760282425/rejas-para-ventanas-modernas_rdp46a.avif"
+                                    alt="rejas para ventanas modernas"
                                     className="img-fluid my-3"
                                 />
                             </div>
