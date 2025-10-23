@@ -111,53 +111,53 @@ app.register_blueprint(api_invoice_preview, url_prefix='/api')
 
 
 # 11) Prerender.io para bots
-BOT_USER_AGENTS = [
-    "googlebot", "bingbot", "yandex", "baiduspider", "facebookexternalhit",
-    "twitterbot", "rogerbot", "linkedinbot", "embedly", "quora link preview",
-    "showyoubot", "outbrain", "pinterest", "vkShare", "W3C_Validator"
-]
-PRERENDER_SERVICE_URL = os.getenv("PRERENDER_SERVICE_URL", "https://service.prerender.io/")
-PRERENDER_TOKEN = os.getenv("PRERENDER_TOKEN")
+# BOT_USER_AGENTS = [
+#    "googlebot", "bingbot", "yandex", "baiduspider", "facebookexternalhit",
+#    "twitterbot", "rogerbot", "linkedinbot", "embedly", "quora link preview",
+#    "showyoubot", "outbrain", "pinterest", "vkShare", "W3C_Validator"
+#]
+# PRERENDER_SERVICE_URL = os.getenv("PRERENDER_SERVICE_URL", "https://service.prerender.io/")
+# PRERENDER_TOKEN = os.getenv("PRERENDER_TOKEN")
 
-@app.before_request
-def prerender_io():
-    excluded_paths = [
-        '/sitemap.xml',
-        '/robots.txt',
-        '/favicon.ico',
-        '/_debug_build_files',
-        '/db-check',
-        '/run-migrations'
-    ]
+# @app.before_request
+# def prerender_io():
+#    excluded_paths = [
+#        '/sitemap.xml',
+#        '/robots.txt',
+#        '/favicon.ico',
+#        '/_debug_build_files',
+#        '/db-check',
+#        '/run-migrations'
+#    ]
 
-    if request.path.startswith('/api/') or request.path.startswith('/static/'):
-        return
+#    if request.path.startswith('/api/') or request.path.startswith('/static/'):
+#        return
 
-    if request.path in excluded_paths:
-        return
+#    if request.path in excluded_paths:
+#        return
 
-    ua = request.headers.get("User-Agent", "").lower()
-    is_bot = any(bot in ua for bot in BOT_USER_AGENTS)
-    current_app.logger.info(f"[Prerender] UA={ua!r} is_bot={is_bot} path={request.path}")
+#    ua = request.headers.get("User-Agent", "").lower()
+#    is_bot = any(bot in ua for bot in BOT_USER_AGENTS)
+#    current_app.logger.info(f"[Prerender] UA={ua!r} is_bot={is_bot} path={request.path}")
 
-    if request.method == "GET" and is_bot:
-        target = f"{PRERENDER_SERVICE_URL}https://www.metalwolft.com{request.path}"
-        current_app.logger.info(f"[Prerender] Fetching snapshot from {target}")
+#    if request.method == "GET" and is_bot:
+#        target = f"{PRERENDER_SERVICE_URL}https://www.metalwolft.com{request.path}"
+#        current_app.logger.info(f"[Prerender] Fetching snapshot from {target}")
 
-        try:
-            resp = session.get(
-                target,
-                headers={
-                    "X-Prerender-Token": PRERENDER_TOKEN,
-                    "User-Agent": ua
-                },
-                timeout=10  
-            )
-            current_app.logger.info(f"[Prerender] Got status {resp.status_code}")
-            return resp.content, resp.status_code, resp.headers.items()
-        except Exception as e:
-            current_app.logger.warning(f"[Prerender] ERROR fetching snapshot: {e}")
-            return None
+#        try:
+#            resp = session.get(
+#                target,
+#                headers={
+#                    "X-Prerender-Token": PRERENDER_TOKEN,
+#                    "User-Agent": ua
+#                },
+#                timeout=10  
+#            )
+#            current_app.logger.info(f"[Prerender] Got status {resp.status_code}")
+#            return resp.content, resp.status_code, resp.headers.items()
+#        except Exception as e:
+#            current_app.logger.warning(f"[Prerender] ERROR fetching snapshot: {e}")
+#            return None
 
 
 # 12) Manejo de errores

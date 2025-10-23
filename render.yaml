@@ -39,10 +39,10 @@ services:
         value: "${MAIL_PASSWORD}"       # contraseña SMTP
       - key: FRONTEND_URL
         value: "${FRONTEND_URL}"        # URL de tu frontend React
-      - key: PRERENDER_SERVICE_URL
-        value: "${PRERENDER_SERVICE_URL}"
-      - key: PRERENDER_TOKEN
-        value: "${PRERENDER_TOKEN}"
+      # - key: PRERENDER_SERVICE_URL
+      #   value: "${PRERENDER_SERVICE_URL}"
+      # - key: PRERENDER_TOKEN
+      #   value: "${PRERENDER_TOKEN}"
       - key: PYTHON_VERSION
         value: "3.10.6"
       - key: DATABASE_URL
