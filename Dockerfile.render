@@ -41,8 +41,8 @@ COPY app.py render.yaml render_build.sh template.html wsgi.py ./
 COPY --from=frontend-builder /opt/app/build /opt/app/build
 
 # Variables de entorno para Prerender
-# ENV PRERENDER_SERVICE_URL=https://service.prerender.io/
-# ENV PRERENDER_TOKEN=${PRERENDER_TOKEN}
+ENV PRERENDER_SERVICE_URL=https://service.prerender.io/
+ENV PRERENDER_TOKEN=${PRERENDER_TOKEN}
 
 # Expone el puerto de Flask
 EXPOSE 3001
