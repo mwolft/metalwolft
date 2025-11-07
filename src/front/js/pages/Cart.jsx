@@ -174,7 +174,7 @@ export const Cart = () => {
                                     <img
                                         src="https://formalba.es/wp-content/uploads/2021/04/pagos-seguros-autorizado.png"
                                         alt="Pago Seguro Autorizado"
-                                        style={{ maxWidth: '27%', height: 'auto', marginBottom: '30px', marginTop: '15px' }}
+                                        style={{ maxWidth: '280px', height: 'auto', marginBottom: '30px', marginTop: '15px' }}
                                     />
                                 </div>
                             </Col>
