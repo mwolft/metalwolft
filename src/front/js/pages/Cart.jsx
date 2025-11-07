@@ -6,6 +6,7 @@ import "../../styles/cart.css";
 import "../../styles/favorites.css";
 import { Link, useNavigate } from "react-router-dom";
 import { calcularEnvio } from "../../utils/shippingCalculator.js";
+import DeliveryEstimate from "../component/DeliveryEstimate.jsx"
 
 // Función auxiliar para determinar tipo de envío según SEUR
 const getShippingType = (product) => {
@@ -63,7 +64,7 @@ export const Cart = () => {
                 </p>
             ) : (
                 <Row>
-                    <Col md={12} className="mx-auto">
+                    <Col md={11} className="mx-auto">
                         <Table responsive className="table-shopping-cart">
                             <thead>
                                 <tr>
@@ -158,6 +159,7 @@ export const Cart = () => {
                                         Envío: {shippingCost.toFixed(2)} €
                                     </p>
                                 )}
+                                <DeliveryEstimate />
                                 <hr />
                                 <p style={{ fontSize: "22px", fontWeight: "bold" }}>
                                     Total: {finalTotal.toFixed(2)} € (IVA incl.)
@@ -168,6 +170,13 @@ export const Cart = () => {
                                 >
                                     Formulario de Pago
                                 </Button>
+                                <div className="text-right">
+                                    <img
+                                        src="https://formalba.es/wp-content/uploads/2021/04/pagos-seguros-autorizado.png"
+                                        alt="Pago Seguro Autorizado"
+                                        style={{ maxWidth: '27%', height: 'auto', marginBottom: '30px', marginTop: '15px' }}
+                                    />
+                                </div>
                             </Col>
                             {lastCategorySlug && (
                                 <Link

@@ -12,6 +12,7 @@ import { Footer } from "./component/Footer.jsx";
 import { MainNavbar } from "./component/MainNavbar.jsx";
 import MaintenancePopup from "./component/MaintenancePopup.jsx"
 import DeliveryEstimateBanner from "./component/DeliveryEstimateBanner.jsx";
+import DeliveryEstimate from "./component/DeliveryEstimate.jsx";
 import { Sidebar } from "./component/Sidebar.jsx";
 import { BodyHomeMain } from "./component/BodyHomeMain.jsx";
 import { BodyHomeSecondary } from "./component/BodyHomeSecondary.jsx";
@@ -128,6 +129,7 @@ const Layout = () => {
                         <Route path="/politica-devolucion" element={<ReturnsPolicy />} />
                         <Route path="/license" element={<License />} />
                         <Route path="/delivery-estimate-banner" element={<DeliveryEstimateBanner />} />
+                        <Route path="/delivery-estimate" element={<DeliveryEstimate />} />
                         <Route path="/mi-cuenta" element={<AccountPage />} />
                         <Route path="/formulario-incidencias" element={<FormularioIncidencias/>} />
                     </Routes>

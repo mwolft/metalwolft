@@ -20,6 +20,7 @@ import { Notification } from '../component/Notification.jsx';
 import { Helmet } from 'react-helmet-async';
 import '../../styles/cards-carrusel.css';
 import { WhatsAppWidget } from "../component/WhatsAppWidget.jsx";
+import DeliveryEstimate from "../component/DeliveryEstimate.jsx"
 
 export const ProductDetail = () => {
     const { store, actions } = useContext(Context);
@@ -604,7 +605,7 @@ export const ProductDetail = () => {
                                         {calculatedArea < 1 && <p className="text-warning">Área &lt; 1 m² incrementa coste.</p>}
                                     </div>
                                 )}
-
+                                <DeliveryEstimate />
                                 <hr />
                                 <div className="d-flex justify-content-end align-items-center mt-4 gap-3">
                                     <Share2
