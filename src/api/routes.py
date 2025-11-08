@@ -1007,27 +1007,23 @@ def handle_orders():
                 float(detail.get('shipping_cost', 0)) for detail in order_details
             )
 
-            # 🔹 Calcular total aplicando descuento sobre la base imponible (sin IVA)
-            IVA_RATE = 0.21
+            # 🔹 Calcular total aplicando descuento (coherente con frontend y Stripe)
+            # subtotal y shipping_cost ya incluyen IVA
 
-            # Subtotal actual incluye IVA (precio público)
-            base_subtotal = subtotal / (1 + IVA_RATE)
+            # Calcular el descuento directamente sobre el subtotal (precio con IVA)
+            discount_value_iva = (subtotal * discount_percent / 100) if discount_percent > 0 else 0.0
 
-            # Descuento sobre la base neta (sin IVA)
-            discount_value_base = base_subtotal * (discount_percent / 100) if discount_percent > 0 else 0.0
+            # Total final después de aplicar el descuento y sumar el envío
+            total_final = (subtotal - discount_value_iva) + shipping_cost
 
-            # Valor del descuento mostrado al cliente (con IVA incluido)
-            discount_value_iva = discount_value_base * (1 + IVA_RATE)
-
-            # Total final: (base - descuento) + IVA + envío (el envío ya incluye IVA en tu flujo)
-            total_final = ((base_subtotal - discount_value_base) * (1 + IVA_RATE)) + shipping_cost
-
-            # Guardar en BD (guardamos el descuento con IVA, como el cliente lo ve)
-            new_order.shipping_cost = shipping_cost
+            # Guardar valores finales en la base de datos
             new_order.discount_code = discount_code
-            new_order.total_amount = round(total_final, 2)
             new_order.discount_value = round(discount_value_iva, 2)
+            new_order.shipping_cost = round(shipping_cost, 2)
+            new_order.total_amount = round(total_final, 2)
 
+            logger.info(f"🧾 Cálculo final => Subtotal: {subtotal:.2f} | Descuento: {discount_value_iva:.2f} | "
+                        f"Envío: {shipping_cost:.2f} | Total final: {total_final:.2f}")
 
             db.session.commit()
 
