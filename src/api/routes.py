@@ -1007,14 +1007,26 @@ def handle_orders():
                 float(detail.get('shipping_cost', 0)) for detail in order_details
             )
 
-            # 🔹 Calcular total aplicando descuento (si existe)
-            discount_value = (subtotal * discount_percent / 100) if discount_percent > 0 else 0.0
-            total_final = (subtotal - discount_value) + shipping_cost
+            # 🔹 Calcular total aplicando descuento sobre la base imponible (sin IVA)
+            IVA_RATE = 0.21
 
+            # Subtotal actual incluye IVA (precio público)
+            base_subtotal = subtotal / (1 + IVA_RATE)
+
+            # Descuento sobre la base neta (sin IVA)
+            discount_value_base = base_subtotal * (discount_percent / 100) if discount_percent > 0 else 0.0
+
+            # Valor del descuento mostrado al cliente (con IVA incluido)
+            discount_value_iva = discount_value_base * (1 + IVA_RATE)
+
+            # Total final: (base - descuento) + IVA + envío (el envío ya incluye IVA en tu flujo)
+            total_final = ((base_subtotal - discount_value_base) * (1 + IVA_RATE)) + shipping_cost
+
+            # Guardar en BD (guardamos el descuento con IVA, como el cliente lo ve)
             new_order.shipping_cost = shipping_cost
             new_order.discount_code = discount_code
-            new_order.discount_value = discount_value
-            new_order.total_amount = total_final
+            new_order.total_amount = round(total_final, 2)
+            new_order.discount_value = round(discount_value_iva, 2)
 
 
             db.session.commit()
@@ -1202,28 +1214,29 @@ def handle_orders():
                 pdf.drawString(50, totals_y_position - 15, f"Envío (base): {base_envio:.2f} €")
                 pdf.drawString(50, totals_y_position - 30, f"IVA (21%): {iva_calculado:.2f} €")
                 # Mostrar descuento si aplica
+                y_line = totals_y_position - 45  # posición base para la primera línea
+
                 if new_order.discount_value and new_order.discount_value > 0:
                     pdf.setFont("Helvetica-Bold", 11)
                     pdf.setFillColor(colors.green)
-                    pdf.drawString(50, totals_y_position - 45, f"Descuento aplicado ({discount_percent:.0f}%): -{new_order.discount_value:.2f} €")
+                    pdf.drawString(50, y_line, f"Descuento aplicado ({discount_percent:.0f}%): -{new_order.discount_value:.2f} €")
                     pdf.setFillColor(colors.black)
-                    offset_extra = 15
-                else:
-                    offset_extra = 0
+                    y_line -= 15  # deja espacio debajo del descuento
 
-
-                # Indicar tipo de envío si aplica
+                # Indicar tipo de envío si aplica (ahora ya no se solapa)
+                pdf.setFont("Helvetica", 10)
                 if new_order.shipping_cost == 49:
-                    pdf.drawString(50, totals_y_position - 45, "Tipo de envío aplicado: Tarifa A - 49 €")
+                    pdf.drawString(50, y_line, "Tipo de envío aplicado: Tarifa A - 49 €")
                 elif shipping_cost == 99:
-                    pdf.drawString(50, totals_y_position - 45, "Tipo de envío aplicado: Tarifa B - 99 €")
+                    pdf.drawString(50, y_line, "Tipo de envío aplicado: Tarifa B - 99 €")
                 elif shipping_cost == 17:
-                    pdf.drawString(50, totals_y_position - 45, "Tipo de envío estándar - 17 €")
+                    pdf.drawString(50, y_line, "Tipo de envío estándar - 17 €")
                 elif shipping_cost == 0:
-                    pdf.drawString(50, totals_y_position - 45, "Envío gratuito")
+                    pdf.drawString(50, y_line, "Envío gratuito")
 
+                # Ajustar posición final del total
                 pdf.setFont("Helvetica-Bold", 12)
-                pdf.drawString(50, totals_y_position - (65 + offset_extra), f"Total: {total:.2f} €")
+                pdf.drawString(50, y_line - 25, f"Total: {total:.2f} €")
 
                 # Guardar el PDF
                 pdf.save()
