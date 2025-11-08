@@ -1007,23 +1007,30 @@ def handle_orders():
                 float(detail.get('shipping_cost', 0)) for detail in order_details
             )
 
-            # 🔹 Calcular total aplicando descuento (coherente con frontend y Stripe)
-            # subtotal y shipping_cost ya incluyen IVA
+            # Usar el total_amount y descuento enviados desde el frontend (ya verificados con Stripe)
+            frontend_total = float(data.get("total_amount", 0.0))
+            frontend_discount_percent = float(data.get("discount_percent") or 0)
 
-            # Calcular el descuento directamente sobre el subtotal (precio con IVA)
-            discount_value_iva = (subtotal * discount_percent / 100) if discount_percent > 0 else 0.0
+            # Calculamos el total bruto del pedido (producto + envío)
+            #    Este subtotal ya incluye IVA en tu flujo actual
+            gross_sum = subtotal + float(shipping_cost or 0.0)
 
-            # Total final después de aplicar el descuento y sumar el envío
-            total_final = (subtotal - discount_value_iva) + shipping_cost
+            # El descuento mostrado en factura será la diferencia entre el total bruto y lo cobrado
+            #    (así la factura coincide exactamente con Stripe y el frontend)
+            discount_value_iva = round(max(0.0, gross_sum - frontend_total), 2)
 
-            # Guardar valores finales en la base de datos
+            # 🔹 Guardamos en la BD los valores coherentes con el cobro real
             new_order.discount_code = discount_code
-            new_order.discount_value = round(discount_value_iva, 2)
-            new_order.shipping_cost = round(shipping_cost, 2)
-            new_order.total_amount = round(total_final, 2)
+            new_order.discount_value = discount_value_iva
+            new_order.shipping_cost = round(float(shipping_cost or 0.0), 2)
+            new_order.total_amount = round(frontend_total, 2)
 
-            logger.info(f"🧾 Cálculo final => Subtotal: {subtotal:.2f} | Descuento: {discount_value_iva:.2f} | "
-                        f"Envío: {shipping_cost:.2f} | Total final: {total_final:.2f}")
+            # Logging detallado para depuración contable
+            logger.info(
+                f"🧾 Cálculo final alineado con frontend/Stripe → "
+                f"Bruto: {gross_sum:.2f} € | Descuento: {discount_value_iva:.2f} € | "
+                f"Envío: {shipping_cost:.2f} € | Total guardado: {frontend_total:.2f} €"
+            )
 
             db.session.commit()
 
