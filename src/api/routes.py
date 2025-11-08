@@ -1187,7 +1187,7 @@ def handle_orders():
                     pdf.showPage()
                     totals_y_position = 750
 
-                # Totales
+                # Totales (basados en el total real con descuento aplicado)
                 total = new_order.total_amount
                 base_total = total / 1.21
                 iva_calculado = total - base_total
@@ -1198,28 +1198,28 @@ def handle_orders():
                 print("🧾 DEBUG FACTURA")
                 print("Subtotal productos:", subtotal)
                 print("Coste de envío:", shipping_cost)
-                print("Total final (con envío):", total)
+                print("Descuento aplicado:", new_order.discount_value)
+                print("Total final (con envío y descuento):", total)
                 print("Base imponible total:", base_total)
                 print("Base envío:", base_envio)
                 print("Base productos:", base_productos)
                 print("IVA calculado:", iva_calculado)
 
-
                 pdf.setFont("Helvetica", 10)
                 pdf.drawString(50, totals_y_position, f"Base Imponible: {base_total:.2f} €")
                 pdf.drawString(50, totals_y_position - 15, f"Envío (base): {base_envio:.2f} €")
                 pdf.drawString(50, totals_y_position - 30, f"IVA (21%): {iva_calculado:.2f} €")
-                # Mostrar descuento si aplica
-                y_line = totals_y_position - 45  # posición base para la primera línea
 
+                # Mostrar descuento si aplica
+                y_line = totals_y_position - 45
                 if new_order.discount_value and new_order.discount_value > 0:
                     pdf.setFont("Helvetica-Bold", 11)
                     pdf.setFillColor(colors.green)
                     pdf.drawString(50, y_line, f"Descuento aplicado ({discount_percent:.0f}%): -{new_order.discount_value:.2f} €")
                     pdf.setFillColor(colors.black)
-                    y_line -= 15  # deja espacio debajo del descuento
+                    y_line -= 15
 
-                # Indicar tipo de envío si aplica (ahora ya no se solapa)
+                # Indicar tipo de envío si aplica
                 pdf.setFont("Helvetica", 10)
                 if new_order.shipping_cost == 49:
                     pdf.drawString(50, y_line, "Tipo de envío aplicado: Tarifa A - 49 €")
