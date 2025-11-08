@@ -32,6 +32,8 @@ const getState = ({ getStore, getActions, setStore }) => {
             commentsLoaded: false
         },
         actions: {
+            setDiscountPercent: (value) => setStore({ discountPercent: value }),
+            setDiscountCode: (code) => setStore({ discountCode: code }),
             loadPosts: async () => {
                 try {
                     const response = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/posts`, {

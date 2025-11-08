@@ -222,6 +222,8 @@ class OrderAdminView(SafeModelView):
     form_columns = [
         'user_id',
         'total_amount',
+        'discount_code',
+        'discount_value',
         'order_date',
         'invoice_number',
         'locator',
@@ -235,6 +237,8 @@ class OrderAdminView(SafeModelView):
         'id',
         'user_id',
         'total_amount',
+        'discount_code',
+        'discount_value',
         'order_date',
         'invoice_number',
         'locator',
@@ -243,13 +247,31 @@ class OrderAdminView(SafeModelView):
         'estimated_delivery_note',
     ]
 
-    column_editable_list = ['total_amount', 'order_status']  
+    column_editable_list = ['total_amount', 'order_status']
+    column_searchable_list = ['invoice_number', 'locator', 'discount_code']
+    column_filters = [
+        'order_status',
+        'order_date',
+        'estimated_delivery_at',
+        'discount_code',
+    ]
 
-    column_searchable_list = ['invoice_number', 'locator']
-    column_filters = ['order_status', 'order_date', 'estimated_delivery_at']
+    column_labels = {
+        'discount_code': 'Código',
+        'discount_value': 'Importe',
+        'total_amount': 'Total (€)',
+        'order_date': 'Fecha pedido',
+        'invoice_number': 'Factura',
+        'locator': 'Localizador',
+        'order_status': 'Estado',
+        'estimated_delivery_at': 'Entrega estimada',
+        'estimated_delivery_note': 'Nota entrega',
+    }
 
     column_formatters = {
         'total_amount': lambda v, c, m, p: f"{(m.total_amount or 0):.2f}€",
+        'discount_value': lambda v, c, m, p: f"-{m.discount_value:.2f}€" if m.discount_value else "—",
+        'discount_code': lambda v, c, m, p: m.discount_code or "—",
         'order_date': lambda v, c, m, p: (
             (m.order_date + timedelta(hours=2)).strftime("%d/%m/%Y %H:%M") if m.order_date else ''
         ),

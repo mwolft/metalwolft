@@ -28,6 +28,8 @@ const getShippingType = (product) => {
 export const Cart = () => {
     const { store, actions } = useContext(Context);
     const [notification, setNotification] = useState(null);
+    const [discountCode, setDiscountCode] = useState("");
+    const [discountPercent, setDiscountPercent] = useState(0);
     const navigate = useNavigate();
 
     useEffect(() => {
@@ -51,6 +53,34 @@ export const Cart = () => {
     };
 
     const lastCategorySlug = store.cart.length > 0 ? store.cart[store.cart.length - 1].category_slug : null;
+
+    const discountCodes = {
+        BIENVENIDO5: 5,
+        REJAS10: 10,
+        WOLFT15: 15,
+    };
+
+    const handleApplyDiscount = () => {
+        const codeUpper = discountCode.trim().toUpperCase();
+
+        if (discountCodes[codeUpper]) {
+            const percent = discountCodes[codeUpper];
+
+            // 🔹 Guardar local y globalmente
+            setDiscountPercent(percent);
+            actions.setDiscountPercent(percent);
+            actions.setDiscountCode(codeUpper);
+
+            setNotification(`Código ${codeUpper} aplicado: ${percent}% de descuento`);
+        } else {
+            setDiscountPercent(0);
+            actions.setDiscountPercent(0);
+            actions.setDiscountCode(null);
+
+            setNotification("Código no válido");
+        }
+    };
+
 
     return (
         <Container fluid style={{ marginTop: "95px" }}>
@@ -129,8 +159,8 @@ export const Cart = () => {
                                             <td>{product.anclaje}</td>
                                             <td>{product.color}</td>
                                             <td>{product.quantity ?? 1}</td>
-                                            <td>{(product.precio_total ?? 0).toFixed(2)} €</td>
-                                            <td>{((product.precio_total ?? 0) * (product.quantity ?? 1)).toFixed(2)} €</td>
+                                            <td>{(product.precio_total ?? 0).toFixed(2)}€</td>
+                                            <td>{((product.precio_total ?? 0) * (product.quantity ?? 1)).toFixed(2)}€</td>
                                             <td className="cart_remove">
                                                 <Button
                                                     className="btn-style-background-color"
@@ -148,7 +178,7 @@ export const Cart = () => {
                         <Row className="mt-3 mb-5 mx-3">
                             <Col className="text-end">
                                 <p style={{ fontSize: "16px", marginBottom: "0px" }}>
-                                    {subtotal.toFixed(2)} € (IVA incl.)
+                                    {subtotal.toFixed(2)}€ (IVA incl.)
                                 </p>
                                 {shippingCost === 0 ? (
                                     <p className="text-success" style={{ fontSize: "16px", marginBottom: "0px" }}>
@@ -156,14 +186,43 @@ export const Cart = () => {
                                     </p>
                                 ) : (
                                     <p className="text-danger" style={{ fontSize: "16px", marginBottom: "0px" }}>
-                                        Envío: {shippingCost.toFixed(2)} €
+                                        Envío: {shippingCost.toFixed(2)}€
                                     </p>
                                 )}
                                 <DeliveryEstimate />
+                                <div className="my-3 text-end">
+                                    <input
+                                        type="text"
+                                        placeholder="Introduce tu código de descuento"
+                                        value={discountCode}
+                                        onChange={(e) => setDiscountCode(e.target.value)}
+                                        style={{
+                                            padding: "5px",
+                                            borderRadius: "5px",
+                                            border: "1px solid #ccc",
+                                            marginRight: "8px"
+                                        }}
+                                    />
+                                    <Button
+                                        variant="secondary"
+                                        size="sm"
+                                        onClick={handleApplyDiscount}
+                                    >
+                                        Aplicar
+                                    </Button>
+                                </div>
+
                                 <hr />
+
+                                {discountPercent > 0 && (
+                                    <p style={{ fontSize: "16px", color: "green" }}>
+                                        Descuento aplicado: -{discountPercent}%
+                                    </p>
+                                )}
                                 <p style={{ fontSize: "22px", fontWeight: "bold" }}>
-                                    Total: {finalTotal.toFixed(2)} € (IVA incl.)
+                                    Total: {(finalTotal * (1 - discountPercent / 100)).toFixed(2)}€ (IVA incl.)
                                 </p>
+
                                 <Button
                                     className="btn-style-background-color"
                                     onClick={handleCheckout}
@@ -172,7 +231,7 @@ export const Cart = () => {
                                 </Button>
                                 <div className="text-right">
                                     <img
-                                        src="https://formalba.es/wp-content/uploads/2021/04/pagos-seguros-autorizado.png"
+                                        src="https://kompozits.lv/app/uploads/2021/02/secure-600x123.png"
                                         alt="Pago Seguro Autorizado"
                                         style={{ maxWidth: '280px', height: 'auto', marginBottom: '30px', marginTop: '15px' }}
                                     />

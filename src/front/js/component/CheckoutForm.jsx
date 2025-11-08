@@ -34,6 +34,10 @@ const CheckoutForm = () => {
 
     const { products, totalShipping: shippingCost, subtotal: total, finalTotal } = calcularEnvio(store.cart);
 
+    const discountPercent = store.discountPercent || 0;
+    const totalWithDiscount = finalTotal * (1 - discountPercent / 100);
+
+
     const calcularTipoEnvio = (producto) => {
         const area = (producto.alto * producto.ancho) / 10000;
         if (Math.max(producto.alto, producto.ancho) > 220) return "B";
@@ -136,7 +140,7 @@ const CheckoutForm = () => {
             console.log("PaymentMethod creado correctamente:", paymentMethod);
 
             // Convertir el total final a la unidad mínima (por ejemplo, centavos)
-            const convertedAmount = Math.round(finalTotal * 100);
+            const convertedAmount = Math.round(totalWithDiscount * 100);
 
             // Solicitud al backend para crear el PaymentIntent
             console.log("Solicitando creación del PaymentIntent al backend...");
@@ -180,8 +184,10 @@ const CheckoutForm = () => {
             if (data.paymentIntent && data.paymentIntent.status === 'succeeded') {
                 console.log("El PaymentIntent ya se encuentra confirmado en el backend.");
                 const orderData = {
-                    total_amount: finalTotal,
+                    total_amount: totalWithDiscount,   
                     shipping_cost: shippingCost,
+                    discount_code: store.discountCode || null,    
+                    discount_percent: store.discountPercent || 0, 
                     products: products.map(product => ({
                         producto_id: product.producto_id,
                         quantity: product.quantity || 1,
@@ -313,14 +319,14 @@ const CheckoutForm = () => {
                                         {product.shipping_type !== 'normal' && (
                                             <>
                                                 <small className="text-danger d-block mx-1">
-                                                    🚚 Este producto requiere envío especial ({product.shipping_cost.toFixed(2)} €)
+                                                    🚚 Este producto requiere envío especial ({product.shipping_cost.toFixed(2)}€)
                                                 </small>
                                             </>
                                         )}
                                     </div>
                                 </div>
                                 <span style={{ color: "#6c757d", opacity: 1, fontSize: "0.875rem", textAlign: "right", display: "block" }}>
-                                    {product.precio_total.toFixed(2)}€ <br /> {product.quantity ?? 1} und<br /> {(product.precio_total * (product.quantity ?? 1)).toFixed(2)} €
+                                    {product.precio_total.toFixed(2)}€ <br /> {product.quantity ?? 1} und<br /> {(product.precio_total * (product.quantity ?? 1)).toFixed(2)}€
                                 </span>
                             </li>
                         ))}
@@ -328,9 +334,15 @@ const CheckoutForm = () => {
                             <span>Envío: </span>
                             <strong>{shippingCost === 0 ? "GRATIS" : `${shippingCost.toFixed(2)} €`}</strong>
                         </li>
+                        {discountPercent > 0 && (
+                            <li className="list-group-item d-flex justify-content-between text-success">
+                                <span>Descuento ({discountPercent}%)</span>
+                                <strong>-{(finalTotal * discountPercent / 100).toFixed(2)}€</strong>
+                            </li>
+                        )}
                         <li className="list-group-item d-flex justify-content-between">
                             <span>Total (EUR)</span>
-                            <strong>{finalTotal.toFixed(2)} €</strong>
+                            <strong>{totalWithDiscount.toFixed(2)}€</strong>
                         </li>
                     </ul>
                 </Col>
@@ -511,7 +523,7 @@ const CheckoutForm = () => {
                             </Form.Group>
 
                             <Button
-                                className="btn btn-style-background-color btn-block my-5"
+                                className="btn btn-style-background-color btn-block my-4"
                                 type="submit"
                                 disabled={isProcessing || !stripe}
                             >
@@ -521,7 +533,7 @@ const CheckoutForm = () => {
                     </Form>
                     <div className="text-center">
                         <img
-                            src="https://formalba.es/wp-content/uploads/2021/04/pagos-seguros-autorizado.png"
+                            src="https://kompozits.lv/app/uploads/2021/02/secure-600x123.png"
                             alt="Pago Seguro Autorizado"
                             style={{ maxWidth: '70%', height: 'auto', marginBottom: '30px' }}
                         />

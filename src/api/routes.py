@@ -943,6 +943,10 @@ def handle_orders():
             # Crear los detalles de la orden y calcular subtotal
             order_details = data.get('products', [])
             subtotal = 0
+            # Capturar descuento si viene del frontend
+            discount_percent = float(data.get('discount_percent') or 0)
+            discount_code = data.get('discount_code') or None
+
             for detail in order_details:
                 existing_detail = OrderDetails.query.filter_by(
                     order_id=new_order.id,
@@ -1003,14 +1007,19 @@ def handle_orders():
                 float(detail.get('shipping_cost', 0)) for detail in order_details
             )
 
-            # Total final de la orden
-            total_final = subtotal + shipping_cost
+            # 🔹 Calcular total aplicando descuento (si existe)
+            discount_value = (subtotal * discount_percent / 100) if discount_percent > 0 else 0.0
+            total_final = (subtotal - discount_value) + shipping_cost
+
             new_order.shipping_cost = shipping_cost
+            new_order.discount_code = discount_code
+            new_order.discount_value = discount_value
             new_order.total_amount = total_final
+
 
             db.session.commit()
 
-            # 🔥 Intentar actualizar datos del usuario sin bloquear la compra
+            # Intentar actualizar datos del usuario sin bloquear la compra
             try:
                 user = Users.query.get(current_user['user_id'])
                 if user:
@@ -1192,6 +1201,16 @@ def handle_orders():
                 pdf.drawString(50, totals_y_position, f"Base Imponible: {base_total:.2f} €")
                 pdf.drawString(50, totals_y_position - 15, f"Envío (base): {base_envio:.2f} €")
                 pdf.drawString(50, totals_y_position - 30, f"IVA (21%): {iva_calculado:.2f} €")
+                # Mostrar descuento si aplica
+                if new_order.discount_value and new_order.discount_value > 0:
+                    pdf.setFont("Helvetica-Bold", 11)
+                    pdf.setFillColor(colors.green)
+                    pdf.drawString(50, totals_y_position - 45, f"Descuento aplicado ({discount_percent:.0f}%): -{new_order.discount_value:.2f} €")
+                    pdf.setFillColor(colors.black)
+                    offset_extra = 15
+                else:
+                    offset_extra = 0
+
 
                 # Indicar tipo de envío si aplica
                 if new_order.shipping_cost == 49:
@@ -1204,7 +1223,7 @@ def handle_orders():
                     pdf.drawString(50, totals_y_position - 45, "Envío gratuito")
 
                 pdf.setFont("Helvetica-Bold", 12)
-                pdf.drawString(50, totals_y_position - 65, f"Total: {total:.2f} €")
+                pdf.drawString(50, totals_y_position - (65 + offset_extra), f"Total: {total:.2f} €")
 
                 # Guardar el PDF
                 pdf.save()
