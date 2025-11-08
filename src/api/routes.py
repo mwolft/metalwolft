@@ -1212,34 +1212,56 @@ def handle_orders():
                 print("Base productos:", base_productos)
                 print("IVA calculado:", iva_calculado)
 
+                # --- Bloque visual y contable optimizado ---
+                pdf.setFont("Helvetica-Bold", 11)
+                pdf.drawString(50, totals_y_position, "DETALLE FISCAL")
                 pdf.setFont("Helvetica", 10)
-                pdf.drawString(50, totals_y_position, f"Base Imponible: {base_total:.2f} €")
-                pdf.drawString(50, totals_y_position - 15, f"Envío (base): {base_envio:.2f} €")
-                pdf.drawString(50, totals_y_position - 30, f"IVA (21%): {iva_calculado:.2f} €")
 
-                # Mostrar descuento si aplica
-                y_line = totals_y_position - 45
+                # Bloque de bases e IVA
+                pdf.drawString(50, totals_y_position - 15, f"Base imponible productos: {base_productos:.2f} €")
+                pdf.drawString(50, totals_y_position - 30, f"Base imponible envío: {base_envio:.2f} €")
+
+                pdf.setStrokeColor(colors.black)
+                pdf.line(50, totals_y_position - 35, 200, totals_y_position - 35)
+
+                pdf.drawString(50, totals_y_position - 50, f"Base imponible total: {base_total:.2f} €")
+                pdf.drawString(50, totals_y_position - 65, f"IVA (21%): {iva_calculado:.2f} €")
+
+                pdf.line(50, totals_y_position - 70, 200, totals_y_position - 70)
+
+                subtotal_con_iva = base_total + iva_calculado
+                pdf.setFont("Helvetica-Bold", 10)
+                pdf.drawString(50, totals_y_position - 85, f"Subtotal (IVA incl.): {subtotal_con_iva:.2f} €")
+
+                # Descuento comercial
                 if new_order.discount_value and new_order.discount_value > 0:
                     pdf.setFont("Helvetica-Bold", 11)
                     pdf.setFillColor(colors.green)
-                    pdf.drawString(50, y_line, f"Descuento aplicado ({discount_percent:.0f}%): -{new_order.discount_value:.2f} €")
+                    pdf.drawString(50, totals_y_position - 100,
+                                f"Descuento comercial ({discount_code or ''} {discount_percent:.0f}%): -{new_order.discount_value:.2f} €")
                     pdf.setFillColor(colors.black)
-                    y_line -= 15
 
-                # Indicar tipo de envío si aplica
+                pdf.line(50, totals_y_position - 105, 200, totals_y_position - 105)
+
+                # Total final
+                pdf.setFont("Helvetica-Bold", 12)
+                pdf.drawString(50, totals_y_position - 120, f"TOTAL A PAGAR: {total:.2f} €")
+
+                # Información adicional
                 pdf.setFont("Helvetica", 10)
                 if new_order.shipping_cost == 49:
-                    pdf.drawString(50, y_line, "Tipo de envío aplicado: Tarifa A - 49 €")
+                    envio_text = "Tarifa A (49 €)"
                 elif shipping_cost == 99:
-                    pdf.drawString(50, y_line, "Tipo de envío aplicado: Tarifa B - 99 €")
+                    envio_text = "Tarifa B (99 €)"
                 elif shipping_cost == 17:
-                    pdf.drawString(50, y_line, "Tipo de envío estándar - 17 €")
-                elif shipping_cost == 0:
-                    pdf.drawString(50, y_line, "Envío gratuito")
+                    envio_text = "Estándar (17 €)"
+                else:
+                    envio_text = "Gratuito"
 
-                # Ajustar posición final del total
-                pdf.setFont("Helvetica-Bold", 12)
-                pdf.drawString(50, y_line - 25, f"Total: {total:.2f} €")
+                pdf.drawString(50, totals_y_position - 140, f"Tipo de envío: {envio_text}")
+                if discount_code:
+                    pdf.drawString(50, totals_y_position - 155, f"Código descuento: {discount_code}")
+
 
                 # Guardar el PDF
                 pdf.save()
