@@ -36,7 +36,7 @@ export const ReturnsPolicy = () => {
                 <p>
                     Cada reja se pinta individualmente, por lo que pueden presentarse pequeñas marcas o ligeras variaciones de tono.
                     No obstante, si consideras que el acabado recibido presenta defectos evidentes (desconchados, burbujas, manchas),
-                    podrás notificárnoslo mediante nuestro <a href="/formulario-incidencias">Formulario de Incidencias</a> en un plazo máximo de 48 horas desde la recepción.
+                    podrás notificárnoslo mediante nuestro <a href="/formulario-incidencias">formulario de incidencias</a> en un plazo máximo de 48 horas desde la recepción.
                 </p>
                 <p>
                     Analizaremos cada caso y podremos ofrecer, según proceda:
@@ -46,14 +46,31 @@ export const ReturnsPolicy = () => {
                     <li>Reposición parcial o total del producto si el defecto es significativo y comprobado.</li>
                     <li>Compensación económica si el cliente decide conservar el producto.</li>
                 </ul>
-
-                <h2 className="h2-categories mb-3">4. Procedimiento para Solicitar una Revisión</h2>
-                <p className='mb-5'>
-                    Si detectas un defecto o error en la fabricación, deberás comunicarlo a través del formulario de incidencias
-                    adjuntando fotografías claras del producto y una descripción del problema.
-                    También puedes contactarnos por correo electrónico a <a href="mailto:admin@metalwolft.com">admin@metalwolft.com</a> indicando tu número de pedido.
+                <h2 className="h2-categories mb-3">4. Diseños y Proporciones</h2>
+                <p>
+                    Los modelos mostrados en nuestra web representan diseños base que se adaptan de forma proporcional
+                    a las medidas seleccionadas por cada cliente. Según la relación entre el ancho y el alto,
+                    pueden producirse ligeras variaciones en la disposición de los barrotes, la separación entre ellos
+                    o la posición de los refuerzos horizontales.
                 </p>
-
+                <p>
+                    En casos de proporciones significativamente distintas al diseño original
+                    (por ejemplo, rejas muy anchas o muy altas respecto al modelo de referencia),
+                    será necesario realizar <strong>ajustes estructurales</strong> para mantener la estabilidad,
+                    la estética y la seguridad del conjunto. Estos ajustes pueden implicar
+                    la modificación del número de barrotes, la introducción de refuerzos adicionales
+                    o la eliminación de algunos elementos decorativos cuando las proporciones lo requieran.
+                </p>
+                <p>
+                    Estas adaptaciones forman parte del proceso de fabricación a medida y <u>no se consideran un defecto</u> ni motivo de devolución. No obstante, si el cliente detecta una diferencia relevante respecto al modelo
+                    publicado en la web (por ejemplo, un número de barrotes o tipo de anclaje distinto al indicado),
+                    podrá comunicarlo mediante el <a href="/formulario-incidencias">procedimiento de revisión</a>.
+                </p>
+                <p className='mb-5'>
+                    En caso de confirmarse una discrepancia imputable a fabricación,
+                    MetalWolft ofrecerá la reposición, ajuste o compensación correspondiente.
+                </p>
+                
                 <h2 className="h2-categories mb-3">5. Productos Instalados o Manipulados</h2>
                 <p>
                     Las rejas, puertas y cerramientos fabricados a medida no admiten devolución una vez instalados o manipulados.
@@ -66,21 +83,27 @@ export const ReturnsPolicy = () => {
                     defectos o ajustes surgidos tras la instalación o manipulación, salvo que se acredite un defecto de fabricación
                     existente en el momento de la entrega.
                 </p>
+                <h2 className="h2-categories mb-3">6. Procedimiento para Solicitar una Revisión</h2>
+                <p className='mb-5'>
+                    Si detectas un defecto o error en la fabricación, deberás comunicarlo a través del formulario de incidencias
+                    adjuntando fotografías claras del producto y una descripción del problema.
+                    También puedes contactarnos por correo electrónico a <a href="mailto:admin@metalwolft.com">admin@metalwolft.com</a> indicando tu número de pedido.
+                </p>
 
-                <h2 className="h2-categories mb-3">6. Costes y Plazos</h2>
+                <h2 className="h2-categories mb-3">7. Costes y Plazos</h2>
                 <p className='mb-5'>
                     Una vez evaluada la incidencia, MetalWolft se hará cargo de los gastos de transporte si el defecto es confirmado.
                     En cualquier otro caso, los gastos de devolución correrán a cargo del cliente.
                 </p>
 
-                <h2 className="h2-categories mb-3">7. Garantía Legal</h2>
+                <h2 className="h2-categories mb-3">8. Garantía Legal</h2>
                 <p className='mb-5'>
                     Todos nuestros productos cuentan con la garantía legal de conformidad aplicable (mínimo 2 años).
                     Esta garantía cubre defectos de fabricación o materiales, pero no daños derivados de un uso inadecuado,
                     instalación incorrecta o falta de mantenimiento.
                 </p>
 
-                <h2 className="h2-categories mb-3">8. Cancelación de Pedidos</h2>
+                <h2 className="h2-categories mb-3">9. Cancelación de Pedidos</h2>
                 <p className='mb-5'>
                     Los pedidos podrán cancelarse únicamente antes de iniciar la fabricación.
                     Una vez en proceso, no será posible su anulación debido al carácter personalizado del producto.
