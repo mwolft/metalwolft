@@ -48,9 +48,11 @@ export const MainNavbar = () => {
                     title="Haz clic para más info"
                     onClick={() =>
                         alert(
-                            `No se aplica a productos que superen las dimensiones máximas estándar.\n\n` +
-                            `Se consideran grandes si la suma de largo + ancho + alto excede los 300 cm.\n\n` +
-                            `Estos productos tienen tarifa especial de envío.`
+                            `🚚 Información sobre envíos especiales.\n\n` +
+                            `Se aplica una tarifa especial cuando:\n` +
+                            `• El lado más largo supera los 175 cm, o\n` +
+                            `• La suma de las dimensiones (alto + ancho + fondo) supera los 300 cm.\n\n` +
+                            `Los productos que cumplen estas condiciones tendrán un coste de envío especial.`
                         )
                     }
                 >

@@ -55,9 +55,11 @@ export const Cart = () => {
     const lastCategorySlug = store.cart.length > 0 ? store.cart[store.cart.length - 1].category_slug : null;
 
     const discountCodes = {
-        BIENVENIDO5: 5,
+        BIENVENIDO: 5,
         REJAS10: 10,
         WOLFT15: 15,
+        JOEL20: 20,
+        BLACK15: 15,
     };
 
     const handleApplyDiscount = () => {
@@ -136,9 +138,10 @@ export const Cart = () => {
                                                     <>
                                                         {/* Pantallas grandes: mostrar texto completo */}
                                                         <p className="d-none d-md-block text-warning mt-1" style={{ fontSize: '0.85rem' }}>
-                                                            🚚 Este producto requiere envío especial ({shippingInfo.coste} €)<br />
-                                                            Supera el tamaño máximo estándar permitido para envío normal.<br />
-                                                            (más de 300 cm entre largo, ancho y alto).
+                                                            🚚 Este producto requiere envío especial ({shippingInfo.coste} €)<br />
+                                                            Supera las dimensiones máximas del envío estándar:<br />
+                                                            – Lado más largo &gt; 175 cm, o<br />
+                                                            – Suma de dimensiones &gt; 300 cm.
                                                         </p>
 
                                                         {/* Pantallas pequeñas: solo icono ℹ️ con alert al hacer clic */}
@@ -146,7 +149,13 @@ export const Cart = () => {
                                                             className="d-inline d-md-none text-warning mt-1"
                                                             style={{ fontSize: '1rem', cursor: 'pointer' }}
                                                             onClick={() =>
-                                                                alert(`🚚 Este producto requiere envío especial (${shippingInfo.coste} €).\n\nSupera el tamaño máximo estándar permitido para envío normal (más de 300 cm entre largo, ancho y alto).`)
+                                                                alert(
+                                                                    `🚚 Este producto requiere envío especial (${shippingInfo.coste} €).\n\n` +
+                                                                    `Se aplica cuando:\n` +
+                                                                    `• El lado más largo supera los 175 cm,\n` +
+                                                                    `• O la suma de dimensiones supera los 300 cm.\n\n` +
+                                                                    `Por este motivo tiene una tarifa especial de transporte.`
+                                                                )
                                                             }
                                                         >
                                                             ⚠️
