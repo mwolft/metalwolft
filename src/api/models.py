@@ -129,17 +129,19 @@ class Products(db.Model):
     slug = db.Column(db.String(120), unique=True, nullable=False)
     nombre = db.Column(db.String(100), nullable=False)
     descripcion = db.Column(db.Text, nullable=False)
+    descripcion_seo = db.Column(db.Text, nullable=True)
+    titulo_seo = db.Column(db.String(180), nullable=True)
+    h1_seo = db.Column(db.String(180), nullable=True)
+    es_mas_vendido = db.Column(db.Boolean, default=False)
+    es_nuevo_diseno = db.Column(db.Boolean, default=False)
     precio = db.Column(db.Float, nullable=False)
     precio_rebajado = db.Column(db.Float, nullable=True)
     porcentaje_rebaja = db.Column(db.Integer, nullable=True)
     categoria_id = db.Column(db.Integer, db.ForeignKey('categories.id'), nullable=False)
     subcategoria_id = db.Column(db.Integer, db.ForeignKey('subcategories.id'), nullable=True)
     imagen = db.Column(db.String(200), nullable=True)
-
-    # Nuevos campos para las variantes de rejas:
     has_abatible = db.Column(db.Boolean, default=False)
     has_door_model = db.Column(db.Boolean, default=False)
-
     images = db.relationship('ProductImages', backref='product', lazy=True)
     categoria = db.relationship('Categories', backref='products', lazy=True)
     subcategoria = db.relationship('Subcategories', backref='products', lazy=True)
@@ -165,6 +167,9 @@ class Products(db.Model):
             "slug": self.slug,
             "nombre": self.nombre,
             "descripcion": self.descripcion,
+            "descripcion_seo": self.descripcion_seo,
+            "titulo_seo": self.titulo_seo,
+            "h1_seo": self.h1_seo,
             "precio": int(self.precio) if self.precio == int(self.precio) else self.precio,
             "precio_rebajado": int(rebajado) if rebajado and rebajado == int(rebajado) else rebajado,
             "porcentaje_rebaja": porcentaje,
@@ -174,6 +179,8 @@ class Products(db.Model):
             "imagen": self.imagen,
             "has_abatible": self.has_abatible,
             "has_door_model": self.has_door_model,
+            "es_mas_vendido": self.es_mas_vendido,
+            "es_nuevo_diseno": self.es_nuevo_diseno,
         }
 
     def serialize_with_images(self):

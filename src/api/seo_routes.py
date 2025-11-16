@@ -59,72 +59,109 @@ def home():
 @seo_bp.route('/api/seo/<string:category_slug>/<string:product_slug>', methods=['GET'])
 def seo_product_new(category_slug, product_slug):
     try:
+        # 1. Obtener categoría
         category = Categories.query.filter_by(slug=category_slug).first()
         if not category:
             logger.warning(f"SEO: Category not found for slug: {category_slug}")
             return jsonify({"message": "Category not found for SEO"}), 404
 
+        # 2. Obtener producto
         product = Products.query.filter_by(slug=product_slug, categoria_id=category.id).first()
         if not product:
             logger.warning(f"SEO: Product not found for slug: {product_slug} in category: {category_slug}")
             return jsonify({"message": "Product not found for SEO"}), 404
 
+        # 3. URL canonica
         product_full_url = f"https://www.metalwolft.com/{category.slug}/{product.slug}"
 
-        base_title = f"{product.nombre} – {category.nombre} | Metal Wolft"
-        title = base_title[:60]
+        # ============================================================
+        #                      TITLE SEO
+        # ============================================================
+        title = (
+            product.titulo_seo
+            or f"{product.nombre} | {category.nombre}"
+        )
 
-        base_description = f"Descubre {product.nombre}, una {product.descripcion}"
-        description = (base_description[:137] + "...") if len(base_description) > 140 else base_description
+        # Truncado suave a 60 caracteres
+        if len(title) > 60:
+            title = title[:57] + "..."
 
-        twitter_description = f"Mira {product.nombre} en Metal Wolft. {product.descripcion}"
-        twitter_description = (twitter_description[:137] + "...") if len(twitter_description) > 140 else twitter_description
+        # ============================================================
+        #                   META DESCRIPTION SEO
+        # ============================================================
 
-        og_description = description
+        raw_description = (
+            product.descripcion_seo
+            or product.descripcion
+            or ""
+        )
+
+        raw_description = raw_description.strip()
+        description = raw_description[:152] + "..." if len(raw_description) > 155 else raw_description
+
+        # Twitter usa descripción SEO
+        twitter_description = description
+
+        # JSON-LD usa descripción técnica completa
+        jsonld_description = (product.descripcion or "").strip()
+
+        # Imagen principal
+        main_image = (
+            product.imagen
+            if product.imagen else
+            "https://placehold.co/1200x630/cccccc/000000?text=Metal+Wolft"
+        )
+
+        # ============================================================
+        #                      META RESULTANTE
+        # ============================================================
 
         meta = {
             "lang": "es",
             "title": title,
             "description": description,
-            "keywords": f"{product.nombre}, {category.nombre}, {product.slug}, rejas, carpintería metálica, precio, online",
+            "keywords": f"{product.nombre}, {category.nombre}, rejas para ventanas, {product.slug}, metal wolft",
+            "canonical": product_full_url,
+            "robots": "index, follow",
+            "theme_color": "#ff324d",
 
-            "twitter_card_type": "summary_large_image",
-            "twitter_site": "@MetalWolft",
-            "twitter_creator": "@MetalWolft",
-            "twitter_title": title,
-            "twitter_description": twitter_description,
-            "twitter_image": product.imagen if product.imagen else "https://placehold.co/1200x630/cccccc/000000?text=Metal+Wolft",
-            "twitter_image_alt": f"Imagen de {product.nombre} de Metal Wolft",
-
+            # ====================== OPEN GRAPH ======================
             "og_type": "product",
             "og_title": title,
-            "og_description": og_description,
-            "og_image": product.imagen if product.imagen else "https://placehold.co/1200x630/cccccc/000000?text=Metal+Wolft",
+            "og_description": description,
+            "og_image": main_image,
             "og_image_width": "1200",
             "og_image_height": "630",
-            "og_image_alt": f"Imagen de {product.nombre} de Metal Wolft",
+            "og_image_alt": title,
             "og_image_type": "image/jpeg",
             "og_url": product_full_url,
             "og_site_name": "Metal Wolft",
             "og_locale": "es_ES",
             "og_updated_time": datetime.now(timezone.utc).isoformat(),
 
-            "canonical": product_full_url,
-            "robots": "index, follow",
-            "theme_color": "#ff324d",
+            # ====================== TWITTER ========================
+            "twitter_card_type": "summary_large_image",
+            "twitter_site": "@MetalWolft",
+            "twitter_creator": "@MetalWolft",
+            "twitter_title": title,
+            "twitter_description": twitter_description,
+            "twitter_image": main_image,
+            "twitter_image_alt": title,
 
+            # ======================== JSON-LD =======================
             "json_ld": {
                 "@context": "https://schema.org/",
                 "@type": "Product",
                 "@id": product_full_url,
-                "name": product.nombre,
+                "name": product.h1_seo or product.nombre,
+                "description": jsonld_description,
                 "image": (
-                    [product.imagen] if product.imagen and product.imagen.lower().endswith(('.jpg', '.jpeg', '.png')) else []
-                ) + [
-                    img.image_url for img in product.images 
-                    if img.image_url and img.image_url.lower().endswith(('.jpg', '.jpeg', '.png'))
-                ],
-                "description": product.descripcion,
+                    [main_image] +
+                    [
+                        img.image_url for img in product.images
+                        if img.image_url.lower().endswith(('.jpg', '.jpeg', '.png'))
+                    ]
+                ),
                 "sku": product.slug,
                 "mpn": str(product.id),
                 "brand": {
@@ -210,7 +247,6 @@ def seo_product_new(category_slug, product_slug):
     except Exception as e:
         logger.error(f"Error en seo_product_new para {category_slug}/{product_slug}: {str(e)}")
         return jsonify({"message": "Error fetching SEO data", "error": str(e)}), 500
-
 
 
 @seo_bp.route('/api/seo/rejas-para-ventanas', methods=['GET'])

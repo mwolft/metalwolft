@@ -170,6 +170,25 @@ class ProductAdminView(SafeModelView):
     page_size = 50
     can_set_page_size = True
 
+    form_columns = [
+        'nombre',
+        'slug',
+        'categoria_id',
+        'subcategoria',
+        'descripcion',
+        'descripcion_seo',
+        'titulo_seo',
+        'h1_seo',
+        'precio',
+        'precio_rebajado',
+        'porcentaje_rebaja',
+        'has_abatible',
+        'has_door_model',
+        'es_mas_vendido',
+        'es_nuevo_diseno',
+        'imagen'
+    ]
+
     PRIORITY_CATEGORY_NAMES = ['rejas', 'rejas para ventanas']
 
     def _priority_category_ids(self):
@@ -214,7 +233,10 @@ class ProductAdminView(SafeModelView):
         return form
 
     column_formatters = {
-        'descripcion': lambda v, c, m, p: (m.descripcion[:30] + '…') if m.descripcion and len(m.descripcion) > 30 else (m.descripcion or '')
+        'descripcion': lambda v, c, m, p: (m.descripcion[:30] + '…') if m.descripcion and len(m.descripcion) > 30 else (m.descripcion or ''),
+        'descripcion_seo': lambda v, c, m, p: (m.descripcion_seo[:30] + '…') if m.descripcion_seo and len(m.descripcion_seo) > 30 else (m.descripcion_seo or ''),
+        'titulo_seo': lambda v, c, m, p: (m.titulo_seo[:30] + '…') if m.titulo_seo and len(m.titulo_seo) > 30 else (m.titulo_seo or ''),
+        'h1_seo': lambda v, c, m, p: (m.h1_seo[:30] + '…') if m.h1_seo and len(m.h1_seo) > 30 else (m.h1_seo or ''),
     }
 
 

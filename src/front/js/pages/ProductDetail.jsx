@@ -85,11 +85,22 @@ export const ProductDetail = () => {
                     // Opcional: Generar un SEOData básico si el fetch falla
                     setSeoData({
                         lang: "es",
-                        title: `${productData.nombre} | Metal Wolft`,
-                        description: productData.descripcion.substring(0, 150),
+
+                        // 🟢 PRIORIDAD: titulo_seo → fallback automático
+                        title: productData.titulo_seo
+                            ? productData.titulo_seo
+                            : `${productData.nombre} | ${productData.categoria_nombre}`,
+
+                        // 🟢 Descripción: descripcion_seo → descripcion → fallback truncado
+                        description: productData.descripcion_seo
+                            ? productData.descripcion_seo
+                            : (productData.descripcion || "").substring(0, 160),
+
                         og_image: productData.imagen,
+
                         canonical: `${window.location.origin}/${category_slug}/${product_slug}`,
-                        json_ld: null // O un JSON-LD básico
+
+                        json_ld: null
                     });
                 }
 
@@ -350,39 +361,89 @@ export const ProductDetail = () => {
             <Container style={{ marginTop: '100px', marginBottom: '0' }}>
                 {seoData && (
                     <Helmet htmlAttributes={{ lang: seoData.lang || "es" }}>
-                        <title>{seoData.title}</title>
-                        <meta name="description" content={seoData.description} />
-                        <meta name="keywords" content={seoData.keywords} />
+                        {/* TITLE */}
+                        <title>
+                            {seoData.title ||
+                                product.titulo_seo ||
+                                `${product.nombre} | ${product.categoria_nombre}`}
+                        </title>
+
+                        {/* DESCRIPTION */}
+                        <meta
+                            name="description"
+                            content={
+                                seoData.description ||
+                                product.descripcion_seo ||
+                                product.descripcion?.substring(0, 160)
+                            }
+                        />
+
+                        {/* KEYWORDS */}
+                        <meta
+                            name="keywords"
+                            content={
+                                seoData.keywords ||
+                                `${product.nombre}, ${product.categoria_nombre}, rejas para ventanas`
+                            }
+                        />
+
+                        {/* Robots / Canonical */}
                         <meta name="robots" content={seoData.robots || "index, follow"} />
                         <meta name="theme-color" content={seoData.theme_color || "#ffffff"} />
+                        <link rel="canonical" href={seoData.canonical} />
 
-                        {/* Open Graph Tags */}
+                        {/* OPEN GRAPH */}
                         <meta property="og:type" content={seoData.og_type || "product"} />
                         <meta property="og:title" content={seoData.og_title || seoData.title} />
-                        <meta property="og:description" content={seoData.og_description || seoData.description} />
+                        <meta
+                            property="og:description"
+                            content={
+                                seoData.og_description ||
+                                seoData.description ||
+                                product.descripcion_seo
+                            }
+                        />
                         <meta property="og:image" content={seoData.og_image} />
                         <meta property="og:image:width" content={seoData.og_image_width || "1200"} />
                         <meta property="og:image:height" content={seoData.og_image_height || "630"} />
-                        <meta property="og:image:alt" content={seoData.og_image_alt || seoData.title} />
+                        <meta
+                            property="og:image:alt"
+                            content={seoData.og_image_alt || seoData.title}
+                        />
                         <meta property="og:image:type" content={seoData.og_image_type || "image/jpeg"} />
                         <meta property="og:url" content={seoData.og_url} />
                         <meta property="og:site_name" content={seoData.og_site_name || "Metal Wolft"} />
                         <meta property="og:locale" content={seoData.og_locale || "es_ES"} />
-                        {seoData.og_updated_time && <meta property="og:updated_time" content={seoData.og_updated_time} />}
+                        {seoData.og_updated_time && (
+                            <meta property="og:updated_time" content={seoData.og_updated_time} />
+                        )}
 
-                        {/* Twitter Card Tags */}
-                        <meta name="twitter:card" content={seoData.twitter_card_type || "summary_large_image"} />
+                        {/* TWITTER */}
+                        <meta
+                            name="twitter:card"
+                            content={seoData.twitter_card_type || "summary_large_image"}
+                        />
                         <meta name="twitter:site" content={seoData.twitter_site} />
                         <meta name="twitter:creator" content={seoData.twitter_creator} />
-                        <meta name="twitter:title" content={seoData.twitter_title || seoData.title} />
-                        <meta name="twitter:description" content={seoData.twitter_description || seoData.description} />
+                        <meta
+                            name="twitter:title"
+                            content={seoData.twitter_title || seoData.title}
+                        />
+                        <meta
+                            name="twitter:description"
+                            content={
+                                seoData.twitter_description ||
+                                seoData.description ||
+                                product.descripcion_seo
+                            }
+                        />
                         <meta name="twitter:image" content={seoData.twitter_image} />
-                        <meta name="twitter:image:alt" content={seoData.twitter_image_alt || seoData.title} />
+                        <meta
+                            name="twitter:image:alt"
+                            content={seoData.twitter_image_alt || seoData.title}
+                        />
 
-                        {/* Canonical URL */}
-                        <link rel="canonical" href={seoData.canonical} />
-
-                        {/* JSON-LD Schema */}
+                        {/* JSON-LD */}
                         {seoData.json_ld && (
                             <script type="application/ld+json">
                                 {JSON.stringify(seoData.json_ld)}
@@ -427,7 +488,7 @@ export const ProductDetail = () => {
                     {/* Columna de detalles: 12 en xs, 5 en lg, con margen top solo en xs */}
                     <Col xs={12} lg={5} className="mt-4 mt-lg-0">
                         <div className="pr_detail">
-                            <h1>{product.nombre}</h1>
+                            <h1>{product.h1_seo || product.nombre}</h1>
                             <hr />
                             <div className="product-price" style={{ fontSize: '1.1rem', fontWeight: '500', marginBottom: '1rem' }}>
                                 Precio:
@@ -441,7 +502,19 @@ export const ProductDetail = () => {
                                     <span className="current-price ms-2"> {product.precio} €/m²</span>
                                 )}
                             </div>
-                            <p>{product.descripcion}</p>
+                            {/* Descripción SEO (texto comercial corto) */}
+                            {product.descripcion_seo && (
+                                <p style={{ marginBottom: "1rem" }}>
+                                    {product.descripcion_seo}
+                                </p>
+                            )}
+
+                            {/* Descripción técnica (siempre visible debajo) */}
+                            {product.descripcion && (
+                                <p>
+                                    Especificaciones: <br />{product.descripcion}
+                                </p>
+                            )}
 
                             <Form>
                                 {/* Dimensiones */}
@@ -452,7 +525,7 @@ export const ProductDetail = () => {
                                             <Form.Control
                                                 type="number"
                                                 value={height}
-                                                ref={setAltoEl}                 
+                                                ref={setAltoEl}
                                                 onChange={(e) => setHeight(e.target.value.replace(',', '.'))}
                                                 placeholder="Ej.: 120.1"
                                                 min="0"
