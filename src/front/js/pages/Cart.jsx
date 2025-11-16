@@ -7,6 +7,7 @@ import "../../styles/favorites.css";
 import { Link, useNavigate } from "react-router-dom";
 import { calcularEnvio } from "../../utils/shippingCalculator.js";
 import DeliveryEstimate from "../component/DeliveryEstimate.jsx"
+import { Helmet } from "react-helmet-async";
 
 // Función auxiliar para determinar tipo de envío según SEUR
 const getShippingType = (product) => {
@@ -31,6 +32,24 @@ export const Cart = () => {
     const [discountCode, setDiscountCode] = useState("");
     const [discountPercent, setDiscountPercent] = useState(0);
     const navigate = useNavigate();
+    const [metaData, setMetaData] = useState({});
+
+    useEffect(() => {
+        const apiBaseUrl = process.env.REACT_APP_BACKEND_URL
+            ? process.env.REACT_APP_BACKEND_URL
+            : process.env.NODE_ENV === "production"
+                ? "https://api.metalwolft.com"
+                : "https://fuzzy-space-eureka-7v7jw6jv7v5jhp945-3001.app.github.dev/";
+
+        fetch(`${apiBaseUrl}/api/seo/cart`)
+            .then((response) => {
+                if (!response.ok) throw new Error(`Error SEO: ${response.status}`);
+                return response.json();
+            })
+            .then((data) => setMetaData(data))
+            .catch((error) => console.error("Error loading cart SEO:", error));
+    }, []);
+
 
     useEffect(() => {
         actions.loadCart();
@@ -85,188 +104,221 @@ export const Cart = () => {
 
 
     return (
-        <Container fluid style={{ marginTop: "95px" }}>
-            <h2 className="h2-categories text-center my-2">Carrito de compra</h2>
-            {store.cart.length === 0 ? (
-                <p className="text-center" style={{ marginTop: "100px", marginBottom: "300px" }}>
-                    No tiene productos en su carrito aún. <br /><br />
-                    <Link to="/" className="link-categories">
-                        <i className="fa-solid fa-arrow-left"></i> Volver
-                    </Link>
-                </p>
-            ) : (
-                <Row>
-                    <Col md={11} className="mx-auto">
-                        <Table responsive className="table-shopping-cart">
-                            <thead>
-                                <tr>
-                                    <th>Imágen</th>
-                                    <th>Producto</th>
-                                    <th>Alto(cm)</th>
-                                    <th>Ancho(cm)</th>
-                                    <th>Anclaje</th>
-                                    <th>Color</th>
-                                    <th>Cantidad</th>
-                                    <th>Precio</th>
-                                    <th>Total</th>
-                                    <th></th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {store.cart.map((product, index) => {
-                                    const shippingInfo = getShippingType(product);
-                                    return (
-                                        <tr key={index} className="cart-line-item">
-                                            <td className="table-shopping-cart-img">
-                                                <Link to={`/${product.category_slug}/${product.slug}`}>
-                                                    <img
-                                                        src={product.imagen}
-                                                        alt={product.nombre}
-                                                        style={{ maxWidth: '80px', height: 'auto', display: 'block' }}
-                                                    />
-                                                </Link>
-                                            </td>
-                                            <td>
-                                                <Link
-                                                    to={`/${product.category_slug}/${product.slug}`}
-                                                    style={{ textDecoration: 'none', color: 'inherit' }}
-                                                >
-                                                    {product.nombre}
-                                                </Link>
+        <>
+            <Helmet htmlAttributes={{ lang: metaData.lang || "es" }}>
+                <title>{metaData.title}</title>
+                <meta name="description" content={metaData.description} />
+                <meta name="keywords" content={metaData.keywords} />
+                <meta name="robots" content={metaData.robots || "noindex,follow"} />
+                <meta name="theme-color" content={metaData.theme_color || "#ff324d"} />
 
-                                                {shippingInfo.tipo !== 'normal' && (
-                                                    <>
-                                                        {/* Pantallas grandes: mostrar texto completo */}
-                                                        <p className="d-none d-md-block text-warning mt-1" style={{ fontSize: '0.85rem' }}>
-                                                            🚚 Este producto requiere envío especial ({shippingInfo.coste} €)<br />
-                                                            Supera las dimensiones máximas del envío estándar:<br />
-                                                            – Lado más largo &gt; 175 cm, o<br />
-                                                            – Suma de dimensiones &gt; 300 cm.
-                                                        </p>
+                {/* Twitter */}
+                <meta name="twitter:card" content={metaData.twitter_card_type} />
+                <meta name="twitter:title" content={metaData.twitter_title} />
+                <meta name="twitter:description" content={metaData.twitter_description} />
+                <meta name="twitter:image" content={metaData.twitter_image || ""} />
+                <meta name="twitter:image:alt" content={metaData.twitter_image_alt} />
 
-                                                        {/* Pantallas pequeñas: solo icono ℹ️ con alert al hacer clic */}
-                                                        <span
-                                                            className="d-inline d-md-none text-warning mt-1"
-                                                            style={{ fontSize: '1rem', cursor: 'pointer' }}
-                                                            onClick={() =>
-                                                                alert(
-                                                                    `🚚 Este producto requiere envío especial (${shippingInfo.coste} €).\n\n` +
-                                                                    `Se aplica cuando:\n` +
-                                                                    `• El lado más largo supera los 175 cm,\n` +
-                                                                    `• O la suma de dimensiones supera los 300 cm.\n\n` +
-                                                                    `Por este motivo tiene una tarifa especial de transporte.`
-                                                                )
-                                                            }
-                                                        >
-                                                            ⚠️
-                                                        </span>
-                                                    </>
-                                                )}
-                                            </td>
-                                            <td>{product.alto}</td>
-                                            <td>{product.ancho}</td>
-                                            <td>{product.anclaje}</td>
-                                            <td>{product.color}</td>
-                                            <td>{product.quantity ?? 1}</td>
-                                            <td>{(product.precio_total ?? 0).toFixed(2)}€</td>
-                                            <td>{((product.precio_total ?? 0) * (product.quantity ?? 1)).toFixed(2)}€</td>
-                                            <td className="cart_remove">
-                                                <Button
-                                                    className="btn-style-background-color"
-                                                    onClick={() => handleRemoveFromCart(product)}
-                                                >
-                                                    Eliminar
-                                                </Button>
-                                            </td>
-                                        </tr>
-                                    );
-                                })}
-                            </tbody>
-                        </Table>
+                {/* OpenGraph */}
+                <meta property="og:type" content={metaData.og_type} />
+                <meta property="og:title" content={metaData.title} />
+                <meta property="og:description" content={metaData.description} />
+                <meta property="og:image" content={metaData.og_image || ""} />
+                <meta property="og:url" content={metaData.og_url} />
+                <meta property="og:site_name" content={metaData.og_site_name} />
+                <meta property="og:locale" content={metaData.og_locale || "es_ES"} />
 
-                        <Row className="mt-3 mb-5 mx-3">
-                            <Col className="text-end">
-                                <p style={{ fontSize: "16px", marginBottom: "0px" }}>
-                                    {subtotal.toFixed(2)}€ (IVA incl.)
-                                </p>
-                                {shippingCost === 0 ? (
-                                    <p className="text-success" style={{ fontSize: "16px", marginBottom: "0px" }}>
-                                        Envío: GRATIS ✔️
+                <link rel="canonical" href={metaData.canonical} />
+
+                {metaData.json_ld && (
+                    <script type="application/ld+json">
+                        {JSON.stringify(metaData.json_ld)}
+                    </script>
+                )}
+            </Helmet>
+            <Container fluid style={{ marginTop: "95px" }}>
+                <h2 className="h2-categories text-center my-2">Carrito de compra</h2>
+                {store.cart.length === 0 ? (
+                    <p className="text-center" style={{ marginTop: "100px", marginBottom: "300px" }}>
+                        No tiene productos en su carrito aún. <br /><br />
+                        <Link to="/" className="link-categories">
+                            <i className="fa-solid fa-arrow-left"></i> Volver
+                        </Link>
+                    </p>
+                ) : (
+                    <Row>
+                        <Col md={11} className="mx-auto">
+                            <Table responsive className="table-shopping-cart">
+                                <thead>
+                                    <tr>
+                                        <th>Imágen</th>
+                                        <th>Producto</th>
+                                        <th>Alto(cm)</th>
+                                        <th>Ancho(cm)</th>
+                                        <th>Anclaje</th>
+                                        <th>Color</th>
+                                        <th>Cantidad</th>
+                                        <th>Precio</th>
+                                        <th>Total</th>
+                                        <th></th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {store.cart.map((product, index) => {
+                                        const shippingInfo = getShippingType(product);
+                                        return (
+                                            <tr key={index} className="cart-line-item">
+                                                <td className="table-shopping-cart-img">
+                                                    <Link to={`/${product.category_slug}/${product.slug}`}>
+                                                        <img
+                                                            src={product.imagen}
+                                                            alt={product.nombre}
+                                                            style={{ maxWidth: '80px', height: 'auto', display: 'block' }}
+                                                        />
+                                                    </Link>
+                                                </td>
+                                                <td>
+                                                    <Link
+                                                        to={`/${product.category_slug}/${product.slug}`}
+                                                        style={{ textDecoration: 'none', color: 'inherit' }}
+                                                    >
+                                                        {product.nombre}
+                                                    </Link>
+
+                                                    {shippingInfo.tipo !== 'normal' && (
+                                                        <>
+                                                            {/* Pantallas grandes: mostrar texto completo */}
+                                                            <p className="d-none d-md-block text-warning mt-1" style={{ fontSize: '0.85rem' }}>
+                                                                🚚 Este producto requiere envío especial ({shippingInfo.coste} €)<br />
+                                                                Supera las dimensiones máximas del envío estándar:<br />
+                                                                – Lado más largo &gt; 175 cm, o<br />
+                                                                – Suma de dimensiones &gt; 300 cm.
+                                                            </p>
+
+                                                            {/* Pantallas pequeñas: solo icono ℹ️ con alert al hacer clic */}
+                                                            <span
+                                                                className="d-inline d-md-none text-warning mt-1"
+                                                                style={{ fontSize: '1rem', cursor: 'pointer' }}
+                                                                onClick={() =>
+                                                                    alert(
+                                                                        `🚚 Este producto requiere envío especial (${shippingInfo.coste} €).\n\n` +
+                                                                        `Se aplica cuando:\n` +
+                                                                        `• El lado más largo supera los 175 cm,\n` +
+                                                                        `• O la suma de dimensiones supera los 300 cm.\n\n` +
+                                                                        `Por este motivo tiene una tarifa especial de transporte.`
+                                                                    )
+                                                                }
+                                                            >
+                                                                ⚠️
+                                                            </span>
+                                                        </>
+                                                    )}
+                                                </td>
+                                                <td>{product.alto}</td>
+                                                <td>{product.ancho}</td>
+                                                <td>{product.anclaje}</td>
+                                                <td>{product.color}</td>
+                                                <td>{product.quantity ?? 1}</td>
+                                                <td>{(product.precio_total ?? 0).toFixed(2)}€</td>
+                                                <td>{((product.precio_total ?? 0) * (product.quantity ?? 1)).toFixed(2)}€</td>
+                                                <td className="cart_remove">
+                                                    <Button
+                                                        className="btn-style-background-color"
+                                                        onClick={() => handleRemoveFromCart(product)}
+                                                    >
+                                                        Eliminar
+                                                    </Button>
+                                                </td>
+                                            </tr>
+                                        );
+                                    })}
+                                </tbody>
+                            </Table>
+
+                            <Row className="mt-3 mb-5 mx-3">
+                                <Col className="text-end">
+                                    <p style={{ fontSize: "16px", marginBottom: "0px" }}>
+                                        {subtotal.toFixed(2)}€ (IVA incl.)
                                     </p>
-                                ) : (
-                                    <p className="text-danger" style={{ fontSize: "16px", marginBottom: "0px" }}>
-                                        Envío: {shippingCost.toFixed(2)}€
+                                    {shippingCost === 0 ? (
+                                        <p className="text-success" style={{ fontSize: "16px", marginBottom: "0px" }}>
+                                            Envío: GRATIS ✔️
+                                        </p>
+                                    ) : (
+                                        <p className="text-danger" style={{ fontSize: "16px", marginBottom: "0px" }}>
+                                            Envío: {shippingCost.toFixed(2)}€
+                                        </p>
+                                    )}
+                                    <DeliveryEstimate />
+                                    <div className="my-3 text-end">
+                                        <input
+                                            type="text"
+                                            placeholder="Introduce tu código de descuento"
+                                            value={discountCode}
+                                            onChange={(e) => setDiscountCode(e.target.value)}
+                                            style={{
+                                                padding: "5px",
+                                                borderRadius: "5px",
+                                                border: "1px solid #ccc",
+                                                marginRight: "8px"
+                                            }}
+                                        />
+                                        <Button
+                                            variant="secondary"
+                                            size="sm"
+                                            onClick={handleApplyDiscount}
+                                        >
+                                            Aplicar
+                                        </Button>
+                                    </div>
+
+                                    <hr />
+
+                                    {discountPercent > 0 && (
+                                        <p style={{ fontSize: "16px", color: "green" }}>
+                                            Descuento aplicado: -{discountPercent}%
+                                        </p>
+                                    )}
+                                    <p style={{ fontSize: "22px", fontWeight: "bold" }}>
+                                        Total: {(finalTotal * (1 - discountPercent / 100)).toFixed(2)}€ (IVA incl.)
                                     </p>
-                                )}
-                                <DeliveryEstimate />
-                                <div className="my-3 text-end">
-                                    <input
-                                        type="text"
-                                        placeholder="Introduce tu código de descuento"
-                                        value={discountCode}
-                                        onChange={(e) => setDiscountCode(e.target.value)}
-                                        style={{
-                                            padding: "5px",
-                                            borderRadius: "5px",
-                                            border: "1px solid #ccc",
-                                            marginRight: "8px"
-                                        }}
-                                    />
+
                                     <Button
-                                        variant="secondary"
-                                        size="sm"
-                                        onClick={handleApplyDiscount}
+                                        className="btn-style-background-color"
+                                        onClick={handleCheckout}
                                     >
-                                        Aplicar
+                                        Formulario de Pago
                                     </Button>
-                                </div>
-
-                                <hr />
-
-                                {discountPercent > 0 && (
-                                    <p style={{ fontSize: "16px", color: "green" }}>
-                                        Descuento aplicado: -{discountPercent}%
-                                    </p>
+                                    <div className="text-right">
+                                        <img
+                                            src="https://kompozits.lv/app/uploads/2021/02/secure-600x123.png"
+                                            alt="Pago Seguro Autorizado"
+                                            style={{ maxWidth: '280px', height: 'auto', marginBottom: '30px', marginTop: '15px' }}
+                                        />
+                                    </div>
+                                </Col>
+                                {lastCategorySlug && (
+                                    <Link
+                                        to={`/${lastCategorySlug}`}
+                                        className="my-3 d-inline-block text-decoration-none"
+                                        style={{ fontWeight: 'bold', color: '#ff324d' }}
+                                    >
+                                        ← Volver al catálogo de {lastCategorySlug.replaceAll("-", " ")}
+                                    </Link>
                                 )}
-                                <p style={{ fontSize: "22px", fontWeight: "bold" }}>
-                                    Total: {(finalTotal * (1 - discountPercent / 100)).toFixed(2)}€ (IVA incl.)
-                                </p>
+                            </Row>
+                        </Col>
+                    </Row>
+                )}
 
-                                <Button
-                                    className="btn-style-background-color"
-                                    onClick={handleCheckout}
-                                >
-                                    Formulario de Pago
-                                </Button>
-                                <div className="text-right">
-                                    <img
-                                        src="https://kompozits.lv/app/uploads/2021/02/secure-600x123.png"
-                                        alt="Pago Seguro Autorizado"
-                                        style={{ maxWidth: '280px', height: 'auto', marginBottom: '30px', marginTop: '15px' }}
-                                    />
-                                </div>
-                            </Col>
-                            {lastCategorySlug && (
-                                <Link
-                                    to={`/${lastCategorySlug}`}
-                                    className="my-3 d-inline-block text-decoration-none"
-                                    style={{ fontWeight: 'bold', color: '#ff324d' }}
-                                >
-                                    ← Volver al catálogo de {lastCategorySlug.replaceAll("-", " ")}
-                                </Link>
-                            )}
-                        </Row>
-                    </Col>
-                </Row>
-            )}
-
-            {notification && (
-                <Notification
-                    message={notification}
-                    duration={3000}
-                    onClose={() => setNotification(null)}
-                />
-            )}
-        </Container>
+                {notification && (
+                    <Notification
+                        message={notification}
+                        duration={3000}
+                        onClose={() => setNotification(null)}
+                    />
+                )}
+            </Container>
+        </>
     );
 };

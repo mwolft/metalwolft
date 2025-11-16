@@ -56,6 +56,56 @@ def home():
     return jsonify(meta_data)
 
 
+@seo_bp.route('/api/seo/cart', methods=['GET'])
+def cart():
+    meta_data = {
+        "lang": "es",
+        "title": "Carrito de compra | Metal Wolft",
+        "description": "Revise su carrito de compra, gastos de envío y totales antes de completar su pedido en Metal Wolft.",
+        "keywords": "carrito de compra, resumen de pedido, rejas para ventanas, metal wolft",
+        "robots": "noindex, follow",
+        "theme_color": "#ff324d",
+
+        # Twitter
+        "twitter_card_type": "summary_large_image",
+        "twitter_title": "Carrito de compra | Metal Wolft",
+        "twitter_description": "Revise su carrito y confirme los productos antes del pago.",
+        "twitter_image": "https://res.cloudinary.com/dewanllxn/image/upload/v1749024437/carpinteria-metalica-online_zcr6p0.png",
+        "twitter_image_alt": "Carrito Metal Wolft",
+
+        # OpenGraph
+        "og_type": "website",
+        "og_title": "Carrito de compra | Metal Wolft",
+        "og_description": "Resumen de productos seleccionados antes de finalizar su compra.",
+        "og_image": "https://res.cloudinary.com/dewanllxn/image/upload/v1749024437/carpinteria-metalica-online_zcr6p0.png",
+        "og_image_width": "1200",
+        "og_image_height": "630",
+        "og_url": "https://www.metalwolft.com/cart",
+        "og_site_name": "Metal Wolft",
+
+        # Canonical
+        "canonical": "https://www.metalwolft.com/cart",
+
+        # JSON-LD
+        "json_ld": {
+            "@context": "https://schema.org",
+            "@type": "WebPage",
+            "name": "Carrito de compra",
+            "url": "https://www.metalwolft.com/cart",
+            "description": "Revise los productos de su carrito antes de pasar al pago.",
+            "publisher": {
+                "@type": "Organization",
+                "name": "Metal Wolft",
+                "logo": {
+                    "@type": "ImageObject",
+                    "url": "https://res.cloudinary.com/dewanllxn/image/upload/v1749024437/carpinteria-metalica-online_zcr6p0.png"
+                }
+            }
+        }
+    }
+    return jsonify(meta_data)
+
+
 @seo_bp.route('/api/seo/<string:category_slug>/<string:product_slug>', methods=['GET'])
 def seo_product_new(category_slug, product_slug):
     try:

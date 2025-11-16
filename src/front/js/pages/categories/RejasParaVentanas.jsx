@@ -250,7 +250,7 @@ export const RejasParaVentanas = ({ onSelectCategory, onSelectSubcategory, categ
                                 <li><b>¿Los precios incluyen IVA?</b> Sí, todos nuestros precios incluyen IVA.</li>
                                 <li>
                                     <b>¿Cuál es el tiempo de fabricación y entrega?</b> El plazo de entrega se calcula automáticamente según la carga de trabajo actual y suele estar en <b>20 días naturales</b>.
-                                    Para que tengas siempre la información más actualizada, hemos desarrollado un sistema de <Link to="/plazos-entrega-rejas-a-medida" style={{ color: '#ff324d', textDecoration: 'underline' }}>estimación de plazos en tiempo real</Link>.
+                                    Para que tengas siempre la información más actualizada, hemos desarrollado un sistema de <Link to="/plazos-entrega-rejas-a-medida" style={{textDecoration: 'underline' }}>estimación de plazos en tiempo real</Link>.
                                 </li>
                                 <li>
                                     <b>¿Qué sucede después de realizar mi compra?</b> Tras completar tu compra, recibirás un correo de confirmación con todos los detalles. Además, nos pondremos en contacto contigo para orientarte en la instalación y ofrecerte asistencia personalizada, asegurándonos de que tengas una experiencia satisfactoria con tu compra.

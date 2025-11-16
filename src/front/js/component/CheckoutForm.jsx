@@ -5,6 +5,7 @@ import { Context } from "../store/appContext";
 import { Button, Container, Row, Col, Form, Accordion } from "react-bootstrap";
 import { useNavigate } from "react-router-dom";
 import { calcularEnvio } from "../../utils/shippingCalculator";
+import { Helmet } from "react-helmet-async";
 
 
 const stripePromise = loadStripe('pk_live_51I1FgUDyMBNofWjFzagO0jTrkfQBvlt5Pshx3hLJbDLCxahT7Cn5NF9oozvey5iiH6lZhP82p3TFFmrdHGh3CQW700GiDX1dtz');
@@ -184,10 +185,10 @@ const CheckoutForm = () => {
             if (data.paymentIntent && data.paymentIntent.status === 'succeeded') {
                 console.log("El PaymentIntent ya se encuentra confirmado en el backend.");
                 const orderData = {
-                    total_amount: totalWithDiscount,   
+                    total_amount: totalWithDiscount,
                     shipping_cost: shippingCost,
-                    discount_code: store.discountCode || null,    
-                    discount_percent: store.discountPercent || 0, 
+                    discount_code: store.discountCode || null,
+                    discount_percent: store.discountPercent || 0,
                     products: products.map(product => ({
                         producto_id: product.producto_id,
                         quantity: product.quantity || 1,
@@ -297,250 +298,257 @@ const CheckoutForm = () => {
     };
 
     return (
-        <Container fluid="sm" className="mt-5">
-            <div className="text-center">
-                <h2 className='h2-categories' style={{ marginTop: '80px', marginBottom: '30px' }}>Formulario de pago</h2>
-            </div>
-            <Row>
-                <Col md={4} className="order-md-2 mb-4">
-                    <ul className="list-group mb-3">
-                        <h6>Resumen:</h6>
-                        {products.map((product, index) => (
-                            <li key={index} className="list-group-item d-flex justify-content-between lh-condensed">
-                                <div className="d-flex align-items-start">
-                                    <div>
-                                        <img src={product.imagen} alt={product.nombre} className="img-thumbnail me-3" style={{ width: "80px", height: "80px" }} />
-                                        <h6 className="my-2">
-                                            {product.nombre}
-                                        </h6>
-                                        <small className="text-muted d-block mt-1 mx-1">Alto: {product.alto}cm | Ancho: {product.ancho}cm</small>
-                                        <small className="text-muted d-block mx-1">Anclaje: {product.anclaje}</small>
-                                        <small className="text-muted d-block mx-1">Color: {product.color}</small>
-                                        {product.shipping_type !== 'normal' && (
-                                            <>
-                                                <small className="text-danger d-block mx-1">
-                                                    🚚 Este producto requiere envío especial ({product.shipping_cost.toFixed(2)}€)
-                                                </small>
-                                            </>
-                                        )}
+        <>
+            <Helmet>
+                <meta name="theme-color" content="#ff324d" />
+                <meta name="msapplication-navbutton-color" content="#ff324d" />
+                <meta name="apple-mobile-web-app-status-bar-style" content="#ff324d" />
+            </Helmet>
+            <Container fluid="sm" className="mt-5">
+                <div className="text-center">
+                    <h2 className='h2-categories' style={{ marginTop: '80px', marginBottom: '30px' }}>Formulario de pago</h2>
+                </div>
+                <Row>
+                    <Col md={4} className="order-md-2 mb-4">
+                        <ul className="list-group mb-3">
+                            <h6>Resumen:</h6>
+                            {products.map((product, index) => (
+                                <li key={index} className="list-group-item d-flex justify-content-between lh-condensed">
+                                    <div className="d-flex align-items-start">
+                                        <div>
+                                            <img src={product.imagen} alt={product.nombre} className="img-thumbnail me-3" style={{ width: "80px", height: "80px" }} />
+                                            <h6 className="my-2">
+                                                {product.nombre}
+                                            </h6>
+                                            <small className="text-muted d-block mt-1 mx-1">Alto: {product.alto}cm | Ancho: {product.ancho}cm</small>
+                                            <small className="text-muted d-block mx-1">Anclaje: {product.anclaje}</small>
+                                            <small className="text-muted d-block mx-1">Color: {product.color}</small>
+                                            {product.shipping_type !== 'normal' && (
+                                                <>
+                                                    <small className="text-danger d-block mx-1">
+                                                        🚚 Este producto requiere envío especial ({product.shipping_cost.toFixed(2)}€)
+                                                    </small>
+                                                </>
+                                            )}
+                                        </div>
                                     </div>
+                                    <span style={{ color: "#6c757d", opacity: 1, fontSize: "0.875rem", textAlign: "right", display: "block" }}>
+                                        {product.precio_total.toFixed(2)}€ <br /> {product.quantity ?? 1} und<br /> {(product.precio_total * (product.quantity ?? 1)).toFixed(2)}€
+                                    </span>
+                                </li>
+                            ))}
+                            <li className="list-group-item d-flex justify-content-between">
+                                <span>Envío: </span>
+                                <strong>{shippingCost === 0 ? "GRATIS" : `${shippingCost.toFixed(2)} €`}</strong>
+                            </li>
+                            {discountPercent > 0 && (
+                                <li className="list-group-item d-flex justify-content-between text-success">
+                                    <span>Descuento ({discountPercent}%)</span>
+                                    <strong>-{(finalTotal * discountPercent / 100).toFixed(2)}€</strong>
+                                </li>
+                            )}
+                            <li className="list-group-item d-flex justify-content-between">
+                                <span>Total (EUR)</span>
+                                <strong>{totalWithDiscount.toFixed(2)}€</strong>
+                            </li>
+                        </ul>
+                    </Col>
+                    <Col md={8} className="order-md-1">
+                        <Form onSubmit={handleSubmit} className="needs-validation" noValidate>
+                            <h4 className="mb-3">Dirección de facturación</h4>
+                            <hr className='hr-cart' />
+                            <div className="row">
+                                <div className="col-md-6">
+                                    <Form.Label></Form.Label>
+                                    <Form.Control
+                                        name="firstname"
+                                        placeholder="Nombre"
+                                        onChange={handleInputChange}
+                                        value={formData.firstname}
+                                    />
+                                    {errors.firstname && (
+                                        <p className="text-danger">{errors.firstname}</p>
+                                    )}
                                 </div>
-                                <span style={{ color: "#6c757d", opacity: 1, fontSize: "0.875rem", textAlign: "right", display: "block" }}>
-                                    {product.precio_total.toFixed(2)}€ <br /> {product.quantity ?? 1} und<br /> {(product.precio_total * (product.quantity ?? 1)).toFixed(2)}€
-                                </span>
-                            </li>
-                        ))}
-                        <li className="list-group-item d-flex justify-content-between">
-                            <span>Envío: </span>
-                            <strong>{shippingCost === 0 ? "GRATIS" : `${shippingCost.toFixed(2)} €`}</strong>
-                        </li>
-                        {discountPercent > 0 && (
-                            <li className="list-group-item d-flex justify-content-between text-success">
-                                <span>Descuento ({discountPercent}%)</span>
-                                <strong>-{(finalTotal * discountPercent / 100).toFixed(2)}€</strong>
-                            </li>
-                        )}
-                        <li className="list-group-item d-flex justify-content-between">
-                            <span>Total (EUR)</span>
-                            <strong>{totalWithDiscount.toFixed(2)}€</strong>
-                        </li>
-                    </ul>
-                </Col>
-                <Col md={8} className="order-md-1">
-                    <Form onSubmit={handleSubmit} className="needs-validation" noValidate>
-                        <h4 className="mb-3">Dirección de facturación</h4>
-                        <hr className='hr-cart' />
-                        <div className="row">
-                            <div className="col-md-6">
-                                <Form.Label></Form.Label>
-                                <Form.Control
-                                    name="firstname"
-                                    placeholder="Nombre"
-                                    onChange={handleInputChange}
-                                    value={formData.firstname}
-                                />
-                                {errors.firstname && (
-                                    <p className="text-danger">{errors.firstname}</p>
-                                )}
-                            </div>
-                            <div className="col-md-6">
-                                <Form.Label></Form.Label>
-                                <Form.Control
-                                    name="lastname"
-                                    placeholder="Apellidos"
-                                    onChange={handleInputChange}
-                                    value={formData.lastname}
-                                />
-                                {errors.lastname && (
-                                    <p className="text-danger">{errors.lastname}</p>
-                                )}
-                            </div>
-                        </div>
-                        <div className="row">
-                            <div className="col-md-12">
-                                <Form.Label></Form.Label>
-                                <Form.Control
-                                    name="billing_address"
-                                    placeholder="Calle, número, portal..."
-                                    onChange={handleInputChange}
-                                    value={formData.billing_address}
-                                />
-                                {errors.billing_address && (
-                                    <p className="text-danger">{errors.billing_address}</p>
-                                )}
-                            </div>
-                        </div>
-                        <div className="row">
-                            <div className="col-md-6">
-                                <Form.Label></Form.Label>
-                                <Form.Control
-                                    name="billing_postal_code"
-                                    placeholder="Código Postal"
-                                    onChange={handleInputChange}
-                                    value={formData.billing_postal_code}
-                                />
-                                {errors.billing_postal_code && (
-                                    <p className="text-danger">{errors.billing_postal_code}</p>
-                                )}
-                            </div>
-                            <div className="col-md-6">
-                                <Form.Label></Form.Label>
-                                <Form.Control
-                                    name="billing_city"
-                                    placeholder="Ciudad"
-                                    onChange={handleInputChange}
-                                    value={formData.billing_city}
-                                />
-                                {errors.billing_city && (
-                                    <p className="text-danger">{errors.billing_city}</p>
-                                )}
-                            </div>
-                        </div>
-                        <div className="row">
-                            <div className="col-md-6 mb-3">
-                                <Form.Label></Form.Label>
-                                <Form.Control
-                                    name="CIF"
-                                    placeholder="CIF o DNI"
-                                    onChange={handleInputChange}
-                                    value={formData.CIF}
-                                />
-                                {errors.CIF && (
-                                    <p className="text-danger">{errors.CIF}</p>
-                                )}
-                            </div>
-                            <div className="col-md-6 mb-3">
-                                <Form.Label></Form.Label>
-                                <Form.Control
-                                    name="phone"
-                                    placeholder="Teléfono"
-                                    onChange={handleInputChange}
-                                    value={formData.phone}
-                                />
-                                {errors.phone && (
-                                    <p className="text-danger">{errors.phone}</p>
-                                )}
-                            </div>
-                        </div>
-                        <Form.Check type="checkbox" label="La dirección de envío es diferente a la de facturación"
-                            id="differentBilling"
-                            onChange={handleCheckboxChange} />
-
-                        {differentBilling && (
-                            <div className="my-3" style={{ marginTop: '50px' }}>
-                                <h4 className="mb-3">Dirección de envío</h4>
-                                <hr className='hr-cart' />
-                                <Form.Group controlId="shipping_address">
+                                <div className="col-md-6">
                                     <Form.Label></Form.Label>
                                     <Form.Control
-                                        name="shipping_address"
-                                        placeholder="Calle, número, portal, piso..."
+                                        name="lastname"
+                                        placeholder="Apellidos"
                                         onChange={handleInputChange}
-                                        value={formData.shipping_address}
+                                        value={formData.lastname}
                                     />
-                                    {errors.shipping_address && (
-                                        <p className="text-danger">{errors.shipping_address}</p>
+                                    {errors.lastname && (
+                                        <p className="text-danger">{errors.lastname}</p>
                                     )}
-                                </Form.Group>
-                                <Form.Group controlId="shipping_city">
+                                </div>
+                            </div>
+                            <div className="row">
+                                <div className="col-md-12">
                                     <Form.Label></Form.Label>
                                     <Form.Control
-                                        name="shipping_city"
-                                        placeholder="Ciudad"
+                                        name="billing_address"
+                                        placeholder="Calle, número, portal..."
                                         onChange={handleInputChange}
-                                        value={formData.shipping_city}
+                                        value={formData.billing_address}
                                     />
-                                    {errors.shipping_city && (
-                                        <p className="text-danger">{errors.shipping_city}</p>
+                                    {errors.billing_address && (
+                                        <p className="text-danger">{errors.billing_address}</p>
                                     )}
-                                </Form.Group>
-                                <Form.Group controlId="shipping_postal_code">
+                                </div>
+                            </div>
+                            <div className="row">
+                                <div className="col-md-6">
                                     <Form.Label></Form.Label>
                                     <Form.Control
-                                        name="shipping_postal_code"
+                                        name="billing_postal_code"
                                         placeholder="Código Postal"
                                         onChange={handleInputChange}
-                                        value={formData.shipping_postal_code}
+                                        value={formData.billing_postal_code}
                                     />
-                                    {errors.shipping_postal_code && (
-                                        <p className="text-danger">{errors.shipping_postal_code}</p>
+                                    {errors.billing_postal_code && (
+                                        <p className="text-danger">{errors.billing_postal_code}</p>
                                     )}
-                                </Form.Group>
+                                </div>
+                                <div className="col-md-6">
+                                    <Form.Label></Form.Label>
+                                    <Form.Control
+                                        name="billing_city"
+                                        placeholder="Ciudad"
+                                        onChange={handleInputChange}
+                                        value={formData.billing_city}
+                                    />
+                                    {errors.billing_city && (
+                                        <p className="text-danger">{errors.billing_city}</p>
+                                    )}
+                                </div>
                             </div>
-                        )}
-                        <h4 className="mb-3" style={{ marginTop: '50px' }}>Método de pago</h4>
-                        <hr className='hr-cart' />
-                        <div className="mt-4">
-                            <div role="group" aria-labelledby="payment-method-label">
-                                <Form.Group controlId="card-element">
-                                    <Form.Label id="payment-method-label">Detalles de la tarjeta</Form.Label>
-                                    <div style={{ position: "relative" }}>
-                                        <CardElement options={{ hidePostalCode: true }} />
-                                    </div>
-                                </Form.Group>
+                            <div className="row">
+                                <div className="col-md-6 mb-3">
+                                    <Form.Label></Form.Label>
+                                    <Form.Control
+                                        name="CIF"
+                                        placeholder="CIF o DNI"
+                                        onChange={handleInputChange}
+                                        value={formData.CIF}
+                                    />
+                                    {errors.CIF && (
+                                        <p className="text-danger">{errors.CIF}</p>
+                                    )}
+                                </div>
+                                <div className="col-md-6 mb-3">
+                                    <Form.Label></Form.Label>
+                                    <Form.Control
+                                        name="phone"
+                                        placeholder="Teléfono"
+                                        onChange={handleInputChange}
+                                        value={formData.phone}
+                                    />
+                                    {errors.phone && (
+                                        <p className="text-danger">{errors.phone}</p>
+                                    )}
+                                </div>
                             </div>
-                            <Form.Group className="mt-4">
-                                <Form.Check
-                                    type="checkbox"
-                                    id="accept-policy"
-                                    label={
-                                        <>
-                                            Confirmo que he leído y acepto la{" "}
-                                            <a
-                                                href="/politica-devolucion"
-                                                target="_blank"
-                                                rel="noopener noreferrer"
-                                                style={{ textDecoration: "underline" }}
-                                            >
-                                                Política de Devoluciones y Garantías
-                                            </a>.
-                                        </>
-                                    }
-                                    checked={acceptedPolicy}
-                                    onChange={(e) => setAcceptedPolicy(e.target.checked)}
-                                    required
-                                />
-                            </Form.Group>
+                            <Form.Check type="checkbox" label="La dirección de envío es diferente a la de facturación"
+                                id="differentBilling"
+                                onChange={handleCheckboxChange} />
 
-                            <Button
-                                className="btn btn-style-background-color btn-block my-4"
-                                type="submit"
-                                disabled={isProcessing || !stripe}
-                            >
-                                {isProcessing ? "Pagando..." : "Pagar"}
-                            </Button>
+                            {differentBilling && (
+                                <div className="my-3" style={{ marginTop: '50px' }}>
+                                    <h4 className="mb-3">Dirección de envío</h4>
+                                    <hr className='hr-cart' />
+                                    <Form.Group controlId="shipping_address">
+                                        <Form.Label></Form.Label>
+                                        <Form.Control
+                                            name="shipping_address"
+                                            placeholder="Calle, número, portal, piso..."
+                                            onChange={handleInputChange}
+                                            value={formData.shipping_address}
+                                        />
+                                        {errors.shipping_address && (
+                                            <p className="text-danger">{errors.shipping_address}</p>
+                                        )}
+                                    </Form.Group>
+                                    <Form.Group controlId="shipping_city">
+                                        <Form.Label></Form.Label>
+                                        <Form.Control
+                                            name="shipping_city"
+                                            placeholder="Ciudad"
+                                            onChange={handleInputChange}
+                                            value={formData.shipping_city}
+                                        />
+                                        {errors.shipping_city && (
+                                            <p className="text-danger">{errors.shipping_city}</p>
+                                        )}
+                                    </Form.Group>
+                                    <Form.Group controlId="shipping_postal_code">
+                                        <Form.Label></Form.Label>
+                                        <Form.Control
+                                            name="shipping_postal_code"
+                                            placeholder="Código Postal"
+                                            onChange={handleInputChange}
+                                            value={formData.shipping_postal_code}
+                                        />
+                                        {errors.shipping_postal_code && (
+                                            <p className="text-danger">{errors.shipping_postal_code}</p>
+                                        )}
+                                    </Form.Group>
+                                </div>
+                            )}
+                            <h4 className="mb-3" style={{ marginTop: '50px' }}>Método de pago</h4>
+                            <hr className='hr-cart' />
+                            <div className="mt-4">
+                                <div role="group" aria-labelledby="payment-method-label">
+                                    <Form.Group controlId="card-element">
+                                        <Form.Label id="payment-method-label">Detalles de la tarjeta</Form.Label>
+                                        <div style={{ position: "relative" }}>
+                                            <CardElement options={{ hidePostalCode: true }} />
+                                        </div>
+                                    </Form.Group>
+                                </div>
+                                <Form.Group className="mt-4">
+                                    <Form.Check
+                                        type="checkbox"
+                                        id="accept-policy"
+                                        label={
+                                            <>
+                                                Confirmo que he leído y acepto la{" "}
+                                                <a
+                                                    href="/politica-devolucion"
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    style={{ textDecoration: "underline" }}
+                                                >
+                                                    Política de Devoluciones y Garantías
+                                                </a>.
+                                            </>
+                                        }
+                                        checked={acceptedPolicy}
+                                        onChange={(e) => setAcceptedPolicy(e.target.checked)}
+                                        required
+                                    />
+                                </Form.Group>
+
+                                <Button
+                                    className="btn btn-style-background-color btn-block my-4"
+                                    type="submit"
+                                    disabled={isProcessing || !stripe}
+                                >
+                                    {isProcessing ? "Pagando..." : "Pagar"}
+                                </Button>
+                            </div>
+                        </Form>
+                        <div className="text-center">
+                            <img
+                                src="https://kompozits.lv/app/uploads/2021/02/secure-600x123.png"
+                                alt="Pago Seguro Autorizado"
+                                style={{ maxWidth: '70%', height: 'auto', marginBottom: '30px' }}
+                            />
                         </div>
-                    </Form>
-                    <div className="text-center">
-                        <img
-                            src="https://kompozits.lv/app/uploads/2021/02/secure-600x123.png"
-                            alt="Pago Seguro Autorizado"
-                            style={{ maxWidth: '70%', height: 'auto', marginBottom: '30px' }}
-                        />
-                    </div>
-                </Col>
-            </Row>
-        </Container>
+                    </Col>
+                </Row>
+            </Container>
+        </>
     );
 };
 // Envolver CheckoutForm con Elements para Stripe y PayPalScriptProvider para PayPal
