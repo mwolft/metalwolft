@@ -162,9 +162,9 @@ class UsersAdminView(SafeModelView):
     }
 
 
-
 class ProductAdminView(SafeModelView):
-    column_sortable_list = ('id', 'nombre', 'precio', 'precio_rebajado', 'categoria_id')
+    column_sortable_list = ('id', 'sort_order', 'nombre', 'precio', 'precio_rebajado', 'categoria_id')  # 👈 AÑADIDO
+
     column_searchable_list = ('nombre',)
     column_filters = ('categoria_id',)
     page_size = 50
@@ -173,6 +173,7 @@ class ProductAdminView(SafeModelView):
     form_columns = [
         'nombre',
         'slug',
+        'sort_order',        
         'categoria_id',
         'subcategoria',
         'descripcion',
@@ -201,16 +202,28 @@ class ProductAdminView(SafeModelView):
         return ids
 
     def get_query(self):
+        """
+        Orden final:
+        1. sort_order ASC (orden manual)
+        2. prioridad categorías
+        3. categoria_id ASC
+        4. nombre ASC
+        5. id ASC
+        """
         from sqlalchemy import case
         ids = self._priority_category_ids() or [-1]
         priority = case((Products.categoria_id.in_(ids), 0), else_=1)
-        return (super().get_query()
-                .order_by(
-                    priority.asc(),
-                    Products.categoria_id.asc(),
-                    Products.nombre.asc(),
-                    Products.id.asc()
-                ))
+
+        return (
+            super().get_query()
+            .order_by(
+                Products.sort_order.asc(),   
+                priority.asc(),
+                Products.categoria_id.asc(),
+                Products.nombre.asc(),
+                Products.id.asc()
+            )
+        )
 
     def get_count_query(self):
         return super().get_count_query()

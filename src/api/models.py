@@ -126,6 +126,7 @@ class Comments(db.Model):
 class Products(db.Model):
     __tablename__ = "products"
     id = db.Column(db.Integer, primary_key=True)
+    sort_order = db.Column(db.Integer, default=0)   
     slug = db.Column(db.String(120), unique=True, nullable=False)
     nombre = db.Column(db.String(100), nullable=False)
     descripcion = db.Column(db.Text, nullable=False)
@@ -212,6 +213,7 @@ class ProductImages(db.Model):
 class Categories(db.Model):
     __tablename__ = "categories"
     id = db.Column(db.Integer, primary_key=True)
+    sort_order = db.Column(db.Integer, default=0) 
     nombre = db.Column(db.String(100), nullable=False)
     descripcion = db.Column(db.Text, nullable=True)
     parent_id = db.Column(db.Integer, db.ForeignKey('categories.id'), nullable=True)
@@ -240,6 +242,7 @@ class Categories(db.Model):
 class Subcategories(db.Model):
     __tablename__ = "subcategories"
     id = db.Column(db.Integer, primary_key=True)
+    sort_order = db.Column(db.Integer, default=0)   
     nombre = db.Column(db.String(100), nullable=False)
     descripcion = db.Column(db.Text, nullable=True)
     categoria_id = db.Column(db.Integer, db.ForeignKey('categories.id'), nullable=False)

@@ -701,7 +701,12 @@ def get_products_by_category(slug):
     if not category:
         return jsonify({"message": "Categoría no encontrada"}), 404
 
-    products = Products.query.filter_by(categoria_id=category.id).all()
+    products = (
+        Products.query
+        .filter_by(categoria_id=category.id)
+        .order_by(Products.sort_order.asc(), Products.id.asc())    
+        .all()
+    )
     return jsonify([p.serialize() for p in products]), 200
 
 
@@ -723,7 +728,10 @@ def get_products():
 
         total_count = query.count()
         
-        products = query.all()
+        products = query.order_by(
+            Products.sort_order.asc(),
+            Products.id.asc()
+        ).all()
         response = jsonify([product.serialize_with_images() for product in products])
         
         response.headers['X-Total-Count'] = total_count
