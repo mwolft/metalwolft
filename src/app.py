@@ -74,6 +74,12 @@ if db_url:
 else:
     app.config['SQLALCHEMY_DATABASE_URI'] = "sqlite:////tmp/test.db"
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {
+    "pool_pre_ping": True,
+    "pool_recycle": 1800,   
+    "pool_size": 5,
+    "max_overflow": 10
+}
 Migrate(app, db, directory="src/migrations", compare_type=True)
 db.init_app(app)
 
