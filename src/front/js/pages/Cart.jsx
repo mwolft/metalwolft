@@ -79,6 +79,7 @@ export const Cart = () => {
         WOLFT15: 15,
         JOEL20: 20,
         BLACK15: 15,
+        BLAK15: 15,
     };
 
     const handleApplyDiscount = () => {
