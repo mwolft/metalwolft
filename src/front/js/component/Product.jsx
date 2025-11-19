@@ -223,6 +223,22 @@ export const Product = ({ product }) => {
                                 {product.nombre}
                             </h3>
                         </Link>
+                        <div className="d-flex align-items-center mb-2 mt-1">
+                            {[
+                                { name: "blanco", hex: "#ffffff" },
+                                { name: "negro", hex: "#000000" },
+                                { name: "gris", hex: "#40464d" },
+                                { name: "marrón", hex: "#4f3b2b" },
+                                { name: "verde", hex: "#0b3d2e" }
+                            ].map(c => (
+                                <div
+                                    key={c.name}
+                                    className="color-swatch-passive"
+                                    title={c.name}
+                                    style={{ backgroundColor: c.hex }}
+                                ></div>
+                            ))}
+                        </div>
                         <p className="card-text-carrusel">
                             {product.precio_rebajado ? (
                                 <>

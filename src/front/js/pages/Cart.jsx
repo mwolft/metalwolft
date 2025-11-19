@@ -82,6 +82,15 @@ export const Cart = () => {
         BLAK15: 15,
     };
 
+    const colorLabels = {
+        blanco: "Blanco (RAL 9016)",
+        negro: "Negro (RAL 9005)",
+        gris: "Gris (RAL 7016)",
+        marrón: "Marrón (RAL 8014)",
+        verde: "Verde (RAL 6009)"
+    };
+
+
     const handleApplyDiscount = () => {
         const codeUpper = discountCode.trim().toUpperCase();
 
@@ -218,7 +227,7 @@ export const Cart = () => {
                                                 <td>{product.alto}</td>
                                                 <td>{product.ancho}</td>
                                                 <td>{product.anclaje}</td>
-                                                <td>{product.color}</td>
+                                                <td>{colorLabels[product.color] ?? product.color}</td>
                                                 <td>{product.quantity ?? 1}</td>
                                                 <td>{(product.precio_total ?? 0).toFixed(2)}€</td>
                                                 <td>{((product.precio_total ?? 0) * (product.quantity ?? 1)).toFixed(2)}€</td>

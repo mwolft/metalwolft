@@ -652,16 +652,34 @@ export const ProductDetail = () => {
                                     <Col>
                                         <Form.Group>
                                             <Form.Label>Color</Form.Label>
-                                            <Form.Select
-                                                value={color}
-                                                onChange={e => setColor(e.target.value)}
-                                            >
-                                                <option>blanco</option>
-                                                <option>negro</option>
-                                                <option>gris</option>
-                                                <option>verde</option>
-                                                <option>marrón</option>
-                                            </Form.Select>
+                                            <div className="color-swatch-container">
+                                                {[
+                                                    { name: "blanco", label: "Blanco (RAL 9016)", hex: "#ffffff" },
+                                                    { name: "negro", label: "Negro (RAL 9005)", hex: "#000000" },
+                                                    { name: "gris", label: "Gris (RAL 7016)", hex: "#40464d" },
+                                                    { name: "marrón", label: "Marrón (RAL 8014)", hex: "#4f3b2b" },
+                                                    { name: "verde", label: "Verde (RAL 6009)", hex: "#0b3d2e" }
+                                                ].map((c) => (
+                                                    <div
+                                                        key={c.name}
+                                                        className={`color-swatch ${color === c.name ? "selected" : ""}`}
+                                                        style={{ backgroundColor: c.hex }}
+                                                        onClick={() => setColor(c.name)}
+                                                        title={c.label}
+                                                    ></div>
+                                                ))}
+                                            </div>
+                                            <div className="mt-1" style={{ fontSize: "0.9rem", color: "#555" }}>
+                                                Seleccionado: <strong>
+                                                    {{
+                                                        blanco: "Blanco (RAL 9016)",
+                                                        negro: "Negro (RAL 9005)",
+                                                        gris: "Gris (RAL 7016)",
+                                                        marrón: "Marrón (RAL 8014)",
+                                                        verde: "Verde (RAL 6009)"
+                                                    }[color]}
+                                                </strong>
+                                            </div>
                                         </Form.Group>
                                     </Col>
                                 </Row>

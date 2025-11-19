@@ -466,3 +466,46 @@ select:-webkit-autofill:active {
         background-color: #e0e0e0;
     }
 }
+
+
+.color-swatch-container {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-top: 6px;
+}
+
+.color-swatch {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    cursor: pointer;
+    border: 2px solid transparent;
+    transition: all 0.2s ease-in-out;
+}
+
+.color-swatch:hover {
+    transform: scale(1.1);
+}
+
+.color-swatch.selected {
+    border: 2px solid #ff324d;
+    box-shadow: 0 0 0 3px rgba(255, 50, 77, 0.25);
+}
+
+
+.color-swatch-passive {
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    border: 1px solid #ddd;
+    margin-right: 5px;
+    opacity: 0.9;
+    cursor: default;
+    pointer-events: none;  
+}
+
+.color-swatch-passive:hover {
+    transform: none;      
+    opacity: 0.9;           
+}

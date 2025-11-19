@@ -38,6 +38,15 @@ const CheckoutForm = () => {
     const discountPercent = store.discountPercent || 0;
     const totalWithDiscount = finalTotal * (1 - discountPercent / 100);
 
+    const colorLabels = {
+        blanco: "Blanco (RAL 9016)",
+        negro: "Negro (RAL 9005)",
+        gris: "Gris (RAL 7016)",
+        marrón: "Marrón (RAL 8014)",
+        verde: "Verde (RAL 6009)"
+    };
+
+
 
     const calcularTipoEnvio = (producto) => {
         const area = (producto.alto * producto.ancho) / 10000;
@@ -322,7 +331,9 @@ const CheckoutForm = () => {
                                             </h6>
                                             <small className="text-muted d-block mt-1 mx-1">Alto: {product.alto}cm | Ancho: {product.ancho}cm</small>
                                             <small className="text-muted d-block mx-1">Anclaje: {product.anclaje}</small>
-                                            <small className="text-muted d-block mx-1">Color: {product.color}</small>
+                                            <small className="text-muted d-block mx-1">
+                                                Color: {colorLabels[product.color] ?? product.color}
+                                            </small>
                                             {product.shipping_type !== 'normal' && (
                                                 <>
                                                     <small className="text-danger d-block mx-1">
