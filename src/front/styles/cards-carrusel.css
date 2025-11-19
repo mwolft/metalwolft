@@ -111,3 +111,17 @@
     transform: none;      
     opacity: 0.9;           
 }
+
+/* --- Swatches de color: visibles y sin interferencias de Bootstrap --- */
+.product-color-dot {
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    border: 1px solid #ccc;
+    margin-right: 6px;
+    display: inline-block;
+    flex-shrink: 0;
+
+    /* Limpiamos cualquier background aplicado por Bootstrap */
+    background-color: transparent !important;
+}
