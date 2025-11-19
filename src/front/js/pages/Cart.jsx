@@ -80,6 +80,7 @@ export const Cart = () => {
         JOEL20: 20,
         BLACK15: 15,
         BLAK15: 15,
+        SERGIO99: 99,
     };
 
     const colorLabels = {
