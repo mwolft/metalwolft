@@ -113,11 +113,8 @@ def create_payment_intent():
         intent = stripe.PaymentIntent.create(
             amount=data['amount'],
             currency='eur',
-            # opcional: no enviar payment_method aquí si front controla confirm
-            #payment_method=data.get('payment_method_id'),
-            # no confirm=True
-            receipt_email=receipt_email,
-            metadata=metadata,
+            payment_method=data['payment_method_id'],
+            confirm=False,
             idempotency_key=idempotency_key
         )
 
