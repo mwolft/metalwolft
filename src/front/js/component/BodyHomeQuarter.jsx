@@ -32,7 +32,7 @@ export const BodyHomeQuarter = () => {
                         <Figure>
                             <img
                                 src={herreroHome}
-                                alt="soldador en ciudad real"
+                                alt="carpinteria metálica online"
                                 style={{ width: '100%', height: '300px', objectFit: 'cover' }} />
                             <Figure.Caption className="mt-2" style={{ fontSize: '10px', fontStyle: 'italic' }}>
                                 Arte y acero se unen bajo la experta mano de nuestro soldador.

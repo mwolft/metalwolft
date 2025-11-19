@@ -73,7 +73,7 @@ export const PuertasCorrederasExteriores = () => {
                 <meta property="og:image:type" content={metaData.og_image_type || "image/jpg"} />
                 <meta property="og:image:alt" content={metaData.og_image_alt || "puertas correderas exteriores"} />
                 <meta property="og:url" content={metaData.og_url} />
-                <meta property="og:site_name" content={metaData.og_site_name || "Metal Wolft Ciudad Real"} />
+                <meta property="og:site_name" content={metaData.og_site_name || "Metal Wolft"} />
                 <meta property="og:locale" content={metaData.og_locale || "es_ES"} />
                 <meta property="og:locale:alternate" content={metaData.og_locale_alternate || "en_US"} />
                 <link rel="canonical" href={metaData.canonical} />

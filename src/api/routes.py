@@ -101,30 +101,23 @@ def get_delivery_estimate():
 @api.route('/create-payment-intent', methods=['POST'])
 def create_payment_intent():
     try:
-        import stripe 
-        stripe.api_key = os.getenv('STRIPE_SECRET_KEY') 
+        import stripe
+        stripe.api_key = os.getenv('STRIPE_SECRET_KEY')
 
         data = request.get_json()
-
-        import uuid  
-
-        idempotency_key = data.get('idempotency_key')
-        if not idempotency_key:
-            idempotency_key = str(uuid.uuid4())
-
-        payment_intent_id = data.get('payment_intent_id')
-
-        if payment_intent_id:
-            intent = stripe.PaymentIntent.retrieve(payment_intent_id)
-            if intent['status'] == 'succeeded':
-                return jsonify({"message": "El pago ya ha sido completado.", "paymentIntent": intent}), 200
+        import uuid
+        idempotency_key = data.get('idempotency_key') or str(uuid.uuid4())
+        receipt_email = data.get('email')  # enviar desde frontend
+        metadata = data.get('metadata') or {}
 
         intent = stripe.PaymentIntent.create(
-            amount=data['amount'], 
+            amount=data['amount'],
             currency='eur',
-            payment_method=data['payment_method_id'],
-            confirm=True,
-            return_url=os.getenv('STRIPE_RETURN_URL'),
+            # opcional: no enviar payment_method aquí si front controla confirm
+            #payment_method=data.get('payment_method_id'),
+            # no confirm=True
+            receipt_email=receipt_email,
+            metadata=metadata,
             idempotency_key=idempotency_key
         )
 
@@ -134,6 +127,34 @@ def create_payment_intent():
         })
     except Exception as e:
         return jsonify({"error": str(e)}), 403
+
+
+@api.route('/webhook', methods=['POST'])
+def stripe_webhook():
+    import stripe, os
+    payload = request.data
+    sig_header = request.headers.get('stripe-signature')
+    endpoint_secret = os.getenv('STRIPE_WEBHOOK_SECRET')  # pon aquí whsec_...
+    try:
+        event = stripe.Webhook.construct_event(payload, sig_header, endpoint_secret)
+        print("📩 Webhook recibido:", event['type'])
+    except Exception as e:
+        return jsonify({'error': str(e)}), 400
+
+    # manejar eventos importantes
+    if event['type'] == 'payment_intent.succeeded':
+        intent = event['data']['object']
+        # 1) mirar metadata / receipt_email
+        # 2) si no existe order en BD para este intent.id -> crear order, facturas, emails, etc.
+        # 3) marcar como pagado en BD
+    elif event['type'] == 'charge.succeeded':
+        charge = event['data']['object']
+        # opcional
+    elif event['type'] == 'checkout.session.completed':
+        session = event['data']['object']
+        # si usas Checkout
+
+    return '', 200
 
 
 @api.route('/posts/<int:post_id>/comments', methods=['GET'])
@@ -407,7 +428,7 @@ def signup():
     <hr style="border:none; border-top:1px solid #ddd; margin:20px 0;">
 
     <p style="font-size:12px; color:#777; font-family:Arial, sans-serif; text-align:center;">
-    Metal Wolft © 2025 · Ciudad Real, España
+    Metal Wolft © 2025 España
     </p>
 
     """

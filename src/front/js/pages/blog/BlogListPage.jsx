@@ -77,7 +77,7 @@ export const BlogListPage = () => {
                 <meta property="og:image:width" content={metaData.og_image_width || "400"} />
                 <meta property="og:image:height" content={metaData.og_image_height || "300"} />
                 <meta property="og:image:type" content={metaData.og_image_type || "image/jpg"} />
-                <meta property="og:image:alt" content={metaData.og_image_alt || "herrero soldador ciudad real"} />
+                <meta property="og:image:alt" content={metaData.og_image_alt || "Carpinteria metálica online"} />
                 <meta property="og:url" content={metaData.og_url} />
                 <meta property="og:site_name" content={metaData.og_site_name || "Metal Wolft"} />
                 <meta property="og:locale" content={metaData.og_locale || "es_ES"} />
