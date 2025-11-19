@@ -231,12 +231,11 @@ export const Product = ({ product }) => {
                                 { name: "marrón", hex: "#4f3b2b" },
                                 { name: "verde", hex: "#0b3d2e" }
                             ].map(c => (
-                                <div
+                                <span
                                     key={c.name}
-                                    className="color-swatch-passive"
-                                    title={c.name}
-                                    style={{ backgroundColor: c.hex }}
-                                ></div>
+                                    className="product-color-dot"
+                                    style={{ "--dot-color": c.hex }}
+                                ></span>
                             ))}
                         </div>
                         <p className="card-text-carrusel">

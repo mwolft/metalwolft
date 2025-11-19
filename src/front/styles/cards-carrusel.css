@@ -120,8 +120,12 @@
     border: 1px solid #ccc;
     margin-right: 6px;
     display: inline-block;
-    flex-shrink: 0;
 
-    /* Limpiamos cualquier background aplicado por Bootstrap */
-    background-color: transparent !important;
+    /* Aquí usamos la variable del color */
+    background-color: var(--dot-color) !important;
 }
+
+.card .product-color-dot {
+    background-color: var(--dot-color) !important;
+}
+
