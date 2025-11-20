@@ -3,6 +3,10 @@ import { createRoot } from "react-dom/client";  // Import createRoot from React 
 import "../styles/index.css";  // Include your index.scss file into the bundle
 import Layout from "./Layout.jsx";  // Import your own components
 
+// ⚡ Reset Stripe keys on app load
+localStorage.removeItem("paymentIntentId");
+localStorage.removeItem("idempotencyKey");
+
 // Obtener el elemento contenedor donde se montará la aplicación
 const container = document.querySelector("#app");
 
