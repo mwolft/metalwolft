@@ -100,30 +100,65 @@ def get_delivery_estimate():
 
 @api.route('/create-payment-intent', methods=['POST'])
 def create_payment_intent():
+    import stripe, uuid, os
+    stripe.api_key = os.getenv('STRIPE_SECRET_KEY')
+
     try:
-        import stripe
-        stripe.api_key = os.getenv('STRIPE_SECRET_KEY')
-
         data = request.get_json()
-        import uuid
-        idempotency_key = data.get('idempotency_key') or str(uuid.uuid4())
-        receipt_email = data.get('email')  # enviar desde frontend
-        metadata = data.get('metadata') or {}
 
-        intent = stripe.PaymentIntent.create(
-            amount=data['amount'],
-            currency='eur',
-            payment_method=data['payment_method_id'],
-            confirm=False,
-            idempotency_key=idempotency_key
-        )
+        # --- 1) Valores recibidos ---
+        amount = data.get("amount")
+        payment_method_id = data.get("payment_method_id")
+        existing_intent_id = data.get("payment_intent_id")
+        idempotency_key = data.get("idempotency_key") or str(uuid.uuid4())
+        receipt_email = data.get("email") 
+        metadata = data.get("metadata") or {}
 
+        if not amount or not payment_method_id:
+            return jsonify({"error": "Missing required data"}), 400
+
+        # --- 2) Si existe PaymentIntent previo, lo modificamos ---
+        if existing_intent_id:
+            try:
+                intent = stripe.PaymentIntent.modify(
+                    existing_intent_id,
+                    amount=amount,
+                    payment_method=payment_method_id,
+                    metadata=metadata,
+                    receipt_email=receipt_email
+                )
+            except Exception:
+                # Si falla (intent cancelado, expirado o no válido), creamos uno nuevo
+                intent = stripe.PaymentIntent.create(
+                    amount=amount,
+                    currency='eur',
+                    payment_method=payment_method_id,
+                    confirm=False,
+                    metadata=metadata,
+                    receipt_email=receipt_email,
+                    idempotency_key=idempotency_key
+                )
+        else:
+            # --- 3) Crear PaymentIntent por primera vez ---
+            intent = stripe.PaymentIntent.create(
+                amount=amount,
+                currency='eur',
+                payment_method=payment_method_id,
+                confirm=False,
+                metadata=metadata,
+                receipt_email=receipt_email,
+                idempotency_key=idempotency_key
+            )
+
+        # --- 4) Devolver clientSecret y PaymentIntent completo ---
         return jsonify({
-            'clientSecret': intent['client_secret'],
-            'paymentIntent': intent
-        })
+            "clientSecret": intent["client_secret"],
+            "paymentIntent": intent
+        }), 200
+
     except Exception as e:
-        return jsonify({"error": str(e)}), 403
+        return jsonify({"error": str(e)}), 400
+
 
 
 @api.route('/webhook', methods=['POST'])

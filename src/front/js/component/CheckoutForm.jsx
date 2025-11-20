@@ -191,10 +191,10 @@ const CheckoutForm = () => {
             }
 
             // Si el PaymentIntent ya fue confirmado
-            if (data.paymentIntent && data.paymentIntent.status === 'succeeded') {
+            if (data.paymentIntent && data.paymentIntent.status === "succeeded") {
                 console.log("El PaymentIntent ya se encuentra confirmado en el backend.");
                 const orderData = {
-                    total_amount: totalWithDiscount,
+                    total_amount: totalWithDiscount,       
                     shipping_cost: shippingCost,
                     discount_code: store.discountCode || null,
                     discount_percent: store.discountPercent || 0,
@@ -237,8 +237,10 @@ const CheckoutForm = () => {
             if (confirmedPaymentIntent && confirmedPaymentIntent.status === 'succeeded') {
                 console.log("El pago fue confirmado exitosamente.");
                 const orderData = {
-                    total_amount: finalTotal,
+                    total_amount: totalWithDiscount,
                     shipping_cost: shippingCost,
+                    discount_code: store.discountCode || null,
+                    discount_percent: store.discountPercent || 0,
                     products: products.map(product => ({
                         producto_id: product.producto_id,
                         quantity: product.quantity || 1,
