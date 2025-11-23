@@ -173,6 +173,18 @@ export const ProductDetail = () => {
                                             ? 2.5
                                             : 3.0;
         price = Math.max(price * multiplier, basePrice);
+        if (window.dataLayer) {
+            window.dataLayer.push({
+                event: "calcular_precio",
+                product_name: product?.nombre,
+                product_slug: product?.slug,
+                height_cm: h,
+                width_cm: w,
+                area_m2: area,
+                final_price: price.toFixed(2)
+            });
+        }
+
         setCalculatedPrice(price.toFixed(2));
     };
 
