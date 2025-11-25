@@ -99,7 +99,7 @@ export const DondeComprarRejasLeroyIkea = () => {
                     }
                 />
                 <meta name="robots" content={metaData.robots || "index, follow"} />
-                <meta name="theme-color" content={metaData.theme_color || "#ffffff"} />
+                <meta name="theme-color" content={metaData.theme_color || "#ff324d"} />
                 <link
                     rel="canonical"
                     href={

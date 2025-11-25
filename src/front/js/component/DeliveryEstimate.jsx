@@ -60,17 +60,10 @@ const DeliveryEstimate = () => {
     return (
         <div style={bannerStyles.container}>
             <span>
-                Entrega prevista entre:  <br />
+                Recíbelo entre:  <br />
                 <b>{formatDeliveryRange(estimate.start_date, estimate.end_date)}.</b> <br />
-                {!isInPlazosPage && (
-                    <Link
-                        to="/politica-devolucion"
-                        style={bannerStyles.link}
-                    >
-                        Devoluciones
-                    </Link>
-                )}
             </span>
+
         </div>
     );
 };

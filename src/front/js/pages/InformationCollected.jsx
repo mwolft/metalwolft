@@ -1,10 +1,15 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { Breadcrumb } from '../component/Breadcrumb.jsx';
+import { Helmet } from "react-helmet";
 
 export const InformationCollected = () => {
     return (
         <>
+            <Helmet>
+                <meta name="robots" content="noindex, nofollow" />
+                <meta name="theme-color" content="#ff324d" />
+            </Helmet>
             <div className="container" style={{ marginTop: '65px' }}>
                 <h1 className='h1-categories'>Información que Recopilamos</h1>
                 <p>En Metal Wolft, recopilamos información para mejorar tu experiencia de usuario y para gestionar correctamente los pedidos y servicios que ofrecemos.</p>

@@ -401,7 +401,7 @@ export const ProductDetail = () => {
 
                         {/* Robots / Canonical */}
                         <meta name="robots" content={seoData.robots || "index, follow"} />
-                        <meta name="theme-color" content={seoData.theme_color || "#ffffff"} />
+                        <meta name="theme-color" content={seoData.theme_color || "#ff324d"} />
                         <link rel="canonical" href={seoData.canonical} />
 
                         {/* OPEN GRAPH */}

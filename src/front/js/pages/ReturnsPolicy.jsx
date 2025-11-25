@@ -1,8 +1,13 @@
 import React from 'react';
+import { Helmet } from "react-helmet";
 
 export const ReturnsPolicy = () => {
     return (
         <>
+            <Helmet>
+                <meta name="robots" content="noindex, nofollow" />
+                <meta name="theme-color" content="#ff324d" />
+            </Helmet>
             <div className="container" style={{ marginTop: '65px' }}>
                 <h1 className='h1-categories'>Política de Devoluciones y Garantías</h1>
 
@@ -70,7 +75,7 @@ export const ReturnsPolicy = () => {
                     En caso de confirmarse una discrepancia imputable a fabricación,
                     MetalWolft ofrecerá la reposición, ajuste o compensación correspondiente.
                 </p>
-                
+
                 <h2 className="h2-categories mb-3">5. Productos Instalados o Manipulados</h2>
                 <p>
                     Las rejas, puertas y cerramientos fabricados a medida no admiten devolución una vez instalados o manipulados.

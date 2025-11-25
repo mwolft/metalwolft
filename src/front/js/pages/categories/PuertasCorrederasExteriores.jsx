@@ -56,7 +56,7 @@ export const PuertasCorrederasExteriores = () => {
                 <meta name="description" content={metaData.description} />
                 <meta name="keywords" content={metaData.keywords} />
                 <meta name="robots" content={metaData.robots || "index, follow"} />
-                <meta name="theme-color" content={metaData.theme_color || "#ffffff"} />
+                <meta name="theme-color" content={metaData.theme_color || "#ff324d"} />
                 <meta name="twitter:card" content={metaData.twitter_card_type} />
                 <meta name="twitter:site" content={metaData.twitter_site} />
                 <meta name="twitter:creator" content={metaData.twitter_creator} />

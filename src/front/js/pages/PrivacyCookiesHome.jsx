@@ -1,10 +1,15 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { Breadcrumb } from '../component/Breadcrumb.jsx';
+import { Helmet } from "react-helmet";
 
 export const PrivacyCookiesHome = () => {
     return (
         <>
+            <Helmet>
+                <meta name="robots" content="noindex, nofollow" />
+                <meta name="theme-color" content="#ff324d" />
+            </Helmet>
             <div className="container" style={{ marginTop: '65px' }}>
                 <h1 className='h1-categories'>Políticas de Privacidad y Cookies</h1>
                 <p>En Metal Wolft, tu privacidad es nuestra prioridad. Aquí te explicamos cómo manejamos tu información personal y el uso de cookies en nuestro sitio.</p>

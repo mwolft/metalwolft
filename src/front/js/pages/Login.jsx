@@ -2,6 +2,7 @@ import React, { useContext, useState } from "react";
 import { Context } from '../store/appContext.js';
 import { useNavigate } from "react-router-dom";
 import { Row, Col, Container, Button, Form } from "react-bootstrap";
+import { Helmet } from "react-helmet-async";
 
 export const Login = () => {
   const { actions } = useContext(Context);
@@ -172,139 +173,101 @@ export const Login = () => {
   };
 
   return (
-    <Container
-      fluid
-      className="auth-container d-flex justify-content-center align-items-center" 
-      style={{
-        marginTop: '0',
-        height: '100vh',
-        position: 'relative',
-        overflow: 'hidden',
-      }}
-    >
-      {/* Fondo difuminado */}
-      <div
+    <>
+      <Helmet>
+        <meta name="theme-color" content="#ff324d" />
+      </Helmet>
+      <Container
+        fluid
+        className="auth-container d-flex justify-content-center align-items-center"
         style={{
-          position: 'absolute',
-          top: 0,
-          left: 0,
-          width: '100%',
-          height: '100%',
-          backgroundImage: 'url(https://res.cloudinary.com/dewanllxn/image/upload/v1733817377/herrero-ciudad-real_ndf77e.jpg)',
-          backgroundSize: 'cover',
-          backgroundPosition: 'center',
-          filter: 'blur(1px)',
-          zIndex: 1,
-        }}
-      />
-
-      {/* Contenedor del formulario */}
-      <div
-        className="auth-box p-3 bg-light"
-        style={{
-          borderRadius: '10px',
-          boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
+          marginTop: '0',
+          height: '100vh',
           position: 'relative',
-          zIndex: 2,
-          opacity: 0.95,
-          width: '100%',
-          maxWidth: '400px',
+          overflow: 'hidden',
         }}
       >
-        <Row className="text-center mb-3 d-flex justify-content-center">
-          <Col>
-            <h4>{isResetPassword ? "Restablecer Contraseña" : isForgotPassword ? "Recuperar Contraseña" : isLogin ? "INGRESAR" : "CREAR CUENTA"}</h4>
-            <hr className="hr_login" />
-          </Col>
-        </Row>
-        {successMessage && <p className="text-success text-center">{successMessage}</p>}
-        {errorMessage && <p className="text-danger text-center">{errorMessage}</p>}
-        {isForgotPassword ? (
-          <>
-            <p className="text-center">Te enviaremos un correo electrónico para restablecer tu contraseña.</p>
-            <Form onSubmit={handleForgotPasswordSubmit}>
+        {/* Fondo difuminado */}
+        <div
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            width: '100%',
+            height: '100%',
+            backgroundImage: 'url(https://res.cloudinary.com/dewanllxn/image/upload/v1733817377/herrero-ciudad-real_ndf77e.jpg)',
+            backgroundSize: 'cover',
+            backgroundPosition: 'center',
+            filter: 'blur(1px)',
+            zIndex: 1,
+          }}
+        />
+
+        {/* Contenedor del formulario */}
+        <div
+          className="auth-box p-3 bg-light"
+          style={{
+            borderRadius: '10px',
+            boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
+            position: 'relative',
+            zIndex: 2,
+            opacity: 0.95,
+            width: '100%',
+            maxWidth: '400px',
+          }}
+        >
+          <Row className="text-center mb-3 d-flex justify-content-center">
+            <Col>
+              <h4>{isResetPassword ? "Restablecer Contraseña" : isForgotPassword ? "Recuperar Contraseña" : isLogin ? "INGRESAR" : "CREAR CUENTA"}</h4>
+              <hr className="hr_login" />
+            </Col>
+          </Row>
+          {successMessage && <p className="text-success text-center">{successMessage}</p>}
+          {errorMessage && <p className="text-danger text-center">{errorMessage}</p>}
+          {isForgotPassword ? (
+            <>
+              <p className="text-center">Te enviaremos un correo electrónico para restablecer tu contraseña.</p>
+              <Form onSubmit={handleForgotPasswordSubmit}>
+                <Form.Group className="mt-2">
+                  <Form.Label><b>Email:</b></Form.Label>
+                  <Form.Control
+                    type="email"
+                    value={email}
+                    onChange={handleEmail}
+                    required
+                  />
+                  {errorMessage && <Form.Text className="text-danger">{errorMessage}</Form.Text>}
+                </Form.Group>
+                <div className="container d-flex justify-content-center mt-3">
+                  <Button className="me-2" variant="secondary" onClick={handleCancelForgotPassword}>
+                    Cancelar
+                  </Button>
+                  <Button variant="primary" type="submit">
+                    Enviar
+                  </Button>
+                </div>
+              </Form>
+            </>
+          ) : isResetPassword ? (
+            <Form onSubmit={handleResetPasswordSubmit}>
               <Form.Group className="mt-2">
-                <Form.Label><b>Email:</b></Form.Label>
+                <Form.Label><b>Código:</b></Form.Label>
                 <Form.Control
-                  type="email"
-                  value={email}
-                  onChange={handleEmail}
+                  type="text"
+                  value={token}
+                  onChange={handleToken}
                   required
                 />
-                {errorMessage && <Form.Text className="text-danger">{errorMessage}</Form.Text>}
               </Form.Group>
-              <div className="container d-flex justify-content-center mt-3">
-                <Button className="me-2" variant="secondary" onClick={handleCancelForgotPassword}>
-                  Cancelar
-                </Button>
-                <Button variant="primary" type="submit">
-                  Enviar
-                </Button>
-              </div>
-            </Form>
-          </>
-        ) : isResetPassword ? (
-          <Form onSubmit={handleResetPasswordSubmit}>
-            <Form.Group className="mt-2">
-              <Form.Label><b>Código:</b></Form.Label>
-              <Form.Control
-                type="text"
-                value={token}
-                onChange={handleToken}
-                required
-              />
-            </Form.Group>
-            <Form.Group className="mt-2">
-              <Form.Label><b>Nueva Contraseña:</b></Form.Label>
-              <Form.Control
-                type="password"
-                value={password}
-                onChange={handlePassword}
-                required
-              />
-            </Form.Group>
-            <Form.Group className="mt-2">
-              <Form.Label><b>Confirmar Contraseña:</b></Form.Label>
-              <Form.Control
-                type="password"
-                value={confirmPassword}
-                onChange={handleConfirmPassword}
-                required
-              />
-            </Form.Group>
-            <div className="container d-flex justify-content-center mt-3">
-              <Button className="me-2" variant="secondary" onClick={() => setIsResetPassword(false)}>
-                Cancelar
-              </Button>
-              <Button variant="primary" type="submit">
-                Restablecer
-              </Button>
-            </div>
-          </Form>
-        ) : (
-          <Form onSubmit={handleSubmit}>
-            <Form.Group className="mt-2">
-              <Form.Label><b>Email:</b></Form.Label>
-              <Form.Control
-                type="email"
-                value={email}
-                onChange={handleEmail}
-                required
-              />
-            </Form.Group>
-            <Form.Group className="mt-2">
-              <Form.Label><b>Contraseña:</b></Form.Label>
-              <Form.Control
-                type="password"
-                value={password}
-                onChange={handlePassword}
-                required
-              />
-              {errorMessage && (
-                <Form.Text className="text-danger">{errorMessage}</Form.Text>
-              )}
-            </Form.Group>
-            {!isLogin && (
+              <Form.Group className="mt-2">
+                <Form.Label><b>Nueva Contraseña:</b></Form.Label>
+                <Form.Control
+                  type="password"
+                  value={password}
+                  onChange={handlePassword}
+                  required
+                />
+              </Form.Group>
               <Form.Group className="mt-2">
                 <Form.Label><b>Confirmar Contraseña:</b></Form.Label>
                 <Form.Control
@@ -314,36 +277,79 @@ export const Login = () => {
                   required
                 />
               </Form.Group>
-            )}
-            <div className="container d-flex justify-content-center mt-3">
-              <Button className="stylebtn" variant="primary" type="submit">
-                {isLogin ? "Iniciar sesión" : "Registrarse"}
-              </Button>
-            </div>
-          </Form>
-        )}
-        {!isForgotPassword && !isResetPassword && (
-          <>
-            <Row className="mt-4 text-center">
-              <Col>
-                <span>
-                  {isLogin ? "¿Nuevo Usuario? " : "¿Ya tienes una cuenta? "}
-                  <a href="#" onClick={handleToggleForm} className="text-decoration-underline" style={{ color: '#ff324d' }}>
-                    {isLogin ? "Crear cuenta" : "Ingresar"}
+              <div className="container d-flex justify-content-center mt-3">
+                <Button className="me-2" variant="secondary" onClick={() => setIsResetPassword(false)}>
+                  Cancelar
+                </Button>
+                <Button variant="primary" type="submit">
+                  Restablecer
+                </Button>
+              </div>
+            </Form>
+          ) : (
+            <Form onSubmit={handleSubmit}>
+              <Form.Group className="mt-2">
+                <Form.Label><b>Email:</b></Form.Label>
+                <Form.Control
+                  type="email"
+                  value={email}
+                  onChange={handleEmail}
+                  required
+                />
+              </Form.Group>
+              <Form.Group className="mt-2">
+                <Form.Label><b>Contraseña:</b></Form.Label>
+                <Form.Control
+                  type="password"
+                  value={password}
+                  onChange={handlePassword}
+                  required
+                />
+                {errorMessage && (
+                  <Form.Text className="text-danger">{errorMessage}</Form.Text>
+                )}
+              </Form.Group>
+              {!isLogin && (
+                <Form.Group className="mt-2">
+                  <Form.Label><b>Confirmar Contraseña:</b></Form.Label>
+                  <Form.Control
+                    type="password"
+                    value={confirmPassword}
+                    onChange={handleConfirmPassword}
+                    required
+                  />
+                </Form.Group>
+              )}
+              <div className="container d-flex justify-content-center mt-3">
+                <Button className="stylebtn" variant="primary" type="submit">
+                  {isLogin ? "Iniciar sesión" : "Registrarse"}
+                </Button>
+              </div>
+            </Form>
+          )}
+          {!isForgotPassword && !isResetPassword && (
+            <>
+              <Row className="mt-4 text-center">
+                <Col>
+                  <span>
+                    {isLogin ? "¿Nuevo Usuario? " : "¿Ya tienes una cuenta? "}
+                    <a href="#" onClick={handleToggleForm} className="text-decoration-underline" style={{ color: '#ff324d' }}>
+                      {isLogin ? "Crear cuenta" : "Ingresar"}
+                    </a>
+                  </span>
+                </Col>
+              </Row>
+              <Row className="mt-2 text-center">
+                <Col>
+                  <a href="#" onClick={handleForgotPassword} className="text-decoration-underline" style={{ color: '#ff324d' }}>
+                    ¿Olvidaste tu contraseña?
                   </a>
-                </span>
-              </Col>
-            </Row>
-            <Row className="mt-2 text-center">
-              <Col>
-                <a href="#" onClick={handleForgotPassword} className="text-decoration-underline" style={{ color: '#ff324d' }}>
-                  ¿Olvidaste tu contraseña?
-                </a>
-              </Col>
-            </Row>
-          </>
-        )}
-      </div>
-    </Container>
+                </Col>
+              </Row>
+            </>
+          )}
+        </div>
+      </Container>
+    </>
   );
 };

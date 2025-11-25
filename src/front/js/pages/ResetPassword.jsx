@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { Container, Row, Col, Form, Button } from "react-bootstrap";
+import { Helmet } from "react-helmet";
 
 const ResetPassword = () => {
   const [searchParams] = useSearchParams();
@@ -35,42 +36,48 @@ const ResetPassword = () => {
   };
 
   return (
-    <Container className="auth-container d-flex justify-content-center align-items-center" style={{ marginTop: '120px', marginBottom: '120px' }}>
-      <div className="auth-box p-3">
-        <Row className="text-center mb-3 d-flex justify-content-center">
-          <Col>
-            <h4>Restablecer Contraseña</h4>
-            <hr className="hr_login" />
-          </Col>
-        </Row>
-        {message && <p className={`text-${message.includes("éxito") ? "success" : "danger"} text-center`}>{message}</p>}
-        <Form onSubmit={handleSubmit}>
-          <Form.Group className="mt-2">
-            <Form.Label><b>Nueva Contraseña:</b></Form.Label>
-            <Form.Control
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-            />
-          </Form.Group>
-          <Form.Group className="mt-2">
-            <Form.Label><b>Confirmar Contraseña:</b></Form.Label>
-            <Form.Control
-              type="password"
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              required
-            />
-          </Form.Group>
-          <div className="container d-flex justify-content-center mt-3">
-            <Button className="stylebtn" variant="primary" type="submit">
-              Restablecer 
-            </Button>
-          </div>
-        </Form>
-      </div>
-    </Container>
+    <>
+      <Helmet>
+        <meta name="robots" content="noindex, nofollow" />
+        <meta name="theme-color" content="#ff324d" />
+      </Helmet>
+      <Container className="auth-container d-flex justify-content-center align-items-center" style={{ marginTop: '120px', marginBottom: '120px' }}>
+        <div className="auth-box p-3">
+          <Row className="text-center mb-3 d-flex justify-content-center">
+            <Col>
+              <h4>Restablecer Contraseña</h4>
+              <hr className="hr_login" />
+            </Col>
+          </Row>
+          {message && <p className={`text-${message.includes("éxito") ? "success" : "danger"} text-center`}>{message}</p>}
+          <Form onSubmit={handleSubmit}>
+            <Form.Group className="mt-2">
+              <Form.Label><b>Nueva Contraseña:</b></Form.Label>
+              <Form.Control
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+              />
+            </Form.Group>
+            <Form.Group className="mt-2">
+              <Form.Label><b>Confirmar Contraseña:</b></Form.Label>
+              <Form.Control
+                type="password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                required
+              />
+            </Form.Group>
+            <div className="container d-flex justify-content-center mt-3">
+              <Button className="stylebtn" variant="primary" type="submit">
+                Restablecer
+              </Button>
+            </div>
+          </Form>
+        </div>
+      </Container>
+    </>
   );
 };
 

@@ -1,8 +1,14 @@
 import React from "react";
+import { Helmet } from "react-helmet";
 
 export const License = () => {
   return (
-    <div className="container" style={{ marginTop: '65px', marginBottom: '65px' }}>
+    <>
+      <Helmet>
+        <meta name="robots" content="noindex, nofollow" />
+        <meta name="theme-color" content="#ff324d" />
+      </Helmet>
+      <div className="container" style={{ marginTop: '65px', marginBottom: '65px' }}>
         <h1 className='h1-categories'>Licencia de Imágenes</h1>
         <div className="col-12">
           <p>
@@ -42,5 +48,6 @@ export const License = () => {
           </div>
         </div>
       </div>
+    </>
   );
 };

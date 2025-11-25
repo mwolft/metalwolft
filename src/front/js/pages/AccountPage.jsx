@@ -101,6 +101,7 @@ export const AccountPage = () => {
     <div className="container" style={{ marginTop: "6rem", marginBottom: "10rem" }}>
       <Helmet>
         <meta name="robots" content="noindex, nofollow" />
+        <meta name="theme-color" content="#ff324d" />
       </Helmet>
       <h1 className="h1-categories mb-4">Mi cuenta</h1>
 

@@ -1,10 +1,15 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { Breadcrumb } from '../component/Breadcrumb.jsx';
+import { Helmet } from "react-helmet";
 
 export const PrivacyPolicy = () => {
     return (
         <>
+            <Helmet>
+                <meta name="robots" content="noindex, nofollow" />
+                <meta name="theme-color" content="#ff324d" />
+            </Helmet>
             <div className="container" style={{ marginTop: '65px' }}>
                 <h1 className='h1-categories'>Política de Privacidad</h1>
                 <p>Tu privacidad es importante para nosotros. Esta política describe cómo recopilamos, utilizamos y protegemos tu información personal.</p>

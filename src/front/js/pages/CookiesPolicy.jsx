@@ -1,10 +1,15 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { Breadcrumb } from '../component/Breadcrumb.jsx';
+import { Helmet } from "react-helmet";
 
 export const CookiesPolicy = () => {
     return (
         <>
+            <Helmet>
+                <meta name="robots" content="noindex, nofollow" />
+                <meta name="theme-color" content="#ff324d" />
+            </Helmet>
             <div className="container" style={{ marginTop: '65px' }}>
                 <h1 className='h1-categories'>Política de Cookies</h1>
                 <p>Este sitio web utiliza cookies para mejorar la experiencia del usuario. Al utilizar nuestro sitio web, aceptas el uso de cookies conforme a esta política.</p>
