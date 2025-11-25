@@ -74,6 +74,9 @@ const Layout = () => {
 
     return (
         <HelmetProvider>
+            <Helmet>
+                <meta name="theme-color" content="#ff324d" />
+            </Helmet>
             <BrowserRouter basename={basename}>
                 <ScrollToTop />
                 {/*<MaintenancePopup />*/}
@@ -131,7 +134,7 @@ const Layout = () => {
                         <Route path="/delivery-estimate-banner" element={<DeliveryEstimateBanner />} />
                         <Route path="/delivery-estimate" element={<DeliveryEstimate />} />
                         <Route path="/mi-cuenta" element={<AccountPage />} />
-                        <Route path="/formulario-incidencias" element={<FormularioIncidencias/>} />
+                        <Route path="/formulario-incidencias" element={<FormularioIncidencias />} />
                     </Routes>
                     <Footer />
                 </div>
