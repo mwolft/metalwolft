@@ -3,7 +3,8 @@ import { BrowserRouter, Route, Routes } from "react-router-dom";
 import injectContext from "./store/appContext.js";
 import { CookieBanner } from "./component/CookieBanner.jsx";
 import { License } from "./pages/License.jsx";
-import { HelmetProvider } from 'react-helmet-async'
+import { HelmetProvider, Helmet } from "react-helmet-async";
+
 
 // Custom components
 import ScrollToTop from "./component/ScrollToTop.jsx";
