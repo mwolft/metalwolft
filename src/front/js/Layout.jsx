@@ -75,10 +75,10 @@ const Layout = () => {
 
     return (
         <HelmetProvider>
-            <Helmet>
-                <meta name="theme-color" content="#ff324d" />
-            </Helmet>
             <BrowserRouter basename={basename}>
+                <Helmet>
+                    <meta name="theme-color" content="#ff324d" />
+                </Helmet>
                 <ScrollToTop />
                 {/*<MaintenancePopup />*/}
                 <CookieBanner />
