@@ -29,7 +29,8 @@ import { AsideOthersCategories } from "./component/AsideOthersCategories.jsx";
 import { AsidePost } from "./component/AsidePost.jsx";
 import CheckoutForm from "./component/CheckoutForm.jsx";
 import PayPalButton from "./component/PayPalButton.jsx";
-import { SeasonalBanner} from "./component/SeasonalBanner.jsx"
+import { SeasonalBanner } from "./component/SeasonalBanner.jsx"
+import { GA4SPAListener } from "./component/GA4SPAListener.jsx";
 
 // Custom pages
 import { Home } from "./pages/Home.jsx";
@@ -77,6 +78,7 @@ const Layout = () => {
     return (
         <HelmetProvider>
             <BrowserRouter basename={basename}>
+                <GA4SPAListener />
                 <Helmet>
                     <meta name="theme-color" content="#ff324d" />
                 </Helmet>

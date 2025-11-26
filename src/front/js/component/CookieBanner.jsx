@@ -9,36 +9,36 @@ export const CookieBanner = () => {
         const consentStatus = localStorage.getItem('cookiesConsent');
         if (consentStatus === 'all') {
             setCookiesAccepted(true);
-            updateGoogleConsent('granted');
+            updateGoogleConsent(true);
         } else if (consentStatus === 'essential') {
             setOnlyEssentialCookies(true);
-            updateGoogleConsent('denied');
+            updateGoogleConsent(false);
         }
     }, []);
 
-    const updateGoogleConsent = (status) => {
-        if (window.gtag) {
-            window.gtag('consent', 'update', {
-                'ad_storage': status,
-                'analytics_storage': status,
-                'ad_user_data': status,
-                'ad_personalization': status
-            });
-        }
+    const updateGoogleConsent = (granted) => {
+        window.dataLayer = window.dataLayer || [];
+        window.dataLayer.push({
+            event: "consent_update",
+            ad_storage: granted ? "granted" : "denied",
+            analytics_storage: granted ? "granted" : "denied",
+            ad_user_data: granted ? "granted" : "denied",
+            ad_personalization: granted ? "granted" : "denied"
+        });
     };
 
     const handleAcceptAll = () => {
         localStorage.setItem('cookiesConsent', 'all');
         setCookiesAccepted(true);
         setOnlyEssentialCookies(false);
-        updateGoogleConsent('granted');
+        updateGoogleConsent(true);
     };
 
     const handleAcceptEssential = () => {
         localStorage.setItem('cookiesConsent', 'essential');
         setOnlyEssentialCookies(true);
         setCookiesAccepted(false);
-        updateGoogleConsent('denied');
+        updateGoogleConsent(false);
     };
 
     return (
