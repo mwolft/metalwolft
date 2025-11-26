@@ -29,6 +29,7 @@ import { AsideOthersCategories } from "./component/AsideOthersCategories.jsx";
 import { AsidePost } from "./component/AsidePost.jsx";
 import CheckoutForm from "./component/CheckoutForm.jsx";
 import PayPalButton from "./component/PayPalButton.jsx";
+import { SeasonalBanner} from "./component/SeasonalBanner.jsx"
 
 // Custom pages
 import { Home } from "./pages/Home.jsx";
@@ -136,6 +137,7 @@ const Layout = () => {
                         <Route path="/delivery-estimate" element={<DeliveryEstimate />} />
                         <Route path="/mi-cuenta" element={<AccountPage />} />
                         <Route path="/formulario-incidencias" element={<FormularioIncidencias />} />
+                        <Route path="/seasonal-banner" element={<SeasonalBanner />} />
                     </Routes>
                     <Footer />
                 </div>

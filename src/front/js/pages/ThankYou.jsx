@@ -22,6 +22,10 @@ export const ThankYou = () => {
 
     return (
         <>
+            <Helmet>
+                <meta name="robots" content="noindex, nofollow" />
+                <meta name="theme-color" content="#ff324d" />
+            </Helmet>
             <div className="container" style={{ marginTop: '100px', marginBottom: '250px' }}>
                 <div className="row">
                     <div className="col-11 text-center">
