@@ -7,7 +7,11 @@ export const InformationCollected = () => {
     return (
         <>
             <Helmet>
-                <meta name="robots" content="noindex, nofollow" />
+                <title>Información que Recopilamos | Privacidad del Usuario | MetalWolft</title>
+                <meta
+                    name="description"
+                    content="Descubre qué información recopilamos en MetalWolft, cómo la utilizamos, cuál es la base legal para su tratamiento y tus derechos como usuario en materia de protección de datos."
+                />
                 <meta name="theme-color" content="#ff324d" />
             </Helmet>
             <div className="container" style={{ marginTop: '65px' }}>

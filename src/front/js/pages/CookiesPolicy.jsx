@@ -7,7 +7,11 @@ export const CookiesPolicy = () => {
     return (
         <>
             <Helmet>
-                <meta name="robots" content="noindex, nofollow" />
+                <title>Política de Cookies | MetalWolft</title>
+                <meta
+                    name="description"
+                    content="Consulta la Política de Cookies de MetalWolft y descubre qué tipos de cookies utilizamos, para qué sirven y cómo puedes gestionarlas desde tu navegador."
+                />
                 <meta name="theme-color" content="#ff324d" />
             </Helmet>
             <div className="container" style={{ marginTop: '65px' }}>

@@ -5,7 +5,11 @@ export const License = () => {
   return (
     <>
       <Helmet>
-        <meta name="robots" content="noindex, nofollow" />
+        <title>Licencia de Imágenes | MetalWolft</title>
+        <meta
+          name="description"
+          content="Consulta la licencia de uso de las imágenes publicadas en MetalWolft, los derechos de autor, permitidos, restricciones y condiciones para su utilización en otros medios digitales o impresos."
+        />
         <meta name="theme-color" content="#ff324d" />
       </Helmet>
       <div className="container" style={{ marginTop: '65px', marginBottom: '65px' }}>

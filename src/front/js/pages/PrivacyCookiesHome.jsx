@@ -7,7 +7,6 @@ export const PrivacyCookiesHome = () => {
     return (
         <>
             <Helmet>
-                <meta name="robots" content="noindex, nofollow" />
                 <meta name="theme-color" content="#ff324d" />
             </Helmet>
             <div className="container" style={{ marginTop: '65px' }}>

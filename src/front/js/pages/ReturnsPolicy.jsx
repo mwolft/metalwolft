@@ -5,7 +5,11 @@ export const ReturnsPolicy = () => {
     return (
         <>
             <Helmet>
-                <meta name="robots" content="noindex, nofollow" />
+                <title>Política de Devoluciones | MetalWolft</title>
+                <meta
+                    name="description"
+                    content="Consulta la Política de Devoluciones de MetalWolft: condiciones para cambios o devoluciones, plazos, procesos y requisitos necesarios para gestionar cualquier incidencia relacionada con tu pedido."
+                />
                 <meta name="theme-color" content="#ff324d" />
             </Helmet>
             <div className="container" style={{ marginTop: '65px' }}>

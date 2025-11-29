@@ -46,6 +46,11 @@ export const Contact = () => {
     return (
         <>
             <Helmet>
+                <title>Contacto | MetalWolft — Carpintería Metálica Online</title>
+                <meta
+                    name="description"
+                    content="Ponte en contacto con MetalWolft para consultas, pedidos a medida o soporte. Estamos disponibles para ayudarte con cualquier proyecto de carpintería metálica."
+                />
                 <meta name="theme-color" content="#ff324d" />
             </Helmet>
             <div style={{ marginTop: '80px' }}>

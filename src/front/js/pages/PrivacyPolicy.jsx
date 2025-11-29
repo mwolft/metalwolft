@@ -7,7 +7,11 @@ export const PrivacyPolicy = () => {
     return (
         <>
             <Helmet>
-                <meta name="robots" content="noindex, nofollow" />
+                <title>Política de Privacidad | MetalWolft</title>
+                <meta
+                    name="description"
+                    content="Consulta la Política de Privacidad de MetalWolft: qué información recopilamos, cómo la utilizamos, tus derechos como usuario y cómo protegemos tus datos personales."
+                />
                 <meta name="theme-color" content="#ff324d" />
             </Helmet>
             <div className="container" style={{ marginTop: '65px' }}>

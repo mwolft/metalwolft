@@ -7,7 +7,11 @@ export const ChangesInCookiePolicy = () => {
     return (
         <>
             <Helmet>
-                <meta name="robots" content="noindex, nofollow" />
+                <title>Cambios en la Política de Cookies | MetalWolft</title>
+                <meta
+                    name="description"
+                    content="Consulta las actualizaciones y cambios realizados en la Política de Cookies de MetalWolft. Mantenemos esta información al día para garantizar transparencia y claridad en el uso de tecnologías de seguimiento."
+                />
                 <meta name="theme-color" content="#ff324d" />
             </Helmet>
             <div className="container" style={{ marginTop: '65px' }}>

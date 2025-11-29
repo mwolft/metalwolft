@@ -1137,3 +1137,411 @@ def seo_rejas_para_ventanas_modernas():
         }
     }
     return jsonify(meta_data)
+
+
+@seo_bp.route("/api/seo/contact", methods=["GET"])
+def seo_contact():
+    title = "Contacto | MetalWolft — Carpintería Metálica Online"
+    description = (
+        "Ponte en contacto con MetalWolft para consultas, pedidos a medida o soporte. "
+        "Estamos disponibles para ayudarte con cualquier proyecto de carpintería metálica."
+    )
+    image = "https://res.cloudinary.com/dewanllxn/image/upload/v1733562783/puertas-peatonales-metalicas_i5cvxr.avif"
+    url = "https://www.metalwolft.com/contact"
+
+    meta_data = {
+        "lang": "es",
+
+        # --- TITLE & DESCRIPTION ---
+        "title": title,
+        "description": description,
+        "canonical": url,
+        "robots": "index, follow",
+
+        # --- OPEN GRAPH ---
+        "og_title": title,
+        "og_description": description,
+        "og_image": image,
+        "og_url": url,
+        "og_type": "website",
+        "og_locale": "es_ES",
+        "og_site_name": "Metal Wolft",
+
+        # --- TWITTER ---
+        "twitter_card_type": "summary_large_image",
+        "twitter_site": "@MetalWolft",
+        "twitter_creator": "@MetalWolft",
+        "twitter_title": title,
+        "twitter_description": description,
+        "twitter_image": image,
+
+        # --- JSON-LD ---
+        "json_ld": {
+            "@context": "https://schema.org",
+            "@type": "ContactPage",
+            "name": title,
+            "description": description,
+            "url": url,
+            "image": image,
+            "publisher": {
+                "@type": "Organization",
+                "name": "Metal Wolft",
+                "logo": {
+                    "@type": "ImageObject",
+                    "url": image
+                }
+            }
+        }
+    }
+
+    return jsonify(meta_data)
+
+
+@seo_bp.route("/api/seo/politica-privacidad", methods=["GET"])
+def seo_politica_privacidad():
+    title = "Política de Privacidad | MetalWolft"
+    description = (
+        "Consulta la Política de Privacidad de MetalWolft: qué información recopilamos, "
+        "cómo la utilizamos, tus derechos como usuario y cómo protegemos tus datos personales."
+    )
+    image = "https://res.cloudinary.com/dewanllxn/image/upload/v1733562817/vallado-metalico-residencial_zhmusr.avif"
+    url = "https://www.metalwolft.com/politica-privacidad"
+
+    meta_data = {
+        "lang": "es",
+
+        # --- TITLE & DESCRIPTION ---
+        "title": title,
+        "description": description,
+        "canonical": url,
+        "robots": "index, follow",
+
+        # --- OPEN GRAPH ---
+        "og_title": title,
+        "og_description": description,
+        "og_image": image,
+        "og_url": url,
+        "og_type": "article",
+        "og_locale": "es_ES",
+        "og_site_name": "Metal Wolft",
+
+        # --- TWITTER ---
+        "twitter_card_type": "summary_large_image",
+        "twitter_site": "@MetalWolft",
+        "twitter_creator": "@MetalWolft",
+        "twitter_title": title,
+        "twitter_description": description,
+        "twitter_image": image,
+
+        # --- JSON-LD ---
+        "json_ld": {
+            "@context": "https://schema.org",
+            "@type": "WebPage",
+            "name": title,
+            "description": description,
+            "url": url,
+            "image": image,
+            "publisher": {
+                "@type": "Organization",
+                "name": "Metal Wolft",
+                "logo": {
+                    "@type": "ImageObject",
+                    "url": image
+                }
+            }
+        }
+    }
+
+    return jsonify(meta_data)
+
+
+@seo_bp.route("/api/seo/politica-cookies", methods=["GET"])
+def seo_politica_cookies():
+    title = "Política de Cookies | MetalWolft"
+    description = (
+        "Consulta la Política de Cookies de MetalWolft y descubre qué tipos de cookies utilizamos, "
+        "para qué sirven y cómo puedes gestionarlas desde tu navegador."
+    )
+    image = "https://res.cloudinary.com/dewanllxn/image/upload/v1733562604/cerramiento-cocina-salon_smb1vp.jpg"
+    url = "https://www.metalwolft.com/politica-cookies"
+
+    meta_data = {
+        "lang": "es",
+
+        # --- TITLE & DESCRIPTION ---
+        "title": title,
+        "description": description,
+        "canonical": url,
+        "robots": "index, follow",
+
+        # --- OPEN GRAPH ---
+        "og_title": title,
+        "og_description": description,
+        "og_image": image,
+        "og_url": url,
+        "og_type": "article",
+        "og_locale": "es_ES",
+        "og_site_name": "Metal Wolft",
+
+        # --- TWITTER ---
+        "twitter_card_type": "summary_large_image",
+        "twitter_site": "@MetalWolft",
+        "twitter_creator": "@MetalWolft",
+        "twitter_title": title,
+        "twitter_description": description,
+        "twitter_image": image,
+
+        # --- JSON-LD ---
+        "json_ld": {
+            "@context": "https://schema.org",
+            "@type": "WebPage",
+            "name": title,
+            "description": description,
+            "url": url,
+            "image": image,
+            "publisher": {
+                "@type": "Organization",
+                "name": "Metal Wolft",
+                "logo": {
+                    "@type": "ImageObject",
+                    "url": image
+                }
+            }
+        }
+    }
+
+    return jsonify(meta_data)
+
+
+@seo_bp.route("/api/seo/informacion-recogida", methods=["GET"])
+def seo_informacion_recogida():
+    title = "Información que Recopilamos | Privacidad del Usuario | MetalWolft"
+    description = (
+        "Descubre qué información recopilamos en MetalWolft, cómo la utilizamos, cuál es la base legal "
+        "para su tratamiento y tus derechos como usuario en materia de protección de datos."
+    )
+    image = "https://res.cloudinary.com/dewanllxn/image/upload/v1733817377/herrero-ciudad-real_ndf77e.jpg"
+    url = "https://www.metalwolft.com/informacion-recogida"
+
+    meta_data = {
+        "lang": "es",
+
+        # --- TITLE & DESCRIPTION ---
+        "title": title,
+        "description": description,
+        "canonical": url,
+        "robots": "index, follow",
+
+        # --- OPEN GRAPH ---
+        "og_title": title,
+        "og_description": description,
+        "og_image": image,
+        "og_url": url,
+        "og_type": "article",
+        "og_locale": "es_ES",
+        "og_site_name": "Metal Wolft",
+
+        # --- TWITTER ---
+        "twitter_card_type": "summary_large_image",
+        "twitter_site": "@MetalWolft",
+        "twitter_creator": "@MetalWolft",
+        "twitter_title": title,
+        "twitter_description": description,
+        "twitter_image": image,
+
+        # --- JSON-LD ---
+        "json_ld": {
+            "@context": "https://schema.org",
+            "@type": "WebPage",
+            "name": title,
+            "description": description,
+            "url": url,
+            "image": image,
+            "publisher": {
+                "@type": "Organization",
+                "name": "Metal Wolft",
+                "logo": {
+                    "@type": "ImageObject",
+                    "url": image
+                }
+            }
+        }
+    }
+
+    return jsonify(meta_data)
+
+
+@seo_bp.route("/api/seo/politica-devolucion", methods=["GET"])
+def seo_politica_devolucion():
+    title = "Política de Devoluciones | MetalWolft"
+    description = (
+        "Consulta la Política de Devoluciones de MetalWolft: condiciones para cambios o devoluciones, "
+        "plazos, procesos y requisitos necesarios para gestionar cualquier incidencia relacionada con tu pedido."
+    )
+    image = "https://res.cloudinary.com/dewanllxn/image/upload/v1733562747/puertas-correderas-leroy-merlin_rix2yz.avif"
+    url = "https://www.metalwolft.com/politica-devolucion"
+
+    meta_data = {
+        "lang": "es",
+
+        # --- TITLE & DESCRIPTION ---
+        "title": title,
+        "description": description,
+        "canonical": url,
+        "robots": "index, follow",
+
+        # --- OPEN GRAPH ---
+        "og_title": title,
+        "og_description": description,
+        "og_image": image,
+        "og_url": url,
+        "og_type": "article",
+        "og_locale": "es_ES",
+        "og_site_name": "Metal Wolft",
+
+        # --- TWITTER ---
+        "twitter_card_type": "summary_large_image",
+        "twitter_site": "@MetalWolft",
+        "twitter_creator": "@MetalWolft",
+        "twitter_title": title,
+        "twitter_description": description,
+        "twitter_image": image,
+
+        # --- JSON-LD ---
+        "json_ld": {
+            "@context": "https://schema.org",
+            "@type": "WebPage",
+            "name": title,
+            "description": description,
+            "url": url,
+            "image": image,
+            "publisher": {
+                "@type": "Organization",
+                "name": "Metal Wolft",
+                "logo": {
+                    "@type": "ImageObject",
+                    "url": image
+                }
+            }
+        }
+    }
+
+    return jsonify(meta_data)
+
+
+@seo_bp.route("/api/seo/cambios-politica-cookies", methods=["GET"])
+def seo_cambios_politica_cookies():
+    title = "Cambios en la Política de Cookies | MetalWolft"
+    description = (
+        "Consulta las actualizaciones y cambios realizados en la Política de Cookies de MetalWolft. "
+        "Mantenemos esta información al día para garantizar transparencia y claridad en el uso de tecnologías de seguimiento."
+    )
+    image = "https://res.cloudinary.com/dewanllxn/image/upload/v1733562604/cerramiento-cocina-salon_smb1vp.jpg"
+    url = "https://www.metalwolft.com/cambios-politica-cookies"
+
+    meta_data = {
+        "lang": "es",
+
+        # --- TITLE & DESCRIPTION ---
+        "title": title,
+        "description": description,
+        "canonical": url,
+        "robots": "index, follow",
+
+        # --- OPEN GRAPH ---
+        "og_title": title,
+        "og_description": description,
+        "og_image": image,
+        "og_url": url,
+        "og_type": "article",
+        "og_locale": "es_ES",
+        "og_site_name": "Metal Wolft",
+
+        # --- TWITTER ---
+        "twitter_card_type": "summary_large_image",
+        "twitter_site": "@MetalWolft",
+        "twitter_creator": "@MetalWolft",
+        "twitter_title": title,
+        "twitter_description": description,
+        "twitter_image": image,
+
+        # --- JSON-LD ---
+        "json_ld": {
+            "@context": "https://schema.org",
+            "@type": "WebPage",
+            "name": title,
+            "description": description,
+            "url": url,
+            "image": image,
+            "publisher": {
+                "@type": "Organization",
+                "name": "Metal Wolft",
+                "logo": {
+                    "@type": "ImageObject",
+                    "url": image
+                }
+            }
+        }
+    }
+
+    return jsonify(meta_data)
+
+
+@seo_bp.route("/api/seo/license", methods=["GET"])
+def seo_license():
+    title = "Licencia de Imágenes | MetalWolft"
+    description = (
+        "Consulta la licencia de uso de las imágenes publicadas en MetalWolft, los derechos de autor, "
+        "permitidos, restricciones y condiciones para su utilización en otros medios digitales o impresos."
+    )
+    image = "https://res.cloudinary.com/dewanllxn/image/upload/v1733817377/herrero-ciudad-real_ndf77e.jpg"
+    url = "https://www.metalwolft.com/license"
+
+    meta_data = {
+        "lang": "es",
+
+        # --- TITLE & DESCRIPTION ---
+        "title": title,
+        "description": description,
+        "canonical": url,
+        "robots": "index, follow",
+
+        # --- OPEN GRAPH ---
+        "og_title": title,
+        "og_description": description,
+        "og_image": image,
+        "og_url": url,
+        "og_type": "article",
+        "og_locale": "es_ES",
+        "og_site_name": "Metal Wolft",
+
+        # --- TWITTER ---
+        "twitter_card_type": "summary_large_image",
+        "twitter_site": "@MetalWolft",
+        "twitter_creator": "@MetalWolft",
+        "twitter_title": title,
+        "twitter_description": description,
+        "twitter_image": image,
+
+        # --- JSON-LD ---
+        "json_ld": {
+            "@context": "https://schema.org",
+            "@type": "WebPage",
+            "name": title,
+            "description": description,
+            "url": url,
+            "image": image,
+            "publisher": {
+                "@type": "Organization",
+                "name": "Metal Wolft",
+                "logo": {
+                    "@type": "ImageObject",
+                    "url": image
+                }
+            }
+        }
+    }
+
+    return jsonify(meta_data)
+
+
