@@ -6,13 +6,32 @@ import { Helmet } from "react-helmet";
 export const InformationCollected = () => {
     return (
         <>
-            <Helmet>
-                <title>Información que Recopilamos | Privacidad del Usuario | MetalWolft</title>
-                <meta
-                    name="description"
-                    content="Descubre qué información recopilamos en MetalWolft, cómo la utilizamos, cuál es la base legal para su tratamiento y tus derechos como usuario en materia de protección de datos."
-                />
-                <meta name="theme-color" content="#ff324d" />
+            <Helmet htmlAttributes={{ lang: metaData.lang || "es" }}>
+                <title>{metaData.title}</title>
+                <meta name="description" content={metaData.description} />
+                <meta name="keywords" content={metaData.keywords} />
+                <meta name="robots" content={metaData.robots || "index, follow"} />
+                <meta name="theme-color" content={metaData.theme_color || "#ff324d"} />
+
+                {/* Twitter */}
+                <meta name="twitter:card" content={metaData.twitter_card_type} />
+                <meta name="twitter:title" content={metaData.twitter_title} />
+                <meta name="twitter:description" content={metaData.twitter_description} />
+                <meta name="twitter:image" content={metaData.twitter_image} />
+
+                {/* OpenGraph */}
+                <meta property="og:type" content={metaData.og_type} />
+                <meta property="og:title" content={metaData.og_title} />
+                <meta property="og:description" content={metaData.og_description} />
+                <meta property="og:image" content={metaData.og_image} />
+                <meta property="og:url" content={metaData.og_url} />
+                <link rel="canonical" href={metaData.canonical} />
+
+                {metaData.json_ld && (
+                    <script type="application/ld+json">
+                        {JSON.stringify(metaData.json_ld)}
+                    </script>
+                )}
             </Helmet>
             <div className="container" style={{ marginTop: '65px' }}>
                 <h1 className='h1-categories'>Información que Recopilamos</h1>

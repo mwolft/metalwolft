@@ -116,36 +116,14 @@ export const Cart = () => {
 
     return (
         <>
-            <Helmet htmlAttributes={{ lang: metaData.lang || "es" }}>
-                <title>{metaData.title}</title>
-                <meta name="description" content={metaData.description} />
-                <meta name="keywords" content={metaData.keywords} />
-                <meta name="robots" content={metaData.robots || "noindex,follow"} />
-                <meta name="theme-color" content={metaData.theme_color || "#ff324d"} />
-
-                {/* Twitter */}
-                <meta name="twitter:card" content={metaData.twitter_card_type} />
-                <meta name="twitter:title" content={metaData.twitter_title} />
-                <meta name="twitter:description" content={metaData.twitter_description} />
-                <meta name="twitter:image" content={metaData.twitter_image || ""} />
-                <meta name="twitter:image:alt" content={metaData.twitter_image_alt} />
-
-                {/* OpenGraph */}
-                <meta property="og:type" content={metaData.og_type} />
-                <meta property="og:title" content={metaData.title} />
-                <meta property="og:description" content={metaData.description} />
-                <meta property="og:image" content={metaData.og_image || ""} />
-                <meta property="og:url" content={metaData.og_url} />
-                <meta property="og:site_name" content={metaData.og_site_name} />
-                <meta property="og:locale" content={metaData.og_locale || "es_ES"} />
-
-                <link rel="canonical" href={metaData.canonical} />
-
-                {metaData.json_ld && (
-                    <script type="application/ld+json">
-                        {JSON.stringify(metaData.json_ld)}
-                    </script>
-                )}
+            <Helmet htmlAttributes={{ lang: "es" }}>
+                <title>Carrito de compra | Metal Wolft</title>
+                <meta
+                    name="description"
+                    content="Revise su carrito de compra, gastos de envío y totales antes de completar su pedido en Metal Wolft."
+                />
+                <meta name="robots" content="noindex, nofollow" />
+                <meta name="theme-color" content="#ff324d" />
             </Helmet>
             <Container fluid style={{ marginTop: "95px" }}>
                 <h2 className="h2-categories text-center my-2">Carrito de compra</h2>

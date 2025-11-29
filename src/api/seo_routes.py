@@ -72,47 +72,25 @@ def cart():
         "lang": "es",
         "title": "Carrito de compra | Metal Wolft",
         "description": "Revise su carrito de compra, gastos de envío y totales antes de completar su pedido en Metal Wolft.",
-        "keywords": "carrito de compra, resumen de pedido, rejas para ventanas, metal wolft",
-        "robots": "noindex, follow",
+        "keywords": "carrito de compra, resumen de pedido, metal wolft",
+        "robots": "noindex, nofollow",
         "theme_color": "#ff324d",
+        "canonical": None,
+        "og_type": None,
+        "og_title": None,
+        "og_description": None,
+        "og_image": None,
+        "og_url": None,
+        "og_site_name": None,
 
-        # Twitter
-        "twitter_card_type": "summary_large_image",
-        "twitter_title": "Carrito de compra | Metal Wolft",
-        "twitter_description": "Revise su carrito y confirme los productos antes del pago.",
-        "twitter_image": "https://res.cloudinary.com/dewanllxn/image/upload/v1749024437/carpinteria-metalica-online_zcr6p0.png",
-        "twitter_image_alt": "Carrito Metal Wolft",
+        "twitter_card_type": None,
+        "twitter_title": None,
+        "twitter_description": None,
+        "twitter_image": None,
 
-        # OpenGraph
-        "og_type": "website",
-        "og_title": "Carrito de compra | Metal Wolft",
-        "og_description": "Resumen de productos seleccionados antes de finalizar su compra.",
-        "og_image": "https://res.cloudinary.com/dewanllxn/image/upload/v1749024437/carpinteria-metalica-online_zcr6p0.png",
-        "og_image_width": "1200",
-        "og_image_height": "630",
-        "og_url": "https://www.metalwolft.com/cart",
-        "og_site_name": "Metal Wolft",
-
-        # Canonical
-        "canonical": "https://www.metalwolft.com/cart",
-
-        # JSON-LD
-        "json_ld": {
-            "@context": "https://schema.org",
-            "@type": "WebPage",
-            "name": "Carrito de compra",
-            "url": "https://www.metalwolft.com/cart",
-            "description": "Revise los productos de su carrito antes de pasar al pago.",
-            "publisher": {
-                "@type": "Organization",
-                "name": "Metal Wolft",
-                "logo": {
-                    "@type": "ImageObject",
-                    "url": "https://res.cloudinary.com/dewanllxn/image/upload/v1749024437/carpinteria-metalica-online_zcr6p0.png"
-                }
-            }
-        }
+        "json_ld": None
     }
+
     return jsonify(meta_data)
 
 
@@ -565,7 +543,7 @@ def seo_cerramientos_de_cocina_con_cristal():
     title = "Cerramientos de Cocina con Cristal — Diseño para interiores"
     description = (
         "Descubre nuestra gama de cerramientos de cocina y salón con cristal templado "
-        "y estructura metálica. Soluciones elegantes que transforman tus espacios interiores."
+        "y estructura metálica."
     )
     image = "https://res.cloudinary.com/dewanllxn/image/upload/v1749024437/cerramientos-de-cocina-con-cristal_nprdml.png"
     url = "https://www.metalwolft.com/cerramientos-de-cocina-con-cristal"
@@ -947,7 +925,7 @@ def seo_donde_comprar_rejas_leroy_ikea():
     title = "Ikea, Leroy Merlin o a medida: ¿Dónde comprar rejas para ventanas?"
     description = (
         "Comparamos rejas para ventanas de Ikea, Leroy Merlin y rejas fabricadas a medida. "
-        "Descubre diferencias reales en calidad, precio, materiales, seguridad y durabilidad."
+        "Descubre diferencias reales."
     )
     image = "https://res.cloudinary.com/dewanllxn/image/upload/v1760079525/donde-comprar-rejas-leroy-ikea_-_copia_ztsabu.png"
     url = "https://www.metalwolft.com/donde-comprar-rejas-leroy-ikea"
@@ -1201,14 +1179,15 @@ def seo_contact():
 def seo_politica_privacidad():
     title = "Política de Privacidad | MetalWolft"
     description = (
-        "Consulta la Política de Privacidad de MetalWolft: qué información recopilamos, "
-        "cómo la utilizamos, tus derechos como usuario y cómo protegemos tus datos personales."
+        "Conoce qué datos recopila MetalWolft, cómo se utilizan y qué derechos tienes como usuario "
+        "para garantizar la protección de tu información personal."
     )
     image = "https://res.cloudinary.com/dewanllxn/image/upload/v1733562817/vallado-metalico-residencial_zhmusr.avif"
     url = "https://www.metalwolft.com/politica-privacidad"
 
     meta_data = {
         "lang": "es",
+        "theme_color": "#ff324d",
 
         # --- TITLE & DESCRIPTION ---
         "title": title,
@@ -1317,8 +1296,8 @@ def seo_politica_cookies():
 def seo_informacion_recogida():
     title = "Información que Recopilamos | Privacidad del Usuario | MetalWolft"
     description = (
-        "Descubre qué información recopilamos en MetalWolft, cómo la utilizamos, cuál es la base legal "
-        "para su tratamiento y tus derechos como usuario en materia de protección de datos."
+        "Conoce qué información recopilamos en MetalWolft, para qué la usamos y qué derechos tienes "
+        "sobre tus datos personales según la normativa de privacidad."
     )
     image = "https://res.cloudinary.com/dewanllxn/image/upload/v1733817377/herrero-ciudad-real_ndf77e.jpg"
     url = "https://www.metalwolft.com/informacion-recogida"
@@ -1375,14 +1354,15 @@ def seo_informacion_recogida():
 def seo_politica_devolucion():
     title = "Política de Devoluciones | MetalWolft"
     description = (
-        "Consulta la Política de Devoluciones de MetalWolft: condiciones para cambios o devoluciones, "
-        "plazos, procesos y requisitos necesarios para gestionar cualquier incidencia relacionada con tu pedido."
+        "Revisa las condiciones para cambios y devoluciones en MetalWolft: plazos, requisitos y pasos "
+        "necesarios para gestionar cualquier incidencia con tu pedido."
     )
     image = "https://res.cloudinary.com/dewanllxn/image/upload/v1733562747/puertas-correderas-leroy-merlin_rix2yz.avif"
     url = "https://www.metalwolft.com/politica-devolucion"
 
     meta_data = {
         "lang": "es",
+        "theme_color": "#ff324d",
 
         # --- TITLE & DESCRIPTION ---
         "title": title,
@@ -1433,8 +1413,8 @@ def seo_politica_devolucion():
 def seo_cambios_politica_cookies():
     title = "Cambios en la Política de Cookies | MetalWolft"
     description = (
-        "Consulta las actualizaciones y cambios realizados en la Política de Cookies de MetalWolft. "
-        "Mantenemos esta información al día para garantizar transparencia y claridad en el uso de tecnologías de seguimiento."
+        "Revisa las actualizaciones en la Política de Cookies de MetalWolft. "
+        "Mantente informado sobre cambios recientes y cómo gestionamos las tecnologías de seguimiento."
     )
     image = "https://res.cloudinary.com/dewanllxn/image/upload/v1733562604/cerramiento-cocina-salon_smb1vp.jpg"
     url = "https://www.metalwolft.com/cambios-politica-cookies"
@@ -1447,6 +1427,7 @@ def seo_cambios_politica_cookies():
         "description": description,
         "canonical": url,
         "robots": "index, follow",
+        "theme_color": "#ff324d",
 
         # --- OPEN GRAPH ---
         "og_title": title,
@@ -1491,14 +1472,15 @@ def seo_cambios_politica_cookies():
 def seo_license():
     title = "Licencia de Imágenes | MetalWolft"
     description = (
-        "Consulta la licencia de uso de las imágenes publicadas en MetalWolft, los derechos de autor, "
-        "permitidos, restricciones y condiciones para su utilización en otros medios digitales o impresos."
+        "Consulta los derechos de autor, permisos y restricciones para el uso de las imágenes de MetalWolft "
+        "en medios digitales o impresos."
     )
     image = "https://res.cloudinary.com/dewanllxn/image/upload/v1733817377/herrero-ciudad-real_ndf77e.jpg"
     url = "https://www.metalwolft.com/license"
 
     meta_data = {
         "lang": "es",
+        "theme_color": "#ff324d",
 
         # --- TITLE & DESCRIPTION ---
         "title": title,
@@ -1543,5 +1525,3 @@ def seo_license():
     }
 
     return jsonify(meta_data)
-
-
