@@ -114,8 +114,7 @@ export const ReturnsPolicy = () => {
                 <p className='mb-5'>Solo posible antes del inicio de fabricación.</p>
 
                 <hr className="my-4" />
-
-                {/* 🔗 OUTGOING LINKS PARA AHREFS */}
+                
                 <div className="mt-4 mb-5">
                     <h2 className="h2-categories mb-3">Enlaces relacionados</h2>
                     <ul>

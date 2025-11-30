@@ -1,8 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Container, Row, Col, Form, Button, Alert, Spinner } from 'react-bootstrap';
-import { Helmet } from "react-helmet";
+import { Helmet } from "react-helmet-async";
 
 export const FormularioIncidencias = () => {
+
+    const [metaData, setMetaData] = useState({});
     const [formData, setFormData] = useState({
         name: '',
         email: '',
@@ -15,64 +17,55 @@ export const FormularioIncidencias = () => {
     const [sending, setSending] = useState(false);
     const [responseMessage, setResponseMessage] = useState(null);
     const [error, setError] = useState(null);
+    useEffect(() => {
+        const apiBaseUrl = process.env.REACT_APP_BACKEND_URL
+            ? process.env.REACT_APP_BACKEND_URL
+            : process.env.NODE_ENV === "production"
+                ? "https://api.metalwolft.com"
+                : "https://fuzzy-space-eureka-7v7jw6jv7v5jhp945-3001.app.github.dev/";
 
-    const handleChange = (e) => {
-        setFormData({ ...formData, [e.target.name]: e.target.value });
-    };
+        fetch(`${apiBaseUrl}/api/seo/formulario-incidencias`)
+            .then(res => res.json())
+            .then(data => setMetaData(data))
+            .catch(err => console.error("SEO error:", err));
+    }, []);
 
-    const handleImageChange = (e) => {
-        const selectedFiles = Array.from(e.target.files);
-        if (selectedFiles.length > 3) {
-            setError('Solo se permiten hasta 3 imágenes.');
-        } else {
-            setImages(selectedFiles);
-            setError(null);
-        }
-    };
-
-    const handleSubmit = async (e) => {
-        e.preventDefault();
-        setSending(true);
-        setResponseMessage(null);
-        setError(null);
-
-        try {
-            const data = new FormData();
-            Object.entries(formData).forEach(([key, value]) => data.append(key, value));
-            images.forEach((file, index) => data.append(`image${index + 1}`, file));
-
-            const backendUrl =
-                process.env.NODE_ENV === 'development'
-                    ? 'https://fuzzy-space-eureka-7v7jw6jv7v5jhp945-3001.app.github.dev/'
-                    : 'https://api.metalwolft.com';
-
-            const resp = await fetch(`${backendUrl}/api/email/report-issue`, {
-                method: 'POST',
-                body: data
-            });
-
-
-            const result = await resp.json();
-
-            if (resp.ok) {
-                setResponseMessage('✅ Incidencia enviada correctamente. Te contactaremos en breve.');
-                setFormData({ name: '', email: '', order_number: '', issue_type: '', message: '' });
-                setImages([]);
-            } else {
-                throw new Error(result.error || 'Error al enviar la incidencia.');
-            }
-        } catch (err) {
-            setError('❌ Hubo un problema al enviar la incidencia. Inténtalo de nuevo.');
-        } finally {
-            setSending(false);
-        }
-    };
 
     return (
         <>
-            <Helmet>
+            <Helmet htmlAttributes={{ lang: metaData.lang || "es" }}>
+                <title>{metaData.title}</title>
+                <meta name="description" content={metaData.description} />
+
                 <meta name="robots" content="noindex, nofollow" />
-                <meta name="theme-color" content="#ff324d" />
+                <meta name="theme-color" content={metaData.theme_color || "#ff324d"} />
+
+                {/* OG */}
+                <meta property="og:type" content={metaData.og_type} />
+                <meta property="og:title" content={metaData.og_title} />
+                <meta property="og:description" content={metaData.og_description} />
+                <meta property="og:image" content={metaData.og_image} />
+                <meta property="og:url" content={metaData.og_url} />
+                <meta property="og:site_name" content={metaData.og_site_name} />
+                <meta property="og:locale" content={metaData.og_locale} />
+
+                {/* Twitter */}
+                <meta name="twitter:card" content={metaData.twitter_card_type} />
+                <meta name="twitter:title" content={metaData.twitter_title} />
+                <meta name="twitter:description" content={metaData.twitter_description} />
+                <meta name="twitter:image" content={metaData.twitter_image} />
+
+                {/* Canonical */}
+                {metaData.canonical && (
+                    <link rel="canonical" href={metaData.canonical} />
+                )}
+
+                {/* JSON-LD */}
+                {metaData.json_ld && (
+                    <script type="application/ld+json">
+                        {JSON.stringify(metaData.json_ld)}
+                    </script>
+                )}
             </Helmet>
             <Container style={{ marginTop: '70px', maxWidth: '700px' }}>
                 <h1 className="h1-categories mb-4">Formulario de Incidencias</h1>

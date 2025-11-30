@@ -78,8 +78,6 @@ export const Cart = () => {
         REJAS10: 10,
         WOLFT15: 15,
         JOEL20: 20,
-        BLACK15: 15,
-        BLAK15: 15,
         SERGIO99: 99,
     };
 

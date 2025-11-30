@@ -76,7 +76,6 @@ export const PrivacyPolicy = () => {
 
                 <p>Para obtener más detalles o hacer preguntas sobre nuestra política de privacidad, contáctanos a través de nuestro servicio de atención al cliente.</p>
 
-                {/* 🔗 OUTGOING LINKS para Ahrefs (muy importante) */}
                 <hr className="my-4" />
                 <div className="mt-4 mb-5">
                     <h2 className="h2-categories mb-3">Enlaces relacionados</h2>

@@ -1,7 +1,6 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Button from 'react-bootstrap/Button';
 import Form from 'react-bootstrap/Form';
-import { Breadcrumb } from '../component/Breadcrumb.jsx';
 import { BodyHomeTertiary } from "../component/BodyHomeTertiary.jsx";
 import { Helmet } from "react-helmet-async";
 
@@ -14,6 +13,22 @@ export const Contact = () => {
         message: "",
     });
 
+    const [metaData, setMetaData] = useState({});
+
+    useEffect(() => {
+        const apiBaseUrl = process.env.REACT_APP_BACKEND_URL
+            ? process.env.REACT_APP_BACKEND_URL
+            : process.env.NODE_ENV === "production"
+                ? "https://api.metalwolft.com"
+                : "https://fuzzy-space-eureka-7v7jw6jv7v5jhp945-3001.app.github.dev/";
+
+        fetch(`${apiBaseUrl}/api/seo/contact`)
+            .then((res) => res.json())
+            .then((data) => setMetaData(data))
+            .catch((err) => console.error("Error SEO /contact:", err));
+    }, []);
+
+
     const handleChange = (e) => {
         const { id, value } = e.target;
         setFormData({ ...formData, [id]: value });
@@ -24,9 +39,7 @@ export const Contact = () => {
         try {
             const response = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/email/contact`, {
                 method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                },
+                headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(formData),
             });
 
@@ -34,7 +47,7 @@ export const Contact = () => {
                 alert("Mensaje enviado correctamente.");
                 setFormData({ name: "", firstname: "", phone: "", email: "", message: "" });
             } else {
-                alert("Error al enviar el mensaje. Intenta nuevamente.");
+                alert("Error al enviar el mensaje. Inténtalo nuevamente.");
             }
         } catch (error) {
             console.error("Error al enviar el formulario:", error);
@@ -42,16 +55,38 @@ export const Contact = () => {
         }
     };
 
-
     return (
         <>
-            <Helmet>
-                <title>Contacto | MetalWolft — Carpintería Metálica Online</title>
-                <meta
-                    name="description"
-                    content="Ponte en contacto con MetalWolft para consultas, pedidos a medida o soporte. Estamos disponibles para ayudarte con cualquier proyecto de carpintería metálica."
-                />
-                <meta name="theme-color" content="#ff324d" />
+            <Helmet htmlAttributes={{ lang: metaData.lang || "es" }}>
+                <title>{metaData.title}</title>
+                <meta name="description" content={metaData.description} />
+                <meta name="robots" content={metaData.robots || "index, follow"} />
+                <meta name="theme-color" content={metaData.theme_color || "#ff324d"} />
+
+                {/* Canonical */}
+                <link rel="canonical" href={metaData.canonical} />
+
+                {/* OpenGraph */}
+                <meta property="og:type" content={metaData.og_type} />
+                <meta property="og:title" content={metaData.og_title} />
+                <meta property="og:description" content={metaData.og_description} />
+                <meta property="og:image" content={metaData.og_image} />
+                <meta property="og:url" content={metaData.og_url} />
+                <meta property="og:site_name" content={metaData.og_site_name} />
+                <meta property="og:locale" content={metaData.og_locale || "es_ES"} />
+
+                {/* Twitter */}
+                <meta name="twitter:card" content={metaData.twitter_card_type} />
+                <meta name="twitter:title" content={metaData.twitter_title} />
+                <meta name="twitter:description" content={metaData.twitter_description} />
+                <meta name="twitter:image" content={metaData.twitter_image} />
+
+                {/* JSON-LD */}
+                {metaData.json_ld && (
+                    <script type="application/ld+json">
+                        {JSON.stringify(metaData.json_ld)}
+                    </script>
+                )}
             </Helmet>
             <div style={{ marginTop: '80px' }}>
                 <BodyHomeTertiary />

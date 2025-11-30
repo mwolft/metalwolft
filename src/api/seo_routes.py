@@ -68,38 +68,51 @@ def seo_home():
 
 @seo_bp.route('/api/seo/cart', methods=['GET'])
 def seo_cart():
+    title = "Carrito de compra | Metal Wolft"
+    description = "Revise su carrito de compra, gastos de envío y totales antes de completar su pedido en Metal Wolft."
+    url = "https://www.metalwolft.com/cart"
+    image = "https://res.cloudinary.com/dewanllxn/image/upload/v1749024437/carpinteria-metalica-online_zcr6p0.png"
+
     meta_data = {
         "lang": "es",
-        "title": "Carrito de compra | Metal Wolft",
-        "description": (
-            "Revise su carrito de compra, gastos de envío y totales antes de completar "
-            "su pedido en Metal Wolft."
-        ),
-        "keywords": "carrito de compra, resumen de pedido, metal wolft",
+        "title": title,
+        "description": description,
+        "keywords": "carrito de compra, resumen pedido, metal wolft",
         "robots": "noindex, nofollow",
+
         "theme_color": "#ff324d",
-        "canonical": "https://www.metalwolft.com/cart",
+        "canonical": url,
+
+        # OpenGraph
         "og_type": "website",
-        "og_title": "Carrito de compra | Metal Wolft",
-        "og_description": (
-            "Revise su carrito de compra antes de proceder al pago."
-        ),
-        "og_image": "https://res.cloudinary.com/dewanllxn/image/upload/v1749024437/carpinteria-metalica-online_zcr6p0.png",
-        "og_url": "https://www.metalwolft.com/cart",
+        "og_title": title,
+        "og_description": description,
+        "og_image": image,
+        "og_url": url,
         "og_site_name": "Metal Wolft",
         "og_locale": "es_ES",
-        "twitter_card_type": "summary",
-        "twitter_title": "Carrito de compra | Metal Wolft",
-        "twitter_description": "Revise su carrito antes de finalizar el pedido.",
-        "twitter_image": "https://res.cloudinary.com/dewanllxn/image/upload/v1749024437/carpinteria-metalica-online_zcr6p0.png",
+
+        # Twitter
+        "twitter_card_type": "summary_large_image",
+        "twitter_title": title,
+        "twitter_description": description,
+        "twitter_image": image,
+
+        # JSON-LD
         "json_ld": {
             "@context": "https://schema.org",
             "@type": "WebPage",
-            "name": "Carrito de compra",
-            "url": "https://www.metalwolft.com/cart",
-            "description": (
-                "Revise los productos de su carrito antes de pasar al pago."
-            )
+            "name": title,
+            "url": url,
+            "description": description,
+            "publisher": {
+                "@type": "Organization",
+                "name": "Metal Wolft",
+                "logo": {
+                    "@type": "ImageObject",
+                    "url": image
+                }
+            }
         }
     }
 
@@ -237,7 +250,7 @@ def seo_product_new(category_slug, product_slug):
                         "merchantReturnDays": 7,
                         "returnMethod": "https://schema.org/ReturnByMail",
                         "returnFees": "https://schema.org/FreeReturn",
-                        "refundType": "https://schema.org/RefundTypeFullRefund"
+                        "refundType": "https://schema.org/FullRefund"
                     },
                     "shippingDetails": {
                         "@type": "OfferShippingDetails",
@@ -1131,33 +1144,26 @@ def seo_rejas_para_ventanas_modernas():
 
 @seo_bp.route("/api/seo/contact", methods=["GET"])
 def seo_contact():
-    title = "Contacto | MetalWolft — Carpintería Metálica Online"
-    description = (
-        "Ponte en contacto con MetalWolft para consultas, pedidos a medida o soporte. "
-        "Estamos disponibles para ayudarte con cualquier proyecto de carpintería metálica."
-    )
-    image = "https://res.cloudinary.com/dewanllxn/image/upload/v1733562783/puertas-peatonales-metalicas_i5cvxr.avif"
+    title = "Contacto | MetalWolft — Carpintería Metálica"
+    description = "Ponte en contacto con MetalWolft para consultas, pedidos a medida o soporte técnico."
     url = "https://www.metalwolft.com/contact"
+    image = "https://res.cloudinary.com/dewanllxn/image/upload/v1733562604/cerramiento-cocina-salon_smb1vp.jpg"
 
     meta_data = {
         "lang": "es",
-
-        # --- TITLE & DESCRIPTION ---
         "title": title,
         "description": description,
         "canonical": url,
         "robots": "index, follow",
 
-        # --- OPEN GRAPH ---
         "og_title": title,
         "og_description": description,
         "og_image": image,
         "og_url": url,
-        "og_type": "website",
-        "og_locale": "es_ES",
+        "og_type": "article",
         "og_site_name": "Metal Wolft",
+        "og_locale": "es_ES",
 
-        # --- TWITTER ---
         "twitter_card_type": "summary_large_image",
         "twitter_site": "@MetalWolft",
         "twitter_creator": "@MetalWolft",
@@ -1165,7 +1171,6 @@ def seo_contact():
         "twitter_description": description,
         "twitter_image": image,
 
-        # --- JSON-LD ---
         "json_ld": {
             "@context": "https://schema.org",
             "@type": "ContactPage",
@@ -1533,6 +1538,46 @@ def seo_license():
                     "url": image
                 }
             }
+        }
+    }
+
+    return jsonify(meta_data)
+
+
+@seo_bp.route("/api/seo/formulario-incidencias", methods=["GET"])
+def seo_formulario_incidencias():
+    title = "Reporte de incidencias | Metal Wolft"
+    description = "Formulario para reportar incidencias en pedidos: pintura, medidas, transporte o embalaje. Adjunta imágenes y detalla el problema."
+
+    meta_data = {
+        "lang": "es",
+        "title": title,
+        "description": description,
+        "robots": "noindex, nofollow",
+        "canonical": "https://www.metalwolft.com/formulario-incidencias",
+
+        # --- Open Graph ---
+        "og_title": title,
+        "og_description": description,
+        "og_image": "https://res.cloudinary.com/dewanllxn/image/upload/v1733817377/herrero-ciudad-real_ndf77e.jpg",
+        "og_url": "https://www.metalwolft.com/formulario-incidencias",
+        "og_type": "website",
+        "og_locale": "es_ES",
+        "og_site_name": "Metal Wolft",
+
+        # --- Twitter ---
+        "twitter_card_type": "summary",
+        "twitter_title": title,
+        "twitter_description": description,
+        "twitter_image": "https://res.cloudinary.com/dewanllxn/image/upload/v1733817377/herrero-ciudad-real_ndf77e.jpg",
+
+        # --- JSON-LD ---
+        "json_ld": {
+            "@context": "https://schema.org",
+            "@type": "WebPage",
+            "name": title,
+            "description": description,
+            "url": "https://www.metalwolft.com/formulario-incidencias"
         }
     }
 
