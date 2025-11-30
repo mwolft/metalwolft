@@ -1142,56 +1142,6 @@ def seo_rejas_para_ventanas_modernas():
     return jsonify(meta_data)
 
 
-@seo_bp.route("/api/seo/contact", methods=["GET"])
-def seo_contact():
-    title = "Contacto | MetalWolft — Carpintería Metálica"
-    description = "Ponte en contacto con MetalWolft para consultas, pedidos a medida o soporte técnico."
-    url = "https://www.metalwolft.com/contact"
-    image = "https://res.cloudinary.com/dewanllxn/image/upload/v1733562604/cerramiento-cocina-salon_smb1vp.jpg"
-
-    meta_data = {
-        "lang": "es",
-        "title": title,
-        "description": description,
-        "canonical": url,
-        "robots": "index, follow",
-
-        "og_title": title,
-        "og_description": description,
-        "og_image": image,
-        "og_url": url,
-        "og_type": "article",
-        "og_site_name": "Metal Wolft",
-        "og_locale": "es_ES",
-
-        "twitter_card_type": "summary_large_image",
-        "twitter_site": "@MetalWolft",
-        "twitter_creator": "@MetalWolft",
-        "twitter_title": title,
-        "twitter_description": description,
-        "twitter_image": image,
-
-        "json_ld": {
-            "@context": "https://schema.org",
-            "@type": "ContactPage",
-            "name": title,
-            "description": description,
-            "url": url,
-            "image": image,
-            "publisher": {
-                "@type": "Organization",
-                "name": "Metal Wolft",
-                "logo": {
-                    "@type": "ImageObject",
-                    "url": image
-                }
-            }
-        }
-    }
-
-    return jsonify(meta_data)
-
-
 @seo_bp.route("/api/seo/politica-privacidad", methods=["GET"])
 def seo_politica_privacidad():
     title = "Política de Privacidad | MetalWolft"

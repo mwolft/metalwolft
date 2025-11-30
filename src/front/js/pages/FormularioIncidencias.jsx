@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Container, Row, Col, Form, Button, Alert, Spinner } from 'react-bootstrap';
+import { Container, Form, Button, Alert, Spinner } from 'react-bootstrap';
 import { Helmet } from "react-helmet-async";
+import { Link } from 'react-router-dom';
 
 export const FormularioIncidencias = () => {
 
@@ -30,6 +31,58 @@ export const FormularioIncidencias = () => {
             .catch(err => console.error("SEO error:", err));
     }, []);
 
+
+    const handleChange = (e) => {
+        const { name, value } = e.target;
+        setFormData(prev => ({ ...prev, [name]: value }));
+    };
+
+    const handleImageChange = (e) => {
+        const files = Array.from(e.target.files).slice(0, 3); // máximo 3
+        setImages(files);
+    };
+
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        setSending(true);
+        setError(null);
+        setResponseMessage(null);
+
+        try {
+            const apiBaseUrl = process.env.REACT_APP_BACKEND_URL
+                ? process.env.REACT_APP_BACKEND_URL
+                : process.env.NODE_ENV === "production"
+                    ? "https://api.metalwolft.com"
+                    : "https://fuzzy-space-eureka-7v7jw6jv7v5jhp945-3001.app.github.dev/";
+
+            const data = new FormData();
+            Object.entries(formData).forEach(([key, value]) => {
+                data.append(key, value);
+            });
+
+            images.forEach((img) => {
+                data.append("images", img);
+            });
+
+            const res = await fetch(`${apiBaseUrl}/api/email/report-issue`, {
+                method: "POST",
+                body: data
+            });
+
+            if (res.ok) {
+                setResponseMessage("✅ Incidencia enviada correctamente. Te contactaremos en breve.");
+                setFormData({ name: "", email: "", order_number: "", issue_type: "", message: "" });
+                setImages([]);
+            } else {
+                setError("❌ No se pudo enviar la incidencia. Intenta más tarde.");
+            }
+        } catch (err) {
+            console.error(err);
+            setError("❌ Error al enviar la incidencia.");
+        }
+
+        setSending(false);
+    };
 
     return (
         <>
@@ -69,7 +122,7 @@ export const FormularioIncidencias = () => {
             </Helmet>
             <Container style={{ marginTop: '70px', maxWidth: '700px' }}>
                 <h1 className="h1-categories mb-4">Formulario de Incidencias</h1>
-                <p>Por favor, rellena los campos para reportar un problema con tu pedido. Puedes adjuntar hasta 3 imágenes para ayudarnos a valorar el caso.</p>
+                <p>Rellena los campos para reportar un problema con tu pedido. Puedes adjuntar hasta 3 imágenes.</p>
 
                 {responseMessage && <Alert variant="success">{responseMessage}</Alert>}
                 {error && <Alert variant="danger">{error}</Alert>}
@@ -181,6 +234,15 @@ export const FormularioIncidencias = () => {
                         </Button>
                     </div>
                 </Form>
+                <div className="mt-4 mb-5">
+                    <h2 className="h2-categories mb-3">Enlaces relacionados</h2>
+                    <ul>
+                        <li><Link to="/politica-privacidad">Política de Privacidad</Link></li>
+                        <li><Link to="/politica-cookies">Política de Cookies</Link></li>
+                        <li><Link to="/cambios-politica-cookies">Cambios en la Política de Cookies</Link></li>
+                        <li><Link to="/contact">Contacto (Ejercicio de derechos RGPD)</Link></li>
+                    </ul>
+                </div>
             </Container>
         </>
     );
