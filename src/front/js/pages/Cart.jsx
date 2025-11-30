@@ -117,13 +117,41 @@ export const Cart = () => {
     return (
         <>
             <Helmet htmlAttributes={{ lang: "es" }}>
-                <title>Carrito de compra | Metal Wolft</title>
-                <meta
-                    name="description"
-                    content="Revise su carrito de compra, gastos de envío y totales antes de completar su pedido en Metal Wolft."
-                />
-                <meta name="robots" content="noindex, nofollow" />
-                <meta name="theme-color" content="#ff324d" />
+                <title>{metaData.title}</title>
+                <meta name="description" content={metaData.description} />
+
+                {/* Robots */}
+                <meta name="robots" content={metaData.robots} />
+
+                {/* Theme color */}
+                <meta name="theme-color" content={metaData.theme_color || "#ff324d"} />
+
+                {/* Canonical */}
+                {metaData.canonical && (
+                    <link rel="canonical" href={metaData.canonical} />
+                )}
+
+                {/* OG */}
+                <meta property="og:type" content={metaData.og_type} />
+                <meta property="og:title" content={metaData.og_title} />
+                <meta property="og:description" content={metaData.og_description} />
+                <meta property="og:image" content={metaData.og_image} />
+                <meta property="og:url" content={metaData.og_url} />
+                <meta property="og:site_name" content={metaData.og_site_name} />
+                <meta property="og:locale" content={metaData.og_locale || "es_ES"} />
+
+                {/* Twitter */}
+                <meta name="twitter:card" content={metaData.twitter_card_type} />
+                <meta name="twitter:title" content={metaData.twitter_title} />
+                <meta name="twitter:description" content={metaData.twitter_description} />
+                <meta name="twitter:image" content={metaData.twitter_image} />
+
+                {/* JSON-LD */}
+                {metaData.json_ld && (
+                    <script type="application/ld+json">
+                        {JSON.stringify(metaData.json_ld)}
+                    </script>
+                )}
             </Helmet>
             <Container fluid style={{ marginTop: "95px" }}>
                 <h2 className="h2-categories text-center my-2">Carrito de compra</h2>

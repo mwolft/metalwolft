@@ -67,28 +67,40 @@ def seo_home():
 
 
 @seo_bp.route('/api/seo/cart', methods=['GET'])
-def cart():
+def seo_cart():
     meta_data = {
         "lang": "es",
         "title": "Carrito de compra | Metal Wolft",
-        "description": "Revise su carrito de compra, gastos de envío y totales antes de completar su pedido en Metal Wolft.",
+        "description": (
+            "Revise su carrito de compra, gastos de envío y totales antes de completar "
+            "su pedido en Metal Wolft."
+        ),
         "keywords": "carrito de compra, resumen de pedido, metal wolft",
         "robots": "noindex, nofollow",
         "theme_color": "#ff324d",
-        "canonical": None,
-        "og_type": None,
-        "og_title": None,
-        "og_description": None,
-        "og_image": None,
-        "og_url": None,
-        "og_site_name": None,
-
-        "twitter_card_type": None,
-        "twitter_title": None,
-        "twitter_description": None,
-        "twitter_image": None,
-
-        "json_ld": None
+        "canonical": "https://www.metalwolft.com/cart",
+        "og_type": "website",
+        "og_title": "Carrito de compra | Metal Wolft",
+        "og_description": (
+            "Revise su carrito de compra antes de proceder al pago."
+        ),
+        "og_image": "https://res.cloudinary.com/dewanllxn/image/upload/v1749024437/carpinteria-metalica-online_zcr6p0.png",
+        "og_url": "https://www.metalwolft.com/cart",
+        "og_site_name": "Metal Wolft",
+        "og_locale": "es_ES",
+        "twitter_card_type": "summary",
+        "twitter_title": "Carrito de compra | Metal Wolft",
+        "twitter_description": "Revise su carrito antes de finalizar el pedido.",
+        "twitter_image": "https://res.cloudinary.com/dewanllxn/image/upload/v1749024437/carpinteria-metalica-online_zcr6p0.png",
+        "json_ld": {
+            "@context": "https://schema.org",
+            "@type": "WebPage",
+            "name": "Carrito de compra",
+            "url": "https://www.metalwolft.com/cart",
+            "description": (
+                "Revise los productos de su carrito antes de pasar al pago."
+            )
+        }
     }
 
     return jsonify(meta_data)

@@ -1,9 +1,26 @@
-import React from 'react';
-import { Link } from 'react-router-dom';
-import { Breadcrumb } from '../component/Breadcrumb.jsx';
+import React, { useEffect, useState } from 'react';
 import { Helmet } from "react-helmet";
+import { Link } from "react-router-dom";
 
 export const PrivacyPolicy = () => {
+    const [metaData, setMetaData] = useState({});
+
+    useEffect(() => {
+        const apiBaseUrl = process.env.REACT_APP_BACKEND_URL
+            ? process.env.REACT_APP_BACKEND_URL
+            : process.env.NODE_ENV === "production"
+                ? "https://api.metalwolft.com"
+                : "https://fuzzy-space-eureka-7v7jw6jv7v5jhp945-3001.app.github.dev/";
+
+        fetch(`${apiBaseUrl}/api/seo/politica-privacidad`)
+            .then((response) => {
+                if (!response.ok) throw new Error("SEO response error");
+                return response.json();
+            })
+            .then((data) => setMetaData(data))
+            .catch((error) => console.error("Error fetching SEO data:", error));
+    }, []);
+
     return (
         <>
             <Helmet htmlAttributes={{ lang: metaData.lang || "es" }}>
@@ -13,19 +30,19 @@ export const PrivacyPolicy = () => {
                 <meta name="theme-color" content={metaData.theme_color || "#ff324d"} />
 
                 {/* OpenGraph */}
-                <meta property="og:type" content={metaData.og_type} />
-                <meta property="og:title" content={metaData.og_title} />
-                <meta property="og:description" content={metaData.og_description} />
+                <meta property="og:type" content={metaData.og_type || "article"} />
+                <meta property="og:title" content={metaData.og_title || metaData.title} />
+                <meta property="og:description" content={metaData.og_description || metaData.description} />
                 <meta property="og:image" content={metaData.og_image} />
                 <meta property="og:url" content={metaData.og_url} />
-                <meta property="og:site_name" content={metaData.og_site_name} />
-                <meta property="og:locale" content={metaData.og_locale} />
+                <meta property="og:site_name" content={metaData.og_site_name || "Metal Wolft"} />
+                <meta property="og:locale" content={metaData.og_locale || "es_ES"} />
 
                 {/* Twitter */}
-                <meta name="twitter:card" content={metaData.twitter_card_type} />
-                <meta name="twitter:title" content={metaData.twitter_title} />
-                <meta name="twitter:description" content={metaData.twitter_description} />
-                <meta name="twitter:image" content={metaData.twitter_image} />
+                <meta name="twitter:card" content={metaData.twitter_card_type || "summary_large_image"} />
+                <meta name="twitter:title" content={metaData.twitter_title || metaData.title} />
+                <meta name="twitter:description" content={metaData.twitter_description || metaData.description} />
+                <meta name="twitter:image" content={metaData.twitter_image || metaData.og_image} />
 
                 {/* Canonical */}
                 <link rel="canonical" href={metaData.canonical} />
@@ -37,6 +54,7 @@ export const PrivacyPolicy = () => {
                     </script>
                 )}
             </Helmet>
+
             <div className="container" style={{ marginTop: '65px' }}>
                 <h1 className='h1-categories'>Política de Privacidad</h1>
                 <p>Tu privacidad es importante para nosotros. Esta política describe cómo recopilamos, utilizamos y protegemos tu información personal.</p>
@@ -57,6 +75,18 @@ export const PrivacyPolicy = () => {
                 <p>Nos reservamos el derecho de actualizar esta política en cualquier momento. Te notificaremos sobre cualquier cambio significativo.</p>
 
                 <p>Para obtener más detalles o hacer preguntas sobre nuestra política de privacidad, contáctanos a través de nuestro servicio de atención al cliente.</p>
+
+                {/* 🔗 OUTGOING LINKS para Ahrefs (muy importante) */}
+                <hr className="my-4" />
+                <div className="mt-4 mb-5">
+                    <h2 className="h2-categories mb-3">Enlaces relacionados</h2>
+                    <ul>
+                        <li><Link to="/informacion-recogida">Información que Recopilamos</Link></li>
+                        <li><Link to="/politica-cookies">Política de Cookies</Link></li>
+                        <li><Link to="/cambios-politica-cookies">Cambios Política de Cookies</Link></li>
+                        <li><Link to="/contact">Contacto / Ejercicio de derechos</Link></li>
+                    </ul>
+                </div>
             </div>
         </>
     );
