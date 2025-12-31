@@ -448,12 +448,16 @@ class Invoices(db.Model):
             "order_details": self.order_details,
         }
 
-
 class Favorites(db.Model):
     __tablename__ = "favorites"
+
     id = db.Column(db.Integer, primary_key=True)
     usuario_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     producto_id = db.Column(db.Integer, db.ForeignKey('products.id'), nullable=False)
+
+    # 🔗 Relaciones
+    usuario = db.relationship('Users', backref='favorites')
+    producto = db.relationship('Products')
 
     def __repr__(self):
         return f'<Favorite {self.id}: User {self.usuario_id}, Product {self.producto_id}>'

@@ -3,6 +3,32 @@ import React, { useEffect, useState } from "react";
 export const SeasonalBanner = () => {
     const [visible, setVisible] = useState(false);
     const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+    const CAMPAIGN_END = new Date("2026-01-06T23:59:59");
+    const [timeLeft, setTimeLeft] = useState(null);
+
+    useEffect(() => {
+        const updateCountdown = () => {
+            const now = new Date();
+            const diff = CAMPAIGN_END - now;
+
+            if (diff <= 0) {
+                setTimeLeft(null);
+                return;
+            }
+
+            const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+            const hours = Math.floor((diff / (1000 * 60 * 60)) % 24);
+            const minutes = Math.floor((diff / (1000 * 60)) % 60);
+            const seconds = Math.floor((diff / 1000) % 60);
+
+            setTimeLeft({ days, hours, minutes, seconds });
+        };
+
+        updateCountdown();
+        const interval = setInterval(updateCountdown, 1000); // 👈 cada segundo
+
+        return () => clearInterval(interval);
+    }, []);
 
     useEffect(() => {
         const timeout = setTimeout(() => setVisible(true), 50);
@@ -146,6 +172,15 @@ export const SeasonalBanner = () => {
         transition: "opacity 0.8s ease, transform 0.8s ease",
     };
 
+    const countdownStyle = {
+        marginTop: "8px",
+        fontSize: ".95rem",
+        fontWeight: 600,
+        letterSpacing: "0.4px",
+        opacity: 0.95,
+        zIndex: 2,
+        marginBottom: "40px",
+    };
 
 
     return (
@@ -162,6 +197,14 @@ export const SeasonalBanner = () => {
                 <p style={mainTextStyle}>REBAJAS</p>
             </div>
             <p style={stylishSubTextStyle}>Aprovecha la temporada baja en rejas para ventanas...lo agradecerás en primavera.</p>
+            {timeLeft && (
+                <p style={countdownStyle}>
+                    ⏳ Hasta el <strong>6 de enero</strong>{" "}
+                    <span style={{ opacity: 0.85 }}>
+                        ({timeLeft.days}d · {timeLeft.hours}h · {timeLeft.minutes}m · {timeLeft.seconds}s)
+                    </span>
+                </p>
+            )}
             <img
                 src="https://res.cloudinary.com/dewanllxn/image/upload/v1764142951/snow-ofer_qdj6xk.png"
                 alt="Copos de nieve"

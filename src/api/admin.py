@@ -436,6 +436,31 @@ class OrderDetailsAdminView(SafeModelView):
     column_default_sort = ('order_id', True)
 
 
+class FavoritesAdminView(SafeModelView):
+    column_list = ('id', 'usuario_email', 'producto_nombre')
+
+    column_labels = {
+        'usuario_email': 'Usuario',
+        'producto_nombre': 'Producto'
+    }
+
+    column_formatters = {
+        'usuario_email': lambda v, c, m, p: m.usuario.email if m.usuario else '—',
+        'producto_nombre': lambda v, c, m, p: m.producto.nombre if m.producto else f'ID {m.producto_id}',
+    }
+
+    def scaffold_list_columns(self):
+        columns = super().scaffold_list_columns()
+        if 'usuario_email' not in columns:
+            columns.append('usuario_email')
+        if 'producto_nombre' not in columns:
+            columns.append('producto_nombre')
+        return columns
+
+    can_create = False
+    can_edit = False
+
+
 class InvoiceAdminView(SafeModelView):
     form_columns = ['invoice_number','client_name','client_address','client_cif','amount','order_id','created_at']
     column_list    = ['id','invoice_number','client_name','amount','created_at','order_id']
@@ -484,7 +509,7 @@ def setup_admin(app):
     admin.add_view(CartAdminView(Cart, db.session))
     admin.add_view(OrderAdminView(Orders, db.session))
     admin.add_view(OrderDetailsAdminView(OrderDetails, db.session))
-    admin.add_view(SafeModelView(Favorites, db.session))
+    admin.add_view(FavoritesAdminView(Favorites, db.session, name="Favoritos"))
     admin.add_view(SafeModelView(Posts, db.session))
     admin.add_view(SafeModelView(Comments, db.session))
     admin.add_view(InvoiceAdminView(Invoices, db.session))
