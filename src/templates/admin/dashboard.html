@@ -55,7 +55,36 @@
             </div>
         </div>
     </div>
-
+    <div class="row">
+        <div class="col-md-12">
+            <div class="panel panel-primary">
+                <div class="panel-heading">
+                    Ventas {{ current_year }}
+                </div>
+                <div class="panel-body">
+                    <canvas id="salesChart" style="width:100%; min-height:300px;"
+                        data-labels='{{ monthly_sales_labels | tojson }}'
+                        data-values='{{ monthly_sales_values | tojson }}'>
+                    </canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="row">
+        <div class="col-md-12">
+            <div class="panel panel-primary">
+                <div class="panel-heading">
+                    Usuarios nuevos {{ current_year }}
+                </div>
+                <div class="panel-body">
+                    <canvas id="usersChart" style="width:100%; min-height:300px;"
+                        data-labels='{{ monthly_sales_labels | tojson }}'
+                        data-values='{{ users_monthly_values | tojson }}'>
+                    </canvas>
+                </div>
+            </div>
+        </div>
+    </div>
     <div class="row">
         <div class="col-md-6 col-sm-12">
             <div class="panel panel-primary">
@@ -132,4 +161,9 @@
         </div>
     </div>
 </div>
+
+<script src="{{ url_for('static', filename='js/chart.min.js') }}"></script>
+<script src="{{ url_for('static', filename='js/admin_sales_chart.js') }}"></script>
+<script src="{{ url_for('static', filename='js/admin_users_chart.js') }}"></script>
+
 {% endblock %}

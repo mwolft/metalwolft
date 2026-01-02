@@ -22,48 +22,74 @@ ADMIN_PW   = os.getenv('ADMIN_PW')
 
 # ========================== VISTA PRINCIPAL PROTEGIDA (ÚNICA) ==========================
 class SecureAdminIndexView(AdminIndexView):
-    @expose('/')
-    def index(self):
+
+    def is_accessible(self):
         auth = request.authorization or {}
-        if auth.get('username') != ADMIN_USER or auth.get('password') != ADMIN_PW:
-            return Response('Login required', 401, {'WWW-Authenticate': 'Basic realm="Login Required"'})
+        return (
+            auth.get('username') == ADMIN_USER and
+            auth.get('password') == ADMIN_PW
+        )
+
+    def inaccessible_callback(self, name, **kwargs):
+        return Response(
+            'Login required',
+            401,
+            {'WWW-Authenticate': 'Basic realm="Login Required"'}
+        )
+
+    @expose('/')
+    def index(self=None, **kwargs):
+        self = self or kwargs.get('cls')
+
 
         from datetime import datetime, timezone, timedelta
-        from sqlalchemy import func
+        from sqlalchemy import func, extract
 
-        # ==== Métricas globales ====
-        products_count = db.session.scalar(db.select(func.count(Products.id))) or 0
-        invoices_count = db.session.scalar(db.select(func.count(Invoices.id))) or 0
-        users_count    = db.session.scalar(db.select(func.count(Users.id))) or 0
-        orders_count   = db.session.scalar(db.select(func.count(Orders.id))) or 0
-
-        # Ticket medio (media de total_amount)
-        avg_ticket = db.session.scalar(
-            db.select(func.avg(Orders.total_amount)).where(Orders.total_amount.isnot(None))
+        products_count = db.session.scalar(
+            db.select(func.count(Products.id))
         ) or 0
 
-        # ==== Ingresos últimos 30 días vs 30 días previos ====
-        now = datetime.now(timezone.utc)       # aware en UTC
+        invoices_count = db.session.scalar(
+            db.select(func.count(Invoices.id))
+        ) or 0
+
+        users_count = db.session.scalar(
+            db.select(func.count(Users.id))
+        ) or 0
+
+        orders_count = db.session.scalar(
+            db.select(func.count(Orders.id))
+        ) or 0
+
+        avg_ticket = db.session.scalar(
+            db.select(func.avg(Orders.total_amount))
+            .where(Orders.total_amount.isnot(None))
+        ) or 0
+
+        now = datetime.now(timezone.utc)
+        current_year = 2025
+
         hace_30 = now - timedelta(days=30)
         hace_60 = now - timedelta(days=60)
 
         ingresos_30d = db.session.scalar(
             db.select(func.sum(Orders.total_amount))
-              .where(Orders.order_date.isnot(None))
-              .where(Orders.order_date >= hace_30)
-              .where(Orders.order_date <= now)
+            .where(Orders.order_date.isnot(None))
+            .where(Orders.order_date >= hace_30)
+            .where(Orders.order_date <= now)
         ) or 0
 
         ingresos_previos_30d = db.session.scalar(
             db.select(func.sum(Orders.total_amount))
-              .where(Orders.order_date.isnot(None))
-              .where(Orders.order_date >= hace_60)
-              .where(Orders.order_date <  hace_30)
+            .where(Orders.order_date.isnot(None))
+            .where(Orders.order_date >= hace_60)
+            .where(Orders.order_date < hace_30)
         ) or 0
 
-        # Variación con manejo de "sin periodo anterior"
         if ingresos_previos_30d > 0:
-            variacion_porcentual = ((ingresos_30d - ingresos_previos_30d) / ingresos_previos_30d) * 100
+            variacion_porcentual = (
+                (ingresos_30d - ingresos_previos_30d) / ingresos_previos_30d
+            ) * 100
             variacion_label = f"{variacion_porcentual:.2f}%"
             variacion_up = variacion_porcentual >= 0
             variacion_es_nueva = False
@@ -79,16 +105,54 @@ class SecureAdminIndexView(AdminIndexView):
                 variacion_up = False
                 variacion_es_nueva = False
 
-        # ==== Listados completos (más recientes primero) ====
+        rows = db.session.execute(
+            db.select(
+                extract('month', Orders.order_date).label('month'),
+                func.sum(Orders.total_amount).label('total')
+            )
+            .where(Orders.order_date.isnot(None))
+            .where(extract('year', Orders.order_date) == current_year)
+            .group_by('month')
+            .order_by('month')
+        ).all()
+
+        monthly_sales = {m: 0 for m in range(1, 13)}
+        for r in rows:
+            monthly_sales[int(r.month)] = float(r.total or 0)
+
+        monthly_sales_current = [monthly_sales[m] for m in range(1, 13)]
+
+        rows_users = db.session.execute(
+            db.select(
+                extract('month', Users.created_at).label('month'),
+                func.count(Users.id).label('total')
+            )
+            .where(Users.created_at.isnot(None))
+            .where(extract('year', Users.created_at) == current_year)
+            .group_by('month')
+            .order_by('month')
+        ).all()
+
+        monthly_users = {m: 0 for m in range(1, 13)}
+        for r in rows_users:
+            monthly_users[int(r.month)] = int(r.total or 0)
+
+        users_monthly_values = [monthly_users[m] for m in range(1, 13)]
+
+
+        monthly_sales_labels = [
+            "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+            "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
+        ]
+
         recent_orders = db.session.execute(
-            db.select(Orders).order_by(Orders.id.desc())
+            db.select(Orders).order_by(Orders.id.desc()).limit(10)
         ).scalars().all()
 
         recent_invoices = db.session.execute(
-            db.select(Invoices).order_by(Invoices.id.desc())
+            db.select(Invoices).order_by(Invoices.id.desc()).limit(10)
         ).scalars().all()
 
-        # Helper simple: pasar a hora local ES (+2 en verano)
         def tz_es(dt):
             if not dt:
                 return ""
@@ -96,6 +160,7 @@ class SecureAdminIndexView(AdminIndexView):
 
         return self.render(
             'admin/dashboard.html',
+            admin_view=self,
             metrics={
                 'products_count': products_count,
                 'orders_count': orders_count,
@@ -103,15 +168,18 @@ class SecureAdminIndexView(AdminIndexView):
                 'users_count': users_count,
                 'avg_ticket': avg_ticket,
                 'ingresos_30d': ingresos_30d,
-                'variacion_porcentual': variacion_porcentual,  # puede ser None
-                'variacion_label': variacion_label,            # string listo para pintar
-                'variacion_up': variacion_up,                  # True/False
-                'variacion_es_nueva': variacion_es_nueva,      # True si no hay periodo previo
+                'variacion_porcentual': variacion_porcentual,
+                'variacion_label': variacion_label,
+                'variacion_up': variacion_up,
+                'variacion_es_nueva': variacion_es_nueva,
             },
             recent_orders=recent_orders,
             recent_invoices=recent_invoices,
-            tz_es=tz_es,
-            now=now,
+            monthly_sales_labels=monthly_sales_labels,
+            monthly_sales_values=monthly_sales_current,
+            users_monthly_values=users_monthly_values,
+            current_year=current_year,
+            tz_es=tz_es
         )
 
 
