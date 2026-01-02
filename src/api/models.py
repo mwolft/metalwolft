@@ -298,15 +298,21 @@ class Orders(db.Model):
     @staticmethod
     def generate_next_invoice_number():
         from datetime import datetime
+        from flask import current_app
+
         now = datetime.now()
-        prefix = f"{now.strftime('%b').upper()}-{now.year}-"
+        month_str = now.strftime('%b').upper()   # NOV
+        year_str = now.strftime('%Y')            # 2025
+
+        # Nuevo prefijo compacto: NOV2025
+        prefix = f"{month_str}{year_str}"
 
         for attempt in range(3):
             try:
-                # Consultar el número más alto de ambas tablas
+                # Buscar el mayor correlativo del mes/año actual
                 last_number_query = db.session.execute(
                     f"""
-                    SELECT MAX(CAST(SUBSTRING(invoice_number, '([0-9]+)$') AS INTEGER)) AS last_number
+                    SELECT MAX(CAST(SUBSTRING(invoice_number, '([0-9]{{3}})$') AS INTEGER)) AS last_number
                     FROM (
                         SELECT invoice_number FROM invoices WHERE invoice_number LIKE '{prefix}%'
                         UNION ALL
@@ -316,25 +322,25 @@ class Orders(db.Model):
                 ).scalar()
 
                 next_number = (last_number_query or 0) + 1
-                invoice_number = f"{prefix}{next_number:03}"
-                
-                # Agregar logs detallados para validar la existencia del número generado
-                existing_invoice = db.session.query(Invoices).filter_by(invoice_number=invoice_number).first()
-                existing_order = db.session.query(Orders).filter_by(invoice_number=invoice_number).first()
-                
-                if existing_invoice or existing_order:
+
+                # Formato final: NOV2025002
+                invoice_number = f"{prefix}{next_number:03d}"
+
+                # Verificación de colisiones (extra seguridad)
+                exists_invoice = db.session.query(Invoices).filter_by(invoice_number=invoice_number).first()
+                exists_order = db.session.query(Orders).filter_by(invoice_number=invoice_number).first()
+
+                if exists_invoice or exists_order:
                     current_app.logger.warning(
-                        f"Intento {attempt + 1}: Número de factura duplicado detectado: {invoice_number}. "
-                        f"En Invoices: {bool(existing_invoice)}, En Orders: {bool(existing_order)}"
+                        f"Intento {attempt + 1}: Número de factura duplicado detectado: {invoice_number}"
                     )
-                    continue  # Intentar nuevamente con el siguiente número
-                
-                # Si el número no existe en ninguna tabla, retornarlo
-                current_app.logger.info(f"Número de factura generado exitosamente: {invoice_number}")
+                    continue
+
+                current_app.logger.info(f"Número de factura generado: {invoice_number}")
                 return invoice_number
 
             except Exception as e:
-                current_app.logger.error(f"Error durante la generación del número de factura: {str(e)}")
+                current_app.logger.error(f"Error generando número de factura: {str(e)}")
 
         raise Exception("Failed to generate a unique invoice number after 3 attempts")
 
