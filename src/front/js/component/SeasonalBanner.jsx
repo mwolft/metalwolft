@@ -3,7 +3,7 @@ import React, { useEffect, useState } from "react";
 export const SeasonalBanner = () => {
     const [visible, setVisible] = useState(false);
     const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
-    const CAMPAIGN_END = new Date("2026-01-06T23:59:59");
+    const CAMPAIGN_END = new Date("2026-01-10T23:59:59");
     const [timeLeft, setTimeLeft] = useState(null);
 
     useEffect(() => {
@@ -199,7 +199,7 @@ export const SeasonalBanner = () => {
             <p style={stylishSubTextStyle}>Aprovecha la temporada baja en rejas para ventanas...lo agradecerás en primavera.</p>
             {timeLeft && (
                 <p style={countdownStyle}>
-                    ⏳ Hasta el <strong>6 de enero</strong>{" "}
+                    ⏳ Últimos días de campaña · Hasta el <strong>10 de enero</strong>{" "}
                     <span style={{ opacity: 0.85 }}>
                         ({timeLeft.days}d · {timeLeft.hours}h · {timeLeft.minutes}m · {timeLeft.seconds}s)
                     </span>
