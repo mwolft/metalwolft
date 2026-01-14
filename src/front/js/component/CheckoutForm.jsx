@@ -236,6 +236,25 @@ const CheckoutForm = () => {
 
             if (confirmedPaymentIntent && confirmedPaymentIntent.status === 'succeeded') {
                 console.log("El pago fue confirmado exitosamente.");
+                // 🔥 DISPARO EVENTO COMPRA PARA GTM (NO BLOQUEANTE)
+                window.dataLayer = window.dataLayer || [];
+                window.dataLayer.push({
+                    event: "purchase",
+                    ecommerce: {
+                        transaction_id: confirmedPaymentIntent.id,
+                        value: totalWithDiscount,
+                        currency: "EUR",
+                        shipping: shippingCost,
+                        coupon: store.discountCode || null,
+                        items: products.map(product => ({
+                            item_id: product.producto_id,
+                            item_name: product.nombre,
+                            price: product.precio_total,
+                            quantity: product.quantity || 1
+                        }))
+                    }
+                });
+
                 const orderData = {
                     total_amount: totalWithDiscount,
                     shipping_cost: shippingCost,
