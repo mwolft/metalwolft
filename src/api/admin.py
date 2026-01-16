@@ -67,7 +67,9 @@ class SecureAdminIndexView(AdminIndexView):
         ) or 0
 
         now = datetime.now(timezone.utc)
-        current_year = 2025
+        current_year = now.year
+        selected_year = int(request.args.get("year", current_year))
+
 
         hace_30 = now - timedelta(days=30)
         hace_60 = now - timedelta(days=60)
@@ -78,6 +80,35 @@ class SecureAdminIndexView(AdminIndexView):
             .where(Orders.order_date >= hace_30)
             .where(Orders.order_date <= now)
         ) or 0
+
+        # ===== KPI PUNTO MUERTO =====
+        fixed_costs_monthly = 496.70
+        target_salary_monthly = 1200
+        average_margin_percent = 0.509
+        break_even_override = 3300  # usa None si no quieres forzar
+
+        if break_even_override:
+            break_even = break_even_override
+        else:
+            break_even = (fixed_costs_monthly + target_salary_monthly) / average_margin_percent
+
+        coverage_ratio = ingresos_30d / break_even if break_even else 0
+        difference = ingresos_30d - break_even
+
+        if coverage_ratio < 0.7:
+            status = "FRENAR"
+        elif coverage_ratio < 1.0:
+            status = "MANTENER"
+        else:
+            status = "APRETAR"
+
+        break_even_kpi = {
+            "revenue_last_30_days": round(ingresos_30d, 2),
+            "break_even_monthly": round(break_even, 2),
+            "coverage_ratio": round(coverage_ratio, 2),
+            "status": status,
+            "difference": round(difference, 2)
+        }
 
         ingresos_previos_30d = db.session.scalar(
             db.select(func.sum(Orders.total_amount))
@@ -111,7 +142,7 @@ class SecureAdminIndexView(AdminIndexView):
                 func.sum(Orders.total_amount).label('total')
             )
             .where(Orders.order_date.isnot(None))
-            .where(extract('year', Orders.order_date) == current_year)
+            .where(extract('year', Orders.order_date) == selected_year)
             .group_by('month')
             .order_by('month')
         ).all()
@@ -128,7 +159,7 @@ class SecureAdminIndexView(AdminIndexView):
                 func.count(Users.id).label('total')
             )
             .where(Users.created_at.isnot(None))
-            .where(extract('year', Users.created_at) == current_year)
+            .where(extract('year', Users.created_at) == selected_year)
             .group_by('month')
             .order_by('month')
         ).all()
@@ -179,7 +210,9 @@ class SecureAdminIndexView(AdminIndexView):
             monthly_sales_values=monthly_sales_current,
             users_monthly_values=users_monthly_values,
             current_year=current_year,
-            tz_es=tz_es
+            selected_year=selected_year,
+            tz_es=tz_es,
+            break_even_kpi=break_even_kpi,
         )
 
 

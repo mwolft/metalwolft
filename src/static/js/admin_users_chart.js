@@ -1,5 +1,5 @@
 document.addEventListener('DOMContentLoaded', function () {
-    const canvas = document.getElementById('usersChart');
+    const canvas = document.querySelector("canvas[id^='usersChart']");
     if (!canvas) return;
 
     const labels = JSON.parse(canvas.dataset.labels || "[]");
