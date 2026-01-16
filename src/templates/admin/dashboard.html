@@ -20,10 +20,10 @@
     <div class="row">
         <div class="col-md-12 col-sm-12">
             <div class="panel panel-success">
-                <div class="panel-heading">Ingresos últimos 30 días</div>
+                <div class="panel-heading">Ingresos mes en curso</div>
                 <div class="panel-body">
                     <h3 style="display:inline-block; margin:0;">
-                        <b>{{ "%.2f"|format(metrics.ingresos_30d) }}€</b>
+                        <b><b>{{ "%.2f"|format(metrics.ingresos_mes_actual) }}€</b></b>
                     </h3>
                     <small style="display:inline-block; margin-left:10px;">
                         {% if metrics.variacion_es_nueva %}
@@ -35,7 +35,7 @@
                         {% else %}
                         <span style="color:red;">▼ {{ metrics.variacion_label }}</span>
                         {% endif %}
-                        respecto a los 30 días anteriores
+                        respecto al mes anterior
                         {% endif %}
 
                     </small>
@@ -52,7 +52,7 @@
                 <div class="panel-body">
 
                     <h4 style="margin-top:0;">
-                        {{ "%.2f"|format(break_even_kpi.revenue_last_30_days) }} €
+                        {{ "%.2f"|format(break_even_kpi.revenue_current_month) }} €
                         <small class="text-muted">/ {{ "%.2f"|format(break_even_kpi.break_even_monthly) }} €</small>
                     </h4>
 

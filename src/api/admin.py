@@ -69,17 +69,25 @@ class SecureAdminIndexView(AdminIndexView):
         now = datetime.now(timezone.utc)
         current_year = now.year
         selected_year = int(request.args.get("year", current_year))
+        
+
+        inicio_mes_actual = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        
+        if inicio_mes_actual.month == 1:
+            inicio_mes_anterior = inicio_mes_actual.replace(year=inicio_mes_actual.year - 1, month=12)
+        else:
+            inicio_mes_anterior = inicio_mes_actual.replace(month=inicio_mes_actual.month - 1)
+
+        fin_mes_anterior = inicio_mes_actual
 
 
-        hace_30 = now - timedelta(days=30)
-        hace_60 = now - timedelta(days=60)
-
-        ingresos_30d = db.session.scalar(
+        ingresos_mes_actual = db.session.scalar(
             db.select(func.sum(Orders.total_amount))
             .where(Orders.order_date.isnot(None))
-            .where(Orders.order_date >= hace_30)
+            .where(Orders.order_date >= inicio_mes_actual)
             .where(Orders.order_date <= now)
         ) or 0
+
 
         # ===== KPI PUNTO MUERTO =====
         fixed_costs_monthly = 496.70
@@ -92,8 +100,9 @@ class SecureAdminIndexView(AdminIndexView):
         else:
             break_even = (fixed_costs_monthly + target_salary_monthly) / average_margin_percent
 
-        coverage_ratio = ingresos_30d / break_even if break_even else 0
-        difference = ingresos_30d - break_even
+        coverage_ratio = ingresos_mes_actual / break_even if break_even else 0
+        difference = ingresos_mes_actual - break_even
+
 
         if coverage_ratio < 0.7:
             status = "FRENAR"
@@ -103,29 +112,30 @@ class SecureAdminIndexView(AdminIndexView):
             status = "APRETAR"
 
         break_even_kpi = {
-            "revenue_last_30_days": round(ingresos_30d, 2),
+            "revenue_current_month": round(ingresos_mes_actual, 2),
             "break_even_monthly": round(break_even, 2),
             "coverage_ratio": round(coverage_ratio, 2),
             "status": status,
             "difference": round(difference, 2)
         }
 
-        ingresos_previos_30d = db.session.scalar(
+        ingresos_mes_anterior = db.session.scalar(
             db.select(func.sum(Orders.total_amount))
             .where(Orders.order_date.isnot(None))
-            .where(Orders.order_date >= hace_60)
-            .where(Orders.order_date < hace_30)
+            .where(Orders.order_date >= inicio_mes_anterior)
+            .where(Orders.order_date < fin_mes_anterior)
         ) or 0
 
-        if ingresos_previos_30d > 0:
+
+        if ingresos_mes_anterior > 0:
             variacion_porcentual = (
-                (ingresos_30d - ingresos_previos_30d) / ingresos_previos_30d
+                (ingresos_mes_actual - ingresos_mes_anterior) / ingresos_mes_anterior
             ) * 100
             variacion_label = f"{variacion_porcentual:.2f}%"
             variacion_up = variacion_porcentual >= 0
             variacion_es_nueva = False
         else:
-            if ingresos_30d > 0:
+            if ingresos_mes_actual > 0:
                 variacion_porcentual = None
                 variacion_label = "nuevo"
                 variacion_up = True
@@ -135,6 +145,7 @@ class SecureAdminIndexView(AdminIndexView):
                 variacion_label = "0.00%"
                 variacion_up = False
                 variacion_es_nueva = False
+
 
         rows = db.session.execute(
             db.select(
@@ -198,7 +209,7 @@ class SecureAdminIndexView(AdminIndexView):
                 'invoices_count': invoices_count,
                 'users_count': users_count,
                 'avg_ticket': avg_ticket,
-                'ingresos_30d': ingresos_30d,
+                'ingresos_mes_actual': ingresos_mes_actual,
                 'variacion_porcentual': variacion_porcentual,
                 'variacion_label': variacion_label,
                 'variacion_up': variacion_up,
