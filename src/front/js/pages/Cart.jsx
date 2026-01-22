@@ -111,6 +111,58 @@ export const Cart = () => {
         }
     };
 
+    const handleDownloadBudget = async () => {
+        try {
+            const apiBaseUrl = process.env.REACT_APP_BACKEND_URL
+                ? process.env.REACT_APP_BACKEND_URL
+                : process.env.NODE_ENV === "production"
+                    ? "https://api.metalwolft.com"
+                    : "https://fuzzy-space-eureka-7v7jw6jv7v5jhp945-3001.app.github.dev/";
+
+            const payload = {
+                cart: store.cart.map(item => ({
+                    nombre: item.nombre,
+                    alto: item.alto,
+                    ancho: item.ancho,
+                    quantity: item.quantity ?? 1,
+                    total: (item.precio_total ?? 0) * (item.quantity ?? 1)
+                })),
+                subtotal,
+                shipping: shippingCost,
+                discount_percent: discountPercent,
+                discount_amount: subtotal * (discountPercent / 100),
+                total: finalTotal * (1 - discountPercent / 100)
+            };
+
+            const response = await fetch(`${apiBaseUrl}/api/budget/pdf`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": `Bearer ${store.token}`
+                },
+                body: JSON.stringify(payload)
+            });
+
+            if (!response.ok) throw new Error("Error al generar el presupuesto");
+
+            const blob = await response.blob();
+            const url = window.URL.createObjectURL(blob);
+
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = "presupuesto-metalwolft.pdf";
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+
+            window.URL.revokeObjectURL(url);
+
+        } catch (error) {
+            console.error(error);
+            setNotification("No se pudo generar el presupuesto");
+        }
+    };
+
 
     return (
         <>
@@ -297,7 +349,21 @@ export const Cart = () => {
                                     <p style={{ fontSize: "22px", fontWeight: "bold" }}>
                                         Total: {(finalTotal * (1 - discountPercent / 100)).toFixed(2)}€ (IVA incl.)
                                     </p>
-
+                                    <Button
+                                        onClick={handleDownloadBudget}
+                                        title="Guardar presupuesto"
+                                        className="d-inline-flex align-items-center justify-content-center mt-2 mt-md-0 ms-md-3 p-0 border-0"
+                                        style={{
+                                            backgroundColor: 'transparent',
+                                            marginRight: '10px',
+                                            color: '#ff324d', 
+                                            transition: 'opacity 0.2s'
+                                        }}
+                                        onMouseOver={(e) => e.currentTarget.style.opacity = '0.7'}
+                                        onMouseOut={(e) => e.currentTarget.style.opacity = '1'}
+                                    >
+                                        <i className="fa-solid fa-file-pdf fa-lg"></i>
+                                    </Button>
                                     <Button
                                         className="btn-style-background-color"
                                         onClick={handleCheckout}
