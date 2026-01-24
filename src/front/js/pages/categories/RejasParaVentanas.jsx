@@ -16,6 +16,7 @@ import 'react-loading-skeleton/dist/skeleton.css';
 import MaintenancePopup from "../../component/MaintenancePopup";
 import DeliveryEstimateBanner from "../../component/DeliveryEstimateBanner"
 import { SeasonalBanner } from "../../component/SeasonalBanner.jsx";
+import { Button } from 'react-bootstrap';
 
 
 export const RejasParaVentanas = ({ onSelectCategory, onSelectSubcategory, categoryId }) => {
@@ -132,8 +133,63 @@ export const RejasParaVentanas = ({ onSelectCategory, onSelectSubcategory, categ
                 <div className="row">
                     <h1 className="h2-categories mb-4">Rejas para ventanas</h1>
                     {/*<SeasonalBanner />*/}
-                    <p>Las <strong>rejas para ventanas</strong> son elementos esenciales para la protección en cualquier hogar. En este sitio encontrarás información completa sobre los diferentes <b>tipos, estilos y precios</b> de rejas para ventanas. Nuestro objetivo es ayudarte a elegir la opción más adecuada, teniendo en cuenta tanto la <b>funcionalidad</b> como la <b>estética</b>.</p>
-                    <p>Consigue el precio al instante y ¡Aprovécha de los <strong>ENVÍOS GRATUÍTOS</strong> directos de fábrica!</p>
+                    {/* Añadimos g-0 para eliminar el padding-right y left de las columnas internas */}
+                    <div className="row g-0 mb-5">
+                        <div className="col-12">
+                            <div
+                                className="position-relative d-flex justify-content-center"
+                                style={{
+                                    // 1. Altura: Redúcelo a 180px o 150px si quieres que sea muy fino
+                                    minHeight: '220px',
+
+                                    // 2. Gradiente: Corte limpio al 75% para que el rojo sea solo un detalle lateral
+                                    backgroundImage: `linear-gradient(to right, transparent 95%, #ff324d 75%), url("https://res.cloudinary.com/dewanllxn/image/upload/v1769244778/rejas-para-ventanas_mlh9cq.avif")`,
+
+                                    // 3. Control de imagen: 'cover' llena todo, puedes probar '100% auto' si la imagen se corta mal
+                                    backgroundSize: 'cover',
+                                    backgroundPosition: 'center',
+                                    overflow: 'visible' 
+                                }}
+                            >
+                                <div
+                                    className="text-center shadow-lg"
+                                    style={{
+                                        backgroundColor: 'rgba(255, 255, 255, 0.66)',
+                                        borderRadius: '15px',
+                                        width: '90%', // En móvil ocupa casi todo el ancho
+                                        maxWidth: '500px',
+                                        padding: '20px 25px',
+                                        zIndex: 2,
+                                        border: '1px solid rgba(0,0,0,0.05)',
+                                        alignSelf: 'flex-end',
+                                        marginBottom: '-35px',
+                                        transform: 'translateY(5px)'
+                                    }}
+                                >
+                                    <p className="mb-2" style={{ fontSize: '0.95rem', color: '#333', lineHeight: '1.4' }}>
+                                        Las <span style={{ color: '#ff324d', fontWeight: 'bold' }}>rejas para ventanas</span> son esenciales para la protección y estética de tu hogar.
+                                    </p>
+
+                                    <p className="fw-bold mb-3" style={{ fontSize: '1.1rem', color: '#000' }}>
+                                        ¡ENVÍOS directos de fábrica!
+                                    </p>
+
+                                    <Button
+                                        className="w-100 py-3 border-0 fw-bold shadow-sm"
+                                        style={{
+                                            backgroundColor: '#ff324d',
+                                            borderRadius: '50px',
+                                            fontSize: '1.2rem'
+                                        }}
+                                    >
+                                        ¡PRECIO AL INSTANTE!
+                                    </Button>
+                                </div>
+                            </div>
+                            {/* Espacio para el desborde */}
+                            <div style={{ height: '45px' }}></div>
+                        </div>
+                    </div>
                     <div className="col-12 col-lg-3 col-xl-3 order-1">
                         <div className="col-12 d-block order-1">
                             <AsideCategories
@@ -245,7 +301,7 @@ export const RejasParaVentanas = ({ onSelectCategory, onSelectSubcategory, categ
                                 <li><b>¿Los precios incluyen IVA?</b> Sí, todos nuestros precios incluyen IVA.</li>
                                 <li>
                                     <b>¿Cuál es el tiempo de fabricación y entrega?</b> El plazo de entrega se calcula automáticamente según la carga de trabajo actual y suele estar en <b>20 días naturales</b>.
-                                    Para que tengas siempre la información más actualizada, hemos desarrollado un sistema de <Link to="/plazos-entrega-rejas-a-medida" style={{textDecoration: 'underline' }}>estimación de plazos en tiempo real</Link>.
+                                    Para que tengas siempre la información más actualizada, hemos desarrollado un sistema de <Link to="/plazos-entrega-rejas-a-medida" style={{ textDecoration: 'underline' }}>estimación de plazos en tiempo real</Link>.
                                 </li>
                                 <li>
                                     <b>¿Qué sucede después de realizar mi compra?</b> Tras completar tu compra, recibirás un correo de confirmación con todos los detalles. Además, nos pondremos en contacto contigo para orientarte en la instalación y ofrecerte asistencia personalizada, asegurándonos de que tengas una experiencia satisfactoria con tu compra.

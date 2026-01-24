@@ -348,22 +348,21 @@ export const Cart = () => {
                                     )}
                                     <p style={{ fontSize: "22px", fontWeight: "bold" }}>
                                         Total: {(finalTotal * (1 - discountPercent / 100)).toFixed(2)}€ (IVA incl.)
-                                    </p>
                                     <Button
                                         onClick={handleDownloadBudget}
                                         title="Guardar presupuesto"
-                                        className="d-inline-flex align-items-center justify-content-center mt-2 mt-md-0 ms-md-3 p-0 border-0"
+                                        className="d-inline-flex align-items-center justify-content-center ms-md-2 p-0 border-0"
                                         style={{
                                             backgroundColor: 'transparent',
-                                            marginRight: '10px',
-                                            color: '#ff324d', 
+                                            color: '#282c30', 
                                             transition: 'opacity 0.2s'
                                         }}
                                         onMouseOver={(e) => e.currentTarget.style.opacity = '0.7'}
                                         onMouseOut={(e) => e.currentTarget.style.opacity = '1'}
                                     >
-                                        <i className="fa-solid fa-file-pdf fa-lg"></i>
+                                        <i className="fa-solid fa-file-arrow-down fa-lg"></i>
                                     </Button>
+                                    </p>
                                     <Button
                                         className="btn-style-background-color"
                                         onClick={handleCheckout}

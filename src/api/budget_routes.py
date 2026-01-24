@@ -57,13 +57,13 @@ def generate_budget_pdf():
     y -= 10 * mm
 
     c.setFont("Helvetica-Bold", 10)
-    c.drawString(30 * mm, y, "MetalWolft")
+    c.drawString(30 * mm, y, "Metal Wolft")
     y -= 5 * mm
 
     c.setFont("Helvetica", 9)
     c.drawString(30 * mm, y, "Fabricación a medida")
     y -= 4 * mm
-    c.drawString(30 * mm, y, "Ciudad Real, España")
+    c.drawString(30 * mm, y, "Envíos a toda la Península")
     y -= 10 * mm
 
     c.setFont("Helvetica-Bold", 9)
