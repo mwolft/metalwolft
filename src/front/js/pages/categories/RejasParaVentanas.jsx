@@ -133,19 +133,13 @@ export const RejasParaVentanas = ({ onSelectCategory, onSelectSubcategory, categ
                 <div className="row">
                     <h1 className="h2-categories mb-4">Rejas para ventanas</h1>
                     {/*<SeasonalBanner />*/}
-                    {/* Añadimos g-0 para eliminar el padding-right y left de las columnas internas */}
-                    <div className="row g-0 mb-5">
+                    <div className="row g-0 mb-2">
                         <div className="col-12">
                             <div
                                 className="position-relative d-flex justify-content-center"
                                 style={{
-                                    // 1. Altura: Redúcelo a 180px o 150px si quieres que sea muy fino
                                     minHeight: '220px',
-
-                                    // 2. Gradiente: Corte limpio al 75% para que el rojo sea solo un detalle lateral
                                     backgroundImage: `linear-gradient(to right, transparent 95%, #ff324d 75%), url("https://res.cloudinary.com/dewanllxn/image/upload/v1769244778/rejas-para-ventanas_mlh9cq.avif")`,
-
-                                    // 3. Control de imagen: 'cover' llena todo, puedes probar '100% auto' si la imagen se corta mal
                                     backgroundSize: 'cover',
                                     backgroundPosition: 'center',
                                     overflow: 'visible' 
@@ -154,9 +148,9 @@ export const RejasParaVentanas = ({ onSelectCategory, onSelectSubcategory, categ
                                 <div
                                     className="text-center shadow-lg"
                                     style={{
-                                        backgroundColor: 'rgba(255, 255, 255, 0.66)',
+                                        backgroundColor: 'rgba(255, 255, 255, 0.76)',
                                         borderRadius: '15px',
-                                        width: '90%', // En móvil ocupa casi todo el ancho
+                                        width: '90%', 
                                         maxWidth: '500px',
                                         padding: '20px 25px',
                                         zIndex: 2,
@@ -178,7 +172,6 @@ export const RejasParaVentanas = ({ onSelectCategory, onSelectSubcategory, categ
                                         className="w-100 py-3 border-0 fw-bold shadow-sm"
                                         style={{
                                             backgroundColor: '#ff324d',
-                                            borderRadius: '50px',
                                             fontSize: '1.2rem'
                                         }}
                                     >
@@ -186,7 +179,6 @@ export const RejasParaVentanas = ({ onSelectCategory, onSelectSubcategory, categ
                                     </Button>
                                 </div>
                             </div>
-                            {/* Espacio para el desborde */}
                             <div style={{ height: '45px' }}></div>
                         </div>
                     </div>

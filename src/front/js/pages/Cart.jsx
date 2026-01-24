@@ -355,7 +355,8 @@ export const Cart = () => {
                                         style={{
                                             backgroundColor: 'transparent',
                                             color: '#282c30', 
-                                            transition: 'opacity 0.2s'
+                                            transition: 'opacity 0.2s',
+                                            marginLeft: '5px'
                                         }}
                                         onMouseOver={(e) => e.currentTarget.style.opacity = '0.7'}
                                         onMouseOut={(e) => e.currentTarget.style.opacity = '1'}
