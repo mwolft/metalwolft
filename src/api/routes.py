@@ -345,42 +345,51 @@ def delete_post(post_id):
 @api.route("/login", methods=["OPTIONS", "POST"])
 def login():
     if request.method == "OPTIONS":
-        # Manejar el preflight de CORS
         response = jsonify({"message": "Preflight request successful"})
         response.headers.add("Access-Control-Allow-Origin", "*")
         response.headers.add("Access-Control-Allow-Headers", "Content-Type, Authorization")
         response.headers.add("Access-Control-Allow-Methods", "POST, OPTIONS")
         return response, 200
 
-    # Lógica de inicio de sesión
-    data = request.json
-    email = data.get("email", None)
-    password = data.get("password", None)
-    user = db.session.execute(db.select(Users).where(Users.email == email)).scalar()
-    if not user or not bcrypt.checkpw(password.encode('utf-8'), user.password.encode('utf-8')):
-        response_body = {'message': 'Correo o contraseña incorrectos'}
-        response = jsonify(response_body)
+    data = request.json or {}
+
+    raw_email = data.get("email")
+    email = raw_email.strip().lower() if isinstance(raw_email, str) else None
+    password = data.get("password")
+
+    if not email or not password:
+        response = jsonify({"message": "Correo o contraseña incorrectos"})
         response.headers.add("Access-Control-Allow-Origin", "*")
         return response, 401
 
-    # Crear el token JWT con los datos del usuario
+    user = db.session.execute(
+        db.select(Users).where(Users.email == email)
+    ).scalar()
+
+    if not user or not bcrypt.checkpw(
+        password.encode("utf-8"),
+        user.password.encode("utf-8")
+    ):
+        response = jsonify({"message": "Correo o contraseña incorrectos"})
+        response.headers.add("Access-Control-Allow-Origin", "*")
+        return response, 401
+
     access_token = create_access_token(
         identity={
-            'user_id': user.id,
-            'email': user.email,
-            'is_admin': user.is_admin
+            "user_id": user.id,
+            "email": user.email,
+            "is_admin": user.is_admin
         },
         expires_delta=timedelta(hours=24)
     )
 
-    response_body = {
-        'results': user.serialize(),
-        'message': 'Bienvenido',
-        'access_token': access_token
-    }
-    response = jsonify(response_body)
+    response = jsonify({
+        "results": user.serialize(),
+        "message": "Bienvenido",
+        "access_token": access_token
+    })
     response.headers.add("Access-Control-Allow-Origin", "*")
-    return response, 200  
+    return response, 200
 
 
 @api.route("/protected", methods=["GET"])
@@ -388,14 +397,14 @@ def login():
 def protected():
     response_body = {}
     current_user = get_jwt_identity()
-    if current_user and current_user["rol"] == "admin":
+    if current_user and current_user.get("is_admin") is True:
         response_body['message'] = f'Access granted {current_user["email"]}'
         response_body['results'] = current_user
-        return response_body, 200
+        return jsonify(response_body), 200
 
-    response_body['message'] = f'Acceso denegado'
+    response_body['message'] = 'Acceso denegado: se requieren permisos de administrador'
     response_body['results'] = {}
-    return response_body, 403
+    return jsonify(response_body), 403
 
 
 @api.route("/signup", methods=["OPTIONS", "POST"])
@@ -407,21 +416,46 @@ def signup():
         response.headers.add("Access-Control-Allow-Methods", "POST, OPTIONS")
         return response, 200
 
-    data = request.json
-    email = data.get("email")
-    password = data.get("password")
-    rol = data.get("rol", "user")
+    data = request.json or {}
 
-    existing_user = db.session.execute(db.select(Users).where(Users.email == email)).scalar()
+    # 🔒 Normalizar email
+    raw_email = data.get("email")
+    email = raw_email.strip().lower() if isinstance(raw_email, str) else None
+    password = data.get("password")
+
+    if not email or "@" not in email:
+        response = jsonify({"message": "Email inválido"})
+        response.headers.add("Access-Control-Allow-Origin", "*")
+        return response, 400
+
+    if not password:
+        response = jsonify({"message": "Contraseña requerida"})
+        response.headers.add("Access-Control-Allow-Origin", "*")
+        return response, 400
+
+    # 🔎 Comprobar duplicados
+    existing_user = db.session.execute(
+        db.select(Users).where(Users.email == email)
+    ).scalar()
+
     if existing_user:
-        response = jsonify({'message': 'Ya existe un usuario registrado con este correo'})
+        response = jsonify({"message": "Ya existe un usuario registrado con este correo"})
         response.headers.add("Access-Control-Allow-Origin", "*")
         return response, 409
 
-    hashed_password = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt())
+    # 🔐 Hash password
+    hashed_password = bcrypt.hashpw(
+        password.encode("utf-8"),
+        bcrypt.gensalt()
+    )
 
-    user = Users(email=email, password=hashed_password.decode('utf-8'))
-    user.is_admin = True if rol == "admin" else False
+    # 👤 Crear usuario normal (NO admin)
+    user = Users(
+        email=email,
+        password=hashed_password.decode("utf-8"),
+        is_admin=False
+    )
+
     db.session.add(user)
     db.session.commit()
 
@@ -472,9 +506,10 @@ def signup():
             html=html_body_user
         )
     except Exception as e:
-        current_app.logger.warning(f"No se pudo enviar el email de bienvenida a {email}: {e}")
+        current_app.logger.warning(
+            f"No se pudo enviar el email de bienvenida a {email}: {e}"
+        )
 
-    # 2) Notificación a admins
     try:
         admin_recipients = get_admin_recipients()
         if admin_recipients:
@@ -483,7 +518,6 @@ def signup():
             <h3>Nuevo registro</h3>
             <ul>
               <li>Email: <b>{email}</b></li>
-              <li>Rol: {"admin" if user.is_admin else "user"}</li>
               <li>IP: {ip}</li>
               <li>User ID: {user.id}</li>
             </ul>
@@ -491,23 +525,24 @@ def signup():
             send_email(
                 subject="Nuevo registro en la web",
                 recipients=admin_recipients,
-                body=f"Nuevo registro: {email} (rol={'admin' if user.is_admin else 'user'})",
+                body=f"Nuevo registro: {email}",
                 html=html_body_admin
             )
     except Exception as e:
-        current_app.logger.warning(f"No se pudo notificar a admins del registro de {email}: {e}")
+        current_app.logger.warning(
+            f"No se pudo notificar a admins del registro de {email}: {e}"
+        )
 
     access_token = create_access_token(identity={
-        'user_id': user.id,
-        'email': user.email,
-        'is_admin': user.is_admin
+        "user_id": user.id,
+        "email": user.email,
+        "is_admin": user.is_admin
     })
-    response_body = {
-        'results': user.serialize(),
-        'message': 'Usuario registrado',
-        'access_token': access_token
-    }
-    response = jsonify(response_body)
+    response = jsonify({
+        "results": user.serialize(),
+        "message": "Usuario registrado",
+        "access_token": access_token
+    })
     response.headers.add("Access-Control-Allow-Origin", "*")
     return response, 201
 
@@ -589,35 +624,71 @@ def get_user(user_id):
 def update_user(user_id):
     current_user = get_jwt_identity()
 
-    # Permitir que el usuario actualice su propio perfil o que el administrador actualice cualquier perfil
-    if current_user["id"] != user_id and not current_user.get("is_admin"):
-        response = jsonify({"message": "Access forbidden: Only admins or the user themselves can update the profile"})
+    # 🔒 Permisos: solo el propio usuario o admin
+    if current_user.get("user_id") != user_id and not current_user.get("is_admin"):
+        response = jsonify({
+            "message": "Access forbidden: Only admins or the user themselves can update the profile"
+        })
         response.headers['Access-Control-Allow-Origin'] = '*'
         return response, 403
 
     user = Users.query.get(user_id)
     if not user:
-        response = jsonify({"message": "User not found!"})
+        response = jsonify({"message": "User not found"})
         response.headers['Access-Control-Allow-Origin'] = '*'
         return response, 404
-    data = request.json
-    user.firstname = data.get('firstname', user.firstname)
-    user.lastname = data.get('lastname', user.lastname)
-    user.email = data.get('email', user.email)
-    # Solo un administrador puede cambiar el rol de administrador
+
+    data = request.json or {}
+
+    # 🧾 Campos que el USUARIO puede editar
+    editable_fields_user = [
+        "firstname",
+        "lastname",
+        "shipping_address",
+        "shipping_city",
+        "shipping_postal_code",
+        "billing_address",
+        "billing_city",
+        "billing_postal_code",
+        "CIF",
+    ]
+
+    # 🛠️ Admin: puede editar email (normalizado) y flags
     if current_user.get("is_admin"):
-        user.is_admin = data.get('is_admin', user.is_admin)
+        raw_email = data.get("email")
+        if isinstance(raw_email, str):
+            email = raw_email.strip().lower()
+            if email and "@" in email:
+                user.email = email
+
+        if "is_admin" in data:
+            user.is_admin = bool(data.get("is_admin"))
+
+        if "is_active" in data:
+            user.is_active = bool(data.get("is_active"))
+
+    # 👤 Usuario (y admin): solo campos de perfil
+    for field in editable_fields_user:
+        if field in data:
+            setattr(user, field, data[field])
+
     try:
         db.session.commit()
-        response = jsonify(user.serialize())
+        response = jsonify({
+            "message": "User updated",
+            "results": user.serialize()
+        })
         response.headers['Access-Control-Allow-Origin'] = '*'
         response.headers['Access-Control-Allow-Headers'] = 'Content-Type,Authorization'
         response.headers['Access-Control-Allow-Methods'] = 'PUT, OPTIONS'
-        response.headers['Access-Control-Expose-Headers'] = 'X-Total-Count'
         return response, 200
+
     except Exception as e:
         db.session.rollback()
-        response = jsonify({"message": "An error occurred", "error": str(e)})
+        response = jsonify({
+            "message": "An error occurred while updating user",
+            "error": str(e)
+        })
         response.headers['Access-Control-Allow-Origin'] = '*'
         return response, 500
 
@@ -2022,3 +2093,70 @@ def clear_cart():
     except Exception as e:
         db.session.rollback()
         return jsonify({"message": f"Error al vaciar el carrito: {str(e)}"}), 500
+
+
+@api.route('/me', methods=["GET"])
+@jwt_required()
+def get_me():
+    identity = get_jwt_identity()
+    user_id = identity.get("user_id")
+
+    user = Users.query.get(user_id)
+    if not user:
+        return jsonify({"message": "User not found"}), 404
+
+    return jsonify({
+        "id": user.id,
+        "email": user.email,  # solo lectura
+        "firstname": user.firstname,
+        "lastname": user.lastname,
+        "shipping_address": user.shipping_address,
+        "shipping_city": user.shipping_city,
+        "shipping_postal_code": user.shipping_postal_code,
+        "billing_address": user.billing_address,
+        "billing_city": user.billing_city,
+        "billing_postal_code": user.billing_postal_code,
+        "CIF": user.CIF,
+    }), 200
+
+
+@api.route('/me', methods=["PUT"])
+@jwt_required()
+def update_me():
+    identity = get_jwt_identity()
+    user_id = identity.get("user_id")
+
+    user = Users.query.get(user_id)
+    if not user:
+        return jsonify({"message": "User not found"}), 404
+
+    data = request.json or {}
+
+    # 1. Cambio de contraseña usando BCRYPT
+    if "password" in data and data["password"].strip() != "":
+        # Generamos el salt y el hash con bcrypt
+        salt = bcrypt.gensalt()
+        # IMPORTANTE: bcrypt necesita bytes, por eso usamos .encode('utf-8')
+        hashed_password = bcrypt.hashpw(data["password"].encode('utf-8'), salt)
+        # Guardamos el hash decodificado como string en la base de datos
+        user.password = hashed_password.decode('utf-8')
+
+    # 2. Whitelist de campos (lo que ya tenías)
+    editable_fields = [
+        "firstname", "lastname", "shipping_address", 
+        "shipping_city", "shipping_postal_code", 
+        "billing_address", "billing_city", 
+        "billing_postal_code", "CIF"
+    ]
+
+    for field in editable_fields:
+        if field in data:
+            setattr(user, field, data[field])
+
+    try:
+        db.session.commit()
+        return jsonify({"message": "Profile updated"}), 200
+    except Exception as e:
+        db.session.rollback()
+        print(f"Error en el servidor: {str(e)}") # Esto te dirá el error real en la terminal
+        return jsonify({"message": "Error interno", "error": str(e)}), 500

@@ -111,11 +111,11 @@ setup_commands(app)
 
 # 10) Blueprints
 app.register_blueprint(api,       url_prefix='/api')
-app.register_blueprint(seo_bp)
 app.register_blueprint(email_bp,  url_prefix='/api/email')
 app.register_blueprint(auth_bp,   url_prefix='/api/auth')
 app.register_blueprint(api_invoice_preview, url_prefix='/api')
 app.register_blueprint(budget_bp, url_prefix="/api")
+app.register_blueprint(seo_bp)
 
 
 

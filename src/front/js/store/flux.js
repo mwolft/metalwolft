@@ -29,9 +29,11 @@ const getState = ({ getStore, getActions, setStore }) => {
             otherCategories: [],
             currentPost: null,
             currentComments: [],
-            commentsLoaded: false
+            commentsLoaded: false,
+            profile: null
         },
         actions: {
+            authenticatedFetch: authenticatedFetch,
             setDiscountPercent: (value) => setStore({ discountPercent: value }),
             setDiscountCode: (code) => setStore({ discountCode: code }),
             loadPosts: async () => {
@@ -161,9 +163,13 @@ const getState = ({ getStore, getActions, setStore }) => {
                 }
             },
             addComment: async (postId, commentContent) => {
-                const token = localStorage.getItem("jwt");
+                const token = localStorage.getItem("token");
                 if (!token) {
-                    console.error("No JWT token found");
+                    console.error("No se encontró el token de autenticación. El usuario debe estar logueado.");
+                    return;
+                }
+                if (!commentContent || commentContent.trim() === "") {
+                    console.warn("No se puede enviar un comentario vacío.");
                     return;
                 }
 
@@ -179,15 +185,24 @@ const getState = ({ getStore, getActions, setStore }) => {
 
                     if (!response.ok) {
                         const errorText = await response.text();
-                        console.error(`Error posting comment: ${response.status} - ${errorText}`);
+                        console.error(`Error al publicar comentario: ${response.status} - ${errorText}`);
                         throw new Error(`Error ${response.status}: ${response.statusText}`);
                     }
-
                     const newComment = await response.json();
                     const store = getStore();
-                    setStore({ currentComments: [...store.currentComments, newComment] });
+                    setStore({
+                        currentComments: [...store.currentComments, newComment]
+                    });
+
+                    console.log("Comentario añadido con éxito:", newComment);
+
                 } catch (error) {
-                    console.error("Error posting comment:", error);
+                    console.error("Error en addComment:", error);
+                    getActions().setAlert({
+                        visible: true,
+                        back: "danger",
+                        text: "No se pudo publicar el comentario. Inténtalo de nuevo.",
+                    });
                 }
             },
             setCurrentUser: (user) => {
@@ -218,6 +233,45 @@ const getState = ({ getStore, getActions, setStore }) => {
                     setStore({ error: error.message });
                     return { ok: false };
                 }
+            },
+            fetchProfile: async () => {
+                const actions = getActions();
+                const data = await actions.authenticatedFetch(
+                    `${process.env.REACT_APP_BACKEND_URL}/api/me`,
+                    { method: "GET" },
+                    actions,
+                    setStore
+                );
+
+                if (data) {
+                    setStore({
+                        currentUser: data,
+                        isAdmin: data.is_admin || false,
+                        isLoged: true
+                    });
+                    return data; 
+                }
+                return null;
+            },
+
+            updateProfile: async (updatedProfile) => {
+                const actions = getActions();
+                const data = await actions.authenticatedFetch(
+                    `${process.env.REACT_APP_BACKEND_URL}/api/me`,
+                    {
+                        method: "PUT",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify(updatedProfile)
+                    },
+                    actions,
+                    setStore
+                );
+
+                if (data) {
+                    setStore({ currentUser: data });
+                    return true;
+                }
+                return false;
             },
             setIsLoged: (isLogin) => {
                 if (isLogin) {
@@ -287,32 +341,22 @@ const getState = ({ getStore, getActions, setStore }) => {
                 if (!store.isLoged) return;
 
                 try {
-                    const response = await authenticatedFetch(
+                    const data = await authenticatedFetch(
                         `${process.env.REACT_APP_BACKEND_URL}/api/cart`,
-                        {
-                            method: 'GET'
-                        },
+                        { method: "GET" },
                         actions,
                         setStore
                     );
 
-                    if (!response) return;
-
-                    if (!response.ok) {
-                        const errorText = await response.text();
-                        console.error("Error al cargar el carrito:", errorText);
-                        return;
-                    }
-
-                    const data = await response.json();
-                    setStore({ cart: data });
+                    setStore({ cart: Array.isArray(data) ? data : [] });
                 } catch (error) {
-                    console.error("Error al cargar el carrito:", error);
+                    setStore({ cart: [] });
                 }
             },
             addToCart: async (product) => {
                 const store = getStore();
                 const actions = getActions();
+
                 if (!store.isLoged) {
                     alert("Debe estar logueado para añadir productos al carrito");
                     return;
@@ -326,13 +370,12 @@ const getState = ({ getStore, getActions, setStore }) => {
                     item.color === product.color
                 );
 
-                if (existing) {
-                    // Producto ya en carrito: actualizar cantidad
-                    try {
-                        const response = await authenticatedFetch(
+                try {
+                    if (existing) {
+                        const data = await authenticatedFetch(
                             `${process.env.REACT_APP_BACKEND_URL}/api/cart/${existing.producto_id}`,
                             {
-                                method: 'PUT',
+                                method: "PUT",
                                 body: JSON.stringify({
                                     alto: existing.alto,
                                     ancho: existing.ancho,
@@ -345,27 +388,13 @@ const getState = ({ getStore, getActions, setStore }) => {
                             setStore
                         );
 
-                        if (!response) return;
-
-                        if (!response.ok) {
-                            const data = await response.json();
-                            alert(data.message || "Error al actualizar el carrito");
-                            return;
-                        }
-
-                        const updatedCart = await response.json();
-                        setStore({ cart: updatedCart });
-                    } catch (error) {
-                        console.error("Error al actualizar el carrito:", error);
-                    }
-
-                } else {
-                    // Nuevo producto: añadir al carrito
-                    try {
-                        const response = await authenticatedFetch(
+                        if (!data) return;
+                        setStore({ cart: data });
+                    } else {
+                        const data = await authenticatedFetch(
                             `${process.env.REACT_APP_BACKEND_URL}/api/cart`,
                             {
-                                method: 'POST',
+                                method: "POST",
                                 body: JSON.stringify({
                                     product_id: product.product_id,
                                     alto: product.alto,
@@ -380,19 +409,11 @@ const getState = ({ getStore, getActions, setStore }) => {
                             setStore
                         );
 
-                        if (!response) return;
-
-                        if (!response.ok) {
-                            const data = await response.json();
-                            alert(data.message || "Error al añadir al carrito");
-                            return;
-                        }
-
-                        const newProduct = await response.json();
-                        setStore({ cart: [...store.cart, newProduct] });
-                    } catch (error) {
-                        console.error("Error al añadir al carrito:", error);
+                        if (!data) return;
+                        setStore({ cart: [...store.cart, data] });
                     }
+                } catch (error) {
+                    console.error("Error al gestionar el carrito:", error);
                 }
             },
             removeFromCart: async (product) => {
@@ -404,17 +425,13 @@ const getState = ({ getStore, getActions, setStore }) => {
                     return;
                 }
 
-                try {
-                    if (!product.producto_id) {
-                        console.error("Faltan especificaciones del producto");
-                        alert("Faltan especificaciones para eliminar el producto del carrito");
-                        return;
-                    }
+                if (!product.producto_id) return;
 
-                    const response = await authenticatedFetch(
+                try {
+                    const data = await authenticatedFetch(
                         `${process.env.REACT_APP_BACKEND_URL}/api/cart/${product.producto_id}`,
                         {
-                            method: 'DELETE',
+                            method: "DELETE",
                             body: JSON.stringify({
                                 alto: product.alto,
                                 ancho: product.ancho,
@@ -428,17 +445,9 @@ const getState = ({ getStore, getActions, setStore }) => {
                         setStore
                     );
 
-                    if (!response) return;
+                    if (!data) return;
 
-                    if (!response.ok) {
-                        const data = await response.text();
-                        console.error("Error al eliminar del carrito:", data);
-                        alert("Error al eliminar del carrito");
-                        return;
-                    }
-
-                    const data = await response.json();
-                    setStore({ cart: data.updated_cart });
+                    setStore({ cart: data.updated_cart || [] });
                 } catch (error) {
                     console.error("Error al eliminar del carrito:", error);
                 }
@@ -450,22 +459,14 @@ const getState = ({ getStore, getActions, setStore }) => {
                 if (!store.isLoged) return;
 
                 try {
-                    const response = await authenticatedFetch(
+                    const data = await authenticatedFetch(
                         `${process.env.REACT_APP_BACKEND_URL}/api/cart/clear`,
-                        {
-                            method: 'POST'
-                        },
+                        { method: "POST" },
                         actions,
                         setStore
                     );
 
-                    if (!response) return;
-
-                    if (!response.ok) {
-                        const errorText = await response.text();
-                        console.error("Error al vaciar el carrito:", errorText);
-                        throw new Error(`Error al vaciar el carrito: ${errorText}`);
-                    }
+                    if (!data) return;
 
                     setStore({ cart: [], paymentCompleted: true });
                     localStorage.removeItem("cart");
@@ -474,25 +475,19 @@ const getState = ({ getStore, getActions, setStore }) => {
                 }
             },
             fetchOrders: async () => {
-                try {
-                    const response = await authenticatedFetch(`${process.env.REACT_APP_BACKEND_URL}/api/orders`, {
-                        method: 'GET',
-                        headers: {
-                            'Content-Type': 'application/json'
-                        }
-                    });
+                const actions = getActions();
+                const data = await actions.authenticatedFetch(
+                    `${process.env.REACT_APP_BACKEND_URL}/api/orders`,
+                    { method: 'GET' },
+                    actions,
+                    setStore
+                );
 
-                    if (!response.ok) throw new Error("Error al obtener las órdenes");
-
-                    const data = await response.json();
-
+                if (data) {
                     setStore({ orders: data });
                     return { ok: true };
-                } catch (error) {
-                    setStore({ error: error.message });
-                    console.error("Error al obtener las órdenes:", error.message);
-                    return { ok: false };
                 }
+                return { ok: false };
             },
             saveOrder: async (orderData) => {
                 const store = getStore();
@@ -609,21 +604,24 @@ const getState = ({ getStore, getActions, setStore }) => {
             },
             loadFavorites: async () => {
                 const store = getStore();
+                const actions = getActions();
                 if (!store.isLoged) return;
 
                 try {
-                    const response = await authenticatedFetch(`${process.env.REACT_APP_BACKEND_URL}/api/favorites`, {
-                        method: 'GET',
-                        headers: {
-                            'Content-Type': 'application/json'
-                        }
-                    });
-                    if (!response.ok) throw new Error("Error al cargar los favoritos");
-
-                    const data = await response.json();
+                    const data = await authenticatedFetch(
+                        `${process.env.REACT_APP_BACKEND_URL}/api/favorites`,
+                        { method: "GET" },
+                        actions,
+                        setStore
+                    );
+                    if (!data) {
+                        setStore({ favorites: [] });
+                        return;
+                    }
                     setStore({ favorites: data });
                 } catch (error) {
                     console.error("Error al cargar los favoritos:", error);
+                    setStore({ favorites: [] });
                 }
             },
             setFavoritesLoaded: (loaded) => {
@@ -631,25 +629,17 @@ const getState = ({ getStore, getActions, setStore }) => {
             },
             addFavorite: async (product) => {
                 const store = getStore();
-                if (!store.isLoged) {
-                    console.error("Debe estar logueado para añadir favoritos");
-                    return;
-                }
+                if (!store.isLoged) return;
 
                 try {
-                    const response = await authenticatedFetch(`${process.env.REACT_APP_BACKEND_URL}/api/favorites`, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify({ product_id: product.id })
-                    });
-
-                    if (!response.ok) {
-                        const data = await response.json();
-                        console.error("Error al añadir a favoritos:", data.message);
-                        return;
-                    }
+                    const data = await authenticatedFetch(
+                        `${process.env.REACT_APP_BACKEND_URL}/api/favorites`,
+                        {
+                            method: "POST",
+                            body: JSON.stringify({ product_id: product.id }),
+                        }
+                    );
+                    if (!data) return;
 
                     setStore({ favorites: [...store.favorites, product] });
                 } catch (error) {
@@ -658,26 +648,21 @@ const getState = ({ getStore, getActions, setStore }) => {
             },
             removeFavorite: async (productId) => {
                 const store = getStore();
-                if (!store.isLoged) {
-                    console.error("Debe estar logueado para eliminar favoritos");
-                    return;
-                }
+                if (!store.isLoged) return;
 
                 try {
-                    const response = await authenticatedFetch(`${process.env.REACT_APP_BACKEND_URL}/api/favorites/${productId}`, {
-                        method: 'DELETE',
-                        headers: {
-                            'Content-Type': 'application/json'
-                        }
+                    const data = await authenticatedFetch(
+                        `${process.env.REACT_APP_BACKEND_URL}/api/favorites/${productId}`,
+                        { method: "DELETE" }
+                    );
+
+                    if (!data) return;
+
+                    setStore({
+                        favorites: store.favorites.filter(
+                            (product) => product.id !== productId
+                        ),
                     });
-
-                    if (!response.ok) {
-                        const data = await response.json();
-                        console.error("Error al eliminar de favoritos:", data.message);
-                        return;
-                    }
-
-                    setStore({ favorites: store.favorites.filter(product => product.id !== productId) });
                 } catch (error) {
                     console.error("Error al eliminar de favoritos:", error);
                 }

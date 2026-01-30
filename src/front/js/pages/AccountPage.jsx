@@ -1,321 +1,282 @@
-import React, { useContext, useEffect, useMemo, useState } from "react";
+import React, { useContext, useEffect, useState, useMemo } from "react";
 import { Context } from "../store/appContext";
 import { Helmet } from "react-helmet";
 
 const ORDER_STEPS = ["pendiente", "fabricacion", "pintura", "embalaje", "enviado", "entregado"];
 
 const StatusStepper = ({ status }) => {
-  const currentIdx = Math.max(0, ORDER_STEPS.indexOf((status || "").toLowerCase()));
-  return (
-    <div className="d-flex align-items-center flex-wrap" style={{ gap: 8 }}>
-      {ORDER_STEPS.map((s, i) => (
-        <span
-          key={s}
-          className={`badge ${i <= currentIdx ? "bg-success" : "bg-secondary"}`}
-          title={s}
-          style={{ minWidth: 90, textTransform: "capitalize" }}
-        >
-          {s}
-        </span>
-      ))}
-    </div>
-  );
+    const currentIdx = Math.max(0, ORDER_STEPS.indexOf((status || "").toLowerCase()));
+    return (
+        <div className="d-flex align-items-center flex-wrap" style={{ gap: 8 }}>
+            {ORDER_STEPS.map((s, i) => (
+                <span
+                    key={s}
+                    className={`badge ${i <= currentIdx ? "bg-success" : "bg-secondary"}`}
+                    style={{ minWidth: 90, textTransform: "capitalize" }}
+                >
+                    {s}
+                </span>
+            ))}
+        </div>
+    );
 };
-const formatDateShort = (d) => (d ? new Date(d).toLocaleDateString() : "—");
+
 const formatMoney = (n) => `${Number(n || 0).toFixed(2)} €`;
 const formatDate = (d) => (d ? new Date(d).toLocaleString() : "—");
+const formatDateShort = (d) => (d ? new Date(d).toLocaleDateString() : "—");
 
 export const AccountPage = () => {
-  const { store, actions } = useContext(Context);
-  const [expanded, setExpanded] = useState(null);
+    const { store, actions } = useContext(Context);
+    const [expanded, setExpanded] = useState(null);
+    const [profile, setProfile] = useState(null);
+    const [saving, setSaving] = useState(false);
+    const [saved, setSaved] = useState(false);
+    const [cancelled, setCancelled] = useState(false);
+    const [editPassword, setEditPassword] = useState(false);
+    const [confirmPassword, setConfirmPassword] = useState("");
 
-  const fetchedOnceRef = React.useRef(false);
+    useEffect(() => {
+        if (!store.isLoged) return;
 
-  useEffect(() => {
+        actions.fetchOrders();
+        actions.fetchProfile().then(data => {
+            if (data) setProfile(data);
+        });
+    }, [store.isLoged]);
+
+    const handleSaveProfile = async () => {
+        // Si el usuario intentó cambiar la contraseña, validamos
+        if (editPassword) {
+            if (profile.password !== confirmPassword) {
+                alert("Las contraseñas no coinciden"); // O usa un setErrorMessage si tienes uno
+                return;
+            }
+            if (profile.password.length < 6) {
+                alert("La nueva contraseña debe tener al menos 6 caracteres");
+                return;
+            }
+        }
+
+        setSaving(true);
+        const success = await actions.updateProfile(profile);
+        if (success) {
+            setSaved(true);
+            setEditPassword(false); // Cerramos el desplegable tras guardar
+            setConfirmPassword(""); // Limpiamos el campo extra
+            setTimeout(() => setSaved(false), 2000);
+        }
+        setSaving(false);
+    };
+
+    const handleCancel = () => {
+        if (store.currentUser) {
+            setProfile(store.currentUser);
+            setEditPassword(false);
+            setConfirmPassword("");
+            setCancelled(true);
+            setTimeout(() => setCancelled(false), 2000);
+        }
+    };
+
+    const orders = Array.isArray(store.orders) ? store.orders : [];
+
     if (!store.isLoged) {
-      fetchedOnceRef.current = false;
-      return;
+        return <div className="container mt-5 alert alert-warning">Debes iniciar sesión.</div>;
     }
-    if (fetchedOnceRef.current) return;
-    fetchedOnceRef.current = true;
-    actions.fetchOrders();
-  }, [store.isLoged]);
 
-  // ✅ Normaliza orders para evitar undefined/null
-  const orders = Array.isArray(store.orders) ? store.orders : [];
-
-  // (Opcional debug, quitar luego)
-  useEffect(() => {
-    if (store.isLoged) console.log("orders:", orders);
-  }, [store.isLoged, orders]);
-
-  // Última orden con detalles (para Direcciones)
-  const lastOrderWithDetails = useMemo(() => {
-    const list = [...orders];
-    list.sort((a, b) => new Date(b.order_date || 0) - new Date(a.order_date || 0));
-    return list.find(o => Array.isArray(o.order_details) && o.order_details.length > 0);
-  }, [orders]);
-
-  // Extraemos el primer detalle (direcciones vienen repetidas por línea)
-  const d0 = lastOrderWithDetails?.order_details?.[0] || null;
-
-  // Facturación (tal cual)
-  const billing = d0
-    ? {
-      name: `${d0.firstname || ""} ${d0.lastname || ""}`.trim(),
-      address: (d0.billing_address || "").trim(),
-      city: (d0.billing_city || "").trim(),
-      postal: (d0.billing_postal_code || "").trim(),
-      cif: (d0.CIF || "").trim()
+    if (!profile) {
+        return <div className="container mt-5 text-center">Cargando datos de cuenta...</div>;
     }
-    : null;
 
-  // Envío con fallback a facturación
-  const shippingRaw = d0
-    ? {
-      address: (d0.shipping_address || "").trim(),
-      city: (d0.shipping_city || "").trim(),
-      postal: (d0.shipping_postal_code || "").trim()
-    }
-    : null;
+    return (
+        <div className="container" style={{ marginTop: "6rem", marginBottom: "10rem" }}>
+            <Helmet>
+                <meta name="robots" content="noindex, nofollow" />
+            </Helmet>
 
-  const shipping = shippingRaw && billing
-    ? {
-      address: shippingRaw.address || billing.address || "",
-      city: shippingRaw.city || billing.city || "",
-      postal: shippingRaw.postal || billing.postal || ""
-    }
-    : (shippingRaw || null);
+            <h1 className="h1-categories mb-4">Mi cuenta</h1>
 
-  const hasBilling = !!(billing && (billing.address || billing.city || billing.postal));
-  const hasShipping = !!(shipping && (shipping.address || shipping.city || shipping.postal));
+            {/* SECCIÓN: DATOS PERSONALES */}
+            <section className="mb-5">
+                <h2 className="h2-categories">Datos personales</h2>
+                <div className="card shadow-sm border-0">
+                    <div className="card-body">
+                        <div className="row g-3">
 
-  const sameAsBilling =
-    !!(hasBilling && hasShipping &&
-      billing.address && shipping.address &&
-      billing.address === shipping.address &&
-      (billing.city || "") === (shipping.city || "") &&
-      (billing.postal || "") === (shipping.postal || ""));
-
-  return (
-    <div className="container" style={{ marginTop: "6rem", marginBottom: "10rem" }}>
-      <Helmet>
-        <meta name="robots" content="noindex, nofollow" />
-        <meta name="theme-color" content="#ff324d" />
-      </Helmet>
-      <h1 className="h1-categories mb-4">Mi cuenta</h1>
-
-      {!store.isLoged && (
-        <div className="alert alert-warning">Debes iniciar sesión para ver tu cuenta.</div>
-      )}
-
-      {store.isLoged && (
-        <>
-          {/* Apartado: Datos personales */}
-          <section className="mb-5">
-            <h2 className="h2-categories">Datos personales</h2>
-            <div className="card shadow-sm">
-              <div className="card-body">
-                <div className="row g-3">
-                  <div className="col-md-6">
-                    <label className="form-label">Email</label>
-                    <input className="form-control" value={store.currentUser?.email || ""} readOnly />
-                  </div>
-                  <div className="col-md-3">
-                    <label className="form-label">Nombre</label>
-                    <input className="form-control" value={store.currentUser?.firstname || ""} readOnly />
-                  </div>
-                  <div className="col-md-3">
-                    <label className="form-label">Apellidos</label>
-                    <input className="form-control" value={store.currentUser?.lastname || ""} readOnly />
-                  </div>
-                </div>
-              </div>
-            </div>
-          </section>
-
-          {/* Apartado: Pedidos */}
-          <section className="mb-5">
-            <h2 className="h2-categories">Pedidos</h2>
-
-            {(orders.length === 0) ? (
-              <div className="alert alert-light border">No tienes pedidos todavía.</div>
-            ) : (
-              <div className="row g-3">
-                {orders
-                  .slice()
-                  .sort((a, b) => new Date(b.order_date || 0) - new Date(a.order_date || 0))
-                  .map(order => (
-                    <div className="col-12" key={order.id}>
-                      <div className="card shadow-sm">
-                        <div className="card-body">
-                          <div className="d-flex flex-wrap justify-content-between align-items-start">
-                            <div className="me-3">
-                              <div className="mb-1">
-                                <span className="text-muted">Localizador:&nbsp;</span>
-                                <code>{order.locator || "—"}</code>
-                              </div>
-                              <div className="mb-1">
-                                <span className="text-muted">Factura:&nbsp;</span>
-                                <strong>{order.invoice_number || "—"}</strong>
-                              </div>
-                              <div className="mb-1">
-                                <span className="text-muted">Fecha:&nbsp;</span>
-                                {formatDate(order.order_date)}
-                              </div>
+                            <div className="col-md-3">
+                                <label className="form-label fw-bold">Nombre</label>
+                                <input
+                                    className="form-control"
+                                    value={profile.firstname || ""}
+                                    onChange={(e) => setProfile({ ...profile, firstname: e.target.value })}
+                                />
                             </div>
-
-                            <div className="text-end ms-auto">
-                              <div className="mb-1">
-                                <span className="badge bg-primary text-uppercase">{order.order_status || "—"}</span>
-                              </div>
-                              <div className="fs-5 fw-bold">{formatMoney(order.total_amount)}</div>
+                            <div className="col-md-3">
+                                <label className="form-label fw-bold">Apellidos</label>
+                                <input
+                                    className="form-control"
+                                    value={profile.lastname || ""}
+                                    onChange={(e) => setProfile({ ...profile, lastname: e.target.value })}
+                                />
                             </div>
-                          </div>
-
-                          <div className="mt-3">
-                            <StatusStepper status={order.order_status} />
-                          </div>
-
-                          {/* Fecha estimada de entrega (visible solo si existe) */}
-                          {order?.estimated_delivery_at && (
-                            <div className="mt-3 alert alert-info d-flex align-items-center" role="alert" style={{ gap: 8 }}>
-                              <span style={{ fontSize: 18 }}>🚚</span>
-                              <div>
-                                <div>
-                                  Fecha estimada de entrega:&nbsp;
-                                  <strong>{formatDateShort(order.estimated_delivery_at)}</strong>
+                            <div className="col-md-6">
+                                <label className="form-label fw-bold">Email</label>
+                                <input className="form-control bg-light" value={profile.email || ""} readOnly />
+                                {/* SECCIÓN CAMBIO DE CONTRASEÑA */}
+                                <div className="col-12 mt-3">
+                                    <button
+                                        type="button"
+                                        className="btn btn-sm btn-outline-secondary mb-3"
+                                        onClick={() => setEditPassword(!editPassword)}
+                                    >
+                                        {editPassword ? "Cerrar cambio de contraseña" : "¿Cambiar contraseña?"}
+                                    </button>
                                 </div>
-                                {order?.estimated_delivery_note && (
-                                  <div className="small text-muted">{order.estimated_delivery_note}</div>
+
+                                {editPassword && (
+                                    <div className="row g-3 animate__animated animate__fadeIn mb-3">
+                                        <div className="col-md-6">
+                                            <label className="form-label fw-bold">Nueva Contraseña</label>
+                                            <input
+                                                type="password"
+                                                autoComplete="new-password"
+                                                className="form-control"
+                                                placeholder="Nueva clave"
+                                                onChange={(e) => setProfile({ ...profile, password: e.target.value })}
+                                            />
+                                        </div>
+                                        <div className="col-md-6">
+                                            <label className="form-label fw-bold">Confirmar Nueva Contraseña</label>
+                                            <input
+                                                type="password"
+                                                className="form-control"
+                                                placeholder="Repite la nueva clave"
+                                                value={confirmPassword}
+                                                onChange={(e) => setConfirmPassword(e.target.value)}
+                                            />
+                                        </div>
+                                    </div>
                                 )}
-                              </div>
                             </div>
-                          )}
 
-                          {/* Detalles del pedido */}
-                          {Array.isArray(order.order_details) && order.order_details.length > 0 && (
-                            <>
-                              <button
-                                className="btn btn-link p-0 mt-3"
-                                onClick={() => setExpanded(expanded === order.id ? null : order.id)}
-                              >
-                                {expanded === order.id ? "Ocultar detalles" : "Ver detalles"}
-                              </button>
+                            <div className="col-md-6">
+                                <label className="form-label fw-bold">Dirección de facturación</label>
+                                <input className="form-control mb-2" placeholder="Dirección" value={profile.billing_address || ""} onChange={(e) => setProfile({ ...profile, billing_address: e.target.value })} />
+                                <input className="form-control mb-2" placeholder="Ciudad" value={profile.billing_city || ""} onChange={(e) => setProfile({ ...profile, billing_city: e.target.value })} />
+                                <input className="form-control mb-2" placeholder="Código Postal" value={profile.billing_postal_code || ""} onChange={(e) => setProfile({ ...profile, billing_postal_code: e.target.value })} />
 
-                              {expanded === order.id && (
-                                <div className="table-responsive mt-2">
-                                  <table className="table table-sm align-middle">
-                                    <thead>
-                                      <tr>
-                                        <th>Alto</th>
-                                        <th>Ancho</th>
-                                        <th>Anclaje</th>
-                                        <th>Color</th>
-                                        <th>Ud.</th>
-                                        <th className="text-end">Importe</th>
-                                      </tr>
-                                    </thead>
-                                    <tbody>
-                                      {order.order_details.map(d => (
-                                        <tr key={d.id}>
-                                          <td>{d.alto ?? "—"}</td>
-                                          <td>{d.ancho ?? "—"}</td>
-                                          <td>{d.anclaje || "—"}</td>
-                                          <td style={{ textTransform: "capitalize" }}>{d.color || "—"}</td>
-                                          <td>{d.quantity || 1}</td>
-                                          <td className="text-end">{formatMoney(d.precio_total)}</td>
-                                        </tr>
-                                      ))}
-                                    </tbody>
-                                  </table>
+                                <label className="form-label fw-bold">CIF / NIF</label>
+                                <input className="form-control" placeholder="CIF / NIF" value={profile.CIF || ""} onChange={(e) => setProfile({ ...profile, CIF: e.target.value })} />
+
+                            </div>
+                            <div className="col-md-6">
+                                <label className="form-label fw-bold">Dirección de envío</label>
+                                <input className="form-control mb-2" placeholder="Dirección de envío" value={profile.shipping_address || ""} onChange={(e) => setProfile({ ...profile, shipping_address: e.target.value })} />
+                                <input className="form-control mb-2" placeholder="Ciudad" value={profile.shipping_city || ""} onChange={(e) => setProfile({ ...profile, shipping_city: e.target.value })} />
+                                <input className="form-control mb-2" placeholder="Código Postal" value={profile.shipping_postal_code || ""} onChange={(e) => setProfile({ ...profile, shipping_postal_code: e.target.value })} />
+                            </div>
+
+
+
+                            <div className="mt-4 d-flex align-items-center justify-content-end shadow-top pt-3">
+                                {/* Mensaje de Guardado */}
+                                {saved && <span className="me-3 text-success animate__animated animate__fadeIn">✔ Guardado con éxito</span>}
+
+                                {/* Mensaje de Cancelado */}
+                                {cancelled && <span className="me-3 text-secondary animate__animated animate__fadeIn">✖ Cambios revertidos</span>}
+
+                                {/* Botón Cancelar */}
+                                <button
+                                    type="button"
+                                    className="btn btn-secondary me-2"
+                                    onClick={handleCancel}
+                                    disabled={saving}
+                                >
+                                    {cancelled ? "Cancelado" : "Cancelar"}
+                                </button>
+
+                                {/* Botón Guardar */}
+                                <button
+                                    type="button"
+                                    className="btn btn-success"
+                                    onClick={handleSaveProfile}
+                                    disabled={saving}
+                                >
+                                    {saving ? (
+                                        <>
+                                            <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                                            Guardando...
+                                        </>
+                                    ) : "Guardar"}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            {/* SECCIÓN: PEDIDOS (Historial Detallado) */}
+            <section className="mb-5">
+                <h2 className="h2-categories">Historial de Pedidos</h2>
+                {orders.length === 0 ? (
+                    <div className="alert alert-light border">No tienes pedidos todavía.</div>
+                ) : (
+                    orders.slice().sort((a, b) => new Date(b.order_date) - new Date(a.order_date)).map((order) => (
+                        <div className="card shadow-sm mb-3 border-0" key={order.id}>
+                            <div className="card-body">
+                                <div className="d-flex justify-content-between align-items-start flex-wrap">
+                                    <div>
+                                        <div className="mb-1"><strong>Localizador:</strong> <code>{order.locator}</code></div>
+                                        <div className="mb-1 text-muted small">Fecha: {formatDate(order.order_date)}</div>
+                                    </div>
+                                    <div className="text-end">
+                                        <div className="fs-5 fw-bold text-primary">{formatMoney(order.total_amount)}</div>
+                                        <span className="badge bg-info text-dark">{order.order_status}</span>
+                                    </div>
                                 </div>
-                              )}
-                            </>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-              </div>
-            )}
-          </section>
+                                <div className="mt-3">
+                                    <StatusStepper status={order.order_status} />
+                                </div>
 
-          {/* Apartado: Facturas */}
-          <section className="mb-5">
-            <h2 className="h2-categories">Facturas</h2>
-            {(orders.length === 0) ? (
-              <div className="alert alert-light border">Aún no hay facturas disponibles.</div>
-            ) : (
-              <div className="row g-3">
-                {orders
-                  .filter(o => !!o.invoice_number)
-                  .map(o => (
-                    <div className="col-md-6 col-12" key={`inv-${o.id}`}>
-                      <div className="card shadow-sm">
-                        <div className="card-body d-flex justify-content-between align-items-start">
-                          <div>
-                            <div className="fw-semibold">Factura {o.invoice_number}</div>
-                            <div className="text-muted small">Fecha: {formatDate(o.order_date)}</div>
-                            <div className="text-muted small">Localizador: <code>{o.locator || "—"}</code></div>
-                          </div>
+                                {/* Botón Detalles */}
+                                <button
+                                    className="btn btn-sm btn-outline-secondary mt-3"
+                                    onClick={() => setExpanded(expanded === order.id ? null : order.id)}
+                                >
+                                    {expanded === order.id ? "Ocultar detalles" : "Ver detalles del pedido"}
+                                </button>
+
+                                {expanded === order.id && order.order_details && (
+                                    <div className="table-responsive mt-3 animate__animated animate__fadeIn">
+                                        <table className="table table-sm">
+                                            <thead>
+                                                <tr>
+                                                    <th>Producto/Medidas</th>
+                                                    <th>Color</th>
+                                                    <th>Cant.</th>
+                                                    <th className="text-end">Total</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {order.order_details.map(d => (
+                                                    <tr key={d.id}>
+                                                        <td>{d.alto}x{d.ancho} cm ({d.anclaje})</td>
+                                                        <td className="text-capitalize">{d.color}</td>
+                                                        <td>{d.quantity}</td>
+                                                        <td className="text-end">{formatMoney(d.precio_total)}</td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                )}
+                            </div>
                         </div>
-                      </div>
-                    </div>
-                  ))}
-                {orders.filter(o => !!o.invoice_number).length === 0 && (
-                  <div className="col-12">
-                    <div className="alert alert-light border">No hay facturas emitidas todavía.</div>
-                  </div>
+                    ))
                 )}
-              </div>
-            )}
-          </section>
+            </section>
 
-          {/* Apartado: Direcciones */}
-          <section>
-            <h2 className="h2-categories">Direcciones</h2>
-            <div className="row g-3">
-              <div className="col-md-6 col-12">
-                <div className="card shadow-sm h-100">
-                  <div className="card-body">
-                    <h5 className="card-title mb-3">Facturación</h5>
-                    {hasBilling ? (
-                      <>
-                        <div className="mb-1">{billing.name || "—"}</div>
-                        <div className="mb-1">{billing.address || "—"}</div>
-                        <div className="mb-1">{billing.city || "—"} {billing.postal || ""}</div>
-                        <div className="text-muted small">CIF/NIF: {billing.cif || "—"}</div>
-                      </>
-                    ) : (
-                      <p className="text-muted mb-0">Se completará al realizar un pedido.</p>
-                    )}
-                  </div>
-                </div>
-              </div>
 
-              <div className="col-md-6 col-12">
-                <div className="card shadow-sm h-100">
-                  <div className="card-body">
-                    <h5 className="card-title mb-3">Envío</h5>
-                    {hasShipping ? (
-                      <>
-                        <div className="mb-1">{shipping.address || "—"}</div>
-                        <div className="mb-1">{shipping.city || "—"} {shipping.postal || ""}</div>
-                        {sameAsBilling && (
-                          <div className="text-muted small">Igual que facturación</div>
-                        )}
-                      </>
-                    ) : (
-                      <p className="text-muted mb-0">Se completará al realizar un pedido.</p>
-                    )}
-                  </div>
-                </div>
-              </div>
-            </div>
-          </section>
-        </>
-      )}
-    </div>
-  );
+        </div>
+    );
 };
