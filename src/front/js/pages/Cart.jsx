@@ -77,7 +77,6 @@ export const Cart = () => {
         BIENVENIDO: 5,
         REJAS10: 10,
         WOLFT15: 15,
-        JOEL20: 20,
         SERGIO99: 99,
     };
 
