@@ -347,21 +347,21 @@ export const Cart = () => {
                                     )}
                                     <p style={{ fontSize: "22px", fontWeight: "bold" }}>
                                         Total: {(finalTotal * (1 - discountPercent / 100)).toFixed(2)}€ (IVA incl.)
-                                    <Button
-                                        onClick={handleDownloadBudget}
-                                        title="Guardar presupuesto"
-                                        className="d-inline-flex align-items-center justify-content-center ms-md-2 p-0 border-0"
-                                        style={{
-                                            backgroundColor: 'transparent',
-                                            color: '#282c30', 
-                                            transition: 'opacity 0.2s',
-                                            marginLeft: '5px'
-                                        }}
-                                        onMouseOver={(e) => e.currentTarget.style.opacity = '0.7'}
-                                        onMouseOut={(e) => e.currentTarget.style.opacity = '1'}
-                                    >
-                                        <i className="fa-solid fa-file-arrow-down fa-lg"></i>
-                                    </Button>
+                                        <Button
+                                            onClick={handleDownloadBudget}
+                                            title="Guardar presupuesto"
+                                            className="d-inline-flex align-items-center justify-content-center ms-md-2 p-0 border-0"
+                                            style={{
+                                                backgroundColor: 'transparent',
+                                                color: '#282c30',
+                                                transition: 'opacity 0.2s',
+                                                marginLeft: '5px'
+                                            }}
+                                            onMouseOver={(e) => e.currentTarget.style.opacity = '0.7'}
+                                            onMouseOut={(e) => e.currentTarget.style.opacity = '1'}
+                                        >
+                                            <i className="fa-solid fa-file-arrow-down fa-lg"></i>
+                                        </Button>
                                     </p>
                                     <Button
                                         className="btn-style-background-color"

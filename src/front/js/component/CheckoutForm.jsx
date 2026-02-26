@@ -218,6 +218,7 @@ const CheckoutForm = () => {
                     alert("No se pudo procesar tu pedido. Por favor, inténtalo nuevamente.");
                     return;
                 }
+                console.log("📦 saveOrder OK, llamando a handleOrderCompletion (bloque A)");
                 await handleOrderCompletion(order.id, formData);
                 return;
             }
@@ -280,6 +281,7 @@ const CheckoutForm = () => {
                     alert("Error al guardar la orden.");
                     return;
                 }
+                console.log("📦 saveOrder OK, llamando a handleOrderCompletion (bloque B)");
                 await handleOrderCompletion(order.id, formData);
             }
         } catch (err) {
@@ -311,6 +313,7 @@ const CheckoutForm = () => {
     };
 
     const handleOrderCompletion = async (orderId, formData) => {
+        console.log("✅ handleOrderCompletion ejecutado");
         const { ok, order, error } = await actions.saveOrderDetails(orderId, formData);
         if (!ok) {
             throw new Error("Error al guardar los detalles de la orden.");

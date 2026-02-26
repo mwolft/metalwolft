@@ -1977,11 +1977,10 @@ def handle_cart():
     if request.method == 'POST':
         data = request.get_json()
         product_id = data.get('product_id')
+
         if not product_id:
-            response = jsonify({"message": "Product ID is required"})
-            response.headers['Access-Control-Allow-Origin'] = '*'
-            response.headers['Access-Control-Expose-Headers'] = 'Authorization'
-            return response, 400
+            return jsonify({"message": "Product ID is required"}), 400
+
         try:
             new_cart_item = Cart(
                 usuario_id=current_user['user_id'],
@@ -1991,27 +1990,25 @@ def handle_cart():
                 anclaje=data.get('anclaje'),
                 color=data.get('color'),
                 precio_total=data.get('precio_total'),
-                quantity=data.get('quantity', 1),  
-                added_at=datetime.now(timezone.utc) 
+                quantity=data.get('quantity', 1),
+                added_at=datetime.now(timezone.utc)
             )
+
             db.session.add(new_cart_item)
             db.session.commit()
-            response = jsonify({"message": "Producto añadido al carrito"})
-            response.headers['Access-Control-Allow-Origin'] = '*'
-            response.headers['Access-Control-Expose-Headers'] = 'Authorization'
-            return response, 201
-        except SQLAlchemyError as e:
-            db.session.rollback()
-            response = jsonify({"message": f"Database error: {str(e)}"})
-            response.headers['Access-Control-Allow-Origin'] = '*'
-            response.headers['Access-Control-Expose-Headers'] = 'Authorization'
-            return response, 500
+
+            # 🔥 DEVOLVER CARRITO ACTUALIZADO
+            updated_cart_items = Cart.query.filter_by(
+                usuario_id=current_user['user_id']
+            ).all()
+
+            updated_cart = [item.serialize() for item in updated_cart_items]
+
+            return jsonify(updated_cart), 201
+
         except Exception as e:
             db.session.rollback()
-            response = jsonify({"message": f"Unexpected error: {str(e)}"})
-            response.headers['Access-Control-Allow-Origin'] = '*'
-            response.headers['Access-Control-Expose-Headers'] = 'Authorization'
-            return response, 500
+            return jsonify({"message": str(e)}), 500
 
 
 @api.route('/cart/<int:product_id>', methods=['PUT'])

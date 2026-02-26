@@ -215,20 +215,26 @@ const getState = ({ getStore, getActions, setStore }) => {
                 getActions().loadCart();
             },
             updateUserProfile: async (userId, updatedData) => {
-                const store = getStore();
                 try {
-                    const response = await authenticatedFetch(`${process.env.REACT_APP_BACKEND_URL}/api/users/${userId}`, {
-                        method: 'PUT',
-                        headers: {
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify(updatedData)
-                    });
-                    if (!response.ok) throw new Error("Error al actualizar el perfil");
+                    const result = await authenticatedFetch(
+                        `${process.env.REACT_APP_BACKEND_URL}/api/users/${userId}`,
+                        {
+                            method: 'PUT',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify(updatedData)
+                        }
+                    );
 
-                    const data = await response.json();
-                    setStore({ currentUser: data.results });
+                    if (!result.ok) {
+                        throw new Error(result.data?.message || "Error al actualizar el perfil");
+                    }
+
+                    setStore({ currentUser: result.data?.results || result.data });
+
                     return { ok: true };
+
                 } catch (error) {
                     setStore({ error: error.message });
                     return { ok: false };
@@ -236,27 +242,37 @@ const getState = ({ getStore, getActions, setStore }) => {
             },
             fetchProfile: async () => {
                 const actions = getActions();
-                const data = await actions.authenticatedFetch(
+
+                const result = await actions.authenticatedFetch(
                     `${process.env.REACT_APP_BACKEND_URL}/api/me`,
                     { method: "GET" },
                     actions,
                     setStore
                 );
 
-                if (data) {
-                    setStore({
-                        currentUser: data,
-                        isAdmin: data.is_admin || false,
-                        isLoged: true
-                    });
-                    return data; 
+                console.log("RESULT /me:", result);
+
+                if (!result.ok) {
+                    console.log("NO OK:", result.status, result.data);
+                    return null;
                 }
-                return null;
+
+                const user = result.data;
+                console.log("USER DATA:", user);
+
+                setStore({
+                    currentUser: user,
+                    isAdmin: user?.is_admin || false,
+                    isLoged: true
+                });
+
+                return user;
             },
 
             updateProfile: async (updatedProfile) => {
                 const actions = getActions();
-                const data = await actions.authenticatedFetch(
+
+                const result = await actions.authenticatedFetch(
                     `${process.env.REACT_APP_BACKEND_URL}/api/me`,
                     {
                         method: "PUT",
@@ -267,11 +283,14 @@ const getState = ({ getStore, getActions, setStore }) => {
                     setStore
                 );
 
-                if (data) {
-                    setStore({ currentUser: data });
-                    return true;
+                if (!result.ok) {
+                    return false;
                 }
-                return false;
+
+                // Tras actualizar, lo normal es volver a pedir el perfil
+                await actions.fetchProfile();
+
+                return true;
             },
             setIsLoged: (isLogin) => {
                 if (isLogin) {
@@ -341,15 +360,23 @@ const getState = ({ getStore, getActions, setStore }) => {
                 if (!store.isLoged) return;
 
                 try {
-                    const data = await authenticatedFetch(
+                    const result = await authenticatedFetch(
                         `${process.env.REACT_APP_BACKEND_URL}/api/cart`,
                         { method: "GET" },
                         actions,
                         setStore
                     );
 
-                    setStore({ cart: Array.isArray(data) ? data : [] });
+                    if (!result.ok) {
+                        console.error("Error al cargar carrito:", result.data?.message);
+                        setStore({ cart: [] });
+                        return;
+                    }
+
+                    setStore({ cart: Array.isArray(result.data) ? result.data : [] });
+
                 } catch (error) {
+                    console.error("Error en loadCart:", error);
                     setStore({ cart: [] });
                 }
             },
@@ -372,7 +399,7 @@ const getState = ({ getStore, getActions, setStore }) => {
 
                 try {
                     if (existing) {
-                        const data = await authenticatedFetch(
+                        const result = await authenticatedFetch(
                             `${process.env.REACT_APP_BACKEND_URL}/api/cart/${existing.producto_id}`,
                             {
                                 method: "PUT",
@@ -388,10 +415,15 @@ const getState = ({ getStore, getActions, setStore }) => {
                             setStore
                         );
 
-                        if (!data) return;
-                        setStore({ cart: data });
+                        if (!result.ok) {
+                            console.error("Error actualizando carrito:", result.data?.message);
+                            return;
+                        }
+
+                        setStore({ cart: Array.isArray(result.data) ? result.data : [] });
+
                     } else {
-                        const data = await authenticatedFetch(
+                        const result = await authenticatedFetch(
                             `${process.env.REACT_APP_BACKEND_URL}/api/cart`,
                             {
                                 method: "POST",
@@ -409,9 +441,14 @@ const getState = ({ getStore, getActions, setStore }) => {
                             setStore
                         );
 
-                        if (!data) return;
-                        setStore({ cart: [...store.cart, data] });
+                        if (!result.ok) {
+                            console.error("Error añadiendo al carrito:", result.data?.message);
+                            return;
+                        }
+
+                        setStore({ cart: Array.isArray(result.data) ? result.data : [...store.cart] });
                     }
+
                 } catch (error) {
                     console.error("Error al gestionar el carrito:", error);
                 }
@@ -428,7 +465,7 @@ const getState = ({ getStore, getActions, setStore }) => {
                 if (!product.producto_id) return;
 
                 try {
-                    const data = await authenticatedFetch(
+                    const result = await authenticatedFetch(
                         `${process.env.REACT_APP_BACKEND_URL}/api/cart/${product.producto_id}`,
                         {
                             method: "DELETE",
@@ -445,9 +482,19 @@ const getState = ({ getStore, getActions, setStore }) => {
                         setStore
                     );
 
-                    if (!data) return;
+                    if (!result.ok) {
+                        console.error("Error al eliminar del carrito:", result.data?.message);
+                        return;
+                    }
 
-                    setStore({ cart: data.updated_cart || [] });
+                    setStore({
+                        cart: Array.isArray(result.data?.updated_cart)
+                            ? result.data.updated_cart
+                            : Array.isArray(result.data)
+                                ? result.data
+                                : []
+                    });
+
                 } catch (error) {
                     console.error("Error al eliminar del carrito:", error);
                 }
@@ -459,55 +506,66 @@ const getState = ({ getStore, getActions, setStore }) => {
                 if (!store.isLoged) return;
 
                 try {
-                    const data = await authenticatedFetch(
+                    const result = await authenticatedFetch(
                         `${process.env.REACT_APP_BACKEND_URL}/api/cart/clear`,
                         { method: "POST" },
                         actions,
                         setStore
                     );
 
-                    if (!data) return;
+                    if (!result.ok) {
+                        console.error("Error al vaciar el carrito:", result.data?.message);
+                        return;
+                    }
 
                     setStore({ cart: [], paymentCompleted: true });
                     localStorage.removeItem("cart");
+
                 } catch (error) {
                     console.error("Error al vaciar el carrito:", error);
                 }
             },
             fetchOrders: async () => {
                 const actions = getActions();
-                const data = await actions.authenticatedFetch(
+
+                const result = await actions.authenticatedFetch(
                     `${process.env.REACT_APP_BACKEND_URL}/api/orders`,
                     { method: 'GET' },
                     actions,
                     setStore
                 );
 
-                if (data) {
-                    setStore({ orders: data });
-                    return { ok: true };
+                if (!result.ok) {
+                    console.error("Error al cargar pedidos:", result.data?.message);
+                    setStore({ orders: [] });
+                    return { ok: false };
                 }
-                return { ok: false };
+
+                setStore({ orders: result.data || [] });
+
+                return { ok: true };
             },
             saveOrder: async (orderData) => {
                 const store = getStore();
                 console.log("Payload orderData enviado:", orderData);
                 try {
-                    const response = await authenticatedFetch(`${process.env.REACT_APP_BACKEND_URL}/api/orders`, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify(orderData)
-                    });
+                    const result = await authenticatedFetch(
+                        `${process.env.REACT_APP_BACKEND_URL}/api/orders`,
+                        {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify(orderData)
+                        }
+                    );
 
-                    if (!response.ok) {
-                        const errorData = await response.json();
-                        console.error("Error al guardar el pedido:", errorData.message);
-                        return { ok: false, error: errorData.message };
+                    if (!result.ok) {
+                        console.error("Error al guardar el pedido:", result.data?.message);
+                        return { ok: false, error: result.data?.message };
                     }
 
-                    const data = await response.json();
+                    const data = result.data;
 
                     // Actualizar el store con la nueva orden
                     setStore({ orders: [...store.orders, data.data] });
@@ -519,19 +577,26 @@ const getState = ({ getStore, getActions, setStore }) => {
             },
             fetchOrderDetails: async () => {
                 try {
-                    const response = await authenticatedFetch(`${process.env.REACT_APP_BACKEND_URL}/api/orderdetails`, {
-                        method: 'GET',
-                        headers: {
-                            'Content-Type': 'application/json'
+                    const result = await authenticatedFetch(
+                        `${process.env.REACT_APP_BACKEND_URL}/api/orderdetails`,
+                        {
+                            method: 'GET',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            }
                         }
+                    );
+
+                    if (!result.ok) {
+                        throw new Error(result.data?.message || "Error al obtener los detalles de las órdenes");
+                    }
+
+                    setStore({
+                        orderDetails: Array.isArray(result.data) ? result.data : []
                     });
 
-                    if (!response.ok) throw new Error("Error al obtener los detalles de las órdenes");
-
-                    const data = await response.json();
-
-                    setStore({ orderDetails: data });
                     return { ok: true };
+
                 } catch (error) {
                     setStore({ error: error.message });
                     console.error("Error al obtener los detalles de las órdenes:", error.message);
@@ -565,23 +630,28 @@ const getState = ({ getStore, getActions, setStore }) => {
                 }));
 
                 try {
-                    const response = await authenticatedFetch(`${process.env.REACT_APP_BACKEND_URL}/api/orderdetails`, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify(orderDetailsData)
-                    });
+                    const result = await authenticatedFetch(
+                        `${process.env.REACT_APP_BACKEND_URL}/api/orderdetails`,
+                        {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify(orderDetailsData)
+                        }
+                    );
 
-                    if (!response.ok) {
-                        const errorData = await response.json();
-                        console.error("Error al guardar los detalles del pedido:", errorData.message);
+                    if (!result.ok) {
+                        console.error("Error al guardar los detalles del pedido:", result.data?.message);
                         return { ok: false };
                     }
 
-                    const data = await response.json();
+                    const data = result.data;
+
                     setStore({ orderDetails: [...store.orderDetails, ...data] });
+
                     return { ok: true };
+
                 } catch (error) {
                     console.error("Error al guardar los detalles del pedido:", error);
                     return { ok: false };
@@ -605,20 +675,25 @@ const getState = ({ getStore, getActions, setStore }) => {
             loadFavorites: async () => {
                 const store = getStore();
                 const actions = getActions();
+
                 if (!store.isLoged) return;
 
                 try {
-                    const data = await authenticatedFetch(
+                    const result = await authenticatedFetch(
                         `${process.env.REACT_APP_BACKEND_URL}/api/favorites`,
                         { method: "GET" },
                         actions,
                         setStore
                     );
-                    if (!data) {
+
+                    if (!result.ok) {
+                        console.error("Error al cargar favoritos:", result.data?.message);
                         setStore({ favorites: [] });
                         return;
                     }
-                    setStore({ favorites: data });
+
+                    setStore({ favorites: result.data || [] });
+
                 } catch (error) {
                     console.error("Error al cargar los favoritos:", error);
                     setStore({ favorites: [] });
@@ -632,16 +707,21 @@ const getState = ({ getStore, getActions, setStore }) => {
                 if (!store.isLoged) return;
 
                 try {
-                    const data = await authenticatedFetch(
+                    const result = await authenticatedFetch(
                         `${process.env.REACT_APP_BACKEND_URL}/api/favorites`,
                         {
                             method: "POST",
                             body: JSON.stringify({ product_id: product.id }),
                         }
                     );
-                    if (!data) return;
+
+                    if (!result.ok) {
+                        console.error("Error al añadir a favoritos:", result.data?.message);
+                        return;
+                    }
 
                     setStore({ favorites: [...store.favorites, product] });
+
                 } catch (error) {
                     console.error("Error al añadir a favoritos:", error);
                 }
@@ -651,18 +731,22 @@ const getState = ({ getStore, getActions, setStore }) => {
                 if (!store.isLoged) return;
 
                 try {
-                    const data = await authenticatedFetch(
+                    const result = await authenticatedFetch(
                         `${process.env.REACT_APP_BACKEND_URL}/api/favorites/${productId}`,
                         { method: "DELETE" }
                     );
 
-                    if (!data) return;
+                    if (!result.ok) {
+                        console.error("Error al eliminar de favoritos:", result.data?.message);
+                        return;
+                    }
 
                     setStore({
                         favorites: store.favorites.filter(
                             (product) => product.id !== productId
                         ),
                     });
+
                 } catch (error) {
                     console.error("Error al eliminar de favoritos:", error);
                 }
