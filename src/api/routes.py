@@ -1271,6 +1271,27 @@ def handle_orders():
 
                 from collections import defaultdict
 
+                COLOR_LABELS = {
+                    "satinado_blanco": "Blanco liso",
+                    "satinado_negro": "Negro liso",
+                    "satinado_gris": "Gris medio liso",
+                    "satinado_verde": "Verde carruajes liso",
+
+                    "forja_negro": "Negro forja",
+                    "forja_gris": "Gris acero forja",
+                    "forja_marron": "Marrón castaño forja",
+                    "forja_azul": "Azul forja",
+                    "forja_verde": "Verde bronce forja",
+                    "forja_dorado": "Dorado forja",
+
+                    # compatibilidad pedidos antiguos
+                    "blanco": "Blanco",
+                    "negro": "Negro",
+                    "gris": "Gris",
+                    "marrón": "Marrón",
+                    "verde": "Verde"
+                }
+
                 data_table = [["Prod.", "Alto", "Ancho", "Anc.", "Col.", "Ud.", "Importe (€)"]]
 
                 # Agrupar productos iguales
@@ -1295,11 +1316,11 @@ def handle_orders():
                     importe_total = precio_unitario * cantidad
 
                     row = [
-                        prod.nombre[:20] if prod else "Desconocido",
+                        prod.nombre[:24] if prod else "Desconocido",
                         f"{alto} cm",
                         f"{ancho} cm",
-                        detail['anclaje'] if detail.get('anclaje') else '',
-                        color[:10] if color else '',
+                        (anclaje[:20] if anclaje else ''),
+                        COLOR_LABELS.get(color, color)[:18] if color else '',
                         str(cantidad),
                         f"{importe_total:.2f}"
                     ]
@@ -1308,7 +1329,7 @@ def handle_orders():
 
 
                 # Crear la tabla
-                table = Table(data_table, colWidths=[4*cm, 1.5*cm, 1.5*cm, 5*cm, 2*cm, 1*cm, 3*cm])
+                table = Table(data_table, colWidths=[4*cm, 1.5*cm, 1.5*cm, 4.2*cm, 3.2*cm, 1*cm, 2.3*cm])
                 table.setStyle(TableStyle([
                     ('BACKGROUND', (0, 0), (-1, 0), colors.Color(1, 0.196, 0.302)),
                     ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),

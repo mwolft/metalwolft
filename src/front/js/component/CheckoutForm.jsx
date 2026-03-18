@@ -39,11 +39,24 @@ const CheckoutForm = () => {
     const totalWithDiscount = finalTotal * (1 - discountPercent / 100);
 
     const colorLabels = {
-        blanco: "Blanco (RAL 9016)",
-        negro: "Negro (RAL 9005)",
-        gris: "Gris (RAL 7016)",
-        marrón: "Marrón (RAL 8014)",
-        verde: "Verde (RAL 6009)"
+        satinado_blanco: "Blanco liso",
+        satinado_negro: "Negro liso",
+        satinado_gris: "Gris medio liso",
+        satinado_verde: "Verde carruajes liso",
+
+        forja_negro: "Negro forja",
+        forja_gris: "Gris acero forja",
+        forja_marron: "Marrón castaño forja",
+        forja_azul: "Azul forja",
+        forja_verde: "Verde bronce forja",
+        forja_dorado: "Dorado forja",
+
+        // compatibilidad con pedidos antiguos
+        blanco: "Blanco",
+        negro: "Negro",
+        gris: "Gris",
+        marrón: "Marrón",
+        verde: "Verde"
     };
 
 
@@ -194,7 +207,7 @@ const CheckoutForm = () => {
             if (data.paymentIntent && data.paymentIntent.status === "succeeded") {
                 console.log("El PaymentIntent ya se encuentra confirmado en el backend.");
                 const orderData = {
-                    total_amount: totalWithDiscount,       
+                    total_amount: totalWithDiscount,
                     shipping_cost: shippingCost,
                     discount_code: store.discountCode || null,
                     discount_percent: store.discountPercent || 0,

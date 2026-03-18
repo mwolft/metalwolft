@@ -37,7 +37,7 @@ export const ProductDetail = () => {
     const [height, setHeight] = useState('');
     const [width, setWidth] = useState('');
     const [mounting, setMounting] = useState('Sin obra: con agujeros interiores');
-    const [color, setColor] = useState('blanco');
+    const [color, setColor] = useState('satinado_blanco');
     const [calculatedPrice, setCalculatedPrice] = useState(null);
     const [calculatedArea, setCalculatedArea] = useState(null);
     const [calcError, setCalcError] = useState('');
@@ -210,7 +210,7 @@ export const ProductDetail = () => {
         setHeight('');
         setWidth('');
         setMounting('Sin obra: con pletinas');
-        setColor('blanco');
+        setColor('satinado_blanco');
         setCalculatedPrice(null);
         setCalculatedArea(null);
     };
@@ -664,13 +664,18 @@ export const ProductDetail = () => {
                                     <Col>
                                         <Form.Group>
                                             <Form.Label>Color</Form.Label>
+
+                                            {/* SATINADO */}
+                                            <div style={{ fontSize: "0.85rem", marginBottom: "4px", fontWeight: "500" }}>
+                                                Satinado liso
+                                            </div>
+
                                             <div className="color-swatch-container">
                                                 {[
-                                                    { name: "blanco", label: "Blanco (RAL 9016)", hex: "#ffffff" },
-                                                    { name: "negro", label: "Negro (RAL 9005)", hex: "#000000" },
-                                                    { name: "gris", label: "Gris (RAL 7016)", hex: "#40464d" },
-                                                    { name: "marrón", label: "Marrón (RAL 8014)", hex: "#4f3b2b" },
-                                                    { name: "verde", label: "Verde (RAL 6009)", hex: "#0b3d2e" }
+                                                    { name: "satinado_blanco", label: "Blanco liso", hex: "#ffffff" },
+                                                    { name: "satinado_negro", label: "Negro liso", hex: "#000000" },
+                                                    { name: "satinado_gris", label: "Gris medio liso", hex: "#494949" },
+                                                    { name: "satinado_verde", label: "Verde carruajes liso", hex: "#183022" }
                                                 ].map((c) => (
                                                     <div
                                                         key={c.name}
@@ -681,14 +686,45 @@ export const ProductDetail = () => {
                                                     ></div>
                                                 ))}
                                             </div>
+
+                                            {/* EFECTO FORJA */}
+                                            <div style={{ fontSize: "0.85rem", marginTop: "10px", marginBottom: "4px", fontWeight: "500" }}>
+                                                Efecto forja
+                                            </div>
+
+                                            <div className="color-swatch-container">
+                                                {[
+                                                    { name: "forja_negro", label: "Negro forja", hex: "#1a1a1a" },
+                                                    { name: "forja_gris", label: "Gris acero forja", hex: "#7a7d80" },
+                                                    { name: "forja_marron", label: "Marrón castaño forja", hex: "#5a3a2a" },
+                                                    { name: "forja_azul", label: "Azul forja", hex: "#2d3e66" },
+                                                    { name: "forja_verde", label: "Verde bronce forja", hex: "#3a4a2d" },
+                                                    { name: "forja_dorado", label: "Dorado forja", hex: "#b89a3a" }
+                                                ].map((c) => (
+                                                    <div
+                                                        key={c.name}
+                                                        className={`color-swatch ${color === c.name ? "selected" : ""}`}
+                                                        style={{ backgroundColor: c.hex }}
+                                                        onClick={() => setColor(c.name)}
+                                                        title={c.label}
+                                                    ></div>
+                                                ))}
+                                            </div>
+
                                             <div className="mt-1" style={{ fontSize: "0.9rem", color: "#555" }}>
                                                 Seleccionado: <strong>
                                                     {{
-                                                        blanco: "Blanco (RAL 9016)",
-                                                        negro: "Negro (RAL 9005)",
-                                                        gris: "Gris (RAL 7016)",
-                                                        marrón: "Marrón (RAL 8014)",
-                                                        verde: "Verde (RAL 6009)"
+                                                        satinado_blanco: "Blanco liso",
+                                                        satinado_negro: "Negro liso",
+                                                        satinado_gris: "Gris medio liso",
+                                                        satinado_verde: "Verde carruajes liso",
+
+                                                        forja_negro: "Negro forja",
+                                                        forja_gris: "Gris acero forja",
+                                                        forja_marron: "Marrón castaño forja",
+                                                        forja_azul: "Azul forja",
+                                                        forja_verde: "Verde bronce forja",
+                                                        forja_dorado: "Dorado forja"
                                                     }[color]}
                                                 </strong>
                                             </div>
