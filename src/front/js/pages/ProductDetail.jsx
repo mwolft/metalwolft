@@ -55,6 +55,12 @@ export const ProductDetail = () => {
     const MIN_VISIBLE_MS = 700; // ajustable
     const [visibleSince, setVisibleSince] = useState(null);
 
+    const closeHintIfVisible = () => {
+        if (showHint) {
+            setShowHint(false);
+        }
+    };
+
 
 
     useEffect(() => {
@@ -193,10 +199,17 @@ export const ProductDetail = () => {
             setNotification('Debe iniciar sesión para carrito');
             return;
         }
+
         if (!calculatedPrice) {
             setNotification('Primero calcule el precio');
             return;
         }
+
+        if (mounting.includes("garras")) {
+            setNotification("Esta opción no está disponible temporalmente");
+            return;
+        }
+
         await actions.addToCart({
             product_id: product.id,
             alto: parseFloat(height),
@@ -205,7 +218,9 @@ export const ProductDetail = () => {
             color,
             precio_total: calculatedPrice
         });
+
         setNotification('Producto añadido al carrito');
+
         // reset
         setHeight('');
         setWidth('');
@@ -538,7 +553,11 @@ export const ProductDetail = () => {
                                                 type="number"
                                                 value={height}
                                                 ref={setAltoEl}
-                                                onChange={(e) => setHeight(e.target.value.replace(',', '.'))}
+                                                onFocus={closeHintIfVisible}
+                                                onChange={(e) => {
+                                                    closeHintIfVisible();
+                                                    setHeight(e.target.value.replace(',', '.'));
+                                                }}
                                                 placeholder="Ej.: 120.1"
                                                 min="0"
                                                 step="0.1"
@@ -584,7 +603,11 @@ export const ProductDetail = () => {
                                             <Form.Control
                                                 type="number"
                                                 value={width}
-                                                onChange={(e) => setWidth(e.target.value.replace(',', '.'))}
+                                                onFocus={closeHintIfVisible}
+                                                onChange={(e) => {
+                                                    closeHintIfVisible();
+                                                    setWidth(e.target.value.replace(',', '.'));
+                                                }}
                                                 min="0"
                                                 step="0.1"
                                                 inputMode="decimal"
@@ -657,7 +680,9 @@ export const ProductDetail = () => {
                                                 <option>Sin obra: con agujeros interiores</option>
                                                 <option>Sin obra: con agujeros frontales</option>
                                                 <option>Sin obra: con pletinas</option>
-                                                <option>Con obra: con garras metálicas</option>
+                                                <option disabled>
+                                                    Con obra: con garras metálicas (no disponible)
+                                                </option>
                                             </Form.Select>
                                         </Form.Group>
                                     </Col>
