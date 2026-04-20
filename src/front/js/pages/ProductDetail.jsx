@@ -41,6 +41,20 @@ export const ProductDetail = () => {
     const [calculatedPrice, setCalculatedPrice] = useState(null);
     const [calculatedArea, setCalculatedArea] = useState(null);
     const [calcError, setCalcError] = useState('');
+    const [previewColor, setPreviewColor] = useState(null);
+    const COLOR_MAP = {
+        satinado_blanco: { hex: "#ffffff", type: "satinado" },
+        satinado_negro: { hex: "#000000", type: "satinado" },
+        satinado_gris: { hex: "#494949", type: "satinado" },
+        satinado_verde: { hex: "#183022", type: "satinado" },
+
+        forja_negro: { hex: "#1a1a1a", type: "forja" },
+        forja_gris: { hex: "#7a7d80", type: "forja" },
+        forja_marron: { hex: "#5a3a2a", type: "forja" },
+        forja_azul: { hex: "#2e4579", type: "forja" },
+        forja_verde: { hex: "#506c39", type: "forja" },
+        forja_dorado: { hex: "#947d30", type: "forja" }
+    };
 
     // Estados “overlay”
     const [showHint, setShowHint] = useState(false);
@@ -383,6 +397,11 @@ export const ProductDetail = () => {
         ...(product.images || []).filter(img => img.image_url !== product.imagen)
     ];
 
+    const activeColor = previewColor || {
+        name: color,
+        ...COLOR_MAP[color]
+    };
+
     return (
         <div className="product-page-wrapper">
             <Container style={{ marginTop: '100px', marginBottom: '0' }}>
@@ -684,6 +703,40 @@ export const ProductDetail = () => {
                                                     Con obra: con garras metálicas (no disponible)
                                                 </option>
                                             </Form.Select>
+                                            {activeColor && (
+                                                <div
+                                                    style={{
+                                                        marginTop: "10px",
+                                                        height: "80px",
+                                                        borderRadius: "8px",
+                                                        border: "1px solid #ccc",
+                                                        background: activeColor.name.includes("forja")
+                                                            ? `linear-gradient(135deg, ${activeColor.hex}, #111),url('https://www.transparenttextures.com/patterns/asfalt-light.png')`
+                                                            : activeColor.hex,
+                                                        backgroundBlendMode: activeColor.name.includes("forja")
+                                                            ? "overlay"
+                                                            : "normal",
+                                                        transition: "all 0.2s ease"
+                                                    }}
+                                                />
+                                            )}
+                                            <div className="mt-1" style={{ fontSize: "0.9rem", color: "#555" }}>
+                                                Seleccionado: <strong>
+                                                    {{
+                                                        satinado_blanco: "Blanco liso",
+                                                        satinado_negro: "Negro liso",
+                                                        satinado_gris: "Gris medio liso",
+                                                        satinado_verde: "Verde carruajes liso",
+
+                                                        forja_negro: "Negro forja",
+                                                        forja_gris: "Gris acero forja",
+                                                        forja_marron: "Marrón castaño forja",
+                                                        forja_azul: "Azul forja",
+                                                        forja_verde: "Verde bronce forja",
+                                                        forja_dorado: "Dorado forja"
+                                                    }[color]}
+                                                </strong>
+                                            </div>
                                         </Form.Group>
                                     </Col>
                                     <Col>
@@ -705,6 +758,9 @@ export const ProductDetail = () => {
                                                     <div
                                                         key={c.name}
                                                         className={`color-swatch ${color === c.name ? "selected" : ""}`}
+                                                        onMouseEnter={() => setPreviewColor(c)}
+                                                        onMouseLeave={() => setPreviewColor(null)}
+                                                        onTouchStart={() => setPreviewColor(c)}
                                                         style={{ backgroundColor: c.hex }}
                                                         onClick={() => setColor(c.name)}
                                                         title={c.label}
@@ -722,36 +778,25 @@ export const ProductDetail = () => {
                                                     { name: "forja_negro", label: "Negro forja", hex: "#1a1a1a" },
                                                     { name: "forja_gris", label: "Gris acero forja", hex: "#7a7d80" },
                                                     { name: "forja_marron", label: "Marrón castaño forja", hex: "#5a3a2a" },
-                                                    { name: "forja_azul", label: "Azul forja", hex: "#2d3e66" },
-                                                    { name: "forja_verde", label: "Verde bronce forja", hex: "#3a4a2d" },
-                                                    { name: "forja_dorado", label: "Dorado forja", hex: "#b89a3a" }
+                                                    { name: "forja_azul", label: "Azul forja", hex: "#2e4579" },
+                                                    { name: "forja_verde", label: "Verde bronce forja", hex: "#506c39" },
+                                                    { name: "forja_dorado", label: "Dorado forja", hex: "#947d30" }
                                                 ].map((c) => (
                                                     <div
                                                         key={c.name}
                                                         className={`color-swatch ${color === c.name ? "selected" : ""}`}
-                                                        style={{ backgroundColor: c.hex }}
+                                                        onMouseEnter={() => setPreviewColor(c)}
+                                                        onMouseLeave={() => setPreviewColor(null)}
+                                                        onTouchStart={() => setPreviewColor(c)}
+                                                        style={{
+                                                            backgroundColor: c.hex,
+                                                            backgroundImage: "url('https://www.transparenttextures.com/patterns/dark-matter.png')",
+                                                            backgroundBlendMode: 'multiply'
+                                                        }}
                                                         onClick={() => setColor(c.name)}
                                                         title={c.label}
                                                     ></div>
                                                 ))}
-                                            </div>
-
-                                            <div className="mt-1" style={{ fontSize: "0.9rem", color: "#555" }}>
-                                                Seleccionado: <strong>
-                                                    {{
-                                                        satinado_blanco: "Blanco liso",
-                                                        satinado_negro: "Negro liso",
-                                                        satinado_gris: "Gris medio liso",
-                                                        satinado_verde: "Verde carruajes liso",
-
-                                                        forja_negro: "Negro forja",
-                                                        forja_gris: "Gris acero forja",
-                                                        forja_marron: "Marrón castaño forja",
-                                                        forja_azul: "Azul forja",
-                                                        forja_verde: "Verde bronce forja",
-                                                        forja_dorado: "Dorado forja"
-                                                    }[color]}
-                                                </strong>
                                             </div>
                                         </Form.Group>
                                     </Col>

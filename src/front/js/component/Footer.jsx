@@ -6,7 +6,7 @@ export const Footer = () => {
   return (
     <footer className="mt-auto bg-dark text-white py-3 px-2">
       <div className="container text-center">
-        <p style={{marginTop: '6px', marginBottom: '17px'}}>© 2025 Metal Wolft. Todos los derechos reservados.</p>
+        <p style={{marginTop: '6px', marginBottom: '17px'}}>© 2026 Metal Wolft. Todos los derechos reservados.</p>
         <hr />
         <ul className="footer-list">
           <li className="footer-item">
