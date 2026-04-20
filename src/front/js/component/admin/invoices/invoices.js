@@ -19,7 +19,7 @@ import { FaDownload } from "react-icons/fa";
 const DownloadButton = () => {
   const record = useRecordContext();
 
-  const handleDownload = () => {
+  const handleDownload = async () => {
     if (!record) {
       alert("No se encontró información para esta factura.");
       return;
@@ -34,9 +34,38 @@ const DownloadButton = () => {
     const downloadUrl = record.pdf_path?.startsWith('http')
       ? record.pdf_path
       : `${backendUrl}${record.pdf_path}`;
+    const token = localStorage.getItem("token");
 
+    if (!token) {
+      alert("Debes iniciar sesiÃ³n para descargar la factura.");
+      return;
+    }
 
-    window.open(downloadUrl, "_blank");
+    try {
+      const response = await fetch(downloadUrl, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error("No se pudo descargar la factura.");
+      }
+
+      const blob = await response.blob();
+      const objectUrl = window.URL.createObjectURL(blob);
+      const filename = record.pdf_path.split("/").pop() || `${record.invoice_number}.pdf`;
+      const link = document.createElement("a");
+
+      link.href = objectUrl;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(objectUrl);
+    } catch (error) {
+      alert(error.message || "No se pudo descargar la factura.");
+    }
   };
 
   return (

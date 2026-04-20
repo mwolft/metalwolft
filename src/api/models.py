@@ -352,6 +352,58 @@ class Orders(db.Model):
         return f"{letters}{numbers}"
 
 
+class CheckoutSessions(db.Model):
+    __tablename__ = "checkout_sessions"
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True)
+    order_id = db.Column(db.Integer, db.ForeignKey('orders.id'), nullable=True, unique=True)
+    payment_intent_id = db.Column(db.String(255), nullable=False, unique=True, index=True)
+    idempotency_key = db.Column(db.String(255), nullable=True, index=True)
+    status = db.Column(db.String(50), nullable=False, default="pending_payment")
+    subtotal = db.Column(db.Float, nullable=False, default=0.0)
+    shipping_cost = db.Column(db.Float, nullable=False, default=0.0)
+    discount_code = db.Column(db.String(50), nullable=True)
+    discount_percent = db.Column(db.Float, nullable=False, default=0.0)
+    discount_amount = db.Column(db.Float, nullable=False, default=0.0)
+    total_amount = db.Column(db.Float, nullable=False, default=0.0)
+    quote_snapshot = db.Column(db.JSON, nullable=False)
+    customer_snapshot = db.Column(db.JSON, nullable=True)
+    created_at = db.Column(db.DateTime, nullable=False, server_default=db.func.now())
+    updated_at = db.Column(
+        db.DateTime,
+        nullable=False,
+        server_default=db.func.now(),
+        onupdate=db.func.now()
+    )
+
+    user = db.relationship('Users', backref='checkout_sessions', lazy=True)
+    order = db.relationship('Orders', backref=db.backref('checkout_session', uselist=False), lazy=True)
+
+    def __repr__(self):
+        return f'<CheckoutSession {self.id}: PI {self.payment_intent_id}>'
+
+    def serialize(self):
+        return {
+            "id": self.id,
+            "user_id": self.user_id,
+            "order_id": self.order_id,
+            "payment_intent_id": self.payment_intent_id,
+            "idempotency_key": self.idempotency_key,
+            "status": self.status,
+            "subtotal": self.subtotal,
+            "shipping_cost": self.shipping_cost,
+            "discount_code": self.discount_code,
+            "discount_percent": self.discount_percent,
+            "discount_amount": self.discount_amount,
+            "total_amount": self.total_amount,
+            "quote_snapshot": self.quote_snapshot,
+            "customer_snapshot": self.customer_snapshot,
+            "created_at": self.created_at,
+            "updated_at": self.updated_at
+        }
+
+
 class OrderDetails(db.Model):
     __tablename__ = "order_details"
     id = db.Column(db.Integer, primary_key=True)
@@ -440,7 +492,16 @@ class Invoices(db.Model):
 
         return f"{prefix}{next_number:03}"  
 
-    def serialize(self):
+    def serialize_summary(self):
+        return {
+            "id": self.id,
+            "invoice_number": self.invoice_number,
+            "order_id": self.order_id,
+            "created_at": self.created_at.strftime("%Y-%m-%d %H:%M:%S"),
+            "amount": self.amount,
+        }
+
+    def serialize_admin(self):
         return {
             "id": self.id,
             "invoice_number": self.invoice_number,
@@ -454,6 +515,9 @@ class Invoices(db.Model):
             "client_phone": self.client_phone,
             "order_details": self.order_details,
         }
+
+    def serialize(self):
+        return self.serialize_admin()
 
 class Favorites(db.Model):
     __tablename__ = "favorites"

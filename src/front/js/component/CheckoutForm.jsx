@@ -2,11 +2,10 @@ import React, { useContext, useState } from 'react';
 import { loadStripe } from '@stripe/stripe-js';
 import { Elements, CardElement, useStripe, useElements } from '@stripe/react-stripe-js';
 import { Context } from "../store/appContext";
-import { Button, Container, Row, Col, Form, Accordion } from "react-bootstrap";
+import { Button, Container, Row, Col, Form } from "react-bootstrap";
 import { useNavigate } from "react-router-dom";
 import { calcularEnvio } from "../../utils/shippingCalculator";
 import { Helmet } from "react-helmet-async";
-
 
 const stripePromise = loadStripe('pk_live_51I1FgUDyMBNofWjFzagO0jTrkfQBvlt5Pshx3hLJbDLCxahT7Cn5NF9oozvey5iiH6lZhP82p3TFFmrdHGh3CQW700GiDX1dtz');
 
@@ -14,7 +13,6 @@ const CheckoutForm = () => {
     const stripe = useStripe();
     const elements = useElements();
     const { store, actions } = useContext(Context);
-    const [paymentMethod, setPaymentMethod] = useState("stripe");
     const [differentBilling, setDifferentBilling] = useState(false);
     const [errors, setErrors] = useState({});
     const [isProcessing, setIsProcessing] = useState(false);
@@ -33,65 +31,115 @@ const CheckoutForm = () => {
     const [acceptedPolicy, setAcceptedPolicy] = useState(false);
     const navigate = useNavigate();
 
-    const { products, totalShipping: shippingCost, subtotal: total, finalTotal } = calcularEnvio(store.cart);
-
+    const { products, totalShipping: shippingCost, finalTotal } = calcularEnvio(store.cart);
     const discountPercent = store.discountPercent || 0;
     const totalWithDiscount = finalTotal * (1 - discountPercent / 100);
+
+    const buildOrderProducts = (checkoutSummary) => {
+        if (checkoutSummary?.lines?.length) {
+            return checkoutSummary.lines.map((line) => ({
+                producto_id: line.product_id,
+                quantity: line.quantity || 1,
+                alto: line.alto,
+                ancho: line.ancho,
+                anclaje: line.anclaje,
+                color: line.color,
+                precio_total: line.unit_price,
+                shipping_type: line.shipping_type,
+                shipping_cost: line.shipping_cost
+            }));
+        }
+
+        return products.map((product) => ({
+            producto_id: product.producto_id,
+            quantity: product.quantity || 1,
+            alto: product.alto,
+            ancho: product.ancho,
+            anclaje: product.anclaje,
+            color: product.color,
+            precio_total: product.precio_total,
+            shipping_type: product.shipping_type,
+            shipping_cost: product.shipping_cost
+        }));
+    };
+
+    const buildAnalyticsItems = (checkoutSummary) => {
+        if (checkoutSummary?.lines?.length) {
+            return checkoutSummary.lines.map((line) => ({
+                item_id: line.product_id,
+                item_name: line.product_name,
+                price: line.unit_price,
+                quantity: line.quantity || 1
+            }));
+        }
+
+        return products.map((product) => ({
+            item_id: product.producto_id,
+            item_name: product.nombre,
+            price: product.precio_total,
+            quantity: product.quantity || 1
+        }));
+    };
+
+    const buildOrderData = (checkoutSummary, paymentIntentId = null) => ({
+        payment_intent_id: paymentIntentId || store.paymentIntentId || null,
+        total_amount: checkoutSummary?.total_amount ?? totalWithDiscount,
+        shipping_cost: checkoutSummary?.shipping_cost ?? shippingCost,
+        discount_code: checkoutSummary && Object.prototype.hasOwnProperty.call(checkoutSummary, "discount_code")
+            ? checkoutSummary.discount_code
+            : (store.discountCode || null),
+        discount_percent: checkoutSummary?.discount_percent ?? (store.discountPercent || 0),
+        products: buildOrderProducts(checkoutSummary),
+        ...formData
+    });
+
+    const pushPurchaseEvent = (paymentIntentId, checkoutSummary) => {
+        window.dataLayer = window.dataLayer || [];
+        window.dataLayer.push({
+            event: "purchase",
+            ecommerce: {
+                transaction_id: paymentIntentId,
+                value: checkoutSummary?.total_amount ?? totalWithDiscount,
+                currency: "EUR",
+                shipping: checkoutSummary?.shipping_cost ?? shippingCost,
+                coupon: checkoutSummary && Object.prototype.hasOwnProperty.call(checkoutSummary, "discount_code")
+                    ? checkoutSummary.discount_code
+                    : (store.discountCode || null),
+                items: buildAnalyticsItems(checkoutSummary)
+            }
+        });
+    };
+
+    const persistPostPurchaseContext = (paymentIntentId) => {
+        if (!paymentIntentId) return;
+        actions.setPaymentIntentId(paymentIntentId);
+        sessionStorage.setItem("lastPaymentIntentId", paymentIntentId);
+    };
 
     const colorLabels = {
         satinado_blanco: "Blanco liso",
         satinado_negro: "Negro liso",
         satinado_gris: "Gris medio liso",
         satinado_verde: "Verde carruajes liso",
-
         forja_negro: "Negro forja",
         forja_gris: "Gris acero forja",
-        forja_marron: "Marrón castaño forja",
+        forja_marron: "MarrÃ³n castaÃ±o forja",
         forja_azul: "Azul forja",
         forja_verde: "Verde bronce forja",
         forja_dorado: "Dorado forja",
-
-        // compatibilidad con pedidos antiguos
         blanco: "Blanco",
         negro: "Negro",
         gris: "Gris",
-        marrón: "Marrón",
+        marrÃ³n: "MarrÃ³n",
         verde: "Verde"
     };
 
-
-
-    const calcularTipoEnvio = (producto) => {
-        const area = (producto.alto * producto.ancho) / 10000;
-        if (Math.max(producto.alto, producto.ancho) > 220) return "B";
-        if (area > 1) return "A";
-        return "normal";
-    };
-
-
-    const obtenerTarifaPorTipo = (tipo) => {
-        switch (tipo) {
-            case "normal": return 10;
-            case "A": return 20;
-            case "B": return 30;
-            default: return 10;
-        }
-    };
-
-    // Manejar cambios en los campos del formulario
     const handleInputChange = (e) => {
         const { name, value } = e.target;
         setFormData({
             ...formData,
             [name]: value
         });
-    };
-
-    const handlePayPalSuccess = (details) => {
-        // Guardar la orden y vaciar el carrito
-        actions.saveOrder();
-        actions.clearCart();
-        navigate("/thank-you");
     };
 
     const validateForm = () => {
@@ -116,7 +164,7 @@ const CheckoutForm = () => {
         const newErrors = {};
         requiredFields.forEach((field) => {
             if (!formData[field]) {
-                newErrors[field] = `Campo obligatorio.`;
+                newErrors[field] = "Campo obligatorio.";
             }
         });
 
@@ -124,30 +172,47 @@ const CheckoutForm = () => {
         return Object.keys(newErrors).length === 0;
     };
 
-    // Pago con Stripe
+    const handleOrderCompletion = async (paymentIntentId, checkoutSummary, { attemptOrderFallback = true } = {}) => {
+        console.log("handleOrderCompletion ejecutado");
+        persistPostPurchaseContext(paymentIntentId);
+
+        if (attemptOrderFallback) {
+            const orderData = buildOrderData(checkoutSummary, paymentIntentId);
+            const { ok, error } = await actions.saveOrder(orderData);
+            if (!ok) {
+                console.warn("No se pudo cerrar el pedido desde frontend; el webhook seguirÃ¡ siendo la vÃ­a principal.", error);
+            }
+        }
+
+        await actions.clearCart();
+        navigate(
+            paymentIntentId
+                ? `/thank-you?payment_intent_id=${encodeURIComponent(paymentIntentId)}`
+                : "/thank-you"
+        );
+    };
+
     const handleSubmit = async (event) => {
         event.preventDefault();
 
         if (!acceptedPolicy) {
-            alert("Debes aceptar la Política de Devoluciones y Garantías antes de continuar.");
+            alert("Debes aceptar la PolÃ­tica de Devoluciones y GarantÃ­as antes de continuar.");
             return;
         }
 
         if (!validateForm()) {
-            console.error("El formulario no pasó la validación.");
+            console.error("El formulario no pasÃ³ la validaciÃ³n.");
             return;
         }
 
         if (!stripe || !elements) {
-            console.error("Stripe o Elements no están cargados.");
+            console.error("Stripe o Elements no estÃ¡n cargados.");
             return;
         }
 
         setIsProcessing(true);
-        console.log("Iniciando el proceso de pago...");
 
         try {
-            // Obtén el elemento de la tarjeta y crea el PaymentMethod
             const cardElement = elements.getElement(CardElement);
             const { error, paymentMethod } = await stripe.createPaymentMethod({
                 type: 'card',
@@ -160,149 +225,82 @@ const CheckoutForm = () => {
                 return;
             }
 
-            console.log("PaymentMethod creado correctamente:", paymentMethod);
-
-            // Convertir el total final a la unidad mínima (por ejemplo, centavos)
             const convertedAmount = Math.round(totalWithDiscount * 100);
-
-            // Solicitud al backend para crear el PaymentIntent
-            console.log("Solicitando creación del PaymentIntent al backend...");
-            // Generar o reutilizar la idempotencyKey
             const idempotencyKey = store.idempotencyKey || (typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).substring(2));
             actions.setIdempotencyKey(idempotencyKey);
 
+            const token = localStorage.getItem("token");
             const response = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/create-payment-intent`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
+                    Authorization: `Bearer ${token}`
                 },
                 body: JSON.stringify({
                     amount: convertedAmount,
                     payment_method_id: paymentMethod.id,
                     payment_intent_id: store.paymentIntentId,
-                    idempotency_key: idempotencyKey
+                    idempotency_key: idempotencyKey,
+                    email: store.currentUser?.email || null,
+                    discount_code: store.discountCode || null,
+                    discount_percent: store.discountPercent || 0,
+                    shipping_cost: shippingCost,
+                    total_amount: totalWithDiscount,
+                    customer_data: formData
                 }),
             });
 
+            const data = await response.json().catch(() => null);
+
             if (!response.ok) {
-                console.error("Error en la respuesta del backend al crear el PaymentIntent.", response.statusText);
-                alert("Error al crear el PaymentIntent. Por favor, inténtalo nuevamente.");
+                console.error("Error en la respuesta del backend al crear el PaymentIntent.", response.statusText, data);
+                alert("Error al crear el PaymentIntent. Por favor, intÃ©ntalo nuevamente.");
                 return;
             }
 
-            const data = await response.json();
-            console.log("Respuesta del backend:", data);
+            const checkoutSummary = data?.checkout_summary || null;
 
-            if (data.paymentIntent && data.paymentIntent.id) {
-                actions.setPaymentIntentId(data.paymentIntent.id);
+            if (data.paymentIntent?.id) {
+                persistPostPurchaseContext(data.paymentIntent.id);
             }
 
-            if (!data || !data.clientSecret) {
+            if (!data?.clientSecret) {
                 console.error("La respuesta no contiene clientSecret.");
-                alert("Hubo un error en la creación del intento de pago.");
+                alert("Hubo un error en la creaciÃ³n del intento de pago.");
                 return;
             }
 
-            // Si el PaymentIntent ya fue confirmado
-            if (data.paymentIntent && data.paymentIntent.status === "succeeded") {
-                console.log("El PaymentIntent ya se encuentra confirmado en el backend.");
-                const orderData = {
-                    total_amount: totalWithDiscount,
-                    shipping_cost: shippingCost,
-                    discount_code: store.discountCode || null,
-                    discount_percent: store.discountPercent || 0,
-                    products: products.map(product => ({
-                        producto_id: product.producto_id,
-                        quantity: product.quantity || 1,
-                        alto: product.alto,
-                        ancho: product.ancho,
-                        anclaje: product.anclaje,
-                        color: product.color,
-                        precio_total: product.precio_total,
-                        shipping_type: product.shipping_type,
-                        shipping_cost: product.shipping_cost
-                    })),
-                    ...formData
-                };
-                console.log("orderData a enviar:", orderData);
-                const { ok, order, error } = await actions.saveOrder(orderData);
-                if (!ok) {
-                    console.error("Error al guardar la orden:", error);
-                    alert("No se pudo procesar tu pedido. Por favor, inténtalo nuevamente.");
-                    return;
-                }
-                console.log("📦 saveOrder OK, llamando a handleOrderCompletion (bloque A)");
-                await handleOrderCompletion(order.id, formData);
+            if (data.paymentIntent?.status === "succeeded") {
+                pushPurchaseEvent(data.paymentIntent.id, checkoutSummary);
+                await handleOrderCompletion(data.paymentIntent.id, checkoutSummary, { attemptOrderFallback: true });
                 return;
             }
 
-            // Confirmar el pago (esto ejecutará 3D Secure si es necesario)
-            console.log("Confirmando el pago con stripe.confirmCardPayment...");
             const { error: confirmError, paymentIntent: confirmedPaymentIntent } = await stripe.confirmCardPayment(data.clientSecret);
 
             if (confirmError) {
-                console.error("Error en la confirmación del pago:", confirmError);
-                alert(`Error en la confirmación del pago: ${confirmError.message}`);
+                console.error("Error en la confirmaciÃ³n del pago:", confirmError);
+                alert(`Error en la confirmaciÃ³n del pago: ${confirmError.message}`);
                 return;
             }
 
-            console.log("Respuesta de confirmCardPayment:", confirmedPaymentIntent);
-
-            if (confirmedPaymentIntent && confirmedPaymentIntent.status === 'succeeded') {
-                console.log("El pago fue confirmado exitosamente.");
-                // 🔥 DISPARO EVENTO COMPRA PARA GTM (NO BLOQUEANTE)
-                window.dataLayer = window.dataLayer || [];
-                window.dataLayer.push({
-                    event: "purchase",
-                    ecommerce: {
-                        transaction_id: confirmedPaymentIntent.id,
-                        value: totalWithDiscount,
-                        currency: "EUR",
-                        shipping: shippingCost,
-                        coupon: store.discountCode || null,
-                        items: products.map(product => ({
-                            item_id: product.producto_id,
-                            item_name: product.nombre,
-                            price: product.precio_total,
-                            quantity: product.quantity || 1
-                        }))
-                    }
-                });
-
-                const orderData = {
-                    total_amount: totalWithDiscount,
-                    shipping_cost: shippingCost,
-                    discount_code: store.discountCode || null,
-                    discount_percent: store.discountPercent || 0,
-                    products: products.map(product => ({
-                        producto_id: product.producto_id,
-                        quantity: product.quantity || 1,
-                        alto: product.alto,
-                        ancho: product.ancho,
-                        anclaje: product.anclaje,
-                        color: product.color,
-                        precio_total: product.precio_total,
-                        shipping_type: product.shipping_type,
-                        shipping_cost: product.shipping_cost
-                    })),
-                    ...formData
-                };
-                console.log("orderData a enviar:", orderData);
-                const { ok, order, error } = await actions.saveOrder(orderData);
-                if (!ok) {
-                    console.error("Error al guardar la orden tras confirmación del pago:", error);
-                    alert("Error al guardar la orden.");
-                    return;
-                }
-                console.log("📦 saveOrder OK, llamando a handleOrderCompletion (bloque B)");
-                await handleOrderCompletion(order.id, formData);
+            if (confirmedPaymentIntent?.status === 'succeeded') {
+                pushPurchaseEvent(confirmedPaymentIntent.id, checkoutSummary);
+                await handleOrderCompletion(confirmedPaymentIntent.id, checkoutSummary, { attemptOrderFallback: true });
+                return;
             }
+
+            if (confirmedPaymentIntent?.status === 'processing') {
+                await handleOrderCompletion(confirmedPaymentIntent.id, checkoutSummary, { attemptOrderFallback: false });
+                return;
+            }
+
+            alert("No hemos podido confirmar el estado final del pago. Revisa tu cuenta en unos instantes.");
         } catch (err) {
             console.error("Error inesperado en el flujo de pago:", err);
-            alert("Se produjo un error inesperado. Por favor, inténtalo nuevamente.");
+            alert("Se produjo un error inesperado. Por favor, intÃ©ntalo nuevamente.");
         } finally {
             setIsProcessing(false);
-            console.log("Proceso de pago finalizado. isProcessing reestablecido a false.");
         }
     };
 
@@ -311,7 +309,7 @@ const CheckoutForm = () => {
         if (!e.target.checked) {
             setFormData({
                 ...formData,
-                shipping_address: "La misma que la de facturación",
+                shipping_address: "La misma que la de facturaciÃ³n",
                 shipping_city: "",
                 shipping_postal_code: ""
             });
@@ -323,24 +321,6 @@ const CheckoutForm = () => {
                 shipping_postal_code: ""
             });
         }
-    };
-
-    const handleOrderCompletion = async (orderId, formData) => {
-        console.log("✅ handleOrderCompletion ejecutado");
-        const { ok, order, error } = await actions.saveOrderDetails(orderId, formData);
-        if (!ok) {
-            throw new Error("Error al guardar los detalles de la orden.");
-        }
-        actions.clearCart();
-        localStorage.removeItem("cart");
-        await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/cart/clear`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                Authorization: `Bearer ${localStorage.getItem("token")}`
-            }
-        });
-        navigate("/thank-you");
     };
 
     return (
@@ -374,36 +354,36 @@ const CheckoutForm = () => {
                                             {product.shipping_type !== 'normal' && (
                                                 <>
                                                     <small className="text-danger d-block mx-1">
-                                                        🚚 Este producto requiere envío especial ({product.shipping_cost.toFixed(2)}€)
+                                                        ðŸšš Este producto requiere envÃ­o especial ({product.shipping_cost.toFixed(2)}â‚¬)
                                                     </small>
                                                 </>
                                             )}
                                         </div>
                                     </div>
                                     <span style={{ color: "#6c757d", opacity: 1, fontSize: "0.875rem", textAlign: "right", display: "block" }}>
-                                        {product.precio_total.toFixed(2)}€ <br /> {product.quantity ?? 1} und<br /> {(product.precio_total * (product.quantity ?? 1)).toFixed(2)}€
+                                        {product.precio_total.toFixed(2)}â‚¬ <br /> {product.quantity ?? 1} und<br /> {(product.precio_total * (product.quantity ?? 1)).toFixed(2)}â‚¬
                                     </span>
                                 </li>
                             ))}
                             <li className="list-group-item d-flex justify-content-between">
-                                <span>Envío: </span>
-                                <strong>{shippingCost === 0 ? "GRATIS" : `${shippingCost.toFixed(2)} €`}</strong>
+                                <span>EnvÃ­o: </span>
+                                <strong>{shippingCost === 0 ? "GRATIS" : `${shippingCost.toFixed(2)} â‚¬`}</strong>
                             </li>
                             {discountPercent > 0 && (
                                 <li className="list-group-item d-flex justify-content-between text-success">
                                     <span>Descuento ({discountPercent}%)</span>
-                                    <strong>-{(finalTotal * discountPercent / 100).toFixed(2)}€</strong>
+                                    <strong>-{(finalTotal * discountPercent / 100).toFixed(2)}â‚¬</strong>
                                 </li>
                             )}
                             <li className="list-group-item d-flex justify-content-between">
                                 <span>Total (EUR)</span>
-                                <strong>{totalWithDiscount.toFixed(2)}€</strong>
+                                <strong>{totalWithDiscount.toFixed(2)}â‚¬</strong>
                             </li>
                         </ul>
                     </Col>
                     <Col md={8} className="order-md-1">
                         <Form onSubmit={handleSubmit} className="needs-validation" noValidate>
-                            <h4 className="mb-3">Dirección de facturación</h4>
+                            <h4 className="mb-3">DirecciÃ³n de facturaciÃ³n</h4>
                             <hr className='hr-cart' />
                             <div className="row">
                                 <div className="col-md-6">
@@ -436,7 +416,7 @@ const CheckoutForm = () => {
                                     <Form.Label></Form.Label>
                                     <Form.Control
                                         name="billing_address"
-                                        placeholder="Calle, número, portal..."
+                                        placeholder="Calle, nÃºmero, portal..."
                                         onChange={handleInputChange}
                                         value={formData.billing_address}
                                     />
@@ -450,7 +430,7 @@ const CheckoutForm = () => {
                                     <Form.Label></Form.Label>
                                     <Form.Control
                                         name="billing_postal_code"
-                                        placeholder="Código Postal"
+                                        placeholder="CÃ³digo Postal"
                                         onChange={handleInputChange}
                                         value={formData.billing_postal_code}
                                     />
@@ -488,7 +468,7 @@ const CheckoutForm = () => {
                                     <Form.Label></Form.Label>
                                     <Form.Control
                                         name="phone"
-                                        placeholder="Teléfono"
+                                        placeholder="TelÃ©fono"
                                         onChange={handleInputChange}
                                         value={formData.phone}
                                     />
@@ -497,19 +477,19 @@ const CheckoutForm = () => {
                                     )}
                                 </div>
                             </div>
-                            <Form.Check type="checkbox" label="La dirección de envío es diferente a la de facturación"
+                            <Form.Check type="checkbox" label="La direcciÃ³n de envÃ­o es diferente a la de facturaciÃ³n"
                                 id="differentBilling"
                                 onChange={handleCheckboxChange} />
 
                             {differentBilling && (
                                 <div className="my-3" style={{ marginTop: '50px' }}>
-                                    <h4 className="mb-3">Dirección de envío</h4>
+                                    <h4 className="mb-3">DirecciÃ³n de envÃ­o</h4>
                                     <hr className='hr-cart' />
                                     <Form.Group controlId="shipping_address">
                                         <Form.Label></Form.Label>
                                         <Form.Control
                                             name="shipping_address"
-                                            placeholder="Calle, número, portal, piso..."
+                                            placeholder="Calle, nÃºmero, portal, piso..."
                                             onChange={handleInputChange}
                                             value={formData.shipping_address}
                                         />
@@ -533,7 +513,7 @@ const CheckoutForm = () => {
                                         <Form.Label></Form.Label>
                                         <Form.Control
                                             name="shipping_postal_code"
-                                            placeholder="Código Postal"
+                                            placeholder="CÃ³digo Postal"
                                             onChange={handleInputChange}
                                             value={formData.shipping_postal_code}
                                         />
@@ -543,7 +523,7 @@ const CheckoutForm = () => {
                                     </Form.Group>
                                 </div>
                             )}
-                            <h4 className="mb-3" style={{ marginTop: '50px' }}>Método de pago</h4>
+                            <h4 className="mb-3" style={{ marginTop: '50px' }}>MÃ©todo de pago</h4>
                             <hr className='hr-cart' />
                             <div className="mt-4">
                                 <div role="group" aria-labelledby="payment-method-label">
@@ -560,14 +540,14 @@ const CheckoutForm = () => {
                                         id="accept-policy"
                                         label={
                                             <>
-                                                Confirmo que he leído y acepto la{" "}
+                                                Confirmo que he leÃ­do y acepto la{" "}
                                                 <a
                                                     href="/politica-devolucion"
                                                     target="_blank"
                                                     rel="noopener noreferrer"
                                                     style={{ textDecoration: "underline" }}
                                                 >
-                                                    Política de Devoluciones y Garantías
+                                                    PolÃ­tica de Devoluciones y GarantÃ­as
                                                 </a>.
                                             </>
                                         }
@@ -599,7 +579,7 @@ const CheckoutForm = () => {
         </>
     );
 };
-// Envolver CheckoutForm con Elements para Stripe y PayPalScriptProvider para PayPal
+
 const CheckoutWrapper = () => {
     return (
         <Elements stripe={stripePromise}>

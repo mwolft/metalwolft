@@ -1,4 +1,3 @@
-import { calcularEnvio } from '../../utils/shippingCalculator';
 import { authenticatedFetch } from '../../utils/authenticatedFetch';
 
 
@@ -20,7 +19,6 @@ const getState = ({ getStore, getActions, setStore }) => {
             cart: [],
             paymentIntentId: null,
             idempotencyKey: null,
-            paymentCompleted: false,
             posts: [],
             postsLoaded: false,
             recentPosts: [],
@@ -518,7 +516,11 @@ const getState = ({ getStore, getActions, setStore }) => {
                         return;
                     }
 
-                    setStore({ cart: [], paymentCompleted: true });
+                    setStore({
+                        cart: [],
+                        paymentIntentId: null,
+                        idempotencyKey: null
+                    });
                     localStorage.removeItem("cart");
 
                 } catch (error) {
@@ -567,8 +569,11 @@ const getState = ({ getStore, getActions, setStore }) => {
 
                     const data = result.data;
 
-                    // Actualizar el store con la nueva orden
-                    setStore({ orders: [...store.orders, data.data] });
+                    const nextOrders = store.orders.some((order) => order.id === data.data?.id)
+                        ? store.orders
+                        : [...store.orders, data.data];
+
+                    setStore({ orders: nextOrders });
                     return { ok: true, order: data.data };
                 } catch (error) {
                     console.error("Error al guardar el pedido:", error.message);
@@ -602,75 +607,6 @@ const getState = ({ getStore, getActions, setStore }) => {
                     console.error("Error al obtener los detalles de las órdenes:", error.message);
                     return { ok: false };
                 }
-            },
-            saveOrderDetails: async (orderId, formData) => {
-                const store = getStore();
-                const { products: enrichedCart } = calcularEnvio(store.cart);
-
-                const orderDetailsData = enrichedCart.map(product => ({
-                    order_id: orderId,
-                    product_id: product.producto_id,
-                    quantity: 1,
-                    alto: product.alto,
-                    ancho: product.ancho,
-                    anclaje: product.anclaje,
-                    color: product.color,
-                    precio_total: product.precio_total,
-                    shipping_type: product.shipping_type,
-                    shipping_cost: product.shipping_cost,
-                    firstname: formData.firstname,
-                    lastname: formData.lastname,
-                    shipping_address: formData.shipping_address,
-                    shipping_city: formData.shipping_city,
-                    shipping_postal_code: formData.shipping_postal_code,
-                    billing_address: formData.billing_address,
-                    billing_city: formData.billing_city,
-                    billing_postal_code: formData.billing_postal_code,
-                    CIF: formData.CIF
-                }));
-
-                try {
-                    const result = await authenticatedFetch(
-                        `${process.env.REACT_APP_BACKEND_URL}/api/orderdetails`,
-                        {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json'
-                            },
-                            body: JSON.stringify(orderDetailsData)
-                        }
-                    );
-
-                    if (!result.ok) {
-                        console.error("Error al guardar los detalles del pedido:", result.data?.message);
-                        return { ok: false };
-                    }
-
-                    const data = result.data;
-
-                    setStore({ orderDetails: [...store.orderDetails, ...data] });
-
-                    return { ok: true };
-
-                } catch (error) {
-                    console.error("Error al guardar los detalles del pedido:", error);
-                    return { ok: false };
-                }
-            },
-            handlePaymentSuccess: async () => {
-                const store = getStore();
-                const actions = getActions();
-                const { ok, order } = await actions.saveOrder();
-                if (!ok) {
-                    console.error("Error al guardar la orden.");
-                    return;
-                }
-                const result = await actions.saveOrderDetails(order.id);
-                if (!result.ok) {
-                    console.error("Error al guardar los detalles de la orden.");
-                    return;
-                }
-                actions.clearCart();
             },
             loadFavorites: async () => {
                 const store = getStore();

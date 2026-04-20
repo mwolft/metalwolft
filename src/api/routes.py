@@ -1,6 +1,6 @@
 from flask import request, jsonify, Blueprint, send_file, send_from_directory, current_app, redirect, abort, Response
 from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity
-from api.models import db, Users, Products, ProductImages, Categories, Subcategories, Orders, OrderDetails, Favorites, Cart, Posts, Comments, Invoices, DeliveryEstimateConfig
+from api.models import db, Users, Products, ProductImages, Categories, Subcategories, Orders, CheckoutSessions, OrderDetails, Favorites, Cart, Posts, Comments, Invoices, DeliveryEstimateConfig
 from api.utils import send_email, calcular_precio_reja
 from sqlalchemy.exc import SQLAlchemyError
 import bcrypt
@@ -22,6 +22,7 @@ from sqlalchemy.exc import IntegrityError
 import logging
 from datetime import timedelta
 from api.email_routes import send_email, get_admin_recipients
+from api.checkout_service import build_checkout_quote
 
 
 logger = logging.getLogger(__name__)
@@ -77,6 +78,608 @@ def handle_legacy_urls():
         return "Página obsoleta", 410
 
 
+def _get_checkout_raw_products(current_user, data):
+    raw_products = data.get('products')
+    if raw_products is None:
+        cart_items = Cart.query.filter_by(usuario_id=current_user['user_id']).all()
+        raw_products = [item.serialize() for item in cart_items]
+    return raw_products
+
+
+def _build_checkout_quote_from_request(current_user, data):
+    raw_products = _get_checkout_raw_products(current_user, data)
+    return build_checkout_quote(
+        raw_products=raw_products,
+        discount_code=data.get('discount_code'),
+        requested_discount_percent=data.get('discount_percent'),
+        frontend_total=data.get('total_amount'),
+        frontend_shipping_cost=data.get('shipping_cost')
+    )
+
+
+def _to_optional_float(value):
+    try:
+        if value is None or value == "":
+            return None
+        return float(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def _normalize_discount_code(value):
+    if not isinstance(value, str):
+        return None
+    normalized = value.strip().upper()
+    return normalized or None
+
+
+def _checkout_line_key(item):
+    product_id = item.get("producto_id")
+    if product_id is None:
+        product_id = item.get("product_id")
+
+    return (
+        product_id,
+        _to_optional_float(item.get("alto")),
+        _to_optional_float(item.get("ancho")),
+        item.get("anclaje"),
+        item.get("color")
+    )
+
+
+def _build_checkout_comparison_from_request(checkout_quote, data):
+    frontend_total = _to_optional_float(data.get('total_amount'))
+    backend_total = _to_optional_float(checkout_quote.get('total_amount'))
+    frontend_shipping = _to_optional_float(data.get('shipping_cost'))
+    backend_shipping = _to_optional_float(checkout_quote.get('shipping_cost'))
+    frontend_discount_percent = _to_optional_float(data.get('discount_percent')) or 0.0
+    backend_discount_percent = _to_optional_float(checkout_quote.get('discount_percent')) or 0.0
+    frontend_discount_code = _normalize_discount_code(data.get('discount_code'))
+    backend_discount_code = checkout_quote.get('discount_code')
+
+    total_difference = None
+    shipping_difference = None
+
+    if frontend_total is not None and backend_total is not None:
+        total_difference = round(frontend_total - backend_total, 2)
+
+    if frontend_shipping is not None and backend_shipping is not None:
+        shipping_difference = round(frontend_shipping - backend_shipping, 2)
+
+    line_differences = []
+    snapshot_lines = checkout_quote.get("lines") or []
+    frontend_lines = data.get("products") or []
+    snapshot_lines_by_key = {
+        _checkout_line_key(line): line for line in snapshot_lines
+    }
+
+    for frontend_line in frontend_lines:
+        snapshot_line = snapshot_lines_by_key.get(_checkout_line_key(frontend_line))
+        if not snapshot_line:
+            continue
+
+        frontend_unit_price = _to_optional_float(frontend_line.get("precio_total"))
+        backend_unit_price = _to_optional_float(snapshot_line.get("unit_price"))
+        if (
+            frontend_unit_price is not None and
+            backend_unit_price is not None and
+            abs(frontend_unit_price - backend_unit_price) >= 0.01
+        ):
+            line_differences.append({
+                "product_id": snapshot_line.get("product_id"),
+                "frontend_unit_price": frontend_unit_price,
+                "backend_unit_price": backend_unit_price,
+                "difference": round(frontend_unit_price - backend_unit_price, 2)
+            })
+
+    comparison = {
+        "frontend_total": frontend_total,
+        "backend_total": backend_total,
+        "total_difference": total_difference,
+        "frontend_shipping_cost": frontend_shipping,
+        "backend_shipping_cost": backend_shipping,
+        "shipping_difference": shipping_difference,
+        "frontend_discount_code": frontend_discount_code,
+        "backend_discount_code": backend_discount_code,
+        "frontend_discount_percent": frontend_discount_percent,
+        "backend_discount_percent": backend_discount_percent,
+        "line_differences": line_differences,
+    }
+    comparison["has_difference"] = any([
+        total_difference is not None and abs(total_difference) >= 0.01,
+        shipping_difference is not None and abs(shipping_difference) >= 0.01,
+        abs(frontend_discount_percent - backend_discount_percent) >= 0.01,
+        frontend_discount_code != backend_discount_code,
+        bool(line_differences),
+    ])
+    return comparison
+
+
+def _build_order_details_from_checkout_quote(checkout_quote):
+    return [
+        {
+            "producto_id": line["product_id"],
+            "quantity": line["quantity"],
+            "alto": line["alto"],
+            "ancho": line["ancho"],
+            "anclaje": line.get("anclaje"),
+            "color": line.get("color"),
+            "precio_total": line["unit_price"],
+            "shipping_type": line.get("shipping_type"),
+            "shipping_cost": line.get("shipping_cost")
+        }
+        for line in (checkout_quote.get("lines") or [])
+    ]
+
+
+def _extract_customer_snapshot(data):
+    source = data.get("customer_data")
+    if not isinstance(source, dict):
+        source = data
+
+    fields = [
+        "firstname",
+        "lastname",
+        "phone",
+        "shipping_address",
+        "shipping_city",
+        "shipping_postal_code",
+        "billing_address",
+        "billing_city",
+        "billing_postal_code",
+        "CIF"
+    ]
+    snapshot = {}
+    for field in fields:
+        value = source.get(field) if isinstance(source, dict) else None
+        if value is not None and value != "":
+            snapshot[field] = value
+    return snapshot
+
+
+def _get_customer_value(request_data, customer_snapshot, field_name):
+    request_value = request_data.get(field_name)
+    if request_value is not None and request_value != "":
+        return request_value
+    return (customer_snapshot or {}).get(field_name)
+
+
+def _normalize_checkout_session_status(payment_intent_status):
+    if payment_intent_status == "succeeded":
+        return "paid"
+    if payment_intent_status in ("processing", "requires_capture"):
+        return "processing"
+    if payment_intent_status == "requires_payment_method":
+        return "payment_failed"
+    if payment_intent_status == "canceled":
+        return "canceled"
+    return "pending_payment"
+
+
+def _upsert_checkout_session(current_user, intent, existing_intent_id, idempotency_key, checkout_quote, customer_snapshot):
+    checkout_session = None
+
+    if existing_intent_id:
+        checkout_session = CheckoutSessions.query.filter_by(
+            payment_intent_id=existing_intent_id,
+            user_id=current_user['user_id']
+        ).first()
+
+    if not checkout_session:
+        checkout_session = CheckoutSessions.query.filter_by(
+            payment_intent_id=intent["id"],
+            user_id=current_user['user_id']
+        ).first()
+
+    if not checkout_session:
+        checkout_session = CheckoutSessions(
+            user_id=current_user['user_id'],
+            payment_intent_id=intent["id"]
+        )
+        db.session.add(checkout_session)
+
+    if checkout_session.status == "order_created" and checkout_session.order_id:
+        return checkout_session
+
+    checkout_session.payment_intent_id = intent["id"]
+    checkout_session.idempotency_key = idempotency_key
+    checkout_session.status = _normalize_checkout_session_status(intent.get("status"))
+    checkout_session.subtotal = float(checkout_quote["subtotal"])
+    checkout_session.shipping_cost = float(checkout_quote["shipping_cost"])
+    checkout_session.discount_code = checkout_quote.get("discount_code")
+    checkout_session.discount_percent = float(checkout_quote.get("discount_percent") or 0.0)
+    checkout_session.discount_amount = float(checkout_quote.get("discount_amount") or 0.0)
+    checkout_session.total_amount = float(checkout_quote["total_amount"])
+    checkout_session.quote_snapshot = checkout_quote
+    if customer_snapshot:
+        checkout_session.customer_snapshot = customer_snapshot
+
+    return checkout_session
+
+
+def _get_checkout_session_by_payment_intent(payment_intent_id, user_id=None, for_update=False):
+    query = CheckoutSessions.query.filter_by(payment_intent_id=payment_intent_id)
+    if user_id is not None:
+        query = query.filter_by(user_id=user_id)
+    if for_update:
+        query = query.with_for_update()
+    return query.first()
+
+
+def _build_customer_context(request_data, customer_snapshot):
+    return {
+        "firstname": _get_customer_value(request_data, customer_snapshot, 'firstname'),
+        "lastname": _get_customer_value(request_data, customer_snapshot, 'lastname'),
+        "phone": _get_customer_value(request_data, customer_snapshot, 'phone'),
+        "shipping_address": _get_customer_value(request_data, customer_snapshot, 'shipping_address'),
+        "shipping_city": _get_customer_value(request_data, customer_snapshot, 'shipping_city'),
+        "shipping_postal_code": _get_customer_value(request_data, customer_snapshot, 'shipping_postal_code'),
+        "billing_address": _get_customer_value(request_data, customer_snapshot, 'billing_address'),
+        "billing_city": _get_customer_value(request_data, customer_snapshot, 'billing_city'),
+        "billing_postal_code": _get_customer_value(request_data, customer_snapshot, 'billing_postal_code'),
+        "CIF": _get_customer_value(request_data, customer_snapshot, 'CIF'),
+    }
+
+
+def _sync_user_from_customer_context(user, customer_context):
+    if not user:
+        return False
+
+    updated = False
+    field_mapping = [
+        ("firstname", "firstname"),
+        ("lastname", "lastname"),
+        ("shipping_address", "shipping_address"),
+        ("shipping_city", "shipping_city"),
+        ("shipping_postal_code", "shipping_postal_code"),
+        ("billing_address", "billing_address"),
+        ("billing_city", "billing_city"),
+        ("billing_postal_code", "billing_postal_code"),
+        ("CIF", "CIF"),
+    ]
+
+    for user_field, context_field in field_mapping:
+        context_value = customer_context.get(context_field)
+        if not getattr(user, user_field) and context_value:
+            setattr(user, user_field, context_value)
+            updated = True
+
+    return updated
+
+
+def _finalize_order_from_checkout_quote(user, checkout_quote, customer_snapshot, checkout_session=None):
+    if checkout_session and checkout_session.order_id:
+        existing_order = Orders.query.filter_by(
+            id=checkout_session.order_id,
+            user_id=user.id
+        ).first()
+        if existing_order:
+            checkout_session.status = "order_created"
+            return existing_order, False
+
+        logger.warning(
+            "Checkout session %s apunta a una order inexistente (%s). Se reintentará el cierre.",
+            checkout_session.id,
+            checkout_session.order_id
+        )
+        checkout_session.order_id = None
+
+    if not checkout_quote or not checkout_quote.get("lines"):
+        raise ValueError("Checkout snapshot not available for this payment intent.")
+
+    order_details = _build_order_details_from_checkout_quote(checkout_quote)
+    customer_snapshot = customer_snapshot or {}
+    customer_context = _build_customer_context({}, customer_snapshot)
+
+    customer_firstname = customer_context["firstname"]
+    customer_lastname = customer_context["lastname"]
+    customer_phone = customer_context["phone"]
+    customer_shipping_address = customer_context["shipping_address"]
+    customer_shipping_city = customer_context["shipping_city"]
+    customer_shipping_postal_code = customer_context["shipping_postal_code"]
+    customer_billing_address = customer_context["billing_address"]
+    customer_billing_city = customer_context["billing_city"]
+    customer_billing_postal_code = customer_context["billing_postal_code"]
+    customer_cif = customer_context["CIF"]
+
+    new_order = Orders(
+        user_id=user.id,
+        total_amount=0,
+        locator=Orders.generate_locator(),
+        order_status="pendiente"
+    )
+    db.session.add(new_order)
+    db.session.flush()
+
+    subtotal = 0.0
+    discount_percent = float(checkout_quote.get('discount_percent') or 0)
+    discount_code = checkout_quote.get('discount_code') or None
+
+    for detail in order_details:
+        precio_recalculado = float(detail.get('precio_total') or 0.0)
+        existing_detail = OrderDetails.query.filter_by(
+            order_id=new_order.id,
+            product_id=detail['producto_id'],
+            alto=detail.get('alto'),
+            ancho=detail.get('ancho'),
+            anclaje=detail.get('anclaje'),
+            color=detail.get('color')
+        ).first()
+
+        if existing_detail:
+            logger.info(f"Detalle ya existente: {existing_detail.serialize()}")
+            existing_detail.quantity += detail['quantity']
+            existing_detail.precio_total = precio_recalculado
+            subtotal += precio_recalculado * detail['quantity']
+            continue
+
+        new_detail = OrderDetails(
+            order_id=new_order.id,
+            product_id=detail['producto_id'],
+            quantity=detail['quantity'],
+            alto=detail.get('alto'),
+            ancho=detail.get('ancho'),
+            anclaje=detail.get('anclaje'),
+            color=detail.get('color'),
+            precio_total=precio_recalculado,
+            firstname=customer_firstname,
+            lastname=customer_lastname,
+            shipping_address=customer_shipping_address,
+            shipping_city=customer_shipping_city,
+            shipping_postal_code=customer_shipping_postal_code,
+            billing_address=customer_billing_address,
+            billing_city=customer_billing_city,
+            billing_postal_code=customer_billing_postal_code,
+            CIF=customer_cif,
+            shipping_type=detail.get('shipping_type'),
+            shipping_cost=detail.get('shipping_cost')
+        )
+
+        db.session.add(new_detail)
+        subtotal += precio_recalculado * detail.get("quantity", 1)
+
+    shipping_cost = float(checkout_quote["shipping_cost"])
+    backend_total = float(checkout_quote["total_amount"])
+    gross_sum = subtotal + float(shipping_cost or 0.0)
+    discount_value_iva = round(float(checkout_quote["discount_amount"]), 2)
+
+    new_order.discount_code = discount_code
+    new_order.discount_value = discount_value_iva
+    new_order.shipping_cost = round(float(shipping_cost or 0.0), 2)
+    new_order.total_amount = round(backend_total, 2)
+
+    logger.info(
+        "Cálculo final autoritativo backend → "
+        f"Bruto: {gross_sum:.2f} € | Descuento: {discount_value_iva:.2f} € | "
+        f"Envío: {shipping_cost:.2f} € | Total guardado: {backend_total:.2f} €"
+    )
+
+    invoice_number = Invoices.generate_next_invoice_number()
+    pdf_filename = f"invoice_{invoice_number}.pdf"
+    file_path = os.path.join(current_app.config['INVOICE_FOLDER'], pdf_filename)
+    pdf_path = f"/api/download-invoice/{pdf_filename}"
+    os.makedirs(current_app.config['INVOICE_FOLDER'], exist_ok=True)
+
+    pdf_buffer = BytesIO()
+    pdf = canvas.Canvas(pdf_buffer, pagesize=A4)
+
+    image_url = "https://res.cloudinary.com/dewanllxn/image/upload/v1740167674/logo_uxlqof.png"
+    pdf.drawImage(image_url, 300, 750, width=250, height=64)
+
+    pdf.setTitle(f"Factura_{invoice_number}")
+    pdf.setFont("Helvetica-Bold", 12)
+    pdf.drawString(50, 800, f"Factura No: {invoice_number}")
+
+    pdf.setFont("Helvetica", 10)
+    fecha_emision = datetime.now().strftime("%d/%m/%Y")
+    pdf.drawString(50, 780, f"Fecha: {fecha_emision}")
+
+    pdf.setFont("Helvetica-Bold", 12)
+    pdf.drawString(400, 700, "PROVEEDOR")
+    pdf.setFont("Helvetica", 10)
+    pdf.drawString(400, 680, "Sergio Arias Fernández")
+    pdf.drawString(400, 665, "05703874N")
+    pdf.drawString(400, 650, "Francisco Fernández Ordoñez 32")
+    pdf.drawString(400, 635, "13170 Miguelturra")
+    pdf.drawString(400, 620, "634112604")
+
+    pdf.setFont("Helvetica-Bold", 12)
+    pdf.drawString(50, 700, "CLIENTE")
+    pdf.setFont("Helvetica", 10)
+    pdf.drawString(50, 680, f"{customer_firstname or ''} {customer_lastname or ''}".strip())
+    pdf.drawString(50, 665, f"{customer_billing_address or ''}, {customer_billing_city or ''} ({customer_billing_postal_code or ''})")
+    pdf.drawString(50, 650, f"{customer_cif or ''}")
+    pdf.drawString(50, 635, f"{customer_phone or 'No proporcionado'}")
+
+    pdf.setFont("Helvetica-Bold", 12)
+    pdf.drawString(50, 580, "Dirección de Envío")
+    pdf.setFont("Helvetica", 10)
+
+    if not customer_shipping_address or customer_shipping_address == customer_billing_address:
+        pdf.drawString(50, 560, "La misma que la de facturación")
+    else:
+        pdf.drawString(50, 560, f"{customer_shipping_address or ''}, {customer_shipping_city or ''} ({customer_shipping_postal_code or ''})")
+
+    pdf.setFont("Helvetica-Bold", 12)
+    pdf.drawString(50, 510, "Detalles del Pedido")
+    pdf.setFont("Helvetica", 10)
+
+    from collections import defaultdict
+
+    color_labels = {
+        "satinado_blanco": "Blanco liso",
+        "satinado_negro": "Negro liso",
+        "satinado_gris": "Gris medio liso",
+        "satinado_verde": "Verde carruajes liso",
+        "forja_negro": "Negro forja",
+        "forja_gris": "Gris acero forja",
+        "forja_marron": "Marrón castaño forja",
+        "forja_azul": "Azul forja",
+        "forja_verde": "Verde bronce forja",
+        "forja_dorado": "Dorado forja",
+        "blanco": "Blanco",
+        "negro": "Negro",
+        "gris": "Gris",
+        "marrón": "Marrón",
+        "verde": "Verde"
+    }
+
+    data_table = [["Prod.", "Alto", "Ancho", "Anc.", "Col.", "Ud.", "Importe (€)"]]
+    grouped_details = defaultdict(lambda: {"quantity": 0, "precio_unitario": 0.0})
+
+    for detail in order_details:
+        key = (
+            detail['producto_id'],
+            detail.get('alto'),
+            detail.get('ancho'),
+            detail.get('anclaje'),
+            detail.get('color')
+        )
+        grouped_details[key]["quantity"] += detail.get("quantity", 1)
+        grouped_details[key]["precio_unitario"] = float(detail["precio_total"])
+
+    for (producto_id, alto, ancho, anclaje, color), values in grouped_details.items():
+        prod = Products.query.get(producto_id)
+        cantidad = values["quantity"]
+        precio_unitario = values["precio_unitario"]
+        importe_total = precio_unitario * cantidad
+
+        row = [
+            prod.nombre[:24] if prod else "Desconocido",
+            f"{alto} cm",
+            f"{ancho} cm",
+            (anclaje[:20] if anclaje else ''),
+            color_labels.get(color, color)[:18] if color else '',
+            str(cantidad),
+            f"{importe_total:.2f}"
+        ]
+        data_table.append(row)
+
+    table = Table(data_table, colWidths=[4*cm, 1.5*cm, 1.5*cm, 4.2*cm, 3.2*cm, 1*cm, 2.3*cm])
+    table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), colors.Color(1, 0.196, 0.302)),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('GRID', (0, 0), (-1, -1), 1, colors.black),
+    ]))
+    y_position = 480
+    table.wrapOn(pdf, 50, y_position)
+    table_height = table._height
+    table.drawOn(pdf, 50, y_position - table_height)
+
+    totals_y_position = y_position - table_height - 30
+    if totals_y_position < 50:
+        pdf.showPage()
+        totals_y_position = 750
+
+    total = new_order.total_amount
+    base_total = total / 1.21
+    iva_calculado = total - base_total
+    base_envio = new_order.shipping_cost / 1.21
+    base_productos = base_total - base_envio
+
+    pdf.setFont("Helvetica-Bold", 11)
+    pdf.drawString(50, totals_y_position, "DETALLE FISCAL")
+    pdf.setFont("Helvetica", 10)
+
+    pdf.drawString(50, totals_y_position - 15, f"Base imponible productos: {base_productos:.2f} €")
+    pdf.drawString(50, totals_y_position - 30, f"Base imponible envío: {base_envio:.2f} €")
+
+    pdf.setStrokeColor(colors.black)
+    pdf.line(50, totals_y_position - 35, 200, totals_y_position - 35)
+
+    pdf.drawString(50, totals_y_position - 50, f"Base imponible total: {base_total:.2f} €")
+    pdf.drawString(50, totals_y_position - 65, f"IVA (21%): {iva_calculado:.2f} €")
+
+    pdf.line(50, totals_y_position - 70, 200, totals_y_position - 70)
+
+    subtotal_con_iva = base_total + iva_calculado
+    pdf.setFont("Helvetica-Bold", 10)
+    pdf.drawString(50, totals_y_position - 85, f"Subtotal (IVA incl.): {subtotal_con_iva:.2f} €")
+
+    if new_order.discount_value and new_order.discount_value > 0:
+        pdf.setFont("Helvetica-Bold", 11)
+        pdf.setFillColor(colors.green)
+        pdf.drawString(
+            50,
+            totals_y_position - 100,
+            f"Descuento comercial ({discount_code or ''} {discount_percent:.0f}%): -{new_order.discount_value:.2f} €"
+        )
+        pdf.setFillColor(colors.black)
+
+    pdf.line(50, totals_y_position - 105, 200, totals_y_position - 105)
+
+    pdf.setFont("Helvetica-Bold", 12)
+    pdf.drawString(50, totals_y_position - 120, f"TOTAL A PAGAR: {total:.2f} €")
+
+    pdf.setFont("Helvetica", 10)
+    if new_order.shipping_cost == 49:
+        envio_text = "Tarifa A (49 €)"
+    elif shipping_cost == 99:
+        envio_text = "Tarifa B (99 €)"
+    elif shipping_cost == 17:
+        envio_text = "Estándar (17 €)"
+    else:
+        envio_text = "Gratuito"
+
+    pdf.drawString(50, totals_y_position - 140, f"Tipo de envío: {envio_text}")
+    if discount_code:
+        pdf.drawString(50, totals_y_position - 155, f"Código descuento: {discount_code}")
+
+    pdf.save()
+    pdf_buffer.seek(0)
+    with open(file_path, "wb") as f:
+        f.write(pdf_buffer.getvalue())
+
+    new_invoice = Invoices(
+        invoice_number=invoice_number,
+        order_id=new_order.id,
+        pdf_path=pdf_path,
+        client_name=f"{customer_firstname or ''} {customer_lastname or ''}".strip(),
+        client_address=customer_billing_address or "",
+        client_cif=customer_cif or "",
+        client_phone=customer_phone or "",
+        amount=new_order.total_amount,
+        order_details=[detail.serialize() for detail in new_order.order_details]
+    )
+    db.session.add(new_invoice)
+    new_order.invoice_number = invoice_number
+
+    if checkout_session:
+        checkout_session.order_id = new_order.id
+        checkout_session.status = "order_created"
+        if customer_snapshot:
+            checkout_session.customer_snapshot = customer_snapshot
+
+    db.session.commit()
+
+    try:
+        persisted_user = Users.query.get(user.id)
+        if _sync_user_from_customer_context(persisted_user, customer_context):
+            db.session.commit()
+            logger.info("Datos del usuario %s actualizados desde la compra", persisted_user.email)
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"Error al actualizar datos del usuario: {str(e)}")
+
+    try:
+        email_sent = send_email(
+            subject=f"Factura de tu pedido #{invoice_number}",
+            recipients=[user.email, current_app.config['MAIL_USERNAME']],
+            body=f"Hola {(customer_firstname or '').strip()} {(customer_lastname or '').strip()},\n\nAdjuntamos la factura {invoice_number} de tu compra.\n\nGracias por tu confianza.",
+            attachment_path=file_path
+        )
+        if not email_sent:
+            logger.error(f"Error al enviar el correo con la factura {invoice_number}.")
+        else:
+            logger.info(f"Correo enviado correctamente con la factura {invoice_number}.")
+    except Exception as e:
+        logger.error(f"Error al enviar el correo con la factura {invoice_number}: {str(e)}")
+
+    return new_order, True
+
+
 @api.route('/delivery-estimate', methods=['GET'])
 def get_delivery_estimate():
     try:
@@ -99,23 +702,73 @@ def get_delivery_estimate():
 
 
 @api.route('/create-payment-intent', methods=['POST'])
+@jwt_required()
 def create_payment_intent():
     import stripe, uuid, os
     stripe.api_key = os.getenv('STRIPE_SECRET_KEY')
 
     try:
-        data = request.get_json()
+        current_user = get_jwt_identity()
+        data = request.get_json() or {}
 
         # --- 1) Valores recibidos ---
-        amount = data.get("amount")
         payment_method_id = data.get("payment_method_id")
         existing_intent_id = data.get("payment_intent_id")
         idempotency_key = data.get("idempotency_key") or str(uuid.uuid4())
-        receipt_email = data.get("email") 
+        receipt_email = data.get("email") or current_user.get("email")
         metadata = data.get("metadata") or {}
+        frontend_amount = data.get("amount")
 
-        if not amount or not payment_method_id:
+        if not payment_method_id:
             return jsonify({"error": "Missing required data"}), 400
+
+        quote_request_data = {
+            **data,
+            "products": None
+        }
+        checkout_quote = _build_checkout_quote_from_request(current_user, quote_request_data)
+        if not checkout_quote["lines"]:
+            return jsonify({"error": "Cart is empty"}), 400
+
+        amount = int(round(checkout_quote["total_amount"] * 100))
+
+        try:
+            frontend_amount_cents = int(frontend_amount) if frontend_amount is not None else None
+        except (TypeError, ValueError):
+            frontend_amount_cents = None
+
+        amount_comparison = {
+            "frontend_amount_cents": frontend_amount_cents,
+            "backend_amount_cents": amount,
+            "has_difference": frontend_amount_cents is not None and frontend_amount_cents != amount
+        }
+
+        if amount_comparison["has_difference"]:
+            logger.warning(
+                "Checkout mismatch detectado en /create-payment-intent → "
+                f"frontend_amount_cents={frontend_amount_cents} | "
+                f"backend_amount_cents={amount} | "
+                f"backend_total={checkout_quote['total_amount']:.2f} | "
+                f"backend_shipping={checkout_quote['shipping_cost']:.2f} | "
+                f"backend_discount_code={checkout_quote['discount_code']} | "
+                f"backend_discount_percent={checkout_quote['discount_percent']}"
+            )
+        else:
+            logger.info(
+                "Checkout alineado en /create-payment-intent → "
+                f"backend_amount_cents={amount} | "
+                f"backend_total={checkout_quote['total_amount']:.2f}"
+            )
+
+        metadata = {
+            **metadata,
+            "user_id": str(current_user["user_id"]),
+            "checkout_total": f"{checkout_quote['total_amount']:.2f}",
+            "checkout_shipping": f"{checkout_quote['shipping_cost']:.2f}",
+            "discount_code": checkout_quote["discount_code"] or "",
+            "discount_percent": f"{checkout_quote['discount_percent']:.2f}"
+        }
+        customer_snapshot = _extract_customer_snapshot(data)
 
         # --- 2) Si existe PaymentIntent previo, lo modificamos ---
         if existing_intent_id:
@@ -150,13 +803,33 @@ def create_payment_intent():
                 idempotency_key=idempotency_key
             )
 
+        checkout_session = _upsert_checkout_session(
+            current_user=current_user,
+            intent=intent,
+            existing_intent_id=existing_intent_id,
+            idempotency_key=idempotency_key,
+            checkout_quote=checkout_quote,
+            customer_snapshot=customer_snapshot
+        )
+        db.session.commit()
+
         # --- 4) Devolver clientSecret y PaymentIntent completo ---
         return jsonify({
             "clientSecret": intent["client_secret"],
-            "paymentIntent": intent
+            "paymentIntent": intent,
+            "amount_source": "backend_quote",
+            "amount_used_cents": amount,
+            "checkout_summary": checkout_quote,
+            "amount_comparison": amount_comparison,
+            "checkout_session_id": checkout_session.id,
+            "checkout_session_status": checkout_session.status
         }), 200
 
+    except ValueError as e:
+        db.session.rollback()
+        return jsonify({"error": str(e)}), 400
     except Exception as e:
+        db.session.rollback()
         return jsonify({"error": str(e)}), 400
 
 
@@ -164,29 +837,218 @@ def create_payment_intent():
 @api.route('/webhook', methods=['POST'])
 def stripe_webhook():
     import stripe, os
+    stripe.api_key = os.getenv('STRIPE_SECRET_KEY')
     payload = request.data
     sig_header = request.headers.get('stripe-signature')
-    endpoint_secret = os.getenv('STRIPE_WEBHOOK_SECRET')  # pon aquí whsec_...
+    endpoint_secret = os.getenv('STRIPE_WEBHOOK_SECRET')
+
+    if not endpoint_secret:
+        logger.error("STRIPE_WEBHOOK_SECRET no está configurado.")
+        return jsonify({'error': 'Webhook secret not configured'}), 500
+
     try:
         event = stripe.Webhook.construct_event(payload, sig_header, endpoint_secret)
-        print("📩 Webhook recibido:", event['type'])
+        logger.info("Webhook Stripe recibido: %s", event['type'])
     except Exception as e:
+        logger.error("Error validando webhook Stripe: %s", str(e))
         return jsonify({'error': str(e)}), 400
 
-    # manejar eventos importantes
-    if event['type'] == 'payment_intent.succeeded':
-        intent = event['data']['object']
-        # 1) mirar metadata / receipt_email
-        # 2) si no existe order en BD para este intent.id -> crear order, facturas, emails, etc.
-        # 3) marcar como pagado en BD
-    elif event['type'] == 'charge.succeeded':
-        charge = event['data']['object']
-        # opcional
-    elif event['type'] == 'checkout.session.completed':
-        session = event['data']['object']
-        # si usas Checkout
+    try:
+        event_type = event['type']
 
-    return '', 200
+        if event_type == 'payment_intent.succeeded':
+            intent = event['data']['object']
+            payment_intent_id = intent.get('id')
+
+            checkout_session = _get_checkout_session_by_payment_intent(
+                payment_intent_id,
+                for_update=True
+            )
+
+            if not checkout_session:
+                logger.warning(
+                    "Webhook payment_intent.succeeded recibido sin checkout_session para %s",
+                    payment_intent_id
+                )
+                return '', 200
+
+            if checkout_session.order_id:
+                existing_order = Orders.query.get(checkout_session.order_id)
+                if existing_order:
+                    checkout_session.status = "order_created"
+                    db.session.commit()
+                    logger.info(
+                        "Webhook idempotente para %s: la order %s ya existía.",
+                        payment_intent_id,
+                        existing_order.id
+                    )
+                    return '', 200
+
+                logger.warning(
+                    "Checkout session %s tenía order_id=%s pero la order ya no existe. Se reintentará el cierre.",
+                    checkout_session.id,
+                    checkout_session.order_id
+                )
+                checkout_session.order_id = None
+
+            if not checkout_session.quote_snapshot or not checkout_session.quote_snapshot.get("lines"):
+                logger.error(
+                    "Webhook payment_intent.succeeded sin snapshot válido para checkout_session %s",
+                    checkout_session.id
+                )
+                db.session.rollback()
+                return '', 200
+
+            user = checkout_session.user or Users.query.get(checkout_session.user_id)
+            if not user:
+                logger.error(
+                    "Webhook payment_intent.succeeded sin usuario válido para checkout_session %s",
+                    checkout_session.id
+                )
+                db.session.rollback()
+                return '', 200
+
+            checkout_session.status = "paid"
+            order, created = _finalize_order_from_checkout_quote(
+                user=user,
+                checkout_quote=checkout_session.quote_snapshot,
+                customer_snapshot=checkout_session.customer_snapshot,
+                checkout_session=checkout_session
+            )
+            logger.info(
+                "Webhook %s cerró checkout_session %s → order %s (created=%s)",
+                payment_intent_id,
+                checkout_session.id,
+                order.id,
+                created
+            )
+
+        elif event_type == 'payment_intent.payment_failed':
+            intent = event['data']['object']
+            payment_intent_id = intent.get('id')
+
+            checkout_session = _get_checkout_session_by_payment_intent(
+                payment_intent_id,
+                for_update=True
+            )
+
+            if not checkout_session:
+                logger.warning(
+                    "Webhook payment_intent.payment_failed recibido sin checkout_session para %s",
+                    payment_intent_id
+                )
+                return '', 200
+
+            if checkout_session.order_id:
+                checkout_session.status = "order_created"
+            else:
+                checkout_session.status = "payment_failed"
+
+            db.session.commit()
+            logger.info(
+                "Checkout session %s marcada como %s tras payment_intent.payment_failed",
+                checkout_session.id,
+                checkout_session.status
+            )
+
+        return '', 200
+
+    except ValueError as e:
+        db.session.rollback()
+        logger.error("Webhook Stripe descartado por datos inválidos: %s", str(e))
+        return '', 200
+    except SQLAlchemyError as e:
+        db.session.rollback()
+        logger.error("Error de base de datos procesando webhook Stripe: %s", str(e))
+        return jsonify({'error': 'database error'}), 500
+    except Exception as e:
+        db.session.rollback()
+        logger.error("Error inesperado procesando webhook Stripe: %s", str(e))
+        return jsonify({'error': 'unexpected error'}), 500
+
+
+@api.route('/checkout/quote', methods=['POST'])
+@jwt_required()
+def checkout_quote():
+    current_user = get_jwt_identity()
+    data = request.get_json() or {}
+
+    try:
+        quote = _build_checkout_quote_from_request(current_user, data)
+
+        response = jsonify(quote)
+        response.headers['Access-Control-Allow-Origin'] = '*'
+        response.headers['Access-Control-Expose-Headers'] = 'Authorization'
+        return response, 200
+    except ValueError as e:
+        return jsonify({"message": str(e)}), 400
+    except Exception as e:
+        logger.error(f"Error calculando checkout quote: {str(e)}")
+        return jsonify({"message": "Error calculating checkout quote", "error": str(e)}), 500
+
+
+@api.route('/checkout/status', methods=['GET'])
+@jwt_required()
+def checkout_status():
+    current_user = get_jwt_identity()
+    payment_intent_id = request.args.get('payment_intent_id')
+
+    if not payment_intent_id:
+        return jsonify({
+            "state": "not_found",
+            "message": "Missing payment_intent_id."
+        }), 400
+
+    if current_user.get("is_admin"):
+        checkout_session = _get_checkout_session_by_payment_intent(payment_intent_id)
+    else:
+        checkout_session = _get_checkout_session_by_payment_intent(
+            payment_intent_id,
+            user_id=current_user['user_id']
+        )
+
+    if not checkout_session:
+        response = jsonify({
+            "state": "not_found",
+            "payment_intent_id": payment_intent_id,
+            "message": "Checkout not found."
+        })
+        response.headers['Access-Control-Allow-Origin'] = '*'
+        response.headers['Access-Control-Expose-Headers'] = 'Authorization'
+        return response, 200
+
+    order = checkout_session.order
+    if checkout_session.order_id and not order:
+        order = Orders.query.get(checkout_session.order_id)
+
+    session_status = checkout_session.status
+    if order:
+        state = "confirmed"
+        message = "Pedido confirmado."
+    elif session_status in ("payment_failed", "canceled"):
+        state = "failed"
+        message = "El pago no se completó correctamente."
+    else:
+        state = "processing"
+        message = "Estamos confirmando tu pedido."
+
+    response = jsonify({
+        "state": state,
+        "message": message,
+        "payment_intent_id": checkout_session.payment_intent_id,
+        "checkout_session_id": checkout_session.id,
+        "checkout_session_status": session_status,
+        "order_id": checkout_session.order_id,
+        "order": order.serialize() if order else None,
+        "email": (checkout_session.user.email if checkout_session.user else current_user.get("email")),
+        "total_amount": checkout_session.total_amount,
+        "shipping_cost": checkout_session.shipping_cost,
+        "discount_code": checkout_session.discount_code,
+        "discount_percent": checkout_session.discount_percent
+    })
+    response.headers['Access-Control-Allow-Origin'] = '*'
+    response.headers['Access-Control-Expose-Headers'] = 'Authorization'
+    return response, 200
 
 
 @api.route('/posts/<int:post_id>/comments', methods=['GET'])
@@ -590,10 +1452,25 @@ def create_user():
     if not current_user.get("is_admin"):
         return jsonify({"message": "Access forbidden: Admins only"}), 403
 
-    data = request.json
+    data = request.json or {}
+    raw_email = data.get('email')
+    email = raw_email.strip().lower() if isinstance(raw_email, str) else None
+    password = data.get('password')
+
+    if not email or "@" not in email:
+        return jsonify({"message": "Email inválido"}), 400
+
+    if not password:
+        return jsonify({"message": "Contraseña requerida"}), 400
+
+    hashed_password = bcrypt.hashpw(
+        password.encode("utf-8"),
+        bcrypt.gensalt()
+    )
+
     new_user = Users(
-        email=data.get('email'),
-        password=data.get('password'),
+        email=email,
+        password=hashed_password.decode("utf-8"),
         firstname=data.get('firstname'),
         lastname=data.get('lastname'),
         is_admin=data.get('is_admin', False)
@@ -871,7 +1748,12 @@ def get_products():
 
 
 @api.route('/products', methods=['POST'])
+@jwt_required()
 def create_product():
+    current_user = get_jwt_identity()
+    if not current_user or not current_user.get("is_admin"):
+        return jsonify({"message": "Access forbidden: Admins only"}), 403
+
     data = request.form  
     nombre = data.get('nombre')
     descripcion = data.get('descripcion')
@@ -919,16 +1801,24 @@ def get_product_by_category_and_slug(category_slug, product_slug):
     return jsonify({"message": "Error fetching product", "error": str(e)}), 500
 
 
-@api.route('/products/<int:product_id>', methods=['GET', 'PUT', 'DELETE'])
+@api.route('/products/<int:product_id>', methods=['GET'])
+def get_product(product_id):
+    product = Products.query.get(product_id)
+    if not product:
+        return jsonify({"message": "Product not found"}), 404
+    response = jsonify(product.serialize_with_images())
+    response.headers['Access-Control-Allow-Origin'] = '*'
+    response.headers['Access-Control-Expose-Headers'] = 'Authorization'
+    return response, 200
+
+
+@api.route('/products/<int:product_id>', methods=['PUT', 'DELETE'])
+@jwt_required()
 def handle_product(product_id):
     product = Products.query.get(product_id)
     if not product:
         return jsonify({"message": "Product not found"}), 404
-    if request.method == 'GET':
-        response = jsonify(product.serialize_with_images())
-        response.headers['Access-Control-Allow-Origin'] = '*'
-        response.headers['Access-Control-Expose-Headers'] = 'Authorization'
-        return response, 200
+
     current_user = get_jwt_identity()
     if request.method == 'PUT':
         if not current_user or not current_user.get("is_admin"):
@@ -1059,9 +1949,210 @@ def handle_orders():
             return jsonify({"message": "Error fetching orders", "error": str(e)}), 500
 
     if request.method == 'POST':
-        data = request.get_json()
+        data = request.get_json() or {}
         logger.info(f"Datos recibidos para crear la orden: {data}")
         try:
+            payment_intent_id = data.get("payment_intent_id")
+            if not payment_intent_id:
+                logger.warning(
+                    "Intento bloqueado de crear order sin payment_intent_id para user_id=%s",
+                    current_user['user_id']
+                )
+                return jsonify({
+                    "message": "payment_intent_id is required to finalize an order."
+                }), 400
+
+            customer_snapshot = _extract_customer_snapshot(data)
+            checkout_session = None
+
+            checkout_session = _get_checkout_session_by_payment_intent(
+                payment_intent_id,
+                user_id=current_user['user_id'],
+                for_update=True
+            )
+
+            if not checkout_session:
+                return jsonify({"message": "Checkout session not found for this payment intent."}), 409
+
+            if checkout_session.order_id:
+                existing_order = Orders.query.filter_by(
+                    id=checkout_session.order_id,
+                    user_id=current_user['user_id']
+                ).first()
+                if existing_order:
+                    db.session.commit()
+                    response = jsonify({
+                        "data": existing_order.serialize(),
+                        "message": "Order already created for this payment intent."
+                    })
+                    response.headers['Access-Control-Allow-Origin'] = '*'
+                    response.headers['Access-Control-Expose-Headers'] = 'X-Total-Count'
+                    return response, 200
+
+                logger.warning(
+                    "Checkout session %s apunta a una order inexistente (%s) desde /orders. Se reintentará el cierre.",
+                    checkout_session.id,
+                    checkout_session.order_id
+                )
+                checkout_session.order_id = None
+
+            import stripe
+            stripe.api_key = os.getenv('STRIPE_SECRET_KEY')
+            intent = stripe.PaymentIntent.retrieve(payment_intent_id)
+            checkout_session.status = _normalize_checkout_session_status(intent.get("status"))
+
+            if customer_snapshot:
+                checkout_session.customer_snapshot = {
+                    **(checkout_session.customer_snapshot or {}),
+                    **customer_snapshot
+                }
+                customer_snapshot = checkout_session.customer_snapshot
+
+            if checkout_session.status != "paid":
+                db.session.commit()
+                return jsonify({"message": "PaymentIntent is not completed yet."}), 409
+
+            if not checkout_session.quote_snapshot or not checkout_session.quote_snapshot.get("lines"):
+                db.session.rollback()
+                return jsonify({"message": "Checkout snapshot not available for this payment intent."}), 409
+
+            logger.info(
+                "Cierre de pedido en /orders actuando como fallback controlado para payment_intent %s",
+                payment_intent_id
+            )
+            checkout_quote = checkout_session.quote_snapshot
+
+            comparison = _build_checkout_comparison_from_request(checkout_quote, data)
+
+            if comparison.get("has_difference"):
+                logger.warning(
+                    "Checkout mismatch detectado en /orders → "
+                    f"frontend_total={comparison.get('frontend_total')} | "
+                    f"backend_total={comparison.get('backend_total')} | "
+                    f"frontend_shipping={comparison.get('frontend_shipping_cost')} | "
+                    f"backend_shipping={comparison.get('backend_shipping_cost')} | "
+                    f"frontend_discount_code={comparison.get('frontend_discount_code')} | "
+                    f"backend_discount_code={comparison.get('backend_discount_code')} | "
+                    f"frontend_discount_percent={comparison.get('frontend_discount_percent')} | "
+                    f"backend_discount_percent={comparison.get('backend_discount_percent')} | "
+                    f"line_differences={comparison.get('line_differences')}"
+                )
+            else:
+                logger.info(
+                    "Checkout alineado en /orders → "
+                    f"backend_total={comparison.get('backend_total')} | "
+                    f"backend_shipping={comparison.get('backend_shipping_cost')} | "
+                    f"backend_discount_code={comparison.get('backend_discount_code')} | "
+                    f"backend_discount_percent={comparison.get('backend_discount_percent')}"
+                )
+
+            user = Users.query.get(current_user['user_id'])
+            if not user:
+                db.session.rollback()
+                return jsonify({"message": "User not found"}), 404
+
+            new_order, created = _finalize_order_from_checkout_quote(
+                user=user,
+                checkout_quote=checkout_quote,
+                customer_snapshot=customer_snapshot,
+                checkout_session=checkout_session
+            )
+
+            response = jsonify({
+                "data": new_order.serialize(),
+                "message": "Order, details, and invoice created successfully." if created else "Order already created for this payment intent."
+            })
+            response.headers['Access-Control-Allow-Origin'] = '*'
+            response.headers['Access-Control-Expose-Headers'] = 'X-Total-Count'
+            return response, 201 if created else 200
+
+            if payment_intent_id:
+                checkout_session = CheckoutSessions.query.filter_by(
+                    payment_intent_id=payment_intent_id,
+                    user_id=current_user['user_id']
+                ).first()
+
+                if not checkout_session:
+                    return jsonify({"message": "Checkout session not found for this payment intent."}), 409
+
+                if checkout_session.status == "order_created" and checkout_session.order_id:
+                    existing_order = Orders.query.filter_by(
+                        id=checkout_session.order_id,
+                        user_id=current_user['user_id']
+                    ).first()
+                    if existing_order:
+                        response = jsonify({
+                            "data": existing_order.serialize(),
+                            "message": "Order already created for this payment intent."
+                        })
+                        response.headers['Access-Control-Allow-Origin'] = '*'
+                        response.headers['Access-Control-Expose-Headers'] = 'X-Total-Count'
+                        return response, 200
+
+                import stripe
+                stripe.api_key = os.getenv('STRIPE_SECRET_KEY')
+                intent = stripe.PaymentIntent.retrieve(payment_intent_id)
+                checkout_session.status = _normalize_checkout_session_status(intent.get("status"))
+
+                if checkout_session.status != "paid":
+                    db.session.commit()
+                    return jsonify({"message": "PaymentIntent is not completed yet."}), 409
+
+                if not checkout_session.quote_snapshot or not checkout_session.quote_snapshot.get("lines"):
+                    return jsonify({"message": "Checkout snapshot not available for this payment intent."}), 409
+
+                checkout_quote = checkout_session.quote_snapshot
+                order_details = _build_order_details_from_checkout_quote(checkout_quote)
+                if checkout_session.customer_snapshot:
+                    customer_snapshot = {
+                        **checkout_session.customer_snapshot,
+                        **customer_snapshot
+                    }
+            else:
+                quote_request_data = {
+                    **data,
+                    "products": None
+                }
+                checkout_quote = _build_checkout_quote_from_request(current_user, quote_request_data)
+                if not checkout_quote["lines"]:
+                    return jsonify({"message": "Cart is empty"}), 400
+                order_details = _build_order_details_from_checkout_quote(checkout_quote)
+
+            comparison = _build_checkout_comparison_from_request(checkout_quote, data)
+
+            if comparison.get("has_difference"):
+                logger.warning(
+                    "Checkout mismatch detectado en /orders → "
+                    f"frontend_total={comparison.get('frontend_total')} | "
+                    f"backend_total={comparison.get('backend_total')} | "
+                    f"frontend_shipping={comparison.get('frontend_shipping_cost')} | "
+                    f"backend_shipping={comparison.get('backend_shipping_cost')} | "
+                    f"frontend_discount_code={comparison.get('frontend_discount_code')} | "
+                    f"backend_discount_code={comparison.get('backend_discount_code')} | "
+                    f"frontend_discount_percent={comparison.get('frontend_discount_percent')} | "
+                    f"backend_discount_percent={comparison.get('backend_discount_percent')} | "
+                    f"line_differences={comparison.get('line_differences')}"
+                )
+            else:
+                logger.info(
+                    "Checkout alineado en /orders → "
+                    f"backend_total={comparison.get('backend_total')} | "
+                    f"backend_shipping={comparison.get('backend_shipping_cost')} | "
+                    f"backend_discount_code={comparison.get('backend_discount_code')} | "
+                    f"backend_discount_percent={comparison.get('backend_discount_percent')}"
+                )
+
+            customer_firstname = _get_customer_value(data, customer_snapshot, 'firstname')
+            customer_lastname = _get_customer_value(data, customer_snapshot, 'lastname')
+            customer_phone = _get_customer_value(data, customer_snapshot, 'phone')
+            customer_shipping_address = _get_customer_value(data, customer_snapshot, 'shipping_address')
+            customer_shipping_city = _get_customer_value(data, customer_snapshot, 'shipping_city')
+            customer_shipping_postal_code = _get_customer_value(data, customer_snapshot, 'shipping_postal_code')
+            customer_billing_address = _get_customer_value(data, customer_snapshot, 'billing_address')
+            customer_billing_city = _get_customer_value(data, customer_snapshot, 'billing_city')
+            customer_billing_postal_code = _get_customer_value(data, customer_snapshot, 'billing_postal_code')
+            customer_cif = _get_customer_value(data, customer_snapshot, 'CIF')
+
             # Crear la orden inicialmente sin total_amount definitivo
             new_order = Orders(
                 user_id=current_user['user_id'],
@@ -1073,13 +2164,12 @@ def handle_orders():
             db.session.flush()  # Nos da el id de la orden
 
             # Crear los detalles de la orden y calcular subtotal
-            order_details = data.get('products', [])
-            subtotal = 0
-            # Capturar descuento si viene del frontend
-            discount_percent = float(data.get('discount_percent') or 0)
-            discount_code = data.get('discount_code') or None
+            subtotal = 0.0
+            discount_percent = float(checkout_quote.get('discount_percent') or 0)
+            discount_code = checkout_quote.get('discount_code') or None
 
             for detail in order_details:
+                precio_recalculado = float(detail.get('precio_total') or 0.0)
                 existing_detail = OrderDetails.query.filter_by(
                     order_id=new_order.id,
                     product_id=detail['producto_id'],
@@ -1097,17 +2187,7 @@ def handle_orders():
                     continue
 
 
-                # Obtener producto y calcular precio exacto según dimensiones
-                prod = Products.query.get(detail['producto_id'])
-                if not prod:
-                    raise ValueError(f"Producto con ID {detail['producto_id']} no encontrado")
-
-                precio_recalculado = calcular_precio_reja(
-                    alto_cm=detail.get('alto'),
-                    ancho_cm=detail.get('ancho'),
-                    precio_m2=prod.precio_rebajado or prod.precio
-                )
-
+                # Crear detalle usando la línea canónica ya validada por backend
                 new_detail = OrderDetails(
                     order_id=new_order.id,
                     product_id=detail['producto_id'],
@@ -1117,15 +2197,15 @@ def handle_orders():
                     anclaje=detail.get('anclaje'),
                     color=detail.get('color'),
                     precio_total=precio_recalculado,
-                    firstname=data.get('firstname'),
-                    lastname=data.get('lastname'),
-                    shipping_address=data.get('shipping_address'),
-                    shipping_city=data.get('shipping_city'),
-                    shipping_postal_code=data.get('shipping_postal_code'),
-                    billing_address=data.get('billing_address'),
-                    billing_city=data.get('billing_city'),
-                    billing_postal_code=data.get('billing_postal_code'),
-                    CIF=data.get('CIF'),
+                    firstname=customer_firstname,
+                    lastname=customer_lastname,
+                    shipping_address=customer_shipping_address,
+                    shipping_city=customer_shipping_city,
+                    shipping_postal_code=customer_shipping_postal_code,
+                    billing_address=customer_billing_address,
+                    billing_city=customer_billing_city,
+                    billing_postal_code=customer_billing_postal_code,
+                    CIF=customer_cif,
                     shipping_type=detail.get('shipping_type'),
                     shipping_cost=detail.get('shipping_cost')
                 )
@@ -1134,35 +2214,36 @@ def handle_orders():
                 subtotal += precio_recalculado * detail.get("quantity", 1)
 
 
-            # Usar shipping_cost global si está presente, o calcularlo como máximo entre detalles
-            shipping_cost = float(data.get('shipping_cost')) if data.get('shipping_cost') is not None else max(
-                float(detail.get('shipping_cost', 0)) for detail in order_details
-            )
+            # El envío global del pedido sale de la quote canónica backend.
+            shipping_cost = float(checkout_quote["shipping_cost"])
 
-            # Usar el total_amount y descuento enviados desde el frontend (ya verificados con Stripe)
-            frontend_total = float(data.get("total_amount", 0.0))
-            frontend_discount_percent = float(data.get("discount_percent") or 0)
+            backend_total = float(checkout_quote["total_amount"])
 
             # Calculamos el total bruto del pedido (producto + envío)
             #    Este subtotal ya incluye IVA en tu flujo actual
             gross_sum = subtotal + float(shipping_cost or 0.0)
 
-            # El descuento mostrado en factura será la diferencia entre el total bruto y lo cobrado
-            #    (así la factura coincide exactamente con Stripe y el frontend)
-            discount_value_iva = round(max(0.0, gross_sum - frontend_total), 2)
+            # El descuento mostrado en factura sale de la quote canónica backend.
+            discount_value_iva = round(float(checkout_quote["discount_amount"]), 2)
 
-            # 🔹 Guardamos en la BD los valores coherentes con el cobro real
+            # 🔹 Guardamos en la BD los valores autoritativos del backend
             new_order.discount_code = discount_code
             new_order.discount_value = discount_value_iva
             new_order.shipping_cost = round(float(shipping_cost or 0.0), 2)
-            new_order.total_amount = round(frontend_total, 2)
+            new_order.total_amount = round(backend_total, 2)
 
             # Logging detallado para depuración contable
             logger.info(
-                f"🧾 Cálculo final alineado con frontend/Stripe → "
+                f"🧾 Cálculo final autoritativo backend → "
                 f"Bruto: {gross_sum:.2f} € | Descuento: {discount_value_iva:.2f} € | "
-                f"Envío: {shipping_cost:.2f} € | Total guardado: {frontend_total:.2f} €"
+                f"Envío: {shipping_cost:.2f} € | Total guardado: {backend_total:.2f} €"
             )
+
+            if checkout_session:
+                checkout_session.order_id = new_order.id
+                checkout_session.status = "order_created"
+                if customer_snapshot:
+                    checkout_session.customer_snapshot = customer_snapshot
 
             db.session.commit()
 
@@ -1173,32 +2254,32 @@ def handle_orders():
                     updated = False
 
                     # Solo completar campos vacíos con datos del pedido
-                    if not user.firstname and data.get('firstname'):
-                        user.firstname = data['firstname']
+                    if not user.firstname and customer_firstname:
+                        user.firstname = customer_firstname
                         updated = True
-                    if not user.lastname and data.get('lastname'):
-                        user.lastname = data['lastname']
+                    if not user.lastname and customer_lastname:
+                        user.lastname = customer_lastname
                         updated = True
-                    if not user.shipping_address and data.get('shipping_address'):
-                        user.shipping_address = data['shipping_address']
+                    if not user.shipping_address and customer_shipping_address:
+                        user.shipping_address = customer_shipping_address
                         updated = True
-                    if not user.shipping_city and data.get('shipping_city'):
-                        user.shipping_city = data['shipping_city']
+                    if not user.shipping_city and customer_shipping_city:
+                        user.shipping_city = customer_shipping_city
                         updated = True
-                    if not user.shipping_postal_code and data.get('shipping_postal_code'):
-                        user.shipping_postal_code = data['shipping_postal_code']
+                    if not user.shipping_postal_code and customer_shipping_postal_code:
+                        user.shipping_postal_code = customer_shipping_postal_code
                         updated = True
-                    if not user.billing_address and data.get('billing_address'):
-                        user.billing_address = data['billing_address']
+                    if not user.billing_address and customer_billing_address:
+                        user.billing_address = customer_billing_address
                         updated = True
-                    if not user.billing_city and data.get('billing_city'):
-                        user.billing_city = data['billing_city']
+                    if not user.billing_city and customer_billing_city:
+                        user.billing_city = customer_billing_city
                         updated = True
-                    if not user.billing_postal_code and data.get('billing_postal_code'):
-                        user.billing_postal_code = data['billing_postal_code']
+                    if not user.billing_postal_code and customer_billing_postal_code:
+                        user.billing_postal_code = customer_billing_postal_code
                         updated = True
-                    if not user.CIF and data.get('CIF'):
-                        user.CIF = data['CIF']
+                    if not user.CIF and customer_cif:
+                        user.CIF = customer_cif
                         updated = True
 
                     # Guardar cambios solo si hay algo nuevo
@@ -1248,10 +2329,10 @@ def handle_orders():
                 pdf.setFont("Helvetica-Bold", 12)
                 pdf.drawString(50, 700, "CLIENTE")
                 pdf.setFont("Helvetica", 10)
-                pdf.drawString(50, 680, f"{data.get('firstname')} {data.get('lastname')}")
-                pdf.drawString(50, 665, f"{data.get('billing_address')}, {data.get('billing_city')} ({data.get('billing_postal_code')})")
-                pdf.drawString(50, 650, f"{data.get('CIF')}")
-                pdf.drawString(50, 635, f"{data.get('phone', 'No proporcionado')}")
+                pdf.drawString(50, 680, f"{customer_firstname or ''} {customer_lastname or ''}".strip())
+                pdf.drawString(50, 665, f"{customer_billing_address or ''}, {customer_billing_city or ''} ({customer_billing_postal_code or ''})")
+                pdf.drawString(50, 650, f"{customer_cif or ''}")
+                pdf.drawString(50, 635, f"{customer_phone or 'No proporcionado'}")
 
                 # Dirección de envío
                 pdf.setFont("Helvetica-Bold", 12)
@@ -1259,10 +2340,10 @@ def handle_orders():
                 pdf.setFont("Helvetica", 10)
 
                 # Verificar si la dirección de envío es igual a la de facturación o está vacía
-                if not data.get('shipping_address') or data.get('shipping_address') == data.get('billing_address'):
+                if not customer_shipping_address or customer_shipping_address == customer_billing_address:
                     pdf.drawString(50, 560, "La misma que la de facturación")
                 else:
-                    pdf.drawString(50, 560, f"{data.get('shipping_address')}, {data.get('shipping_city')} ({data.get('shipping_postal_code')})")
+                    pdf.drawString(50, 560, f"{customer_shipping_address or ''}, {customer_shipping_city or ''} ({customer_shipping_postal_code or ''})")
 
                 # Detalles del pedido
                 pdf.setFont("Helvetica-Bold", 12)
@@ -1427,10 +2508,10 @@ def handle_orders():
                     invoice_number=invoice_number,
                     order_id=new_order.id,
                     pdf_path=pdf_path,
-                    client_name=f"{data.get('firstname')} {data.get('lastname')}",
-                    client_address=data.get('billing_address'),
-                    client_cif=data.get('CIF'),
-                    client_phone=data.get('phone'),
+                    client_name=f"{customer_firstname or ''} {customer_lastname or ''}".strip(),
+                    client_address=customer_billing_address or "",
+                    client_cif=customer_cif or "",
+                    client_phone=customer_phone or "",
                     amount=new_order.total_amount,
                     order_details=[detail.serialize() for detail in new_order.order_details]
                 )
@@ -1442,7 +2523,7 @@ def handle_orders():
                 email_sent = send_email(
                     subject=f"Factura de tu pedido #{invoice_number}",
                     recipients=[current_user['email'], current_app.config['MAIL_USERNAME']], # <--- current_app.config aquí
-                    body=f"Hola {data.get('firstname')} {data.get('lastname')},\n\nAdjuntamos la factura {invoice_number} de tu compra.\n\nGracias por tu confianza.",
+                    body=f"Hola {(customer_firstname or '').strip()} {(customer_lastname or '').strip()},\n\nAdjuntamos la factura {invoice_number} de tu compra.\n\nGracias por tu confianza.",
                     attachment_path=file_path
                 )
 
@@ -1465,10 +2546,20 @@ def handle_orders():
                 logger.error(f"Error al generar la factura: {str(e)}")
                 return jsonify({"message": "An error occurred while generating the invoice.", "error": str(e)}), 500
 
+        except ValueError as e:
+            db.session.rollback()
+            logger.error(f"Error validando checkout en /orders: {str(e)}")
+            return jsonify({"message": str(e)}), 400
+
         except SQLAlchemyError as e:
             db.session.rollback()
             logger.error(f"Error al crear la orden: {str(e)}")
             return jsonify({"message": "An error occurred while creating the order.", "error": str(e)}), 500
+
+        except Exception as e:
+            db.session.rollback()
+            logger.error(f"Error inesperado al cerrar la orden: {str(e)}")
+            return jsonify({"message": "An unexpected error occurred while creating the order.", "error": str(e)}), 500
 
 
 @api.route('/orders/<int:order_id>', methods=['GET', 'DELETE'])
@@ -1573,6 +2664,9 @@ def set_estimated_delivery(order_id):
 def add_order_details():
     data = request.get_json()  
     current_user = get_jwt_identity()
+    if not current_user.get("is_admin"):
+        return jsonify({"message": "Access forbidden: Admins only"}), 403
+
     try:
         added_details = []
         shipping_assigned = False 
@@ -1852,36 +2946,68 @@ def create_manual_invoice():
 
 # Descarga un archivo PDF de factura generado previamente
 @api.route('/download-invoice/<filename>', methods=['GET'])
+@jwt_required()
 def download_invoice(filename):
+    current_user = get_jwt_identity()
     try:
-        file_path = os.path.join(current_app.config['INVOICE_FOLDER'], filename)
+        safe_filename = os.path.basename(filename)
+        if safe_filename != filename:
+            return jsonify({"message": "Invoice not found"}), 404
+
+        invoice = Invoices.query.filter_by(
+            pdf_path=f"/api/download-invoice/{safe_filename}"
+        ).first()
+        if not invoice:
+            return jsonify({"message": "Invoice not found"}), 404
+
+        if not current_user.get("is_admin"):
+            if not invoice.order or invoice.order.user_id != current_user['user_id']:
+                return jsonify({"message": "Invoice not found"}), 404
+
+        file_path = os.path.join(current_app.config['INVOICE_FOLDER'], safe_filename)
         current_app.logger.info(f"Buscando archivo en: {file_path}")
 
         if not os.path.exists(file_path):
             return jsonify({"message": "No se encontró el archivo PDF para esta factura."}), 404
 
-        return send_file(file_path, as_attachment=True, download_name=filename, mimetype='application/pdf')
+        return send_file(file_path, as_attachment=True, download_name=safe_filename, mimetype='application/pdf')
     except Exception as e:
         current_app.logger.error(f"Error al descargar la factura: {str(e)}")
         return jsonify({"message": "An error occurred while downloading the invoice.", "error": str(e)}), 500
 
 # Recupera todas las facturas con paginación
+def _serialize_invoice_for_user(invoice, current_user):
+    if current_user.get("is_admin"):
+        return invoice.serialize_admin()
+    return invoice.serialize_summary()
+
+
 @api.route('/invoices', methods=['GET'])
 @jwt_required()
 def get_invoices():
+    current_user = get_jwt_identity()
     try:
         # Parámetros de paginación
         start = int(request.args.get('_start', 0))
         end = int(request.args.get('_end', 10))
 
         # Obtener el número total de facturas
-        total_count = Invoices.query.count()
+        if current_user.get("is_admin"):
+            query = Invoices.query
+        else:
+            query = Invoices.query.join(Orders, Invoices.order_id == Orders.id).filter(
+                Orders.user_id == current_user['user_id']
+            )
+
+        total_count = query.count()
 
         # Obtener las facturas dentro del rango solicitado
-        invoices = Invoices.query.order_by(Invoices.id).slice(start, end).all()
+        invoices = query.order_by(Invoices.id).slice(start, end).all()
 
         # Crear la respuesta con los encabezados necesarios
-        response = jsonify([invoice.serialize() for invoice in invoices])
+        response = jsonify([
+            _serialize_invoice_for_user(invoice, current_user) for invoice in invoices
+        ])
         response.headers['X-Total-Count'] = total_count
         response.headers['Access-Control-Expose-Headers'] = 'X-Total-Count'
 
@@ -1893,14 +3019,21 @@ def get_invoices():
 @api.route('/invoices/<int:invoice_id>', methods=['GET'])
 @jwt_required()
 def get_invoice_by_id(invoice_id):
+    current_user = get_jwt_identity()
     try:
         # Obtener la factura por ID
-        invoice = Invoices.query.get(invoice_id)
+        if current_user.get("is_admin"):
+            invoice = Invoices.query.get(invoice_id)
+        else:
+            invoice = Invoices.query.join(Orders, Invoices.order_id == Orders.id).filter(
+                Invoices.id == invoice_id,
+                Orders.user_id == current_user['user_id']
+            ).first()
         if not invoice:
             return jsonify({"message": "Invoice not found"}), 404
 
         # Crear la respuesta
-        response = jsonify(invoice.serialize())
+        response = jsonify(_serialize_invoice_for_user(invoice, current_user))
         response.headers['Access-Control-Expose-Headers'] = 'X-Total-Count'
 
         return response, 200
