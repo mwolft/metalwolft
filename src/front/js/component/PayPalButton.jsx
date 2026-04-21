@@ -44,8 +44,6 @@ const PayPalButton = ({
             throw authError;
         }
 
-        onProcessingChange?.(true);
-
         try {
             const response = await fetch(`${backendUrl}/api/paypal/create-order`, {
                 method: "POST",
@@ -80,8 +78,6 @@ const PayPalButton = ({
         } catch (error) {
             onError?.(error.message || "No se pudo iniciar el pago con PayPal.");
             throw error;
-        } finally {
-            onProcessingChange?.(false);
         }
     };
 
@@ -145,7 +141,7 @@ const PayPalButton = ({
                 <PayPalButtons
                     style={{ layout: "vertical", shape: "rect", label: "paypal" }}
                     disabled={disabled}
-                    forceReRender={[clientId, disabled, checkoutTokenRef.current]}
+                    forceReRender={[clientId]}
                     createOrder={handleCreateOrder}
                     onApprove={handleApprove}
                     onCancel={() => onProcessingChange?.(false)}
