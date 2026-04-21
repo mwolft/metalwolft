@@ -399,6 +399,44 @@ const CheckoutForm = () => {
         }
     };
 
+    const paymentSectionStyle = {
+        border: "1px solid #e9ecef",
+        borderRadius: "16px",
+        padding: "24px",
+        backgroundColor: "#ffffff",
+        boxShadow: "0 12px 30px rgba(15, 23, 42, 0.05)"
+    };
+
+    const paymentNoticeStyle = {
+        border: "1px solid #e9ecef",
+        borderRadius: "14px",
+        padding: "18px 20px",
+        backgroundColor: "#f8f9fa"
+    };
+
+    const paymentMethodCardStyle = {
+        border: "1px solid #e9ecef",
+        borderRadius: "14px",
+        padding: "22px 20px",
+        backgroundColor: "#ffffff"
+    };
+
+    const cardElementWrapperStyle = {
+        border: "1px solid #d8dee4",
+        borderRadius: "12px",
+        padding: "14px 16px",
+        backgroundColor: "#fbfcfd",
+        minHeight: "54px",
+        display: "flex",
+        alignItems: "center"
+    };
+
+    const paymentDividerLineStyle = {
+        flex: 1,
+        height: "1px",
+        backgroundColor: "#e9ecef"
+    };
+
     return (
         <>
             <Helmet>
@@ -604,76 +642,119 @@ const CheckoutForm = () => {
                             )}
                             <h4 className="mb-3" style={{ marginTop: '50px' }}>Metodo de pago</h4>
                             <hr className='hr-cart' />
-                            <div className="mt-4">
-                                <div role="group" aria-labelledby="payment-method-label">
-                                    <Form.Group controlId="card-element">
-                                        <Form.Label id="payment-method-label">Detalles de la tarjeta</Form.Label>
-                                        <div style={{ position: "relative" }}>
-                                            <CardElement options={{ hidePostalCode: true }} />
+                            <div className="mt-4" style={paymentSectionStyle}>
+                                <div style={paymentNoticeStyle}>
+                                    <div className="d-flex flex-column gap-2">
+                                        <div>
+                                            <h5 className="mb-1" style={{ fontSize: "1rem", fontWeight: 600 }}>Confirmacion del checkout</h5>
+                                            <p className="text-muted small mb-0">
+                                                La aceptacion de la politica es necesaria para completar cualquier metodo de pago.
+                                            </p>
                                         </div>
-                                    </Form.Group>
-                                </div>
-                                <Form.Group className="mt-4">
-                                    <Form.Check
-                                        type="checkbox"
-                                        id="accept-policy"
-                                        label={
-                                            <>
-                                                Confirmo que he leido y acepto la{" "}
-                                                <a
-                                                    href="/politica-devolucion"
-                                                    target="_blank"
-                                                    rel="noopener noreferrer"
-                                                    style={{ textDecoration: "underline" }}
-                                                >
-                                                    Politica de Devoluciones y Garantias
-                                                </a>.
-                                            </>
-                                        }
-                                        checked={acceptedPolicy}
-                                        onChange={(e) => setAcceptedPolicy(e.target.checked)}
-                                        required
-                                    />
-                                </Form.Group>
-
-                                <Button
-                                    className="btn btn-style-background-color btn-block my-4"
-                                    type="submit"
-                                    disabled={isProcessing || !stripe}
-                                >
-                                    {isProcessing ? "Pagando..." : "Pagar con tarjeta"}
-                                </Button>
-
-                                <div className="text-center my-3">
-                                    <span className="text-muted">o paga con</span>
+                                        <Form.Group className="mb-0">
+                                            <Form.Check
+                                                type="checkbox"
+                                                id="accept-policy"
+                                                label={
+                                                    <>
+                                                        Confirmo que he leido y acepto la{" "}
+                                                        <a
+                                                            href="/politica-devolucion"
+                                                            target="_blank"
+                                                            rel="noopener noreferrer"
+                                                            style={{ textDecoration: "underline" }}
+                                                        >
+                                                            Politica de Devoluciones y Garantias
+                                                        </a>.
+                                                    </>
+                                                }
+                                                checked={acceptedPolicy}
+                                                onChange={(e) => setAcceptedPolicy(e.target.checked)}
+                                                required
+                                            />
+                                        </Form.Group>
+                                    </div>
                                 </div>
 
-                                {paypalClientId ? (
-                                    <>
-                                        <PayPalButton
-                                            clientId={paypalClientId}
-                                            backendUrl={backendUrl}
-                                            authToken={localStorage.getItem("token")}
-                                            customerData={formData}
-                                            checkoutToken={paypalCheckoutToken}
-                                            disabled={isProcessing}
-                                            discountCode={store.discountCode || null}
-                                            discountPercent={store.discountPercent || 0}
-                                            shippingCost={shippingCost}
-                                            totalAmount={totalWithDiscount}
-                                            onBeforeCreateOrder={() => validateCheckoutBeforePayment({ showAlert: false })}
-                                            onProcessingChange={setIsProcessing}
-                                            onCheckoutContext={handlePayPalCheckoutContext}
-                                            onApproveSuccess={handlePayPalSuccess}
-                                            onError={setPaypalError}
-                                        />
-                                        {paypalError && (
-                                            <p className="text-danger mt-3 mb-0">{paypalError}</p>
-                                        )}
-                                    </>
-                                ) : (
-                                    <p className="text-muted small mb-0">PayPal no esta disponible en este entorno.</p>
-                                )}
+                                <div className="mt-4" style={paymentMethodCardStyle}>
+                                    <div className="d-flex flex-column gap-2 mb-4">
+                                        <div className="d-flex align-items-center justify-content-between gap-3 flex-wrap">
+                                            <h5 className="mb-0" style={{ fontSize: "1.05rem", fontWeight: 600 }}>Tarjeta</h5>
+                                            <span className="text-muted small">Pago seguro con Stripe</span>
+                                        </div>
+                                        <p className="text-muted small mb-0">
+                                            Introduce los datos de tu tarjeta para completar el pago de forma segura.
+                                        </p>
+                                    </div>
+
+                                    <div role="group" aria-labelledby="payment-method-label">
+                                        <Form.Group controlId="card-element" className="mb-0">
+                                            <Form.Label id="payment-method-label" className="small text-uppercase text-muted mb-2">
+                                                Detalles de la tarjeta
+                                            </Form.Label>
+                                            <div style={cardElementWrapperStyle}>
+                                                <div style={{ position: "relative", width: "100%" }}>
+                                                    <CardElement options={{ hidePostalCode: true }} />
+                                                </div>
+                                            </div>
+                                        </Form.Group>
+                                    </div>
+
+                                    <Button
+                                        className="btn btn-style-background-color w-100 mt-4"
+                                        type="submit"
+                                        disabled={isProcessing || !stripe}
+                                    >
+                                        {isProcessing ? "Pagando..." : "Pagar con tarjeta"}
+                                    </Button>
+                                </div>
+
+                                <div className="d-flex align-items-center my-4" aria-hidden="true">
+                                    <div style={paymentDividerLineStyle}></div>
+                                    <span className="text-muted small px-3 text-uppercase" style={{ letterSpacing: "0.08em" }}>
+                                        O bien
+                                    </span>
+                                    <div style={paymentDividerLineStyle}></div>
+                                </div>
+
+                                <div style={paymentMethodCardStyle}>
+                                    <div className="d-flex flex-column gap-2 mb-4">
+                                        <div className="d-flex align-items-center justify-content-between gap-3 flex-wrap">
+                                            <h5 className="mb-0" style={{ fontSize: "1.05rem", fontWeight: 600 }}>PayPal</h5>
+                                            <span className="text-muted small">Pago rapido y seguro</span>
+                                        </div>
+                                        <p className="text-muted small mb-0">
+                                            Paga con tu cuenta PayPal o con tarjeta a traves de PayPal.
+                                        </p>
+                                    </div>
+
+                                    {paypalClientId ? (
+                                        <>
+                                            <PayPalButton
+                                                clientId={paypalClientId}
+                                                backendUrl={backendUrl}
+                                                authToken={localStorage.getItem("token")}
+                                                customerData={formData}
+                                                checkoutToken={paypalCheckoutToken}
+                                                disabled={isProcessing}
+                                                discountCode={store.discountCode || null}
+                                                discountPercent={store.discountPercent || 0}
+                                                shippingCost={shippingCost}
+                                                totalAmount={totalWithDiscount}
+                                                onBeforeCreateOrder={() => validateCheckoutBeforePayment({ showAlert: false })}
+                                                onProcessingChange={setIsProcessing}
+                                                onCheckoutContext={handlePayPalCheckoutContext}
+                                                onApproveSuccess={handlePayPalSuccess}
+                                                onError={setPaypalError}
+                                            />
+                                            {paypalError && (
+                                                <p className="text-danger mt-3 mb-0">{paypalError}</p>
+                                            )}
+                                        </>
+                                    ) : (
+                                        <p className="text-muted small mb-0">PayPal no esta disponible en este entorno.</p>
+                                    )}
+                                </div>
                             </div>
                         </Form>
                         <div className="text-center">

@@ -1590,17 +1590,26 @@ def paypal_webhook():
             resource_details.get("provider_status") or event_type
         )
 
-        if event_type == "PAYMENT.CAPTURE.PENDING":
+        resource_status = (resource_details.get("provider_status") or "").upper()
+        is_final_capture = bool(resource.get("final_capture"))
+        pending_completed_final_capture = (
+            event_type == "PAYMENT.CAPTURE.PENDING" and
+            resource_status == "COMPLETED" and
+            is_final_capture
+        )
+
+        if event_type == "PAYMENT.CAPTURE.PENDING" and not pending_completed_final_capture:
             if checkout_session.order_id:
                 checkout_session.status = "order_created"
             else:
                 checkout_session.status = "processing"
             db.session.commit()
             logger.info(
-                "Checkout session %s marcada como %s tras %s",
+                "Webhook PayPal pending ignorado para checkout_session %s: status=%s provider_status=%s final_capture=%s",
                 checkout_session.id,
                 checkout_session.status,
-                event_type
+                resource_status or checkout_session.provider_status,
+                is_final_capture
             )
             return "", 200
 
@@ -1629,6 +1638,12 @@ def paypal_webhook():
             resource_details
         )
         if not is_valid_capture:
+            logger.error(
+                "Webhook PayPal mismatch para checkout_session %s: event_type=%s reason=%s",
+                checkout_session.id,
+                event_type,
+                mismatch_reason
+            )
             checkout_session.status = "processing"
             db.session.commit()
             logger.error(
@@ -1681,6 +1696,24 @@ def paypal_webhook():
             customer_snapshot=checkout_session.customer_snapshot,
             checkout_session=checkout_session
         )
+        if pending_completed_final_capture:
+            logger.info(
+                "Webhook PayPal pending con resource.status completed finalizado: checkout_session=%s order=%s created=%s provider_order_id=%s capture_id=%s",
+                checkout_session.id,
+                order.id,
+                created,
+                checkout_session.provider_order_id,
+                checkout_session.provider_capture_id
+            )
+        else:
+            logger.info(
+                "Webhook PayPal completed finalizado: checkout_session=%s order=%s created=%s provider_order_id=%s capture_id=%s",
+                checkout_session.id,
+                order.id,
+                created,
+                checkout_session.provider_order_id,
+                checkout_session.provider_capture_id
+            )
         logger.info(
             "Webhook PayPal %s cerró checkout_session %s → order %s (created=%s)",
             checkout_session.provider_capture_id or checkout_session.provider_order_id,
