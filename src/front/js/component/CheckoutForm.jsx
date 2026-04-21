@@ -6,6 +6,7 @@ import { Button, Container, Row, Col, Form } from "react-bootstrap";
 import { useNavigate } from "react-router-dom";
 import { calcularEnvio } from "../../utils/shippingCalculator";
 import { Helmet } from "react-helmet-async";
+import PayPalButton from "./PayPalButton";
 
 const stripePromise = loadStripe('pk_live_51I1FgUDyMBNofWjFzagO0jTrkfQBvlt5Pshx3hLJbDLCxahT7Cn5NF9oozvey5iiH6lZhP82p3TFFmrdHGh3CQW700GiDX1dtz');
 
@@ -16,6 +17,8 @@ const CheckoutForm = () => {
     const [differentBilling, setDifferentBilling] = useState(false);
     const [errors, setErrors] = useState({});
     const [isProcessing, setIsProcessing] = useState(false);
+    const [paypalError, setPaypalError] = useState("");
+    const [paypalCheckoutToken, setPaypalCheckoutToken] = useState(null);
     const [formData, setFormData] = useState({
         firstname: "",
         lastname: "",
@@ -30,6 +33,8 @@ const CheckoutForm = () => {
     });
     const [acceptedPolicy, setAcceptedPolicy] = useState(false);
     const navigate = useNavigate();
+    const backendUrl = process.env.REACT_APP_BACKEND_URL || "";
+    const paypalClientId = process.env.REACT_APP_PAYPAL_CLIENT_ID || "";
 
     const { products, totalShipping: shippingCost, finalTotal } = calcularEnvio(store.cart);
     const discountPercent = store.discountPercent || 0;
@@ -93,12 +98,12 @@ const CheckoutForm = () => {
         ...formData
     });
 
-    const pushPurchaseEvent = (paymentIntentId, checkoutSummary) => {
+    const pushPurchaseEvent = (transactionId, checkoutSummary) => {
         window.dataLayer = window.dataLayer || [];
         window.dataLayer.push({
             event: "purchase",
             ecommerce: {
-                transaction_id: paymentIntentId,
+                transaction_id: transactionId,
                 value: checkoutSummary?.total_amount ?? totalWithDiscount,
                 currency: "EUR",
                 shipping: checkoutSummary?.shipping_cost ?? shippingCost,
@@ -110,10 +115,54 @@ const CheckoutForm = () => {
         });
     };
 
-    const persistPostPurchaseContext = (paymentIntentId) => {
-        if (!paymentIntentId) return;
-        actions.setPaymentIntentId(paymentIntentId);
-        sessionStorage.setItem("lastPaymentIntentId", paymentIntentId);
+    const persistPostPurchaseContext = (paymentIntentId, checkoutToken = null) => {
+        if (paymentIntentId) {
+            actions.setPaymentIntentId(paymentIntentId);
+            sessionStorage.setItem("lastPaymentIntentId", paymentIntentId);
+        }
+
+        if (checkoutToken) {
+            sessionStorage.setItem("lastCheckoutToken", checkoutToken);
+        }
+    };
+
+    const buildThankYouUrl = (paymentIntentId, checkoutToken = null) => {
+        const searchParams = new URLSearchParams();
+
+        if (checkoutToken) {
+            searchParams.set("checkout_token", checkoutToken);
+        }
+
+        if (paymentIntentId) {
+            searchParams.set("payment_intent_id", paymentIntentId);
+        }
+
+        const queryString = searchParams.toString();
+        return queryString ? `/thank-you?${queryString}` : "/thank-you";
+    };
+
+    const validateCheckoutBeforePayment = ({ showAlert = false } = {}) => {
+        if (!acceptedPolicy) {
+            const message = "Debes aceptar la Politica de Devoluciones y Garantias antes de continuar.";
+            setPaypalError(message);
+            if (showAlert) {
+                alert(message);
+            }
+            return false;
+        }
+
+        const isValid = validateForm();
+        if (!isValid) {
+            const message = "Revisa los datos obligatorios antes de continuar con el pago.";
+            setPaypalError(message);
+            if (showAlert) {
+                alert(message);
+            }
+            return false;
+        }
+
+        setPaypalError("");
+        return true;
     };
 
     const colorLabels = {
@@ -124,13 +173,14 @@ const CheckoutForm = () => {
         forja_negro: "Negro forja",
         forja_gris: "Gris acero forja",
         forja_marron: "MarrÃ³n castaÃ±o forja",
+        forja_marron: "Marron castano forja",
         forja_azul: "Azul forja",
         forja_verde: "Verde bronce forja",
         forja_dorado: "Dorado forja",
         blanco: "Blanco",
         negro: "Negro",
         gris: "Gris",
-        marrÃ³n: "MarrÃ³n",
+        marron: "Marron",
         verde: "Verde"
     };
 
@@ -172,41 +222,57 @@ const CheckoutForm = () => {
         return Object.keys(newErrors).length === 0;
     };
 
-    const handleOrderCompletion = async (paymentIntentId, checkoutSummary, { attemptOrderFallback = true } = {}) => {
-        console.log("handleOrderCompletion ejecutado");
-        persistPostPurchaseContext(paymentIntentId);
+    const handleOrderCompletion = async (
+        paymentIntentId,
+        checkoutSummary,
+        { attemptOrderFallback = true, checkoutToken = null } = {}
+    ) => {
+        persistPostPurchaseContext(paymentIntentId, checkoutToken);
 
         if (attemptOrderFallback) {
             const orderData = buildOrderData(checkoutSummary, paymentIntentId);
             const { ok, error } = await actions.saveOrder(orderData);
             if (!ok) {
-                console.warn("No se pudo cerrar el pedido desde frontend; el webhook seguirÃ¡ siendo la vÃ­a principal.", error);
+                console.warn("No se pudo cerrar el pedido desde frontend; el webhook seguira siendo la via principal.", error);
             }
         }
 
         await actions.clearCart();
-        navigate(
-            paymentIntentId
-                ? `/thank-you?payment_intent_id=${encodeURIComponent(paymentIntentId)}`
-                : "/thank-you"
-        );
+        navigate(buildThankYouUrl(paymentIntentId, checkoutToken));
+    };
+
+    const handlePayPalCheckoutContext = ({ checkoutToken }) => {
+        if (checkoutToken) {
+            setPaypalError("");
+            setPaypalCheckoutToken(checkoutToken);
+            persistPostPurchaseContext(null, checkoutToken);
+        }
+    };
+
+    const handlePayPalSuccess = async ({ checkoutToken, captureId, checkoutSummary }) => {
+        if (!checkoutToken) {
+            const message = "No hemos podido identificar esta compra de PayPal. Revisa tu cuenta o intentalo de nuevo.";
+            setPaypalError(message);
+            return;
+        }
+
+        setPaypalError("");
+        setPaypalCheckoutToken(checkoutToken || null);
+        persistPostPurchaseContext(null, checkoutToken);
+        pushPurchaseEvent(captureId || checkoutToken || "paypal", checkoutSummary);
+        await actions.clearCart();
+        navigate(buildThankYouUrl(null, checkoutToken));
     };
 
     const handleSubmit = async (event) => {
         event.preventDefault();
 
-        if (!acceptedPolicy) {
-            alert("Debes aceptar la PolÃ­tica de Devoluciones y GarantÃ­as antes de continuar.");
-            return;
-        }
-
-        if (!validateForm()) {
-            console.error("El formulario no pasÃ³ la validaciÃ³n.");
+        if (!validateCheckoutBeforePayment({ showAlert: true })) {
             return;
         }
 
         if (!stripe || !elements) {
-            console.error("Stripe o Elements no estÃ¡n cargados.");
+            console.error("Stripe o Elements no estan cargados.");
             return;
         }
 
@@ -230,7 +296,7 @@ const CheckoutForm = () => {
             actions.setIdempotencyKey(idempotencyKey);
 
             const token = localStorage.getItem("token");
-            const response = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/create-payment-intent`, {
+            const response = await fetch(`${backendUrl}/api/create-payment-intent`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -254,51 +320,61 @@ const CheckoutForm = () => {
 
             if (!response.ok) {
                 console.error("Error en la respuesta del backend al crear el PaymentIntent.", response.statusText, data);
-                alert("Error al crear el PaymentIntent. Por favor, intÃ©ntalo nuevamente.");
+                alert("Error al crear el PaymentIntent. Por favor, intentalo nuevamente.");
                 return;
             }
 
             const checkoutSummary = data?.checkout_summary || null;
+            const checkoutToken = data?.public_checkout_token || null;
 
             if (data.paymentIntent?.id) {
-                persistPostPurchaseContext(data.paymentIntent.id);
+                persistPostPurchaseContext(data.paymentIntent.id, checkoutToken);
             }
 
             if (!data?.clientSecret) {
                 console.error("La respuesta no contiene clientSecret.");
-                alert("Hubo un error en la creaciÃ³n del intento de pago.");
+                alert("Hubo un error en la creacion del intento de pago.");
                 return;
             }
 
             if (data.paymentIntent?.status === "succeeded") {
                 pushPurchaseEvent(data.paymentIntent.id, checkoutSummary);
-                await handleOrderCompletion(data.paymentIntent.id, checkoutSummary, { attemptOrderFallback: true });
+                await handleOrderCompletion(data.paymentIntent.id, checkoutSummary, {
+                    attemptOrderFallback: true,
+                    checkoutToken
+                });
                 return;
             }
 
             const { error: confirmError, paymentIntent: confirmedPaymentIntent } = await stripe.confirmCardPayment(data.clientSecret);
 
             if (confirmError) {
-                console.error("Error en la confirmaciÃ³n del pago:", confirmError);
-                alert(`Error en la confirmaciÃ³n del pago: ${confirmError.message}`);
+                console.error("Error en la confirmacion del pago:", confirmError);
+                alert(`Error en la confirmacion del pago: ${confirmError.message}`);
                 return;
             }
 
             if (confirmedPaymentIntent?.status === 'succeeded') {
                 pushPurchaseEvent(confirmedPaymentIntent.id, checkoutSummary);
-                await handleOrderCompletion(confirmedPaymentIntent.id, checkoutSummary, { attemptOrderFallback: true });
+                await handleOrderCompletion(confirmedPaymentIntent.id, checkoutSummary, {
+                    attemptOrderFallback: true,
+                    checkoutToken
+                });
                 return;
             }
 
             if (confirmedPaymentIntent?.status === 'processing') {
-                await handleOrderCompletion(confirmedPaymentIntent.id, checkoutSummary, { attemptOrderFallback: false });
+                await handleOrderCompletion(confirmedPaymentIntent.id, checkoutSummary, {
+                    attemptOrderFallback: false,
+                    checkoutToken
+                });
                 return;
             }
 
             alert("No hemos podido confirmar el estado final del pago. Revisa tu cuenta en unos instantes.");
         } catch (err) {
             console.error("Error inesperado en el flujo de pago:", err);
-            alert("Se produjo un error inesperado. Por favor, intÃ©ntalo nuevamente.");
+            alert("Se produjo un error inesperado. Por favor, inténtalo nuevamente.");
         } finally {
             setIsProcessing(false);
         }
@@ -309,7 +385,7 @@ const CheckoutForm = () => {
         if (!e.target.checked) {
             setFormData({
                 ...formData,
-                shipping_address: "La misma que la de facturaciÃ³n",
+                shipping_address: "La misma que la de facturacion",
                 shipping_city: "",
                 shipping_postal_code: ""
             });
@@ -354,36 +430,36 @@ const CheckoutForm = () => {
                                             {product.shipping_type !== 'normal' && (
                                                 <>
                                                     <small className="text-danger d-block mx-1">
-                                                        ðŸšš Este producto requiere envÃ­o especial ({product.shipping_cost.toFixed(2)}â‚¬)
+                                                        ðŸšš Este producto requiere enví­o especial ({product.shipping_cost.toFixed(2)}€)
                                                     </small>
                                                 </>
                                             )}
                                         </div>
                                     </div>
                                     <span style={{ color: "#6c757d", opacity: 1, fontSize: "0.875rem", textAlign: "right", display: "block" }}>
-                                        {product.precio_total.toFixed(2)}â‚¬ <br /> {product.quantity ?? 1} und<br /> {(product.precio_total * (product.quantity ?? 1)).toFixed(2)}â‚¬
+                                        {product.precio_total.toFixed(2)}EUR <br /> {product.quantity ?? 1} und<br /> {(product.precio_total * (product.quantity ?? 1)).toFixed(2)}EUR
                                     </span>
                                 </li>
                             ))}
                             <li className="list-group-item d-flex justify-content-between">
-                                <span>EnvÃ­o: </span>
-                                <strong>{shippingCost === 0 ? "GRATIS" : `${shippingCost.toFixed(2)} â‚¬`}</strong>
+                                <span>Envio:</span>
+                                <strong>{shippingCost === 0 ? "GRATIS" : `${shippingCost.toFixed(2)} EUR`}</strong>
                             </li>
                             {discountPercent > 0 && (
                                 <li className="list-group-item d-flex justify-content-between text-success">
                                     <span>Descuento ({discountPercent}%)</span>
-                                    <strong>-{(finalTotal * discountPercent / 100).toFixed(2)}â‚¬</strong>
+                                    <strong>-{(finalTotal * discountPercent / 100).toFixed(2)}EUR</strong>
                                 </li>
                             )}
                             <li className="list-group-item d-flex justify-content-between">
                                 <span>Total (EUR)</span>
-                                <strong>{totalWithDiscount.toFixed(2)}â‚¬</strong>
+                                <strong>{totalWithDiscount.toFixed(2)}EUR</strong>
                             </li>
                         </ul>
                     </Col>
                     <Col md={8} className="order-md-1">
                         <Form onSubmit={handleSubmit} className="needs-validation" noValidate>
-                            <h4 className="mb-3">DirecciÃ³n de facturaciÃ³n</h4>
+                            <h4 className="mb-3">Direccion de facturacion</h4>
                             <hr className='hr-cart' />
                             <div className="row">
                                 <div className="col-md-6">
@@ -416,7 +492,7 @@ const CheckoutForm = () => {
                                     <Form.Label></Form.Label>
                                     <Form.Control
                                         name="billing_address"
-                                        placeholder="Calle, nÃºmero, portal..."
+                                        placeholder="Calle, numero, portal..."
                                         onChange={handleInputChange}
                                         value={formData.billing_address}
                                     />
@@ -430,7 +506,7 @@ const CheckoutForm = () => {
                                     <Form.Label></Form.Label>
                                     <Form.Control
                                         name="billing_postal_code"
-                                        placeholder="CÃ³digo Postal"
+                                        placeholder="Codigo Postal"
                                         onChange={handleInputChange}
                                         value={formData.billing_postal_code}
                                     />
@@ -468,7 +544,7 @@ const CheckoutForm = () => {
                                     <Form.Label></Form.Label>
                                     <Form.Control
                                         name="phone"
-                                        placeholder="TelÃ©fono"
+                                        placeholder="Telefono"
                                         onChange={handleInputChange}
                                         value={formData.phone}
                                     />
@@ -477,19 +553,22 @@ const CheckoutForm = () => {
                                     )}
                                 </div>
                             </div>
-                            <Form.Check type="checkbox" label="La direcciÃ³n de envÃ­o es diferente a la de facturaciÃ³n"
+                            <Form.Check
+                                type="checkbox"
+                                label="La direccion de envio es diferente a la de facturacion"
                                 id="differentBilling"
-                                onChange={handleCheckboxChange} />
+                                onChange={handleCheckboxChange}
+                            />
 
                             {differentBilling && (
                                 <div className="my-3" style={{ marginTop: '50px' }}>
-                                    <h4 className="mb-3">DirecciÃ³n de envÃ­o</h4>
+                                    <h4 className="mb-3">Direccion de envio</h4>
                                     <hr className='hr-cart' />
                                     <Form.Group controlId="shipping_address">
                                         <Form.Label></Form.Label>
                                         <Form.Control
                                             name="shipping_address"
-                                            placeholder="Calle, nÃºmero, portal, piso..."
+                                            placeholder="Calle, numero, portal, piso..."
                                             onChange={handleInputChange}
                                             value={formData.shipping_address}
                                         />
@@ -513,7 +592,7 @@ const CheckoutForm = () => {
                                         <Form.Label></Form.Label>
                                         <Form.Control
                                             name="shipping_postal_code"
-                                            placeholder="CÃ³digo Postal"
+                                            placeholder="Codigo Postal"
                                             onChange={handleInputChange}
                                             value={formData.shipping_postal_code}
                                         />
@@ -523,7 +602,7 @@ const CheckoutForm = () => {
                                     </Form.Group>
                                 </div>
                             )}
-                            <h4 className="mb-3" style={{ marginTop: '50px' }}>MÃ©todo de pago</h4>
+                            <h4 className="mb-3" style={{ marginTop: '50px' }}>Metodo de pago</h4>
                             <hr className='hr-cart' />
                             <div className="mt-4">
                                 <div role="group" aria-labelledby="payment-method-label">
@@ -540,14 +619,14 @@ const CheckoutForm = () => {
                                         id="accept-policy"
                                         label={
                                             <>
-                                                Confirmo que he leÃ­do y acepto la{" "}
+                                                Confirmo que he leido y acepto la{" "}
                                                 <a
                                                     href="/politica-devolucion"
                                                     target="_blank"
                                                     rel="noopener noreferrer"
                                                     style={{ textDecoration: "underline" }}
                                                 >
-                                                    PolÃ­tica de Devoluciones y GarantÃ­as
+                                                    Politica de Devoluciones y Garantias
                                                 </a>.
                                             </>
                                         }
@@ -562,8 +641,39 @@ const CheckoutForm = () => {
                                     type="submit"
                                     disabled={isProcessing || !stripe}
                                 >
-                                    {isProcessing ? "Pagando..." : "Pagar"}
+                                    {isProcessing ? "Pagando..." : "Pagar con tarjeta"}
                                 </Button>
+
+                                <div className="text-center my-3">
+                                    <span className="text-muted">o paga con</span>
+                                </div>
+
+                                {paypalClientId ? (
+                                    <>
+                                        <PayPalButton
+                                            clientId={paypalClientId}
+                                            backendUrl={backendUrl}
+                                            authToken={localStorage.getItem("token")}
+                                            customerData={formData}
+                                            checkoutToken={paypalCheckoutToken}
+                                            disabled={isProcessing}
+                                            discountCode={store.discountCode || null}
+                                            discountPercent={store.discountPercent || 0}
+                                            shippingCost={shippingCost}
+                                            totalAmount={totalWithDiscount}
+                                            onBeforeCreateOrder={() => validateCheckoutBeforePayment({ showAlert: false })}
+                                            onProcessingChange={setIsProcessing}
+                                            onCheckoutContext={handlePayPalCheckoutContext}
+                                            onApproveSuccess={handlePayPalSuccess}
+                                            onError={setPaypalError}
+                                        />
+                                        {paypalError && (
+                                            <p className="text-danger mt-3 mb-0">{paypalError}</p>
+                                        )}
+                                    </>
+                                ) : (
+                                    <p className="text-muted small mb-0">PayPal no esta disponible en este entorno.</p>
+                                )}
                             </div>
                         </Form>
                         <div className="text-center">

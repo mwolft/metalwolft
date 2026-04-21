@@ -2,6 +2,7 @@ from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import Enum, event
 import random
 import string
+import uuid
 from datetime import datetime
 from flask import current_app
 from slugify import slugify
@@ -358,7 +359,12 @@ class CheckoutSessions(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True)
     order_id = db.Column(db.Integer, db.ForeignKey('orders.id'), nullable=True, unique=True)
-    payment_intent_id = db.Column(db.String(255), nullable=False, unique=True, index=True)
+    payment_intent_id = db.Column(db.String(255), nullable=True, unique=True, index=True)
+    payment_provider = db.Column(db.String(50), nullable=False, default="stripe")
+    provider_order_id = db.Column(db.String(255), nullable=True, index=True)
+    provider_capture_id = db.Column(db.String(255), nullable=True, index=True)
+    provider_status = db.Column(db.String(100), nullable=True)
+    public_checkout_token = db.Column(db.String(64), nullable=False, unique=True, index=True)
     idempotency_key = db.Column(db.String(255), nullable=True, index=True)
     status = db.Column(db.String(50), nullable=False, default="pending_payment")
     subtotal = db.Column(db.Float, nullable=False, default=0.0)
@@ -380,8 +386,13 @@ class CheckoutSessions(db.Model):
     user = db.relationship('Users', backref='checkout_sessions', lazy=True)
     order = db.relationship('Orders', backref=db.backref('checkout_session', uselist=False), lazy=True)
 
+    @staticmethod
+    def generate_public_checkout_token():
+        return uuid.uuid4().hex
+
     def __repr__(self):
-        return f'<CheckoutSession {self.id}: PI {self.payment_intent_id}>'
+        provider_ref = self.payment_intent_id or self.provider_order_id or self.public_checkout_token
+        return f'<CheckoutSession {self.id}: {self.payment_provider} {provider_ref}>'
 
     def serialize(self):
         return {
@@ -389,6 +400,11 @@ class CheckoutSessions(db.Model):
             "user_id": self.user_id,
             "order_id": self.order_id,
             "payment_intent_id": self.payment_intent_id,
+            "payment_provider": self.payment_provider,
+            "provider_order_id": self.provider_order_id,
+            "provider_capture_id": self.provider_capture_id,
+            "provider_status": self.provider_status,
+            "public_checkout_token": self.public_checkout_token,
             "idempotency_key": self.idempotency_key,
             "status": self.status,
             "subtotal": self.subtotal,

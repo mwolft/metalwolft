@@ -21,6 +21,8 @@ from api.utils import mail
 from sqlalchemy.exc import IntegrityError
 import logging
 from datetime import timedelta
+import requests
+import uuid
 from api.email_routes import send_email, get_admin_recipients
 from api.checkout_service import build_checkout_quote
 
@@ -237,6 +239,14 @@ def _extract_customer_snapshot(data):
     return snapshot
 
 
+def _merge_customer_snapshot(existing_snapshot, new_snapshot):
+    merged_snapshot = dict(existing_snapshot or {})
+    for field, value in (new_snapshot or {}).items():
+        if value is not None and value != "":
+            merged_snapshot[field] = value
+    return merged_snapshot
+
+
 def _get_customer_value(request_data, customer_snapshot, field_name):
     request_value = request_data.get(field_name)
     if request_value is not None and request_value != "":
@@ -244,28 +254,48 @@ def _get_customer_value(request_data, customer_snapshot, field_name):
     return (customer_snapshot or {}).get(field_name)
 
 
-def _normalize_checkout_session_status(payment_intent_status):
-    if payment_intent_status == "succeeded":
+def _normalize_checkout_session_status(provider_status, payment_provider="stripe"):
+    if payment_provider == "stripe":
+        if provider_status == "succeeded":
+            return "paid"
+        if provider_status in ("processing", "requires_capture"):
+            return "processing"
+        if provider_status == "requires_payment_method":
+            return "payment_failed"
+        if provider_status == "canceled":
+            return "canceled"
+        return "pending_payment"
+
+    normalized_status = str(provider_status or "").upper()
+    if normalized_status in ("COMPLETED", "SUCCEEDED", "PAID"):
         return "paid"
-    if payment_intent_status in ("processing", "requires_capture"):
+    if normalized_status in ("PENDING", "PROCESSING", "APPROVED"):
         return "processing"
-    if payment_intent_status == "requires_payment_method":
+    if normalized_status in ("FAILED", "DECLINED", "DENIED"):
         return "payment_failed"
-    if payment_intent_status == "canceled":
+    if normalized_status in ("VOIDED", "CANCELED", "CANCELLED"):
         return "canceled"
     return "pending_payment"
 
 
-def _upsert_checkout_session(current_user, intent, existing_intent_id, idempotency_key, checkout_quote, customer_snapshot):
+def _generate_public_checkout_token():
+    for _ in range(5):
+        token = CheckoutSessions.generate_public_checkout_token()
+        if not CheckoutSessions.query.filter_by(public_checkout_token=token).first():
+            return token
+    raise ValueError("Unable to generate a unique public checkout token.")
+
+
+def _upsert_checkout_session(current_user, intent, existing_intent_id, idempotency_key, checkout_quote, customer_snapshot, payment_provider="stripe"):
     checkout_session = None
 
-    if existing_intent_id:
+    if existing_intent_id and payment_provider == "stripe":
         checkout_session = CheckoutSessions.query.filter_by(
             payment_intent_id=existing_intent_id,
             user_id=current_user['user_id']
         ).first()
 
-    if not checkout_session:
+    if not checkout_session and payment_provider == "stripe":
         checkout_session = CheckoutSessions.query.filter_by(
             payment_intent_id=intent["id"],
             user_id=current_user['user_id']
@@ -274,16 +304,25 @@ def _upsert_checkout_session(current_user, intent, existing_intent_id, idempoten
     if not checkout_session:
         checkout_session = CheckoutSessions(
             user_id=current_user['user_id'],
-            payment_intent_id=intent["id"]
+            payment_intent_id=intent["id"] if payment_provider == "stripe" else None,
+            public_checkout_token=_generate_public_checkout_token()
         )
         db.session.add(checkout_session)
 
     if checkout_session.status == "order_created" and checkout_session.order_id:
         return checkout_session
 
-    checkout_session.payment_intent_id = intent["id"]
+    if payment_provider == "stripe":
+        checkout_session.payment_intent_id = intent["id"]
+    if not checkout_session.public_checkout_token:
+        checkout_session.public_checkout_token = _generate_public_checkout_token()
+    checkout_session.payment_provider = payment_provider
+    checkout_session.provider_status = intent.get("status")
     checkout_session.idempotency_key = idempotency_key
-    checkout_session.status = _normalize_checkout_session_status(intent.get("status"))
+    checkout_session.status = _normalize_checkout_session_status(
+        intent.get("status"),
+        payment_provider=payment_provider
+    )
     checkout_session.subtotal = float(checkout_quote["subtotal"])
     checkout_session.shipping_cost = float(checkout_quote["shipping_cost"])
     checkout_session.discount_code = checkout_quote.get("discount_code")
@@ -298,12 +337,332 @@ def _upsert_checkout_session(current_user, intent, existing_intent_id, idempoten
 
 
 def _get_checkout_session_by_payment_intent(payment_intent_id, user_id=None, for_update=False):
+    if not payment_intent_id:
+        return None
+
     query = CheckoutSessions.query.filter_by(payment_intent_id=payment_intent_id)
     if user_id is not None:
         query = query.filter_by(user_id=user_id)
     if for_update:
         query = query.with_for_update()
     return query.first()
+
+
+def _get_checkout_session_by_public_token(public_checkout_token, user_id=None, for_update=False):
+    if not public_checkout_token:
+        return None
+
+    query = CheckoutSessions.query.filter_by(public_checkout_token=public_checkout_token)
+    if user_id is not None:
+        query = query.filter_by(user_id=user_id)
+    if for_update:
+        query = query.with_for_update()
+    return query.first()
+
+
+def _get_checkout_session_by_provider_order_id(provider_order_id, user_id=None, for_update=False):
+    if not provider_order_id:
+        return None
+
+    query = CheckoutSessions.query.filter_by(provider_order_id=provider_order_id)
+    if user_id is not None:
+        query = query.filter_by(user_id=user_id)
+    if for_update:
+        query = query.with_for_update()
+    return query.first()
+
+
+def _get_checkout_session_by_provider_capture_id(provider_capture_id, user_id=None, for_update=False):
+    if not provider_capture_id:
+        return None
+
+    query = CheckoutSessions.query.filter_by(provider_capture_id=provider_capture_id)
+    if user_id is not None:
+        query = query.filter_by(user_id=user_id)
+    if for_update:
+        query = query.with_for_update()
+    return query.first()
+
+
+def _get_paypal_api_base_url():
+    explicit_base_url = (os.getenv("PAYPAL_API_BASE_URL") or "").strip().rstrip("/")
+    if explicit_base_url:
+        return explicit_base_url
+
+    paypal_env = (os.getenv("PAYPAL_ENV") or os.getenv("PAYPAL_MODE") or "sandbox").strip().lower()
+    if paypal_env in ("live", "production", "prod"):
+        return "https://api-m.paypal.com"
+    return "https://api-m.sandbox.paypal.com"
+
+
+def _get_paypal_access_token():
+    paypal_client_id = os.getenv("PAYPAL_CLIENT_ID")
+    paypal_client_secret = os.getenv("PAYPAL_CLIENT_SECRET")
+
+    if not paypal_client_id or not paypal_client_secret:
+        raise ValueError("PayPal credentials are not configured.")
+
+    response = requests.post(
+        f"{_get_paypal_api_base_url()}/v1/oauth2/token",
+        data={"grant_type": "client_credentials"},
+        auth=(paypal_client_id, paypal_client_secret),
+        headers={
+            "Accept": "application/json",
+            "Accept-Language": "en_US",
+        },
+        timeout=20
+    )
+
+    try:
+        payload = response.json()
+    except ValueError:
+        payload = {}
+
+    if not response.ok or not payload.get("access_token"):
+        logger.error(
+            "Error obteniendo access token de PayPal: status=%s payload=%s",
+            response.status_code,
+            payload
+        )
+        raise RuntimeError("Unable to authenticate with PayPal.")
+
+    return payload["access_token"]
+
+
+def _paypal_request(method, path, payload=None, request_id=None):
+    access_token = _get_paypal_access_token()
+    headers = {
+        "Authorization": f"Bearer {access_token}",
+        "Content-Type": "application/json",
+        "Accept": "application/json",
+    }
+    if request_id:
+        headers["PayPal-Request-Id"] = request_id
+
+    response = requests.request(
+        method,
+        f"{_get_paypal_api_base_url()}{path}",
+        headers=headers,
+        json=payload,
+        timeout=30
+    )
+
+    try:
+        response_payload = response.json() if response.content else {}
+    except ValueError:
+        response_payload = {}
+
+    if response.status_code >= 400:
+        logger.error(
+            "Error en PayPal API %s %s: status=%s payload=%s",
+            method,
+            path,
+            response.status_code,
+            response_payload
+        )
+        raise RuntimeError(response_payload.get("message") or "PayPal API request failed.")
+
+    return response_payload
+
+
+def _verify_paypal_webhook_signature(webhook_event):
+    webhook_id = os.getenv("PAYPAL_WEBHOOK_ID")
+    if not webhook_id:
+        raise ValueError("PAYPAL_WEBHOOK_ID is not configured.")
+
+    verification_payload = {
+        "transmission_id": request.headers.get("PAYPAL-TRANSMISSION-ID"),
+        "transmission_time": request.headers.get("PAYPAL-TRANSMISSION-TIME"),
+        "cert_url": request.headers.get("PAYPAL-CERT-URL"),
+        "auth_algo": request.headers.get("PAYPAL-AUTH-ALGO"),
+        "transmission_sig": request.headers.get("PAYPAL-TRANSMISSION-SIG"),
+        "webhook_id": webhook_id,
+        "webhook_event": webhook_event,
+    }
+
+    missing_fields = [key for key, value in verification_payload.items() if not value]
+    if missing_fields:
+        raise ValueError(f"Missing PayPal webhook verification data: {', '.join(missing_fields)}")
+
+    verification_response = _paypal_request(
+        "POST",
+        "/v1/notifications/verify-webhook-signature",
+        payload=verification_payload
+    )
+    return verification_response.get("verification_status") == "SUCCESS"
+
+
+def _build_paypal_order_request(checkout_session):
+    total_amount = round(float(checkout_session.total_amount or 0.0), 2)
+    return {
+        "intent": "CAPTURE",
+        "purchase_units": [
+            {
+                "reference_id": str(checkout_session.id),
+                "custom_id": checkout_session.public_checkout_token,
+                "description": f"MetalWolft checkout {checkout_session.public_checkout_token}",
+                "amount": {
+                    "currency_code": "EUR",
+                    "value": f"{total_amount:.2f}"
+                }
+            }
+        ]
+    }
+
+
+def _get_paypal_approve_url(paypal_response):
+    for link in paypal_response.get("links") or []:
+        if link.get("rel") in ("approve", "payer-action"):
+            return link.get("href")
+    return None
+
+
+def _extract_paypal_capture(paypal_response):
+    for purchase_unit in paypal_response.get("purchase_units") or []:
+        payments = purchase_unit.get("payments") or {}
+        captures = payments.get("captures") or []
+        if captures:
+            return captures[0]
+    return None
+
+
+def _extract_paypal_resource_details(resource):
+    resource = resource or {}
+    supplementary_data = resource.get("supplementary_data") or {}
+    related_ids = supplementary_data.get("related_ids") or {}
+    amount = resource.get("amount") or {}
+
+    return {
+        "provider_order_id": related_ids.get("order_id") or resource.get("order_id"),
+        "provider_capture_id": resource.get("id"),
+        "provider_status": resource.get("status"),
+        "amount_value": _to_optional_float(amount.get("value")),
+        "currency_code": (amount.get("currency_code") or "").upper() or None,
+    }
+
+
+def _paypal_resource_matches_checkout_session(checkout_session, resource_details):
+    incoming_order_id = resource_details.get("provider_order_id")
+    incoming_capture_id = resource_details.get("provider_capture_id")
+
+    if (
+        incoming_order_id and
+        checkout_session.provider_order_id and
+        checkout_session.provider_order_id != incoming_order_id
+    ):
+        return False, (
+            f"PayPal order mismatch: incoming={incoming_order_id} "
+            f"session={checkout_session.provider_order_id}"
+        )
+
+    if (
+        incoming_capture_id and
+        checkout_session.provider_capture_id and
+        checkout_session.provider_capture_id != incoming_capture_id
+    ):
+        return False, (
+            f"PayPal capture mismatch: incoming={incoming_capture_id} "
+            f"session={checkout_session.provider_capture_id}"
+        )
+
+    return True, None
+
+
+def _get_paypal_checkout_session_from_resource(resource, for_update=False):
+    resource_details = _extract_paypal_resource_details(resource)
+    checkout_session = None
+
+    if resource_details["provider_order_id"]:
+        checkout_session = _get_checkout_session_by_provider_order_id(
+            resource_details["provider_order_id"],
+            for_update=for_update
+        )
+
+    if not checkout_session and resource_details["provider_capture_id"]:
+        checkout_session = _get_checkout_session_by_provider_capture_id(
+            resource_details["provider_capture_id"],
+            for_update=for_update
+        )
+
+    return checkout_session, resource_details
+
+
+def _paypal_capture_matches_checkout_session(checkout_session, resource_details):
+    capture_amount = resource_details.get("amount_value")
+    if capture_amount is not None:
+        backend_total = round(float(checkout_session.total_amount or 0.0), 2)
+        if abs(capture_amount - backend_total) >= 0.01:
+            return False, (
+                f"PayPal capture amount mismatch: capture={capture_amount:.2f} "
+                f"backend={backend_total:.2f}"
+            )
+
+    currency_code = resource_details.get("currency_code")
+    if currency_code and currency_code != "EUR":
+        return False, f"Unexpected PayPal currency: {currency_code}"
+
+    return True, None
+
+
+def _upsert_paypal_checkout_session(current_user, checkout_quote, customer_snapshot, checkout_token=None, for_update=False):
+    checkout_session = None
+    if checkout_token:
+        checkout_session = _get_checkout_session_by_public_token(
+            checkout_token,
+            user_id=current_user['user_id'],
+            for_update=for_update
+        )
+        if not checkout_session:
+            raise ValueError("Checkout session not found.")
+
+        if checkout_session.order_id:
+            raise ValueError("Checkout session already finalized.")
+
+        if checkout_session.payment_provider not in ("paypal", None, ""):
+            raise ValueError("Checkout session belongs to a different payment provider.")
+    else:
+        checkout_session = CheckoutSessions(
+            user_id=current_user['user_id'],
+            payment_provider="paypal",
+            public_checkout_token=_generate_public_checkout_token()
+        )
+        db.session.add(checkout_session)
+
+    if checkout_session.status == "order_created" and checkout_session.order_id:
+        raise ValueError("Checkout session already finalized.")
+
+    checkout_session.payment_provider = "paypal"
+    checkout_session.payment_intent_id = None
+    if not checkout_session.public_checkout_token:
+        checkout_session.public_checkout_token = _generate_public_checkout_token()
+    if not checkout_session.idempotency_key:
+        checkout_session.idempotency_key = str(uuid.uuid4())
+
+    checkout_session.subtotal = float(checkout_quote["subtotal"])
+    checkout_session.shipping_cost = float(checkout_quote["shipping_cost"])
+    checkout_session.discount_code = checkout_quote.get("discount_code")
+    checkout_session.discount_percent = float(checkout_quote.get("discount_percent") or 0.0)
+    checkout_session.discount_amount = float(checkout_quote.get("discount_amount") or 0.0)
+    checkout_session.total_amount = float(checkout_quote["total_amount"])
+    checkout_session.quote_snapshot = checkout_quote
+    if customer_snapshot:
+        checkout_session.customer_snapshot = customer_snapshot
+
+    return checkout_session
+
+
+def _serialize_checkout_session_payment_state(checkout_session):
+    return {
+        "checkout_session_id": checkout_session.id,
+        "checkout_session_status": checkout_session.status,
+        "payment_provider": checkout_session.payment_provider,
+        "payment_intent_id": checkout_session.payment_intent_id,
+        "provider_order_id": checkout_session.provider_order_id,
+        "provider_capture_id": checkout_session.provider_capture_id,
+        "provider_status": checkout_session.provider_status,
+        "public_checkout_token": checkout_session.public_checkout_token,
+        "checkout_summary": checkout_session.quote_snapshot,
+    }
 
 
 def _build_customer_context(request_data, customer_snapshot):
@@ -704,7 +1063,7 @@ def get_delivery_estimate():
 @api.route('/create-payment-intent', methods=['POST'])
 @jwt_required()
 def create_payment_intent():
-    import stripe, uuid, os
+    import stripe, os
     stripe.api_key = os.getenv('STRIPE_SECRET_KEY')
 
     try:
@@ -809,7 +1168,8 @@ def create_payment_intent():
             existing_intent_id=existing_intent_id,
             idempotency_key=idempotency_key,
             checkout_quote=checkout_quote,
-            customer_snapshot=customer_snapshot
+            customer_snapshot=customer_snapshot,
+            payment_provider="stripe"
         )
         db.session.commit()
 
@@ -822,7 +1182,10 @@ def create_payment_intent():
             "checkout_summary": checkout_quote,
             "amount_comparison": amount_comparison,
             "checkout_session_id": checkout_session.id,
-            "checkout_session_status": checkout_session.status
+            "checkout_session_status": checkout_session.status,
+            "payment_provider": checkout_session.payment_provider,
+            "provider_status": checkout_session.provider_status,
+            "public_checkout_token": checkout_session.public_checkout_token
         }), 200
 
     except ValueError as e:
@@ -831,6 +1194,510 @@ def create_payment_intent():
     except Exception as e:
         db.session.rollback()
         return jsonify({"error": str(e)}), 400
+
+
+@api.route('/paypal/create-order', methods=['POST'])
+@jwt_required()
+def create_paypal_order():
+    current_user = get_jwt_identity()
+    data = request.get_json() or {}
+
+    try:
+        checkout_token = data.get("checkout_token") or data.get("public_checkout_token")
+        customer_snapshot = _extract_customer_snapshot(data)
+        existing_checkout_session = None
+
+        logger.info(
+            "PayPal create-order solicitado por user_id=%s checkout_token=%s",
+            current_user.get("user_id"),
+            checkout_token
+        )
+
+        if checkout_token:
+            existing_checkout_session = _get_checkout_session_by_public_token(
+                checkout_token,
+                user_id=current_user['user_id'],
+                for_update=True
+            )
+            if not existing_checkout_session:
+                logger.warning(
+                    "PayPal create-order sin checkout_session para user_id=%s checkout_token=%s",
+                    current_user.get("user_id"),
+                    checkout_token
+                )
+                return jsonify({"error": "Checkout session not found."}), 404
+
+            if existing_checkout_session.order_id:
+                logger.info(
+                    "PayPal create-order idempotente/finalizado para checkout_session=%s order_id=%s",
+                    existing_checkout_session.id,
+                    existing_checkout_session.order_id
+                )
+                return jsonify({"error": "Checkout session already finalized."}), 409
+
+            if existing_checkout_session.payment_provider not in ("paypal", None, ""):
+                logger.warning(
+                    "PayPal create-order rechazado por provider mismatch en checkout_session=%s provider=%s",
+                    existing_checkout_session.id,
+                    existing_checkout_session.payment_provider
+                )
+                return jsonify({"error": "Checkout session belongs to a different payment provider."}), 409
+
+            existing_paypal_status = str(existing_checkout_session.provider_status or "").upper()
+
+            if existing_checkout_session.provider_capture_id:
+                if customer_snapshot:
+                    existing_checkout_session.customer_snapshot = _merge_customer_snapshot(
+                        existing_checkout_session.customer_snapshot,
+                        customer_snapshot
+                    )
+                logger.info(
+                    "PayPal create-order idempotente: checkout_session=%s ya tenía capture_id=%s",
+                    existing_checkout_session.id,
+                    existing_checkout_session.provider_capture_id
+                )
+                db.session.commit()
+                response_payload = {
+                    **_serialize_checkout_session_payment_state(existing_checkout_session),
+                    "approve_url": None,
+                    "provider": "paypal",
+                    "created_via": "already_captured"
+                }
+                return jsonify(response_payload), 200
+
+            if (
+                existing_checkout_session.provider_order_id and
+                existing_paypal_status not in ("VOIDED", "CANCELED", "CANCELLED", "FAILED", "DECLINED", "DENIED")
+            ):
+                if customer_snapshot:
+                    existing_checkout_session.customer_snapshot = _merge_customer_snapshot(
+                        existing_checkout_session.customer_snapshot,
+                        customer_snapshot
+                    )
+                logger.info(
+                    "PayPal create-order reutiliza provider_order_id=%s para checkout_session=%s status=%s",
+                    existing_checkout_session.provider_order_id,
+                    existing_checkout_session.id,
+                    existing_paypal_status
+                )
+                db.session.commit()
+                response_payload = {
+                    **_serialize_checkout_session_payment_state(existing_checkout_session),
+                    "approve_url": None,
+                    "provider": "paypal",
+                    "created_via": "existing_checkout_session"
+                }
+                return jsonify(response_payload), 200
+
+        quote_request_data = {
+            **data,
+            "products": None
+        }
+        checkout_quote = _build_checkout_quote_from_request(current_user, quote_request_data)
+        if not checkout_quote["lines"]:
+            logger.warning(
+                "PayPal create-order rechazado por carrito vacío para user_id=%s",
+                current_user.get("user_id")
+            )
+            return jsonify({"error": "Cart is empty"}), 400
+
+        checkout_session = _upsert_paypal_checkout_session(
+            current_user=current_user,
+            checkout_quote=checkout_quote,
+            customer_snapshot=customer_snapshot,
+            checkout_token=checkout_token,
+            for_update=True
+        )
+
+        paypal_order = _paypal_request(
+            "POST",
+            "/v2/checkout/orders",
+            payload=_build_paypal_order_request(checkout_session),
+            request_id=f"paypal-create-{checkout_session.public_checkout_token}"
+        )
+
+        checkout_session.provider_order_id = paypal_order.get("id")
+        checkout_session.provider_capture_id = None
+        checkout_session.provider_status = paypal_order.get("status")
+        checkout_session.status = _normalize_checkout_session_status(
+            checkout_session.provider_status,
+            payment_provider="paypal"
+        )
+
+        logger.info(
+            "PayPal create-order creado: checkout_session=%s provider_order_id=%s status=%s total=%.2f",
+            checkout_session.id,
+            checkout_session.provider_order_id,
+            checkout_session.provider_status,
+            checkout_session.total_amount
+        )
+
+        db.session.commit()
+
+        response_payload = {
+            **_serialize_checkout_session_payment_state(checkout_session),
+            "approve_url": _get_paypal_approve_url(paypal_order),
+            "provider": "paypal",
+        }
+        return jsonify(response_payload), 200
+
+    except ValueError as e:
+        db.session.rollback()
+        return jsonify({"error": str(e)}), 400
+    except RuntimeError as e:
+        db.session.rollback()
+        return jsonify({"error": str(e)}), 502
+    except Exception as e:
+        db.session.rollback()
+        logger.error("Error creando orden PayPal: %s", str(e))
+        return jsonify({"error": "Unable to create PayPal order"}), 500
+
+
+@api.route('/paypal/capture-order', methods=['POST'])
+@jwt_required()
+def capture_paypal_order():
+    current_user = get_jwt_identity()
+    data = request.get_json() or {}
+
+    try:
+        checkout_token = data.get("checkout_token") or data.get("public_checkout_token")
+        provider_order_id = data.get("provider_order_id") or data.get("order_id")
+        customer_snapshot = _extract_customer_snapshot(data)
+
+        logger.info(
+            "PayPal capture-order solicitado por user_id=%s checkout_token=%s provider_order_id=%s",
+            current_user.get("user_id"),
+            checkout_token,
+            provider_order_id
+        )
+
+        if not checkout_token and not provider_order_id:
+            logger.warning("PayPal capture-order sin identificador de checkout.")
+            return jsonify({"error": "Missing checkout identifier."}), 400
+
+        checkout_session = None
+        if checkout_token:
+            checkout_session = _get_checkout_session_by_public_token(
+                checkout_token,
+                user_id=current_user['user_id'],
+                for_update=True
+            )
+        elif provider_order_id:
+            checkout_session = _get_checkout_session_by_provider_order_id(
+                provider_order_id,
+                user_id=current_user['user_id'],
+                for_update=True
+            )
+
+        if not checkout_session:
+            logger.warning(
+                "PayPal capture-order sin checkout_session para user_id=%s checkout_token=%s provider_order_id=%s",
+                current_user.get("user_id"),
+                checkout_token,
+                provider_order_id
+            )
+            return jsonify({"error": "Checkout session not found."}), 404
+
+        if checkout_session.payment_provider != "paypal":
+            logger.warning(
+                "PayPal capture-order rechazado por provider mismatch en checkout_session=%s provider=%s",
+                checkout_session.id,
+                checkout_session.payment_provider
+            )
+            return jsonify({"error": "Checkout session does not belong to PayPal."}), 409
+
+        if customer_snapshot:
+            checkout_session.customer_snapshot = _merge_customer_snapshot(
+                checkout_session.customer_snapshot,
+                customer_snapshot
+            )
+
+        if checkout_session.order_id:
+            logger.info(
+                "PayPal capture-order idempotente: checkout_session=%s ya finalizada con order_id=%s",
+                checkout_session.id,
+                checkout_session.order_id
+            )
+            response_payload = {
+                **_serialize_checkout_session_payment_state(checkout_session),
+                "provider": "paypal",
+                "message": "Checkout session already finalized."
+            }
+            db.session.commit()
+            return jsonify(response_payload), 200
+
+        if not checkout_session.provider_order_id:
+            logger.warning(
+                "PayPal capture-order rechazado: checkout_session=%s no tiene provider_order_id",
+                checkout_session.id
+            )
+            return jsonify({"error": "PayPal order has not been created yet."}), 409
+
+        if provider_order_id and checkout_session.provider_order_id != provider_order_id:
+            logger.error(
+                "PayPal capture-order con mismatch de provider_order_id en checkout_session=%s incoming=%s stored=%s",
+                checkout_session.id,
+                provider_order_id,
+                checkout_session.provider_order_id
+            )
+            return jsonify({"error": "PayPal order does not match checkout session."}), 409
+
+        if checkout_session.provider_capture_id:
+            logger.info(
+                "PayPal capture-order idempotente: checkout_session=%s ya tenía capture_id=%s",
+                checkout_session.id,
+                checkout_session.provider_capture_id
+            )
+            response_payload = {
+                **_serialize_checkout_session_payment_state(checkout_session),
+                "provider": "paypal",
+                "message": "PayPal order was already captured."
+            }
+            db.session.commit()
+            return jsonify(response_payload), 200
+
+        paypal_capture = _paypal_request(
+            "POST",
+            f"/v2/checkout/orders/{checkout_session.provider_order_id}/capture",
+            payload=None,
+            request_id=f"paypal-capture-{checkout_session.public_checkout_token}"
+        )
+
+        capture = _extract_paypal_capture(paypal_capture)
+        capture_status = (capture or {}).get("status") or paypal_capture.get("status")
+
+        checkout_session.provider_order_id = paypal_capture.get("id") or checkout_session.provider_order_id
+        checkout_session.provider_capture_id = (capture or {}).get("id") or checkout_session.provider_capture_id
+        checkout_session.provider_status = capture_status
+        checkout_session.status = (
+            "order_created"
+            if checkout_session.order_id else
+            _normalize_checkout_session_status(capture_status, payment_provider="paypal")
+        )
+
+        logger.info(
+            "PayPal capture-order completado: checkout_session=%s provider_order_id=%s capture_id=%s provider_status=%s",
+            checkout_session.id,
+            checkout_session.provider_order_id,
+            checkout_session.provider_capture_id,
+            checkout_session.provider_status
+        )
+
+        db.session.commit()
+
+        response_payload = {
+            **_serialize_checkout_session_payment_state(checkout_session),
+            "provider": "paypal",
+        }
+        return jsonify(response_payload), 200
+
+    except ValueError as e:
+        db.session.rollback()
+        return jsonify({"error": str(e)}), 400
+    except RuntimeError as e:
+        db.session.rollback()
+        return jsonify({"error": str(e)}), 502
+    except Exception as e:
+        db.session.rollback()
+        logger.error("Error capturando orden PayPal: %s", str(e))
+        return jsonify({"error": "Unable to capture PayPal order"}), 500
+
+
+@api.route('/paypal/webhook', methods=['POST'])
+def paypal_webhook():
+    payload = request.get_json(silent=True)
+
+    if not payload:
+        return jsonify({"error": "Invalid PayPal webhook payload"}), 400
+
+    try:
+        if not _verify_paypal_webhook_signature(payload):
+            logger.error("Firma de webhook PayPal no verificada correctamente.")
+            return jsonify({"error": "Invalid PayPal webhook signature"}), 400
+    except ValueError as e:
+        logger.error("Configuración/verificación inválida de webhook PayPal: %s", str(e))
+        return jsonify({"error": str(e)}), 500
+    except RuntimeError as e:
+        logger.error("Error verificando webhook PayPal: %s", str(e))
+        return jsonify({"error": str(e)}), 502
+    except Exception as e:
+        logger.error("Error inesperado verificando webhook PayPal: %s", str(e))
+        return jsonify({"error": "Unable to verify PayPal webhook"}), 400
+
+    try:
+        event_type = payload.get("event_type")
+        resource = payload.get("resource") or {}
+
+        logger.info(
+            "Webhook PayPal recibido: event_type=%s resource_id=%s",
+            event_type,
+            resource.get("id")
+        )
+
+        if event_type not in (
+            "PAYMENT.CAPTURE.COMPLETED",
+            "PAYMENT.CAPTURE.PENDING",
+            "PAYMENT.CAPTURE.DENIED",
+            "PAYMENT.CAPTURE.DECLINED"
+        ):
+            logger.info("Webhook PayPal ignorado por tipo no gestionado: %s", event_type)
+            return "", 200
+
+        checkout_session, resource_details = _get_paypal_checkout_session_from_resource(
+            resource,
+            for_update=True
+        )
+
+        if not checkout_session:
+            logger.warning(
+                "Webhook PayPal %s recibido sin checkout_session para order_id=%s capture_id=%s",
+                event_type,
+                resource_details.get("provider_order_id"),
+                resource_details.get("provider_capture_id")
+            )
+            return "", 200
+
+        if checkout_session.payment_provider != "paypal":
+            logger.error(
+                "Webhook PayPal recibido para checkout_session %s ligada a provider %s",
+                checkout_session.id,
+                checkout_session.payment_provider
+            )
+            db.session.rollback()
+            return "", 200
+
+        resource_matches_session, resource_mismatch_reason = _paypal_resource_matches_checkout_session(
+            checkout_session,
+            resource_details
+        )
+        if not resource_matches_session:
+            db.session.rollback()
+            logger.error(
+                "Webhook PayPal descartado para checkout_session %s por mismatch de IDs: %s",
+                checkout_session.id,
+                resource_mismatch_reason
+            )
+            return "", 200
+
+        checkout_session.payment_provider = "paypal"
+        checkout_session.provider_order_id = (
+            resource_details.get("provider_order_id") or checkout_session.provider_order_id
+        )
+        checkout_session.provider_capture_id = (
+            resource_details.get("provider_capture_id") or checkout_session.provider_capture_id
+        )
+        checkout_session.provider_status = (
+            resource_details.get("provider_status") or event_type
+        )
+
+        if event_type == "PAYMENT.CAPTURE.PENDING":
+            if checkout_session.order_id:
+                checkout_session.status = "order_created"
+            else:
+                checkout_session.status = "processing"
+            db.session.commit()
+            logger.info(
+                "Checkout session %s marcada como %s tras %s",
+                checkout_session.id,
+                checkout_session.status,
+                event_type
+            )
+            return "", 200
+
+        if event_type in ("PAYMENT.CAPTURE.DENIED", "PAYMENT.CAPTURE.DECLINED"):
+            if checkout_session.order_id:
+                logger.error(
+                    "Webhook %s recibido para checkout_session %s que ya tenía order %s",
+                    event_type,
+                    checkout_session.id,
+                    checkout_session.order_id
+                )
+                checkout_session.status = "order_created"
+            else:
+                checkout_session.status = "payment_failed"
+            db.session.commit()
+            logger.info(
+                "Checkout session %s marcada como %s tras %s",
+                checkout_session.id,
+                checkout_session.status,
+                event_type
+            )
+            return "", 200
+
+        is_valid_capture, mismatch_reason = _paypal_capture_matches_checkout_session(
+            checkout_session,
+            resource_details
+        )
+        if not is_valid_capture:
+            checkout_session.status = "processing"
+            db.session.commit()
+            logger.error(
+                "Webhook PayPal no cerró checkout_session %s por mismatch: %s",
+                checkout_session.id,
+                mismatch_reason
+            )
+            return "", 200
+
+        if checkout_session.order_id:
+            existing_order = Orders.query.get(checkout_session.order_id)
+            if existing_order:
+                checkout_session.status = "order_created"
+                db.session.commit()
+                logger.info(
+                    "Webhook PayPal idempotente para checkout_session %s: la order %s ya existía.",
+                    checkout_session.id,
+                    existing_order.id
+                )
+                return "", 200
+
+            logger.warning(
+                "Checkout session %s tenía order_id=%s pero la order ya no existe. Se reintentará el cierre.",
+                checkout_session.id,
+                checkout_session.order_id
+            )
+            checkout_session.order_id = None
+
+        if not checkout_session.quote_snapshot or not checkout_session.quote_snapshot.get("lines"):
+            logger.error(
+                "Webhook PayPal PAYMENT.CAPTURE.COMPLETED sin snapshot válido para checkout_session %s",
+                checkout_session.id
+            )
+            db.session.rollback()
+            return "", 200
+
+        user = checkout_session.user or Users.query.get(checkout_session.user_id)
+        if not user:
+            logger.error(
+                "Webhook PayPal PAYMENT.CAPTURE.COMPLETED sin usuario válido para checkout_session %s",
+                checkout_session.id
+            )
+            db.session.rollback()
+            return "", 200
+
+        checkout_session.status = "paid"
+        order, created = _finalize_order_from_checkout_quote(
+            user=user,
+            checkout_quote=checkout_session.quote_snapshot,
+            customer_snapshot=checkout_session.customer_snapshot,
+            checkout_session=checkout_session
+        )
+        logger.info(
+            "Webhook PayPal %s cerró checkout_session %s → order %s (created=%s)",
+            checkout_session.provider_capture_id or checkout_session.provider_order_id,
+            checkout_session.id,
+            order.id,
+            created
+        )
+        return "", 200
+
+    except SQLAlchemyError as e:
+        db.session.rollback()
+        logger.error("Error de base de datos procesando webhook PayPal: %s", str(e))
+        return jsonify({"error": "database error"}), 500
+    except Exception as e:
+        db.session.rollback()
+        logger.error("Error inesperado procesando webhook PayPal: %s", str(e))
+        return jsonify({"error": "unexpected error"}), 500
 
 
 
@@ -991,25 +1858,38 @@ def checkout_quote():
 @jwt_required()
 def checkout_status():
     current_user = get_jwt_identity()
+    checkout_token = request.args.get('checkout_token') or request.args.get('public_checkout_token')
     payment_intent_id = request.args.get('payment_intent_id')
 
-    if not payment_intent_id:
+    if not checkout_token and not payment_intent_id:
         return jsonify({
             "state": "not_found",
-            "message": "Missing payment_intent_id."
+            "message": "Missing checkout identifier."
         }), 400
 
     if current_user.get("is_admin"):
-        checkout_session = _get_checkout_session_by_payment_intent(payment_intent_id)
+        checkout_session = (
+            _get_checkout_session_by_public_token(checkout_token)
+            if checkout_token else
+            _get_checkout_session_by_payment_intent(payment_intent_id)
+        )
     else:
-        checkout_session = _get_checkout_session_by_payment_intent(
-            payment_intent_id,
-            user_id=current_user['user_id']
+        checkout_session = (
+            _get_checkout_session_by_public_token(
+                checkout_token,
+                user_id=current_user['user_id']
+            )
+            if checkout_token else
+            _get_checkout_session_by_payment_intent(
+                payment_intent_id,
+                user_id=current_user['user_id']
+            )
         )
 
     if not checkout_session:
         response = jsonify({
             "state": "not_found",
+            "public_checkout_token": checkout_token,
             "payment_intent_id": payment_intent_id,
             "message": "Checkout not found."
         })
@@ -1035,9 +1915,14 @@ def checkout_status():
     response = jsonify({
         "state": state,
         "message": message,
+        "public_checkout_token": checkout_session.public_checkout_token,
         "payment_intent_id": checkout_session.payment_intent_id,
         "checkout_session_id": checkout_session.id,
         "checkout_session_status": session_status,
+        "payment_provider": checkout_session.payment_provider,
+        "provider_order_id": checkout_session.provider_order_id,
+        "provider_capture_id": checkout_session.provider_capture_id,
+        "provider_status": checkout_session.provider_status,
         "order_id": checkout_session.order_id,
         "order": order.serialize() if order else None,
         "email": (checkout_session.user.email if checkout_session.user else current_user.get("email")),

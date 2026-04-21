@@ -11,11 +11,25 @@ export const ThankYou = () => {
     const [statusData, setStatusData] = useState(null);
     const [isLoading, setIsLoading] = useState(true);
 
+    const checkoutToken =
+        searchParams.get("checkout_token") ||
+        searchParams.get("public_checkout_token") ||
+        sessionStorage.getItem("lastCheckoutToken") ||
+        null;
+
     const paymentIntentId =
         searchParams.get("payment_intent_id") ||
         sessionStorage.getItem("lastPaymentIntentId") ||
         store.paymentIntentId ||
         null;
+
+    const checkoutIdentifier = checkoutToken || paymentIntentId || null;
+
+    useEffect(() => {
+        if (checkoutToken) {
+            sessionStorage.setItem("lastCheckoutToken", checkoutToken);
+        }
+    }, [checkoutToken]);
 
     useEffect(() => {
         if (paymentIntentId) {
@@ -28,7 +42,7 @@ export const ThankYou = () => {
         let pollTimeoutId = null;
 
         const fetchCheckoutStatus = async () => {
-            if (!paymentIntentId) {
+            if (!checkoutIdentifier) {
                 setStatusData({
                     state: "not_found",
                     message: "No hemos encontrado información de esta compra."
@@ -39,8 +53,11 @@ export const ThankYou = () => {
 
             try {
                 const token = localStorage.getItem("token");
+                const checkoutStatusQuery = checkoutToken
+                    ? `checkout_token=${encodeURIComponent(checkoutToken)}`
+                    : `payment_intent_id=${encodeURIComponent(paymentIntentId)}`;
                 const response = await fetch(
-                    `${process.env.REACT_APP_BACKEND_URL}/api/checkout/status?payment_intent_id=${encodeURIComponent(paymentIntentId)}`,
+                    `${process.env.REACT_APP_BACKEND_URL}/api/checkout/status?${checkoutStatusQuery}`,
                     {
                         headers: token ? { Authorization: `Bearer ${token}` } : {}
                     }
@@ -48,6 +65,15 @@ export const ThankYou = () => {
 
                 const data = await response.json().catch(() => null);
                 if (isCancelled) return;
+
+                if (response.status === 401 || response.status === 403) {
+                    setStatusData({
+                        state: "auth_required",
+                        message: "Necesitamos que inicies sesion de nuevo para consultar el estado real de tu compra."
+                    });
+                    setIsLoading(false);
+                    return;
+                }
 
                 if (!response.ok && !data) {
                     throw new Error("No se pudo comprobar el estado del pedido.");
@@ -83,14 +109,14 @@ export const ThankYou = () => {
                 window.clearTimeout(pollTimeoutId);
             }
         };
-    }, [paymentIntentId]);
+    }, [checkoutIdentifier, checkoutToken, paymentIntentId]);
 
-    const legacyOrderFallback = !paymentIntentId && store.orders?.length
+    const legacyOrderFallback = !checkoutIdentifier && store.orders?.length
         ? store.orders[store.orders.length - 1]
         : null;
     const orderSummary = statusData?.order || legacyOrderFallback || null;
     const customerEmail = statusData?.email || store.currentUser?.email || "";
-    const currentState = legacyOrderFallback && !paymentIntentId
+    const currentState = legacyOrderFallback && !checkoutIdentifier
         ? "confirmed"
         : (statusData?.state || "loading");
 
@@ -137,6 +163,16 @@ export const ThankYou = () => {
                     <h1>No hemos podido confirmar tu pedido</h1>
                     <p>{statusData?.message || "El pago no se ha completado correctamente."}</p>
                     <p>Si crees que esto no es correcto, revisa tu cuenta o contacta con nosotros.</p>
+                </>
+            );
+        }
+
+        if (currentState === "auth_required") {
+            return (
+                <>
+                    <h1>Necesitamos confirmar tu sesion</h1>
+                    <p>{statusData?.message}</p>
+                    <p>Cuando vuelvas a iniciar sesion podras consultar el estado real del pedido.</p>
                 </>
             );
         }
