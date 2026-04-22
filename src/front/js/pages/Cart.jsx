@@ -1,4 +1,4 @@
-import React, { useContext, useState, useEffect } from "react";
+import React, { useContext, useState, useEffect, useRef } from "react";
 import { Context } from "../store/appContext";
 import { Button, Container, Row, Col, Table } from "react-bootstrap";
 import { Notification } from "../component/Notification.jsx";
@@ -33,6 +33,7 @@ export const Cart = () => {
     const [discountPercent, setDiscountPercent] = useState(0);
     const navigate = useNavigate();
     const [metaData, setMetaData] = useState({});
+    const lastCartRefreshRef = useRef(0);
 
     useEffect(() => {
         const apiBaseUrl = process.env.REACT_APP_BACKEND_URL
@@ -52,6 +53,32 @@ export const Cart = () => {
 
     useEffect(() => {
         actions.loadCart();
+    }, []);
+
+    useEffect(() => {
+        const refreshCartIfNeeded = () => {
+            if (document.visibilityState !== "visible") return;
+
+            const now = Date.now();
+            if (now - lastCartRefreshRef.current < 1200) return;
+
+            lastCartRefreshRef.current = now;
+            actions.loadCart();
+        };
+
+        const handleVisibilityChange = () => {
+            if (document.visibilityState === "visible") {
+                refreshCartIfNeeded();
+            }
+        };
+
+        window.addEventListener("focus", refreshCartIfNeeded);
+        document.addEventListener("visibilitychange", handleVisibilityChange);
+
+        return () => {
+            window.removeEventListener("focus", refreshCartIfNeeded);
+            document.removeEventListener("visibilitychange", handleVisibilityChange);
+        };
     }, []);
 
     const handleRemoveFromCart = (product) => {
