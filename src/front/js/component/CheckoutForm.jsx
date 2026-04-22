@@ -399,13 +399,6 @@ const CheckoutForm = () => {
         }
     };
 
-    const paymentSectionStyle = {
-        border: "1px solid #e9ecef",
-        borderRadius: "16px",
-        padding: "24px",
-        backgroundColor: "#ffffff",
-        boxShadow: "0 12px 30px rgba(15, 23, 42, 0.05)"
-    };
 
     const paymentNoticeStyle = {
         border: "1px solid #e9ecef",
@@ -417,7 +410,7 @@ const CheckoutForm = () => {
     const paymentMethodCardStyle = {
         border: "1px solid #e9ecef",
         borderRadius: "14px",
-        padding: "22px 20px",
+        padding: "20px 20px 0px 20px",
         backgroundColor: "#ffffff"
     };
 
@@ -495,7 +488,7 @@ const CheckoutForm = () => {
                             </li>
                         </ul>
                     </Col>
-                    <Col md={8} className="order-md-1">
+                    <Col md={8} className="order-md-1 mb-5">
                         <Form onSubmit={handleSubmit} className="needs-validation" noValidate>
                             <h4 className="mb-3">Direccion de facturacion</h4>
                             <hr className='hr-cart' />
@@ -642,7 +635,7 @@ const CheckoutForm = () => {
                             )}
                             <h4 className="mb-3" style={{ marginTop: '50px' }}>Metodo de pago</h4>
                             <hr className='hr-cart' />
-                            <div className="mt-4" style={paymentSectionStyle}>
+                            <div className="mt-4">
                                 <div style={paymentNoticeStyle}>
                                     <div className="d-flex flex-column gap-2">
                                         <div>
@@ -679,7 +672,7 @@ const CheckoutForm = () => {
                                 <div className="mt-4" style={paymentMethodCardStyle}>
                                     <div className="d-flex flex-column gap-2 mb-4">
                                         <div className="d-flex align-items-center justify-content-between gap-3 flex-wrap">
-                                            <h5 className="mb-0" style={{ fontSize: "1.05rem", fontWeight: 600 }}>Tarjeta</h5>
+                                            <h5 className="mb-0" style={{ fontSize: "1.05rem", fontWeight: 600 }}>1. Tarjeta</h5>
                                             <span className="text-muted small">Pago seguro con Stripe</span>
                                         </div>
                                         <p className="text-muted small mb-0">
@@ -707,8 +700,14 @@ const CheckoutForm = () => {
                                     >
                                         {isProcessing ? "Pagando..." : "Pagar con tarjeta"}
                                     </Button>
+                                    <div className="text-center">
+                                        <img
+                                            src="https://kompozits.lv/app/uploads/2021/02/secure-600x123.png"
+                                            alt="Pago Seguro Autorizado"
+                                            style={{ maxWidth: '30%', height: 'auto', marginBottom: '5px', marginTop: '5px' }}
+                                        />
+                                    </div>
                                 </div>
-
                                 <div className="d-flex align-items-center my-4" aria-hidden="true">
                                     <div style={paymentDividerLineStyle}></div>
                                     <span className="text-muted small px-3 text-uppercase" style={{ letterSpacing: "0.08em" }}>
@@ -720,7 +719,7 @@ const CheckoutForm = () => {
                                 <div style={paymentMethodCardStyle}>
                                     <div className="d-flex flex-column gap-2 mb-4">
                                         <div className="d-flex align-items-center justify-content-between gap-3 flex-wrap">
-                                            <h5 className="mb-0" style={{ fontSize: "1.05rem", fontWeight: 600 }}>PayPal</h5>
+                                            <h5 className="mb-0" style={{ fontSize: "1.05rem", fontWeight: 600 }}>2. PayPal</h5>
                                             <span className="text-muted small">Pago rapido y seguro</span>
                                         </div>
                                         <p className="text-muted small mb-0">
@@ -757,13 +756,6 @@ const CheckoutForm = () => {
                                 </div>
                             </div>
                         </Form>
-                        <div className="text-center">
-                            <img
-                                src="https://kompozits.lv/app/uploads/2021/02/secure-600x123.png"
-                                alt="Pago Seguro Autorizado"
-                                style={{ maxWidth: '70%', height: 'auto', marginBottom: '30px' }}
-                            />
-                        </div>
                     </Col>
                 </Row>
             </Container>
