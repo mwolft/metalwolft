@@ -6,10 +6,10 @@ import "../../styles/cart.css";
 import "../../styles/favorites.css";
 import { Link, useNavigate } from "react-router-dom";
 import { calcularEnvio } from "../../utils/shippingCalculator.js";
-import DeliveryEstimate from "../component/DeliveryEstimate.jsx"
+import DeliveryEstimate from "../component/DeliveryEstimate.jsx";
 import { Helmet } from "react-helmet-async";
 
-// Función auxiliar para determinar tipo de envío según SEUR
+// Funcion auxiliar para determinar tipo de envio segun SEUR
 const getShippingType = (product) => {
     const alto = parseFloat(product.alto);
     const ancho = parseFloat(product.ancho);
@@ -18,12 +18,12 @@ const getShippingType = (product) => {
     const sumaDimensiones = alto + ancho + profundidad;
 
     if (peso > 60 || sumaDimensiones > 500) {
-        return { tipo: 'B', coste: 99, motivo: 'Excede dimensiones máximas permitidas (500 cm)' };
+        return { tipo: "B", coste: 99, motivo: "Excede dimensiones máximas permitidas (500 cm)" };
     }
     if (peso > 40 || alto > 175 || sumaDimensiones > 300) {
-        return { tipo: 'A', coste: 49, motivo: 'Excede altura o volumen permitido (300 cm)' };
+        return { tipo: "A", coste: 49, motivo: "Excede altura o volumen permitido (300 cm)" };
     }
-    return { tipo: 'normal', coste: null, motivo: null };
+    return { tipo: "normal", coste: null, motivo: null };
 };
 
 export const Cart = () => {
@@ -49,7 +49,6 @@ export const Cart = () => {
             .then((data) => setMetaData(data))
             .catch((error) => console.error("Error loading cart SEO:", error));
     }, []);
-
 
     useEffect(() => {
         actions.loadCart();
@@ -85,15 +84,13 @@ export const Cart = () => {
         satinado_negro: "Negro liso",
         satinado_gris: "Gris medio liso",
         satinado_verde: "Verde carruajes liso",
-
         forja_negro: "Negro forja",
         forja_gris: "Gris acero forja",
-        forja_marron: "Marrón castaño forja",
+        forja_marron: "Marron castano forja",
         forja_azul: "Azul forja",
         forja_verde: "Verde bronce forja",
         forja_dorado: "Dorado forja"
     };
-
 
     const handleApplyDiscount = () => {
         const codeUpper = discountCode.trim().toUpperCase();
@@ -101,18 +98,17 @@ export const Cart = () => {
         if (discountCodes[codeUpper]) {
             const percent = discountCodes[codeUpper];
 
-            // 🔹 Guardar local y globalmente
             setDiscountPercent(percent);
             actions.setDiscountPercent(percent);
             actions.setDiscountCode(codeUpper);
 
-            setNotification(`Código ${codeUpper} aplicado: ${percent}% de descuento`);
+            setNotification(`Codigo ${codeUpper} aplicado: ${percent}% de descuento`);
         } else {
             setDiscountPercent(0);
             actions.setDiscountPercent(0);
             actions.setDiscountCode(null);
 
-            setNotification("Código no válido");
+            setNotification("Codigo no valido");
         }
     };
 
@@ -161,32 +157,85 @@ export const Cart = () => {
             a.remove();
 
             window.URL.revokeObjectURL(url);
-
         } catch (error) {
             console.error(error);
             setNotification("No se pudo generar el presupuesto");
         }
     };
 
+    const cartTablePanelStyle = {
+        border: "1px solid #eceff3",
+        borderRadius: "18px",
+        backgroundColor: "#ffffff",
+        padding: "24px",
+        boxShadow: "0 14px 32px rgba(15, 23, 42, 0.05)"
+    };
+
+    const cartSummaryStickyStyle = {
+        position: "sticky",
+        top: "118px"
+    };
+
+    const cartSummaryCardStyle = {
+        border: "1px solid #eceff3",
+        borderRadius: "20px",
+        backgroundColor: "#ffffff",
+        padding: "24px",
+        boxShadow: "0 16px 36px rgba(15, 23, 42, 0.08)"
+    };
+
+    const summarySectionStyle = {
+        border: "1px solid #eef1f4",
+        borderRadius: "14px",
+        backgroundColor: "#fbfcfd",
+        padding: "16px 18px"
+    };
+
+    const paymentBadgeStyle = {
+        display: "inline-flex",
+        alignItems: "center",
+        gap: "8px",
+        padding: "8px 12px",
+        borderRadius: "999px",
+        backgroundColor: "#f3f5f7",
+        color: "#495057",
+        fontSize: "0.82rem",
+        fontWeight: 600
+    };
+
+    const summaryLineStyle = {
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "center",
+        gap: "16px",
+        marginBottom: "10px",
+        fontSize: "0.98rem"
+    };
+
+    const trustItemStyle = {
+        display: "flex",
+        alignItems: "flex-start",
+        gap: "12px"
+    };
+
+    const couponInputStyle = {
+        padding: "10px 12px",
+        borderRadius: "10px",
+        border: "1px solid #d6dbe1",
+        width: "100%",
+        minHeight: "42px"
+    };
 
     return (
         <>
             <Helmet htmlAttributes={{ lang: "es" }}>
                 <title>{metaData.title}</title>
                 <meta name="description" content={metaData.description} />
-
-                {/* Robots */}
                 <meta name="robots" content={metaData.robots} />
-
-                {/* Theme color */}
                 <meta name="theme-color" content={metaData.theme_color || "#ff324d"} />
-
-                {/* Canonical */}
                 {metaData.canonical && (
                     <link rel="canonical" href={metaData.canonical} />
                 )}
-
-                {/* OG */}
                 <meta property="og:type" content={metaData.og_type} />
                 <meta property="og:title" content={metaData.og_title} />
                 <meta property="og:description" content={metaData.og_description} />
@@ -194,205 +243,296 @@ export const Cart = () => {
                 <meta property="og:url" content={metaData.og_url} />
                 <meta property="og:site_name" content={metaData.og_site_name} />
                 <meta property="og:locale" content={metaData.og_locale || "es_ES"} />
-
-                {/* Twitter */}
                 <meta name="twitter:card" content={metaData.twitter_card_type} />
                 <meta name="twitter:title" content={metaData.twitter_title} />
                 <meta name="twitter:description" content={metaData.twitter_description} />
                 <meta name="twitter:image" content={metaData.twitter_image} />
-
-                {/* JSON-LD */}
                 {metaData.json_ld && (
                     <script type="application/ld+json">
                         {JSON.stringify(metaData.json_ld)}
                     </script>
                 )}
             </Helmet>
-            <Container fluid style={{ marginTop: "95px" }}>
+
+            <Container fluid style={{ marginTop: "95px", paddingBottom: "80px" }}>
                 <h2 className="h2-categories text-center my-2">Carrito de compra</h2>
+
                 {store.cart.length === 0 ? (
                     <p className="text-center" style={{ marginTop: "100px", marginBottom: "300px" }}>
-                        No tiene productos en su carrito aún. <br /><br />
+                        No tiene productos en su carrito aun. <br /><br />
                         <Link to="/" className="link-categories">
                             <i className="fa-solid fa-arrow-left"></i> Volver
                         </Link>
                     </p>
                 ) : (
-                    <Row>
-                        <Col md={11} className="mx-auto">
-                            <Table responsive className="table-shopping-cart">
-                                <thead>
-                                    <tr>
-                                        <th>Imágen</th>
-                                        <th>Producto</th>
-                                        <th>Alto(cm)</th>
-                                        <th>Ancho(cm)</th>
-                                        <th>Anclaje</th>
-                                        <th>Color</th>
-                                        <th>Cantidad</th>
-                                        <th>Precio</th>
-                                        <th>Total</th>
-                                        <th></th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {store.cart.map((product, index) => {
-                                        const shippingInfo = getShippingType(product);
-                                        return (
-                                            <tr key={index} className="cart-line-item">
-                                                <td className="table-shopping-cart-img">
-                                                    <Link to={`/${product.category_slug}/${product.slug}`}>
-                                                        <img
-                                                            src={product.imagen}
-                                                            alt={product.nombre}
-                                                            style={{ maxWidth: '80px', height: 'auto', display: 'block' }}
-                                                        />
-                                                    </Link>
-                                                </td>
-                                                <td>
-                                                    <Link
-                                                        to={`/${product.category_slug}/${product.slug}`}
-                                                        style={{ textDecoration: 'none', color: 'inherit' }}
-                                                    >
-                                                        {product.nombre}
-                                                    </Link>
-
-                                                    {shippingInfo.tipo !== 'normal' && (
-                                                        <>
-                                                            {/* Pantallas grandes: mostrar texto completo */}
-                                                            <p className="d-none d-md-block text-warning mt-1" style={{ fontSize: '0.85rem' }}>
-                                                                🚚 Este producto requiere envío especial ({shippingInfo.coste} €)<br />
-                                                                Supera las dimensiones máximas del envío estándar:<br />
-                                                                – Lado más largo &gt; 175 cm, o<br />
-                                                                – Suma de dimensiones &gt; 300 cm.
-                                                            </p>
-
-                                                            {/* Pantallas pequeñas: solo icono ℹ️ con alert al hacer clic */}
-                                                            <span
-                                                                className="d-inline d-md-none text-warning mt-1"
-                                                                style={{ fontSize: '1rem', cursor: 'pointer' }}
-                                                                onClick={() =>
-                                                                    alert(
-                                                                        `🚚 Este producto requiere envío especial (${shippingInfo.coste} €).\n\n` +
-                                                                        `Se aplica cuando:\n` +
-                                                                        `• El lado más largo supera los 175 cm,\n` +
-                                                                        `• O la suma de dimensiones supera los 300 cm.\n\n` +
-                                                                        `Por este motivo tiene una tarifa especial de transporte.`
-                                                                    )
-                                                                }
-                                                            >
-                                                                ⚠️
-                                                            </span>
-                                                        </>
-                                                    )}
-                                                </td>
-                                                <td>{product.alto}</td>
-                                                <td>{product.ancho}</td>
-                                                <td>{product.anclaje}</td>
-                                                <td>{colorLabels[product.color] ?? product.color}</td>
-                                                <td>{product.quantity ?? 1}</td>
-                                                <td>{(product.precio_total ?? 0).toFixed(2)}€</td>
-                                                <td>{((product.precio_total ?? 0) * (product.quantity ?? 1)).toFixed(2)}€</td>
-                                                <td className="cart_remove">
-                                                    <Button
-                                                        className="btn-style-background-color"
-                                                        onClick={() => handleRemoveFromCart(product)}
-                                                    >
-                                                        Eliminar
-                                                    </Button>
-                                                </td>
-                                            </tr>
-                                        );
-                                    })}
-                                </tbody>
-                            </Table>
-
-                            <Row className="mt-3 mb-5 mx-3">
-                                <Col className="text-end">
-                                    <p style={{ fontSize: "16px", marginBottom: "0px" }}>
-                                        {subtotal.toFixed(2)}€ (IVA incl.)
-                                    </p>
-                                    {shippingCost === 0 ? (
-                                        <p className="text-success" style={{ fontSize: "16px", marginBottom: "0px" }}>
-                                            Envío: GRATIS ✔️
+                    <Row className="g-4 g-xl-5 mt-2 align-items-start">
+                        <Col xl={8} lg={7}>
+                            <div style={cartTablePanelStyle}>
+                                <div className="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4">
+                                    <div>
+                                        <p className="text-uppercase text-muted small mb-1" style={{ letterSpacing: "0.08em" }}>
+                                            Tu compra
                                         </p>
-                                    ) : (
-                                        <p className="text-danger" style={{ fontSize: "16px", marginBottom: "0px" }}>
-                                            Envío: {shippingCost.toFixed(2)}€
+                                        <h4 className="mb-0" style={{ fontSize: "1.4rem", fontWeight: 600 }}>
+                                            Productos del carrito
+                                        </h4>
+                                    </div>
+                                    <span className="text-muted small">
+                                        {store.cart.length} {store.cart.length === 1 ? "producto" : "productos"} configurados a medida
+                                    </span>
+                                </div>
+
+                                <Table responsive className="table-shopping-cart mb-0">
+                                    <thead>
+                                        <tr>
+                                            <th>Imagen</th>
+                                            <th>Producto</th>
+                                            <th>Alto(cm)</th>
+                                            <th>Ancho(cm)</th>
+                                            <th>Anclaje</th>
+                                            <th>Color</th>
+                                            <th>Cantidad</th>
+                                            <th>Precio</th>
+                                            <th>Total</th>
+                                            <th></th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {store.cart.map((product, index) => {
+                                            const shippingInfo = getShippingType(product);
+                                            return (
+                                                <tr key={index} className="cart-line-item">
+                                                    <td className="table-shopping-cart-img">
+                                                        <Link to={`/${product.category_slug}/${product.slug}`}>
+                                                            <img
+                                                                src={product.imagen}
+                                                                alt={product.nombre}
+                                                                style={{ maxWidth: "80px", height: "auto", display: "block" }}
+                                                            />
+                                                        </Link>
+                                                    </td>
+                                                    <td>
+                                                        <Link
+                                                            to={`/${product.category_slug}/${product.slug}`}
+                                                            style={{ textDecoration: "none", color: "inherit" }}
+                                                        >
+                                                            {product.nombre}
+                                                        </Link>
+
+                                                        {shippingInfo.tipo !== "normal" && (
+                                                            <>
+                                                                <p className="d-none d-md-block text-warning mt-1" style={{ fontSize: "0.85rem" }}>
+                                                                    Este producto requiere envío especial ({shippingInfo.coste} EUR)<br />
+                                                                    Supera las dimensiones maximas del envío estandar:<br />
+                                                                    - Lado mas largo &gt; 175 cm, o<br />
+                                                                    - Suma de dimensiones &gt; 300 cm.
+                                                                </p>
+
+                                                                <span
+                                                                    className="d-inline d-md-none text-warning mt-1"
+                                                                    style={{ fontSize: "1rem", cursor: "pointer" }}
+                                                                    aria-label="Aviso de envío especial"
+                                                                    title="Aviso de envío especial"
+                                                                    onClick={() =>
+                                                                        alert(
+                                                                            `Este producto requiere envío especial (${shippingInfo.coste} EUR).\n\n` +
+                                                                            `Se aplica cuando:\n` +
+                                                                            `- El lado mas largo supera los 175 cm,\n` +
+                                                                            `- O la suma de dimensiones supera los 300 cm.\n\n` +
+                                                                            `Por este motivo tiene una tarifa especial de transporte.`
+                                                                        )
+                                                                    }
+                                                                >
+                                                                    <i className="fa-solid fa-triangle-exclamation" aria-hidden="true"></i>
+                                                                </span>
+                                                            </>
+                                                        )}
+                                                    </td>
+                                                    <td>{product.alto}</td>
+                                                    <td>{product.ancho}</td>
+                                                    <td>{product.anclaje}</td>
+                                                    <td>{colorLabels[product.color] ?? product.color}</td>
+                                                    <td>{product.quantity ?? 1}</td>
+                                                    <td>{(product.precio_total ?? 0).toFixed(2)} EUR</td>
+                                                    <td>{((product.precio_total ?? 0) * (product.quantity ?? 1)).toFixed(2)} EUR</td>
+                                                    <td className="cart_remove">
+                                                        <Button
+                                                            className="btn-style-background-color"
+                                                            onClick={() => handleRemoveFromCart(product)}
+                                                        >
+                                                            Eliminar
+                                                        </Button>
+                                                    </td>
+                                                </tr>
+                                            );
+                                        })}
+                                    </tbody>
+                                </Table>
+                            </div>
+
+                            {lastCategorySlug && (
+                                <Link
+                                    to={`/${lastCategorySlug}`}
+                                    className="mt-4 d-inline-block text-decoration-none"
+                                    style={{ fontWeight: "bold", color: "#ff324d" }}
+                                >
+                                    <i className="fa-solid fa-arrow-left"></i> Volver al catálogo de {lastCategorySlug.replaceAll("-", " ")}
+                                </Link>
+                            )}
+                        </Col>
+
+                        <Col xl={4} lg={5}>
+                            <div style={cartSummaryStickyStyle}>
+                                <div style={cartSummaryCardStyle}>
+                                    <div className="mb-4">
+                                        <p className="text-uppercase text-muted small mb-2" style={{ letterSpacing: "0.08em" }}>
+                                            Resumen del pedido
                                         </p>
-                                    )}
-                                    <DeliveryEstimate />
-                                    <div className="my-3 text-end">
-                                        <input
-                                            type="text"
-                                            placeholder="Introduce tu código de descuento"
-                                            value={discountCode}
-                                            onChange={(e) => setDiscountCode(e.target.value)}
-                                            style={{
-                                                padding: "5px",
-                                                borderRadius: "5px",
-                                                border: "1px solid #ccc",
-                                                marginRight: "8px"
-                                            }}
-                                        />
-                                        <Button
-                                            variant="secondary"
-                                            size="sm"
-                                            onClick={handleApplyDiscount}
-                                        >
-                                            Aplicar
-                                        </Button>
+                                        <h4 className="mb-2" style={{ fontSize: "1.55rem", fontWeight: 700 }}>
+                                            Listo para continuar al pago
+                                        </h4>
+                                        <p className="text-muted mb-0" style={{ fontSize: "0.97rem" }}>
+                                            Revisa tu pedido y continua al siguiente paso con pago seguro mediante tarjeta o PayPal.
+                                        </p>
                                     </div>
 
-                                    <hr />
+                                    <div className="d-flex flex-wrap gap-2 mb-4">
+                                        <span style={paymentBadgeStyle}><i className="fa-regular fa-credit-card"></i> Tarjeta</span>
+                                        <span style={paymentBadgeStyle}><i className="fa-brands fa-paypal"></i> PayPal</span>
+                                        <span style={paymentBadgeStyle}><i className="fa-solid fa-shield-halved"></i> Pago seguro</span>
+                                    </div>
 
-                                    {discountPercent > 0 && (
-                                        <p style={{ fontSize: "16px", color: "green" }}>
-                                            Descuento aplicado: -{discountPercent}%
-                                        </p>
-                                    )}
-                                    <p style={{ fontSize: "22px", fontWeight: "bold" }}>
-                                        Total: {(finalTotal * (1 - discountPercent / 100)).toFixed(2)}€ (IVA incl.)
-                                        <Button
-                                            onClick={handleDownloadBudget}
-                                            title="Guardar presupuesto"
-                                            className="d-inline-flex align-items-center justify-content-center ms-md-2 p-0 border-0"
-                                            style={{
-                                                backgroundColor: 'transparent',
-                                                color: '#282c30',
-                                                transition: 'opacity 0.2s',
-                                                marginLeft: '5px'
-                                            }}
-                                            onMouseOver={(e) => e.currentTarget.style.opacity = '0.7'}
-                                            onMouseOut={(e) => e.currentTarget.style.opacity = '1'}
-                                        >
-                                            <i className="fa-solid fa-file-arrow-down fa-lg"></i>
-                                        </Button>
-                                    </p>
+                                    <div style={summarySectionStyle}>
+                                        <div style={summaryLineStyle}>
+                                            <span className="text-muted">Subtotal</span>
+                                            <strong>{subtotal.toFixed(2)} EUR</strong>
+                                        </div>
+
+                                        <div style={summaryLineStyle}>
+                                            <span className="text-muted">Envío</span>
+                                            {shippingCost === 0 ? (
+                                                <strong className="text-success">GRATIS</strong>
+                                            ) : (
+                                                <strong>{shippingCost.toFixed(2)} EUR</strong>
+                                            )}
+                                        </div>
+
+                                        {discountPercent > 0 && (
+                                            <div style={{ ...summaryLineStyle, color: "green", marginBottom: "0px" }}>
+                                                <span>Descuento aplicado</span>
+                                                <strong>-{discountPercent}%</strong>
+                                            </div>
+                                        )}
+
+                                        <hr style={{ margin: "16px 0" }} />
+
+                                        <div className="d-flex justify-content-between align-items-end gap-3">
+                                            <div>
+                                                <p className="text-muted mb-1 small">Total final</p>
+                                                <h3 className="mb-0" style={{ fontSize: "1.9rem", fontWeight: 700 }}>
+                                                    {(finalTotal * (1 - discountPercent / 100)).toFixed(2)} EUR
+                                                </h3>
+                                                <p className="text-muted small mb-0">IVA incluido</p>
+                                            </div>
+                                            <Button
+                                                onClick={handleDownloadBudget}
+                                                title="Guardar presupuesto"
+                                                className="d-inline-flex align-items-center justify-content-center p-0 border-0"
+                                                style={{
+                                                    backgroundColor: "transparent",
+                                                    color: "#282c30",
+                                                    transition: "opacity 0.2s"
+                                                }}
+                                                onMouseOver={(e) => e.currentTarget.style.opacity = "0.7"}
+                                                onMouseOut={(e) => e.currentTarget.style.opacity = "1"}
+                                            >
+                                                <i className="fa-solid fa-file-arrow-down fa-lg"></i>
+                                            </Button>
+                                        </div>
+                                    </div>
+
+                                    <div className="mt-4" style={summarySectionStyle}>
+                                        <div className="d-flex justify-content-between align-items-center gap-3 mb-2">
+                                            <h5 className="mb-0" style={{ fontSize: "1rem", fontWeight: 600 }}>Plazo estimado</h5>
+                                            <span className="text-muted small">Fabricacion a medida</span>
+                                        </div>
+                                        <DeliveryEstimate />
+                                    </div>
+
+                                    <div className="mt-4" style={summarySectionStyle}>
+                                        <div className="d-flex justify-content-between align-items-center gap-3 mb-3">
+                                            <h5 className="mb-0" style={{ fontSize: "1rem", fontWeight: 600 }}>Código promocional</h5>
+                                            <span className="text-muted small">Opcional</span>
+                                        </div>
+                                        <div className="d-flex flex-column flex-sm-row gap-2">
+                                            <input
+                                                type="text"
+                                                placeholder="Introduce tu codigo de descuento"
+                                                value={discountCode}
+                                                onChange={(e) => setDiscountCode(e.target.value)}
+                                                style={couponInputStyle}
+                                            />
+                                            <Button
+                                                variant="secondary"
+                                                onClick={handleApplyDiscount}
+                                                style={{ minWidth: "120px" }}
+                                            >
+                                                Aplicar
+                                            </Button>
+                                        </div>
+                                    </div>
+
                                     <Button
-                                        className="btn-style-background-color"
+                                        className="btn-style-background-color w-100 mt-4"
                                         onClick={handleCheckout}
+                                        style={{ minHeight: "52px", fontWeight: 600, fontSize: "1rem" }}
                                     >
-                                        Formulario de Pago
+                                        Continuar al pago seguro
                                     </Button>
-                                    <div className="text-right">
+
+                                    <p className="text-muted small text-center mt-3 mb-0">
+                                        En el siguiente paso podrás pagar con tarjeta o PayPal.
+                                    </p>
+
+                                    <div className="mt-4 pt-4" style={{ borderTop: "1px solid #eef1f4" }}>
+                                        <div className="d-flex flex-column gap-3">
+                                            <div style={trustItemStyle}>
+                                                <i className="fa-solid fa-shield-halved" style={{ color: "#ff324d", marginTop: "2px" }}></i>
+                                                <div>
+                                                    <p className="mb-1" style={{ fontWeight: 600 }}>Pago protegido</p>
+                                                    <p className="text-muted small mb-0">Aceptamos tarjeta y PayPal dentro de una compra segura.</p>
+                                                </div>
+                                            </div>
+
+                                            <div style={trustItemStyle}>
+                                                <i className="fa-solid fa-hammer" style={{ color: "#ff324d", marginTop: "2px" }}></i>
+                                                <div>
+                                                    <p className="mb-1" style={{ fontWeight: 600 }}>Fabricacion a medida</p>
+                                                    <p className="text-muted small mb-0">Tu pedido se fabrica según las medidas y opciones elegidas.</p>
+                                                </div>
+                                            </div>
+
+                                            <div style={trustItemStyle}>
+                                                <i className="fa-solid fa-headset" style={{ color: "#ff324d", marginTop: "2px" }}></i>
+                                                <div>
+                                                    <p className="mb-1" style={{ fontWeight: 600 }}>Te ayudamos antes de pagar</p>
+                                                    <p className="text-muted small mb-0">
+                                                        Si necesitas ayuda con medidas o plazos, <Link to="/contact" style={{ color: "#ff324d", textDecoration: "none", fontWeight: 600 }}>contáctanos</Link>.
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div className="text-center mt-4 pt-3" style={{ borderTop: "1px solid #eef1f4" }}>
                                         <img
                                             src="https://kompozits.lv/app/uploads/2021/02/secure-600x123.png"
                                             alt="Pago Seguro Autorizado"
-                                            style={{ maxWidth: '280px', height: 'auto', marginBottom: '30px', marginTop: '15px' }}
+                                            style={{ maxWidth: "250px", width: "100%", height: "auto" }}
                                         />
                                     </div>
-                                </Col>
-                                {lastCategorySlug && (
-                                    <Link
-                                        to={`/${lastCategorySlug}`}
-                                        className="my-3 d-inline-block text-decoration-none"
-                                        style={{ fontWeight: 'bold', color: '#ff324d' }}
-                                    >
-                                        ← Volver al catálogo de {lastCategorySlug.replaceAll("-", " ")}
-                                    </Link>
-                                )}
-                            </Row>
+                                </div>
+                            </div>
                         </Col>
                     </Row>
                 )}

@@ -349,8 +349,8 @@ const CheckoutForm = () => {
             const { error: confirmError, paymentIntent: confirmedPaymentIntent } = await stripe.confirmCardPayment(data.clientSecret);
 
             if (confirmError) {
-                console.error("Error en la confirmacion del pago:", confirmError);
-                alert(`Error en la confirmacion del pago: ${confirmError.message}`);
+                console.error("Error en la confirmación del pago:", confirmError);
+                alert(`Error en la confirmación del pago: ${confirmError.message}`);
                 return;
             }
 
@@ -385,7 +385,7 @@ const CheckoutForm = () => {
         if (!e.target.checked) {
             setFormData({
                 ...formData,
-                shipping_address: "La misma que la de facturacion",
+                shipping_address: "La misma que la de facturación",
                 shipping_city: "",
                 shipping_postal_code: ""
             });
@@ -399,6 +399,56 @@ const CheckoutForm = () => {
         }
     };
 
+
+    const checkoutSectionCardStyle = {
+        border: "1px solid #e9ecef",
+        borderRadius: "16px",
+        padding: "24px",
+        backgroundColor: "#ffffff",
+        boxShadow: "0 12px 30px rgba(15, 23, 42, 0.05)"
+    };
+
+    const checkoutSectionMutedCardStyle = {
+        border: "1px solid #e9ecef",
+        borderRadius: "14px",
+        padding: "18px 20px",
+        backgroundColor: "#f8f9fa"
+    };
+
+    const checkoutSectionTitleStyle = {
+        fontSize: "1.15rem",
+        fontWeight: 600,
+        marginBottom: "4px"
+    };
+
+    const checkoutSectionSubtitleStyle = {
+        color: "#6c757d",
+        fontSize: "0.92rem",
+        marginBottom: "0px"
+    };
+
+    const checkoutLabelStyle = {
+        fontSize: "0.75rem",
+        fontWeight: 600,
+        letterSpacing: "0.06em",
+        textTransform: "uppercase",
+        color: "#6c757d",
+        marginBottom: "8px"
+    };
+
+    const checkoutInputStyle = {
+        border: "1px solid #d8dee4",
+        borderRadius: "12px",
+        padding: "14px 16px",
+        backgroundColor: "#fbfcfd",
+        minHeight: "52px"
+    };
+
+    const checkoutErrorStyle = {
+        marginTop: "8px",
+        marginBottom: "0px",
+        fontSize: "0.9rem"
+    };
 
     const paymentNoticeStyle = {
         border: "1px solid #e9ecef",
@@ -459,11 +509,9 @@ const CheckoutForm = () => {
                                                 Color: {colorLabels[product.color] ?? product.color}
                                             </small>
                                             {product.shipping_type !== 'normal' && (
-                                                <>
-                                                    <small className="text-danger d-block mx-1">
-                                                        ðŸšš Este producto requiere enví­o especial ({product.shipping_cost.toFixed(2)}€)
-                                                    </small>
-                                                </>
+                                                <small className="text-danger d-block mx-1">
+                                                    Este producto requiere envio especial ({product.shipping_cost.toFixed(2)}EUR)
+                                                </small>
                                             )}
                                         </div>
                                     </div>
@@ -473,7 +521,7 @@ const CheckoutForm = () => {
                                 </li>
                             ))}
                             <li className="list-group-item d-flex justify-content-between">
-                                <span>Envio:</span>
+                                <span>envío:</span>
                                 <strong>{shippingCost === 0 ? "GRATIS" : `${shippingCost.toFixed(2)} EUR`}</strong>
                             </li>
                             {discountPercent > 0 && (
@@ -490,158 +538,205 @@ const CheckoutForm = () => {
                     </Col>
                     <Col md={8} className="order-md-1 mb-5">
                         <Form onSubmit={handleSubmit} className="needs-validation" noValidate>
-                            <h4 className="mb-3">Direccion de facturacion</h4>
-                            <hr className='hr-cart' />
-                            <div className="row">
-                                <div className="col-md-6">
-                                    <Form.Label></Form.Label>
-                                    <Form.Control
-                                        name="firstname"
-                                        placeholder="Nombre"
-                                        onChange={handleInputChange}
-                                        value={formData.firstname}
-                                    />
-                                    {errors.firstname && (
-                                        <p className="text-danger">{errors.firstname}</p>
-                                    )}
+                            <div style={checkoutSectionCardStyle}>
+                                <div className="mb-4">
+                                    <h4 style={checkoutSectionTitleStyle}>Dirección de facturación</h4>
+                                    <p style={checkoutSectionSubtitleStyle}>Datos para la factura y la confirmación del pedido.</p>
                                 </div>
-                                <div className="col-md-6">
-                                    <Form.Label></Form.Label>
-                                    <Form.Control
-                                        name="lastname"
-                                        placeholder="Apellidos"
-                                        onChange={handleInputChange}
-                                        value={formData.lastname}
+
+                                <Row className="g-3">
+                                    <Col md={6}>
+                                        <Form.Group className="mb-0">
+                                            <Form.Label style={checkoutLabelStyle}>Nombre</Form.Label>
+                                            <Form.Control
+                                                name="firstname"
+                                                placeholder="Nombre"
+                                                onChange={handleInputChange}
+                                                value={formData.firstname}
+                                                style={checkoutInputStyle}
+                                            />
+                                            {errors.firstname && (
+                                                <p className="text-danger" style={checkoutErrorStyle}>{errors.firstname}</p>
+                                            )}
+                                        </Form.Group>
+                                    </Col>
+                                    <Col md={6}>
+                                        <Form.Group className="mb-0">
+                                            <Form.Label style={checkoutLabelStyle}>Apellidos</Form.Label>
+                                            <Form.Control
+                                                name="lastname"
+                                                placeholder="Apellidos"
+                                                onChange={handleInputChange}
+                                                value={formData.lastname}
+                                                style={checkoutInputStyle}
+                                            />
+                                            {errors.lastname && (
+                                                <p className="text-danger" style={checkoutErrorStyle}>{errors.lastname}</p>
+                                            )}
+                                        </Form.Group>
+                                    </Col>
+                                    <Col md={12}>
+                                        <Form.Group className="mb-0">
+                                            <Form.Label style={checkoutLabelStyle}>Dirección de facturación</Form.Label>
+                                            <Form.Control
+                                                name="billing_address"
+                                                placeholder="Calle, número, portal..."
+                                                onChange={handleInputChange}
+                                                value={formData.billing_address}
+                                                style={checkoutInputStyle}
+                                            />
+                                            {errors.billing_address && (
+                                                <p className="text-danger" style={checkoutErrorStyle}>{errors.billing_address}</p>
+                                            )}
+                                        </Form.Group>
+                                    </Col>
+                                    <Col md={6}>
+                                        <Form.Group className="mb-0">
+                                            <Form.Label style={checkoutLabelStyle}>Codigo Postal</Form.Label>
+                                            <Form.Control
+                                                name="billing_postal_code"
+                                                placeholder="Codigo Postal"
+                                                onChange={handleInputChange}
+                                                value={formData.billing_postal_code}
+                                                style={checkoutInputStyle}
+                                            />
+                                            {errors.billing_postal_code && (
+                                                <p className="text-danger" style={checkoutErrorStyle}>{errors.billing_postal_code}</p>
+                                            )}
+                                        </Form.Group>
+                                    </Col>
+                                    <Col md={6}>
+                                        <Form.Group className="mb-0">
+                                            <Form.Label style={checkoutLabelStyle}>Ciudad</Form.Label>
+                                            <Form.Control
+                                                name="billing_city"
+                                                placeholder="Ciudad"
+                                                onChange={handleInputChange}
+                                                value={formData.billing_city}
+                                                style={checkoutInputStyle}
+                                            />
+                                            {errors.billing_city && (
+                                                <p className="text-danger" style={checkoutErrorStyle}>{errors.billing_city}</p>
+                                            )}
+                                        </Form.Group>
+                                    </Col>
+                                    <Col md={6}>
+                                        <Form.Group className="mb-0">
+                                            <Form.Label style={checkoutLabelStyle}>CIF o DNI</Form.Label>
+                                            <Form.Control
+                                                name="CIF"
+                                                placeholder="CIF o DNI"
+                                                onChange={handleInputChange}
+                                                value={formData.CIF}
+                                                style={checkoutInputStyle}
+                                            />
+                                            {errors.CIF && (
+                                                <p className="text-danger" style={checkoutErrorStyle}>{errors.CIF}</p>
+                                            )}
+                                        </Form.Group>
+                                    </Col>
+                                    <Col md={6}>
+                                        <Form.Group className="mb-0">
+                                            <Form.Label style={checkoutLabelStyle}>Teléfono</Form.Label>
+                                            <Form.Control
+                                                name="phone"
+                                                placeholder="Teléfono"
+                                                onChange={handleInputChange}
+                                                value={formData.phone}
+                                                style={checkoutInputStyle}
+                                            />
+                                            {errors.phone && (
+                                                <p className="text-danger" style={checkoutErrorStyle}>{errors.phone}</p>
+                                            )}
+                                        </Form.Group>
+                                    </Col>
+                                </Row>
+                            </div>
+
+                            <div className="mt-4" style={checkoutSectionMutedCardStyle}>
+                                <div className="d-flex flex-column gap-2">
+                                    <div>
+                                        <h5 className="mb-1" style={{ fontSize: "1rem", fontWeight: 600 }}>Dirección de envío</h5>
+                                        <p className="text-muted small mb-0">
+                                            Indica si quieres recibir el pedido en una dirección distinta a la de facturación.
+                                        </p>
+                                    </div>
+                                    <Form.Check
+                                        type="checkbox"
+                                        label="La dirección de envío es diferente a la de facturación"
+                                        id="differentBilling"
+                                        onChange={handleCheckboxChange}
+                                        className="mb-0"
                                     />
-                                    {errors.lastname && (
-                                        <p className="text-danger">{errors.lastname}</p>
-                                    )}
                                 </div>
                             </div>
-                            <div className="row">
-                                <div className="col-md-12">
-                                    <Form.Label></Form.Label>
-                                    <Form.Control
-                                        name="billing_address"
-                                        placeholder="Calle, numero, portal..."
-                                        onChange={handleInputChange}
-                                        value={formData.billing_address}
-                                    />
-                                    {errors.billing_address && (
-                                        <p className="text-danger">{errors.billing_address}</p>
-                                    )}
-                                </div>
-                            </div>
-                            <div className="row">
-                                <div className="col-md-6">
-                                    <Form.Label></Form.Label>
-                                    <Form.Control
-                                        name="billing_postal_code"
-                                        placeholder="Codigo Postal"
-                                        onChange={handleInputChange}
-                                        value={formData.billing_postal_code}
-                                    />
-                                    {errors.billing_postal_code && (
-                                        <p className="text-danger">{errors.billing_postal_code}</p>
-                                    )}
-                                </div>
-                                <div className="col-md-6">
-                                    <Form.Label></Form.Label>
-                                    <Form.Control
-                                        name="billing_city"
-                                        placeholder="Ciudad"
-                                        onChange={handleInputChange}
-                                        value={formData.billing_city}
-                                    />
-                                    {errors.billing_city && (
-                                        <p className="text-danger">{errors.billing_city}</p>
-                                    )}
-                                </div>
-                            </div>
-                            <div className="row">
-                                <div className="col-md-6 mb-3">
-                                    <Form.Label></Form.Label>
-                                    <Form.Control
-                                        name="CIF"
-                                        placeholder="CIF o DNI"
-                                        onChange={handleInputChange}
-                                        value={formData.CIF}
-                                    />
-                                    {errors.CIF && (
-                                        <p className="text-danger">{errors.CIF}</p>
-                                    )}
-                                </div>
-                                <div className="col-md-6 mb-3">
-                                    <Form.Label></Form.Label>
-                                    <Form.Control
-                                        name="phone"
-                                        placeholder="Telefono"
-                                        onChange={handleInputChange}
-                                        value={formData.phone}
-                                    />
-                                    {errors.phone && (
-                                        <p className="text-danger">{errors.phone}</p>
-                                    )}
-                                </div>
-                            </div>
-                            <Form.Check
-                                type="checkbox"
-                                label="La direccion de envio es diferente a la de facturacion"
-                                id="differentBilling"
-                                onChange={handleCheckboxChange}
-                            />
 
                             {differentBilling && (
-                                <div className="my-3" style={{ marginTop: '50px' }}>
-                                    <h4 className="mb-3">Direccion de envio</h4>
-                                    <hr className='hr-cart' />
-                                    <Form.Group controlId="shipping_address">
-                                        <Form.Label></Form.Label>
-                                        <Form.Control
-                                            name="shipping_address"
-                                            placeholder="Calle, numero, portal, piso..."
-                                            onChange={handleInputChange}
-                                            value={formData.shipping_address}
-                                        />
-                                        {errors.shipping_address && (
-                                            <p className="text-danger">{errors.shipping_address}</p>
-                                        )}
-                                    </Form.Group>
-                                    <Form.Group controlId="shipping_city">
-                                        <Form.Label></Form.Label>
-                                        <Form.Control
-                                            name="shipping_city"
-                                            placeholder="Ciudad"
-                                            onChange={handleInputChange}
-                                            value={formData.shipping_city}
-                                        />
-                                        {errors.shipping_city && (
-                                            <p className="text-danger">{errors.shipping_city}</p>
-                                        )}
-                                    </Form.Group>
-                                    <Form.Group controlId="shipping_postal_code">
-                                        <Form.Label></Form.Label>
-                                        <Form.Control
-                                            name="shipping_postal_code"
-                                            placeholder="Codigo Postal"
-                                            onChange={handleInputChange}
-                                            value={formData.shipping_postal_code}
-                                        />
-                                        {errors.shipping_postal_code && (
-                                            <p className="text-danger">{errors.shipping_postal_code}</p>
-                                        )}
-                                    </Form.Group>
+                                <div className="mt-4" style={checkoutSectionCardStyle}>
+                                    <div className="mb-4">
+                                        <h4 style={checkoutSectionTitleStyle}>Dirección de envío</h4>
+                                        <p style={checkoutSectionSubtitleStyle}>Dirección donde recibiras el pedido.</p>
+                                    </div>
+
+                                    <Row className="g-3">
+                                        <Col md={12}>
+                                            <Form.Group className="mb-0" controlId="shipping_address">
+                                                <Form.Label style={checkoutLabelStyle}>Dirección de envío</Form.Label>
+                                                <Form.Control
+                                                    name="shipping_address"
+                                                    placeholder="Calle, número, portal, piso..."
+                                                    onChange={handleInputChange}
+                                                    value={formData.shipping_address}
+                                                    style={checkoutInputStyle}
+                                                />
+                                                {errors.shipping_address && (
+                                                    <p className="text-danger" style={checkoutErrorStyle}>{errors.shipping_address}</p>
+                                                )}
+                                            </Form.Group>
+                                        </Col>
+                                        <Col md={6}>
+                                            <Form.Group className="mb-0" controlId="shipping_city">
+                                                <Form.Label style={checkoutLabelStyle}>Ciudad</Form.Label>
+                                                <Form.Control
+                                                    name="shipping_city"
+                                                    placeholder="Ciudad"
+                                                    onChange={handleInputChange}
+                                                    value={formData.shipping_city}
+                                                    style={checkoutInputStyle}
+                                                />
+                                                {errors.shipping_city && (
+                                                    <p className="text-danger" style={checkoutErrorStyle}>{errors.shipping_city}</p>
+                                                )}
+                                            </Form.Group>
+                                        </Col>
+                                        <Col md={6}>
+                                            <Form.Group className="mb-0" controlId="shipping_postal_code">
+                                                <Form.Label style={checkoutLabelStyle}>Codigo Postal</Form.Label>
+                                                <Form.Control
+                                                    name="shipping_postal_code"
+                                                    placeholder="Codigo Postal"
+                                                    onChange={handleInputChange}
+                                                    value={formData.shipping_postal_code}
+                                                    style={checkoutInputStyle}
+                                                />
+                                                {errors.shipping_postal_code && (
+                                                    <p className="text-danger" style={checkoutErrorStyle}>{errors.shipping_postal_code}</p>
+                                                )}
+                                            </Form.Group>
+                                        </Col>
+                                    </Row>
                                 </div>
                             )}
-                            <h4 className="mb-3" style={{ marginTop: '50px' }}>Metodo de pago</h4>
+
+                            <h4 className="mb-3" style={{ marginTop: '50px' }}>Método de pago</h4>
                             <hr className='hr-cart' />
                             <div className="mt-4">
                                 <div style={paymentNoticeStyle}>
                                     <div className="d-flex flex-column gap-2">
                                         <div>
-                                            <h5 className="mb-1" style={{ fontSize: "1rem", fontWeight: 600 }}>Confirmacion del checkout</h5>
+                                            <h5 className="mb-1" style={{ fontSize: "1rem", fontWeight: 600 }}>Confirmación del pedido</h5>
                                             <p className="text-muted small mb-0">
-                                                La aceptacion de la politica es necesaria para completar cualquier metodo de pago.
+                                                La aceptacion de la política es necesaria para completar cualquier metodo de pago.
                                             </p>
                                         </div>
                                         <Form.Group className="mb-0">
@@ -657,7 +752,7 @@ const CheckoutForm = () => {
                                                             rel="noopener noreferrer"
                                                             style={{ textDecoration: "underline" }}
                                                         >
-                                                            Politica de Devoluciones y Garantias
+                                                            Política de Devoluciones y Garantías
                                                         </a>.
                                                     </>
                                                 }
@@ -720,7 +815,7 @@ const CheckoutForm = () => {
                                     <div className="d-flex flex-column gap-2 mb-4">
                                         <div className="d-flex align-items-center justify-content-between gap-3 flex-wrap">
                                             <h5 className="mb-0" style={{ fontSize: "1.05rem", fontWeight: 600 }}>2. PayPal</h5>
-                                            <span className="text-muted small">Pago rapido y seguro</span>
+                                            <span className="text-muted small">Pago rápido y seguro</span>
                                         </div>
                                         <p className="text-muted small mb-0">
                                             Paga con tu cuenta PayPal o con tarjeta a traves de PayPal.
