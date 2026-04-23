@@ -509,7 +509,7 @@ export const ProductDetail = () => {
                                         alt={product.nombre}
                                         width="540"
                                         height="600"
-                                        className="d-block img-fluid"
+                                        className="d-block img-fluid product-detail-main-image"
                                         style={{ borderRadius: '5px', objectFit: 'cover' }}
                                     />
                                 </Carousel.Item>
@@ -839,54 +839,54 @@ export const ProductDetail = () => {
                     </Col>
                     <Link
                         to={`/${category_slug}`}
-                        className="mb-3 d-inline-block text-decoration-none"
-                        style={{ fontWeight: 'bold', color: '#ff324d', marginTop: '50px' }}
+                        className="product-category-backlink mb-3 d-inline-flex align-items-center text-decoration-none"
                     >
                         ← Catálogo de {product?.categoria_nombre || 'la categoría'}
                     </Link>
-                    <div className="custom-accordion my-5">
+                    <div className="custom-accordion product-detail-accordion my-5">
                         {/* Acordeón 4 */}
                         <div className="accordion-item">
                             <input type="checkbox" id="accordion-4" />
-                            <label htmlFor="accordion-4" className="accordion-header with-arrow d-flex justify-content-between align-items-center">
-                                <span>
+                            <label htmlFor="accordion-4" className="accordion-header product-accordion-header with-arrow d-flex justify-content-between align-items-center">
+                                <span className="product-accordion-heading">
                                     <i className="fa-solid fa-toolbox me-2"></i>
                                     Herramientas Recomendadas
                                 </span>
                                 <i className="fa-solid fa-chevron-down arrow-icon"></i>
                             </label>
                             <h2 className="visually-hidden">Herramientas recomendadas</h2>
-                            <div className="accordion-content">
-                                <div className="container mt-5">
-                                    <div className="row text-center d-flex flex-column flex-lg-row justify-content-center align-items-stretch gap-3">
+                            <div className="accordion-content product-accordion-body">
+                                <div className="container product-tools-wrap mt-5">
+                                    <div className="row product-tools-grid text-center d-flex flex-column flex-lg-row justify-content-center align-items-stretch gap-3">
 
                                         {/* Herramienta 1 */}
-                                        <div className="col-12 col-lg-3 mb-4">
-                                            <img
-                                                src="https://m.media-amazon.com/images/I/710L8PQsrkL._AC_SX569_.jpg"
-                                                alt="Taladro Bosch Professional"
-                                                className="img-fluid rounded"
-                                                style={{ objectFit: "contain", maxHeight: "200px" }}
-                                            />
-                                            <h6 className="mt-2">Einhell Taladro Percutor sin cable</h6>
-                                            <p>Compacto y potente para perforar materiales como piedra o ladrillo.</p>
-                                            <a
-                                                href="https://amzn.to/3TWBpNO"
-                                                target="_blank"
-                                                rel="noopener noreferrer"
-                                                className="btn btn-sm btn-warning mt-2"
-                                            >
-                                                Ver en Amazon
-                                            </a>
+                                        <div className="col-12 col-lg-3 mb-4 product-tool-card-column">
+                                            <div className="product-tool-card">
+                                                <img
+                                                    src="https://m.media-amazon.com/images/I/710L8PQsrkL._AC_SX569_.jpg"
+                                                    alt="Taladro Bosch Professional"
+                                                    className="img-fluid rounded product-tool-image"
+                                                />
+                                                <h6 className="product-tool-title mt-2">Einhell Taladro Percutor sin cable</h6>
+                                                <p className="product-tool-copy">Compacto y potente para perforar materiales como piedra o ladrillo.</p>
+                                                <a
+                                                    href="https://amzn.to/3TWBpNO"
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    className="product-tool-cta btn btn-sm btn-warning mt-2"
+                                                >
+                                                    Ver en Amazon
+                                                </a>
+                                            </div>
                                         </div>
 
                                         {/* Herramienta 2 */}
-                                        <div className="col-12 col-lg-3 mb-4">
-                                            <img
+                                        <div className="col-12 col-lg-3 mb-4 product-tool-card-column">
+                                            <div className="product-tool-card">
+                                                <img
                                                 src="https://m.media-amazon.com/images/I/31Izs0l3NcS._AC_SY879_.jpg"
                                                 alt="Brocas para pared"
-                                                className="img-fluid rounded"
-                                                style={{ objectFit: "contain", maxHeight: "200px" }}
+                                                className="img-fluid rounded product-tool-image"
                                             />
                                             <h6 className="mt-2">Brocas para mampostería de 12</h6>
                                             <p>Brocas de alto rendimiento resistente a la percusión.</p>
@@ -894,19 +894,20 @@ export const ProductDetail = () => {
                                                 href="https://amzn.to/46l6bYb"
                                                 target="_blank"
                                                 rel="noopener noreferrer"
-                                                className="btn btn-sm btn-warning mt-2"
+                                                className="product-tool-cta btn btn-sm btn-warning mt-2"
                                             >
                                                 Ver en Amazon
                                             </a>
+                                            </div>
                                         </div>
 
                                         {/* Herramienta 3 */}
-                                        <div className="col-12 col-lg-3 mb-4">
-                                            <img
+                                        <div className="col-12 col-lg-3 mb-4 product-tool-card-column">
+                                            <div className="product-tool-card">
+                                                <img
                                                 src="https://m.media-amazon.com/images/I/71-iVl4GBSL._AC_SX569_.jpg"
                                                 alt="Juego de llaves Torx"
-                                                className="img-fluid rounded"
-                                                style={{ objectFit: "contain", maxHeight: "200px" }}
+                                                className="img-fluid rounded product-tool-image"
                                             />
                                             <h6 className="mt-2"> Juego de Llave Torx Profesional T10</h6>
                                             <p>Ideal para fijaciones con tornillos de seguridad Torx.</p>
@@ -914,10 +915,11 @@ export const ProductDetail = () => {
                                                 href="https://amzn.to/44nC6Vq"
                                                 target="_blank"
                                                 rel="noopener noreferrer"
-                                                className="btn btn-sm btn-warning mt-2"
+                                                className="product-tool-cta btn btn-sm btn-warning mt-2"
                                             >
                                                 Ver en Amazon
                                             </a>
+                                            </div>
                                         </div>
 
                                     </div>
@@ -928,15 +930,15 @@ export const ProductDetail = () => {
                         {/* Acordeón 1 */}
                         <div className="accordion-item">
                             <input type="checkbox" id="accordion-1" />
-                            <label htmlFor="accordion-1" className="accordion-header with-arrow d-flex justify-content-between align-items-center">
-                                <span>
+                            <label htmlFor="accordion-1" className="accordion-header product-accordion-header with-arrow d-flex justify-content-between align-items-center">
+                                <span className="product-accordion-heading">
                                     <i className="fa-solid fa-screwdriver-wrench me-2"></i>
                                     Instalación y consejos prácticos
                                 </span>
                                 <i className="fa-solid fa-chevron-down arrow-icon"></i>
                             </label>
                             <h2 className="visually-hidden">Instalación y consejos prácticos</h2>
-                            <div className="accordion-content">
+                            <div className="accordion-content product-accordion-body">
                                 <h3 className="h3-categories">¿Cómo elegir la reja perfecta para tu ventana?</h3>
                                 <p>En cuanto a estética y estilo es cuestión de <b>gustos</b> porque todas cumplen con la premisa fundamental de la <strong>seguridad</strong>.</p>
                                 <p>Para elegir la reja perfecta hay que fijarse en que la instalación sea lo más favorable para cada caso.</p>
@@ -962,22 +964,22 @@ export const ProductDetail = () => {
                         {/* Acordeón 2 */}
                         <div className="accordion-item">
                             <input type="checkbox" id="accordion-2" />
-                            <label htmlFor="accordion-2" className="accordion-header with-arrow d-flex justify-content-between align-items-center">
-                                <span>
+                            <label htmlFor="accordion-2" className="accordion-header product-accordion-header with-arrow d-flex justify-content-between align-items-center">
+                                <span className="product-accordion-heading">
                                     <i className="fa-regular fa-circle-question me-2"></i>
                                     Preguntas frecuentes
                                 </span>
                                 <i className="fa-solid fa-chevron-down arrow-icon"></i>
                             </label>
                             <h2 className="visually-hidden">Preguntas frecuentes</h2>
-                            <div className="accordion-content">
+                            <div className="accordion-content product-accordion-body">
                                 <ul>
                                     <li><b>¿Los precios incluyen IVA?</b> Sí, todos nuestros precios incluyen IVA.</li>
                                     <li>
                                         <b>¿Cuál es el tiempo de fabricación y entrega?</b> Nuestro tiempo estimado de fabricación y entrega es de <b>20 días hábiles</b>. Sin embargo, este plazo puede variar dependiendo de nuestra carga de trabajo.
                                         En caso de que haya un aumento en los tiempos, te lo notificaremos con anticipación para que estés informado.
                                         Puedes consultar más detalles en nuestra sección de
-                                        <Link to="/plazos-entrega-rejas-a-medida" style={{ color: '#ff324d', textDecoration: 'underline', marginLeft: '5px' }}>
+                                        <Link to="/plazos-entrega-rejas-a-medida" className="product-accordion-inline-link">
                                             Plazos de Entrega.
                                         </Link>
                                     </li>
@@ -994,15 +996,15 @@ export const ProductDetail = () => {
                         {/* Acordeón 3 */}
                         <div className="accordion-item">
                             <input type="checkbox" id="accordion-3" />
-                            <label htmlFor="accordion-3" className="accordion-header with-arrow d-flex justify-content-between align-items-center">
-                                <span>
+                            <label htmlFor="accordion-3" className="accordion-header product-accordion-header with-arrow d-flex justify-content-between align-items-center">
+                                <span className="product-accordion-heading">
                                     <i className="fa-solid fa-th-large me-2"></i>
                                     Tipos de rejas para ventanas
                                 </span>
                                 <i className="fa-solid fa-chevron-down arrow-icon"></i>
                             </label>
                             <h2 className="visually-hidden">Tipos de rejas para ventanas</h2>
-                            <div className="accordion-content">
+                            <div className="accordion-content product-accordion-body">
                                 <h4 className="h3-categories">Rejas para ventanas modernas</h4>
                                 <p>Las <strong>rejas para ventanas modernas</strong> han experimentado una transformación en su estilo y materiales, siguiendo líneas más <strong>sencillas</strong> siendo igual de <strong>bonitas</strong>, ofreciendo un equilibrio perfecto entre <b>seguridad y estética</b>.</p>
                                 <p>Aunque el hierro sigue siendo el material predominante, se han incorporado otros materiales, como el acero inoxidable, para satisfacer las necesidades cambiantes de los propietarios.</p>
