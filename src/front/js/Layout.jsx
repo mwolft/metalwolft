@@ -86,7 +86,7 @@ const Layout = () => {
                 {/*<MaintenancePopup />*/}
                 <CookieBanner />
                 <MainNavbar />
-                <div id="main-content" className="d-flex flex-column bg-white" style={{ margin: '0px', padding: '0px' }}>
+                <div id="main-content" className="d-flex flex-column flex-grow-1 bg-white" style={{ margin: '0px', padding: '0px' }}>
                     <Routes>
                         <Route path="/" element={<Home />} />
                         <Route path="/carrusel" element={<Carrusel />} />

@@ -238,7 +238,7 @@ export const ProductDetail = () => {
         // reset
         setHeight('');
         setWidth('');
-        setMounting('Sin obra: con pletinas');
+        setMounting('Sin obra: con agujeros interiores');
         setColor('satinado_blanco');
         setCalculatedPrice(null);
         setCalculatedArea(null);
