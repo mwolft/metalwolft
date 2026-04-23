@@ -149,9 +149,9 @@ export const MainNavbar = () => {
                                 title={
                                     <>
                                         <span className="d-lg-none">
-                                            <i className="fa-solid fa-box me-2"></i> Productos
+                                            <i className="fa-solid fa-box me-2"></i> Catálogo
                                         </span>
-                                        <span className="d-none d-lg-inline">Productos</span>
+                                        <span className="d-none d-lg-inline">Catálogo</span>
                                     </>
                                 }
                                 id="trainer-nav-dropdown"
@@ -259,6 +259,48 @@ export const MainNavbar = () => {
                                     </span>
                                 </Nav.Link>
                             )}
+
+                            <div className="navbar-mobile-support">
+                                <div className="navbar-mobile-support-title">Ayuda rápida</div>
+
+                                <div className="navbar-mobile-support-links">
+                                    <Nav.Link
+                                        href="https://wa.me/34634112604"
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        onClick={handleSelect}
+                                        className="navbar-mobile-support-link"
+                                    >
+                                        <span className="navbar-mobile-support-label">
+                                            <i className="fa-brands fa-whatsapp"></i>
+                                            WhatsApp
+                                        </span>
+                                    </Nav.Link>
+
+                                    <Nav.Link
+                                        href="tel:+34634112604"
+                                        onClick={handleSelect}
+                                        className="navbar-mobile-support-link"
+                                    >
+                                        <span className="navbar-mobile-support-label">
+                                            <i className="fa-solid fa-phone"></i>
+                                            Llamar
+                                        </span>
+                                    </Nav.Link>
+
+                                    <Nav.Link
+                                        as={Link}
+                                        to="/contact"
+                                        onClick={handleSelect}
+                                        className="navbar-mobile-support-link"
+                                    >
+                                        <span className="navbar-mobile-support-label">
+                                            <i className="fa-regular fa-envelope"></i>
+                                            Contacto
+                                        </span>
+                                    </Nav.Link>
+                                </div>
+                            </div>
                         </Nav>
 
                         <Nav className="navbar-secondary-nav ms-auto d-none d-lg-flex" onSelect={handleSelect}>
