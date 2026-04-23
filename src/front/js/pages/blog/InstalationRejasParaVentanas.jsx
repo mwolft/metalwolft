@@ -127,7 +127,7 @@ export const InstalationRejasParaVentanas = () => {
                                     <i className="fa-regular fa-calendar mx-1" style={{ color: '#ff324d' }}></i> {new Date(currentPost.created_at).toLocaleDateString()}
                                     <i className="fa-regular fa-comments mx-1" style={{ color: '#ff324d', paddingLeft: '10px' }}></i> {currentComments?.length || 0} Comentarios
                                 </p>
-                                <img src="https://res.cloudinary.com/dewanllxn/image/upload/v1733562840/rejas-de-seguridad-para-ventanas_buzhg0.avif" alt="instalacion de rejas para ventanas" className="img-fluid my-3" />
+                                <img src="https://res.cloudinary.com/dewanllxn/image/upload/v1733562840/rejas-de-seguridad-para-ventanas_buzhg0.avif" alt="instalacion de rejas para ventanas" className="img-fluid my-3 post-hero-image" />
                             </div>
                         )}
                         <div className="blog-text">

@@ -88,9 +88,9 @@ export const BlogListPage = () => {
                 )}
             </Helmet>
             {/*<Breadcrumb />*/}
-            <div className="container-fluid" style={{ marginTop: '60px' }}>
+            <div className="container-fluid blog-list-page" style={{ marginTop: '60px' }}>
                 <h1 className='h1-categories mx-5'>Blog</h1>
-                <div className="row" style={{ margin: '8px 8px', backgroundSize: 'cover' }}>
+                <div className="row blog-list-row" style={{ margin: '8px 8px', backgroundSize: 'cover' }}>
                     {posts.map(post => (
                         <div
                             className="card-blog col-12 col-sm-12 col-md-4 col-lg-4 col-xl-4 mb-4"
@@ -114,7 +114,7 @@ export const BlogListPage = () => {
                                     <i className="fa-regular fa-comments" style={{ color: '#ff324d' }}></i> {store.currentComments?.filter(comment => comment.post_id === post.id).length || 0} Comentarios
                                 </div>
                             </div>
-                            <p className='p-content'>{post.content.substring(0, 100)}...</p>
+                            <p className='p-content'>{post.content.substring(0, 140)}...</p>
                             <Link className="slug" to={`/${post.slug}`}>Leer más</Link>
                         </div>
                     ))}

@@ -142,7 +142,7 @@ export const RecepcionPedidosRevisarAntesFirmar = () => {
                                 <img
                                     src="https://res.cloudinary.com/dewanllxn/image/upload/v1757832270/recepcion-pedidos-revisar-antes-firmar-open_yu5oqv.avif"
                                     alt="Recepción de pedidos y revisión de daños"
-                                    className="img-fluid my-3"
+                                    className="img-fluid my-3 post-hero-image"
                                 />
                             </div>
                         ) : (

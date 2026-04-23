@@ -131,7 +131,7 @@ export const RejasParaVentanasModernas = () => {
                                 <img
                                     src="https://res.cloudinary.com/dewanllxn/image/upload/v1760282425/rejas-para-ventanas-modernas_rdp46a.avif"
                                     alt="rejas para ventanas modernas"
-                                    className="img-fluid my-3"
+                                    className="img-fluid my-3 post-hero-image"
                                 />
                             </div>
                         )}

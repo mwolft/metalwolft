@@ -34,6 +34,11 @@
 .post-page{
     padding: 20px;
 }
+.post-page .post-hero-image{
+    width: 100%;
+    height: auto;
+    display: block;
+}
 .blog-text{
     color: rgb(90, 90, 90);
 }
@@ -82,11 +87,20 @@
 }
 
 .h2-title-blog {
-    font-size: 1rem;
-    margin-top: 1rem;
-    margin: 15px;
+    font-size: 1.08rem;
+    line-height: 1.35;
+    font-weight: 700;
+    margin: 18px 16px 12px;
     text-decoration: none;
     color: inherit; 
+}
+.image-link {
+    display: block;
+    aspect-ratio: 4 / 3;
+    overflow: hidden;
+    border-radius: 14px 14px 12px 12px;
+    border: solid 1px rgb(191, 191, 191);
+    background-color: #f6f6f6;
 }
 .image-link img {
     transition: transform 0.3s ease; 
@@ -98,32 +112,47 @@
 .p-coments {
     display: flex;
     justify-content: flex-start;
+    flex-wrap: wrap;
+    gap: 8px 16px;
+    padding: 0 16px;
+    margin-bottom: 10px;
 }
 .p-comments-single{
-    font-size: 0.7rem;
-    margin-left: 15px;
+    font-size: 0.76rem;
+    margin-left: 0;
     color: rgb(90, 90, 90);
 }
 
 .p-content{
-    font-size: 0.8rem;
-    margin: 15px;
+    font-size: 0.88rem;
+    line-height: 1.65;
+    color: rgb(90, 90, 90);
+    margin: 0 16px 14px;
 }
 .slug{
-    font-size: .7rem;
+    font-size: .78rem;
     font-style: italic;
+    font-weight: 600;
     color: #ff324d;
-    margin: 15px;
+    margin: 0 16px 16px;
+    display: inline-block;
 }
 .card-blog{
     margin: 0;
-    padding: 30px;
-    border-radius: 10px;
-    padding-bottom: 15px;
+    padding: 22px;
+    padding-bottom: 16px;
+    border-radius: 18px;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
 }
 .img-blog{
-    border-radius: 10px 10px 0 0;
-    border: solid 1px rgb(191, 191, 191);
+    width: 100%;
+    height: 100%;
+    display: block;
+    object-fit: cover;
+    border-radius: 0;
+    border: none;
 }
 /* Singles Pages */
 h1{
@@ -175,10 +204,46 @@ h1{
     .post-page{
       padding: 50px;
     }
+    .h2-title-blog {
+        font-size: 1.14rem;
+    }
+    .p-content{
+        font-size: 0.92rem;
+    }
+    .p-comments-single{
+        font-size: 0.8rem;
+    }
+    .slug{
+        font-size: .82rem;
+    }
   }
   /* ----- Pantallas muy grandes (desktops grandes) ----- */
   @media (min-width: 1200px) {
     .post-page{
         padding: 50px;
       }
+    .blog-list-row {
+        justify-content: center;
+    }
+    .card-blog{
+        max-width: 500px;
+        padding: 24px;
+    }
+    .image-link {
+        aspect-ratio: 16 / 10;
+    }
+    .h2-title-blog {
+        font-size: 1.22rem;
+        margin: 20px 18px 12px;
+    }
+    .p-coments {
+        padding: 0 18px;
+    }
+    .p-content{
+        font-size: 0.96rem;
+        margin: 0 18px 16px;
+    }
+    .slug{
+        margin: 0 18px 18px;
+    }
   }

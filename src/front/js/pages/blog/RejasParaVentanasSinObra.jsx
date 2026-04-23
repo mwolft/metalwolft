@@ -138,7 +138,7 @@ export const RejasParaVentanasSinObra = () => {
                                 <img
                                     src="https://res.cloudinary.com/dewanllxn/image/upload/v1760282424/rejas-para-ventanas-sin-obra_s8mzho.avif"
                                     alt="rejas para venanas sin obra"
-                                    className="img-fluid my-3"
+                                    className="img-fluid my-3 post-hero-image"
                                 />
                             </div>
                         )}

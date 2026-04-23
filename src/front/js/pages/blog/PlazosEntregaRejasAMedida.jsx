@@ -122,7 +122,7 @@ export const PlazosEntregaRejasAMedida = () => {
                                 <img
                                     src="https://res.cloudinary.com/dewanllxn/image/upload/v1753776840/plazos-de-entrega-rejas-para-ventanas_v48rm7.avif"
                                     alt="plazos de entrega de rejas para ventanas"
-                                    className="img-fluid my-3"
+                                    className="img-fluid my-3 post-hero-image"
                                 />
                             </div>
                         )}
