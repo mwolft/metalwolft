@@ -500,25 +500,22 @@ export const ProductDetail = () => {
 
                 <Row className="justify-content-center">
                     {/* Columna de imágenes: 12 en xs, 5 en lg, centrada */}
-                    <Col xs={12} lg={5} className="product-gallery-column d-flex flex-column align-items-center">
-                        <div className="product-gallery-frame">
-                            <Carousel activeIndex={currentIndex} onSelect={handleSelect} className="w-100 product-gallery-carousel">
-                                {allImages.map((img, i) => (
-                                    <Carousel.Item key={i}>
-                                        <div className="product-gallery-slide">
-                                            <img
-                                                src={img.image_url}
-                                                alt={product.nombre}
-                                                width="540"
-                                                height="600"
-                                                className="d-block img-fluid product-gallery-image"
-                                            />
-                                        </div>
-                                    </Carousel.Item>
-                                ))}
-                            </Carousel>
-                        </div>
-                        <div className="product-gallery-thumbnails thumbnail-gallery">
+                    <Col xs={12} lg={5} className="d-flex flex-column align-items-center">
+                        <Carousel activeIndex={currentIndex} onSelect={handleSelect} className="w-100">
+                            {allImages.map((img, i) => (
+                                <Carousel.Item key={i}>
+                                    <img
+                                        src={img.image_url}
+                                        alt={product.nombre}
+                                        width="540"
+                                        height="600"
+                                        className="d-block img-fluid"
+                                        style={{ borderRadius: '5px', objectFit: 'cover' }}
+                                    />
+                                </Carousel.Item>
+                            ))}
+                        </Carousel>
+                        <div className="thumbnail-gallery d-flex justify-content-center mt-3">
                             {allImages.map((img, i) => (
                                 <img
                                     key={i}
@@ -526,7 +523,8 @@ export const ProductDetail = () => {
                                     alt={product.nombre}
                                     width="72"
                                     height="80"
-                                    className={`product-gallery-thumb ${currentIndex === i ? 'active-thumbnail' : ''}`}
+                                    className={`img-thumbnail mx-1 ${currentIndex === i ? 'active-thumbnail' : ''}`}
+                                    style={{ cursor: 'pointer', objectFit: 'cover' }}
                                     onClick={() => setCurrentIndex(i)}
                                 />
                             ))}
