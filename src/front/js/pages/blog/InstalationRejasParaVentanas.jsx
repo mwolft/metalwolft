@@ -118,6 +118,13 @@ export const InstalationRejasParaVentanas = () => {
                 )}
             </Helmet>
             <Container className='post-page' style={{ marginTop: '20px' }}>
+                <Breadcrumb
+                    items={[
+                        { label: "Inicio", to: "/" },
+                        { label: "Blog", to: "/blogs" },
+                        { label: currentPost?.title || "Artículo" }
+                    ]}
+                />
                 <Row>
                     <Col xl={9}>
                         {currentPost && (

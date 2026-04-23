@@ -21,6 +21,7 @@ import { Helmet } from 'react-helmet-async';
 import '../../styles/cards-carrusel.css';
 import { WhatsAppWidget } from "../component/WhatsAppWidget.jsx";
 import DeliveryEstimate from "../component/DeliveryEstimate.jsx"
+import { Breadcrumb } from "../component/Breadcrumb.jsx";
 
 export const ProductDetail = () => {
     const { store, actions } = useContext(Context);
@@ -405,6 +406,14 @@ export const ProductDetail = () => {
     return (
         <div className="product-page-wrapper">
             <Container style={{ marginTop: '100px', marginBottom: '0' }}>
+                <Breadcrumb
+                    items={[
+                        { label: "Inicio", to: "/" },
+                        { label: "Catálogo" },
+                        { label: categoryName, to: `/${category_slug}` },
+                        { label: product?.nombre || product_slug.replaceAll("-", " ") }
+                    ]}
+                />
                 {seoData && (
                     <Helmet htmlAttributes={{ lang: seoData.lang || "es" }}>
                         {/* TITLE */}

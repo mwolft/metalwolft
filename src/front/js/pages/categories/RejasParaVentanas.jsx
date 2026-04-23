@@ -128,8 +128,14 @@ export const RejasParaVentanas = ({ onSelectCategory, onSelectSubcategory, categ
                 )}
             </Helmet>
             {/* <MaintenancePopup /> */}
-            {/* <Breadcrumb /> */}
             <div className="container" style={{ marginTop: "100px" }}>
+                <Breadcrumb
+                    items={[
+                        { label: "Inicio", to: "/" },
+                        { label: "Catálogo" },
+                        { label: "Rejas para ventanas" }
+                    ]}
+                />
                 <div className="row">
                     <h1 className="h2-categories mb-4">Rejas para ventanas</h1>
                     {/*<SeasonalBanner />*/}

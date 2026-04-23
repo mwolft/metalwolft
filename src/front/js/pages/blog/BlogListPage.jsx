@@ -87,8 +87,15 @@ export const BlogListPage = () => {
                     <script type="application/ld+json">{JSON.stringify(metaData.json_ld)}</script>
                 )}
             </Helmet>
-            {/*<Breadcrumb />*/}
             <div className="container-fluid blog-list-page" style={{ marginTop: '60px' }}>
+                <div className="mx-3 mx-md-5 pt-3">
+                    <Breadcrumb
+                        items={[
+                            { label: "Inicio", to: "/" },
+                            { label: "Blog" }
+                        ]}
+                    />
+                </div>
                 <h1 className='h1-categories mx-5'>Blog</h1>
                 <div className="row blog-list-row" style={{ margin: '8px 8px', backgroundSize: 'cover' }}>
                     {posts.map(post => (

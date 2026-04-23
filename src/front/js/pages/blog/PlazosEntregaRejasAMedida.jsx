@@ -2,6 +2,7 @@ import React, { useEffect, useContext, useState } from "react";
 import { Helmet } from "react-helmet-async";
 import { Container, Row, Col, Form, Button, Alert } from 'react-bootstrap';
 import { Context } from '../../store/appContext.js';
+import { Breadcrumb } from "../../component/Breadcrumb.jsx";
 import { AsidePost } from "../../component/AsidePost.jsx";
 import { AsideOthersCategories } from "../../component/AsideOthersCategories.jsx";
 import { Link } from "react-router-dom";
@@ -110,6 +111,13 @@ export const PlazosEntregaRejasAMedida = () => {
                 )}
             </Helmet>
             <Container className='post-page' style={{ marginTop: '20px' }}>
+                <Breadcrumb
+                    items={[
+                        { label: "Inicio", to: "/" },
+                        { label: "Blog", to: "/blogs" },
+                        { label: currentPost?.title || "Artículo" }
+                    ]}
+                />
                 <Row>
                     <Col xl={9}>
                         {currentPost && (

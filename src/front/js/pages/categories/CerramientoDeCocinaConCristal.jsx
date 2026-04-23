@@ -84,8 +84,14 @@ export const CerramientoDeCocinaConCristal = () => {
                     </script>
                 )}
             </Helmet>
-            {/*<Breadcrumb />*/}
             <div className="container" style={{ marginTop: "100px" }}>
+                <Breadcrumb
+                    items={[
+                        { label: "Inicio", to: "/" },
+                        { label: "Catálogo" },
+                        { label: "Cerramiento de Cocina con Cristal" }
+                    ]}
+                />
                 <div className="row">
                     <h1 className="h2-categories mb-3">Cerramiento de Cocina con Cristal</h1>
                     <div className="col-12 col-lg-3 col-xl-3 order-1">

@@ -1,64 +1,64 @@
-.breadcrumb {
-    background-color: #f0f0f0;
-    margin-top: 65px;
-    min-height: 11rem;
+.mw-breadcrumb {
+    margin: 0 0 1rem;
+}
+
+.mw-breadcrumb-list {
     display: flex;
-    justify-content: left;
+    flex-wrap: wrap;
     align-items: center;
-}
-
-.h1-breadcrumb {
-    font-size: 2rem;
-    padding: 0 60px 0 60px;
+    gap: 0.35rem;
     margin: 0;
+    padding: 0;
+    list-style: none;
+    color: #6b7280;
+    font-size: 0.82rem;
+    line-height: 1.4;
 }
-.a-breadcrumb{
-    text-decoration: underline;
-    color: black;
+
+.mw-breadcrumb-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
 }
-.a-breadcrumb:hover{
+
+.mw-breadcrumb-item:not(:last-child)::after {
+    content: "/";
+    color: #c4cad3;
+}
+
+.mw-breadcrumb-link {
+    color: #5f6773;
+    text-decoration: none;
+    transition: color 0.2s ease;
+}
+
+.mw-breadcrumb-link:hover,
+.mw-breadcrumb-link:focus-visible {
     color: #ff324d;
-    text-decoration: underline;
+    text-decoration: none;
+    outline: none;
 }
 
-.p-breadcrumb, .span-bradcrumb,.a-breadcrumb {
-    font-size: .8rem;
-    margin-top: 25px;
+.mw-breadcrumb-text {
+    color: #6b7280;
 }
 
-@media (max-width: 575px) {
-    .p-breadcrumb {
-        margin-left: 60px;
-    }
-    .h1-breadcrumb{
-        margin-top: 20px;
-    }
-    .span-bradcrumb{
-        margin-bottom: 20px;
-    }
-    .breadcrumb{
-        height: 8rem;
-    }
-    .p-breadcrumb{
-       margin-top: 0px !important;
-    }
+.mw-breadcrumb-current {
+    color: #111827;
+    font-weight: 600;
 }
-/* ----- Pantallas medianas (tabletas) ----- */
-@media (min-width: 576px) and (max-width: 767px) {
-    .p-breadcrumb {
-        margin-left: 60px;
-    }
-    .h1-breadcrumb{
-        padding-top: 20px;
-    }
-}
-/* ----- Pantallas grandes (escritorios y laptops) ----- */
-@media (min-width: 768px) {
-    .p-breadcrumb {
-        margin-left: 60px;
-    }
-}
-/* ----- Pantallas muy grandes (desktops grandes) ----- */
-@media (min-width: 1200px) {
 
+@media (max-width: 575.98px) {
+    .mw-breadcrumb {
+        margin-bottom: 0.85rem;
+    }
+
+    .mw-breadcrumb-list {
+        font-size: 0.78rem;
+        gap: 0.28rem;
+    }
+
+    .mw-breadcrumb-item {
+        gap: 0.28rem;
+    }
 }
