@@ -644,45 +644,51 @@ export const ProductDetail = () => {
                                             <OverlayTrigger
                                                 trigger={['hover', 'focus']}
                                                 placement={determinePlacement()}
+                                                container={typeof document !== 'undefined' ? document.body : undefined}
+                                                popperConfig={{
+                                                    strategy: "fixed",
+                                                    modifiers: [
+                                                        { name: "offset", options: { offset: [0, 12] } },
+                                                        { name: "flip", options: { fallbackPlacements: ["left", "top", "bottom"] } },
+                                                        { name: "preventOverflow", options: { boundary: "viewport", padding: 16 } },
+                                                        { name: "computeStyles", options: { adaptive: false } }
+                                                    ]
+                                                }}
                                                 overlay={
-                                                    <Popover id="popover-install">
+                                                    <Popover id="popover-install" className="installation-popover">
                                                         <Popover.Header as="h3">Instalación</Popover.Header>
-                                                        <Popover.Body style={{ maxWidth: '300px', overflowX: 'hidden' }}>
+                                                        <Popover.Body>
                                                             <p><b>Sin obra:</b> con pletinas.</p>
                                                             <img
                                                                 src="https://res.cloudinary.com/dewanllxn/image/upload/v1738176285/agujeros-en-pletinas_tlosu0.png"
                                                                 alt="pletinas"
-                                                                // --- CAMBIO 2: Asegurar max-width: 100% y height: auto ---
                                                                 width="1140"
                                                                 height="536"
-                                                                style={{ width: '100%', height: 'auto', marginBottom: '10px', display: 'block' }}
+                                                                className="installation-popover-image"
                                                             />
                                                             <p><b>Sin obra:</b> con agujeros interiores.</p>
                                                             <img
                                                                 src="https://res.cloudinary.com/dewanllxn/image/upload/v1738176285/agujeros-interiores_xa0onj.png"
                                                                 alt="interiores"
-                                                                // --- CAMBIO 2: Asegurar max-width: 100% y height: auto ---
                                                                 width="1140"
                                                                 height="536"
-                                                                style={{ width: '100%', height: 'auto', marginBottom: '10px', display: 'block' }}
+                                                                className="installation-popover-image"
                                                             />
                                                             <p><b>Sin obra:</b> con agujeros frontales.</p>
                                                             <img
                                                                 src="https://res.cloudinary.com/dewanllxn/image/upload/v1738176286/agujeros-frontales_low9pi.png"
                                                                 alt="frontales"
-                                                                // --- CAMBIO 2: Asegurar max-width: 100% y height: auto ---
                                                                 width="1140"
                                                                 height="536"
-                                                                style={{ width: '100%', height: 'auto', marginBottom: '10px', display: 'block' }}
+                                                                className="installation-popover-image"
                                                             />
                                                             <p><b>Con obra:</b> con garras metálicas.</p>
                                                             <img
                                                                 src="https://res.cloudinary.com/dewanllxn/image/upload/v1734888241/rejas-para-ventanas-sin-obra_wukdzi.png"
                                                                 alt="garras"
-                                                                // --- CAMBIO 2: Asegurar max-width: 100% y height: auto ---
                                                                 width="1140"
                                                                 height="536"
-                                                                style={{ width: '100%', height: 'auto', marginBottom: '10px', display: 'block' }}
+                                                                className="installation-popover-image"
                                                             />
                                                         </Popover.Body>
                                                     </Popover>

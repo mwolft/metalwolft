@@ -49,6 +49,32 @@ body, html {
 .popover-hint.bs-popover-bottom .popover-arrow::before {
   border-bottom-color: #052C65 !important; 
 }
+.installation-popover {
+  width: min(320px, calc(100vw - 32px));
+  max-width: min(320px, calc(100vw - 32px));
+}
+.installation-popover .popover-header {
+  padding: 0.85rem 1rem;
+  font-size: 0.95rem;
+  font-weight: 700;
+}
+.installation-popover .popover-body {
+  max-height: min(70vh, 540px);
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
+  padding: 0.9rem 1rem;
+}
+.installation-popover .popover-body p {
+  margin-bottom: 0.55rem;
+}
+.installation-popover-image {
+  width: 100%;
+  height: auto;
+  display: block;
+  margin-bottom: 0.85rem;
+  border-radius: 8px;
+}
 .footer-trust img {
   opacity: 0.85;
   transition: opacity 0.3s ease;
