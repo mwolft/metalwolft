@@ -46,6 +46,30 @@ export const MainNavbar = () => {
         setExpanded(false);
     };
 
+    const productMenuGroups = [
+        {
+            title: "Rejas",
+            items: [
+                { to: "/rejas-para-ventanas", label: "Rejas para ventanas" }
+            ]
+        },
+        {
+            title: "Exterior",
+            items: [
+                { to: "/vallados-metalicos-exteriores", label: "Vallados metálicos" },
+                { to: "/puertas-peatonales-metalicas", label: "Puertas peatonales" },
+                { to: "/puertas-correderas-exteriores", label: "Puertas correderas exteriores" }
+            ]
+        },
+        {
+            title: "Interior",
+            items: [
+                { to: "/puertas-correderas-interiores", label: "Puertas correderas interiores" },
+                { to: "/cerramientos-de-cocina-con-cristal", label: "Cerramientos con cristal" }
+            ]
+        }
+    ];
+
     return (
         <>
             <div className="top-banner">
@@ -124,32 +148,49 @@ export const MainNavbar = () => {
                             <NavDropdown
                                 title={
                                     <>
-                                <span className="d-lg-none">
-                                    <i className="fa-solid fa-box me-2"></i> Productos
-                                </span>
+                                        <span className="d-lg-none">
+                                            <i className="fa-solid fa-box me-2"></i> Productos
+                                        </span>
                                         <span className="d-none d-lg-inline">Productos</span>
                                     </>
                                 }
                                 id="trainer-nav-dropdown"
+                                className="products-dropdown-menu"
                             >
-                                <NavDropdown.Item as={Link} to="/rejas-para-ventanas" onClick={handleSelect}>
-                                    Rejas para Ventanas
-                                </NavDropdown.Item>
-                                <NavDropdown.Item as={Link} to="/vallados-metalicos-exteriores" onClick={handleSelect}>
-                                    Vallados Metálicos Exteriores
-                                </NavDropdown.Item>
-                                <NavDropdown.Item as={Link} to="/puertas-peatonales-metalicas" onClick={handleSelect}>
-                                    Puertas Peatonales Metálicas
-                                </NavDropdown.Item>
-                                <NavDropdown.Item as={Link} to="/puertas-correderas-exteriores" onClick={handleSelect}>
-                                    Puertas Correderas Exteriores
-                                </NavDropdown.Item>
-                                <NavDropdown.Item as={Link} to="/cerramientos-de-cocina-con-cristal" onClick={handleSelect}>
-                                    Cerramientos de Cocina con Cristal
-                                </NavDropdown.Item>
-                                <NavDropdown.Item as={Link} to="/puertas-correderas-interiores" onClick={handleSelect}>
-                                    Puertas Correderas Interiores
-                                </NavDropdown.Item>
+                                <div className="products-mega-menu-grid d-none d-lg-grid">
+                                    {productMenuGroups.map((group) => (
+                                        <div className="products-mega-group" key={group.title}>
+                                            <div className="products-mega-group-title">{group.title}</div>
+                                            <div className="products-mega-links">
+                                                {group.items.map((item) => (
+                                                    <NavDropdown.Item
+                                                        as={Link}
+                                                        to={item.to}
+                                                        onClick={handleSelect}
+                                                        className="products-mega-link"
+                                                        key={item.to}
+                                                    >
+                                                        {item.label}
+                                                    </NavDropdown.Item>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+
+                                <div className="d-lg-none">
+                                    {productMenuGroups.flatMap((group) => group.items).map((item) => (
+                                        <NavDropdown.Item
+                                            as={Link}
+                                            to={item.to}
+                                            onClick={handleSelect}
+                                            className="products-mobile-link"
+                                            key={item.to}
+                                        >
+                                            {item.label}
+                                        </NavDropdown.Item>
+                                    ))}
+                                </div>
                             </NavDropdown>
 
                             <Nav.Link as={Link} to="/blogs" onClick={handleSelect}>
