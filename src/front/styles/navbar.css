@@ -1,125 +1,311 @@
 /* ----- START NAVBAR ----- */
 
-
 .top-banner {
-    position: fixed; 
+    position: fixed;
     top: 0;
-    width: 100%;
-    z-index: 1050; 
-    font-size: 0.9rem;
-    color: #ffffff; 
-    background-color: #ff324d;
-    text-align: center;
-    padding: 0.5rem 0;
-}
-
-
-.estilo-navbar {
-    position: fixed; 
-    top: 36px; 
-    width: 100%;
-    z-index: 1100; 
-    background-color: white;
-    margin: 0;
-    padding: 5px 0;
-}
-
-/* Estilo del navbar */
-.navbar-brand img {
-    max-height: 3rem;
-    margin-right: 20px;
-}
-.navbar-brand {
-    margin-right: 0;
-}
-.button-navbar {
-    border: #ff324d solid 2px;
-    border-radius: 10px;
-    padding: 6px 20px !important;
-}
-.button-navbar:hover {
-    padding: 5px 10px !important;
-    border-radius: 10px;
-}
-.nav-link {
-    font-weight: 400;
-    font-size: 0.9rem;
-    color: #000 !important;
-    padding: 5px 10px !important;
-    margin-left: 2.2rem;
-    text-decoration: none;
-}
-.navbar-toggler {
-    margin-right: 1px !important;
-    margin-left: 2px !important;
-}
-.nav-link:hover {
-    color: #ff324d !important;
-}
-button.btn-outline-dark i {
-    font-size: 1.5rem;
-}
-#user-nav-dropdown .dropdown-menu {
+    left: 0;
     right: 0;
-    left: auto;
-}
-.favorites-badge, .cart-badge {
-    background-color: #ff324d !important;
-    top: -10px;
-    left: 15px;
-    position: absolute;
-    transform: translate(40%, 30%);
-    font-size: 0.8rem;
-    width: 20px;
-    height: 20px;
+    z-index: 1050;
+    min-height: 36px;
     display: flex;
     align-items: center;
     justify-content: center;
-}
-.navbar-toggler + .d-flex {
-    display: flex;
-    align-items: center;
-    margin-right: 1rem;
+    gap: 0.45rem;
+    padding: 0.45rem 1rem;
+    background-color: #ff324d;
+    color: #ffffff;
+    font-size: 0.84rem;
+    font-weight: 500;
+    line-height: 1.2;
+    text-align: center;
 }
 
-/* Iconos junto a la hamburguesa en pantallas pequeñas */
+.top-banner-copy {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.top-banner-info {
+    width: 1.35rem;
+    height: 1.35rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: none;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.16);
+    color: #ffffff;
+    cursor: pointer;
+    font-size: 0.78rem;
+    line-height: 1;
+    padding: 0;
+    transition: background-color 0.2s ease, transform 0.2s ease;
+}
+
+.top-banner-info:hover,
+.top-banner-info:focus-visible {
+    background: rgba(255, 255, 255, 0.24);
+    transform: translateY(-1px);
+    outline: none;
+}
+
+.estilo-navbar {
+    position: fixed;
+    top: 36px;
+    left: 0;
+    right: 0;
+    width: 100%;
+    z-index: 1100;
+    background: rgba(255, 255, 255, 0.96);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid #eef1f4;
+    box-shadow: 0 6px 18px rgba(15, 23, 42, 0.04);
+    margin: 0;
+    padding: 0.45rem 0;
+}
+
+.navbar-shell {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.navbar-brand {
+    margin-right: 0;
+    padding-top: 0;
+    padding-bottom: 0;
+}
+
+.navbar-logo {
+    width: auto;
+    max-height: 2.95rem;
+    display: block;
+}
+
+.navbar-collapse-shell {
+    align-items: center;
+}
+
+.navbar-primary-nav {
+    align-items: center;
+    gap: 0.2rem;
+}
+
+.navbar-secondary-nav {
+    align-items: center;
+    gap: 0.15rem;
+}
+
+.estilo-navbar .nav-link,
+.estilo-navbar .dropdown-toggle {
+    margin-left: 0;
+    padding: 0.65rem 0.9rem !important;
+    border-radius: 999px;
+    color: #111827 !important;
+    font-size: 0.92rem;
+    font-weight: 500;
+    line-height: 1.2;
+    text-decoration: none;
+    transition: color 0.2s ease, background-color 0.2s ease;
+}
+
+.estilo-navbar .nav-link:hover,
+.estilo-navbar .nav-link:focus-visible,
+.estilo-navbar .dropdown-toggle:hover,
+.estilo-navbar .dropdown-toggle:focus-visible {
+    color: #ff324d !important;
+    background-color: rgba(255, 50, 77, 0.06);
+    outline: none;
+}
+
+.estilo-navbar .dropdown-menu {
+    border: 1px solid #e7eaef;
+    border-radius: 16px;
+    padding: 0.45rem;
+    box-shadow: 0 18px 40px rgba(15, 23, 42, 0.08);
+}
+
+.estilo-navbar .dropdown-item {
+    padding: 0.65rem 0.8rem;
+    border-radius: 10px;
+    font-size: 0.9rem;
+}
+
+.estilo-navbar .dropdown-item:hover,
+.estilo-navbar .dropdown-item:focus-visible {
+    color: #ff324d;
+    background: #fff3f6;
+    outline: none;
+}
+
+.navbar-icon-link {
+    width: 44px;
+    height: 44px;
+    display: inline-flex !important;
+    align-items: center;
+    justify-content: center;
+    padding: 0 !important;
+}
+
+.navbar-icon-link i {
+    font-size: 1.12rem;
+}
+
+.favorites-badge,
+.cart-badge {
+    position: absolute;
+    top: 5px;
+    right: 3px;
+    left: auto;
+    transform: translate(40%, -35%);
+    width: 18px;
+    height: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    background-color: #ff324d !important;
+    color: #ffffff;
+    font-size: 0.66rem;
+    border-radius: 999px;
+}
+
+.button-navbar {
+    border: 1.5px solid #ff324d;
+    border-radius: 999px;
+    padding: 0.6rem 1rem !important;
+    color: #ff324d !important;
+    font-weight: 600;
+    transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+}
+
+.button-navbar:hover,
+.button-navbar:focus-visible {
+    color: #d6334c !important;
+    border-color: #ff324d;
+    background: #fff3f6;
+    outline: none;
+}
+
+.navbar-login-copy {
+    white-space: nowrap;
+}
+
+.navbar-mobile-actions {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+}
+
+.navbar-mobile-toggle {
+    border: 1px solid #e5e7eb;
+    border-radius: 14px;
+    padding: 0.45rem 0.6rem;
+    box-shadow: none !important;
+}
+
+.navbar-mobile-toggle:focus-visible,
+.navbar-toggler:focus-visible {
+    box-shadow: 0 0 0 0.2rem rgba(255, 50, 77, 0.12);
+}
+
+.navbar-mobile-menu {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+    margin-top: 0.85rem;
+    padding-top: 0.85rem;
+    border-top: 1px solid #eef1f4;
+}
+
+.navbar-mobile-menu-link {
+    display: flex !important;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    padding: 0.85rem 0.95rem !important;
+    border-radius: 14px;
+}
+
+.navbar-mobile-menu-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.75rem;
+    font-size: 0.94rem;
+    font-weight: 500;
+}
+
+.navbar-inline-badge {
+    min-width: 1.35rem;
+    height: 1.35rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 0.35rem;
+    border-radius: 999px;
+    background: #ff324d;
+    color: #ffffff;
+    font-size: 0.72rem;
+    font-weight: 600;
+}
+
 @media (max-width: 991.98px) {
-    .navbar-toggler + .d-flex {
-        order: -1;
+    .top-banner {
+        font-size: 0.78rem;
+        padding: 0.45rem 0.75rem;
     }
-    .nav-link.d-lg-none {
-        margin-left: 0rem;
-        margin-right: 7px;
+
+    .navbar-logo {
+        max-height: 2.65rem;
     }
-    .navbar-brand img {
-        max-height: 2.8rem;
-        margin-right: 0px;
-        padding-left: 0rem;
+
+    .navbar-collapse-shell {
+        margin-top: 0.85rem;
+        padding-top: 0.85rem;
+        border-top: 1px solid #eef1f4;
     }
-    .nav-link.d-lg-none{
-        margin-right: 7px;
+
+    .navbar-primary-nav {
+        align-items: stretch;
+        gap: 0.15rem;
     }
-    #carrito{
-        margin-right: 7px;
+
+    .navbar-primary-nav .nav-link,
+    .navbar-primary-nav .dropdown-toggle {
+        width: 100%;
+        padding: 0.85rem 0.95rem !important;
+        border-radius: 14px;
     }
-}
-@media (max-width: 450px) {
-    .nav-link i.fa-heart, 
-    .nav-link .favorites-badge { 
-        display: none;
-        padding-left: 0 !important;
-    }
-}
-@media (max-width: 351px) {
-    .nav-link i.fa-cart-shopping, 
-    .nav-link .cart-badge, .fa-right-to-bracket { 
-        display: none;
-        padding-left: 0 !important;
-    }
-}
-@media (max-width: 305px) {
-    .navbar-brand{ 
-        display: none;
+
+    .navbar-primary-nav .dropdown-menu {
+        margin-top: 0.35rem;
+        box-shadow: none;
+        border-radius: 14px;
     }
 }
+
+@media (min-width: 992px) {
+    .navbar-collapse-shell {
+        display: flex !important;
+        align-items: center;
+    }
+
+    .navbar-primary-nav {
+        flex: 1 1 auto;
+        justify-content: center;
+    }
+}
+
+@media (max-width: 380px) {
+    .top-banner {
+        font-size: 0.72rem;
+    }
+
+    .navbar-logo {
+        max-height: 2.35rem;
+    }
+}
+
 /* ----- END NAVBAR ----- */

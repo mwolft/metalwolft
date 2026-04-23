@@ -1,12 +1,11 @@
 import React, { useContext, useState } from "react";
-/* import logoweb from "../../img/logo.png"; */
-import Container from 'react-bootstrap/Container';
-import Nav from 'react-bootstrap/Nav';
-import Navbar from 'react-bootstrap/Navbar';
-import NavDropdown from 'react-bootstrap/NavDropdown';
+import Container from "react-bootstrap/Container";
+import Nav from "react-bootstrap/Nav";
+import Navbar from "react-bootstrap/Navbar";
+import NavDropdown from "react-bootstrap/NavDropdown";
 import { useNavigate, Link } from "react-router-dom";
 import { Context } from "../store/appContext";
-import '../../styles/navbar.css';
+import "../../styles/navbar.css";
 
 export const MainNavbar = () => {
     const { store, actions } = useContext(Context);
@@ -16,10 +15,9 @@ export const MainNavbar = () => {
     const displayName = (() => {
         const fn = store.currentUser?.firstname?.trim();
         if (fn) return fn;
-        const emailUser = store.currentUser?.email?.split('@')?.[0];
-        return emailUser || 'Usuario';
+        const emailUser = store.currentUser?.email?.split("@")?.[0];
+        return emailUser || "Usuario";
     })();
-
 
     const handleLogout = () => {
         actions.setIsLoged(false);
@@ -32,32 +30,43 @@ export const MainNavbar = () => {
 
     const handleFavoritesClick = () => {
         if (store.isLoged) {
-            navigate('/favoritos');
+            navigate("/favoritos");
         } else {
-            alert('Debe registrarse para ver los favoritos');
+            alert("Debe registrarse para ver los favoritos");
         }
     };
 
+    const handleLoginClick = () => {
+        setExpanded(false);
+        navigate("/login");
+    };
+
+    const handleMobileFavoritesClick = () => {
+        handleFavoritesClick();
+        setExpanded(false);
+    };
 
     return (
         <>
-            <div className="top-banner text-center py-2">
-                🚚 Envío gratis a partir de 150€{" "}
-                <span
-                    style={{ cursor: 'pointer' }}
+            <div className="top-banner">
+                <span className="top-banner-copy">Envío gratis a partir de 150€</span>
+                <button
+                    type="button"
+                    className="top-banner-info"
                     title="Haz clic para más info"
+                    aria-label="Más información sobre envíos"
                     onClick={() =>
                         alert(
-                            `🚚 Información sobre envíos especiales.\n\n` +
+                            `Información sobre envíos especiales.\n\n` +
                             `Se aplica una tarifa especial cuando:\n` +
-                            `• El lado más largo supera los 175 cm, o\n` +
-                            `• La suma de las dimensiones (alto + ancho + fondo) supera los 300 cm.\n\n` +
+                            `- El lado más largo supera los 175 cm, o\n` +
+                            `- La suma de las dimensiones (alto + ancho + fondo) supera los 300 cm.\n\n` +
                             `Los productos que cumplen estas condiciones tendrán un coste de envío especial.`
                         )
                     }
                 >
-                    ℹ️
-                </span>
+                    <i className="fa-solid fa-circle-info" aria-hidden="true"></i>
+                </button>
             </div>
 
             <Navbar
@@ -66,9 +75,8 @@ export const MainNavbar = () => {
                 data-bs-theme="light"
                 expanded={expanded}
             >
-                <Container fluid>
+                <Container fluid className="navbar-shell">
                     <Navbar.Brand as={Link} to="/" onClick={handleSelect}>
-                        {/* <img src={logoweb} alt="Logo" className="d-inline-block align-top" /> */}
                         <img
                             src="https://res.cloudinary.com/dewanllxn/image/upload/v1750127736/logo-metal-wolft_zlbzng.avif"
                             alt="rejas para ventanas logo"
@@ -79,34 +87,16 @@ export const MainNavbar = () => {
                         />
                     </Navbar.Brand>
 
-                    {/* Iconos visibles SOLO en móvil */}
-                    <div className="d-flex align-items-center justify-content-center">
-
-                        {/* Favoritos */}
-                        <Nav.Link
-                            onClick={handleFavoritesClick}
-                            className="d-flex align-items-center position-relative d-lg-none"
-                            aria-label="Favoritos"
-                        >
-                            <i className="fa-regular fa-heart fa-lg"></i>
-                            {store.isLoged && (
-                                <span className="position-absolute badge rounded-pill bg-danger favorites-badge">
-                                    {store.favorites.length}
-                                    <span className="visually-hidden">favoritos</span>
-                                </span>
-                            )}
-                        </Nav.Link>
-
-                        {/* Carrito */}
+                    <div className="navbar-mobile-actions d-flex d-lg-none">
                         <Nav.Link
                             as={Link}
                             to="/cart"
-                            className="d-flex align-items-center position-relative d-lg-none"
+                            className="navbar-icon-link position-relative"
                             aria-label="Carrito"
                             onClick={handleSelect}
                             id="carrito"
                         >
-                            <i className="fa-solid fa-cart-shopping fa-lg"></i>
+                            <i className="fa-solid fa-cart-shopping"></i>
                             {store.isLoged && (
                                 <span className="position-absolute badge rounded-pill bg-danger cart-badge">
                                     {store.cart.length}
@@ -115,24 +105,15 @@ export const MainNavbar = () => {
                             )}
                         </Nav.Link>
 
-                        {/* Usuario solo si NO está logado */}
-                        {!store.isLoged && (
-                            <Nav.Link
-                                onClick={() => { setExpanded(false); navigate("/login"); }}
-                                className="d-flex align-items-center d-lg-none iniciar-sesion"
-                                aria-label="Iniciar sesión"
-                            >
-                                <i className="fa-regular fa-user fa-lg"></i>
-                            </Nav.Link>
-                        )}
-
-                        <Navbar.Toggle aria-controls="basic-navbar-nav" onClick={handleToggle} />
+                        <Navbar.Toggle
+                            aria-controls="basic-navbar-nav"
+                            onClick={handleToggle}
+                            className="navbar-mobile-toggle"
+                        />
                     </div>
 
-
-
-                    <Navbar.Collapse id="basic-navbar-nav">
-                        <Nav className="m-auto" onSelect={handleSelect}>
+                    <Navbar.Collapse id="basic-navbar-nav" className="navbar-collapse-shell">
+                        <Nav className="navbar-primary-nav mx-auto" onSelect={handleSelect}>
                             <Nav.Link as={Link} to="/" onClick={handleSelect}>
                                 <span className="d-lg-none">
                                     <i className="fa-solid fa-house me-2"></i> Inicio
@@ -140,13 +121,12 @@ export const MainNavbar = () => {
                                 <span className="d-none d-lg-inline">Inicio</span>
                             </Nav.Link>
 
-
                             <NavDropdown
                                 title={
                                     <>
-                                        <span className="d-lg-none">
-                                            <i className="fa-solid fa-box me-2"></i> Productos
-                                        </span>
+                                <span className="d-lg-none">
+                                    <i className="fa-solid fa-box me-2"></i> Productos
+                                </span>
                                         <span className="d-none d-lg-inline">Productos</span>
                                     </>
                                 }
@@ -178,47 +158,75 @@ export const MainNavbar = () => {
                                 </span>
                                 <span className="d-none d-lg-inline">Blog</span>
                             </Nav.Link>
-
-
-                            {/* En MÓVIL añadimos opciones de cuenta dentro del menú colapsado */}
-                            <div className="d-lg-none">
-                                <hr className="my-2" />
-                                {store.isLoged ? (
-                                    <>
-                                        <Nav.Link as={Link} to="/mi-cuenta" onClick={handleSelect}>
-                                            <i className="fa-regular fa-id-card me-2"></i> Mi cuenta
-                                        </Nav.Link>
-
-                                        {store.currentUser?.is_admin && (
-                                            <Nav.Link
-                                                as={Link}
-                                                to="/admin"
-                                                onClick={handleSelect}
-                                            >
-                                                <i className="fa-solid fa-toolbox" style={{ marginRight: '9px' }}></i> Admin
-                                            </Nav.Link>
-                                        )}
-
-                                        <Nav.Link onClick={handleLogout}>
-                                            <i className="fa-solid fa-arrow-right-from-bracket me-2"></i> Cerrar sesión
-                                        </Nav.Link>
-                                    </>
-                                ) : (
-                                    <Nav.Link onClick={() => { setExpanded(false); navigate("/login"); }} className="iniciar-sesion">
-                                        <i className="fa-regular fa-user me-2"></i> Iniciar sesión
-                                    </Nav.Link>
-                                )}
-                            </div>
                         </Nav>
 
-                        {/* Zona derecha SOLO escritorio */}
-                        <Nav className="ms-auto d-none d-lg-flex" onSelect={handleSelect}>
+                        <Nav className="navbar-mobile-menu d-lg-none">
                             <Nav.Link
-                                onClick={handleFavoritesClick}
-                                className="d-flex align-items-center position-relative"
+                                onClick={handleMobileFavoritesClick}
+                                className="navbar-mobile-menu-link"
                                 aria-label="Favoritos"
                             >
-                                <i className="fa-regular fa-heart fa-lg"></i>
+                                <span className="navbar-mobile-menu-label">
+                                    <i className="fa-regular fa-heart"></i>
+                                    Favoritos
+                                </span>
+                                {store.isLoged && (
+                                    <span className="navbar-inline-badge">{store.favorites.length}</span>
+                                )}
+                            </Nav.Link>
+
+                            {store.isLoged ? (
+                                <>
+                                    <Nav.Link
+                                        as={Link}
+                                        to="/mi-cuenta"
+                                        onClick={handleSelect}
+                                        className="navbar-mobile-menu-link"
+                                    >
+                                        <span className="navbar-mobile-menu-label">
+                                            <i className="fa-regular fa-id-card"></i>
+                                            Mi cuenta
+                                        </span>
+                                    </Nav.Link>
+
+                                    {store.currentUser?.is_admin && (
+                                        <Nav.Link
+                                            as={Link}
+                                            to="/admin"
+                                            onClick={handleSelect}
+                                            className="navbar-mobile-menu-link"
+                                        >
+                                            <span className="navbar-mobile-menu-label">
+                                                <i className="fa-solid fa-toolbox"></i>
+                                                Admin
+                                            </span>
+                                        </Nav.Link>
+                                    )}
+
+                                    <Nav.Link onClick={handleLogout} className="navbar-mobile-menu-link">
+                                        <span className="navbar-mobile-menu-label">
+                                            <i className="fa-solid fa-arrow-right-from-bracket"></i>
+                                            Cerrar sesión
+                                        </span>
+                                    </Nav.Link>
+                                </>
+                            ) : (
+                                <Nav.Link onClick={handleLoginClick} className="navbar-mobile-menu-link">
+                                    <span className="navbar-mobile-menu-label">
+                                        <i className="fa-regular fa-user"></i>
+                                        Iniciar sesión
+                                    </span>
+                                </Nav.Link>
+                            )}
+                        </Nav>
+
+                        <Nav className="navbar-secondary-nav ms-auto d-none d-lg-flex" onSelect={handleSelect}>
+                            <Nav.Link
+                                onClick={handleFavoritesClick}
+                                className="navbar-icon-link position-relative"
+                                aria-label="Favoritos"
+                            >
+                                <i className="fa-regular fa-heart"></i>
                                 {store.isLoged && (
                                     <span className="position-absolute badge rounded-pill favorites-badge">
                                         {store.favorites.length}
@@ -230,12 +238,13 @@ export const MainNavbar = () => {
                             <Nav.Link
                                 as={Link}
                                 to="/cart"
-                                className="d-flex align-items-center position-relative"
+                                className="navbar-icon-link position-relative"
                                 aria-label="Carrito"
+                                onClick={handleSelect}
                             >
-                                <i className="fa-solid fa-cart-shopping fa-lg"></i>
+                                <i className="fa-solid fa-cart-shopping"></i>
                                 {store.isLoged && (
-                                    <span className="position-absolute badge rounded-pill favorites-badge">
+                                    <span className="position-absolute badge rounded-pill cart-badge">
                                         {store.cart.length}
                                         <span className="visually-hidden">productos en el carrito</span>
                                     </span>
@@ -253,7 +262,6 @@ export const MainNavbar = () => {
                                     id="account-dropdown-desktop"
                                     align="end"
                                 >
-
                                     <NavDropdown.Item as={Link} to="/mi-cuenta" onClick={handleSelect}>
                                         <i className="fa-regular fa-id-card me-2"></i> Mi cuenta
                                     </NavDropdown.Item>
@@ -262,7 +270,7 @@ export const MainNavbar = () => {
                                         <>
                                             <NavDropdown.Divider />
                                             <NavDropdown.Item as={Link} to="/admin" onClick={handleSelect}>
-                                                <i className="fa-solid fa-toolbox me-2"></i> Panel de administración
+                                                <i className="fa-solid fa-toolbox me-2"></i> Panel de administracion
                                             </NavDropdown.Item>
                                         </>
                                     )}
@@ -273,12 +281,9 @@ export const MainNavbar = () => {
                                     </NavDropdown.Item>
                                 </NavDropdown>
                             ) : (
-                                <Nav.Link
-                                    onClick={() => { setExpanded(false); navigate("/login"); }}
-                                    className="button-navbar d-flex align-items-center"
-                                >
+                                <Nav.Link onClick={handleLoginClick} className="button-navbar d-flex align-items-center">
                                     <i className="fa-regular fa-user fa-lg me-2"></i>
-                                    <p className="small mb-0 sin-margin-right">Iniciar sesión</p>
+                                    <span className="navbar-login-copy">Iniciar sesión</span>
                                 </Nav.Link>
                             )}
                         </Nav>
