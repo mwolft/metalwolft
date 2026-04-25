@@ -97,6 +97,9 @@ export const BlogListPage = () => {
                     />
                 </div>
                 <h1 className='h1-categories' style={{marginLeft: '40px'}}>Blog</h1>
+                <p className="mx-3 mx-md-5 mb-4">
+                    En esta sección encontrarás consejos prácticos sobre <Link to="/rejas-para-ventanas" className="link-categories">rejas para ventanas</Link>, la <Link to="/medir-hueco-rejas-para-ventanas" className="link-categories">guía para medir el hueco</Link>, la <Link to="/instalation-rejas-para-ventanas" className="link-categories">instalación sin obra</Link> y los <Link to="/plazos-entrega-rejas-a-medida" className="link-categories">plazos de entrega</Link>.
+                </p>
                 <div className="row blog-list-row" style={{ margin: '8px 8px', backgroundSize: 'cover' }}>
                     {posts.map(post => (
                         <div
@@ -122,7 +125,7 @@ export const BlogListPage = () => {
                                 </div>
                             </div>
                             <p className='p-content'>{post.content.substring(0, 140)}...</p>
-                            <Link className="slug" to={`/${post.slug}`}>Leer más</Link>
+                            <Link className="slug" to={`/${post.slug}`}>Leer artículo</Link>
                         </div>
                     ))}
                 </div>

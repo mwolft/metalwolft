@@ -138,6 +138,7 @@ export const MedirHuecoRejasParaVentanas = () => {
                             </div>
                         )}
                         <div className="blog-text">
+                            <p>Si despuÃ©s vas a optar por <Link to="/rejas-para-ventanas-sin-obra" style={{ color: '#ff324d', textDecoration: 'underline' }}>rejas para ventanas sin obra</Link>, te recomendamos tener tambiÃ©n a mano nuestra <Link to="/instalation-rejas-para-ventanas" style={{ color: '#ff324d', textDecoration: 'underline' }}>guÃ­a de instalaciÃ³n sin obra</Link>.</p>
                             <h2 className="h2-categories">LA IMPORTANCIA DE LAS MEDICIONES PARA INSTALAR REJAS PARA VENTANAS</h2>
                             <p>En numerosas ocasiones, nos enfrentamos a la realidad de que los huecos destinados para la instalación de rejas en ventanas presentan <b>leves variaciones en sus dimensiones.</b></p>
                             <p>Esta divergencia es completamente normal, ya que cada espacio posee sus particularidades.</p>

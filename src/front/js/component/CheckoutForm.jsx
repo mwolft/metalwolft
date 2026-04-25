@@ -3,7 +3,7 @@ import { loadStripe } from '@stripe/stripe-js';
 import { Elements, CardElement, useStripe, useElements } from '@stripe/react-stripe-js';
 import { Context } from "../store/appContext";
 import { Button, Container, Row, Col, Form } from "react-bootstrap";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { calcularEnvio } from "../../utils/shippingCalculator";
 import { Helmet } from "react-helmet-async";
 import PayPalButton from "./PayPalButton";
@@ -746,14 +746,12 @@ const CheckoutForm = () => {
                                                 label={
                                                     <>
                                                         Confirmo que he leido y acepto la{" "}
-                                                        <a
-                                                            href="/politica-devolucion"
-                                                            target="_blank"
-                                                            rel="noopener noreferrer"
+                                                        <Link
+                                                            to="/politica-devolucion"
                                                             style={{ textDecoration: "underline" }}
                                                         >
                                                             Política de Devoluciones y Garantías
-                                                        </a>.
+                                                        </Link>.
                                                     </>
                                                 }
                                                 checked={acceptedPolicy}

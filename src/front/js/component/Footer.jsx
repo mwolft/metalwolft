@@ -6,7 +6,27 @@ export const Footer = () => {
   return (
     <footer className="mt-auto bg-dark text-white py-3 px-2">
       <div className="container text-center">
-        <p style={{marginTop: '6px', marginBottom: '17px'}}>© 2026 Metal Wolft. Todos los derechos reservados.</p>
+        <div className="footer-section">
+          <p className="footer-section-title">Enlaces útiles</p>
+          <ul className="footer-list footer-quick-links">
+            <li className="footer-item">
+              <Link to="/rejas-para-ventanas" className="footer-link">Catálogo</Link>
+            </li>
+            <li className="footer-item">
+              <Link to="/blogs" className="footer-link">Blog</Link>
+            </li>
+            <li className="footer-item">
+              <Link to="/contact" className="footer-link">Contacto</Link>
+            </li>
+            <li className="footer-item">
+              <Link to="/rejas-para-ventanas" className="footer-link">Rejas para ventanas</Link>
+            </li>
+            <li className="footer-item">
+              <Link to="/plazos-entrega-rejas-a-medida" className="footer-link">Plazos de entrega</Link>
+            </li>
+          </ul>
+        </div>
+        <p style={{ marginTop: '6px', marginBottom: '17px' }}>© 2026 Metal Wolft. Todos los derechos reservados.</p>
         <hr />
         <ul className="footer-list">
           <li className="footer-item">

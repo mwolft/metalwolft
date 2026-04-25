@@ -1,5 +1,6 @@
 import React, { useEffect, useContext, useState } from "react";
 import { Helmet } from "react-helmet-async";
+import { Link } from "react-router-dom";
 import { Breadcrumb } from "../../component/Breadcrumb.jsx";
 import { Product } from "../../component/Product.jsx";
 import { AsideCategories } from "../../component/AsideCategories.jsx";
@@ -94,6 +95,11 @@ export const PuertasPeatonalesMetalicas = () => {
                 />
                 <div className="row">
                     <h1 className="h2-categories mb-3">Puertas Peatonales Metálicas</h1>
+                    <div className="col-12 mb-3">
+                        <p className="mb-0">
+                            Si también estás valorando la protección de ventanas, puedes visitar nuestras <Link to="/rejas-para-ventanas" className="link-categories">rejas para ventanas</Link>, revisar la <Link to="/medir-hueco-rejas-para-ventanas" className="link-categories">guía para medir el hueco</Link> y consultar los <Link to="/plazos-entrega-rejas-a-medida" className="link-categories">plazos de entrega</Link>.
+                        </p>
+                    </div>
                     <div className="col-12 col-lg-3 col-xl-3 order-1">
                         {/*<AsideCategories
                             onSelectCategory={handleCategorySelect}
@@ -135,7 +141,7 @@ export const PuertasPeatonalesMetalicas = () => {
                                     <b>¿Qué tipo de instalación es más aconsejable?</b> La opción más recomendada es con <b>agujeros interiores</b>, ya que ofrece una estética más limpia y discreta, manteniendo la seguridad sin afectar el diseño de la puerta.
                                 </li>
                                 <li>
-                                    <b>¿Cómo puedo ponerme en contacto?</b> Puedes hacerlo a través de nuestro <a href="/contact" target="_blank" rel="noopener noreferrer">formulario de contacto</a>, enviándonos un mensaje por <a href="https://wa.me/634112604" target="_blank" rel="noopener noreferrer">WhatsApp</a> o llamándonos al <a href="tel:634112604">634112604</a>.
+                                    <b>¿Cómo puedo ponerme en contacto?</b> Puedes hacerlo a través de nuestro <Link to="/contact">formulario de contacto</Link>, enviándonos un mensaje por <a href="https://wa.me/34634112604" target="_blank" rel="noopener noreferrer">WhatsApp</a> o llamándonos al <a href="tel:634112604">634112604</a>.
                                 </li>
                             </ul>
                         </div>

@@ -144,6 +144,7 @@ export const RejasParaVentanasModernas = () => {
                             </div>
                         )}
                         <div className="blog-text">
+                            <p>Si ademÃ¡s buscas una instalaciÃ³n limpia, puedes comparar estos diseÃ±os con nuestras <Link to="/rejas-para-ventanas-sin-obra" style={{ color: "#ff324d", textDecoration: "underline" }}>rejas para ventanas sin obra</Link> y revisar <Link to="/medir-hueco-rejas-para-ventanas" style={{ color: "#ff324d", textDecoration: "underline" }}>cÃ³mo medir el hueco</Link> antes de pedir precio.</p>
                             <h2 className="h2-categories">Rejas modernas: seguridad con estilo</h2>
                             <p>
                                 Las <strong>rejas para ventanas modernas</strong> han dejado atrás la idea de hierro pesado y clásico.

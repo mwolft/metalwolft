@@ -257,7 +257,7 @@ export const Product = ({ product }) => {
                         </p>
                         <div className="d-flex justify-content-between align-items-center">
                             <Link to={productDetailUrl} className="btn-style-background-color" style={{ textDecoration: 'none' }}>
-                                <i className="fa-solid fa-calculator"></i> Más
+                                <i className="fa-solid fa-calculator"></i> Ver detalles
                             </Link>
                             <i className={`fa-regular fa-heart ${actions.isFavorite(product) ? 'fa-solid' : ''}`}
                                 onClick={handleFavorite}

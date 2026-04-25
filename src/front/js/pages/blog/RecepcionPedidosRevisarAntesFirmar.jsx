@@ -158,6 +158,7 @@ export const RecepcionPedidosRevisarAntesFirmar = () => {
                         )}
 
                         <div className="blog-text">
+                            <p>Si estÃ¡s preparando tu compra, tambiÃ©n puedes consultar nuestros <Link to="/plazos-entrega-rejas-a-medida" style={{ color: '#ff324d', textDecoration: 'underline' }}>plazos de entrega</Link> y revisar la secciÃ³n de <Link to="/rejas-para-ventanas" style={{ color: '#ff324d', textDecoration: 'underline' }}>rejas para ventanas</Link> antes de formalizar el pedido.</p>
                             <h2 className="h2-categories">¿POR QUÉ REVISAR ANTES DE FIRMAR?</h2>
                             <p>
                                 Piensa que tu pedido ha pasado por fábricas, almacenes y furgonetas antes de llegar a tu puerta.
@@ -186,7 +187,7 @@ export const RecepcionPedidosRevisarAntesFirmar = () => {
                             <ol className="m-4">
                                 <li><strong>Haz fotos</strong> al paquete tal y como te lo entregan, antes de abrirlo.</li>
                                 <li>Pide al repartidor que deje constancia: escribe <em>"pendiente de revisión"</em> o <em>"paquete dañado"</em> en su PDA o en el albarán.</li>
-                                <li>Avísanos el mismo día. Envíanos fotos y detalles a través del <Link to="/contact" style={{ color: '#ff324d', textDecoration: 'underline' }}>formulario</Link> o por <a href="https://wa.me/34634112604" style={{ color: '#ff324d', textDecoration: 'underline' }}>WhatsApp</a>.</li>
+                                <li>Avísanos el mismo día. Envíanos fotos y detalles a través del <Link to="/contact" style={{ color: '#ff324d', textDecoration: 'underline' }}>formulario</Link> o por <a href="https://wa.me/34634112604" target="_blank" rel="noopener noreferrer" style={{ color: '#ff324d', textDecoration: 'underline' }}>WhatsApp</a>.</li>
                                 <li><strong>No tires el embalaje</strong> hasta que resolvamos la incidencia, porque nos sirve como prueba.</li>
                             </ol>
 

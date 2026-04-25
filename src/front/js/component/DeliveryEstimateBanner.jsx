@@ -67,7 +67,7 @@ const DeliveryEstimateBanner = () => {
                         to="/plazos-entrega-rejas-a-medida"
                         style={bannerStyles.link}
                     >
-                        Leer más
+                        Consultar plazos de entrega
                     </Link>
                 )}
             </span>

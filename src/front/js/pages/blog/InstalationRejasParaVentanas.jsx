@@ -138,6 +138,7 @@ export const InstalationRejasParaVentanas = () => {
                             </div>
                         )}
                         <div className="blog-text">
+                            <p>Antes de instalar, te vendrÃ¡ bien revisar la <Link to="/medir-hueco-rejas-para-ventanas" style={{ color: '#ff324d', textDecoration: 'underline' }}>guÃ­a para medir el hueco</Link> y comparar nuestras <Link to="/rejas-para-ventanas-sin-obra" style={{ color: '#ff324d', textDecoration: 'underline' }}>rejas para ventanas sin obra</Link> y los modelos de <Link to="/rejas-para-ventanas-modernas" style={{ color: '#ff324d', textDecoration: 'underline' }}>rejas modernas</Link>.</p>
                             <h2 className="h2-categories">PREPARACIÓN Y HERRAMIENTAS NECESARIAS</h2>
                             <p>Después de haber medido cuidadosamente los huecos de las ventanas, como se detalló en nuestro <b>artículo anterior,</b> y tras haber elegido el estilo de rejas para ventanas que mejor se adapte a tus necesidades, estás listo para recibir tus rejas. </p>
                             <p>Asegúrate de tener a mano las siguientes herramientas esenciales:</p>

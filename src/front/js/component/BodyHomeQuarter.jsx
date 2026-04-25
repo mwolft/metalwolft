@@ -26,6 +26,9 @@ export const BodyHomeQuarter = () => {
                     <p className="info-p pb-3">
                         Nuestros diseños no solo destacan por su durabilidad, sino que también están pensados para facilitar su instalación. <br />¡Además contámos con <b style={{ color: '#ff324d' }}>ENVÍOS GRATUÍTOS</b> a toda <b>España</b>!
                     </p>
+                    <p className="info-p">
+                        Si quieres empezar por lo mÃ¡s solicitado, visita nuestras <Link to="/rejas-para-ventanas" style={{ color: '#ff324d', textDecoration: 'none', fontWeight: 'bolder' }}>rejas para ventanas</Link>, consulta la <Link to="/medir-hueco-rejas-para-ventanas" style={{ color: '#ff324d', textDecoration: 'none', fontWeight: 'bolder' }}>guÃ­a para medir el hueco</Link>, revisa la <Link to="/instalation-rejas-para-ventanas" style={{ color: '#ff324d', textDecoration: 'none', fontWeight: 'bolder' }}>instalaciÃ³n sin obra</Link> y comprueba los <Link to="/plazos-entrega-rejas-a-medida" style={{ color: '#ff324d', textDecoration: 'none', fontWeight: 'bolder' }}>plazos de entrega</Link>.
+                    </p>
                 </div>
                 <div className="col-12 col-sm-12 col-md-6 col-lg-5 col-xl-5 mt-2">
                     <Card style={{ height: '100%' }}>

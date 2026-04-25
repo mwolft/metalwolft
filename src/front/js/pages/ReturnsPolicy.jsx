@@ -86,7 +86,7 @@ export const ReturnsPolicy = () => {
                 <p>
                     Cada reja se pinta individualmente, por lo que pueden presentarse pequeñas marcas o ligeras variaciones de tono.
                     No obstante, si consideras que el acabado recibido presenta defectos evidentes (desconchados, burbujas, manchas),
-                    podrás notificárnoslo mediante nuestro <a href="/formulario-incidencias">formulario de incidencias</a> en un plazo máximo de 48 horas desde la recepción.
+                    podrás notificárnoslo mediante nuestro <Link to="/formulario-incidencias">formulario de incidencias</Link> en un plazo máximo de 48 horas desde la recepción.
                 </p>
                 <p>
                     Analizaremos cada caso y podremos ofrecer, según proceda:
@@ -115,7 +115,7 @@ export const ReturnsPolicy = () => {
                 <p>
                     Estas adaptaciones forman parte del proceso de fabricación a medida y <u>no se consideran un defecto</u> ni motivo de devolución. No obstante, si el cliente detecta una diferencia relevante respecto al modelo
                     publicado en la web (por ejemplo, un número de barrotes o tipo de anclaje distinto al indicado),
-                    podrá comunicarlo mediante el <a href="/formulario-incidencias">procedimiento de revisión</a>.
+                    podrá comunicarlo mediante el <Link to="/formulario-incidencias">procedimiento de revisión</Link>.
                 </p>
                 <p className='mb-5'>
                     En caso de confirmarse una discrepancia imputable a fabricación,

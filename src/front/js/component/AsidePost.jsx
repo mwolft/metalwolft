@@ -34,9 +34,9 @@ export const AsidePost = ({ currentPostId }) => {
                                 <Link
                                     to={`/${post.slug}`}
                                     className="buton-other-categories"
-                                    aria-label={`Leer más sobre ${post.title}`}
+                                    aria-label={`Leer el artículo ${post.title}`}
                                 >
-                                    Leer más
+                                    Leer artículo
                                 </Link>
                             </p>
                         </li>

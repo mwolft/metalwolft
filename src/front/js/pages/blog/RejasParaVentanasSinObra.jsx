@@ -151,6 +151,7 @@ export const RejasParaVentanasSinObra = () => {
                             </div>
                         )}
                         <div className="blog-text">
+                            <p>Para acertar a la primera, te vendrÃ¡ bien revisar <Link to="/medir-hueco-rejas-para-ventanas" style={{ color: "#ff324d", textDecoration: "underline" }}>cÃ³mo medir el hueco</Link> y seguir nuestra <Link to="/instalation-rejas-para-ventanas" style={{ color: "#ff324d", textDecoration: "underline" }}>guÃ­a de instalaciÃ³n sin obra</Link>.</p>
                             <h2 className="h2-categories">¿Qué son las rejas para ventanas sin obra?</h2>
                             <p>
                                 Las <strong>rejas para ventanas sin obra</strong> son una solución sencilla y moderna para proteger tus ventanas

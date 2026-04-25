@@ -1,5 +1,6 @@
 import React, { useEffect, useContext, useState } from "react";
 import { Helmet } from "react-helmet-async";
+import { Link } from "react-router-dom";
 import { Breadcrumb } from "../../component/Breadcrumb.jsx";
 import { Product } from "../../component/Product.jsx";
 import { AsideCategories } from "../../component/AsideCategories.jsx";
@@ -93,6 +94,11 @@ export const PuertasCorrederasExteriores = () => {
                 />
                 <div className="row">
                     <h1 className="h2-categories mb-3">Puertas Correderas Exteriores</h1>
+                    <div className="col-12 mb-3">
+                        <p className="mb-0">
+                            Si ademÃ¡s estÃ¡s comparando soluciones para proteger ventanas, puedes visitar nuestras <Link to="/rejas-para-ventanas" className="link-categories">rejas para ventanas</Link>, revisar la <Link to="/medir-hueco-rejas-para-ventanas" className="link-categories">guÃ­a para medir el hueco</Link> y consultar los <Link to="/plazos-entrega-rejas-a-medida" className="link-categories">plazos de entrega</Link> antes de pedir presupuesto.
+                        </p>
+                    </div>
                     <div className="col-12 col-lg-3 col-xl-3 order-1">
                         {/*<AsideCategories
                             onSelectCategory={handleCategorySelect}

@@ -1,5 +1,6 @@
 import React, { useEffect, useContext, useState } from "react";
 import { Helmet } from "react-helmet-async";
+import { Link } from "react-router-dom";
 import { Breadcrumb } from "../../component/Breadcrumb.jsx";
 import { Product } from "../../component/Product.jsx";
 import { AsideCategories } from "../../component/AsideCategories.jsx";
@@ -94,6 +95,11 @@ export const CerramientoDeCocinaConCristal = () => {
                 />
                 <div className="row">
                     <h1 className="h2-categories mb-3">Cerramiento de Cocina con Cristal</h1>
+                    <div className="col-12 mb-3">
+                        <p className="mb-0">
+                            Si además de cerrar espacios interiores necesitas mejorar la seguridad de la vivienda, puedes ver nuestras <Link to="/rejas-para-ventanas" className="link-categories">rejas para ventanas</Link>, consultar la <Link to="/medir-hueco-rejas-para-ventanas" className="link-categories">guía para medir el hueco</Link> y revisar la <Link to="/instalation-rejas-para-ventanas" className="link-categories">instalación sin obra</Link>.
+                        </p>
+                    </div>
                     <div className="col-12 col-lg-3 col-xl-3 order-1">
                         {/*<AsideCategories
                             onSelectCategory={handleCategorySelect}

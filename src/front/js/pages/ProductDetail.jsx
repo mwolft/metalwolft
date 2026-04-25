@@ -958,15 +958,15 @@ export const ProductDetail = () => {
                                     <li><strong>Mide el ancho:</strong> Mide de un lado al otro del marco de la ventana, asegurándote de tomar la medida en varios puntos (arriba, en el centro y abajo). La <b>medida más pequeña</b> es la que debes tomar. Resta medio centímetro para asegurar el encaje.</li>
                                     <li><strong>Mide la altura:</strong> Desde la base hasta la parte superior del marco. Resta 2-3 cm para permitir limpieza del vierteaguas y evitar acumulación de suciedad.</li>
                                 </ul>
-                                <p>Si tienes dudas, <a href="https://www.metalwolft.com/contact" className="link-categories" target="_blank" rel="noopener noreferrer">consúltanos</a> para evitar errores.</p>
-                                <p>Consulta nuestro <a href="https://www.metalwolft.com/medir-hueco-rejas-para-ventanas" className="link-categories" target="_blank" rel="noopener noreferrer">artículo dedicado</a> en el blog.</p>
+                                <p>Si tienes dudas, <Link to="/contact" className="link-categories">consúltanos</Link> para evitar errores.</p>
+                                <p>Consulta nuestra <Link to="/medir-hueco-rejas-para-ventanas" className="link-categories">guía para medir el hueco</Link> en el blog.</p>
                                 <p>Tomar medidas precisas es esencial para garantizar que las rejas se ajusten correctamente.</p>
 
                                 <h3 className="h3-categories mt-4">¿Cómo instalar rejas para ventanas?</h3>
                                 <p>La <strong>instalación de rejas para ventanas</strong> no solo garantiza la <strong>seguridad</strong> de tu hogar, sino que también puede mejorar su estética.</p>
                                 <p>Dependiendo del <b>tipo de instalación</b> (con obra o sin obra), se requerirán herramientas diferentes.</p>
                                 <p>La instalación con obra suele realizarla un albañil. La sin obra es más accesible y cualquier persona con pocas herramientas puede hacerla.</p>
-                                <p>Tenemos un artículo dedicado con todos los pasos 👉 <a href="https://www.metalwolft.com/instalation-rejas-para-ventanas" className="link-categories" target="_blank" rel="noopener noreferrer">Instalación de rejas para ventanas sin obra</a>.</p>
+                                <p>Consulta nuestra <Link to="/instalation-rejas-para-ventanas" className="link-categories">guía de instalación sin obra</Link> con todos los pasos.</p>
                             </div>
                         </div>
 
@@ -996,7 +996,7 @@ export const ProductDetail = () => {
                                         <b>¿Qué sucede después de realizar mi compra?</b> Tras completar tu compra, recibirás un correo de confirmación con todos los detalles. Además, nos pondremos en contacto contigo para orientarte en la instalación y ofrecerte asistencia personalizada, asegurándonos de que tengas una experiencia satisfactoria con tu compra.
                                     </li>
                                     <li>
-                                        <b>¿Cómo puedo ponerme en contacto?</b> Puedes hacerlo a través de nuestro <a href="/contact" target="_blank" rel="noopener noreferrer">formulario de contacto</a>, enviándonos un mensaje por <a href="https://wa.me/634112604" target="_blank" rel="noopener noreferrer">WhatsApp</a> o llamándonos al <a href="tel:634112604">634112604</a>.
+                                        <b>¿Cómo puedo ponerme en contacto?</b> Puedes hacerlo a través de nuestro <Link to="/contact">formulario de contacto</Link>, enviándonos un mensaje por <a href="https://wa.me/34634112604" target="_blank" rel="noopener noreferrer">WhatsApp</a> o llamándonos al <a href="tel:634112604">634112604</a>.
                                     </li>
                                 </ul>
                             </div>
@@ -1019,22 +1019,24 @@ export const ProductDetail = () => {
                                 <p>Aunque el hierro sigue siendo el material predominante, se han incorporado otros materiales, como el acero inoxidable, para satisfacer las necesidades cambiantes de los propietarios.</p>
                                 <p>En <Link to="/" className="link-categories">Metal Wolf</Link>, nos enorgullece presentar una selección de <strong>rejas para ventanas modernas</strong> que destacan tanto por su estilo como por su capacidad de brindar <b>protección efectiva</b>.</p>
                                 <p>Nuestra filosofía se centra en la creación de <b>diseños</b> que no solo cumplen con su propósito principal, sino que también <b>realzan la estética de su hogar</b>.</p>
+                                <p>Si quieres ideas y acabados actuales, puedes consultar nuestra guÃ­a de <Link to="/rejas-para-ventanas-modernas" className="link-categories">rejas para ventanas modernas</Link>.</p>
                                 {/* ------------------------------------------ */}
                                 <h4 className="h3-categories">Rejas para ventanas sin obra</h4>
 
                                 <p>
                                     <strong>Las rejas para ventanas sin obra</strong> se fijan directamente en el marco de la ventana con
-                                    <Link to="https://todoanclajes.com/producto/tornillo-inviolable-torx-7-x-30/?gad_source=1&gclid=CjwKCAiAjp-7BhBZEiwAmh9rBX_pS1jYu9WcRXkLhOVUreLYelh3cFK1xX7rnxMQv4ru8xcZ-6YLmRoCnEsQAvD_BwE" className="link-categories">
+                                    <a href="https://todoanclajes.com/producto/tornillo-inviolable-torx-7-x-30/?gad_source=1&gclid=CjwKCAiAjp-7BhBZEiwAmh9rBX_pS1jYu9WcRXkLhOVUreLYelh3cFK1xX7rnxMQv4ru8xcZ-6YLmRoCnEsQAvD_BwE" className="link-categories" target="_blank" rel="noopener noreferrer">
                                         tornillos especiales inviolables
-                                    </Link>, diseñados para ofrecer una sujeción segura y resistente. Al no requerir intervención en los muros, el resultado es más <b>limpio</b>.
+                                    </a>, diseñados para ofrecer una sujeción segura y resistente. Al no requerir intervención en los muros, el resultado es más <b>limpio</b>.
                                 </p>
                                 <p>
-                                    La <Link to="https://www.metalwolft.com/instalation-rejas-para-ventanas" className="link-categories">instalación de las rejas sin obra</Link> es rápida y sencilla, lo que permite reducir tanto los tiempos como los costes asociados.
+                                    La <Link to="/instalation-rejas-para-ventanas" className="link-categories">guía de instalación sin obra</Link> muestra cómo reducir tanto los tiempos como los costes asociados.
                                 </p>
                                 <p>Este tipo de reja las convierte en una opción ideal para quienes desean mantener intacto el acabado de la fachada.</p>
                                 <p>
                                     Si deseas proteger tu hogar sin alterar la fachada, las <strong>rejas sin obra</strong> son la alternativa perfecta. Combina <b>seguridad y funcionalidad</b> y un diseño que se adapta a cualquier estilo de ventana.
                                 </p>
+                                <p>TambiÃ©n puedes comparar modelos y acabados en nuestra secciÃ³n de <Link to="/rejas-para-ventanas-sin-obra" className="link-categories">rejas para ventanas sin obra</Link>.</p>
                                 <div className="container">
                                     <div className="row text-center mt-4 d-flex flex-column flex-lg-row">
                                         {[
@@ -1220,7 +1222,7 @@ export const ProductDetail = () => {
                                 {/* ------------------------------------------ */}
                                 <h3 className="h3-categories">Consigue el precio exacto</h3>
                                 <p>Para obtener un <strong>precio</strong> exacto de las rejas para tus ventanas...</p>
-                                <p>Te recomendamos que, si tiene dudas, <Link to="https://www.metalwolft.com/contact" className="link-categories">contáctenos</Link> para que podamos asesorarle y ofrecerle toda la información necesaria.</p>
+                                <p>Te recomendamos que, si tiene dudas, <Link to="/contact" className="link-categories">contáctenos</Link> para que podamos asesorarle y ofrecerle toda la información necesaria.</p>
                             </div>
                         </div>
                     </div>
