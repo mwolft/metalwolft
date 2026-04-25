@@ -198,6 +198,23 @@ body, html {
   border-radius: 14px;
   background: #f8fafc;
 }
+.product-price-prompt--ready {
+  border-color: #ffd7dd;
+  background: #fff8f9;
+}
+.product-price-prompt--ready p {
+  color: #b42336;
+  font-weight: 600;
+}
+.product-price-prompt--warning {
+  border-style: solid;
+  border-color: #fed7aa;
+  background: #fff7ed;
+}
+.product-price-prompt--warning p {
+  color: #c2410c;
+  font-weight: 600;
+}
 .product-price-prompt p {
   color: #4b5563;
   line-height: 1.6;

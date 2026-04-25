@@ -47,17 +47,29 @@ const clearPendingProductConfig = () => {
     window.sessionStorage.removeItem(PENDING_PRODUCT_CONFIG_STORAGE_KEY);
 };
 
-const buildPriceQuote = ({ rawHeight, rawWidth, product }) => {
+const getDimensionValidationError = (rawHeight, rawWidth) => {
     const h = parseFloat(rawHeight);
     const w = parseFloat(rawWidth);
 
     if (isNaN(h) || isNaN(w)) {
-        return { error: 'Debe ingresar dimensiones válidas' };
+        return 'Debe ingresar dimensiones válidas';
     }
 
     if (h < 30 || w < 30 || h > 250 || w > 250 || h + w > 400) {
-        return { error: 'Dimensiones fuera de rango (30–250 cm, suma ≤ 400 cm)' };
+        return 'Dimensiones fuera de rango (30–250 cm, suma ≤ 400 cm)';
     }
+
+    return '';
+};
+
+const buildPriceQuote = ({ rawHeight, rawWidth, product }) => {
+    const dimensionError = getDimensionValidationError(rawHeight, rawWidth);
+    if (dimensionError) {
+        return { error: dimensionError };
+    }
+
+    const h = parseFloat(rawHeight);
+    const w = parseFloat(rawWidth);
 
     const base = product.precio_rebajado || product.precio;
     const area = (h * w) / 10000;
@@ -111,6 +123,7 @@ export const ProductDetail = () => {
     const [calculatedPrice, setCalculatedPrice] = useState(null);
     const [calculatedArea, setCalculatedArea] = useState(null);
     const [calcError, setCalcError] = useState('');
+    const [priceNeedsRecalculation, setPriceNeedsRecalculation] = useState(false);
     const [showRestoredPriceReady, setShowRestoredPriceReady] = useState(false);
     const [previewColor, setPreviewColor] = useState(null);
     const priceFeedbackRef = useRef(null);
@@ -179,6 +192,16 @@ export const ProductDetail = () => {
     const clearRestoredPriceReady = () => {
         if (showRestoredPriceReady) {
             setShowRestoredPriceReady(false);
+        }
+    };
+
+    const invalidateCalculatedPrice = () => {
+        clearRestoredPriceReady();
+
+        if (calculatedPrice || calculatedArea) {
+            setCalculatedPrice(null);
+            setCalculatedArea(null);
+            setPriceNeedsRecalculation(true);
         }
     };
 
@@ -264,6 +287,7 @@ export const ProductDetail = () => {
 
     const handleCalculatePrice = () => {
         setShowRestoredPriceReady(false);
+        setPriceNeedsRecalculation(false);
         const quote = applyPriceQuote(
             buildPriceQuote({
                 rawHeight: height,
@@ -290,14 +314,14 @@ export const ProductDetail = () => {
     };
 
     const handleAddToCart = async () => {
-        if (!store.isLoged) {
-            savePendingProductConfig();
-            navigate("/login");
+        if (!calculatedPrice) {
+            setNotification('Primero calcula el precio con tus medidas.');
             return;
         }
 
-        if (!calculatedPrice) {
-            setNotification('Primero calcule el precio');
+        if (!store.isLoged) {
+            savePendingProductConfig();
+            navigate("/login");
             return;
         }
 
@@ -324,6 +348,7 @@ export const ProductDetail = () => {
         setColor(DEFAULT_COLOR);
         setCalculatedPrice(null);
         setCalculatedArea(null);
+        setPriceNeedsRecalculation(false);
         setShowRestoredPriceReady(false);
     };
 
@@ -381,6 +406,7 @@ export const ProductDetail = () => {
                     product
                 })
             );
+            setPriceNeedsRecalculation(false);
             setShowRestoredPriceReady(true);
         }
 
@@ -449,6 +475,20 @@ export const ProductDetail = () => {
         name: color,
         ...COLOR_MAP[color]
     };
+
+    const dimensionsReadyForQuote = !getDimensionValidationError(height, width);
+    const pricePromptMessage = priceNeedsRecalculation
+        ? (
+            dimensionsReadyForQuote
+                ? 'Has cambiado la configuración. Vuelve a calcular el precio.'
+                : 'Has cambiado la configuración. Revisa las medidas y vuelve a calcular el precio.'
+        )
+        : (
+            dimensionsReadyForQuote
+                ? 'Medidas listas. Calcula el precio para continuar.'
+                : 'Introduce tus medidas y calcula el precio para ver el coste final de tu reja a medida.'
+        );
+    const pricePromptClassName = `product-price-prompt mt-3${priceNeedsRecalculation ? ' product-price-prompt--warning' : dimensionsReadyForQuote ? ' product-price-prompt--ready' : ''}`;
 
     return (
         <div className="product-page-wrapper">
@@ -665,7 +705,7 @@ export const ProductDetail = () => {
                                                 onFocus={closeHintIfVisible}
                                                 onChange={(e) => {
                                                     closeHintIfVisible();
-                                                    clearRestoredPriceReady();
+                                                    invalidateCalculatedPrice();
                                                     setHeight(e.target.value.replace(',', '.'));
                                                 }}
                                                 placeholder="Ej.: 120.1"
@@ -716,7 +756,7 @@ export const ProductDetail = () => {
                                                 onFocus={closeHintIfVisible}
                                                 onChange={(e) => {
                                                     closeHintIfVisible();
-                                                    clearRestoredPriceReady();
+                                                    invalidateCalculatedPrice();
                                                     setWidth(e.target.value.replace(',', '.'));
                                                 }}
                                                 min="0"
@@ -796,7 +836,7 @@ export const ProductDetail = () => {
                                             <Form.Select
                                                 value={mounting}
                                                 onChange={e => {
-                                                    clearRestoredPriceReady();
+                                                    invalidateCalculatedPrice();
                                                     setMounting(e.target.value);
                                                 }}
                                             >
@@ -867,7 +907,7 @@ export const ProductDetail = () => {
                                                         onTouchStart={() => setPreviewColor(c)}
                                                         style={{ backgroundColor: c.hex }}
                                                         onClick={() => {
-                                                            clearRestoredPriceReady();
+                                                            invalidateCalculatedPrice();
                                                             setColor(c.name);
                                                         }}
                                                         title={c.label}
@@ -901,7 +941,7 @@ export const ProductDetail = () => {
                                                             backgroundBlendMode: 'multiply'
                                                         }}
                                                         onClick={() => {
-                                                            clearRestoredPriceReady();
+                                                            invalidateCalculatedPrice();
                                                             setColor(c.name);
                                                         }}
                                                         title={c.label}
@@ -933,8 +973,8 @@ export const ProductDetail = () => {
                                             {calculatedArea < 1 && <p className="text-warning mb-0 mt-2">Área &lt; 1 m² incrementa coste.</p>}
                                         </div>
                                     ) : (
-                                        <div className="product-price-prompt mt-3" ref={priceFeedbackRef}>
-                                            <p className="mb-0">Introduce tus medidas y calcula el precio para ver el coste final de tu reja a medida.</p>
+                                        <div className={pricePromptClassName} ref={priceFeedbackRef}>
+                                            <p className="mb-0">{pricePromptMessage}</p>
                                         </div>
                                     )}
                                 </div>
