@@ -771,6 +771,15 @@ export const ProductDetail = () => {
                                 <p className="product-form-helper">
                                     Introduce alto y ancho en centímetros para calcular el precio exacto de tu reja.
                                 </p>
+                                <div className="product-context-help product-context-help--measurement">
+                                    <p className="product-context-help-title">¿No estás seguro de las medidas?</p>
+                                    <p className="product-context-help-copy">
+                                        Consulta nuestra guía para medir tu ventana antes de calcular el precio.
+                                    </p>
+                                    <Link to="/medir-hueco-rejas-para-ventanas" className="product-context-help-link">
+                                        Ver guía de medición
+                                    </Link>
+                                </div>
 
                                 {/* Instalación & Color */}
                                 <Row className="mt-3">
@@ -980,6 +989,15 @@ export const ProductDetail = () => {
                                 </div>
                                 <div className="product-delivery-estimate">
                                     <DeliveryEstimate />
+                                </div>
+                                <div className="product-context-help product-context-help--installation">
+                                    <p className="product-context-help-title">¿Dudas sobre la instalación?</p>
+                                    <p className="product-context-help-copy">
+                                        Te explicamos las opciones de instalación y qué tipo de anclaje elegir.
+                                    </p>
+                                    <Link to="/instalation-rejas-para-ventanas" className="product-context-help-link">
+                                        Ver guía de instalación
+                                    </Link>
                                 </div>
                                 <div className="product-cta-guidance">
                                     <p>
