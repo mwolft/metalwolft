@@ -881,7 +881,7 @@ export const ProductDetail = () => {
                                                 <a
                                                     href="https://amzn.to/3TWBpNO"
                                                     target="_blank"
-                                                    rel="noopener noreferrer"
+                                                    rel="sponsored noopener noreferrer"
                                                     className="product-tool-cta btn btn-sm btn-warning mt-2"
                                                 >
                                                     Ver en Amazon
@@ -902,7 +902,7 @@ export const ProductDetail = () => {
                                             <a
                                                 href="https://amzn.to/46l6bYb"
                                                 target="_blank"
-                                                rel="noopener noreferrer"
+                                                rel="sponsored noopener noreferrer"
                                                 className="product-tool-cta btn btn-sm btn-warning mt-2"
                                             >
                                                 Ver en Amazon
@@ -923,7 +923,7 @@ export const ProductDetail = () => {
                                             <a
                                                 href="https://amzn.to/44nC6Vq"
                                                 target="_blank"
-                                                rel="noopener noreferrer"
+                                                rel="sponsored noopener noreferrer"
                                                 className="product-tool-cta btn btn-sm btn-warning mt-2"
                                             >
                                                 Ver en Amazon
@@ -1025,7 +1025,7 @@ export const ProductDetail = () => {
 
                                 <p>
                                     <strong>Las rejas para ventanas sin obra</strong> se fijan directamente en el marco de la ventana con
-                                    <a href="https://todoanclajes.com/producto/tornillo-inviolable-torx-7-x-30/?gad_source=1&gclid=CjwKCAiAjp-7BhBZEiwAmh9rBX_pS1jYu9WcRXkLhOVUreLYelh3cFK1xX7rnxMQv4ru8xcZ-6YLmRoCnEsQAvD_BwE" className="link-categories" target="_blank" rel="noopener noreferrer">
+                                    <a href="https://todoanclajes.com/producto/tornillo-inviolable-torx-7-x-30/?gad_source=1&gclid=CjwKCAiAjp-7BhBZEiwAmh9rBX_pS1jYu9WcRXkLhOVUreLYelh3cFK1xX7rnxMQv4ru8xcZ-6YLmRoCnEsQAvD_BwE" className="link-categories" target="_blank" rel="nofollow noopener noreferrer">
                                         tornillos especiales inviolables
                                     </a>, diseñados para ofrecer una sujeción segura y resistente. Al no requerir intervención en los muros, el resultado es más <b>limpio</b>.
                                 </p>

@@ -323,7 +323,7 @@ export const RejasParaVentanas = ({ onSelectCategory, onSelectSubcategory, categ
 
                         <p>
                             <strong>Las rejas para ventanas sin obra</strong> se fijan directamente en el marco de la ventana con
-                            <a href="https://todoanclajes.com/producto/tornillo-inviolable-torx-7-x-30/?gad_source=1&gclid=CjwKCAiAjp-7BhBZEiwAmh9rBX_pS1jYu9WcRXkLhOVUreLYelh3cFK1xX7rnxMQv4ru8xcZ-6YLmRoCnEsQAvD_BwE" className="link-categories" target="_blank" rel="noopener noreferrer">
+                            <a href="https://todoanclajes.com/producto/tornillo-inviolable-torx-7-x-30/?gad_source=1&gclid=CjwKCAiAjp-7BhBZEiwAmh9rBX_pS1jYu9WcRXkLhOVUreLYelh3cFK1xX7rnxMQv4ru8xcZ-6YLmRoCnEsQAvD_BwE" className="link-categories" target="_blank" rel="nofollow noopener noreferrer">
                                 tornillos especiales inviolables
                             </a>, diseñados para ofrecer una sujeción segura y resistente. Al no requerir intervención en los muros, el resultado es más <b>limpio</b>.
                         </p>

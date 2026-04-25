@@ -3,7 +3,7 @@ import { Context } from "../store/appContext.js";
 import { Link } from "react-router-dom";
 import "../../styles/categories-pages.css";
 
-export const AsideOthersCategories = ({ currentCategoryId }) => {
+export const AsideOthersCategories = ({ currentCategoryId = null }) => {
     const { store, actions } = useContext(Context);
     const [otherCategories, setOtherCategories] = useState([]);
 

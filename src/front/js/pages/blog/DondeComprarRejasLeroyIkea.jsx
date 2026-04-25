@@ -339,7 +339,7 @@ export const DondeComprarRejasLeroyIkea = () => {
 
                     <Col xl={3}>
                         <AsidePost currentPostId={postId} />
-                        <AsideOthersCategories currentCategoryId={postId} />
+                        <AsideOthersCategories currentCategoryId={null} />
                     </Col>
                 </Row>
             </Container>
