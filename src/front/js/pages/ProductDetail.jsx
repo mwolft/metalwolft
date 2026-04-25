@@ -1,4 +1,4 @@
-import React, { useContext, useEffect, useLayoutEffect, useState } from 'react';
+import React, { useContext, useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { RelatedProductsCarousel } from "../component/RelatedProductsCarousel.jsx";
 import { Context } from '../store/appContext';
@@ -43,6 +43,7 @@ export const ProductDetail = () => {
     const [calculatedArea, setCalculatedArea] = useState(null);
     const [calcError, setCalcError] = useState('');
     const [previewColor, setPreviewColor] = useState(null);
+    const priceFeedbackRef = useRef(null);
     const COLOR_MAP = {
         satinado_blanco: { hex: "#ffffff", type: "satinado" },
         satinado_negro: { hex: "#000000", type: "satinado" },
@@ -59,21 +60,16 @@ export const ProductDetail = () => {
 
     // Estados “overlay”
     const [showHint, setShowHint] = useState(false);
-    const [anchorReady, setAnchorReady] = useState(false);
     const [altoEl, setAltoEl] = useState(null);
-
-    // Dispositivo y control de visibilidad mínima
-    const isMobile =
-        typeof window !== 'undefined' &&
-        window.matchMedia?.('(pointer: coarse)').matches;
-
-    const MIN_VISIBLE_MS = 700; // ajustable
-    const [visibleSince, setVisibleSince] = useState(null);
 
     const closeHintIfVisible = () => {
         if (showHint) {
             setShowHint(false);
         }
+    };
+
+    const toggleHint = () => {
+        setShowHint((prevShowHint) => !prevShowHint);
     };
 
 
@@ -248,98 +244,16 @@ export const ProductDetail = () => {
     const determinePlacement = () =>
         window.innerWidth > 768 ? 'right' : 'top';
 
-    // Cuando el input existe en DOM, marcamos listo ANTES del paint (sin parpadeo)
-    useLayoutEffect(() => {
-        if (!altoEl) return;
-        setAnchorReady(true);
-    }, [altoEl]);
-
-
-    // Mostrar al cargar (desktop) o al entrar en viewport (móvil)
     useEffect(() => {
-        setShowHint(false);
-        setAnchorReady(false);
-        setVisibleSince(null);
+        if (!calculatedPrice || !priceFeedbackRef.current) return;
 
-        if (!altoEl) return;
-
-        if (!isMobile) {
-            // Desktop: pequeño delay
-            const t = setTimeout(() => {
-                setAnchorReady(true);
-                setShowHint(true);
-                setVisibleSince(Date.now());
-            }, 150);
-            return () => clearTimeout(t);
-        }
-
-        // Móvil: cuando el input entra en viewport
-        const io = new IntersectionObserver(
-            ([entry]) => {
-                if (entry.isIntersecting) {
-                    setAnchorReady(true);
-                    setShowHint(true);
-                    setVisibleSince(Date.now());
-                }
-            },
-            { root: null, rootMargin: '0px 0px -20% 0px', threshold: 0.3 }
-        );
-
-        io.observe(altoEl);
-        return () => io.disconnect();
-    }, [category_slug, product_slug, altoEl, isMobile]);
-
-
-    // Cerrar el overlay solo si el gesto supera un umbral (rueda/touch/tecla)
-    useEffect(() => {
-        if (!showHint) return;
-
-        const canHide = () => !visibleSince || (Date.now() - visibleSince) >= MIN_VISIBLE_MS;
-
-        // Umbrales “suaves”
-        const HIDE_DELAY_MS = 350;
-        const WHEEL_DELTA_THRESHOLD = 150;  // sube si quieres que aguante más
-        const TOUCH_DELTA_THRESHOLD = 120;
-
-        let wheelAccum = 0;
-        let touchStartY = null;
-        let hideTimer = null;
-
-        const delayedHide = () => {
-            if (hideTimer || !canHide()) return;
-            hideTimer = setTimeout(() => { setShowHint(false); }, HIDE_DELAY_MS);
-        };
-
-        const onWheel = (e) => { wheelAccum += Math.abs(e.deltaY || 0); if (wheelAccum >= WHEEL_DELTA_THRESHOLD) delayedHide(); };
-        const onTouchStart = (e) => { touchStartY = e.touches?.[0]?.clientY ?? null; };
-        const onTouchMove = (e) => {
-            if (touchStartY == null) return;
-            const dy = Math.abs((e.touches?.[0]?.clientY ?? 0) - touchStartY);
-            if (dy >= TOUCH_DELTA_THRESHOLD) delayedHide();
-        };
-        const onKeyDown = (e) => {
-            if (['PageDown', 'PageUp', 'Home', 'End', 'ArrowDown', 'ArrowUp', ' '].includes(e.key)) delayedHide();
-        };
-        const onScroll = delayedHide;
-        const onResize = delayedHide;
-
-        window.addEventListener('wheel', onWheel, { passive: true });
-        window.addEventListener('touchstart', onTouchStart, { passive: true });
-        window.addEventListener('touchmove', onTouchMove, { passive: true });
-        window.addEventListener('keydown', onKeyDown, { capture: true });
-        window.addEventListener('scroll', onScroll, { passive: true });
-        window.addEventListener('resize', onResize);
-
-        return () => {
-            clearTimeout(hideTimer);
-            window.removeEventListener('wheel', onWheel);
-            window.removeEventListener('touchstart', onTouchStart);
-            window.removeEventListener('touchmove', onTouchMove);
-            window.removeEventListener('keydown', onKeyDown, { capture: true });
-            window.removeEventListener('scroll', onScroll);
-            window.removeEventListener('resize', onResize);
-        };
-    }, [showHint, visibleSince, MIN_VISIBLE_MS]);
+        window.requestAnimationFrame(() => {
+            priceFeedbackRef.current?.scrollIntoView({
+                behavior: 'smooth',
+                block: 'nearest'
+            });
+        });
+    }, [calculatedPrice]);
 
 
 
@@ -571,12 +485,46 @@ export const ProductDetail = () => {
                                 </p>
                             )}
 
+                            <div className="product-purchase-guide" aria-label="Cómo comprar esta reja">
+                                <p className="product-purchase-guide-label">Cómo comprar</p>
+                                <div className="product-purchase-steps">
+                                    <span className="product-purchase-step">
+                                        <span className="product-step-number">1</span>
+                                        Introduce medidas
+                                    </span>
+                                    <span className="product-purchase-step">
+                                        <span className="product-step-number">2</span>
+                                        Calcula el precio
+                                    </span>
+                                    <span className="product-purchase-step">
+                                        <span className="product-step-number">3</span>
+                                        Añade al carrito
+                                    </span>
+                                </div>
+                                <div className="product-trust-badges" aria-label="Señales de confianza">
+                                    <span className="product-trust-badge">IVA incluido</span>
+                                    <span className="product-trust-badge">Fabricación a medida</span>
+                                    <span className="product-trust-badge">Ayuda por WhatsApp si la necesitas</span>
+                                </div>
+                            </div>
+
                             <Form>
                                 {/* Dimensiones */}
                                 <Row>
                                     <Col>
                                         <Form.Group className="position-relative">
-                                            <Form.Label>Alto (cm)</Form.Label>
+                                            <div className="product-input-label">
+                                                <Form.Label className="mb-0">Alto (cm)</Form.Label>
+                                                <button
+                                                    type="button"
+                                                    className="product-inline-help-button"
+                                                    onClick={toggleHint}
+                                                    aria-label={showHint ? "Ocultar ayuda sobre las medidas" : "Mostrar ayuda sobre las medidas"}
+                                                    aria-expanded={showHint}
+                                                >
+                                                    <i className="fa-solid fa-circle-info" />
+                                                </button>
+                                            </div>
                                             <Form.Control
                                                 type="number"
                                                 value={height}
@@ -595,7 +543,7 @@ export const ProductDetail = () => {
 
                                             <Overlay
                                                 target={altoEl}
-                                                show={showHint && anchorReady}
+                                                show={showHint && !!altoEl}
                                                 placement="bottom"
                                                 container={typeof document !== 'undefined' ? document.body : undefined}
                                                 popperConfig={{
@@ -645,6 +593,9 @@ export const ProductDetail = () => {
                                     </Col>
                                 </Row>
                                 {calcError && <p className="text-danger mt-2">{calcError}</p>}
+                                <p className="product-form-helper">
+                                    Introduce alto y ancho en centímetros para calcular el precio exacto de tu reja.
+                                </p>
 
                                 {/* Instalación & Color */}
                                 <Row className="mt-3">
@@ -818,36 +769,68 @@ export const ProductDetail = () => {
                                 </Row>
 
                                 {/* Botón Calcular */}
-                                <Button className="btn-style-background-color mt-3" onClick={handleCalculatePrice}>
-                                    <i className="fa-solid fa-calculator me-2" /> Calcular precio
-                                </Button>
-
-                                {/* Resultado de cálculo */}
-                                {calculatedPrice && (
-                                    <div className="mt-3">
-                                        <h5>Precio calculado: {calculatedPrice} €</h5>
-                                        {calculatedArea < 1 && <p className="text-warning">Área &lt; 1 m² incrementa coste.</p>}
-                                    </div>
-                                )}
-                                <DeliveryEstimate />
-                                <hr />
-                                <div className="d-flex justify-content-end align-items-center mt-4 gap-3">
-                                    <Share2
-                                        onClick={handleShare}
-                                        size={24}
-                                        color="#ff324d"
-                                        style={{ cursor: 'pointer' }}
-                                    />
-                                    <i
-                                        className={`fa-regular fa-heart ${actions.isFavorite(product) ? 'fa-solid' : ''}`}
-                                        onClick={handleFavorite}
-                                        style={{ cursor: 'pointer', color: '#ff324d', fontSize: '1.5rem', marginRight: '8px' }}
-                                    />
-
-                                    <Button className="btn-style-background-color" onClick={handleAddToCart}>
-                                        <ShoppingCart size={18} className="me-2" />
-                                        Añadir al carrito
+                                <div className="product-calculate-section">
+                                    <Button className="btn-style-background-color product-calculate-button mt-3" onClick={handleCalculatePrice}>
+                                        <i className="fa-solid fa-calculator me-2" /> Calcular precio ahora
                                     </Button>
+
+                                    {/* Resultado de cálculo */}
+                                    {calculatedPrice ? (
+                                        <div className="product-price-result mt-3" ref={priceFeedbackRef}>
+                                            <span className="product-price-result-label">Precio calculado para tus medidas</span>
+                                            <h5 className="product-price-result-value">{calculatedPrice} €</h5>
+                                            <p className="mb-0">IVA incluido para esta configuración.</p>
+                                            {calculatedArea < 1 && <p className="text-warning mb-0 mt-2">Área &lt; 1 m² incrementa coste.</p>}
+                                        </div>
+                                    ) : (
+                                        <div className="product-price-prompt mt-3" ref={priceFeedbackRef}>
+                                            <p className="mb-0">Introduce tus medidas y calcula el precio para ver el coste final de tu reja a medida.</p>
+                                        </div>
+                                    )}
+                                </div>
+                                <div className="product-delivery-estimate">
+                                    <DeliveryEstimate />
+                                </div>
+                                <div className="product-cta-guidance">
+                                    <p>
+                                        {calculatedPrice
+                                            ? "Ya tienes el precio calculado. Revisa la configuración y añádela al carrito."
+                                            : "Primero introduce tus medidas y calcula el precio para preparar la compra."}
+                                    </p>
+                                    {!store.isLoged && (
+                                        <p>
+                                            Para añadir esta reja al carrito necesitas <Link to="/login">iniciar sesión</Link>.
+                                        </p>
+                                    )}
+                                    <p>
+                                        Si tienes dudas antes de comprar, escríbenos por <a href="https://wa.me/34634112604" target="_blank" rel="noopener noreferrer">WhatsApp</a> o usa nuestro <Link to="/contact">formulario de contacto</Link>.
+                                    </p>
+                                </div>
+                                <hr />
+                                <div className="product-action-row d-flex flex-column flex-sm-row justify-content-between align-items-stretch align-items-sm-center mt-4 gap-3">
+                                    <div className="product-secondary-actions d-flex justify-content-end align-items-center gap-3">
+                                        <Share2
+                                            onClick={handleShare}
+                                            size={24}
+                                            color="#ff324d"
+                                            style={{ cursor: 'pointer' }}
+                                        />
+                                        <i
+                                            className={`fa-regular fa-heart ${actions.isFavorite(product) ? 'fa-solid' : ''}`}
+                                            onClick={handleFavorite}
+                                            style={{ cursor: 'pointer', color: '#ff324d', fontSize: '1.5rem', marginRight: '8px' }}
+                                        />
+                                    </div>
+
+                                    <div className="product-primary-action">
+                                        {calculatedPrice && (
+                                            <p className="product-cart-ready-note">Ya puedes añadir tu reja al carrito.</p>
+                                        )}
+                                        <Button className="btn-style-background-color product-add-to-cart-button" onClick={handleAddToCart}>
+                                            <ShoppingCart size={18} className="me-2" />
+                                            Añadir al carrito
+                                        </Button>
+                                    </div>
                                 </div>
                             </Form>
                         </div>
