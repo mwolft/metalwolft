@@ -119,7 +119,7 @@ export const RejasParaVentanasModernas = () => {
                     </script>
                 )}
             </Helmet>
-            <Container className='post-page' style={{ marginTop: '20px' }}>
+            <Container className='post-page' style={{ marginTop: '60px' }}>
                 <Breadcrumb
                     items={[
                         { label: "Inicio", to: "/" },

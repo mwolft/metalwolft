@@ -405,7 +405,7 @@ export const ProductDetail = () => {
 
     return (
         <div className="product-page-wrapper">
-            <Container style={{ marginTop: '100px', marginBottom: '0' }}>
+            <Container style={{ marginTop: '120px', marginBottom: '0' }}>
                 <Breadcrumb
                     items={[
                         { label: "Inicio", to: "/" },
@@ -852,12 +852,6 @@ export const ProductDetail = () => {
                             </Form>
                         </div>
                     </Col>
-                    <Link
-                        to={`/${category_slug}`}
-                        className="product-category-backlink mb-3 d-inline-flex align-items-center text-decoration-none"
-                    >
-                        ← Catálogo de {product?.categoria_nombre || 'la categoría'}
-                    </Link>
                     <div className="custom-accordion product-detail-accordion my-5">
                         {/* Acordeón 4 */}
                         <div className="accordion-item">

@@ -140,7 +140,7 @@ export const DondeComprarRejasLeroyIkea = () => {
                 )}
             </Helmet>
 
-            <Container className="post-page" style={{ marginTop: "20px", marginBottom: "50px" }}>
+            <Container className="post-page" style={{ marginTop: "60px", marginBottom: "50px" }}>
                 <Breadcrumb
                     items={[
                         { label: "Inicio", to: "/" },
