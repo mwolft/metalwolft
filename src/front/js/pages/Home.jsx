@@ -1,18 +1,15 @@
-import React, { useEffect, useContext, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Helmet } from "react-helmet-async";
 import "../../styles/index.css";
 import "../../styles/home.css";
 import { Carrusel } from "../component/Carrusel.jsx";
 import { BodyHomeMain } from "../component/BodyHomeMain.jsx";
 import { BodyHomeSecondary } from "../component/BodyHomeSecondary.jsx";
-import { useNavigate } from "react-router-dom";
-import { BodyHomeTertiary } from "../component/BodyHomeTertiary.jsx";
 import { BodyHomeQuarter } from "../component/BodyHomeQuarter.jsx";
 import { Contact } from "./Contact.jsx";
 
 
 export const Home = () => {
-    const navigate = useNavigate();
     const [metaData, setMetaData] = useState({});
     useEffect(() => {
         const observer = new IntersectionObserver(
@@ -49,11 +46,6 @@ export const Home = () => {
             .then((data) => setMetaData(data))
             .catch((error) => console.error("Error fetching SEO data:", error));
     }, []);
-
-    const handleSignUp = () => {
-        navigate("/login");
-    };
-
     return (
         <div>
             <Helmet htmlAttributes={{ lang: metaData.lang || "es" }}>
@@ -96,10 +88,10 @@ export const Home = () => {
                 <BodyHomeSecondary />
             </section>
             <section className="section">
-                <BodyHomeQuarter />
+                <Contact />
             </section>
             <section className="section">
-                <Contact />
+                <BodyHomeQuarter />
             </section>
             {/*<section className="section">
                 <CardsCarrusel />

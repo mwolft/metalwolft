@@ -32,10 +32,164 @@ body {
   }
 /* -----END CARRUSEL ----- */
 /* ----- START MAINHOME ----- */
+.home-commercial-hero{
+    margin-top: 3.75rem;
+    margin-bottom: 2.75rem;
+}
+.home-section-eyebrow{
+    margin-bottom: .6rem;
+    color: #ff324d;
+    font-size: .8rem;
+    font-weight: 700;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+}
 .h1-home{
     margin-top: 2rem;
     font-size: 2.7rem;
     font-weight: 600;
+}
+.home-hero-title{
+    margin-top: 0;
+    color: #111827;
+    line-height: 1.1;
+}
+.home-hero-subtitle{
+    max-width: 40rem;
+    margin-top: 1rem;
+    margin-bottom: 0;
+    color: #4b5563;
+    font-size: 1.12rem;
+    line-height: 1.75;
+}
+.home-hero-cta-group{
+    display: flex;
+    flex-wrap: wrap;
+    gap: .9rem;
+    margin-top: 1.75rem;
+}
+.home-hero-primary{
+    min-width: 220px;
+}
+.home-hero-secondary{
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: .75rem 1.05rem;
+    border: 1px solid #ffd3da;
+    border-radius: 999px;
+    background: #fff7f8;
+    color: #b42336;
+    font-weight: 600;
+    text-decoration: none;
+    transition: background-color .2s ease, border-color .2s ease, color .2s ease;
+}
+.home-hero-secondary:hover,
+.home-hero-secondary:focus-visible{
+    background: #ffffff;
+    border-color: #ff324d;
+    color: #9f1239;
+}
+.home-hero-route-card{
+    padding: 1.35rem 1.3rem;
+    border: 1px solid #eceff3;
+    border-radius: 18px;
+    background: linear-gradient(180deg, #ffffff 0%, #fafbfc 100%);
+}
+.home-hero-route-label{
+    margin-bottom: .75rem;
+    color: #1f2937;
+    font-size: .95rem;
+    font-weight: 700;
+}
+.home-hero-route-list{
+    margin: 0;
+    padding-left: 1.15rem;
+    color: #4b5563;
+}
+.home-hero-route-list li{
+    margin-bottom: .55rem;
+    line-height: 1.55;
+}
+.home-hero-route-link{
+    display: inline-flex;
+    margin-top: .85rem;
+    color: #ff324d;
+    font-weight: 600;
+    text-decoration: none;
+}
+.home-hero-route-link:hover,
+.home-hero-route-link:focus-visible{
+    text-decoration: underline;
+}
+.home-trust-grid{
+    margin-top: 1.5rem;
+}
+.home-trust-item{
+    height: 100%;
+    padding: 1rem 1.05rem;
+    border-radius: 16px;
+    background: #f8fafc;
+}
+.home-trust-item strong{
+    display: block;
+    margin-bottom: .35rem;
+    color: #1f2937;
+    font-size: .96rem;
+}
+.home-trust-item span{
+    color: #4b5563;
+    font-size: .9rem;
+    line-height: 1.55;
+}
+.home-buying-help{
+    margin-top: 1.75rem;
+}
+.home-help-title{
+    margin-top: 0;
+    color: #111827;
+    font-size: 2rem;
+}
+.home-help-copy{
+    max-width: 42rem;
+    margin-bottom: 1.15rem;
+    color: #4b5563;
+    line-height: 1.7;
+}
+.home-help-card{
+    height: 100%;
+    padding: 1.05rem 1rem;
+    border: 1px solid #eceff3;
+    border-radius: 16px;
+    background: #ffffff;
+}
+.home-help-card-title{
+    margin-bottom: .45rem;
+    color: #1f2937;
+    font-size: 1.05rem;
+    font-weight: 700;
+}
+.home-help-card-copy{
+    margin-bottom: .65rem;
+    color: #4b5563;
+    line-height: 1.6;
+}
+.home-help-card-link,
+.home-help-footer a{
+    color: #ff324d;
+    font-weight: 600;
+    text-decoration: none;
+}
+.home-help-card-link:hover,
+.home-help-card-link:focus-visible,
+.home-help-footer a:hover,
+.home-help-footer a:focus-visible{
+    text-decoration: underline;
+}
+.home-help-footer{
+    margin-top: .9rem;
+    color: #4b5563;
+    line-height: 1.6;
 }
 .hr-home{
     margin-top: .3rem;
@@ -52,6 +206,34 @@ body {
 }
 /* -----END MAINHOME ----- */
 /* ----- START SECONDARYNHOME ----- */
+.home-category-header{
+    margin-bottom: 1.15rem;
+}
+.home-category-title{
+    margin-top: 0;
+    color: #111827;
+    font-size: 2.1rem;
+}
+.home-category-copy{
+    max-width: 40rem;
+    color: #4b5563;
+    line-height: 1.7;
+}
+.home-category-card--featured .card-img-overlay{
+    background: linear-gradient(180deg, rgba(34, 34, 34, 0.55) 0%, rgba(34, 34, 34, 0.68) 100%);
+}
+.home-category-badge{
+    display: inline-flex;
+    margin-bottom: .8rem;
+    padding: .3rem .7rem;
+    border-radius: 999px;
+    background: rgba(255,255,255,.16);
+    color: #ffffff;
+    font-size: .76rem;
+    font-weight: 700;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+}
 .card{
     border-radius: 0;
     border: 0;
@@ -159,6 +341,22 @@ body {
 /* ----- START DESIGN MEDIA QUERIES ----- */
 /* ----- Pantallas pequeñas (móviles) ----- */
   @media (max-width: 575px) {
+    .home-commercial-hero{
+        margin-top: 2.6rem;
+    }
+    .home-hero-cta-group{
+        flex-direction: column;
+        align-items: stretch;
+    }
+    .home-hero-primary,
+    .home-hero-secondary{
+        width: 100%;
+        min-width: 0;
+    }
+    .home-help-title,
+    .home-category-title{
+        font-size: 1.75rem;
+    }
     .h6-carrusel{
         font-size: 3rem; 
     }
@@ -196,4 +394,3 @@ body {
         font-size: 1.6rem; 
     }
   }
-  
