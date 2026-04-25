@@ -4,6 +4,33 @@ import { useNavigate } from "react-router-dom";
 import { Row, Col, Container, Button, Form } from "react-bootstrap";
 import { Helmet } from "react-helmet-async";
 
+const PENDING_PRODUCT_CONFIG_STORAGE_KEY = "mw_pending_product_config";
+const PENDING_PRODUCT_CONFIG_MAX_AGE_MS = 30 * 60 * 1000;
+
+const getPendingProductReturnTo = () => {
+  if (typeof window === "undefined") return null;
+
+  const rawPendingConfig = window.sessionStorage.getItem(PENDING_PRODUCT_CONFIG_STORAGE_KEY);
+  if (!rawPendingConfig) return null;
+
+  try {
+    const pendingConfig = JSON.parse(rawPendingConfig);
+    const savedAt = Number(pendingConfig?.saved_at);
+    const isFresh = Number.isFinite(savedAt) && Date.now() - savedAt <= PENDING_PRODUCT_CONFIG_MAX_AGE_MS;
+    const returnTo = pendingConfig?.return_to;
+
+    if (!isFresh || typeof returnTo !== "string" || !returnTo.startsWith("/") || returnTo.startsWith("//")) {
+      window.sessionStorage.removeItem(PENDING_PRODUCT_CONFIG_STORAGE_KEY);
+      return null;
+    }
+
+    return returnTo;
+  } catch (error) {
+    window.sessionStorage.removeItem(PENDING_PRODUCT_CONFIG_STORAGE_KEY);
+    return null;
+  }
+};
+
 export const Login = () => {
   const { actions } = useContext(Context);
   const [isLogin, setIsLogin] = useState(true);
@@ -87,9 +114,12 @@ export const Login = () => {
         localStorage.setItem("user", JSON.stringify(data.results));
         actions.setCurrentUser(data.results);
         actions.setIsLoged(true);
+        const pendingProductReturnTo = getPendingProductReturnTo();
 
         if (data.results.is_admin) {
           navigate("/admin");
+        } else if (pendingProductReturnTo) {
+          navigate(pendingProductReturnTo);
         } else {
           navigate("/");
         }

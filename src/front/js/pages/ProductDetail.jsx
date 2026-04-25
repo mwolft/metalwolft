@@ -23,6 +23,75 @@ import { WhatsAppWidget } from "../component/WhatsAppWidget.jsx";
 import DeliveryEstimate from "../component/DeliveryEstimate.jsx"
 import { Breadcrumb } from "../component/Breadcrumb.jsx";
 
+const PENDING_PRODUCT_CONFIG_STORAGE_KEY = "mw_pending_product_config";
+const PENDING_PRODUCT_CONFIG_MAX_AGE_MS = 30 * 60 * 1000;
+const DEFAULT_MOUNTING = 'Sin obra: con agujeros interiores';
+const DEFAULT_COLOR = 'satinado_blanco';
+
+const readPendingProductConfig = () => {
+    if (typeof window === "undefined") return null;
+
+    const rawPendingConfig = window.sessionStorage.getItem(PENDING_PRODUCT_CONFIG_STORAGE_KEY);
+    if (!rawPendingConfig) return null;
+
+    try {
+        return JSON.parse(rawPendingConfig);
+    } catch (error) {
+        window.sessionStorage.removeItem(PENDING_PRODUCT_CONFIG_STORAGE_KEY);
+        return null;
+    }
+};
+
+const clearPendingProductConfig = () => {
+    if (typeof window === "undefined") return;
+    window.sessionStorage.removeItem(PENDING_PRODUCT_CONFIG_STORAGE_KEY);
+};
+
+const buildPriceQuote = ({ rawHeight, rawWidth, product }) => {
+    const h = parseFloat(rawHeight);
+    const w = parseFloat(rawWidth);
+
+    if (isNaN(h) || isNaN(w)) {
+        return { error: 'Debe ingresar dimensiones válidas' };
+    }
+
+    if (h < 30 || w < 30 || h > 250 || w > 250 || h + w > 400) {
+        return { error: 'Dimensiones fuera de rango (30–250 cm, suma ≤ 400 cm)' };
+    }
+
+    const base = product.precio_rebajado || product.precio;
+    const area = (h * w) / 10000;
+    const basePrice = 80;
+    let price = area * base;
+    const multiplier =
+        area >= 0.9
+            ? 1
+            : area >= 0.8
+                ? 1.1
+                : area >= 0.7
+                    ? 1.15
+                    : area >= 0.6
+                        ? 1.2
+                        : area >= 0.5
+                            ? 1.3
+                            : area >= 0.4
+                                ? 1.55
+                                : area >= 0.3
+                                    ? 1.9
+                                    : area >= 0.2
+                                        ? 2.5
+                                        : 3.0;
+
+    price = Math.max(price * multiplier, basePrice);
+
+    return {
+        h,
+        w,
+        area,
+        formattedPrice: price.toFixed(2)
+    };
+};
+
 export const ProductDetail = () => {
     const { store, actions } = useContext(Context);
     const { category_slug, product_slug } = useParams();
@@ -37,11 +106,12 @@ export const ProductDetail = () => {
     const [currentIndex, setCurrentIndex] = useState(0);
     const [height, setHeight] = useState('');
     const [width, setWidth] = useState('');
-    const [mounting, setMounting] = useState('Sin obra: con agujeros interiores');
-    const [color, setColor] = useState('satinado_blanco');
+    const [mounting, setMounting] = useState(DEFAULT_MOUNTING);
+    const [color, setColor] = useState(DEFAULT_COLOR);
     const [calculatedPrice, setCalculatedPrice] = useState(null);
     const [calculatedArea, setCalculatedArea] = useState(null);
     const [calcError, setCalcError] = useState('');
+    const [showRestoredPriceReady, setShowRestoredPriceReady] = useState(false);
     const [previewColor, setPreviewColor] = useState(null);
     const priceFeedbackRef = useRef(null);
     const COLOR_MAP = {
@@ -70,6 +140,46 @@ export const ProductDetail = () => {
 
     const toggleHint = () => {
         setShowHint((prevShowHint) => !prevShowHint);
+    };
+
+    const applyPriceQuote = (quote) => {
+        if (!quote || quote.error) {
+            setCalcError(quote?.error || 'No se pudo calcular el precio');
+            setCalculatedArea(null);
+            setCalculatedPrice(null);
+            return null;
+        }
+
+        setCalcError('');
+        setCalculatedArea(quote.area);
+        setCalculatedPrice(quote.formattedPrice);
+        return quote;
+    };
+
+    const savePendingProductConfig = () => {
+        if (typeof window === "undefined") return;
+
+        const pendingConfig = {
+            category_slug,
+            product_slug,
+            height,
+            width,
+            mounting,
+            color,
+            saved_at: Date.now(),
+            return_to: `/${category_slug}/${product_slug}`
+        };
+
+        window.sessionStorage.setItem(
+            PENDING_PRODUCT_CONFIG_STORAGE_KEY,
+            JSON.stringify(pendingConfig)
+        );
+    };
+
+    const clearRestoredPriceReady = () => {
+        if (showRestoredPriceReady) {
+            setShowRestoredPriceReady(false);
+        }
     };
 
 
@@ -153,61 +263,36 @@ export const ProductDetail = () => {
     };
 
     const handleCalculatePrice = () => {
-        setCalcError('');
-        const h = parseFloat(height),
-            w = parseFloat(width);
-        if (isNaN(h) || isNaN(w)) {
-            setCalcError('Debe ingresar dimensiones válidas');
+        setShowRestoredPriceReady(false);
+        const quote = applyPriceQuote(
+            buildPriceQuote({
+                rawHeight: height,
+                rawWidth: width,
+                product
+            })
+        );
+
+        if (!quote) {
             return;
         }
-        if (h < 30 || w < 30 || h > 250 || w > 250 || h + w > 400) {
-            setCalcError(
-                'Dimensiones fuera de rango (30–250 cm, suma ≤ 400 cm)'
-            );
-            return;
-        }
-        const base = product.precio_rebajado || product.precio;
-        const area = (h * w) / 10000;
-        setCalculatedArea(area);
-        let price = area * base;
-        const basePrice = 80;
-        let multiplier =
-            area >= 0.9
-                ? 1
-                : area >= 0.8
-                    ? 1.1
-                    : area >= 0.7
-                        ? 1.15
-                        : area >= 0.6
-                            ? 1.2
-                            : area >= 0.5
-                                ? 1.3
-                                : area >= 0.4
-                                    ? 1.55
-                                    : area >= 0.3
-                                        ? 1.9
-                                        : area >= 0.2
-                                            ? 2.5
-                                            : 3.0;
-        price = Math.max(price * multiplier, basePrice);
+
         if (window.dataLayer) {
             window.dataLayer.push({
                 event: "calcular_precio",
                 product_name: product?.nombre,
                 product_slug: product?.slug,
-                height_cm: h,
-                width_cm: w,
-                area_m2: area,
-                final_price: price.toFixed(2)
+                height_cm: quote.h,
+                width_cm: quote.w,
+                area_m2: quote.area,
+                final_price: quote.formattedPrice
             });
         }
-
-        setCalculatedPrice(price.toFixed(2));
     };
 
     const handleAddToCart = async () => {
         if (!store.isLoged) {
-            setNotification('Debe iniciar sesión para carrito');
+            savePendingProductConfig();
+            navigate("/login");
             return;
         }
 
@@ -235,10 +320,11 @@ export const ProductDetail = () => {
         // reset
         setHeight('');
         setWidth('');
-        setMounting('Sin obra: con agujeros interiores');
-        setColor('satinado_blanco');
+        setMounting(DEFAULT_MOUNTING);
+        setColor(DEFAULT_COLOR);
         setCalculatedPrice(null);
         setCalculatedArea(null);
+        setShowRestoredPriceReady(false);
     };
 
     const determinePlacement = () =>
@@ -254,6 +340,53 @@ export const ProductDetail = () => {
             });
         });
     }, [calculatedPrice]);
+
+    useEffect(() => {
+        if (!product) return;
+
+        const pendingConfig = readPendingProductConfig();
+        if (!pendingConfig) return;
+
+        const savedAt = Number(pendingConfig.saved_at);
+        const isFresh = Number.isFinite(savedAt) && Date.now() - savedAt <= PENDING_PRODUCT_CONFIG_MAX_AGE_MS;
+
+        if (!isFresh) {
+            clearPendingProductConfig();
+            return;
+        }
+
+        if (
+            pendingConfig.category_slug !== category_slug ||
+            pendingConfig.product_slug !== product_slug
+        ) {
+            clearPendingProductConfig();
+            return;
+        }
+
+        const restoredHeight = pendingConfig.height ?? '';
+        const restoredWidth = pendingConfig.width ?? '';
+        const restoredMounting = pendingConfig.mounting || DEFAULT_MOUNTING;
+        const restoredColor = COLOR_MAP[pendingConfig.color] ? pendingConfig.color : DEFAULT_COLOR;
+
+        setHeight(restoredHeight);
+        setWidth(restoredWidth);
+        setMounting(restoredMounting);
+        setColor(restoredColor);
+
+        if (restoredHeight && restoredWidth) {
+            applyPriceQuote(
+                buildPriceQuote({
+                    rawHeight: restoredHeight,
+                    rawWidth: restoredWidth,
+                    product
+                })
+            );
+            setShowRestoredPriceReady(true);
+        }
+
+        clearPendingProductConfig();
+        setNotification('Hemos restaurado tu configuración.');
+    }, [product, category_slug, product_slug]);
 
 
 
@@ -532,6 +665,7 @@ export const ProductDetail = () => {
                                                 onFocus={closeHintIfVisible}
                                                 onChange={(e) => {
                                                     closeHintIfVisible();
+                                                    clearRestoredPriceReady();
                                                     setHeight(e.target.value.replace(',', '.'));
                                                 }}
                                                 placeholder="Ej.: 120.1"
@@ -582,6 +716,7 @@ export const ProductDetail = () => {
                                                 onFocus={closeHintIfVisible}
                                                 onChange={(e) => {
                                                     closeHintIfVisible();
+                                                    clearRestoredPriceReady();
                                                     setWidth(e.target.value.replace(',', '.'));
                                                 }}
                                                 min="0"
@@ -660,7 +795,10 @@ export const ProductDetail = () => {
                                             </OverlayTrigger>
                                             <Form.Select
                                                 value={mounting}
-                                                onChange={e => setMounting(e.target.value)}
+                                                onChange={e => {
+                                                    clearRestoredPriceReady();
+                                                    setMounting(e.target.value);
+                                                }}
                                             >
                                                 <option>Sin obra: con agujeros interiores</option>
                                                 <option>Sin obra: con agujeros frontales</option>
@@ -728,7 +866,10 @@ export const ProductDetail = () => {
                                                         onMouseLeave={() => setPreviewColor(null)}
                                                         onTouchStart={() => setPreviewColor(c)}
                                                         style={{ backgroundColor: c.hex }}
-                                                        onClick={() => setColor(c.name)}
+                                                        onClick={() => {
+                                                            clearRestoredPriceReady();
+                                                            setColor(c.name);
+                                                        }}
                                                         title={c.label}
                                                     ></div>
                                                 ))}
@@ -759,7 +900,10 @@ export const ProductDetail = () => {
                                                             backgroundImage: "url('https://www.transparenttextures.com/patterns/dark-matter.png')",
                                                             backgroundBlendMode: 'multiply'
                                                         }}
-                                                        onClick={() => setColor(c.name)}
+                                                        onClick={() => {
+                                                            clearRestoredPriceReady();
+                                                            setColor(c.name);
+                                                        }}
                                                         title={c.label}
                                                     ></div>
                                                 ))}
@@ -778,6 +922,12 @@ export const ProductDetail = () => {
                                     {calculatedPrice ? (
                                         <div className="product-price-result mt-3" ref={priceFeedbackRef}>
                                             <span className="product-price-result-label">Precio calculado para tus medidas</span>
+                                            {showRestoredPriceReady && (
+                                                <p className="product-restored-price-ready mb-2">
+                                                    <i className="fa-solid fa-circle-check me-2" />
+                                                    Precio calculado con tus medidas
+                                                </p>
+                                            )}
                                             <h5 className="product-price-result-value">{calculatedPrice} €</h5>
                                             <p className="mb-0">IVA incluido para esta configuración.</p>
                                             {calculatedArea < 1 && <p className="text-warning mb-0 mt-2">Área &lt; 1 m² incrementa coste.</p>}
@@ -824,7 +974,9 @@ export const ProductDetail = () => {
 
                                     <div className="product-primary-action">
                                         {calculatedPrice && (
-                                            <p className="product-cart-ready-note">Ya puedes añadir tu reja al carrito.</p>
+                                            <p className={`product-cart-ready-note${showRestoredPriceReady ? ' product-cart-ready-note--restored' : ''}`}>
+                                                {showRestoredPriceReady ? 'Ya puedes añadir tu reja restaurada al carrito.' : 'Ya puedes añadir tu reja al carrito.'}
+                                            </p>
                                         )}
                                         <Button className="btn-style-background-color product-add-to-cart-button" onClick={handleAddToCart}>
                                             <ShoppingCart size={18} className="me-2" />
