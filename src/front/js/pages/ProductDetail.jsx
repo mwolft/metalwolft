@@ -687,7 +687,7 @@ export const ProductDetail = () => {
                                     <Col>
                                         <Form.Group className="position-relative">
                                             <div className="product-input-label">
-                                                <Form.Label className="mb-0">Alto (cm)</Form.Label>
+                                                <Form.Label>Alto (cm)</Form.Label>
                                                 <button
                                                     type="button"
                                                     className="product-inline-help-button"

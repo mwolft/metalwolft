@@ -397,15 +397,6 @@ export const Cart = () => {
                                 </Table>
                             </div>
 
-                            {lastCategorySlug && (
-                                <Link
-                                    to={`/${lastCategorySlug}`}
-                                    className="mt-4 d-inline-block text-decoration-none"
-                                    style={{ fontWeight: "bold", color: "#ff324d" }}
-                                >
-                                    <i className="fa-solid fa-arrow-left"></i> Volver al catálogo de {lastCategorySlug.replaceAll("-", " ")}
-                                </Link>
-                            )}
                         </Col>
 
                         <Col xl={4} lg={5}>
