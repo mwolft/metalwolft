@@ -11,6 +11,7 @@ export const MainNavbar = () => {
     const { store, actions } = useContext(Context);
     const [expanded, setExpanded] = useState(false);
     const navigate = useNavigate();
+    const isAdminUser = Boolean(store.isAdmin || store.currentUser?.is_admin);
 
     const displayName = (() => {
         const fn = store.currentUser?.firstname?.trim();
@@ -230,7 +231,7 @@ export const MainNavbar = () => {
                                         </span>
                                     </Nav.Link>
 
-                                    {store.currentUser?.is_admin && (
+                                    {isAdminUser && (
                                         <Nav.Link
                                             as={Link}
                                             to="/admin"
@@ -349,7 +350,7 @@ export const MainNavbar = () => {
                                         <i className="fa-regular fa-id-card me-2"></i> Mi cuenta
                                     </NavDropdown.Item>
 
-                                    {store.currentUser?.is_admin && (
+                                    {isAdminUser && (
                                         <>
                                             <NavDropdown.Divider />
                                             <NavDropdown.Item as={Link} to="/admin" onClick={handleSelect}>

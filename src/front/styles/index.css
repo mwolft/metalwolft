@@ -502,6 +502,186 @@ p .btn-color-yellow:hover {
   width: 100%;
   padding: 30px; 
   margin-top: 50px;
+ }
+.auth-page {
+  position: relative;
+  min-height: 100vh;
+  overflow: hidden;
+  padding: 7.5rem 1rem 2rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.auth-page-media {
+  position: absolute;
+  inset: 0;
+  background-size: cover;
+  background-position: center;
+  transform: scale(1.04);
+  filter: blur(2px);
+}
+.auth-page-overlay {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(180deg, rgba(12, 15, 17, 0.72) 0%, rgba(12, 15, 17, 0.52) 100%);
+}
+.auth-page-content {
+  position: relative;
+  z-index: 2;
+  width: 100%;
+  display: flex;
+  justify-content: center;
+}
+.login-card {
+  max-width: 470px;
+  margin-top: 0;
+  padding: 2rem 1.8rem;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 24px;
+  background: rgba(255, 255, 255, 0.94);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  box-shadow: 0 24px 60px rgba(15, 23, 42, 0.22);
+}
+.login-card-header {
+  text-align: center;
+}
+.login-card-eyebrow {
+  margin-bottom: 0.55rem;
+  color: #ff324d;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+.login-card-title {
+  margin: 0;
+  color: #111827;
+  font-size: 2rem;
+  font-weight: 700;
+  line-height: 1.1;
+}
+.login-card-subtitle {
+  margin: 0.9rem 0 0;
+  color: #4b5563;
+  font-size: 0.98rem;
+  line-height: 1.65;
+}
+.login-card-helper {
+  margin-bottom: 1rem;
+  color: #4b5563;
+  font-size: 0.95rem;
+  line-height: 1.6;
+}
+.auth-pending-return {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.7rem;
+  margin-top: 1.15rem;
+  padding: 0.9rem 1rem;
+  border: 1px solid #ffe1e6;
+  border-radius: 16px;
+  background: #fff8f9;
+  color: #9f1239;
+  font-size: 0.93rem;
+  line-height: 1.55;
+}
+.auth-pending-return i {
+  margin-top: 0.12rem;
+  color: #ff324d;
+}
+.auth-status {
+  margin-top: 1rem;
+  padding: 0.8rem 0.95rem;
+  border-radius: 14px;
+  font-size: 0.93rem;
+  font-weight: 500;
+  line-height: 1.55;
+}
+.auth-status--success {
+  background: #eefbf3;
+  color: #166534;
+  border: 1px solid #ccefd8;
+}
+.auth-status--error {
+  background: #fff1f3;
+  color: #b42336;
+  border: 1px solid #ffd7dd;
+}
+.auth-divider {
+  margin: 1.35rem 0 1.2rem;
+}
+.auth-form-group {
+  margin-bottom: 1rem;
+}
+.auth-field-label {
+  margin-bottom: 0.45rem;
+  color: #1f2937;
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+.login-card .auth-field-control.form-control {
+  padding: 0.85rem 1rem;
+  border: 1px solid #d8dde5;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.94);
+  color: #111827;
+  box-shadow: none;
+}
+.login-card .auth-field-control.form-control:focus {
+  border-color: #ff324d;
+  box-shadow: 0 0 0 4px rgba(255, 50, 77, 0.12);
+}
+.auth-form-actions {
+  display: flex;
+  gap: 0.8rem;
+  margin-top: 1.25rem;
+}
+.auth-form-actions--split .auth-secondary-button,
+.auth-form-actions--split .auth-submit-button {
+  flex: 1 1 0;
+}
+.auth-submit-button {
+  width: 100%;
+  min-height: 48px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+.auth-secondary-button {
+  min-height: 48px;
+  border-radius: 14px;
+  font-weight: 600;
+}
+.auth-card-links {
+  margin-top: 1.35rem;
+  padding-top: 1rem;
+  border-top: 1px solid #edf0f4;
+  text-align: center;
+}
+.auth-link-row {
+  margin-bottom: 0.55rem;
+  color: #4b5563;
+  line-height: 1.6;
+}
+.auth-inline-link {
+  border: none;
+  padding: 0;
+  background: transparent;
+  color: #ff324d;
+  font-weight: 600;
+  text-decoration: underline;
+  cursor: pointer;
+}
+.auth-inline-link--standalone {
+  font-size: 0.95rem;
+}
+.auth-inline-link:hover,
+.auth-inline-link:focus-visible {
+  color: #b91c35;
 }
 .auth-header {
   color: #007bff; 
@@ -573,7 +753,25 @@ select:-webkit-autofill:active {
 /* ----- START DESIGN MEDIA QUERIES ----- */
 /* ----- Pantallas pequeñas (móviles) ----- */
 @media (max-width: 575px) {
-
+  .auth-page {
+    padding: 5.75rem 1rem 1.5rem;
+    align-items: flex-start;
+  }
+  .login-card {
+    padding: 1.5rem 1.1rem;
+    border-radius: 20px;
+  }
+  .login-card-title {
+    font-size: 1.7rem;
+  }
+  .auth-form-actions,
+  .auth-form-actions--split {
+    flex-direction: column;
+  }
+  .auth-form-actions--split .auth-secondary-button,
+  .auth-form-actions--split .auth-submit-button {
+    width: 100%;
+  }
 }
 /* ----- Pantallas medianas (tabletas) ----- */
 @media (min-width: 576px) and (max-width: 767px) {

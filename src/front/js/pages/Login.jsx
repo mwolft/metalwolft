@@ -1,7 +1,7 @@
 import React, { useContext, useState } from "react";
-import { Context } from '../store/appContext.js';
+import { Context } from "../store/appContext.js";
 import { useNavigate } from "react-router-dom";
-import { Row, Col, Container, Button, Form } from "react-bootstrap";
+import { Container, Button, Form } from "react-bootstrap";
 import { Helmet } from "react-helmet-async";
 
 const PENDING_PRODUCT_CONFIG_STORAGE_KEY = "mw_pending_product_config";
@@ -42,6 +42,7 @@ export const Login = () => {
   const [token, setToken] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
+  const [hasPendingProductConfig] = useState(() => Boolean(getPendingProductReturnTo()));
   const navigate = useNavigate();
 
   const handleEmail = (event) => { setEmail(event.target.value); };
@@ -49,21 +50,21 @@ export const Login = () => {
   const handleConfirmPassword = (event) => { setConfirmPassword(event.target.value); };
   const handleToken = (event) => { setToken(event.target.value); };
 
-  const validatePassword = (password) => {
+  const validatePassword = (rawPassword) => {
     const minLength = 6;
     const maxLength = 20;
-    const hasLetter = /[a-zA-Z]/.test(password);
+    const hasLetter = /[a-zA-Z]/.test(rawPassword);
 
-    if (password.length < minLength) {
-      return 'La contraseña debe tener al menos 6 caracteres.';
+    if (rawPassword.length < minLength) {
+      return "La contraseña debe tener al menos 6 caracteres.";
     }
-    if (password.length > maxLength) {
-      return 'La contraseña no debe tener más de 20 caracteres.';
+    if (rawPassword.length > maxLength) {
+      return "La contraseña no debe tener más de 20 caracteres.";
     }
     if (!hasLetter) {
-      return 'La contraseña debe contener al menos una letra.';
+      return "La contraseña debe contener al menos una letra.";
     }
-    return '';
+    return "";
   };
 
   const handleSubmit = async (event) => {
@@ -79,23 +80,23 @@ export const Login = () => {
     }
 
     const dataToSend = { email, password };
-    let uri, options;
+    let uri;
 
     if (isLogin) {
-      uri = process.env.REACT_APP_BACKEND_URL + '/api/login';
+      uri = process.env.REACT_APP_BACKEND_URL + "/api/login";
     } else {
       if (password !== confirmPassword) {
-        setErrorMessage('Las contraseñas no coinciden');
+        setErrorMessage("Las contraseñas no coinciden");
         return;
       }
-      uri = process.env.REACT_APP_BACKEND_URL + '/api/signup';
+      uri = process.env.REACT_APP_BACKEND_URL + "/api/signup";
     }
 
-    options = {
-      method: 'POST',
+    const options = {
+      method: "POST",
       body: JSON.stringify(dataToSend),
       headers: {
-        'Content-Type': 'application/json'
+        "Content-Type": "application/json"
       }
     };
 
@@ -104,8 +105,8 @@ export const Login = () => {
       const data = await response.json();
 
       if (!response.ok) {
-        console.error('Error: ', response.status, response.statusText);
-        setErrorMessage(data.message || 'Correo o contraseña incorrectos');
+        console.error("Error: ", response.status, response.statusText);
+        setErrorMessage(data.message || "Correo o contraseña incorrectos");
         return;
       }
 
@@ -124,11 +125,11 @@ export const Login = () => {
           navigate("/");
         }
       } else {
-        setErrorMessage('Datos incompletos en la respuesta del servidor');
+        setErrorMessage("Datos incompletos en la respuesta del servidor");
       }
     } catch (error) {
-      console.error('Error en el manejo del inicio de sesión:', error);
-      setErrorMessage('Error inesperado, intenta más tarde');
+      console.error("Error en el manejo del inicio de sesión:", error);
+      setErrorMessage("Error inesperado, intenta más tarde");
     }
   };
 
@@ -136,18 +137,21 @@ export const Login = () => {
     event.preventDefault();
     setIsLogin(!isLogin);
     setErrorMessage("");
+    setSuccessMessage("");
   };
 
   const handleForgotPassword = (event) => {
     event.preventDefault();
     setIsForgotPassword(true);
     setErrorMessage("");
+    setSuccessMessage("");
   };
 
   const handleCancelForgotPassword = () => {
     setIsForgotPassword(false);
     setEmail("");
     setErrorMessage("");
+    setSuccessMessage("");
   };
 
   const handleForgotPasswordSubmit = async (event) => {
@@ -157,19 +161,19 @@ export const Login = () => {
 
     try {
       const response = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/auth/forgot-password`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email }),
       });
       const data = await response.json();
       if (response.ok) {
-        setSuccessMessage(data.message || 'Revisa tu correo para continuar.');
-        setIsResetPassword(true); // Mostrar enlace para ingresar código
+        setSuccessMessage(data.message || "Revisa tu correo para continuar.");
+        setIsResetPassword(true);
       } else {
-        setErrorMessage(data.error || 'Error al enviar el correo.');
+        setErrorMessage(data.error || "Error al enviar el correo.");
       }
     } catch (error) {
-      setErrorMessage('Error inesperado. Intenta nuevamente más tarde.');
+      setErrorMessage("Error inesperado. Intenta nuevamente más tarde.");
     }
   };
 
@@ -179,205 +183,202 @@ export const Login = () => {
     setSuccessMessage("");
 
     if (password !== confirmPassword) {
-      setErrorMessage('Las contraseñas no coinciden');
+      setErrorMessage("Las contraseñas no coinciden");
       return;
     }
 
     try {
       const response = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/auth/reset-password`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ token, password }),
       });
       const data = await response.json();
       if (response.ok) {
-        setSuccessMessage(data.message || 'Contraseña restablecida con éxito.');
+        setSuccessMessage(data.message || "Contraseña restablecida con éxito.");
         setIsResetPassword(false);
         setIsLogin(true);
       } else {
-        setErrorMessage(data.error || 'Error al restablecer la contraseña.');
+        setErrorMessage(data.error || "Error al restablecer la contraseña.");
       }
     } catch (error) {
-      setErrorMessage('Error inesperado. Intenta nuevamente más tarde.');
+      setErrorMessage("Error inesperado. Intenta nuevamente más tarde.");
     }
   };
+
+  const authTitle = isResetPassword
+    ? "Restablece tu contraseña"
+    : isForgotPassword
+      ? "Recupera tu acceso"
+      : isLogin
+        ? "Accede a tu cuenta"
+        : "Crea tu cuenta";
+
+  const authSubtitle = isResetPassword
+    ? "Introduce el código que has recibido y define una nueva contraseña para volver a entrar."
+    : isForgotPassword
+      ? "Te enviaremos un correo para que puedas recuperar el acceso de forma segura."
+      : isLogin
+        ? "Continúa con tu compra, recupera tu carrito y consulta tus pedidos."
+        : "Crea tu cuenta para guardar tus pedidos y continuar con la compra.";
 
   return (
     <>
       <Helmet>
         <meta name="theme-color" content="#ff324d" />
       </Helmet>
-      <Container
-        fluid
-        className="auth-container d-flex justify-content-center align-items-center"
-        style={{
-          marginTop: '0',
-          height: '100vh',
-          position: 'relative',
-          overflow: 'hidden',
-        }}
-      >
-        {/* Fondo difuminado */}
+
+      <Container fluid className="auth-page">
         <div
+          className="auth-page-media"
+          aria-hidden="true"
           style={{
-            position: 'absolute',
-            top: 0,
-            left: 0,
-            width: '100%',
-            height: '100%',
-            backgroundImage: 'url(https://res.cloudinary.com/dewanllxn/image/upload/v1733817377/herrero-ciudad-real_ndf77e.jpg)',
-            backgroundSize: 'cover',
-            backgroundPosition: 'center',
-            filter: 'blur(1px)',
-            zIndex: 1,
+            backgroundImage: "url(https://res.cloudinary.com/dewanllxn/image/upload/v1733817377/herrero-ciudad-real_ndf77e.jpg)",
           }}
         />
+        <div className="auth-page-overlay" aria-hidden="true" />
 
-        {/* Contenedor del formulario */}
-        <div
-          className="auth-box p-3 bg-light"
-          style={{
-            borderRadius: '10px',
-            boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
-            position: 'relative',
-            zIndex: 2,
-            opacity: 0.95,
-            width: '100%',
-            maxWidth: '400px',
-          }}
-        >
-          <Row className="text-center mb-3 d-flex justify-content-center">
-            <Col>
-              <h4>{isResetPassword ? "Restablecer Contraseña" : isForgotPassword ? "Recuperar Contraseña" : isLogin ? "INGRESAR" : "CREAR CUENTA"}</h4>
-              <hr className="hr_login" />
-            </Col>
-          </Row>
-          {successMessage && <p className="text-success text-center">{successMessage}</p>}
-          {errorMessage && <p className="text-danger text-center">{errorMessage}</p>}
-          {isForgotPassword ? (
-            <>
-              <p className="text-center">Te enviaremos un correo electrónico para restablecer tu contraseña.</p>
-              <Form onSubmit={handleForgotPasswordSubmit}>
-                <Form.Group className="mt-2">
-                  <Form.Label><b>Email:</b></Form.Label>
+        <div className="auth-page-content">
+          <div className="auth-box login-card">
+            <div className="login-card-header">
+              <p className="login-card-eyebrow">Metal Wolft</p>
+              <h1 className="login-card-title">{authTitle}</h1>
+              <p className="login-card-subtitle">{authSubtitle}</p>
+            </div>
+
+            {isLogin && !isForgotPassword && !isResetPassword && hasPendingProductConfig && (
+              <div className="auth-pending-return" role="status">
+                <i className="fa-solid fa-bag-shopping" aria-hidden="true"></i>
+                <span>Después de iniciar sesión volverás a tu reja configurada.</span>
+              </div>
+            )}
+
+            {successMessage && <div className="auth-status auth-status--success">{successMessage}</div>}
+            {errorMessage && <div className="auth-status auth-status--error">{errorMessage}</div>}
+
+            <hr className="hr_login auth-divider" />
+
+            {isForgotPassword ? (
+              <>
+                <p className="login-card-helper">Te enviaremos un correo electrónico para restablecer tu contraseña.</p>
+                <Form onSubmit={handleForgotPasswordSubmit}>
+                  <Form.Group className="auth-form-group">
+                    <Form.Label className="auth-field-label">Email</Form.Label>
+                    <Form.Control
+                      className="auth-field-control"
+                      type="email"
+                      value={email}
+                      onChange={handleEmail}
+                      required
+                    />
+                  </Form.Group>
+                  <div className="auth-form-actions auth-form-actions--split">
+                    <Button className="auth-secondary-button" variant="secondary" type="button" onClick={handleCancelForgotPassword}>
+                      Cancelar
+                    </Button>
+                    <Button className="btn btn-style-background-color auth-submit-button" variant="primary" type="submit">
+                      Enviar
+                    </Button>
+                  </div>
+                </Form>
+              </>
+            ) : isResetPassword ? (
+              <Form onSubmit={handleResetPasswordSubmit}>
+                <Form.Group className="auth-form-group">
+                  <Form.Label className="auth-field-label">Código</Form.Label>
                   <Form.Control
-                    type="email"
-                    value={email}
-                    onChange={handleEmail}
+                    className="auth-field-control"
+                    type="text"
+                    value={token}
+                    onChange={handleToken}
                     required
                   />
-                  {errorMessage && <Form.Text className="text-danger">{errorMessage}</Form.Text>}
                 </Form.Group>
-                <div className="container d-flex justify-content-center mt-3">
-                  <Button className="me-2" variant="secondary" onClick={handleCancelForgotPassword}>
-                    Cancelar
-                  </Button>
-                  <Button variant="primary" type="submit">
-                    Enviar
-                  </Button>
-                </div>
-              </Form>
-            </>
-          ) : isResetPassword ? (
-            <Form onSubmit={handleResetPasswordSubmit}>
-              <Form.Group className="mt-2">
-                <Form.Label><b>Código:</b></Form.Label>
-                <Form.Control
-                  type="text"
-                  value={token}
-                  onChange={handleToken}
-                  required
-                />
-              </Form.Group>
-              <Form.Group className="mt-2">
-                <Form.Label><b>Nueva Contraseña:</b></Form.Label>
-                <Form.Control
-                  type="password"
-                  value={password}
-                  onChange={handlePassword}
-                  required
-                />
-              </Form.Group>
-              <Form.Group className="mt-2">
-                <Form.Label><b>Confirmar Contraseña:</b></Form.Label>
-                <Form.Control
-                  type="password"
-                  value={confirmPassword}
-                  onChange={handleConfirmPassword}
-                  required
-                />
-              </Form.Group>
-              <div className="container d-flex justify-content-center mt-3">
-                <Button className="me-2" variant="secondary" onClick={() => setIsResetPassword(false)}>
-                  Cancelar
-                </Button>
-                <Button variant="primary" type="submit">
-                  Restablecer
-                </Button>
-              </div>
-            </Form>
-          ) : (
-            <Form onSubmit={handleSubmit}>
-              <Form.Group className="mt-2">
-                <Form.Label><b>Email:</b></Form.Label>
-                <Form.Control
-                  type="email"
-                  value={email}
-                  onChange={handleEmail}
-                  required
-                />
-              </Form.Group>
-              <Form.Group className="mt-2">
-                <Form.Label><b>Contraseña:</b></Form.Label>
-                <Form.Control
-                  type="password"
-                  value={password}
-                  onChange={handlePassword}
-                  required
-                />
-                {errorMessage && (
-                  <Form.Text className="text-danger">{errorMessage}</Form.Text>
-                )}
-              </Form.Group>
-              {!isLogin && (
-                <Form.Group className="mt-2">
-                  <Form.Label><b>Confirmar Contraseña:</b></Form.Label>
+                <Form.Group className="auth-form-group">
+                  <Form.Label className="auth-field-label">Nueva contraseña</Form.Label>
                   <Form.Control
+                    className="auth-field-control"
+                    type="password"
+                    value={password}
+                    onChange={handlePassword}
+                    required
+                  />
+                </Form.Group>
+                <Form.Group className="auth-form-group">
+                  <Form.Label className="auth-field-label">Confirmar contraseña</Form.Label>
+                  <Form.Control
+                    className="auth-field-control"
                     type="password"
                     value={confirmPassword}
                     onChange={handleConfirmPassword}
                     required
                   />
                 </Form.Group>
-              )}
-              <div className="container d-flex justify-content-center mt-3">
-                <Button className="stylebtn" variant="primary" type="submit">
-                  {isLogin ? "Iniciar sesión" : "Registrarse"}
-                </Button>
+                <div className="auth-form-actions auth-form-actions--split">
+                  <Button className="auth-secondary-button" variant="secondary" type="button" onClick={() => setIsResetPassword(false)}>
+                    Cancelar
+                  </Button>
+                  <Button className="btn btn-style-background-color auth-submit-button" variant="primary" type="submit">
+                    Restablecer
+                  </Button>
+                </div>
+              </Form>
+            ) : (
+              <Form onSubmit={handleSubmit}>
+                <Form.Group className="auth-form-group">
+                  <Form.Label className="auth-field-label">Email</Form.Label>
+                  <Form.Control
+                    className="auth-field-control"
+                    type="email"
+                    value={email}
+                    onChange={handleEmail}
+                    required
+                  />
+                </Form.Group>
+                <Form.Group className="auth-form-group">
+                  <Form.Label className="auth-field-label">Contraseña</Form.Label>
+                  <Form.Control
+                    className="auth-field-control"
+                    type="password"
+                    value={password}
+                    onChange={handlePassword}
+                    required
+                  />
+                </Form.Group>
+                {!isLogin && (
+                  <Form.Group className="auth-form-group">
+                    <Form.Label className="auth-field-label">Confirmar contraseña</Form.Label>
+                    <Form.Control
+                      className="auth-field-control"
+                      type="password"
+                      value={confirmPassword}
+                      onChange={handleConfirmPassword}
+                      required
+                    />
+                  </Form.Group>
+                )}
+                <div className="auth-form-actions">
+                  <Button className="btn btn-style-background-color auth-submit-button" variant="primary" type="submit">
+                    {isLogin ? "Iniciar sesión" : "Registrarse"}
+                  </Button>
+                </div>
+              </Form>
+            )}
+
+            {!isForgotPassword && !isResetPassword && (
+              <div className="auth-card-links">
+                <p className="auth-link-row">
+                  {isLogin ? "¿Nuevo usuario?" : "¿Ya tienes una cuenta?"}{" "}
+                  <button type="button" onClick={handleToggleForm} className="auth-inline-link">
+                    {isLogin ? "Crear cuenta" : "Ingresar"}
+                  </button>
+                </p>
+                <button type="button" onClick={handleForgotPassword} className="auth-inline-link auth-inline-link--standalone">
+                  ¿Olvidaste tu contraseña?
+                </button>
               </div>
-            </Form>
-          )}
-          {!isForgotPassword && !isResetPassword && (
-            <>
-              <Row className="mt-4 text-center">
-                <Col>
-                  <span>
-                    {isLogin ? "¿Nuevo Usuario? " : "¿Ya tienes una cuenta? "}
-                    <a href="#" onClick={handleToggleForm} className="text-decoration-underline" style={{ color: '#ff324d' }}>
-                      {isLogin ? "Crear cuenta" : "Ingresar"}
-                    </a>
-                  </span>
-                </Col>
-              </Row>
-              <Row className="mt-2 text-center">
-                <Col>
-                  <a href="#" onClick={handleForgotPassword} className="text-decoration-underline" style={{ color: '#ff324d' }}>
-                    ¿Olvidaste tu contraseña?
-                  </a>
-                </Col>
-              </Row>
-            </>
-          )}
+            )}
+          </div>
         </div>
       </Container>
     </>
