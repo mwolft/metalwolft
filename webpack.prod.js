@@ -11,6 +11,7 @@ module.exports = merge(common, {
     mode: 'production',
     output: {
         path: path.resolve(__dirname, 'build'),
+        clean: true,
         filename: '[name].[contenthash].js',
         publicPath: '/',
     },
@@ -27,7 +28,7 @@ module.exports = merge(common, {
     },
     plugins: [
         new MiniCssExtractPlugin({
-            filename: 'styles.css',
+            filename: 'static/css/[name].[contenthash].css',
         }),
         new Dotenv({
             systemvars: true,

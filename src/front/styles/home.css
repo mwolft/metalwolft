@@ -220,15 +220,6 @@ body {
 .home-about-copy a:focus-visible{
     text-decoration: underline;
 }
-.home-about-card{
-    border-radius: 18px;
-    overflow: hidden;
-}
-.home-about-caption{
-    font-size: .72rem;
-    font-style: italic;
-    color: #6b7280;
-}
 .home-contact-cta{
     margin-top: 1rem;
     margin-bottom: 4rem;
@@ -262,12 +253,6 @@ body {
     padding: 1px;
     opacity: .8;
     border-radius: 50%;
-}
-.span-home{
-    font-size: 2.7rem;
-    color: #ff324d;
-    margin-bottom: .5rem;
-    font-weight: 600;
 }
 /* -----END MAINHOME ----- */
 /* ----- START SECONDARYNHOME ----- */
@@ -350,57 +335,6 @@ body {
     margin-top: 10px;
     margin-bottom: 10px;
     cursor: pointer;
-}
-.home-about-us{
-    margin-top: 4.5rem;
-    margin-bottom: 4rem;
-}
-.info-icon {
-    color: #ff324d;
-}
-
-.info-h3 {
-    font-size: 1.1rem;
-    margin-top: 10px;
-}
-
-.info-p {
-    font-size: 1rem;
-    color: #565555;
-    font-weight: 400;
-}
-
-.bg-info-icon {
-    display: inline-block;
-    border-radius: 50%; 
-    padding: 14px; 
-    border: 1px solid #ff324d; 
-    width: 70px; 
-    height: 70px; 
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    transition: background-color 0.3s ease; 
-}
-
-.home-info-card {
-    width: auto;
-    height: 15rem;
-    box-shadow: 0 0 10px rgba(6, 6, 6, 0.15);
-    border-radius: 10px;
-    transition: transform 0.3s ease; 
-}
-
-.home-info-card:hover {
-    transform: scale(0.95);
-}
-
-.home-info-card:hover .bg-info-icon {
-    background-color: #ff324d; 
-}
-
-.home-info-card:hover .info-icon {
-    color: white; 
 }
 /* ----- END THIRDHOME ----- */
 /* ----- START DESIGN MEDIA QUERIES ----- */

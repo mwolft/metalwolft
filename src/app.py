@@ -2,6 +2,7 @@ import sys
 import os
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 import os
+import re
 import logging
 import requests
 from requests.adapters import HTTPAdapter
@@ -33,6 +34,31 @@ print(f"⚙️  Flask env: {env}")
 static_file_dir = os.path.abspath(
     os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'build')
 )
+hashed_asset_segment_pattern = re.compile(r'^[0-9a-f]{8,}$', re.IGNORECASE)
+
+
+def is_hashed_asset_path(path):
+    filename = os.path.basename(path)
+    if not filename or filename == 'index.html':
+        return False
+
+    stem, _ = os.path.splitext(filename)
+    segments = re.split(r'[._-]', stem)
+    return any(
+        hashed_asset_segment_pattern.fullmatch(segment)
+        for segment in segments
+        if segment
+    )
+
+
+def get_cache_control_for_path(path):
+    if not path or path == 'index.html':
+        return 'no-cache, max-age=0, must-revalidate'
+
+    if is_hashed_asset_path(path):
+        return 'public, max-age=31536000, immutable'
+
+    return 'no-cache, max-age=0, must-revalidate'
 
 # 2) Sesión requests con reintentos (para Prerender)
 session = requests.Session()
@@ -183,8 +209,13 @@ def handle_invalid_usage(error):
 def serve_spa(path):
     full_path = os.path.join(static_file_dir, path)
     if path and os.path.isfile(full_path):
-        return send_from_directory(static_file_dir, path)
-    return send_from_directory(static_file_dir, 'index.html')
+        response = send_from_directory(static_file_dir, path)
+        response.headers['Cache-Control'] = get_cache_control_for_path(path)
+        return response
+
+    response = send_from_directory(static_file_dir, 'index.html')
+    response.headers['Cache-Control'] = get_cache_control_for_path('index.html')
+    return response
 
 
 # 14) Debug build files
