@@ -12,15 +12,35 @@ const ORDER_STEP_LABELS = {
     entregado: "Entregado"
 };
 
+const normalizeStatusKey = (status) => (status || "").toLowerCase();
+const formatMoney = (amount) => `${Number(amount || 0).toFixed(2)} €`;
+const formatDate = (value) => (value ? new Date(value).toLocaleString() : "—");
+const formatColorLabel = (color) => {
+    if (!color) return "Sin definir";
+    return color.replaceAll("_", " ");
+};
+const getOrderDetailTitle = (detail) =>
+    detail?.product_name || detail?.nombre || detail?.product_nombre || "Producto a medida";
+const getOrderDetailMeasures = (detail) => {
+    const height = detail?.alto ?? "—";
+    const width = detail?.ancho ?? "—";
+    return `${height} x ${width} cm`;
+};
+const getStatusToneClass = (status) => {
+    const statusKey = normalizeStatusKey(status);
+    return ORDER_STEPS.includes(statusKey) ? statusKey : "pendiente";
+};
+
 const StatusStepper = ({ status }) => {
-    const currentIdx = Math.max(0, ORDER_STEPS.indexOf((status || "").toLowerCase()));
+    const currentStatus = normalizeStatusKey(status);
+    const currentIdx = Math.max(0, ORDER_STEPS.indexOf(currentStatus));
 
     return (
         <div className="account-order-stepper">
             {ORDER_STEPS.map((step, index) => (
                 <span
                     key={step}
-                    className={`account-order-step ${index <= currentIdx ? "account-order-step--active" : ""}`}
+                    className={`account-order-step account-order-step--${step} ${index <= currentIdx ? "account-order-step--active" : ""}`}
                 >
                     {ORDER_STEP_LABELS[step] || step}
                 </span>
@@ -28,9 +48,6 @@ const StatusStepper = ({ status }) => {
         </div>
     );
 };
-
-const formatMoney = (amount) => `${Number(amount || 0).toFixed(2)} €`;
-const formatDate = (value) => (value ? new Date(value).toLocaleString() : "—");
 
 export const AccountPage = () => {
     const { store, actions } = useContext(Context);
@@ -349,7 +366,11 @@ export const AccountPage = () => {
                                             </div>
 
                                             {order.invoice_number ? (
-                                                <div className="account-order-invoice">
+                                                <div className="account-order-invoice account-order-invoice--available">
+                                                    <div className="account-order-invoice-state">
+                                                        <i className="fa-solid fa-file-invoice" aria-hidden="true"></i>
+                                                        <span>Factura disponible</span>
+                                                    </div>
                                                     <div className="small mb-2">
                                                         <strong>Factura:</strong> <span>{order.invoice_number}</span>
                                                     </div>
@@ -362,21 +383,29 @@ export const AccountPage = () => {
                                                         {downloadingInvoiceId === order.id ? "Descargando..." : "Descargar factura"}
                                                     </button>
                                                     {invoiceFeedback.orderId === order.id && invoiceFeedback.message && (
-                                                        <div className="mt-2 small text-danger account-order-feedback">
+                                                        <div className="mt-2 small text-danger account-order-feedback account-order-feedback--error">
                                                             {invoiceFeedback.message}
                                                         </div>
                                                     )}
                                                 </div>
                                             ) : (
-                                                <div className="mt-2 small text-muted">Factura pendiente</div>
+                                                <div className="account-order-invoice account-order-invoice--pending">
+                                                    <div className="account-order-invoice-state">
+                                                        <i className="fa-regular fa-clock" aria-hidden="true"></i>
+                                                        <span>Factura pendiente</span>
+                                                    </div>
+                                                    <div className="small text-muted">
+                                                        La factura se mostrará aquí cuando esté disponible para descarga.
+                                                    </div>
+                                                </div>
                                             )}
                                         </div>
 
                                         <div className="account-order-summary">
                                             <div className="account-order-total-label">Total del pedido</div>
                                             <div className="account-order-total">{formatMoney(order.total_amount)}</div>
-                                            <span className="account-order-status-badge">
-                                                {ORDER_STEP_LABELS[(order.order_status || "").toLowerCase()] || order.order_status}
+                                            <span className={`account-order-status-badge account-order-status-badge--${getStatusToneClass(order.order_status)}`}>
+                                                {ORDER_STEP_LABELS[normalizeStatusKey(order.order_status)] || order.order_status}
                                             </span>
                                         </div>
                                     </div>
@@ -393,27 +422,40 @@ export const AccountPage = () => {
                                     </button>
 
                                     {expanded === order.id && order.order_details && (
-                                        <div className="table-responsive mt-3 animate__animated animate__fadeIn account-order-details">
-                                            <table className="table table-sm account-order-table">
-                                                <thead>
-                                                    <tr>
-                                                        <th>Producto/Medidas</th>
-                                                        <th>Color</th>
-                                                        <th>Cant.</th>
-                                                        <th className="text-end">Total</th>
-                                                    </tr>
-                                                </thead>
-                                                <tbody>
-                                                    {order.order_details.map((detail) => (
-                                                        <tr key={detail.id}>
-                                                            <td>{detail.alto}x{detail.ancho} cm ({detail.anclaje})</td>
-                                                            <td className="text-capitalize">{detail.color}</td>
-                                                            <td>{detail.quantity}</td>
-                                                            <td className="text-end">{formatMoney(detail.precio_total)}</td>
-                                                        </tr>
-                                                    ))}
-                                                </tbody>
-                                            </table>
+                                        <div className="mt-3 animate__animated animate__fadeIn account-order-details">
+                                            <div className="account-order-details-head">
+                                                <span>Producto / medidas</span>
+                                                <span>Color</span>
+                                                <span>Cantidad</span>
+                                                <span>Total</span>
+                                            </div>
+                                            <div className="account-order-detail-list">
+                                                {order.order_details.map((detail) => (
+                                                    <article className="account-order-detail-item" key={detail.id}>
+                                                        <div className="account-order-detail-main">
+                                                            <div className="account-order-detail-title">{getOrderDetailTitle(detail)}</div>
+                                                            <div className="account-order-detail-measures">
+                                                                {getOrderDetailMeasures(detail)}
+                                                                {detail.anclaje ? ` (${detail.anclaje})` : ""}
+                                                            </div>
+                                                        </div>
+                                                        <div className="account-order-detail-field">
+                                                            <span className="account-order-detail-label">Color</span>
+                                                            <span className="account-order-detail-value text-capitalize">
+                                                                {formatColorLabel(detail.color)}
+                                                            </span>
+                                                        </div>
+                                                        <div className="account-order-detail-field">
+                                                            <span className="account-order-detail-label">Cantidad</span>
+                                                            <span className="account-order-detail-value">{detail.quantity}</span>
+                                                        </div>
+                                                        <div className="account-order-detail-field account-order-detail-field--total">
+                                                            <span className="account-order-detail-label">Total</span>
+                                                            <span className="account-order-detail-total">{formatMoney(detail.precio_total)}</span>
+                                                        </div>
+                                                    </article>
+                                                ))}
+                                            </div>
                                         </div>
                                     )}
                                 </div>
