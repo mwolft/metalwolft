@@ -79,6 +79,257 @@ body, html {
   opacity: 0.85;
   transition: opacity 0.3s ease;
 }
+
+/* account page */
+.account-page {
+  margin-top: 6rem;
+  margin-bottom: 10rem;
+}
+
+.account-page-header {
+  margin-bottom: 2rem;
+}
+
+.account-page-eyebrow {
+  margin-bottom: 0.4rem;
+  color: #ff324d;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.account-page-subtitle,
+.account-section-copy {
+  max-width: 46rem;
+  color: #5b6472;
+  line-height: 1.7;
+}
+
+.account-section {
+  margin-bottom: 3rem;
+}
+
+.account-section-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.account-card,
+.account-order-card {
+  border-radius: 22px;
+  overflow: hidden;
+}
+
+.account-card .card-body,
+.account-order-card .card-body {
+  padding: 1.4rem;
+}
+
+.account-empty-state {
+  border-radius: 18px;
+  padding: 1rem 1.1rem;
+}
+
+.account-order-topbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.account-order-meta {
+  min-width: 0;
+}
+
+.account-order-locator-row {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.35rem;
+}
+
+.account-order-label {
+  color: #5b6472;
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.account-order-date {
+  color: #6b7280;
+  font-size: 0.9rem;
+}
+
+.account-order-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+  margin-top: 0.85rem;
+}
+
+.account-order-tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.35rem 0.7rem;
+  border-radius: 999px;
+  background: #f3f4f6;
+  color: #334155;
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.account-order-tag--invoice {
+  background: #eefbf3;
+  color: #15803d;
+}
+
+.account-order-tag--pending {
+  background: #fff7ed;
+  color: #c2410c;
+}
+
+.account-order-invoice {
+  margin-top: 1rem;
+}
+
+.account-order-feedback {
+  max-width: 28rem;
+  line-height: 1.5;
+}
+
+.account-order-summary {
+  min-width: 180px;
+  padding: 1rem 1.05rem;
+  border-radius: 18px;
+  background: linear-gradient(180deg, #fff8f9 0%, #ffffff 100%);
+  border: 1px solid #f8d5dc;
+  text-align: right;
+}
+
+.account-order-total-label {
+  color: #6b7280;
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.account-order-total {
+  margin-top: 0.3rem;
+  color: #0f172a;
+  font-size: 1.45rem;
+  font-weight: 700;
+}
+
+.account-order-status-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 0.8rem;
+  padding: 0.4rem 0.75rem;
+  border-radius: 999px;
+  background: #dbeafe;
+  color: #1d4ed8;
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.account-order-stepper {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+}
+
+.account-order-step {
+  min-width: 90px;
+  padding: 0.45rem 0.7rem;
+  border-radius: 999px;
+  background: #e5e7eb;
+  color: #4b5563;
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-align: center;
+}
+
+.account-order-step--active {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.account-order-toggle-btn,
+.account-order-download-btn {
+  border-radius: 999px;
+}
+
+.account-order-details {
+  padding: 0.4rem 0.2rem 0;
+  border-top: 1px solid #eceff3;
+}
+
+.account-order-table {
+  margin-bottom: 0;
+}
+
+.account-order-table thead th {
+  border-bottom-width: 1px;
+  color: #475569;
+  font-size: 0.82rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.account-order-table tbody td {
+  vertical-align: middle;
+}
+
+@media (max-width: 767px) {
+  .account-page {
+    margin-top: 5.5rem;
+    margin-bottom: 7rem;
+  }
+
+  .account-card .card-body,
+  .account-order-card .card-body {
+    padding: 1.1rem;
+  }
+
+  .account-order-summary {
+    width: 100%;
+    text-align: left;
+  }
+
+  .account-order-total {
+    font-size: 1.25rem;
+  }
+
+  .account-order-step {
+    min-width: auto;
+    flex: 1 1 calc(50% - 0.55rem);
+  }
+}
+
+@media (max-width: 575px) {
+  .account-page-header {
+    margin-bottom: 1.6rem;
+  }
+
+  .account-order-step {
+    flex-basis: 100%;
+  }
+
+  .account-order-download-btn,
+  .account-order-toggle-btn {
+    width: 100%;
+  }
+}
 .footer-trust img:hover {
   opacity: 1;
 }

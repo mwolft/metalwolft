@@ -25,6 +25,7 @@ import requests
 import uuid
 from api.email_routes import send_email, get_admin_recipients
 from api.checkout_service import build_checkout_quote
+from api.original_invoice_renderer import render_original_order_invoice_pdf
 
 
 logger = logging.getLogger(__name__)
@@ -32,6 +33,94 @@ logger = logging.getLogger(__name__)
 api = Blueprint('api', __name__)
 
 load_dotenv()
+
+
+def _split_invoice_client_name(client_name):
+    normalized_name = (client_name or "").strip()
+    if not normalized_name:
+        return "", ""
+
+    parts = normalized_name.split()
+    if len(parts) == 1:
+        return parts[0], ""
+
+    return parts[0], " ".join(parts[1:])
+
+
+def _display_invoice_product_name(detail):
+    if not isinstance(detail, dict):
+        return "Desconocido"
+
+    for key in ("product_name", "producto_nombre", "product", "name", "nombre"):
+        value = detail.get(key)
+        if value:
+            return str(value)
+
+    product_id = detail.get("product_id") or detail.get("producto_id")
+    if product_id:
+        product = Products.query.get(product_id)
+        if product and product.nombre:
+            return product.nombre
+
+    return "Desconocido"
+
+
+def _build_original_invoice_order_details(invoice):
+    raw_details = invoice.order_details if isinstance(invoice.order_details, list) else []
+    prepared_details = []
+
+    for detail in raw_details:
+        if not isinstance(detail, dict):
+            continue
+
+        normalized = dict(detail)
+        normalized["product_name"] = _display_invoice_product_name(detail)
+        prepared_details.append(normalized)
+
+    return prepared_details
+
+
+def _resolve_invoice_discount_percent(invoice):
+    checkout_session = getattr(invoice.order, "checkout_session", None) if invoice.order else None
+    quote_snapshot = getattr(checkout_session, "quote_snapshot", None) or {}
+
+    try:
+        return float(quote_snapshot.get("discount_percent") or 0.0)
+    except (TypeError, ValueError):
+        return 0.0
+
+
+def _build_original_invoice_render_kwargs(invoice):
+    prepared_order_details = _build_original_invoice_order_details(invoice)
+    first_detail = prepared_order_details[0] if prepared_order_details else {}
+    firstname, lastname = _split_invoice_client_name(invoice.client_name)
+
+    shipping_cost = 0.0
+    if invoice.order and invoice.order.shipping_cost is not None:
+        shipping_cost = float(invoice.order.shipping_cost or 0.0)
+    elif prepared_order_details:
+        shipping_cost = float(first_detail.get("shipping_cost") or 0.0)
+
+    return {
+        "invoice_number": invoice.invoice_number,
+        "customer_firstname": firstname,
+        "customer_lastname": lastname,
+        "customer_phone": invoice.client_phone or "",
+        "customer_billing_address": invoice.client_address or first_detail.get("billing_address") or "",
+        "customer_billing_city": first_detail.get("billing_city") or "",
+        "customer_billing_postal_code": first_detail.get("billing_postal_code") or "",
+        "customer_cif": invoice.client_cif or "",
+        "customer_shipping_address": first_detail.get("shipping_address") or "",
+        "customer_shipping_city": first_detail.get("shipping_city") or "",
+        "customer_shipping_postal_code": first_detail.get("shipping_postal_code") or "",
+        "order_details": prepared_order_details,
+        "total_amount": float(invoice.amount or 0.0),
+        "shipping_cost": shipping_cost,
+        "discount_value": float(invoice.order.discount_value or 0.0) if invoice.order else 0.0,
+        "discount_code": invoice.order.discount_code if invoice.order else None,
+        "discount_percent": _resolve_invoice_discount_percent(invoice),
+        "issue_date": invoice.created_at,
+    }
 
 
 
@@ -3891,6 +3980,20 @@ def download_invoice(filename):
                 invoice.invoice_number,
                 file_path
             )
+            if current_user.get("is_admin"):
+                current_app.logger.info(
+                    "Regenerando en memoria la factura %s solo para descarga admin.",
+                    invoice.invoice_number
+                )
+                regenerated_pdf = render_original_order_invoice_pdf(
+                    **_build_original_invoice_render_kwargs(invoice)
+                )
+                return send_file(
+                    BytesIO(regenerated_pdf),
+                    as_attachment=True,
+                    download_name=f"factura_{invoice.invoice_number}.pdf",
+                    mimetype='application/pdf'
+                )
             return jsonify({"message": "No se encontró el archivo PDF para esta factura."}), 404
 
         return send_file(file_path, as_attachment=True, download_name=safe_filename, mimetype='application/pdf')
