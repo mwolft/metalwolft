@@ -239,7 +239,7 @@ export const Login = () => {
         <div className="auth-page-overlay" aria-hidden="true" />
 
         <div className="auth-page-content">
-          <div className="auth-box login-card">
+          <div className="auth-box login-card" style={{marginTop: '20px'}}>
             <div className="login-card-header">
               <p className="login-card-eyebrow">Metal Wolft</p>
               <h1 className="login-card-title">{authTitle}</h1>
