@@ -125,6 +125,10 @@ body {
 .home-trust-grid{
     margin-top: 1.5rem;
 }
+.home-conversion-support{
+    margin-top: 1rem;
+    margin-bottom: 1rem;
+}
 .home-trust-item{
     height: 100%;
     padding: 1rem 1.05rem;
@@ -190,6 +194,60 @@ body {
     margin-top: .9rem;
     color: #4b5563;
     line-height: 1.6;
+}
+.home-about-title{
+    margin-top: 0;
+    color: #111827;
+}
+.home-about-copy{
+    color: #4b5563;
+    font-size: 1rem;
+    line-height: 1.75;
+}
+.home-about-copy a{
+    color: #ff324d;
+    font-weight: 600;
+    text-decoration: none;
+}
+.home-about-copy a:hover,
+.home-about-copy a:focus-visible{
+    text-decoration: underline;
+}
+.home-about-card{
+    border-radius: 18px;
+    overflow: hidden;
+}
+.home-about-caption{
+    font-size: .72rem;
+    font-style: italic;
+    color: #6b7280;
+}
+.home-contact-cta{
+    margin-top: 1rem;
+    margin-bottom: 4rem;
+}
+.home-contact-cta-box{
+    padding: 1.4rem 1.25rem;
+    border: 1px solid #eceff3;
+    border-radius: 18px;
+    background: linear-gradient(180deg, #ffffff 0%, #fafbfc 100%);
+}
+.home-contact-cta-title{
+    margin-top: 0;
+    color: #111827;
+    font-size: 2rem;
+}
+.home-contact-cta-copy{
+    max-width: 42rem;
+    margin-bottom: 0;
+    color: #4b5563;
+    line-height: 1.7;
+}
+.home-contact-cta-actions{
+    display: flex;
+    flex-wrap: wrap;
+    gap: .9rem;
+    margin-top: 1.15rem;
 }
 .hr-home{
     margin-top: .3rem;
@@ -287,8 +345,8 @@ body {
     cursor: pointer;
 }
 .home-about-us{
-    margin-top: 100px;
-    margin-bottom: 100px;
+    margin-top: 4.5rem;
+    margin-bottom: 4rem;
 }
 .info-icon {
     color: #ff324d;
@@ -354,8 +412,13 @@ body {
         min-width: 0;
     }
     .home-help-title,
-    .home-category-title{
+    .home-category-title,
+    .home-contact-cta-title{
         font-size: 1.75rem;
+    }
+    .home-contact-cta-actions{
+        flex-direction: column;
+        align-items: stretch;
     }
     .h6-carrusel{
         font-size: 3rem; 

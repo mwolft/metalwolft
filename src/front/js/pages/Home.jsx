@@ -5,8 +5,8 @@ import "../../styles/home.css";
 import { Carrusel } from "../component/Carrusel.jsx";
 import { BodyHomeMain } from "../component/BodyHomeMain.jsx";
 import { BodyHomeSecondary } from "../component/BodyHomeSecondary.jsx";
+import { BodyHomeTertiary } from "../component/BodyHomeTertiary.jsx";
 import { BodyHomeQuarter } from "../component/BodyHomeQuarter.jsx";
-import { Contact } from "./Contact.jsx";
 
 
 export const Home = () => {
@@ -88,10 +88,13 @@ export const Home = () => {
                 <BodyHomeSecondary />
             </section>
             <section className="section">
-                <Contact />
+                <BodyHomeTertiary variant="conversion" />
             </section>
             <section className="section">
                 <BodyHomeQuarter />
+            </section>
+            <section className="section">
+                <BodyHomeTertiary variant="home-contact-cta" />
             </section>
             {/*<section className="section">
                 <CardsCarrusel />
