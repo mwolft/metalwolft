@@ -13,8 +13,17 @@ import {
   SimpleFormIterator,
   Edit,
   useRecordContext,
+  useRefresh,
 } from "react-admin";
-import { FaDownload } from "react-icons/fa";
+import { FaDownload, FaSyncAlt } from "react-icons/fa";
+
+const buttonBaseStyle = {
+  color: "#FFF",
+  padding: "5px 10px",
+  border: "none",
+  borderRadius: "4px",
+  cursor: "pointer",
+};
 
 const DownloadButton = () => {
   const record = useRecordContext();
@@ -70,20 +79,103 @@ const DownloadButton = () => {
 
   return (
     <button
-      onClick={handleDownload}
+      type="button"
+      onClick={(event) => {
+        event.stopPropagation();
+        handleDownload();
+      }}
       style={{
+        ...buttonBaseStyle,
         backgroundColor: "#007BFF",
-        color: "#FFF",
-        padding: "5px 10px",
-        border: "none",
-        borderRadius: "4px",
-        cursor: "pointer",
       }}
     >
       <FaDownload /> Descargar
     </button>
   );
 };
+
+const RegenerateButton = () => {
+  const record = useRecordContext();
+  const refresh = useRefresh();
+
+  const handleRegenerate = async () => {
+    if (!record) {
+      alert("No se encontró información para esta factura.");
+      return;
+    }
+
+    if (!record.order_id) {
+      alert("Solo se pueden regenerar facturas asociadas a pedidos.");
+      return;
+    }
+
+    const confirmed = window.confirm(
+      `¿Seguro que quieres regenerar manualmente el PDF de la factura ${record.invoice_number}?`
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    const backendUrl = process.env.REACT_APP_BACKEND_URL || "http://localhost:3001";
+    const token = localStorage.getItem("token");
+
+    if (!token) {
+      alert("Debes iniciar sesión para regenerar la factura.");
+      return;
+    }
+
+    try {
+      const response = await fetch(
+        `${backendUrl}/api/invoices/${record.id}/regenerate-pdf`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      const data = await response.json().catch(() => null);
+
+      if (!response.ok) {
+        throw new Error(data?.message || "No se pudo regenerar la factura.");
+      }
+
+      alert(data?.message || "Factura regenerada correctamente.");
+      refresh();
+    } catch (error) {
+      alert(error.message || "No se pudo regenerar la factura.");
+    }
+  };
+
+  if (!record?.order_id) {
+    return null;
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={(event) => {
+        event.stopPropagation();
+        handleRegenerate();
+      }}
+      style={{
+        ...buttonBaseStyle,
+        backgroundColor: "#dc3545",
+      }}
+    >
+      <FaSyncAlt /> Regenerar PDF
+    </button>
+  );
+};
+
+const InvoiceActions = () => (
+  <div style={{ display: "flex", gap: "8px", alignItems: "center", flexWrap: "wrap" }}>
+    <DownloadButton />
+    <RegenerateButton />
+  </div>
+);
 
 export const InvoiceList = (props) => (
   <List {...props} title="Facturas">
@@ -94,7 +186,7 @@ export const InvoiceList = (props) => (
       <NumberField source="amount" label="Total" options={{ style: "currency", currency: "EUR" }} />
       <DateField source="created_at" label="Fecha" />
       <TextField source="pdf_path" label="Ruta del PDF" />
-      <DownloadButton />
+      <InvoiceActions />
     </Datagrid>
   </List>
 );
@@ -135,6 +227,7 @@ export const InvoiceEdit = (props) => (
       </ArrayInput>
       <TextField source="pdf_path" label="Ruta del PDF" />
       <DownloadButton />
+      <RegenerateButton />
     </SimpleForm>
   </Edit>
 );

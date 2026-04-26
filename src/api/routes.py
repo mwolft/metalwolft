@@ -123,6 +123,31 @@ def _build_original_invoice_render_kwargs(invoice):
     }
 
 
+def _regenerate_invoice_pdf_to_storage(invoice):
+    pdf_filename = f"invoice_{invoice.invoice_number}.pdf"
+    file_path = os.path.join(current_app.config['INVOICE_FOLDER'], pdf_filename)
+    pdf_path = f"/api/download-invoice/{pdf_filename}"
+
+    os.makedirs(current_app.config['INVOICE_FOLDER'], exist_ok=True)
+
+    regenerated_pdf = render_original_order_invoice_pdf(
+        **_build_original_invoice_render_kwargs(invoice)
+    )
+
+    with open(file_path, "wb") as pdf_file:
+        pdf_file.write(regenerated_pdf)
+
+    if invoice.pdf_path != pdf_path:
+        invoice.pdf_path = pdf_path
+        db.session.commit()
+
+    return {
+        "pdf_filename": pdf_filename,
+        "pdf_path": pdf_path,
+        "file_path": file_path,
+    }
+
+
 
 redirect_map = {
     "/rejas/rejas-para-ventanas-pittsburgh": "/rejas-para-ventanas",
@@ -4002,6 +4027,50 @@ def download_invoice(filename):
         return jsonify({"message": "An error occurred while downloading the invoice.", "error": str(e)}), 500
 
 # Recupera todas las facturas con paginación
+@api.route('/invoices/<int:invoice_id>/regenerate-pdf', methods=['POST'])
+@jwt_required()
+def regenerate_invoice_pdf(invoice_id):
+    current_user = get_jwt_identity()
+
+    if not current_user.get("is_admin"):
+        return jsonify({"message": "Access forbidden: Admins only"}), 403
+
+    try:
+        invoice = Invoices.query.get(invoice_id)
+        if not invoice:
+            return jsonify({"message": "Invoice not found"}), 404
+
+        if not invoice.order_id:
+            return jsonify({
+                "message": "Esta acción solo está disponible para facturas asociadas a pedidos."
+            }), 400
+
+        regeneration_result = _regenerate_invoice_pdf_to_storage(invoice)
+
+        current_app.logger.info(
+            "Factura %s regenerada manualmente por admin %s en %s",
+            invoice.invoice_number,
+            current_user.get("email"),
+            regeneration_result["file_path"]
+        )
+
+        return jsonify({
+            "message": "Factura regenerada correctamente.",
+            "data": invoice.serialize_admin(),
+        }), 200
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(
+            "Error al regenerar manualmente la factura %s: %s",
+            invoice_id,
+            str(e)
+        )
+        return jsonify({
+            "message": "No se pudo regenerar la factura.",
+            "error": str(e)
+        }), 500
+
+
 def _serialize_invoice_for_user(invoice, current_user):
     if current_user.get("is_admin"):
         return invoice.serialize_admin()
