@@ -1,39 +1,41 @@
 import React from "react";
-import Card from 'react-bootstrap/Card';
-import Figure from 'react-bootstrap/Figure';
-import "../../styles/home.css";
-import herreroHome from "../../img/home/body-home/herrero-ciudad-real.avif";
 import { Link } from "react-router-dom";
+import herreroHome from "../../img/home/body-home/herrero-ciudad-real.avif";
 
 export const BodyHomeQuarter = () => {
     return (
-        <div className="container home-about-us">
-            <div className="row d-flex justify-content-center align-items-center g-4">
+        <section className="container home-about-us-container">
+            <div className="row align-items-center g-5">
+                {/* Lado izquierdo */}
                 <div className="col-12 col-lg-6">
-                    <p className="home-section-eyebrow">Confianza</p>
+                    <span className="home-section-eyebrow">Confianza</span>
                     <h2 className="h1-home home-about-title">Sobre nosotros</h2>
-                    <p className="home-about-copy">
-                        Fabricamos <Link to="/rejas-para-ventanas">rejas metálicas a medida</Link> en España. Cada pedido se produce según tus dimensiones, con envío a toda España.
-                    </p>
-                    <p className="home-about-copy">
-                        Si quieres avanzar con seguridad, puedes revisar nuestra <Link to="/medir-hueco-rejas-para-ventanas">guía de medición</Link> o pedir ayuda desde <Link to="/contact">contacto</Link>.
-                    </p>
+                    
+                    <div className="home-about-content">
+                        <p className="home-about-copy">
+                            Fabricamos <Link to="/rejas-para-ventanas" className="highlight-link">rejas metálicas a medida</Link> en España. 
+                            Cada pedido se produce bajo demanda, fusionando artesanía técnica con precisión industrial.
+                        </p>
+                        <p className="home-about-copy">
+                            Si buscas seguridad, estamos aquí para facilitarlo. Revisa nuestra <Link to="/medir-hueco-rejas-para-ventanas" className="highlight-link">guía de medición</Link> o contacta con nuestro equipo.
+                        </p>
+                    </div>
                 </div>
-                <div className="col-12 col-lg-5">
-                    <Card className="home-about-card">
-                        <Figure className="mb-0">
-                            <img
-                                src={herreroHome}
-                                alt="carpinteria metálica online"
-                                style={{ width: '100%', height: '300px', objectFit: 'cover' }}
-                            />
-                            <Figure.Caption className="mt-2 home-about-caption">
-                                Arte y acero se unen bajo la experta mano de nuestro soldador.
-                            </Figure.Caption>
-                        </Figure>
-                    </Card>
+
+                {/* Lado derecho: Estilo Industrial Glass */}
+                <div className="col-12 col-lg-6">
+                    <div className="about-image-wrapper">
+                        <img
+                            src={herreroHome}
+                            alt="Proceso de soldadura artesanal"
+                            className="about-image"
+                        />
+                        <div className="about-image-overlay">
+                            <p>Arte y acero se unen bajo la experta mano de nuestro equipo.</p>
+                        </div>
+                    </div>
                 </div>
             </div>
-        </div>
+        </section>
     );
 };

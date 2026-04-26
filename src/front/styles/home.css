@@ -70,7 +70,14 @@ body {
 }
 .home-hero-primary{
     min-width: 220px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: .78rem 1.35rem;
+    line-height: 1.2;
+    text-align: center;
 }
+
 .home-hero-secondary{
     display: inline-flex;
     align-items: center;

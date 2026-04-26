@@ -1,5 +1,14 @@
 import React from "react";
 import { Link } from "react-router-dom";
+import { 
+  Ruler, 
+  Wrench, 
+  Truck, 
+  MessageCircle, 
+  Factory, 
+  Globe, 
+  ReceiptText 
+} from "lucide-react";
 
 export const BodyHomeTertiary = ({ variant = "contact-header" }) => {
     if (variant === "conversion") {
@@ -13,71 +22,83 @@ export const BodyHomeTertiary = ({ variant = "contact-header" }) => {
                             Si quieres ir a lo seguro, apóyate en nuestras guías prácticas antes de configurar tu reja.
                         </p>
                     </div>
-                    <div className="row g-3">
+                    <div className="row g-4">
+                        {/* CARD 1: Medición */}
                         <div className="col-12 col-md-4">
                             <div className="home-help-card">
+                                <div className="icon-box variant-red">
+                                    <Ruler size={32} strokeWidth={1.5} />
+                                </div>
                                 <h3 className="home-help-card-title">Cómo medir tu ventana</h3>
                                 <p className="home-help-card-copy">
                                     Aprende a tomar alto y ancho correctamente para calcular el precio sin errores.
                                 </p>
                                 <Link to="/medir-hueco-rejas-para-ventanas" className="home-help-card-link">
-                                    Ver guía de medición
+                                    Ver guía de medición <span>→</span>
                                 </Link>
                             </div>
                         </div>
+
+                        {/* CARD 2: Instalación */}
                         <div className="col-12 col-md-4">
                             <div className="home-help-card">
+                                <div className="icon-box variant-red">
+                                    <Wrench size={32} strokeWidth={1.5} />
+                                </div>
                                 <h3 className="home-help-card-title">Guía de instalación</h3>
                                 <p className="home-help-card-copy">
                                     Revisa las opciones de anclaje y qué instalación conviene más en cada caso.
                                 </p>
                                 <Link to="/instalation-rejas-para-ventanas" className="home-help-card-link">
-                                    Ver guía de instalación
+                                    Ver guía de instalación <span>→</span>
                                 </Link>
                             </div>
                         </div>
+
+                        {/* CARD 3: Plazos */}
                         <div className="col-12 col-md-4">
                             <div className="home-help-card">
-                                <h3 className="home-help-card-title">Plazos de fabricación y entrega</h3>
+                                <div className="icon-box variant-red">
+                                    <Truck size={32} strokeWidth={1.5} />
+                                </div>
+                                <h3 className="home-help-card-title">Plazos de fabricación</h3>
                                 <p className="home-help-card-copy">
                                     Consulta tiempos orientativos para planificar tu compra con más tranquilidad.
                                 </p>
                                 <Link to="/plazos-entrega-rejas-a-medida" className="home-help-card-link">
-                                    Consultar plazos
+                                    Consultar plazos <span>→</span>
                                 </Link>
                             </div>
                         </div>
                     </div>
+
                     <p className="home-help-footer">
                         También puedes visitar nuestro <Link to="/blogs">blog</Link> o escribirnos desde <Link to="/contact">contacto</Link> si necesitas más ayuda.
                     </p>
                 </div>
 
+                {/* TRUST BAR (Inferior) */}
                 <div className="row g-3 home-trust-grid">
-                    <div className="col-12 col-sm-6 col-xl-3">
-                        <div className="home-trust-item">
-                            <strong>Fabricación a medida</strong>
-                            <span>Cada reja se adapta a tus medidas reales.</span>
-                        </div>
-                    </div>
-                    <div className="col-12 col-sm-6 col-xl-3">
-                        <div className="home-trust-item">
-                            <strong>Envío a toda España</strong>
-                            <span>Compra online y recibe tu pedido donde lo necesites.</span>
-                        </div>
-                    </div>
-                    <div className="col-12 col-sm-6 col-xl-3">
-                        <div className="home-trust-item">
-                            <strong>IVA incluido</strong>
-                            <span>Precios claros desde el primer momento.</span>
-                        </div>
-                    </div>
-                    <div className="col-12 col-sm-6 col-xl-3">
-                        <div className="home-trust-item">
-                            <strong>Atención por WhatsApp</strong>
-                            <span>Te ayudamos si tienes dudas antes de comprar.</span>
-                        </div>
-                    </div>
+                    <TrustItem 
+                        icon={<Factory size={20} />} 
+                        title="Fabricación a medida" 
+                        text="Cada reja se adapta a tus medidas reales." 
+                    />
+                    <TrustItem 
+                        icon={<Globe size={20} />} 
+                        title="Envío a toda España" 
+                        text="Compra online y recibe donde lo necesites." 
+                    />
+                    <TrustItem 
+                        icon={<ReceiptText size={20} />} 
+                        title="IVA incluido" 
+                        text="Precios claros desde el primer momento." 
+                    />
+                    <TrustItem 
+                        icon={<MessageCircle size={20} className="text-whatsapp" />} 
+                        title="Atención por WhatsApp" 
+                        text="Te ayudamos si tienes dudas antes de comprar." 
+                    />
                 </div>
             </div>
         );
@@ -119,3 +140,16 @@ export const BodyHomeTertiary = ({ variant = "contact-header" }) => {
         </div>
     );
 };
+
+// Sub-componente para limpiar el código de la barra de confianza
+const TrustItem = ({ icon, title, text }) => (
+    <div className="col-12 col-sm-6 col-xl-3">
+        <div className="home-trust-item">
+            <div className="trust-icon-mini">{icon}</div>
+            <div className="trust-content">
+                <strong>{title}</strong>
+                <span>{text}</span>
+            </div>
+        </div>
+    </div>
+);

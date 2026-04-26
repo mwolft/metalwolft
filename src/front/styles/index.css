@@ -448,9 +448,11 @@ body, html {
   color: white;
   border: 1px solid #ff324d; 
   padding: 6px 35px; 
-  border-radius: 12px; 
+  border-radius: 25px; 
   cursor: pointer; 
   transition: all 0.3s ease; 
+  padding: .78rem 1.35rem;
+  line-height: 1.2;
 }
 
 .btn-style-background-color:hover {
@@ -959,3 +961,161 @@ select:-webkit-autofill:active {
     }
 }
 
+
+
+
+
+/* Contenedor de iconos superior */
+.icon-box {
+    width: 64px;
+    height: 64px;
+    border-radius: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 1.5rem;
+    transition: transform 0.3s ease;
+}
+
+.variant-red {
+    background-color: #fff5f5; /* Un rojo muy sutil de fondo */
+    color: #e03131; /* El rojo corporativo */
+}
+
+/* Efecto Hover en las cards */
+.home-help-card {
+    background: #fff;
+    border: 1px solid #f0f0f0;
+    border-radius: 20px;
+    padding: 2rem;
+    height: 100%;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.home-help-card:hover {
+    border-color: #e03131;
+    transform: translateY(-5px);
+    box-shadow: 0 10px 30px rgba(0,0,0,0.05);
+}
+
+.home-help-card:hover .icon-box {
+    transform: scale(1.1) rotate(-5deg);
+}
+
+/* Enlaces con flecha */
+.home-help-card-link {
+    color: #e03131;
+    font-weight: 600;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
+/* Trust Items (Barra inferior) */
+.home-trust-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 1rem;
+    background: #f8f9fa;
+    border-radius: 12px;
+}
+
+.trust-icon-mini {
+    background: #fff;
+    padding: 8px;
+    border-radius: 8px;
+    display: flex;
+    color: #495057;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+
+.text-whatsapp {
+    color: #25D366;
+}
+
+.home-about-us-container {
+    padding: 4rem 0;
+}
+
+.home-about-title {
+    margin-bottom: 1.5rem;
+    font-weight: 800;
+}
+
+.highlight-link {
+    color: #e03131;
+    font-weight: 600;
+    border-bottom: 2px solid #ffe3e3;
+    transition: all 0.2s;
+}
+
+.highlight-link:hover {
+    border-bottom-color: #e03131;
+}
+
+
+
+
+
+
+
+/* --- Estilos base (Escritorio) --- */
+.about-image-wrapper {
+    position: relative;
+    border-left: 6px solid #e03131;
+    padding-left: 20px;
+}
+
+.about-image {
+    width: 100%;
+    height: 450px;
+    object-fit: cover;
+    display: block;
+    box-shadow: 0 20px 40px rgba(0,0,0,0.2);
+    border-radius: 4px;
+}
+
+.about-image-overlay {
+    position: absolute;
+    bottom: 30px;
+    right: -20px; /* Esto es lo que causa el problema en móvil */
+    width: 75%;
+    background: rgba(255, 255, 255, 0.7);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    padding: 1.5rem;
+    border-radius: 8px;
+    z-index: 2;
+}
+
+/* --- AJUSTES PARA MÓVILES (Media Query) --- */
+@media (max-width: 991px) {
+    .home-about-us-container {
+        padding: 2rem 1rem; /* Añadimos margen lateral al contenedor padre */
+    }
+
+    .about-image-wrapper {
+        border-left: none; /* Quitamos la barra lateral en móvil para ganar espacio */
+        border-top: 4px solid #e03131; /* La ponemos arriba como un detalle */
+        padding-left: 0;
+        padding-top: 20px;
+        margin-top: 2rem;
+    }
+
+    .about-image {
+        height: 300px; /* Reducimos altura para que no ocupe toda la pantalla */
+    }
+
+    .about-image-overlay {
+        position: relative; /* Cambiamos de absoluto a relativo */
+        bottom: 0;
+        right: 0; /* Eliminamos el desfase lateral */
+        width: 95%; /* Que ocupe casi todo el ancho */
+        margin: -40px auto 0 auto; /* Lo subimos un poco para que solape la imagen */
+        box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+        text-align: center; /* Opcional: centrar el texto en móvil */
+    }
+}
