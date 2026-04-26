@@ -25,6 +25,7 @@ import requests
 import uuid
 from api.email_routes import send_email, get_admin_recipients
 from api.checkout_service import build_checkout_quote
+from api.invoice_service import render_invoice_pdf
 
 
 logger = logging.getLogger(__name__)
@@ -32,6 +33,160 @@ logger = logging.getLogger(__name__)
 api = Blueprint('api', __name__)
 
 load_dotenv()
+
+
+INVOICE_LOGO_URL = "https://res.cloudinary.com/dewanllxn/image/upload/v1740167674/logo_uxlqof.png"
+INVOICE_COLOR_LABELS = {
+    "satinado_blanco": "Blanco liso",
+    "satinado_negro": "Negro liso",
+    "satinado_gris": "Gris medio liso",
+    "satinado_verde": "Verde carruajes liso",
+    "forja_negro": "Negro forja",
+    "forja_gris": "Gris acero forja",
+    "forja_marron": "Marrón castaño forja",
+    "forja_azul": "Azul forja",
+    "forja_verde": "Verde bronce forja",
+    "forja_dorado": "Dorado forja",
+    "blanco": "Blanco",
+    "negro": "Negro",
+    "gris": "Gris",
+    "marrón": "Marrón",
+    "marron": "Marrón",
+    "verde": "Verde"
+}
+
+
+def _split_invoice_client_name(client_name):
+    normalized_name = (client_name or "").strip()
+    if not normalized_name:
+        return "", ""
+
+    parts = normalized_name.split()
+    if len(parts) == 1:
+        return parts[0], ""
+
+    return parts[0], " ".join(parts[1:])
+
+
+def _get_invoice_line_name(detail):
+    if not isinstance(detail, dict):
+        return "Producto"
+
+    explicit_name = detail.get("product") or detail.get("producto_nombre") or detail.get("name")
+    if explicit_name:
+        return explicit_name
+
+    product_id = detail.get("product_id") or detail.get("producto_id")
+    if product_id:
+        product = Products.query.get(product_id)
+        if product and product.nombre:
+            return product.nombre
+
+    return "Producto"
+
+
+def _serialize_invoice_lines(invoice):
+    raw_lines = invoice.order_details if isinstance(invoice.order_details, list) else []
+    lines = []
+
+    for detail in raw_lines:
+        if not isinstance(detail, dict):
+            continue
+
+        quantity = detail.get("quantity") or detail.get("qty") or 1
+        try:
+            quantity = max(int(quantity), 1)
+        except (TypeError, ValueError):
+            quantity = 1
+
+        unit_price = detail.get("price")
+        if unit_price is None:
+            unit_price = detail.get("precio_total")
+
+        try:
+            unit_price = float(unit_price or 0)
+        except (TypeError, ValueError):
+            unit_price = 0.0
+
+        color_value = detail.get("color") or ""
+
+        lines.append({
+            "name": _get_invoice_line_name(detail),
+            "alto": detail.get("alto") or "",
+            "ancho": detail.get("ancho") or "",
+            "anclaje": detail.get("anclaje") or "",
+            "color": INVOICE_COLOR_LABELS.get(color_value, color_value),
+            "qty": quantity,
+            "unit_price": unit_price,
+        })
+
+    return lines
+
+
+def _build_invoice_payload(invoice):
+    first_detail = invoice.order_details[0] if isinstance(invoice.order_details, list) and invoice.order_details else {}
+    firstname, lastname = _split_invoice_client_name(invoice.client_name)
+
+    billing_address = invoice.client_address or (first_detail.get("billing_address") if isinstance(first_detail, dict) else "") or ""
+    billing_city = (first_detail.get("billing_city") if isinstance(first_detail, dict) else "") or ""
+    billing_postal_code = (first_detail.get("billing_postal_code") if isinstance(first_detail, dict) else "") or ""
+
+    shipping_address = (first_detail.get("shipping_address") if isinstance(first_detail, dict) else "") or ""
+    shipping_city = (first_detail.get("shipping_city") if isinstance(first_detail, dict) else "") or ""
+    shipping_postal_code = (first_detail.get("shipping_postal_code") if isinstance(first_detail, dict) else "") or ""
+    shipping_same_as_billing = (
+        not shipping_address or
+        (
+            shipping_address == billing_address and
+            shipping_city == billing_city and
+            shipping_postal_code == billing_postal_code
+        )
+    )
+
+    shipping_cost = 0.0
+    if invoice.order and invoice.order.shipping_cost is not None:
+        shipping_cost = float(invoice.order.shipping_cost or 0.0)
+    elif isinstance(first_detail, dict):
+        try:
+            shipping_cost = float(first_detail.get("shipping_cost") or 0.0)
+        except (TypeError, ValueError):
+            shipping_cost = 0.0
+
+    return {
+        "invoice_number": invoice.invoice_number,
+        "date": invoice.created_at.strftime("%d/%m/%Y") if invoice.created_at else datetime.now().strftime("%d/%m/%Y"),
+        "locator": invoice.order.locator if invoice.order else None,
+        "logo_path": INVOICE_LOGO_URL,
+        "supplier": {
+            "name": "Sergio Arias Fernández",
+            "cif": "05703874N",
+            "address": "Francisco Fernández Ordoñez 32",
+            "city": "13170 Miguelturra",
+            "phone": "634112604",
+        },
+        "client": {
+            "firstname": firstname,
+            "lastname": lastname,
+            "billing_address": billing_address,
+            "billing_city": billing_city,
+            "billing_postal_code": billing_postal_code,
+            "phone": invoice.client_phone or "",
+            "cif": invoice.client_cif or "",
+        },
+        "shipping": {
+            "same_as_billing": shipping_same_as_billing,
+            "address": shipping_address,
+            "city": shipping_city,
+            "postal_code": shipping_postal_code,
+        },
+        "lines": _serialize_invoice_lines(invoice),
+        "totals": {
+            "shipping_cost": shipping_cost,
+            "iva_rate": 0.21,
+            "total": float(invoice.amount or 0.0),
+        },
+        "footer_notes": "Precios con IVA incluido. Gracias por tu compra. Para soporte y devoluciones: www.metalwolft.com",
+    }
 
 
 
@@ -3886,9 +4041,24 @@ def download_invoice(filename):
         current_app.logger.info(f"Buscando archivo en: {file_path}")
 
         if not os.path.exists(file_path):
-            return jsonify({"message": "No se encontró el archivo PDF para esta factura."}), 404
+            current_app.logger.warning(
+                "No se encontró el PDF físico de la factura %s. Se regenerará en memoria.",
+                invoice.invoice_number
+            )
+            regenerated_pdf = render_invoice_pdf(_build_invoice_payload(invoice))
+            return send_file(
+                BytesIO(regenerated_pdf),
+                as_attachment=True,
+                download_name=f"factura_{invoice.invoice_number}.pdf",
+                mimetype='application/pdf'
+            )
 
-        return send_file(file_path, as_attachment=True, download_name=safe_filename, mimetype='application/pdf')
+        return send_file(
+            file_path,
+            as_attachment=True,
+            download_name=f"factura_{invoice.invoice_number}.pdf",
+            mimetype='application/pdf'
+        )
     except Exception as e:
         current_app.logger.error(f"Error al descargar la factura: {str(e)}")
         return jsonify({"message": "An error occurred while downloading the invoice.", "error": str(e)}), 500
