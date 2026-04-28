@@ -46,7 +46,7 @@ const DownloadButton = () => {
     const token = localStorage.getItem("token");
 
     if (!token) {
-      alert("Debes iniciar sesiÃ³n para descargar la factura.");
+      alert("Debes iniciar sesión para descargar la factura.");
       return;
     }
 

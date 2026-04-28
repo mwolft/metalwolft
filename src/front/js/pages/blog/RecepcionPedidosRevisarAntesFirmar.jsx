@@ -158,7 +158,7 @@ export const RecepcionPedidosRevisarAntesFirmar = () => {
                         )}
 
                         <div className="blog-text">
-                            <p>Si estÃ¡s preparando tu compra, tambiÃ©n puedes consultar nuestros <Link to="/plazos-entrega-rejas-a-medida" style={{ color: '#ff324d', textDecoration: 'underline' }}>plazos de entrega</Link> y revisar la secciÃ³n de <Link to="/rejas-para-ventanas" style={{ color: '#ff324d', textDecoration: 'underline' }}>rejas para ventanas</Link> antes de formalizar el pedido.</p>
+                            <p>Si estás preparando tu compra, también puedes consultar nuestros <Link to="/plazos-entrega-rejas-a-medida" style={{ color: '#ff324d', textDecoration: 'underline' }}>plazos de entrega</Link> y revisar la sección de <Link to="/rejas-para-ventanas" style={{ color: '#ff324d', textDecoration: 'underline' }}>rejas para ventanas</Link> antes de formalizar el pedido.</p>
                             <h2 className="h2-categories">¿POR QUÉ REVISAR ANTES DE FIRMAR?</h2>
                             <p>
                                 Piensa que tu pedido ha pasado por fábricas, almacenes y furgonetas antes de llegar a tu puerta.

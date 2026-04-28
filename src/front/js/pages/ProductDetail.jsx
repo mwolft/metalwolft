@@ -1212,7 +1212,7 @@ export const ProductDetail = () => {
                                 <p>Aunque el hierro sigue siendo el material predominante, se han incorporado otros materiales, como el acero inoxidable, para satisfacer las necesidades cambiantes de los propietarios.</p>
                                 <p>En <Link to="/" className="link-categories">Metal Wolf</Link>, nos enorgullece presentar una selección de <strong>rejas para ventanas modernas</strong> que destacan tanto por su estilo como por su capacidad de brindar <b>protección efectiva</b>.</p>
                                 <p>Nuestra filosofía se centra en la creación de <b>diseños</b> que no solo cumplen con su propósito principal, sino que también <b>realzan la estética de su hogar</b>.</p>
-                                <p>Si quieres ideas y acabados actuales, puedes consultar nuestra guÃ­a de <Link to="/rejas-para-ventanas-modernas" className="link-categories">rejas para ventanas modernas</Link>.</p>
+                                <p>Si quieres ideas y acabados actuales, puedes consultar nuestra guí­a de <Link to="/rejas-para-ventanas-modernas" className="link-categories">rejas para ventanas modernas</Link>.</p>
                                 {/* ------------------------------------------ */}
                                 <h4 className="h3-categories">Rejas para ventanas sin obra</h4>
 
@@ -1229,7 +1229,7 @@ export const ProductDetail = () => {
                                 <p>
                                     Si deseas proteger tu hogar sin alterar la fachada, las <strong>rejas sin obra</strong> son la alternativa perfecta. Combina <b>seguridad y funcionalidad</b> y un diseño que se adapta a cualquier estilo de ventana.
                                 </p>
-                                <p>TambiÃ©n puedes comparar modelos y acabados en nuestra secciÃ³n de <Link to="/rejas-para-ventanas-sin-obra" className="link-categories">rejas para ventanas sin obra</Link>.</p>
+                                <p>También puedes comparar modelos y acabados en nuestra sección de <Link to="/rejas-para-ventanas-sin-obra" className="link-categories">rejas para ventanas sin obra</Link>.</p>
                                 <div className="container">
                                     <div className="row text-center mt-4 d-flex flex-column flex-lg-row">
                                         {[

@@ -311,7 +311,7 @@ export const RejasParaVentanas = ({ onSelectCategory, onSelectSubcategory, categ
                         </div>
                         {/* ------------------------------------------------------------------------------------------------------------------------ */}
                         <h2 className="h2-categories">Tipos de rejas para ventanas</h2>
-                        <p>Si quieres ver ideas, acabados y ejemplos reales, puedes consultar nuestra guÃ­a de <Link to="/rejas-para-ventanas-modernas" className="link-categories">rejas para ventanas modernas</Link>.</p>
+                        <p>Si quieres ver ideas, acabados y ejemplos reales, puedes consultar nuestra guí­a de <Link to="/rejas-para-ventanas-modernas" className="link-categories">rejas para ventanas modernas</Link>.</p>
                         {/* ------------------------------------------ */}
                         <h3 className="h3-categories">Rejas para ventanas modernas</h3>
                         <p>Las <strong>rejas para ventanas modernas</strong> han experimentado una transformación en su estilo y materiales, siguiendo líneas más <strong>sencillas</strong> siendo igual de <strong>bonitas</strong>, ofreciendo un equilibrio perfecto entre <b>seguridad y estética</b>.</p>
@@ -334,7 +334,7 @@ export const RejasParaVentanas = ({ onSelectCategory, onSelectSubcategory, categ
                         <p>
                             Si deseas proteger tu hogar sin alterar la fachada, las <strong>rejas sin obra</strong> son la alternativa perfecta. Combina <b>seguridad y funcionalidad</b> y un diseño que se adapta a cualquier estilo de ventana.
                         </p>
-                        <p>TambiÃ©n puedes ver nuestra selecciÃ³n de <Link to="/rejas-para-ventanas-sin-obra" className="link-categories">rejas para ventanas sin obra</Link> para comparar modelos pensados para un montaje limpio y rÃ¡pido.</p>
+                        <p>También puedes ver nuestra selección de <Link to="/rejas-para-ventanas-sin-obra" className="link-categories">rejas para ventanas sin obra</Link> para comparar modelos pensados para un montaje limpio y rápido.</p>
                         <div className="container">
                             <div className="row text-center mt-4 d-flex flex-column flex-lg-row">
                                 {[

@@ -97,7 +97,7 @@ export const PuertasCorrederasInteriores = () => {
                     <h1 className="h2-categories mb-3">Puertas Correderas Interiores</h1>
                     <div className="col-12 mb-3">
                         <p className="mb-0">
-                            Si tambiÃ©n quieres reforzar la seguridad de tus ventanas, puedes explorar nuestras <Link to="/rejas-para-ventanas" className="link-categories">rejas para ventanas</Link>, consultar la <Link to="/medir-hueco-rejas-para-ventanas" className="link-categories">guÃ­a para medir el hueco</Link> y ver cÃ³mo funciona la <Link to="/instalation-rejas-para-ventanas" className="link-categories">instalaciÃ³n sin obra</Link>.
+                            Si también quieres reforzar la seguridad de tus ventanas, puedes explorar nuestras <Link to="/rejas-para-ventanas" className="link-categories">rejas para ventanas</Link>, consultar la <Link to="/medir-hueco-rejas-para-ventanas" className="link-categories">guí­a para medir el hueco</Link> y ver cómo funciona la <Link to="/instalation-rejas-para-ventanas" className="link-categories">instalación sin obra</Link>.
                         </p>
                     </div>
                     <div className="col-12 col-lg-3 col-xl-3 order-1">

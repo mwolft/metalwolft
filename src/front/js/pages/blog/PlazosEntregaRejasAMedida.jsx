@@ -135,7 +135,7 @@ export const PlazosEntregaRejasAMedida = () => {
                             </div>
                         )}
                         <div className="blog-text">
-                            <p>Antes de confirmar tu pedido, tambiÃ©n te recomendamos revisar <Link to="/medir-hueco-rejas-para-ventanas" style={{ color: '#ff324d', textDecoration: 'underline' }}>cÃ³mo medir el hueco</Link>, la <Link to="/instalation-rejas-para-ventanas" style={{ color: '#ff324d', textDecoration: 'underline' }}>guÃ­a de instalaciÃ³n sin obra</Link> y las <Link to="/rejas-para-ventanas-sin-obra" style={{ color: '#ff324d', textDecoration: 'underline' }}>rejas para ventanas sin obra</Link> si buscas un montaje mÃ¡s rÃ¡pido.</p>
+                            <p>Antes de confirmar tu pedido, también te recomendamos revisar <Link to="/medir-hueco-rejas-para-ventanas" style={{ color: '#ff324d', textDecoration: 'underline' }}>cómo medir el hueco</Link>, la <Link to="/instalation-rejas-para-ventanas" style={{ color: '#ff324d', textDecoration: 'underline' }}>guí­a de instalación sin obra</Link> y las <Link to="/rejas-para-ventanas-sin-obra" style={{ color: '#ff324d', textDecoration: 'underline' }}>rejas para ventanas sin obra</Link> si buscas un montaje más rápido.</p>
                             <h2 className="h2-categories">¿CUÁL ES EL PLAZO DE ENTREGA?</h2>
                             <p>
                                 Hemos desarrollado un sistema de <strong>estimación automática</strong> que te muestra, en tiempo real, un rango de <strong>fechas</strong> ajustado a nuestra <strong>carga de trabajo actual</strong>.

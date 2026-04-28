@@ -199,7 +199,7 @@ const CheckoutForm = () => {
         satinado_verde: "Verde carruajes liso",
         forja_negro: "Negro forja",
         forja_gris: "Gris acero forja",
-        forja_marron: "MarrÃ³n castaÃ±o forja",
+        forja_marron: "Marrón castaño forja",
         forja_marron: "Marron castano forja",
         forja_azul: "Azul forja",
         forja_verde: "Verde bronce forja",

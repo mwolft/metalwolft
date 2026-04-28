@@ -171,7 +171,7 @@ export const DondeComprarRejasLeroyIkea = () => {
                             <p>Cargando...</p>
                         )}
                         <div className="blog-text">
-                            <p>Si quieres comparar con criterio, primero te vendrÃ¡ bien revisar nuestra guÃ­a para <Link to="/medir-hueco-rejas-para-ventanas" style={{ color: "#ff324d", textDecoration: "underline" }}>medir el hueco</Link>, la <Link to="/instalation-rejas-para-ventanas" style={{ color: "#ff324d", textDecoration: "underline" }}>instalaciÃ³n sin obra</Link> y el catÃ¡logo de <Link to="/rejas-para-ventanas" style={{ color: "#ff324d", textDecoration: "underline" }}>rejas para ventanas</Link>.</p>
+                            <p>Si quieres comparar con criterio, primero te vendrá bien revisar nuestra guí­a para <Link to="/medir-hueco-rejas-para-ventanas" style={{ color: "#ff324d", textDecoration: "underline" }}>medir el hueco</Link>, la <Link to="/instalation-rejas-para-ventanas" style={{ color: "#ff324d", textDecoration: "underline" }}>instalación sin obra</Link> y el catálogo de <Link to="/rejas-para-ventanas" style={{ color: "#ff324d", textDecoration: "underline" }}>rejas para ventanas</Link>.</p>
                             <h2 className="h2-categories">Comparativa de rejas para ventanas: Ikea, Leroy Merlin o a medida</h2>
                             <p>
                                 Si estás buscando <strong>rejas para ventanas</strong> y no sabes por dónde empezar,
