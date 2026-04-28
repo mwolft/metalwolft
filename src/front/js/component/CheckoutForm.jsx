@@ -1,4 +1,4 @@
-import React, { useContext, useState } from 'react';
+import React, { useContext, useEffect, useRef, useState } from 'react';
 import { loadStripe } from '@stripe/stripe-js';
 import { Elements, CardElement, useStripe, useElements } from '@stripe/react-stripe-js';
 import { Context } from "../store/appContext";
@@ -10,6 +10,37 @@ import PayPalButton from "./PayPalButton";
 
 const stripePromise = loadStripe('pk_live_51I1FgUDyMBNofWjFzagO0jTrkfQBvlt5Pshx3hLJbDLCxahT7Cn5NF9oozvey5iiH6lZhP82p3TFFmrdHGh3CQW700GiDX1dtz');
 
+const CHECKOUT_PROFILE_FIELDS = [
+    "firstname",
+    "lastname",
+    "phone",
+    "shipping_address",
+    "shipping_city",
+    "shipping_postal_code",
+    "billing_address",
+    "billing_city",
+    "billing_postal_code",
+    "CIF"
+];
+
+const EMPTY_CHECKOUT_FORM = {
+    firstname: "",
+    lastname: "",
+    phone: "",
+    shipping_address: "",
+    shipping_city: "",
+    shipping_postal_code: "",
+    billing_address: "",
+    billing_city: "",
+    billing_postal_code: "",
+    CIF: ""
+};
+
+const VALID_SPANISH_POSTAL_CODE_REGEX = /^\d{5}$/;
+const RESTRICTED_SHIPPING_POSTAL_PREFIXES = ["07", "35", "38", "51", "52"];
+const INVALID_POSTAL_CODE_MESSAGE = "Introduce un código postal válido.";
+const PENINSULA_ONLY_SHIPPING_MESSAGE = "Actualmente solo realizamos envíos a la península. Para Baleares, Canarias, Ceuta o Melilla, consúltanos antes de comprar.";
+
 const CheckoutForm = () => {
     const stripe = useStripe();
     const elements = useElements();
@@ -19,19 +50,15 @@ const CheckoutForm = () => {
     const [isProcessing, setIsProcessing] = useState(false);
     const [paypalError, setPaypalError] = useState("");
     const [paypalCheckoutToken, setPaypalCheckoutToken] = useState(null);
-    const [formData, setFormData] = useState({
-        firstname: "",
-        lastname: "",
-        phone: "",
-        shipping_address: "",
-        shipping_city: "",
-        shipping_postal_code: "",
-        billing_address: "",
-        billing_city: "",
-        billing_postal_code: "",
-        CIF: ""
-    });
+    const [formData, setFormData] = useState(EMPTY_CHECKOUT_FORM);
+    const [showSavedDataNotice, setShowSavedDataNotice] = useState(false);
     const [acceptedPolicy, setAcceptedPolicy] = useState(false);
+    const [touchedPostalFields, setTouchedPostalFields] = useState({
+        billing_postal_code: false,
+        shipping_postal_code: false
+    });
+    const hasAutofilledSavedDataRef = useRef(false);
+    const hasUserEditedCheckoutRef = useRef(false);
     const navigate = useNavigate();
     const backendUrl = process.env.REACT_APP_BACKEND_URL || "";
     const paypalClientId = process.env.REACT_APP_PAYPAL_CLIENT_ID || "";
@@ -151,9 +178,9 @@ const CheckoutForm = () => {
             return false;
         }
 
-        const isValid = validateForm();
-        if (!isValid) {
-            const message = "Revisa los datos obligatorios antes de continuar con el pago.";
+        const validationResult = validateForm();
+        if (!validationResult.isValid) {
+            const message = validationResult.message || "Revisa los datos obligatorios antes de continuar con el pago.";
             setPaypalError(message);
             if (showAlert) {
                 alert(message);
@@ -184,12 +211,203 @@ const CheckoutForm = () => {
         verde: "Verde"
     };
 
+    const getStoredCheckoutUser = () => {
+        try {
+            const rawUser = localStorage.getItem("user");
+            if (!rawUser || rawUser === "undefined") {
+                return null;
+            }
+
+            const parsedUser = JSON.parse(rawUser);
+            return parsedUser && typeof parsedUser === "object" ? parsedUser : null;
+        } catch (error) {
+            console.warn("No se pudieron leer los datos guardados del usuario para el checkout.", error);
+            return null;
+        }
+    };
+
+    const normalizeSameAsBillingValue = (value) => {
+        if (!value) return "";
+
+        const normalized = String(value).trim().toLowerCase();
+
+        if (
+            normalized === "la misma que la de facturación" ||
+            normalized === "la misma que la de facturacion" ||
+            normalized === "misma dirección" ||
+            normalized === "misma direccion" ||
+            normalized === "igual que facturación" ||
+            normalized === "igual que facturacion"
+        ) {
+            return "";
+        }
+
+        return value;
+    };
+
+    const normalizePostalCodeValue = (value) => String(value || "").trim();
+
+    const getPostalCodeValidationMessage = (postalCode, { checkShippingRestriction = false } = {}) => {
+        const normalizedPostalCode = normalizePostalCodeValue(postalCode);
+
+        if (!normalizedPostalCode) {
+            return "";
+        }
+
+        if (!VALID_SPANISH_POSTAL_CODE_REGEX.test(normalizedPostalCode)) {
+            return INVALID_POSTAL_CODE_MESSAGE;
+        }
+
+        if (
+            checkShippingRestriction &&
+            RESTRICTED_SHIPPING_POSTAL_PREFIXES.includes(normalizedPostalCode.slice(0, 2))
+        ) {
+            return PENINSULA_ONLY_SHIPPING_MESSAGE;
+        }
+
+        return "";
+    };
+
+    const setFieldError = (fieldName, message) => {
+        setErrors((prevErrors) => {
+            const nextErrors = { ...prevErrors };
+
+            if (message) {
+                nextErrors[fieldName] = message;
+            } else {
+                delete nextErrors[fieldName];
+            }
+
+            return nextErrors;
+        });
+    };
+
+    const getPostalCodeFieldValidationMessage = (
+        fieldName,
+        value,
+        useDifferentShippingOverride = differentBilling
+    ) => {
+        const checkShippingRestriction = fieldName === "shipping_postal_code"
+            ? true
+            : !useDifferentShippingOverride;
+
+        return getPostalCodeValidationMessage(value, { checkShippingRestriction });
+    };
+
+    const validatePostalCodeField = (
+        fieldName,
+        value,
+        useDifferentShippingOverride = differentBilling
+    ) => {
+        const message = getPostalCodeFieldValidationMessage(
+            fieldName,
+            value,
+            useDifferentShippingOverride
+        );
+
+        setFieldError(fieldName, message);
+        return message;
+    };
+
+    const buildCheckoutPrefillData = (userData = {}) => ({
+        firstname: userData.firstname || "",
+        lastname: userData.lastname || "",
+        phone: userData.phone || "",
+        shipping_address: normalizeSameAsBillingValue(userData.shipping_address),
+        shipping_city: normalizeSameAsBillingValue(userData.shipping_city),
+        shipping_postal_code: normalizeSameAsBillingValue(userData.shipping_postal_code),
+        billing_address: userData.billing_address || "",
+        billing_city: userData.billing_city || "",
+        billing_postal_code: userData.billing_postal_code || "",
+        CIF: userData.CIF || userData.cif || userData.tax_id || ""
+    });
+
+    const shouldUseDifferentShipping = (prefillData) => {
+        const shippingAddress = (prefillData.shipping_address || "").trim();
+        const shippingCity = (prefillData.shipping_city || "").trim();
+        const shippingPostalCode = (prefillData.shipping_postal_code || "").trim();
+
+        if (!shippingAddress && !shippingCity && !shippingPostalCode) {
+            return false;
+        }
+
+        return (
+            shippingAddress !== (prefillData.billing_address || "").trim() ||
+            shippingCity !== (prefillData.billing_city || "").trim() ||
+            shippingPostalCode !== (prefillData.billing_postal_code || "").trim()
+        );
+    };
+
+    useEffect(() => {
+        if (!store.isLoged || hasAutofilledSavedDataRef.current || hasUserEditedCheckoutRef.current) {
+            return;
+        }
+
+        const sourceUser = store.currentUser || getStoredCheckoutUser();
+        if (!sourceUser) {
+            return;
+        }
+
+        const prefillData = buildCheckoutPrefillData(sourceUser);
+        const useDifferentShipping = shouldUseDifferentShipping(prefillData);
+        const effectivePrefillData = useDifferentShipping
+            ? prefillData
+            : {
+                ...prefillData,
+                shipping_address: "",
+                shipping_city: "",
+                shipping_postal_code: ""
+            };
+
+        const hasAnyStoredValue = CHECKOUT_PROFILE_FIELDS.some((field) => effectivePrefillData[field]);
+        const hasAnyMissingField = CHECKOUT_PROFILE_FIELDS.some(
+            (field) => !formData[field] && effectivePrefillData[field]
+        );
+
+        if (!hasAnyStoredValue || !hasAnyMissingField) {
+            return;
+        }
+
+        setFormData((prevData) => {
+            const nextData = { ...prevData };
+
+            CHECKOUT_PROFILE_FIELDS.forEach((field) => {
+                if (!nextData[field] && effectivePrefillData[field]) {
+                    nextData[field] = effectivePrefillData[field];
+                }
+            });
+
+            return nextData;
+        });
+
+        setDifferentBilling(useDifferentShipping);
+        setShowSavedDataNotice(true);
+        hasAutofilledSavedDataRef.current = true;
+    }, [formData, store.currentUser, store.isLoged]);
+
     const handleInputChange = (e) => {
         const { name, value } = e.target;
+        hasUserEditedCheckoutRef.current = true;
         setFormData({
             ...formData,
             [name]: value
         });
+
+        if (
+            (name === "billing_postal_code" || name === "shipping_postal_code") &&
+            (touchedPostalFields[name] || Boolean(errors[name]))
+        ) {
+            validatePostalCodeField(name, value);
+        }
+    };
+
+    const handlePostalCodeBlur = (e) => {
+        const { name, value } = e.target;
+        setTouchedPostalFields((prevState) => ({
+            ...prevState,
+            [name]: true
+        }));
+        validatePostalCodeField(name, value);
     };
 
     const validateForm = () => {
@@ -218,9 +436,36 @@ const CheckoutForm = () => {
             }
         });
 
+        const billingPostalCodeError = getPostalCodeValidationMessage(formData.billing_postal_code, {
+            checkShippingRestriction: !differentBilling
+        });
+
+        if (billingPostalCodeError) {
+            newErrors.billing_postal_code = billingPostalCodeError;
+        }
+
+        if (differentBilling) {
+            const shippingPostalCodeError = getPostalCodeValidationMessage(formData.shipping_postal_code, {
+                checkShippingRestriction: true
+            });
+
+            if (shippingPostalCodeError) {
+                newErrors.shipping_postal_code = shippingPostalCodeError;
+            }
+        }
+
         setErrors(newErrors);
-        return Object.keys(newErrors).length === 0;
+
+        return {
+            isValid: Object.keys(newErrors).length === 0,
+            message: newErrors.shipping_postal_code || newErrors.billing_postal_code || null
+        };
     };
+
+    const hasBlockingPostalError = Boolean(
+        errors.billing_postal_code ||
+        (differentBilling && errors.shipping_postal_code)
+    );
 
     const handleOrderCompletion = async (
         paymentIntentId,
@@ -381,21 +626,28 @@ const CheckoutForm = () => {
     };
 
     const handleCheckboxChange = (e) => {
-        setDifferentBilling(e.target.checked);
-        if (!e.target.checked) {
-            setFormData({
-                ...formData,
-                shipping_address: "La misma que la de facturación",
-                shipping_city: "",
-                shipping_postal_code: ""
-            });
-        } else {
-            setFormData({
-                ...formData,
-                shipping_address: "",
-                shipping_city: "",
-                shipping_postal_code: ""
-            });
+        hasUserEditedCheckoutRef.current = true;
+        const useDifferentShipping = e.target.checked;
+        setDifferentBilling(useDifferentShipping);
+        setFormData({
+            ...formData,
+            shipping_address: "",
+            shipping_city: "",
+            shipping_postal_code: ""
+        });
+
+        setTouchedPostalFields((prevState) => ({
+            ...prevState,
+            shipping_postal_code: false
+        }));
+        setFieldError("shipping_postal_code", "");
+
+        if (touchedPostalFields.billing_postal_code || Boolean(errors.billing_postal_code)) {
+            validatePostalCodeField(
+                "billing_postal_code",
+                formData.billing_postal_code,
+                useDifferentShipping
+            );
         }
     };
 
@@ -455,6 +707,14 @@ const CheckoutForm = () => {
         borderRadius: "14px",
         padding: "18px 20px",
         backgroundColor: "#f8f9fa"
+    };
+
+    const savedDataNoticeStyle = {
+        border: "1px solid #dbeafe",
+        borderRadius: "14px",
+        padding: "14px 16px",
+        backgroundColor: "#eff6ff",
+        color: "#1d4ed8"
     };
 
     const paymentMethodCardStyle = {
@@ -544,6 +804,12 @@ const CheckoutForm = () => {
                                     <p style={checkoutSectionSubtitleStyle}>Datos para la factura y la confirmación del pedido.</p>
                                 </div>
 
+                                {showSavedDataNotice && (
+                                    <div className="mb-4" style={savedDataNoticeStyle}>
+                                        Hemos rellenado tus datos guardados. Puedes modificarlos antes de pagar.
+                                    </div>
+                                )}
+
                                 <Row className="g-3">
                                     <Col md={6}>
                                         <Form.Group className="mb-0">
@@ -597,6 +863,7 @@ const CheckoutForm = () => {
                                                 name="billing_postal_code"
                                                 placeholder="Codigo Postal"
                                                 onChange={handleInputChange}
+                                                onBlur={handlePostalCodeBlur}
                                                 value={formData.billing_postal_code}
                                                 style={checkoutInputStyle}
                                             />
@@ -716,6 +983,7 @@ const CheckoutForm = () => {
                                                     name="shipping_postal_code"
                                                     placeholder="Codigo Postal"
                                                     onChange={handleInputChange}
+                                                    onBlur={handlePostalCodeBlur}
                                                     value={formData.shipping_postal_code}
                                                     style={checkoutInputStyle}
                                                 />
@@ -789,7 +1057,7 @@ const CheckoutForm = () => {
                                     <Button
                                         className="btn btn-style-background-color w-100 mt-4"
                                         type="submit"
-                                        disabled={isProcessing || !stripe}
+                                        disabled={isProcessing || !stripe || hasBlockingPostalError}
                                     >
                                         {isProcessing ? "Pagando..." : "Pagar con tarjeta"}
                                     </Button>
@@ -828,7 +1096,7 @@ const CheckoutForm = () => {
                                                 authToken={localStorage.getItem("token")}
                                                 customerData={formData}
                                                 checkoutToken={paypalCheckoutToken}
-                                                disabled={isProcessing}
+                                                disabled={isProcessing || hasBlockingPostalError}
                                                 discountCode={store.discountCode || null}
                                                 discountPercent={store.discountPercent || 0}
                                                 shippingCost={shippingCost}
