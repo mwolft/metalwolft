@@ -1,5 +1,39 @@
 import React from "react";
-import { List, Datagrid, TextField, NumberField, EditButton, DeleteButton, WrapperField, Edit, SimpleForm, TextInput, NumberInput, Create, ReferenceField, ReferenceInput, SelectInput } from "react-admin";
+import {
+  List,
+  Datagrid,
+  TextField,
+  NumberField,
+  EditButton,
+  DeleteButton,
+  WrapperField,
+  Edit,
+  SimpleForm,
+  TextInput,
+  NumberInput,
+  Create,
+  ReferenceField,
+  ReferenceInput,
+  SelectInput,
+} from "react-admin";
+
+const orderDetailsDatagridSx = {
+  minWidth: 1800,
+  width: "max-content",
+  "& .RaDatagrid-table": {
+    minWidth: 1800,
+    width: "max-content",
+    tableLayout: "auto",
+  },
+  "& .MuiTable-root": {
+    minWidth: 1800,
+    width: "max-content",
+    tableLayout: "auto",
+  },
+  "& .MuiTableCell-root": {
+    whiteSpace: "nowrap",
+  },
+};
 
 const OrderDetailsActions = () => (
   <WrapperField label="Acciones">
@@ -13,8 +47,8 @@ const OrderDetailsActions = () => (
 // Lista de detalles de órdenes: muestra todos los detalles de órdenes
 export const OrderDetailsList = (props) => (
   <List {...props} className="admin-resource-list">
-    <div className="admin-datagrid-scroll admin-datagrid-scroll--order-details">
-      <Datagrid>
+    <div className="admin-table-scroll">
+      <Datagrid sx={orderDetailsDatagridSx}>
         <TextField source="id" label="ID" />
         <ReferenceField source="order_id" reference="orders" label="Número de Orden">
           <TextField source="id" />

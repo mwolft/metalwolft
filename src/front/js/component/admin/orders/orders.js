@@ -1,5 +1,37 @@
 import React from "react";
-import { List, Datagrid, TextField, NumberField, EditButton, DeleteButton, WrapperField, Edit, SimpleForm, TextInput, NumberInput, Create, DateField } from "react-admin";
+import {
+  List,
+  Datagrid,
+  TextField,
+  NumberField,
+  EditButton,
+  DeleteButton,
+  WrapperField,
+  Edit,
+  SimpleForm,
+  TextInput,
+  NumberInput,
+  Create,
+  DateField,
+} from "react-admin";
+
+const orderDatagridSx = {
+  minWidth: 1200,
+  width: "max-content",
+  "& .RaDatagrid-table": {
+    minWidth: 1200,
+    width: "max-content",
+    tableLayout: "auto",
+  },
+  "& .MuiTable-root": {
+    minWidth: 1200,
+    width: "max-content",
+    tableLayout: "auto",
+  },
+  "& .MuiTableCell-root": {
+    whiteSpace: "nowrap",
+  },
+};
 
 const OrderActions = () => (
   <WrapperField label="Acciones">
@@ -12,20 +44,19 @@ const OrderActions = () => (
 
 // Lista de órdenes: muestra todas las órdenes
 export const OrderList = (props) => (
-  <List {...props} sort={{ field: 'id', order: 'DESC' }} className="admin-resource-list">
-    <div className="admin-datagrid-scroll admin-datagrid-scroll--orders">
-      <Datagrid>
-      <TextField source="id" label="ID" />
-      <NumberField source="total_amount" label="Monto Total" />
-      <DateField source="order_date" label="Fecha de Orden" />
-      <TextField source="invoice_number" label="Número de Factura" />
-      <TextField source="locator" label="Localizador" />
+  <List {...props} sort={{ field: "id", order: "DESC" }} className="admin-resource-list">
+    <div className="admin-table-scroll">
+      <Datagrid sx={orderDatagridSx}>
+        <TextField source="id" label="ID" />
+        <NumberField source="total_amount" label="Monto Total" />
+        <DateField source="order_date" label="Fecha de Orden" />
+        <TextField source="invoice_number" label="Número de Factura" />
+        <TextField source="locator" label="Localizador" />
         <OrderActions />
       </Datagrid>
     </div>
   </List>
 );
-
 
 // Editar una orden existente
 export const OrderEdit = (props) => (

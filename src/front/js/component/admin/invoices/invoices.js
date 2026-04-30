@@ -18,6 +18,24 @@ import {
 } from "react-admin";
 import { FaDownload, FaSyncAlt } from "react-icons/fa";
 
+const invoiceDatagridSx = {
+  minWidth: 1200,
+  width: "max-content",
+  "& .RaDatagrid-table": {
+    minWidth: 1200,
+    width: "max-content",
+    tableLayout: "auto",
+  },
+  "& .MuiTable-root": {
+    minWidth: 1200,
+    width: "max-content",
+    tableLayout: "auto",
+  },
+  "& .MuiTableCell-root": {
+    whiteSpace: "nowrap",
+  },
+};
+
 const DownloadButton = () => {
   const record = useRecordContext();
 
@@ -33,7 +51,7 @@ const DownloadButton = () => {
     }
 
     const backendUrl = process.env.REACT_APP_BACKEND_URL || "http://localhost:3001";
-    const downloadUrl = record.pdf_path?.startsWith('http')
+    const downloadUrl = record.pdf_path?.startsWith("http")
       ? record.pdf_path
       : `${backendUrl}${record.pdf_path}`;
     const token = localStorage.getItem("token");
@@ -168,13 +186,13 @@ const InvoiceActions = () => (
 
 export const InvoiceList = (props) => (
   <List {...props} title="Facturas" className="admin-resource-list">
-    <div className="admin-datagrid-scroll admin-datagrid-scroll--invoices">
-      <Datagrid rowClick="edit">
-      <TextField source="invoice_number" label="Número de Factura" />
-      <TextField source="client_name" label="Cliente" />
-      <TextField source="client_phone" label="Teléfono" />
-      <NumberField source="amount" label="Total" options={{ style: "currency", currency: "EUR" }} />
-      <DateField source="created_at" label="Fecha" />
+    <div className="admin-table-scroll">
+      <Datagrid rowClick="edit" sx={invoiceDatagridSx}>
+        <TextField source="invoice_number" label="Número de Factura" />
+        <TextField source="client_name" label="Cliente" />
+        <TextField source="client_phone" label="Teléfono" />
+        <NumberField source="amount" label="Total" options={{ style: "currency", currency: "EUR" }} />
+        <DateField source="created_at" label="Fecha" />
         <InvoiceActions />
       </Datagrid>
     </div>

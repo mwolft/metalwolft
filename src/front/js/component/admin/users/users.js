@@ -18,6 +18,24 @@ import {
   useRefresh
 } from "react-admin";
 
+const userDatagridSx = {
+  minWidth: 1100,
+  width: "max-content",
+  "& .RaDatagrid-table": {
+    minWidth: 1100,
+    width: "max-content",
+    tableLayout: "auto",
+  },
+  "& .MuiTable-root": {
+    minWidth: 1100,
+    width: "max-content",
+    tableLayout: "auto",
+  },
+  "& .MuiTableCell-root": {
+    whiteSpace: "nowrap",
+  },
+};
+
 const SendCartReminderButton = () => {
   const record = useRecordContext();
   const refresh = useRefresh();
@@ -110,8 +128,8 @@ export const UserList = (props) => (
     sort={{ field: "id", order: "DESC" }}
     className="admin-resource-list"
   >
-    <div className="admin-datagrid-scroll admin-datagrid-scroll--users">
-      <Datagrid>
+    <div className="admin-table-scroll">
+      <Datagrid sx={userDatagridSx}>
         <TextField source="id" label="ID" sortable={false} />
         <TextField source="firstname" label="Nombre" />
         <TextField source="lastname" label="Apellido" />

@@ -57,9 +57,7 @@
 }
 
 .admin-body .RaList-content,
-.admin-body .RaDatagrid-root {
-  width: 100%;
-  min-width: 0;
+.admin-body .MuiPaper-root {
   overflow: visible;
 }
 
@@ -71,53 +69,16 @@
   vertical-align: top;
 }
 
-.admin-datagrid-scroll {
+.admin-table-scroll {
+  width: 100%;
+  max-width: 100%;
   overflow-x: auto;
   overflow-y: visible;
-  width: 100%;
-  padding-bottom: 6px;
   -webkit-overflow-scrolling: touch;
 }
 
-.admin-datagrid-scroll .RaDatagrid-root,
-.admin-datagrid-scroll .RaDatagrid-table,
-.admin-datagrid-scroll .MuiTable-root {
-  min-width: 100%;
-}
-
-.admin-datagrid-scroll .RaDatagrid-root {
-  display: block;
-  width: max-content;
-  min-width: 100%;
-}
-
-.admin-datagrid-scroll .MuiTable-root {
-  width: max-content;
-  table-layout: auto;
-}
-
-.admin-datagrid-scroll--users .RaDatagrid-root,
-.admin-datagrid-scroll--users .RaDatagrid-table,
-.admin-datagrid-scroll--users .MuiTable-root {
-  min-width: 980px;
-}
-
-.admin-datagrid-scroll--orders .RaDatagrid-root,
-.admin-datagrid-scroll--orders .RaDatagrid-table,
-.admin-datagrid-scroll--orders .MuiTable-root {
-  min-width: 1100px;
-}
-
-.admin-datagrid-scroll--order-details .RaDatagrid-root,
-.admin-datagrid-scroll--order-details .RaDatagrid-table,
-.admin-datagrid-scroll--order-details .MuiTable-root {
-  min-width: 1800px;
-}
-
-.admin-datagrid-scroll--invoices .RaDatagrid-root,
-.admin-datagrid-scroll--invoices .RaDatagrid-table,
-.admin-datagrid-scroll--invoices .MuiTable-root {
-  min-width: 980px;
+.admin-table-scroll > * {
+  min-width: max-content;
 }
 
 .RaSidebar-fixed a {
