@@ -81,6 +81,48 @@
   min-width: max-content;
 }
 
+.admin-native-scroll {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.admin-native-table {
+  min-width: 1150px;
+  width: max-content;
+  border-collapse: collapse;
+  background: #ffffff;
+}
+
+.admin-native-table th,
+.admin-native-table td {
+  white-space: nowrap;
+  padding: 12px 14px;
+  text-align: left;
+  border-bottom: 1px solid #e5e7eb;
+  vertical-align: middle;
+}
+
+.admin-native-table th {
+  color: #475569;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  background: #f8fafc;
+}
+
+.admin-native-table tbody tr:hover {
+  background: #fafcff;
+}
+
+.admin-native-empty {
+  margin: 0;
+  padding: 18px 4px 4px;
+  color: #64748b;
+}
+
 .RaSidebar-fixed a {
   margin-top: 5px;
   margin-left: 10px;

@@ -2,39 +2,18 @@ import React, { useState } from "react";
 import { FaPaperPlane } from "react-icons/fa";
 import {
   List,
-  Datagrid,
-  TextField,
-  EmailField,
-  BooleanField,
   EditButton,
   DeleteButton,
-  WrapperField,
   Edit,
   SimpleForm,
   TextInput,
   BooleanInput,
   Create,
   useRecordContext,
-  useRefresh
+  useRefresh,
+  useListContext,
+  RecordContextProvider,
 } from "react-admin";
-
-const userDatagridSx = {
-  minWidth: 1100,
-  width: "max-content",
-  "& .RaDatagrid-table": {
-    minWidth: 1100,
-    width: "max-content",
-    tableLayout: "auto",
-  },
-  "& .MuiTable-root": {
-    minWidth: 1100,
-    width: "max-content",
-    tableLayout: "auto",
-  },
-  "& .MuiTableCell-root": {
-    whiteSpace: "nowrap",
-  },
-};
 
 const SendCartReminderButton = () => {
   const record = useRecordContext();
@@ -49,7 +28,7 @@ const SendCartReminderButton = () => {
     event.stopPropagation();
 
     const confirmed = window.confirm(
-      `¿Seguro que quieres enviar un recordatorio de carrito al usuario ${record.email || record.id}?`
+      `Â¿Seguro que quieres enviar un recordatorio de carrito al usuario ${record.email || record.id}?`
     );
 
     if (!confirmed) {
@@ -58,7 +37,7 @@ const SendCartReminderButton = () => {
 
     const token = localStorage.getItem("token");
     if (!token) {
-      alert("Debes iniciar sesión como administrador para enviar recordatorios.");
+      alert("Debes iniciar sesiÃ³n como administrador para enviar recordatorios.");
       return;
     }
 
@@ -70,8 +49,8 @@ const SendCartReminderButton = () => {
         {
           method: "POST",
           headers: {
-            Authorization: `Bearer ${token}`
-          }
+            Authorization: `Bearer ${token}`,
+          },
         }
       );
 
@@ -111,15 +90,67 @@ const SendCartReminderButton = () => {
   );
 };
 
-const UserActions = () => (
-  <WrapperField label="Acciones">
-    <div className="admin-action-group">
-      <SendCartReminderButton />
-      <EditButton className="admin-ra-button admin-ra-button--secondary" />
-      <DeleteButton className="admin-ra-button admin-ra-button--danger" />
+const getUserRecords = (data, ids) => {
+  if (Array.isArray(data)) {
+    return data;
+  }
+
+  if (Array.isArray(ids) && data) {
+    return ids.map((id) => data[id]).filter(Boolean);
+  }
+
+  return Object.values(data || {});
+};
+
+const UserListTable = () => {
+  const { data, ids, isLoading } = useListContext();
+  const records = getUserRecords(data, ids);
+
+  if (isLoading) {
+    return <p className="admin-native-empty">Cargando usuarios...</p>;
+  }
+
+  if (!records.length) {
+    return <p className="admin-native-empty">No hay usuarios para mostrar.</p>;
+  }
+
+  return (
+    <div className="admin-native-scroll">
+      <table className="admin-native-table">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Nombre</th>
+            <th>Apellido</th>
+            <th>Correo ElectrÃ³nico</th>
+            <th>Administrador</th>
+            <th>Acciones</th>
+          </tr>
+        </thead>
+        <tbody>
+          {records.map((record) => (
+            <RecordContextProvider key={record.id} value={record}>
+              <tr>
+                <td>{record.id}</td>
+                <td>{record.firstname || "-"}</td>
+                <td>{record.lastname || "-"}</td>
+                <td>{record.email || "-"}</td>
+                <td>{record.is_admin ? "SÃ­" : "No"}</td>
+                <td>
+                  <div className="admin-action-group">
+                    <SendCartReminderButton />
+                    <EditButton className="admin-ra-button admin-ra-button--secondary" />
+                    <DeleteButton className="admin-ra-button admin-ra-button--danger" />
+                  </div>
+                </td>
+              </tr>
+            </RecordContextProvider>
+          ))}
+        </tbody>
+      </table>
     </div>
-  </WrapperField>
-);
+  );
+};
 
 // Lista de usuarios: muestra todos los usuarios
 export const UserList = (props) => (
@@ -128,16 +159,7 @@ export const UserList = (props) => (
     sort={{ field: "id", order: "DESC" }}
     className="admin-resource-list"
   >
-    <div className="admin-table-scroll">
-      <Datagrid sx={userDatagridSx}>
-        <TextField source="id" label="ID" sortable={false} />
-        <TextField source="firstname" label="Nombre" />
-        <TextField source="lastname" label="Apellido" />
-        <EmailField source="email" label="Correo Electrónico" />
-        <BooleanField source="is_admin" label="Administrador" />
-        <UserActions />
-      </Datagrid>
-    </div>
+    <UserListTable />
   </List>
 );
 
@@ -148,7 +170,7 @@ export const UserEdit = (props) => (
       <TextInput disabled source="id" label="ID" />
       <TextInput source="firstname" label="Nombre" />
       <TextInput source="lastname" label="Apellido" />
-      <TextInput source="email" label="Correo Electrónico" />
+      <TextInput source="email" label="Correo ElectrÃ³nico" />
       <BooleanInput source="is_admin" label="Administrador" />
     </SimpleForm>
   </Edit>
@@ -160,8 +182,8 @@ export const UserCreate = (props) => (
     <SimpleForm>
       <TextInput source="firstname" label="Nombre" />
       <TextInput source="lastname" label="Apellido" />
-      <TextInput source="email" label="Correo Electrónico" />
-      <TextInput source="password" type="password" label="Contraseña" />
+      <TextInput source="email" label="Correo ElectrÃ³nico" />
+      <TextInput source="password" type="password" label="ContraseÃ±a" />
       <BooleanInput source="is_admin" label="Administrador" />
     </SimpleForm>
   </Create>
