@@ -16,6 +16,18 @@
   padding: 0 16px 35px;
 }
 
+.admin-panel-page,
+.admin-body,
+.admin-resource-list,
+.admin-body .RaLayout-content,
+.admin-body .RaLayout-appFrame,
+.admin-body .RaList-root,
+.admin-body .RaList-main,
+.admin-body .RaList-content {
+  min-width: 0;
+  max-width: 100%;
+}
+
 .admin-loading-state {
   margin: 120px 0 40px;
   text-align: center;
@@ -82,17 +94,22 @@
 }
 
 .admin-native-scroll {
+  display: block;
   width: 100%;
-  max-width: 100%;
+  max-width: calc(100vw - 32px);
   overflow-x: auto;
+  overflow-y: visible;
   -webkit-overflow-scrolling: touch;
+  outline: 2px solid red;
 }
 
 .admin-native-table {
   min-width: 1150px;
-  width: max-content;
+  width: 1150px;
+  table-layout: auto;
   border-collapse: collapse;
   background: #ffffff;
+  outline: 2px solid blue;
 }
 
 .admin-native-table th,
