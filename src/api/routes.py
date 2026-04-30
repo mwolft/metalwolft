@@ -24,6 +24,7 @@ from html import escape
 from datetime import timedelta
 import requests
 import uuid
+from urllib.parse import urljoin
 from api.email_routes import send_email, get_admin_recipients
 from api.checkout_service import build_checkout_quote
 from api.original_invoice_renderer import render_original_order_invoice_pdf
@@ -177,9 +178,26 @@ def _format_cart_mounting_label(mounting_value):
     return str(mounting_value).strip() if mounting_value else "Sin especificar"
 
 
-def _build_cart_reminder_email_payload(user, cart_items, cart_url):
-    customer_name = (user.firstname or "").strip() or "cliente"
-    subject = "¿Quieres terminar tu pedido en Metal Wolft?"
+def _resolve_cart_product_image_url(cart_item, frontend_base_url):
+    product = getattr(cart_item, "product", None)
+    if not product:
+        return None
+
+    image_candidate = (product.imagen or "").strip() if getattr(product, "imagen", None) else ""
+    if not image_candidate:
+        for image in getattr(product, "images", None) or []:
+            candidate = (getattr(image, "image_url", None) or "").strip()
+            if candidate:
+                image_candidate = candidate
+                break
+
+    if not image_candidate:
+        return None
+
+    return urljoin(f"{frontend_base_url.rstrip('/')}/", image_candidate)
+
+
+def _build_cart_reminder_product_sections(cart_items, frontend_base_url):
     product_lines_text = []
     product_lines_html = []
 
@@ -190,6 +208,72 @@ def _build_cart_reminder_email_payload(user, cart_items, cart_url):
         color = _format_cart_color_label(item.color)
         quantity = int(item.quantity or 1)
         line_total = float(item.precio_total or 0.0) * quantity
+        product_image_url = _resolve_cart_product_image_url(item, frontend_base_url)
+        safe_product_name = escape(product_name)
+        safe_measures = escape(measures)
+        safe_mounting = escape(mounting)
+        safe_color = escape(color)
+
+        product_lines_text.append(
+            f"- {product_name} | Medidas: {measures} | Anclaje: {mounting} | "
+            f"Color: {color} | Cantidad: {quantity} | Precio: {line_total:.2f} €"
+        )
+
+        image_cell_html = ""
+        if product_image_url:
+            image_cell_html = (
+                f'<td width="156" valign="top" style="padding-right: 18px;">'
+                f'<img src="{escape(product_image_url)}" alt="{safe_product_name}" '
+                'style="display:block; width:100%; max-width:156px; height:auto; '
+                'border:1px solid #e5e7eb; border-radius:12px;"></td>'
+            )
+
+        product_lines_html.append(
+            f"""
+            <tr>
+                <td style="padding: 18px 0; border-bottom: 1px solid #eceff3;">
+                    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
+                        <tr>
+                            {image_cell_html}
+                            <td valign="top" style="font-family:Arial,Helvetica,sans-serif; color:#111827;">
+                                <div style="font-size:17px; font-weight:700; line-height:1.4; margin-bottom:8px;">{safe_product_name}</div>
+                                <div style="font-size:14px; line-height:1.7; color:#4b5563;">
+                                    <div><strong>Medidas:</strong> {safe_measures}</div>
+                                    <div><strong>Anclaje:</strong> {safe_mounting}</div>
+                                    <div><strong>Color:</strong> {safe_color}</div>
+                                    <div><strong>Cantidad:</strong> {quantity}</div>
+                                    <div><strong>Precio:</strong> {line_total:.2f} €</div>
+                                </div>
+                            </td>
+                        </tr>
+                    </table>
+                </td>
+            </tr>
+            """
+        )
+
+    return product_lines_text, product_lines_html
+
+
+def _build_cart_reminder_email_payload(user, cart_items, cart_url):
+    customer_name = (user.firstname or "").strip() or "cliente"
+    subject = "¿Quieres terminar tu pedido en Metal Wolft?"
+    frontend_base_url = cart_url.rsplit("/cart", 1)[0] if "/cart" in cart_url else cart_url.rstrip("/")
+    product_lines_text = []
+    product_lines_html = []
+
+    for item in cart_items:
+        product_name = item.product.nombre if item.product and item.product.nombre else f"Producto #{item.producto_id}"
+        measures = f"{_format_cart_dimension(item.alto)} x {_format_cart_dimension(item.ancho)} cm"
+        mounting = _format_cart_mounting_label(item.anclaje)
+        color = _format_cart_color_label(item.color)
+        quantity = int(item.quantity or 1)
+        line_total = float(item.precio_total or 0.0) * quantity
+        product_image_url = _resolve_cart_product_image_url(item, frontend_base_url)
+        safe_product_name = escape(product_name)
+        safe_measures = escape(measures)
+        safe_mounting = escape(mounting)
+        safe_color = escape(color)
 
         product_lines_text.append(
             f"- {product_name} | Medidas: {measures} | Anclaje: {mounting} | "
@@ -230,6 +314,79 @@ def _build_cart_reminder_email_payload(user, cart_items, cart_url):
     </p>
     <p>Si tienes dudas con medidas o instalación, puedes responder a este correo.</p>
     <p>Gracias,<br>Metal Wolft</p>
+    """
+
+    subject = "¿Quieres terminar tu pedido en Metal Wolft?"
+    product_lines_text, product_lines_html = _build_cart_reminder_product_sections(cart_items, frontend_base_url)
+    body = (
+        f"Hola {customer_name},\n\n"
+        "Hemos visto que dejaste algunos productos configurados en tu carrito.\n\n"
+        "Resumen del carrito:\n"
+        f"{chr(10).join(product_lines_text)}\n\n"
+        f"Puedes volver a tu carrito desde aquí: {cart_url}\n\n"
+        "Si tienes dudas con medidas o instalación, puedes responder a este correo.\n\n"
+        "Recibes este correo porque tienes una cuenta en Metal Wolft o has configurado productos en nuestro sitio.\n"
+        "Puedes solicitar la eliminación de tus datos o dejar de recibir comunicaciones respondiendo a este email.\n\n"
+        "Gracias,\n"
+        "Metal Wolft"
+    )
+
+    html = f"""
+    <div style="margin:0; padding:24px 0; background:#f4f6f8;">
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
+            <tr>
+                <td align="center">
+                    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="max-width:680px; background:#ffffff; border-radius:20px; overflow:hidden;">
+                        <tr>
+                            <td style="padding:36px 32px 18px; font-family:Arial,Helvetica,sans-serif; color:#111827;">
+                                <div style="font-size:28px; font-weight:700; line-height:1.2; margin-bottom:14px;">Tu carrito sigue listo</div>
+                                <p style="margin:0 0 14px; font-size:16px; line-height:1.7;">Hola {escape(customer_name)},</p>
+                                <p style="margin:0; font-size:16px; line-height:1.7; color:#374151;">
+                                    Hemos visto que dejaste algunos productos configurados en tu carrito.
+                                </p>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td style="padding:0 32px 10px; font-family:Arial,Helvetica,sans-serif; color:#111827;">
+                                <div style="font-size:18px; font-weight:700; margin-bottom:8px;">Resumen del carrito</div>
+                                <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
+                                    {''.join(product_lines_html)}
+                                </table>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td style="padding:18px 32px 0; font-family:Arial,Helvetica,sans-serif;">
+                                <a
+                                    href="{escape(cart_url)}"
+                                    style="display:inline-block; background:#ff324d; color:#ffffff; text-decoration:none; font-size:16px; font-weight:700; padding:14px 24px; border-radius:999px;"
+                                >
+                                    Volver a mi carrito
+                                </a>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td style="padding:20px 32px 0; font-family:Arial,Helvetica,sans-serif; color:#374151;">
+                                <p style="margin:0; font-size:15px; line-height:1.7;">
+                                    Si tienes dudas con medidas o instalación, puedes responder a este correo.
+                                </p>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td style="padding:26px 32px 32px; font-family:Arial,Helvetica,sans-serif; color:#6b7280;">
+                                <p style="margin:0 0 12px; font-size:14px; line-height:1.7;">
+                                    Gracias,<br>Metal Wolft
+                                </p>
+                                <p style="margin:0; font-size:12px; line-height:1.7; color:#9ca3af;">
+                                    Recibes este correo porque tienes una cuenta en Metal Wolft o has configurado productos en nuestro sitio.
+                                    Puedes solicitar la eliminación de tus datos o dejar de recibir comunicaciones respondiendo a este email.
+                                </p>
+                            </td>
+                        </tr>
+                    </table>
+                </td>
+            </tr>
+        </table>
+    </div>
     """
 
     return {
