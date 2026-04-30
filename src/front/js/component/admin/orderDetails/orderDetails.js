@@ -46,8 +46,7 @@ const OrderDetailsListTable = () => {
       <table className="admin-native-table admin-native-table--order-details">
         <thead>
           <tr>
-            <th>ID</th>
-            <th>Numero de Orden</th>
+            <th>Nº</th>
             <th>Producto</th>
             <th>Cantidad</th>
             <th>Alto</th>
@@ -73,7 +72,6 @@ const OrderDetailsListTable = () => {
           {records.map((record) => (
             <RecordContextProvider key={record.id} value={record}>
               <tr>
-                <td><TextField source="id" /></td>
                 <td>
                   <ReferenceField source="order_id" reference="orders">
                     <TextField source="id" />
