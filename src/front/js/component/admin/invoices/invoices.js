@@ -183,7 +183,7 @@ const InvoiceListTable = () => {
 
   return (
     <div className="admin-native-scroll">
-      <table className="admin-native-table" style={{ minWidth: 1200, width: 1200 }}>
+      <table className="admin-native-table admin-native-table--invoices">
         <thead>
           <tr>
             <th>Número de Factura</th>

@@ -115,6 +115,16 @@
   width: 100%;
 }
 
+.admin-native-table--orders {
+  min-width: 920px;
+  width: 100%;
+}
+
+.admin-native-table--invoices {
+  min-width: 980px;
+  width: 100%;
+}
+
 .admin-native-table th,
 .admin-native-table td {
   white-space: nowrap;
