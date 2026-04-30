@@ -127,13 +127,9 @@
   width: 100%;
 }
 
-.admin-native-scroll--order-details {
-  padding-right: 28px;
-}
-
 .admin-native-table--order-details {
-  min-width: 2000px;
-  width: 2000px;
+  min-width: 2100px;
+  width: 2100px;
 }
 
 .admin-native-table th,
@@ -150,10 +146,13 @@
   padding-right: 32px;
 }
 
-.admin-native-table--order-details th:last-child,
-.admin-native-table--order-details td:last-child {
-  min-width: 132px;
-  padding-right: 52px;
+.admin-native-table-spacer {
+  width: 96px;
+  min-width: 96px;
+  max-width: 96px;
+  padding: 0 !important;
+  border: none !important;
+  background: transparent !important;
 }
 
 .admin-native-table th {
