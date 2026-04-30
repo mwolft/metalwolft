@@ -1,7 +1,6 @@
 import React from "react";
 import {
   List,
-  Datagrid,
   TextField,
   DateField,
   NumberField,
@@ -12,29 +11,12 @@ import {
   ArrayInput,
   SimpleFormIterator,
   Edit,
-  WrapperField,
   useRecordContext,
   useRefresh,
+  useListContext,
+  RecordContextProvider,
 } from "react-admin";
 import { FaDownload, FaSyncAlt } from "react-icons/fa";
-
-const invoiceDatagridSx = {
-  minWidth: 1200,
-  width: "max-content",
-  "& .RaDatagrid-table": {
-    minWidth: 1200,
-    width: "max-content",
-    tableLayout: "auto",
-  },
-  "& .MuiTable-root": {
-    minWidth: 1200,
-    width: "max-content",
-    tableLayout: "auto",
-  },
-  "& .MuiTableCell-root": {
-    whiteSpace: "nowrap",
-  },
-};
 
 const DownloadButton = () => {
   const record = useRecordContext();
@@ -175,27 +157,70 @@ const RegenerateButton = () => {
   );
 };
 
-const InvoiceActions = () => (
-  <WrapperField label="Acciones">
-    <div className="admin-action-group">
-      <DownloadButton />
-      <RegenerateButton />
+const getInvoiceRecords = (data, ids) => {
+  if (Array.isArray(data)) {
+    return data;
+  }
+
+  if (Array.isArray(ids) && data) {
+    return ids.map((id) => data[id]).filter(Boolean);
+  }
+
+  return Object.values(data || {});
+};
+
+const InvoiceListTable = () => {
+  const { data, ids, isLoading, isPending } = useListContext();
+  const records = getInvoiceRecords(data, ids);
+
+  if (isLoading || isPending) {
+    return <p className="admin-native-empty">Cargando facturas...</p>;
+  }
+
+  if (!records.length) {
+    return <p className="admin-native-empty">No hay facturas para mostrar.</p>;
+  }
+
+  return (
+    <div className="admin-native-scroll">
+      <table className="admin-native-table" style={{ minWidth: 1200, width: 1200 }}>
+        <thead>
+          <tr>
+            <th>Número de Factura</th>
+            <th>Cliente</th>
+            <th>Teléfono</th>
+            <th>Total</th>
+            <th>Fecha</th>
+            <th>Acciones</th>
+          </tr>
+        </thead>
+        <tbody>
+          {records.map((record) => (
+            <RecordContextProvider key={record.id} value={record}>
+              <tr>
+                <td><TextField source="invoice_number" /></td>
+                <td><TextField source="client_name" /></td>
+                <td><TextField source="client_phone" /></td>
+                <td><NumberField source="amount" options={{ style: "currency", currency: "EUR" }} /></td>
+                <td><DateField source="created_at" /></td>
+                <td>
+                  <div className="admin-action-group">
+                    <DownloadButton />
+                    <RegenerateButton />
+                  </div>
+                </td>
+              </tr>
+            </RecordContextProvider>
+          ))}
+        </tbody>
+      </table>
     </div>
-  </WrapperField>
-);
+  );
+};
 
 export const InvoiceList = (props) => (
   <List {...props} title="Facturas" className="admin-resource-list">
-    <div className="admin-table-scroll">
-      <Datagrid rowClick="edit" sx={invoiceDatagridSx}>
-        <TextField source="invoice_number" label="Número de Factura" />
-        <TextField source="client_name" label="Cliente" />
-        <TextField source="client_phone" label="Teléfono" />
-        <NumberField source="amount" label="Total" options={{ style: "currency", currency: "EUR" }} />
-        <DateField source="created_at" label="Fecha" />
-        <InvoiceActions />
-      </Datagrid>
-    </div>
+    <InvoiceListTable />
   </List>
 );
 

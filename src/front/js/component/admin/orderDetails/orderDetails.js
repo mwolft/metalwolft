@@ -1,12 +1,10 @@
 import React from "react";
 import {
   List,
-  Datagrid,
   TextField,
   NumberField,
   EditButton,
   DeleteButton,
-  WrapperField,
   Edit,
   SimpleForm,
   TextInput,
@@ -15,65 +13,109 @@ import {
   ReferenceField,
   ReferenceInput,
   SelectInput,
+  useListContext,
+  RecordContextProvider,
 } from "react-admin";
 
-const orderDetailsDatagridSx = {
-  minWidth: 1800,
-  width: "max-content",
-  "& .RaDatagrid-table": {
-    minWidth: 1800,
-    width: "max-content",
-    tableLayout: "auto",
-  },
-  "& .MuiTable-root": {
-    minWidth: 1800,
-    width: "max-content",
-    tableLayout: "auto",
-  },
-  "& .MuiTableCell-root": {
-    whiteSpace: "nowrap",
-  },
+const getOrderDetailRecords = (data, ids) => {
+  if (Array.isArray(data)) {
+    return data;
+  }
+
+  if (Array.isArray(ids) && data) {
+    return ids.map((id) => data[id]).filter(Boolean);
+  }
+
+  return Object.values(data || {});
 };
 
-const OrderDetailsActions = () => (
-  <WrapperField label="Acciones">
-    <div className="admin-action-group">
-      <EditButton className="admin-ra-button admin-ra-button--secondary" />
-      <DeleteButton className="admin-ra-button admin-ra-button--danger" />
+const OrderDetailsListTable = () => {
+  const { data, ids, isLoading, isPending } = useListContext();
+  const records = getOrderDetailRecords(data, ids);
+
+  if (isLoading || isPending) {
+    return <p className="admin-native-empty">Cargando detalles de pedido...</p>;
+  }
+
+  if (!records.length) {
+    return <p className="admin-native-empty">No hay detalles de pedido para mostrar.</p>;
+  }
+
+  return (
+    <div className="admin-native-scroll">
+      <table className="admin-native-table" style={{ minWidth: 1800, width: 1800 }}>
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Número de Orden</th>
+            <th>Producto</th>
+            <th>Cantidad</th>
+            <th>Alto</th>
+            <th>Ancho</th>
+            <th>Anclaje</th>
+            <th>Color</th>
+            <th>Precio Total</th>
+            <th>Nombre</th>
+            <th>Apellido</th>
+            <th>Dirección de Envío</th>
+            <th>Ciudad de Envío</th>
+            <th>Código Postal de Envío</th>
+            <th>Dirección de Facturación</th>
+            <th>Ciudad de Facturación</th>
+            <th>Código Postal de Facturación</th>
+            <th>CIF</th>
+            <th>Acciones</th>
+          </tr>
+        </thead>
+        <tbody>
+          {records.map((record) => (
+            <RecordContextProvider key={record.id} value={record}>
+              <tr>
+                <td><TextField source="id" /></td>
+                <td>
+                  <ReferenceField source="order_id" reference="orders">
+                    <TextField source="id" />
+                  </ReferenceField>
+                </td>
+                <td>
+                  <ReferenceField source="product_id" reference="products">
+                    <TextField source="nombre" />
+                  </ReferenceField>
+                </td>
+                <td><NumberField source="quantity" /></td>
+                <td><NumberField source="alto" /></td>
+                <td><NumberField source="ancho" /></td>
+                <td><TextField source="anclaje" /></td>
+                <td><TextField source="color" /></td>
+                <td><NumberField source="precio_total" /></td>
+                <td><TextField source="firstname" /></td>
+                <td><TextField source="lastname" /></td>
+                <td><TextField source="shipping_address" /></td>
+                <td><TextField source="shipping_city" /></td>
+                <td><TextField source="shipping_postal_code" /></td>
+                <td><TextField source="billing_address" /></td>
+                <td><TextField source="billing_city" /></td>
+                <td><TextField source="billing_postal_code" /></td>
+                <td><TextField source="CIF" /></td>
+                <td>
+                  <div className="admin-action-group">
+                    <EditButton className="admin-ra-button admin-ra-button--secondary" />
+                    <DeleteButton className="admin-ra-button admin-ra-button--danger" />
+                  </div>
+                </td>
+              </tr>
+            </RecordContextProvider>
+          ))}
+        </tbody>
+      </table>
     </div>
-  </WrapperField>
-);
+  );
+};
 
 // Lista de detalles de órdenes: muestra todos los detalles de órdenes
 export const OrderDetailsList = (props) => (
   <List {...props} className="admin-resource-list">
-    <div className="admin-table-scroll">
-      <Datagrid sx={orderDetailsDatagridSx}>
-        <TextField source="id" label="ID" />
-        <ReferenceField source="order_id" reference="orders" label="Número de Orden">
-          <TextField source="id" />
-        </ReferenceField>
-        <ReferenceField source="product_id" reference="products" label="Producto">
-          <TextField source="nombre" />
-        </ReferenceField>
-        <NumberField source="quantity" label="Cantidad" />
-        <NumberField source="alto" label="Alto" />
-        <NumberField source="ancho" label="Ancho" />
-        <TextField source="anclaje" label="Anclaje" />
-        <TextField source="color" label="Color" />
-        <NumberField source="precio_total" label="Precio Total" />
-        <TextField source="firstname" label="Nombre" />
-        <TextField source="lastname" label="Apellido" />
-        <TextField source="shipping_address" label="Dirección de Envío" />
-        <TextField source="shipping_city" label="Ciudad de Envío" />
-        <TextField source="shipping_postal_code" label="Código Postal de Envío" />
-        <TextField source="billing_address" label="Dirección de Facturación" />
-        <TextField source="billing_city" label="Ciudad de Facturación" />
-        <TextField source="billing_postal_code" label="Código Postal de Facturación" />
-        <TextField source="CIF" label="CIF" />
-        <OrderDetailsActions />
-      </Datagrid>
-    </div>
+    <OrderDetailsListTable />
   </List>
 );
 

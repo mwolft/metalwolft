@@ -100,7 +100,6 @@
   overflow-x: auto;
   overflow-y: visible;
   -webkit-overflow-scrolling: touch;
-  outline: 2px solid red;
 }
 
 .admin-native-table {
@@ -109,7 +108,6 @@
   table-layout: auto;
   border-collapse: collapse;
   background: #ffffff;
-  outline: 2px solid blue;
 }
 
 .admin-native-table th,

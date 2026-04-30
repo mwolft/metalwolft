@@ -1,60 +1,85 @@
 import React from "react";
 import {
   List,
-  Datagrid,
   TextField,
   NumberField,
   EditButton,
   DeleteButton,
-  WrapperField,
   Edit,
   SimpleForm,
   TextInput,
   NumberInput,
   Create,
   DateField,
+  useListContext,
+  RecordContextProvider,
 } from "react-admin";
 
-const orderDatagridSx = {
-  minWidth: 1200,
-  width: "max-content",
-  "& .RaDatagrid-table": {
-    minWidth: 1200,
-    width: "max-content",
-    tableLayout: "auto",
-  },
-  "& .MuiTable-root": {
-    minWidth: 1200,
-    width: "max-content",
-    tableLayout: "auto",
-  },
-  "& .MuiTableCell-root": {
-    whiteSpace: "nowrap",
-  },
+const getOrderRecords = (data, ids) => {
+  if (Array.isArray(data)) {
+    return data;
+  }
+
+  if (Array.isArray(ids) && data) {
+    return ids.map((id) => data[id]).filter(Boolean);
+  }
+
+  return Object.values(data || {});
 };
 
-const OrderActions = () => (
-  <WrapperField label="Acciones">
-    <div className="admin-action-group">
-      <EditButton className="admin-ra-button admin-ra-button--secondary" />
-      <DeleteButton className="admin-ra-button admin-ra-button--danger" />
+const OrderListTable = () => {
+  const { data, ids, isLoading, isPending } = useListContext();
+  const records = getOrderRecords(data, ids);
+
+  if (isLoading || isPending) {
+    return <p className="admin-native-empty">Cargando pedidos...</p>;
+  }
+
+  if (!records.length) {
+    return <p className="admin-native-empty">No hay pedidos para mostrar.</p>;
+  }
+
+  return (
+    <div className="admin-native-scroll">
+      <table className="admin-native-table" style={{ minWidth: 1200, width: 1200 }}>
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Monto Total</th>
+            <th>Fecha de Orden</th>
+            <th>Número de Factura</th>
+            <th>Localizador</th>
+            <th>Acciones</th>
+          </tr>
+        </thead>
+        <tbody>
+          {records.map((record) => (
+            <RecordContextProvider key={record.id} value={record}>
+              <tr>
+                <td><TextField source="id" /></td>
+                <td><NumberField source="total_amount" /></td>
+                <td><DateField source="order_date" /></td>
+                <td><TextField source="invoice_number" /></td>
+                <td><TextField source="locator" /></td>
+                <td>
+                  <div className="admin-action-group">
+                    <EditButton className="admin-ra-button admin-ra-button--secondary" />
+                    <DeleteButton className="admin-ra-button admin-ra-button--danger" />
+                  </div>
+                </td>
+              </tr>
+            </RecordContextProvider>
+          ))}
+        </tbody>
+      </table>
     </div>
-  </WrapperField>
-);
+  );
+};
 
 // Lista de órdenes: muestra todas las órdenes
 export const OrderList = (props) => (
   <List {...props} sort={{ field: "id", order: "DESC" }} className="admin-resource-list">
-    <div className="admin-table-scroll">
-      <Datagrid sx={orderDatagridSx}>
-        <TextField source="id" label="ID" />
-        <NumberField source="total_amount" label="Monto Total" />
-        <DateField source="order_date" label="Fecha de Orden" />
-        <TextField source="invoice_number" label="Número de Factura" />
-        <TextField source="locator" label="Localizador" />
-        <OrderActions />
-      </Datagrid>
-    </div>
+    <OrderListTable />
   </List>
 );
 
