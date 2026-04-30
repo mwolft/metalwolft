@@ -160,39 +160,37 @@
 .admin-native-scroll {
   display: block;
   width: 100%;
-  max-width: calc(100vw - 140px);
-  overflow-x: auto;
+  max-width: calc(100vw - 48px);
+  overflow-x: auto !important;
   overflow-y: visible;
   -webkit-overflow-scrolling: touch;
   box-sizing: border-box;
 }
 
 .admin-native-table {
-  min-width: 1150px;
-  width: 1150px;
-  table-layout: auto;
   border-collapse: collapse;
+  table-layout: auto;
   background: #ffffff;
 }
 
 .admin-native-table--users {
-  min-width: 980px;
-  width: 100%;
+  min-width: 1100px;
+  width: 1100px;
 }
 
 .admin-native-table--orders {
-  min-width: 920px;
-  width: 100%;
+  min-width: 1300px;
+  width: 1300px;
 }
 
 .admin-native-table--invoices {
-  min-width: 980px;
-  width: 100%;
+  min-width: 1200px;
+  width: 1200px;
 }
 
 .admin-native-table--order-details {
-  min-width: 2000px;
-  width: 2000px;
+  min-width: 2100px;
+  width: 2100px;
 }
 
 .admin-native-table th,
@@ -387,6 +385,6 @@
   }
 
   .admin-native-scroll {
-    max-width: 100%;
+    max-width: calc(100vw - 24px);
   }
 }
