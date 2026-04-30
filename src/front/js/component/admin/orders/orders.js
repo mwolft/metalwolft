@@ -13,7 +13,7 @@ const OrderActions = () => (
 // Lista de órdenes: muestra todas las órdenes
 export const OrderList = (props) => (
   <List {...props} sort={{ field: 'id', order: 'DESC' }} className="admin-resource-list">
-    <div className="admin-datagrid-scroll">
+    <div className="admin-datagrid-scroll admin-datagrid-scroll--orders">
       <Datagrid>
       <TextField source="id" label="ID" />
       <NumberField source="total_amount" label="Monto Total" />

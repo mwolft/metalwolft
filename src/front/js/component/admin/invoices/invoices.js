@@ -168,7 +168,7 @@ const InvoiceActions = () => (
 
 export const InvoiceList = (props) => (
   <List {...props} title="Facturas" className="admin-resource-list">
-    <div className="admin-datagrid-scroll">
+    <div className="admin-datagrid-scroll admin-datagrid-scroll--invoices">
       <Datagrid rowClick="edit">
       <TextField source="invoice_number" label="Número de Factura" />
       <TextField source="client_name" label="Cliente" />

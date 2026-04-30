@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { FaPaperPlane } from "react-icons/fa";
 import {
   List,
   Datagrid,
@@ -83,9 +84,11 @@ const SendCartReminderButton = () => {
       type="button"
       onClick={handleSendReminder}
       disabled={isSending}
-      className="admin-action-button admin-action-button--secondary"
+      className="admin-action-button admin-action-button--secondary admin-action-button--compact"
+      title="Enviar recordatorio de carrito"
     >
-      {isSending ? "Enviando..." : "Enviar recordatorio carrito"}
+      <FaPaperPlane />
+      {isSending ? "Enviando..." : "Recordatorio"}
     </button>
   );
 };
@@ -107,7 +110,7 @@ export const UserList = (props) => (
     sort={{ field: "id", order: "DESC" }}
     className="admin-resource-list"
   >
-    <div className="admin-datagrid-scroll">
+    <div className="admin-datagrid-scroll admin-datagrid-scroll--users">
       <Datagrid>
         <TextField source="id" label="ID" sortable={false} />
         <TextField source="firstname" label="Nombre" />

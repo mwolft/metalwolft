@@ -49,10 +49,18 @@
 
 .admin-body .RaList-main {
   margin-top: 0;
+  min-width: 0;
 }
 
 .admin-body .RaList-actions {
   margin-bottom: 12px;
+}
+
+.admin-body .RaList-content,
+.admin-body .RaDatagrid-root {
+  width: 100%;
+  min-width: 0;
+  overflow: visible;
 }
 
 .admin-body .RaDatagrid-headerCell {
@@ -65,12 +73,40 @@
 
 .admin-datagrid-scroll {
   overflow-x: auto;
+  overflow-y: visible;
   width: 100%;
   padding-bottom: 6px;
+  -webkit-overflow-scrolling: touch;
 }
 
-.admin-datagrid-scroll .RaDatagrid-table {
-  min-width: fit-content;
+.admin-datagrid-scroll .RaDatagrid-root,
+.admin-datagrid-scroll .RaDatagrid-table,
+.admin-datagrid-scroll .MuiTable-root {
+  min-width: 100%;
+}
+
+.admin-datagrid-scroll--users .RaDatagrid-root,
+.admin-datagrid-scroll--users .RaDatagrid-table,
+.admin-datagrid-scroll--users .MuiTable-root {
+  min-width: 980px;
+}
+
+.admin-datagrid-scroll--orders .RaDatagrid-root,
+.admin-datagrid-scroll--orders .RaDatagrid-table,
+.admin-datagrid-scroll--orders .MuiTable-root {
+  min-width: 1100px;
+}
+
+.admin-datagrid-scroll--order-details .RaDatagrid-root,
+.admin-datagrid-scroll--order-details .RaDatagrid-table,
+.admin-datagrid-scroll--order-details .MuiTable-root {
+  min-width: 1800px;
+}
+
+.admin-datagrid-scroll--invoices .RaDatagrid-root,
+.admin-datagrid-scroll--invoices .RaDatagrid-table,
+.admin-datagrid-scroll--invoices .MuiTable-root {
+  min-width: 980px;
 }
 
 .RaSidebar-fixed a {
@@ -91,9 +127,10 @@
 
 .admin-action-group {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   align-items: center;
   gap: 8px;
+  white-space: nowrap;
 }
 
 .admin-action-group--form {
@@ -107,6 +144,7 @@
   align-items: center;
   justify-content: center;
   gap: 6px;
+  flex-shrink: 0;
   padding: 6px 10px;
   border-radius: 8px;
   border: 1px solid #d7dde5;
@@ -116,6 +154,7 @@
   font-weight: 600;
   line-height: 1.2;
   text-decoration: none;
+  white-space: nowrap;
   box-shadow: none;
   transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
 }
@@ -154,6 +193,13 @@
 .admin-action-button--secondary:hover:not(:disabled),
 .admin-ra-button--secondary:hover {
   background: #f8fafc !important;
+}
+
+.admin-action-button--compact {
+  min-height: 30px;
+  padding: 5px 8px;
+  font-size: 0.78rem;
+  gap: 5px;
 }
 
 .admin-action-button--danger,
@@ -198,5 +244,10 @@
 
   .admin-action-group {
     gap: 6px;
+  }
+
+  .admin-action-button,
+  .admin-ra-button {
+    font-size: 0.8rem;
   }
 }

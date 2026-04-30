@@ -13,7 +13,7 @@ const OrderDetailsActions = () => (
 // Lista de detalles de órdenes: muestra todos los detalles de órdenes
 export const OrderDetailsList = (props) => (
   <List {...props} className="admin-resource-list">
-    <div className="admin-datagrid-scroll">
+    <div className="admin-datagrid-scroll admin-datagrid-scroll--order-details">
       <Datagrid>
         <TextField source="id" label="ID" />
         <ReferenceField source="order_id" reference="orders" label="Número de Orden">
