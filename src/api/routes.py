@@ -4341,6 +4341,8 @@ def get_invoices():
         # Parámetros de paginación
         start = int(request.args.get('_start', 0))
         end = int(request.args.get('_end', 10))
+        sort = request.args.get('_sort', 'id')
+        order = request.args.get('_order', 'DESC').upper()
 
         # Obtener el número total de facturas
         if current_user.get("is_admin"):
@@ -4350,10 +4352,18 @@ def get_invoices():
                 Orders.user_id == current_user['user_id']
             )
 
+        sort_col = getattr(Invoices, sort, Invoices.id)
+        if order not in ('ASC', 'DESC'):
+            order = 'DESC'
+
+        query = query.order_by(
+            sort_col.desc() if order == 'DESC' else sort_col.asc()
+        )
+
         total_count = query.count()
 
         # Obtener las facturas dentro del rango solicitado
-        invoices = query.order_by(Invoices.id).slice(start, end).all()
+        invoices = query.slice(start, end).all()
 
         # Crear la respuesta con los encabezados necesarios
         response = jsonify([
