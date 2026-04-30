@@ -456,6 +456,8 @@ class OrderDetails(db.Model):
             "anclaje": self.anclaje,
             "color": self.color,
             "precio_total": self.precio_total,
+            "locator": self.order.locator if self.order else None,
+            "invoice_number": self.order.invoice_number if self.order else None,
             "firstname": self.firstname,
             "lastname": self.lastname,
             "shipping_address": self.shipping_address,

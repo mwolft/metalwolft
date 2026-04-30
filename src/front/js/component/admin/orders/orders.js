@@ -49,6 +49,8 @@ const OrderListTable = () => {
             <th>Fecha de Orden</th>
             <th>Número de Factura</th>
             <th>Localizador</th>
+            <th>Estado del Pedido</th>
+            <th>Nota de Entrega</th>
             <th>Acciones</th>
           </tr>
         </thead>
@@ -61,6 +63,8 @@ const OrderListTable = () => {
                 <td><DateField source="order_date" /></td>
                 <td><TextField source="invoice_number" /></td>
                 <td><TextField source="locator" /></td>
+                <td><TextField source="order_status" /></td>
+                <td><TextField source="estimated_delivery_note" /></td>
                 <td>
                   <div className="admin-action-group">
                     <EditButton className="admin-ra-button admin-ra-button--secondary" />

@@ -43,7 +43,7 @@ const OrderDetailsListTable = () => {
 
   return (
     <div className="admin-native-scroll">
-      <table className="admin-native-table" style={{ minWidth: 1800, width: 1800 }}>
+      <table className="admin-native-table" style={{ minWidth: 2000, width: 2000 }}>
         <thead>
           <tr>
             <th>ID</th>
@@ -55,6 +55,8 @@ const OrderDetailsListTable = () => {
             <th>Anclaje</th>
             <th>Color</th>
             <th>Precio Total</th>
+            <th>Localizador</th>
+            <th>Nº Factura</th>
             <th>Nombre</th>
             <th>Apellido</th>
             <th>Dirección de Envío</th>
@@ -88,6 +90,8 @@ const OrderDetailsListTable = () => {
                 <td><TextField source="anclaje" /></td>
                 <td><TextField source="color" /></td>
                 <td><NumberField source="precio_total" /></td>
+                <td><TextField source="locator" /></td>
+                <td><TextField source="invoice_number" /></td>
                 <td><TextField source="firstname" /></td>
                 <td><TextField source="lastname" /></td>
                 <td><TextField source="shipping_address" /></td>
