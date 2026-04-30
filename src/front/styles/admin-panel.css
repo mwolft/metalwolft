@@ -50,6 +50,7 @@
   padding: 16px;
   border-radius: 0 0 18px 18px;
   box-shadow: 0 20px 50px rgba(15, 23, 42, 0.08);
+  overflow-x: hidden;
 }
 
 .admin-resource-nav {
@@ -129,7 +130,7 @@
   width: 100% !important;
   margin-left: 0 !important;
   padding-left: 0 !important;
-  padding-right: 24px;
+  padding-right: 0px;
 }
 
 .admin-body .RaList-content,
@@ -160,7 +161,7 @@
 .admin-native-scroll {
   display: block;
   width: 100%;
-  max-width: calc(100vw - 48px);
+  max-width: calc(100vw - 64px);
   overflow-x: auto !important;
   overflow-y: visible;
   -webkit-overflow-scrolling: touch;
@@ -171,11 +172,43 @@
   border-collapse: collapse;
   table-layout: auto;
   background: #ffffff;
+  width: 100% !important; /* Cambia el ancho fijo por 100% */
+  min-width: 1300px; /* Mantén el min-width para que aparezca el scroll si la pantalla es pequeña */
+}
+
+/* Aplica esto a todas tus variantes de tabla */
+.admin-native-table--users,
+.admin-native-table--orders,
+.admin-native-table--invoices,
+.admin-native-table--order-details {
+  width: 100% !important; 
+  /* No quites el min-width, eso es lo que garantiza que la tabla no se aplaste */
 }
 
 .admin-native-table--users {
   min-width: 1100px;
   width: 1100px;
+}
+
+.admin-body .MuiPaper-root,
+.admin-body .RaList-content {
+  padding: 0 !important;
+  margin: 0 !important;
+  width: 100% !important;
+  box-shadow: none !important; /* Opcional, para que no duplique sombras */
+}
+
+/* Este es muy importante para eliminar el espacio lateral en el scroll */
+.admin-table-scroll, 
+.admin-native-scroll {
+  width: 100%;
+  padding: 0 !important;
+  margin: 0 !important;
+}
+
+.admin-body .RaList-actions {
+  padding: 12px 16px !important; /* Espacio solo para los botones */
+  justify-content: flex-end;
 }
 
 .admin-native-table--orders {
@@ -204,7 +237,7 @@
 
 .admin-native-table th:last-child,
 .admin-native-table td:last-child {
-  padding-right: 32px;
+  padding-right: 14px;
 }
 
 .admin-native-table th {
