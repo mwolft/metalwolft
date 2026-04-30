@@ -20,6 +20,7 @@ from api.exceptions import APIException
 from api.utils import mail
 from sqlalchemy.exc import IntegrityError
 import logging
+from html import escape
 from datetime import timedelta
 import requests
 import uuid
@@ -146,6 +147,104 @@ def _regenerate_invoice_pdf_to_storage(invoice):
         "pdf_path": pdf_path,
         "file_path": file_path,
     }
+
+
+def _format_cart_dimension(value):
+    if value is None:
+        return "?"
+
+    try:
+        numeric_value = float(value)
+        if numeric_value.is_integer():
+            return str(int(numeric_value))
+        return f"{numeric_value:.2f}".rstrip("0").rstrip(".")
+    except (TypeError, ValueError):
+        return str(value)
+
+
+def _format_cart_color_label(color_value):
+    if not color_value:
+        return "Sin definir"
+
+    normalized = str(color_value).replace("_", " ").strip()
+    if not normalized:
+        return "Sin definir"
+
+    return normalized[:1].upper() + normalized[1:]
+
+
+def _format_cart_mounting_label(mounting_value):
+    return str(mounting_value).strip() if mounting_value else "Sin especificar"
+
+
+def _build_cart_reminder_email_payload(user, cart_items, cart_url):
+    customer_name = (user.firstname or "").strip() or "cliente"
+    subject = "¿Quieres terminar tu pedido en Metal Wolft?"
+    product_lines_text = []
+    product_lines_html = []
+
+    for item in cart_items:
+        product_name = item.product.nombre if item.product and item.product.nombre else f"Producto #{item.producto_id}"
+        measures = f"{_format_cart_dimension(item.alto)} x {_format_cart_dimension(item.ancho)} cm"
+        mounting = _format_cart_mounting_label(item.anclaje)
+        color = _format_cart_color_label(item.color)
+        quantity = int(item.quantity or 1)
+        line_total = float(item.precio_total or 0.0) * quantity
+
+        product_lines_text.append(
+            f"- {product_name} | Medidas: {measures} | Anclaje: {mounting} | "
+            f"Color: {color} | Cantidad: {quantity} | Precio: {line_total:.2f} €"
+        )
+
+        product_lines_html.append(
+            "<li>"
+            f"<strong>{escape(product_name)}</strong><br>"
+            f"Medidas: {escape(measures)}<br>"
+            f"Anclaje: {escape(mounting)}<br>"
+            f"Color: {escape(color)}<br>"
+            f"Cantidad: {quantity}<br>"
+            f"Precio: {line_total:.2f} €"
+            "</li>"
+        )
+
+    body = (
+        f"Hola {customer_name},\n\n"
+        "Hemos visto que dejaste algunos productos configurados en tu carrito.\n\n"
+        "Resumen del carrito:\n"
+        f"{chr(10).join(product_lines_text)}\n\n"
+        f"Puedes volver a tu carrito desde aquí: {cart_url}\n\n"
+        "Si tienes dudas con medidas o instalación, puedes responder a este correo.\n\n"
+        "Gracias,\n"
+        "Metal Wolft"
+    )
+
+    html = f"""
+    <p>Hola {escape(customer_name)},</p>
+    <p>Hemos visto que dejaste algunos productos configurados en tu carrito.</p>
+    <p><strong>Resumen del carrito:</strong></p>
+    <ul>
+        {''.join(product_lines_html)}
+    </ul>
+    <p>Puedes volver a tu carrito desde aquí:
+        <a href="{escape(cart_url)}">{escape(cart_url)}</a>
+    </p>
+    <p>Si tienes dudas con medidas o instalación, puedes responder a este correo.</p>
+    <p>Gracias,<br>Metal Wolft</p>
+    """
+
+    return {
+        "subject": subject,
+        "body": body,
+        "html": html
+    }
+
+
+def _serialize_user_for_admin(user):
+    serialized_user = user.serialize()
+    active_cart_count = len(user.cart_items or [])
+    serialized_user["has_active_cart"] = active_cart_count > 0
+    serialized_user["cart_item_count"] = active_cart_count
+    return serialized_user
 
 
 
@@ -2470,7 +2569,7 @@ def get_users():
 
     users = query.all()
 
-    response = jsonify([user.serialize() for user in users])
+    response = jsonify([_serialize_user_for_admin(user) for user in users])
     response.headers['X-Total-Count'] = str(total_count)
     response.headers['Access-Control-Expose-Headers'] = 'X-Total-Count'
     response.headers['Access-Control-Allow-Origin'] = '*'
@@ -2523,7 +2622,7 @@ def get_user(user_id):
     if not user:
         return jsonify({"message": "User not found"}), 404
 
-    response = jsonify(user.serialize())
+    response = jsonify(_serialize_user_for_admin(user))
     response.headers['Access-Control-Allow-Origin'] = '*'
     return response, 200
 
@@ -4339,6 +4438,100 @@ def clear_cart():
     except Exception as e:
         db.session.rollback()
         return jsonify({"message": f"Error al vaciar el carrito: {str(e)}"}), 500
+
+
+@api.route('/admin/cart-reminders/<int:user_id>/send', methods=['POST'])
+@jwt_required()
+def send_cart_reminder(user_id):
+    current_user = get_jwt_identity()
+
+    if not current_user.get("is_admin"):
+        return jsonify({"message": "Access forbidden: Admins only"}), 403
+
+    try:
+        target_user = Users.query.get(user_id)
+        if not target_user:
+            return jsonify({"message": "Usuario no encontrado"}), 404
+
+        if not target_user.email:
+            return jsonify({"message": "El usuario no tiene email registrado"}), 400
+
+        cart_items = (
+            Cart.query
+            .filter_by(usuario_id=user_id)
+            .order_by(Cart.added_at.desc())
+            .all()
+        )
+
+        if not cart_items:
+            return jsonify({"message": "El usuario no tiene productos en el carrito"}), 400
+
+        latest_cart_added_at = next((item.added_at for item in cart_items if item.added_at), None)
+        if latest_cart_added_at:
+            later_order = (
+                Orders.query
+                .filter(
+                    Orders.user_id == user_id,
+                    Orders.order_date > latest_cart_added_at
+                )
+                .order_by(Orders.order_date.desc())
+                .first()
+            )
+
+            if later_order:
+                return jsonify({
+                    "message": "El usuario ya tiene un pedido posterior al último movimiento del carrito. No se ha enviado el recordatorio.",
+                    "order_id": later_order.id,
+                    "locator": later_order.locator,
+                    "order_date": later_order.order_date.isoformat() if later_order.order_date else None
+                }), 409
+
+        frontend_base_url = (current_app.config.get("FRONTEND_URL") or "https://www.metalwolft.com").rstrip("/")
+        cart_url = f"{frontend_base_url}/cart"
+        email_payload = _build_cart_reminder_email_payload(target_user, cart_items, cart_url)
+
+        email_sent = send_email(
+            subject=email_payload["subject"],
+            recipients=[target_user.email],
+            body=email_payload["body"],
+            html=email_payload["html"]
+        )
+
+        if not email_sent:
+            current_app.logger.error(
+                "No se pudo enviar el recordatorio manual de carrito al usuario %s (%s)",
+                target_user.id,
+                target_user.email
+            )
+            return jsonify({"message": "No se pudo enviar el recordatorio del carrito"}), 500
+
+        current_app.logger.info(
+            "Recordatorio manual de carrito enviado por admin %s al usuario %s (%s) con %s líneas",
+            current_user.get("email"),
+            target_user.id,
+            target_user.email,
+            len(cart_items)
+        )
+
+        return jsonify({
+            "message": "Recordatorio de carrito enviado correctamente.",
+            "data": {
+                "user_id": target_user.id,
+                "email": target_user.email,
+                "line_count": len(cart_items),
+                "latest_cart_added_at": latest_cart_added_at.isoformat() if latest_cart_added_at else None
+            }
+        }), 200
+    except Exception as e:
+        current_app.logger.error(
+            "Error al enviar recordatorio manual de carrito al usuario %s: %s",
+            user_id,
+            str(e)
+        )
+        return jsonify({
+            "message": "No se pudo enviar el recordatorio del carrito.",
+            "error": str(e)
+        }), 500
 
 
 @api.route('/me', methods=["GET"])
