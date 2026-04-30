@@ -28,7 +28,7 @@ const SendCartReminderButton = () => {
     event.stopPropagation();
 
     const confirmed = window.confirm(
-      `Â¿Seguro que quieres enviar un recordatorio de carrito al usuario ${record.email || record.id}?`
+      `Seguro que quieres enviar un recordatorio de carrito al usuario ${record.email || record.id}?`
     );
 
     if (!confirmed) {
@@ -37,7 +37,7 @@ const SendCartReminderButton = () => {
 
     const token = localStorage.getItem("token");
     if (!token) {
-      alert("Debes iniciar sesiÃ³n como administrador para enviar recordatorios.");
+      alert("Debes iniciar sesion como administrador para enviar recordatorios.");
       return;
     }
 
@@ -90,6 +90,17 @@ const SendCartReminderButton = () => {
   );
 };
 
+const ReminderActionSlot = () => {
+  const record = useRecordContext();
+  const hasReminder = Boolean(record?.id && !record?.is_admin && record?.has_active_cart);
+
+  return (
+    <div className="admin-action-slot admin-action-slot--reminder">
+      {hasReminder ? <SendCartReminderButton /> : <span className="admin-action-placeholder" aria-hidden="true" />}
+    </div>
+  );
+};
+
 const getUserRecords = (data, ids) => {
   if (Array.isArray(data)) {
     return data;
@@ -103,10 +114,10 @@ const getUserRecords = (data, ids) => {
 };
 
 const UserListTable = () => {
-  const { data, ids, isLoading } = useListContext();
+  const { data, ids, isLoading, isPending } = useListContext();
   const records = getUserRecords(data, ids);
 
-  if (isLoading) {
+  if (isLoading || isPending) {
     return <p className="admin-native-empty">Cargando usuarios...</p>;
   }
 
@@ -115,14 +126,14 @@ const UserListTable = () => {
   }
 
   return (
-    <div className="admin-native-scroll">
-      <table className="admin-native-table">
+    <div className="admin-native-scroll admin-native-scroll--users">
+      <table className="admin-native-table admin-native-table--users">
         <thead>
           <tr>
             <th>ID</th>
             <th>Nombre</th>
             <th>Apellido</th>
-            <th>Correo ElectrÃ³nico</th>
+            <th>Correo Electronico</th>
             <th>Administrador</th>
             <th>Acciones</th>
           </tr>
@@ -135,10 +146,10 @@ const UserListTable = () => {
                 <td>{record.firstname || "-"}</td>
                 <td>{record.lastname || "-"}</td>
                 <td>{record.email || "-"}</td>
-                <td>{record.is_admin ? "SÃ­" : "No"}</td>
+                <td>{record.is_admin ? "Si" : "No"}</td>
                 <td>
                   <div className="admin-action-group">
-                    <SendCartReminderButton />
+                    <ReminderActionSlot />
                     <EditButton className="admin-ra-button admin-ra-button--secondary" />
                     <DeleteButton className="admin-ra-button admin-ra-button--danger" />
                   </div>
@@ -170,7 +181,7 @@ export const UserEdit = (props) => (
       <TextInput disabled source="id" label="ID" />
       <TextInput source="firstname" label="Nombre" />
       <TextInput source="lastname" label="Apellido" />
-      <TextInput source="email" label="Correo ElectrÃ³nico" />
+      <TextInput source="email" label="Correo Electronico" />
       <BooleanInput source="is_admin" label="Administrador" />
     </SimpleForm>
   </Edit>
@@ -182,8 +193,8 @@ export const UserCreate = (props) => (
     <SimpleForm>
       <TextInput source="firstname" label="Nombre" />
       <TextInput source="lastname" label="Apellido" />
-      <TextInput source="email" label="Correo ElectrÃ³nico" />
-      <TextInput source="password" type="password" label="ContraseÃ±a" />
+      <TextInput source="email" label="Correo Electronico" />
+      <TextInput source="password" type="password" label="Contrasena" />
       <BooleanInput source="is_admin" label="Administrador" />
     </SimpleForm>
   </Create>
