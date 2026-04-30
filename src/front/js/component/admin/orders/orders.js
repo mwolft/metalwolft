@@ -50,7 +50,7 @@ const OrderListTable = () => {
             <th>Número de Factura</th>
             <th>Localizador</th>
             <th>Estado del Pedido</th>
-            <th>Nota de Entrega</th>
+            <th className="admin-cell-note">Nota de Entrega</th>
             <th>Acciones</th>
           </tr>
         </thead>
@@ -64,7 +64,7 @@ const OrderListTable = () => {
                 <td><TextField source="invoice_number" /></td>
                 <td><TextField source="locator" /></td>
                 <td><TextField source="order_status" /></td>
-                <td><TextField source="estimated_delivery_note" /></td>
+                <td className="admin-cell-note"><TextField source="estimated_delivery_note" /></td>
                 <td>
                   <div className="admin-action-group">
                     <EditButton className="admin-ra-button admin-ra-button--secondary" />

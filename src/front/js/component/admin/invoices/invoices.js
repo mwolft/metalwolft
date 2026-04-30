@@ -219,7 +219,7 @@ const InvoiceListTable = () => {
 };
 
 export const InvoiceList = (props) => (
-  <List {...props} title="Facturas" className="admin-resource-list">
+  <List {...props} title="Facturas" sort={{ field: "id", order: "DESC" }} className="admin-resource-list">
     <InvoiceListTable />
   </List>
 );
