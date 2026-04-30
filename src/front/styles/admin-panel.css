@@ -85,6 +85,17 @@
   min-width: 100%;
 }
 
+.admin-datagrid-scroll .RaDatagrid-root {
+  display: block;
+  width: max-content;
+  min-width: 100%;
+}
+
+.admin-datagrid-scroll .MuiTable-root {
+  width: max-content;
+  table-layout: auto;
+}
+
 .admin-datagrid-scroll--users .RaDatagrid-root,
 .admin-datagrid-scroll--users .RaDatagrid-table,
 .admin-datagrid-scroll--users .MuiTable-root {
