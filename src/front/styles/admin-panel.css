@@ -3,14 +3,6 @@
   background-color: #000000 !important;
 }
 
-.RaLayout-appFrame {
-  margin-top: 0 !important;
-}
-
-.RaLayout-content {
-  margin-left: 2px !important;
-}
-
 .admin-panel-page {
   margin-top: 100px;
   padding: 0 16px 35px;
@@ -60,6 +52,41 @@
   box-shadow: 0 20px 50px rgba(15, 23, 42, 0.08);
 }
 
+.admin-resource-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.admin-resource-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 14px;
+  border-radius: 999px;
+  border: 1px solid #e2e8f0;
+  background: #f8fafc;
+  color: #334155;
+  font-size: 0.92rem;
+  font-weight: 600;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+}
+
+.admin-resource-link:hover {
+  background: #fff1f3;
+  border-color: #fecdd3;
+  color: #e11d48;
+}
+
+.admin-resource-link--active {
+  background: #ff324d;
+  border-color: #ff324d;
+  color: #ffffff;
+}
+
 .admin-body .RaList-main {
   margin-top: 0;
   min-width: 0;
@@ -73,16 +100,35 @@
 .admin-body .RaLayout-contentWithSidebar,
 .admin-body .RaLayout-content {
   min-width: 0 !important;
-  max-width: 100vw !important;
+  max-width: 100% !important;
   overflow-x: hidden !important;
+}
+
+.admin-body .RaSidebar-root,
+.admin-body .MuiDrawer-root,
+.admin-body .MuiDrawer-docked {
+  display: none !important;
+  width: 0 !important;
+  min-width: 0 !important;
+  max-width: 0 !important;
+  flex: 0 0 0 !important;
+}
+
+.admin-body .RaLayout-appFrame {
+  width: 100% !important;
+  margin-top: 0 !important;
 }
 
 .admin-body .RaLayout-contentWithSidebar {
   width: 100% !important;
+  max-width: 100% !important;
 }
 
 .admin-body .RaLayout-content {
   box-sizing: border-box;
+  width: 100% !important;
+  margin-left: 0 !important;
+  padding-left: 0 !important;
   padding-right: 24px;
 }
 
@@ -114,7 +160,7 @@
 .admin-native-scroll {
   display: block;
   width: 100%;
-  max-width: 100%;
+  max-width: calc(100vw - 140px);
   overflow-x: auto;
   overflow-y: visible;
   -webkit-overflow-scrolling: touch;
@@ -190,22 +236,6 @@
   margin: 0;
   padding: 18px 4px 4px;
   color: #64748b;
-}
-
-.RaSidebar-fixed a {
-  margin-top: 5px;
-  margin-left: 10px;
-  border-radius: 15px;
-}
-
-.RaSidebar-fixed a:hover {
-  background-color: #ff324d !important;
-  color: #ffffff !important;
-}
-
-.RaSidebar-fixed a:hover .MuiListItemIcon-root {
-  color: #ffffff !important;
-  border-radius: 5px;
 }
 
 .admin-action-group {
@@ -345,5 +375,18 @@
   .admin-action-button,
   .admin-ra-button {
     font-size: 0.8rem;
+  }
+
+  .admin-resource-nav {
+    gap: 8px;
+  }
+
+  .admin-resource-link {
+    padding: 8px 12px;
+    font-size: 0.84rem;
+  }
+
+  .admin-native-scroll {
+    max-width: 100%;
   }
 }
