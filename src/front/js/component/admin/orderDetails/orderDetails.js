@@ -1,10 +1,19 @@
 import React from "react";
-import { List, Datagrid, TextField, NumberField, EditButton, DeleteButton, Edit, SimpleForm, TextInput, NumberInput, Create, ReferenceField, ReferenceInput, SelectInput } from "react-admin";
+import { List, Datagrid, TextField, NumberField, EditButton, DeleteButton, WrapperField, Edit, SimpleForm, TextInput, NumberInput, Create, ReferenceField, ReferenceInput, SelectInput } from "react-admin";
+
+const OrderDetailsActions = () => (
+  <WrapperField label="Acciones">
+    <div className="admin-action-group">
+      <EditButton className="admin-ra-button admin-ra-button--secondary" />
+      <DeleteButton className="admin-ra-button admin-ra-button--danger" />
+    </div>
+  </WrapperField>
+);
 
 // Lista de detalles de órdenes: muestra todos los detalles de órdenes
 export const OrderDetailsList = (props) => (
-  <List {...props}>
-    <div style={{ overflowX: 'auto', width: '100%' }}>
+  <List {...props} className="admin-resource-list">
+    <div className="admin-datagrid-scroll">
       <Datagrid>
         <TextField source="id" label="ID" />
         <ReferenceField source="order_id" reference="orders" label="Número de Orden">
@@ -28,8 +37,7 @@ export const OrderDetailsList = (props) => (
         <TextField source="billing_city" label="Ciudad de Facturación" />
         <TextField source="billing_postal_code" label="Código Postal de Facturación" />
         <TextField source="CIF" label="CIF" />
-        <EditButton />
-        <DeleteButton />
+        <OrderDetailsActions />
       </Datagrid>
     </div>
   </List>

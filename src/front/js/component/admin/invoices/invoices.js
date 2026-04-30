@@ -12,18 +12,11 @@ import {
   ArrayInput,
   SimpleFormIterator,
   Edit,
+  WrapperField,
   useRecordContext,
   useRefresh,
 } from "react-admin";
 import { FaDownload, FaSyncAlt } from "react-icons/fa";
-
-const buttonBaseStyle = {
-  color: "#FFF",
-  padding: "5px 10px",
-  border: "none",
-  borderRadius: "4px",
-  cursor: "pointer",
-};
 
 const DownloadButton = () => {
   const record = useRecordContext();
@@ -84,10 +77,7 @@ const DownloadButton = () => {
         event.stopPropagation();
         handleDownload();
       }}
-      style={{
-        ...buttonBaseStyle,
-        backgroundColor: "#007BFF",
-      }}
+      className="admin-action-button admin-action-button--primary"
     >
       <FaDownload /> Descargar
     </button>
@@ -160,10 +150,7 @@ const RegenerateButton = () => {
         event.stopPropagation();
         handleRegenerate();
       }}
-      style={{
-        ...buttonBaseStyle,
-        backgroundColor: "#dc3545",
-      }}
+      className="admin-action-button admin-action-button--danger"
     >
       <FaSyncAlt /> Regenerar PDF
     </button>
@@ -171,23 +158,26 @@ const RegenerateButton = () => {
 };
 
 const InvoiceActions = () => (
-  <div style={{ display: "flex", gap: "8px", alignItems: "center", flexWrap: "wrap" }}>
-    <DownloadButton />
-    <RegenerateButton />
-  </div>
+  <WrapperField label="Acciones">
+    <div className="admin-action-group">
+      <DownloadButton />
+      <RegenerateButton />
+    </div>
+  </WrapperField>
 );
 
 export const InvoiceList = (props) => (
-  <List {...props} title="Facturas">
-    <Datagrid rowClick="edit">
+  <List {...props} title="Facturas" className="admin-resource-list">
+    <div className="admin-datagrid-scroll">
+      <Datagrid rowClick="edit">
       <TextField source="invoice_number" label="Número de Factura" />
       <TextField source="client_name" label="Cliente" />
       <TextField source="client_phone" label="Teléfono" />
       <NumberField source="amount" label="Total" options={{ style: "currency", currency: "EUR" }} />
       <DateField source="created_at" label="Fecha" />
-      <TextField source="pdf_path" label="Ruta del PDF" />
-      <InvoiceActions />
-    </Datagrid>
+        <InvoiceActions />
+      </Datagrid>
+    </div>
   </List>
 );
 
@@ -226,8 +216,10 @@ export const InvoiceEdit = (props) => (
         </SimpleFormIterator>
       </ArrayInput>
       <TextField source="pdf_path" label="Ruta del PDF" />
-      <DownloadButton />
-      <RegenerateButton />
+      <div className="admin-action-group admin-action-group--form">
+        <DownloadButton />
+        <RegenerateButton />
+      </div>
     </SimpleForm>
   </Edit>
 );

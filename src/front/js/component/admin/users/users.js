@@ -7,6 +7,7 @@ import {
   BooleanField,
   EditButton,
   DeleteButton,
+  WrapperField,
   Edit,
   SimpleForm,
   TextInput,
@@ -82,37 +83,38 @@ const SendCartReminderButton = () => {
       type="button"
       onClick={handleSendReminder}
       disabled={isSending}
-      style={{
-        border: "1px solid #0d6efd",
-        background: "#ffffff",
-        color: "#0d6efd",
-        borderRadius: "6px",
-        padding: "6px 10px",
-        fontSize: "0.85rem",
-        cursor: isSending ? "not-allowed" : "pointer"
-      }}
+      className="admin-action-button admin-action-button--secondary"
     >
       {isSending ? "Enviando..." : "Enviar recordatorio carrito"}
     </button>
   );
 };
 
+const UserActions = () => (
+  <WrapperField label="Acciones">
+    <div className="admin-action-group">
+      <SendCartReminderButton />
+      <EditButton className="admin-ra-button admin-ra-button--secondary" />
+      <DeleteButton className="admin-ra-button admin-ra-button--danger" />
+    </div>
+  </WrapperField>
+);
+
 // Lista de usuarios: muestra todos los usuarios
 export const UserList = (props) => (
   <List
     {...props}
     sort={{ field: "id", order: "DESC" }}
+    className="admin-resource-list"
   >
-    <div style={{ overflowX: "auto", width: "100%" }}>
+    <div className="admin-datagrid-scroll">
       <Datagrid>
         <TextField source="id" label="ID" sortable={false} />
         <TextField source="firstname" label="Nombre" />
         <TextField source="lastname" label="Apellido" />
         <EmailField source="email" label="Correo Electrónico" />
         <BooleanField source="is_admin" label="Administrador" />
-        <SendCartReminderButton />
-        <EditButton />
-        <DeleteButton />
+        <UserActions />
       </Datagrid>
     </div>
   </List>

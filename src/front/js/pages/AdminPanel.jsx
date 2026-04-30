@@ -1,31 +1,15 @@
 import React, { useEffect, useState } from "react";
-import { Admin, Resource, Layout } from "react-admin";
+import { Admin, Resource } from "react-admin";
 import dataProvider from '../../../../src/dataProvider.js';
-import jsonServerProvider from "ra-data-json-server";
-import { fetchUtils } from 'ra-core';
 import { useNavigate } from "react-router-dom";
 import { UserList, UserEdit, UserCreate } from "../component/admin/users/users.js";
-import { ProductList, ProductEdit, ProductCreate } from "../component/admin/products/products.js";
 import { OrderList, OrderEdit, OrderCreate } from "../component/admin/orders/orders.js";
-import { ProductImagesList, ProductImagesEdit, ProductImagesCreate } from "../component/admin/products/productImages.js";
 import { OrderDetailsList, OrderDetailsEdit, OrderDetailsCreate } from "../component/admin/orderDetails/orderDetails.js";
 import { InvoiceList, InvoiceCreate, InvoiceEdit } from "../component/admin/invoices/invoices.js";
 import { authProvider } from "../authProvider.js";
-import { FaUser, FaBoxOpen, FaShoppingCart, FaImages, FaFileInvoice } from 'react-icons/fa';
+import { FaUser, FaShoppingCart, FaFileInvoice } from 'react-icons/fa';
 import { TbListDetails } from "react-icons/tb";
 import '../../styles/admin-panel.css';
-
-
-const httpClient = (url, options = {}) => {
-  if (!options.headers) {
-    options.headers = new Headers({ Accept: 'application/json' });
-  }
-  const token = localStorage.getItem('token');
-  if (token) {
-    options.headers.set('Authorization', `Bearer ${token}`);
-  }
-  return fetchUtils.fetchJson(url, options);
-};
 
 
 const AdminPanel = () => {
@@ -44,13 +28,13 @@ const AdminPanel = () => {
   }, [navigate]);
 
   if (!hasAccess) {
-    return <p>Verificando acceso de administrador...</p>;
+    return <p className="admin-loading-state">Verificando acceso de administrador...</p>;
   }
 
   return (
-    <div className="admin-box" style={{ marginTop: '100px', paddingBottom: '35px' }}>
+    <div className="admin-box admin-panel-page">
       <div className="admin-header">
-        <h3 className="text-center pt-2">PANEL DE ADMINISTRACIÓN</h3>
+        <h3 className="admin-title">Panel de administracion</h3>
       </div>
       <div className="admin-body">
         <Admin
