@@ -67,7 +67,6 @@ const OrderDetailsListTable = () => {
             <th>Ciudad de Envio</th>
             <th>Codigo Postal de Envio</th>
             <th>Acciones</th>
-            <th className="admin-native-table-spacer" aria-hidden="true"></th>
           </tr>
         </thead>
         <tbody>
@@ -108,7 +107,6 @@ const OrderDetailsListTable = () => {
                     <DeleteButton className="admin-ra-button admin-ra-button--danger" />
                   </div>
                 </td>
-                <td className="admin-native-table-spacer" aria-hidden="true"></td>
               </tr>
             </RecordContextProvider>
           ))}

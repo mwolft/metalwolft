@@ -21,6 +21,7 @@
 .admin-resource-list,
 .admin-body .RaLayout-content,
 .admin-body .RaLayout-appFrame,
+.admin-body .RaLayout-contentWithSidebar,
 .admin-body .RaList-root,
 .admin-body .RaList-main,
 .admin-body .RaList-content {
@@ -68,6 +69,23 @@
   margin-bottom: 12px;
 }
 
+.admin-body .RaLayout-appFrame,
+.admin-body .RaLayout-contentWithSidebar,
+.admin-body .RaLayout-content {
+  min-width: 0 !important;
+  max-width: 100vw !important;
+  overflow-x: hidden !important;
+}
+
+.admin-body .RaLayout-contentWithSidebar {
+  width: 100% !important;
+}
+
+.admin-body .RaLayout-content {
+  box-sizing: border-box;
+  padding-right: 24px;
+}
+
 .admin-body .RaList-content,
 .admin-body .MuiPaper-root {
   overflow: visible;
@@ -96,12 +114,11 @@
 .admin-native-scroll {
   display: block;
   width: 100%;
-  max-width: calc(100vw - 32px);
+  max-width: 100%;
   overflow-x: auto;
   overflow-y: visible;
   -webkit-overflow-scrolling: touch;
   box-sizing: border-box;
-  padding-right: 16px;
 }
 
 .admin-native-table {
@@ -128,8 +145,8 @@
 }
 
 .admin-native-table--order-details {
-  min-width: 2100px;
-  width: 2100px;
+  min-width: 2000px;
+  width: 2000px;
 }
 
 .admin-native-table th,
@@ -144,15 +161,6 @@
 .admin-native-table th:last-child,
 .admin-native-table td:last-child {
   padding-right: 32px;
-}
-
-.admin-native-table-spacer {
-  width: 96px;
-  min-width: 96px;
-  max-width: 96px;
-  padding: 0 !important;
-  border: none !important;
-  background: transparent !important;
 }
 
 .admin-native-table th {
