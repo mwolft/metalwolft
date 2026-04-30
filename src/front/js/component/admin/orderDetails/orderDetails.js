@@ -42,12 +42,12 @@ const OrderDetailsListTable = () => {
   }
 
   return (
-    <div className="admin-native-scroll">
-      <table className="admin-native-table" style={{ minWidth: 2000, width: 2000 }}>
+    <div className="admin-native-scroll admin-native-scroll--order-details">
+      <table className="admin-native-table admin-native-table--order-details">
         <thead>
           <tr>
             <th>ID</th>
-            <th>Número de Orden</th>
+            <th>Numero de Orden</th>
             <th>Producto</th>
             <th>Cantidad</th>
             <th>Alto</th>
@@ -56,16 +56,16 @@ const OrderDetailsListTable = () => {
             <th>Color</th>
             <th>Precio Total</th>
             <th>Localizador</th>
-            <th>Nº Factura</th>
+            <th>N factura</th>
             <th>Nombre</th>
             <th>Apellido</th>
-            <th>Dirección de Envío</th>
-            <th>Ciudad de Envío</th>
-            <th>Código Postal de Envío</th>
-            <th>Dirección de Facturación</th>
-            <th>Ciudad de Facturación</th>
-            <th>Código Postal de Facturación</th>
+            <th>Direccion de Facturacion</th>
+            <th>Ciudad de Facturacion</th>
+            <th>Codigo Postal de Facturacion</th>
             <th>CIF</th>
+            <th>Direccion de Envio</th>
+            <th>Ciudad de Envio</th>
+            <th>Codigo Postal de Envio</th>
             <th>Acciones</th>
           </tr>
         </thead>
@@ -94,13 +94,13 @@ const OrderDetailsListTable = () => {
                 <td><TextField source="invoice_number" /></td>
                 <td><TextField source="firstname" /></td>
                 <td><TextField source="lastname" /></td>
-                <td><TextField source="shipping_address" /></td>
-                <td><TextField source="shipping_city" /></td>
-                <td><TextField source="shipping_postal_code" /></td>
                 <td><TextField source="billing_address" /></td>
                 <td><TextField source="billing_city" /></td>
                 <td><TextField source="billing_postal_code" /></td>
                 <td><TextField source="CIF" /></td>
+                <td><TextField source="shipping_address" /></td>
+                <td><TextField source="shipping_city" /></td>
+                <td><TextField source="shipping_postal_code" /></td>
                 <td>
                   <div className="admin-action-group">
                     <EditButton className="admin-ra-button admin-ra-button--secondary" />
@@ -116,19 +116,17 @@ const OrderDetailsListTable = () => {
   );
 };
 
-// Lista de detalles de órdenes: muestra todos los detalles de órdenes
 export const OrderDetailsList = (props) => (
   <List {...props} className="admin-resource-list">
     <OrderDetailsListTable />
   </List>
 );
 
-// Editar un detalle de orden existente
 export const OrderDetailsEdit = (props) => (
   <Edit {...props}>
     <SimpleForm>
       <TextInput disabled source="id" label="ID" />
-      <ReferenceInput source="order_id" reference="orders" label="Número de Orden">
+      <ReferenceInput source="order_id" reference="orders" label="Numero de Orden">
         <SelectInput optionText="id" />
       </ReferenceInput>
       <ReferenceInput source="product_id" reference="products" label="Producto">
@@ -142,22 +140,21 @@ export const OrderDetailsEdit = (props) => (
       <NumberInput source="precio_total" label="Precio Total" />
       <TextInput source="firstname" label="Nombre" />
       <TextInput source="lastname" label="Apellido" />
-      <TextInput source="shipping_address" label="Dirección de Envío" />
-      <TextInput source="shipping_city" label="Ciudad de Envío" />
-      <TextInput source="shipping_postal_code" label="Código Postal de Envío" />
-      <TextInput source="billing_address" label="Dirección de Facturación" />
-      <TextInput source="billing_city" label="Ciudad de Facturación" />
-      <TextInput source="billing_postal_code" label="Código Postal de Facturación" />
+      <TextInput source="shipping_address" label="Direccion de Envio" />
+      <TextInput source="shipping_city" label="Ciudad de Envio" />
+      <TextInput source="shipping_postal_code" label="Codigo Postal de Envio" />
+      <TextInput source="billing_address" label="Direccion de Facturacion" />
+      <TextInput source="billing_city" label="Ciudad de Facturacion" />
+      <TextInput source="billing_postal_code" label="Codigo Postal de Facturacion" />
       <TextInput source="CIF" label="CIF" />
     </SimpleForm>
   </Edit>
 );
 
-// Crear un nuevo detalle de orden
 export const OrderDetailsCreate = (props) => (
   <Create {...props}>
     <SimpleForm>
-      <ReferenceInput source="order_id" reference="orders" label="Número de Orden">
+      <ReferenceInput source="order_id" reference="orders" label="Numero de Orden">
         <SelectInput optionText="id" />
       </ReferenceInput>
       <ReferenceInput source="product_id" reference="products" label="Producto">
@@ -171,12 +168,12 @@ export const OrderDetailsCreate = (props) => (
       <NumberInput source="precio_total" label="Precio Total" />
       <TextInput source="firstname" label="Nombre" />
       <TextInput source="lastname" label="Apellido" />
-      <TextInput source="shipping_address" label="Dirección de Envío" />
-      <TextInput source="shipping_city" label="Ciudad de Envío" />
-      <TextInput source="shipping_postal_code" label="Código Postal de Envío" />
-      <TextInput source="billing_address" label="Dirección de Facturación" />
-      <TextInput source="billing_city" label="Ciudad de Facturación" />
-      <TextInput source="billing_postal_code" label="Código Postal de Facturación" />
+      <TextInput source="shipping_address" label="Direccion de Envio" />
+      <TextInput source="shipping_city" label="Ciudad de Envio" />
+      <TextInput source="shipping_postal_code" label="Codigo Postal de Envio" />
+      <TextInput source="billing_address" label="Direccion de Facturacion" />
+      <TextInput source="billing_city" label="Ciudad de Facturacion" />
+      <TextInput source="billing_postal_code" label="Codigo Postal de Facturacion" />
       <TextInput source="CIF" label="CIF" />
     </SimpleForm>
   </Create>

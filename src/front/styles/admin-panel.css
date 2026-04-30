@@ -127,6 +127,15 @@
   width: 100%;
 }
 
+.admin-native-scroll--order-details {
+  padding-right: 28px;
+}
+
+.admin-native-table--order-details {
+  min-width: 2000px;
+  width: 2000px;
+}
+
 .admin-native-table th,
 .admin-native-table td {
   white-space: nowrap;
@@ -139,6 +148,12 @@
 .admin-native-table th:last-child,
 .admin-native-table td:last-child {
   padding-right: 32px;
+}
+
+.admin-native-table--order-details th:last-child,
+.admin-native-table--order-details td:last-child {
+  min-width: 132px;
+  padding-right: 52px;
 }
 
 .admin-native-table th {
