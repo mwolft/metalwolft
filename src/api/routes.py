@@ -222,22 +222,22 @@ def _build_cart_reminder_product_sections(cart_items, frontend_base_url):
         image_cell_html = ""
         if product_image_url:
             image_cell_html = (
-                f'<td width="156" valign="top" style="padding-right: 18px;">'
-                f'<img src="{escape(product_image_url)}" alt="{safe_product_name}" '
-                'style="display:block; width:100%; max-width:156px; height:auto; '
-                'border:1px solid #e5e7eb; border-radius:12px;"></td>'
+                f'<td style="vertical-align:top; padding-right:10px; width:120px;">'
+                f'<img src="{escape(product_image_url)}" alt="{safe_product_name}" width="120" '
+                'style="display:block; width:100%; max-width:120px; height:auto; '
+                'border-radius:12px;"></td>'
             )
 
         product_lines_html.append(
             f"""
             <tr>
-                <td style="padding: 18px 0; border-bottom: 1px solid #eceff3;">
+                <td style="padding:12px 0; border-bottom: 1px solid #eceff3;">
                     <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
                         <tr>
                             {image_cell_html}
-                            <td valign="top" style="font-family:Arial,Helvetica,sans-serif; color:#111827;">
+                            <td style="vertical-align:top; font-family:Arial,Helvetica,sans-serif; font-size:14px; line-height:1.5; color:#374151;">
                                 <div style="font-size:17px; font-weight:700; line-height:1.4; margin-bottom:8px;">{safe_product_name}</div>
-                                <div style="font-size:14px; line-height:1.7; color:#4b5563;">
+                                <div style="font-size:14px; line-height:1.5; color:#374151;">
                                     <div><strong>Medidas:</strong> {safe_measures}</div>
                                     <div><strong>Anclaje:</strong> {safe_mounting}</div>
                                     <div><strong>Color:</strong> {safe_color}</div>
