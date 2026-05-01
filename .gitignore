@@ -67,6 +67,9 @@ dist/*
 !public/
 !public/*
 
+# frontend build output
+build/
+
 # ignore the dist directory were our bundle files are going to be
 !.gitkeep
 !.htaccess
