@@ -1,5 +1,38 @@
 import { authenticatedFetch } from '../../utils/authenticatedFetch';
 
+const getStoredUserSnapshot = () => {
+    try {
+        const rawStoredUser = localStorage.getItem("user");
+        if (!rawStoredUser || rawStoredUser === "undefined") return null;
+
+        const parsedUser = JSON.parse(rawStoredUser);
+        return parsedUser && typeof parsedUser === "object" ? parsedUser : null;
+    } catch (error) {
+        console.error("Error al leer el usuario persistido:", error);
+        return null;
+    }
+};
+
+const buildPersistedUser = (incomingUser, fallbackUser = null) => {
+    if (!incomingUser || typeof incomingUser !== "object") {
+        return null;
+    }
+
+    const safeFallback = fallbackUser && typeof fallbackUser === "object" ? fallbackUser : {};
+    const resolvedIsAdmin =
+        typeof incomingUser.is_admin === "boolean"
+            ? incomingUser.is_admin
+            : typeof safeFallback.is_admin === "boolean"
+                ? safeFallback.is_admin
+                : false;
+
+    return {
+        ...safeFallback,
+        ...incomingUser,
+        is_admin: resolvedIsAdmin
+    };
+};
+
 
 const getState = ({ getStore, getActions, setStore }) => {
     return {
@@ -204,13 +237,25 @@ const getState = ({ getStore, getActions, setStore }) => {
                 }
             },
             setCurrentUser: (user) => {
+                const fallbackUser = getStore().currentUser || getStoredUserSnapshot();
+                const nextUser = buildPersistedUser(user, fallbackUser);
+
+                if (nextUser) {
+                    localStorage.setItem("user", JSON.stringify(nextUser));
+                } else {
+                    localStorage.removeItem("user");
+                }
+
                 setStore({
-                    currentUser: user,
-                    isAdmin: user?.is_admin || false,
-                    isLoged: true
+                    currentUser: nextUser,
+                    isAdmin: nextUser?.is_admin || false,
+                    isLoged: Boolean(nextUser)
                 });
-                getActions().loadFavorites();
-                getActions().loadCart();
+
+                if (nextUser) {
+                    getActions().loadFavorites();
+                    getActions().loadCart();
+                }
             },
             updateUserProfile: async (userId, updatedData) => {
                 try {
@@ -229,7 +274,7 @@ const getState = ({ getStore, getActions, setStore }) => {
                         throw new Error(result.data?.message || "Error al actualizar el perfil");
                     }
 
-                    setStore({ currentUser: result.data?.results || result.data });
+                    getActions().setCurrentUser(result.data?.results || result.data);
 
                     return { ok: true };
 
@@ -258,11 +303,7 @@ const getState = ({ getStore, getActions, setStore }) => {
                 const user = result.data;
                 console.log("USER DATA:", user);
 
-                setStore({
-                    currentUser: user,
-                    isAdmin: user?.is_admin || false,
-                    isLoged: true
-                });
+                getActions().setCurrentUser(user);
 
                 return user;
             },
@@ -294,7 +335,7 @@ const getState = ({ getStore, getActions, setStore }) => {
                 if (isLogin) {
                     setStore({ isLoged: true });
                 } else {
-                    setStore({ isLoged: false, isAdmin: false, favorites: [] });
+                    setStore({ isLoged: false, isAdmin: false, currentUser: null, favorites: [] });
                     getActions().clearCart();
                     localStorage.removeItem("token");
                     localStorage.removeItem("user");

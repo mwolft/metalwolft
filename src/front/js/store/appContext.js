@@ -30,9 +30,7 @@ const injectContext = PassedComponent => {
                 try {
                     const user = JSON.parse(storedUser);
                     if (user && typeof user === "object") {
-                        state.actions.setIsLoged(true);
                         state.actions.setCurrentUser(user);
-                        state.actions.setIsAdmin(user.is_admin);
                     }
                 } catch (error) {
                     console.error("Error al parsear los datos del usuario desde localStorage:", error);

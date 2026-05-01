@@ -38,6 +38,20 @@ export const MainNavbar = () => {
         return () => mediaQuery.removeListener(syncCatalogViewport);
     }, []);
 
+    useEffect(() => {
+        if (!expanded) return undefined;
+
+        const handleEscapeKey = (event) => {
+            if (event.key === "Escape") {
+                setExpanded(false);
+                setCatalogOpen(false);
+            }
+        };
+
+        window.addEventListener("keydown", handleEscapeKey);
+        return () => window.removeEventListener("keydown", handleEscapeKey);
+    }, [expanded]);
+
     const displayName = (() => {
         const fn = store.currentUser?.firstname?.trim();
         if (fn) return fn;
@@ -205,12 +219,26 @@ export const MainNavbar = () => {
 
                         <Navbar.Toggle
                             aria-controls="basic-navbar-nav"
+                            aria-expanded={expanded}
+                            aria-label={expanded ? "Cerrar menú" : "Abrir menú"}
                             onClick={handleToggle}
                             className="navbar-mobile-toggle"
                         />
                     </div>
 
                     <Navbar.Collapse id="basic-navbar-nav" className="navbar-collapse-shell">
+                        <div className="navbar-mobile-panel-top d-lg-none">
+                            <span className="navbar-mobile-panel-title">Menú</span>
+                            <button
+                                type="button"
+                                className="navbar-mobile-close-button"
+                                onClick={handleSelect}
+                                aria-label="Cerrar menú"
+                            >
+                                <i className="fa-solid fa-xmark" aria-hidden="true"></i>
+                            </button>
+                        </div>
+
                         <Nav className="navbar-primary-nav mx-auto" onSelect={handleSelect}>
                             <Nav.Link as={Link} to="/" onClick={handleSelect}>
                                 <span className="d-lg-none">
@@ -487,6 +515,15 @@ export const MainNavbar = () => {
                     </Navbar.Collapse>
                 </Container>
             </Navbar>
+
+            {expanded && (
+                <button
+                    type="button"
+                    className="navbar-mobile-overlay d-lg-none"
+                    aria-label="Cerrar menú"
+                    onClick={handleSelect}
+                />
+            )}
         </>
     );
 };
