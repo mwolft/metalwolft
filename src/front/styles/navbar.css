@@ -243,8 +243,11 @@
     display: block;
     width: 100%;
     max-width: none;
-    aspect-ratio: 16 / 10;
-    object-fit: cover;
+    height: auto;
+    max-height: 150px;
+    aspect-ratio: auto;
+    object-fit: contain;
+    background: #f8fafc;
 }
 
 .navbar-icon-link {
