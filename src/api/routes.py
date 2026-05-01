@@ -3850,7 +3850,7 @@ def handle_orders():
             return jsonify({"message": "An unexpected error occurred while creating the order.", "error": str(e)}), 500
 
 
-@api.route('/orders/<int:order_id>', methods=['GET', 'DELETE'])
+@api.route('/orders/<int:order_id>', methods=['GET', 'PUT', 'DELETE'])
 @jwt_required()
 def handle_order(order_id):
     current_user = get_jwt_identity()
@@ -3868,6 +3868,40 @@ def handle_order(order_id):
         response.headers['Access-Control-Allow-Origin'] = '*'
         response.headers['Access-Control-Expose-Headers'] = 'X-Total-Count'
         return response, 200
+
+    if request.method == 'PUT':
+        if not current_user.get("is_admin"):
+            return jsonify({"message": "Access forbidden: Admins only"}), 403
+
+        data = request.get_json() or {}
+
+        if "order_status" in data:
+            next_status = (data.get("order_status") or "").strip()
+            order.order_status = next_status or "pendiente"
+
+        if "estimated_delivery_at" in data:
+            date_str = data.get("estimated_delivery_at")
+            if date_str in ("", False, None):
+                order.estimated_delivery_at = None
+            else:
+                try:
+                    y, m, d = map(int, str(date_str).split("-"))
+                    order.estimated_delivery_at = date(y, m, d)
+                except Exception:
+                    return jsonify({"message": "Invalid date format. Use YYYY-MM-DD"}), 400
+
+        if "estimated_delivery_note" in data:
+            order.estimated_delivery_note = data.get("estimated_delivery_note") or ""
+
+        try:
+            db.session.commit()
+            response = jsonify(order.serialize())
+            response.headers['Access-Control-Allow-Origin'] = '*'
+            response.headers['Access-Control-Expose-Headers'] = 'X-Total-Count'
+            return response, 200
+        except SQLAlchemyError as e:
+            db.session.rollback()
+            return jsonify({"message": "An error occurred while updating the order.", "error": str(e)}), 500
 
     if request.method == 'DELETE':
         try:

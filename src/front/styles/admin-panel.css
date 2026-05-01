@@ -269,6 +269,13 @@
   color: #64748b;
 }
 
+.admin-form-section-title {
+  margin: 16px 0 4px;
+  color: #0f172a;
+  font-size: 0.98rem;
+  font-weight: 700;
+}
+
 .admin-action-group {
   display: flex;
   flex-wrap: nowrap;
