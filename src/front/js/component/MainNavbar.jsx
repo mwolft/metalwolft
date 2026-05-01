@@ -1,4 +1,4 @@
-import React, { useContext, useState } from "react";
+import React, { useContext, useEffect, useState } from "react";
 import Container from "react-bootstrap/Container";
 import Nav from "react-bootstrap/Nav";
 import Navbar from "react-bootstrap/Navbar";
@@ -11,8 +11,32 @@ import featuredWindowBarsImage from "../../img/cards-carrusel/rejas-para-ventana
 export const MainNavbar = () => {
     const { store, actions } = useContext(Context);
     const [expanded, setExpanded] = useState(false);
+    const [catalogOpen, setCatalogOpen] = useState(false);
+    const [isDesktopCatalog, setIsDesktopCatalog] = useState(false);
     const navigate = useNavigate();
     const isAdminUser = Boolean(store.isAdmin || store.currentUser?.is_admin);
+
+    useEffect(() => {
+        const mediaQuery = window.matchMedia("(min-width: 992px)");
+
+        const syncCatalogViewport = (event) => {
+            const matches = typeof event?.matches === "boolean" ? event.matches : mediaQuery.matches;
+            setIsDesktopCatalog(matches);
+            if (!matches) {
+                setCatalogOpen(false);
+            }
+        };
+
+        syncCatalogViewport(mediaQuery);
+
+        if (mediaQuery.addEventListener) {
+            mediaQuery.addEventListener("change", syncCatalogViewport);
+            return () => mediaQuery.removeEventListener("change", syncCatalogViewport);
+        }
+
+        mediaQuery.addListener(syncCatalogViewport);
+        return () => mediaQuery.removeListener(syncCatalogViewport);
+    }, []);
 
     const displayName = (() => {
         const fn = store.currentUser?.firstname?.trim();
@@ -24,11 +48,24 @@ export const MainNavbar = () => {
     const handleLogout = () => {
         actions.setIsLoged(false);
         setExpanded(false);
+        setCatalogOpen(false);
         navigate("/");
     };
 
-    const handleToggle = () => setExpanded(!expanded);
-    const handleSelect = () => setExpanded(false);
+    const handleToggle = () => {
+        setExpanded((prevExpanded) => {
+            const nextExpanded = !prevExpanded;
+            if (!nextExpanded) {
+                setCatalogOpen(false);
+            }
+            return nextExpanded;
+        });
+    };
+
+    const handleSelect = () => {
+        setExpanded(false);
+        setCatalogOpen(false);
+    };
 
     const handleFavoritesClick = () => {
         if (store.isLoged) {
@@ -40,12 +77,42 @@ export const MainNavbar = () => {
 
     const handleLoginClick = () => {
         setExpanded(false);
+        setCatalogOpen(false);
         navigate("/login");
     };
 
     const handleMobileFavoritesClick = () => {
         handleFavoritesClick();
         setExpanded(false);
+        setCatalogOpen(false);
+    };
+
+    const handleCatalogToggle = (nextShow) => {
+        setCatalogOpen(nextShow);
+    };
+
+    const handleCatalogMouseEnter = () => {
+        if (isDesktopCatalog) {
+            setCatalogOpen(true);
+        }
+    };
+
+    const handleCatalogMouseLeave = () => {
+        if (isDesktopCatalog) {
+            setCatalogOpen(false);
+        }
+    };
+
+    const handleCatalogFocus = () => {
+        if (isDesktopCatalog) {
+            setCatalogOpen(true);
+        }
+    };
+
+    const handleCatalogBlur = (event) => {
+        if (isDesktopCatalog && !event.currentTarget.contains(event.relatedTarget)) {
+            setCatalogOpen(false);
+        }
     };
 
     const productMenuGroups = [
@@ -163,6 +230,12 @@ export const MainNavbar = () => {
                                 }
                                 id="trainer-nav-dropdown"
                                 className="products-dropdown-menu"
+                                show={catalogOpen}
+                                onToggle={handleCatalogToggle}
+                                onMouseEnter={handleCatalogMouseEnter}
+                                onMouseLeave={handleCatalogMouseLeave}
+                                onFocus={handleCatalogFocus}
+                                onBlur={handleCatalogBlur}
                             >
                                 <div className="products-mega-menu-grid d-none d-lg-grid">
                                     {productMenuGroups.map((group) => (
@@ -204,15 +277,32 @@ export const MainNavbar = () => {
 
                                 <div className="d-lg-none">
                                     {productMenuGroups.flatMap((group) => group.items).map((item) => (
-                                        <NavDropdown.Item
-                                            as={Link}
-                                            to={item.to}
-                                            onClick={handleSelect}
-                                            className="products-mobile-link"
-                                            key={item.to}
-                                        >
-                                            {item.label}
-                                        </NavDropdown.Item>
+                                        <div className="products-mobile-item" key={item.to}>
+                                            <NavDropdown.Item
+                                                as={Link}
+                                                to={item.to}
+                                                onClick={handleSelect}
+                                                className="products-mobile-link"
+                                            >
+                                                {item.label}
+                                            </NavDropdown.Item>
+
+                                            {item.featuredImage && (
+                                                <Link
+                                                    to={item.to}
+                                                    onClick={handleSelect}
+                                                    className="mobile-menu-featured"
+                                                    aria-label={item.label}
+                                                >
+                                                    <img
+                                                        src={item.featuredImage}
+                                                        alt={item.featuredAlt || item.label}
+                                                        className="mobile-menu-featured-image"
+                                                        loading="lazy"
+                                                    />
+                                                </Link>
+                                            )}
+                                        </div>
                                     ))}
                                 </div>
                             </NavDropdown>
