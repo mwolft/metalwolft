@@ -6,6 +6,7 @@ import NavDropdown from "react-bootstrap/NavDropdown";
 import { useNavigate, Link } from "react-router-dom";
 import { Context } from "../store/appContext";
 import "../../styles/navbar.css";
+import featuredWindowBarsImage from "../../img/cards-carrusel/rejas-para-ventanas.avif";
 
 export const MainNavbar = () => {
     const { store, actions } = useContext(Context);
@@ -51,7 +52,12 @@ export const MainNavbar = () => {
         {
             title: "Rejas",
             items: [
-                { to: "/rejas-para-ventanas", label: "Rejas para ventanas" }
+                {
+                    to: "/rejas-para-ventanas",
+                    label: "Rejas para ventanas",
+                    featuredImage: featuredWindowBarsImage,
+                    featuredAlt: "Rejas para ventanas a medida Metal Wolft"
+                }
             ]
         },
         {
@@ -164,15 +170,32 @@ export const MainNavbar = () => {
                                             <div className="products-mega-group-title">{group.title}</div>
                                             <div className="products-mega-links">
                                                 {group.items.map((item) => (
-                                                    <NavDropdown.Item
-                                                        as={Link}
-                                                        to={item.to}
-                                                        onClick={handleSelect}
-                                                        className="products-mega-link"
-                                                        key={item.to}
-                                                    >
-                                                        {item.label}
-                                                    </NavDropdown.Item>
+                                                    <div className="products-mega-link-block" key={item.to}>
+                                                        <NavDropdown.Item
+                                                            as={Link}
+                                                            to={item.to}
+                                                            onClick={handleSelect}
+                                                            className="products-mega-link"
+                                                        >
+                                                            {item.label}
+                                                        </NavDropdown.Item>
+
+                                                        {item.featuredImage && (
+                                                            <Link
+                                                                to={item.to}
+                                                                onClick={handleSelect}
+                                                                className="mega-menu-featured"
+                                                                aria-label={item.label}
+                                                            >
+                                                                <img
+                                                                    src={item.featuredImage}
+                                                                    alt={item.featuredAlt || item.label}
+                                                                    className="mega-menu-featured-image"
+                                                                    loading="lazy"
+                                                                />
+                                                            </Link>
+                                                        )}
+                                                    </div>
                                                 ))}
                                             </div>
                                         </div>
