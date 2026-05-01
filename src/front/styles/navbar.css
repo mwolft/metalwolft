@@ -242,12 +242,13 @@
 .mobile-menu-featured-image {
     display: block;
     width: 100%;
-    max-width: none;
-    height: auto;
-    max-height: 150px;
-    aspect-ratio: auto;
-    object-fit: contain;
-    background: #f8fafc;
+    max-width: none; 
+    height: 180px; 
+    max-height: none; 
+    object-fit: cover; 
+    object-position: center; 
+    background: transparent; 
+    border-radius: 8px; 
 }
 
 .navbar-icon-link {
