@@ -506,7 +506,6 @@ export const MainNavbar = () => {
                                     onClick={handleSelect}
                                     aria-label="Cerrar menú"
                                 >
-                                    <span className="navbar-mobile-close-copy">Cerrar menú</span>
                                     <i className="fa-solid fa-xmark" aria-hidden="true"></i>
                                 </button>
                             </div>
