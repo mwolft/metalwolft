@@ -1,4 +1,4 @@
-﻿export const calcularEnvio = (cart, threshold = 150) => {
+export const calcularEnvio = (cart, threshold = 150) => {
     let subtotal = 0;
     let tipoEnvioFinal = "normal";
     let costeFinal = 0;
@@ -14,11 +14,11 @@
         let tipo = "normal";
         let coste = 0;
 
-        // ----------- NORMA B (99 â‚¬) -----------
+        // ----------- NORMA B (99 €) -----------
         if (
             peso > 60 ||
-            largo > 300 ||
-            sumaDimensiones > 500
+            largo > 220 ||
+            sumaDimensiones > 350
         ) {
             tipo = "B";
             coste = 99;
@@ -28,8 +28,7 @@
         else if (
             peso > 40 ||
             largo > 175 ||
-            sumaDimensiones > 300 ||
-            largo >= 315
+            sumaDimensiones > 300
         ) {
             tipo = "A";
             coste = 59;

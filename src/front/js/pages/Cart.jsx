@@ -19,11 +19,11 @@ const getShippingType = (product) => {
     const peso = 10; // kg estimado
     const sumaDimensiones = largo + ladoMenor + profundidad;
 
-    if (peso > 60 || largo > 300 || sumaDimensiones > 500) {
-        return { tipo: "B", coste: 99, motivo: "Excede dimensiones máximas permitidas (500 cm)" };
+    if (peso > 60 || largo > 220 || sumaDimensiones > 350) {
+        return { tipo: "B", coste: 99, motivo: "Supera el lado mas largo de 220 cm o la suma de dimensiones de 350 cm" };
     }
     if (peso > 40 || largo > 175 || sumaDimensiones > 300) {
-        return { tipo: "A", coste: 59, motivo: "Excede altura o volumen permitido (300 cm)" };
+        return { tipo: "A", coste: 59, motivo: "Supera el lado mas largo de 175 cm o la suma de dimensiones de 300 cm" };
     }
     return { tipo: "normal", coste: null, motivo: null };
 };
@@ -352,9 +352,19 @@ export const Cart = () => {
                                                             <>
                                                                 <p className="d-none d-md-block text-warning mt-1" style={{ fontSize: "0.85rem" }}>
                                                                     Este producto requiere envío especial ({shippingInfo.coste} EUR)<br />
-                                                                    Supera las dimensiones maximas del envío estandar:<br />
-                                                                    - Lado mas largo &gt; 175 cm, o<br />
-                                                                    - Suma de dimensiones &gt; 300 cm.
+                                                                    {shippingInfo.tipo === "B" ? (
+                                                                        <>
+                                                                            Supera las dimensiones del envío especial B:<br />
+                                                                            - Lado mas largo &gt; 220 cm, o<br />
+                                                                            - Suma de dimensiones &gt; 350 cm.
+                                                                        </>
+                                                                    ) : (
+                                                                        <>
+                                                                            Supera las dimensiones del envío especial A:<br />
+                                                                            - Lado mas largo &gt; 175 cm, o<br />
+                                                                            - Suma de dimensiones &gt; 300 cm.
+                                                                        </>
+                                                                    )}
                                                                 </p>
 
                                                                 <span
@@ -365,9 +375,11 @@ export const Cart = () => {
                                                                     onClick={() =>
                                                                         alert(
                                                                             `Este producto requiere envío especial (${shippingInfo.coste} EUR).\n\n` +
-                                                                            `Se aplica cuando:\n` +
-                                                                            `- El lado mas largo supera los 175 cm,\n` +
-                                                                            `- O la suma de dimensiones supera los 300 cm.\n\n` +
+                                                                            (
+                                                                                shippingInfo.tipo === "B"
+                                                                                    ? `Se aplica cuando:\n- El lado mas largo supera los 220 cm,\n- O la suma de dimensiones supera los 350 cm.\n\n`
+                                                                                    : `Se aplica cuando:\n- El lado mas largo supera los 175 cm,\n- O la suma de dimensiones supera los 300 cm.\n\n`
+                                                                            ) +
                                                                             `Por este motivo tiene una tarifa especial de transporte.`
                                                                         )
                                                                     }
