@@ -3904,6 +3904,9 @@ def handle_order(order_id):
             return jsonify({"message": "An error occurred while updating the order.", "error": str(e)}), 500
 
     if request.method == 'DELETE':
+        if not current_user.get("is_admin"):
+            return jsonify({"message": "Access forbidden: Admins only"}), 403
+
         try:
             db.session.delete(order)
             db.session.commit()
@@ -4120,6 +4123,9 @@ def handle_order_detail(detail_id):
         return response, 200
 
     if request.method == 'DELETE':
+        if not current_user.get("is_admin"):
+            return jsonify({"message": "Access forbidden: Admins only"}), 403
+
         try:
             db.session.delete(detail)
             db.session.commit()
