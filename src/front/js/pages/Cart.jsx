@@ -13,15 +13,17 @@ import { Helmet } from "react-helmet-async";
 const getShippingType = (product) => {
     const alto = parseFloat(product.alto);
     const ancho = parseFloat(product.ancho);
+    const largo = Math.max(alto, ancho);
+    const ladoMenor = Math.min(alto, ancho);
     const profundidad = 4; // cm
     const peso = 10; // kg estimado
-    const sumaDimensiones = alto + ancho + profundidad;
+    const sumaDimensiones = largo + ladoMenor + profundidad;
 
-    if (peso > 60 || sumaDimensiones > 500) {
+    if (peso > 60 || largo > 300 || sumaDimensiones > 500) {
         return { tipo: "B", coste: 99, motivo: "Excede dimensiones máximas permitidas (500 cm)" };
     }
-    if (peso > 40 || alto > 175 || sumaDimensiones > 300) {
-        return { tipo: "A", coste: 49, motivo: "Excede altura o volumen permitido (300 cm)" };
+    if (peso > 40 || largo > 175 || sumaDimensiones > 300) {
+        return { tipo: "A", coste: 59, motivo: "Excede altura o volumen permitido (300 cm)" };
     }
     return { tipo: "normal", coste: null, motivo: null };
 };

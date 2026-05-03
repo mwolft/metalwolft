@@ -1343,12 +1343,12 @@ def _finalize_order_from_checkout_quote(user, checkout_quote, customer_snapshot,
     pdf.drawString(50, totals_y_position - 120, f"TOTAL A PAGAR: {total:.2f} €")
 
     pdf.setFont("Helvetica", 10)
-    if new_order.shipping_cost == 49:
-        envio_text = "Tarifa A (49 €)"
+    if new_order.shipping_cost == 59:
+        envio_text = "Tarifa A (59 €)"
     elif shipping_cost == 99:
         envio_text = "Tarifa B (99 €)"
-    elif shipping_cost == 17:
-        envio_text = "Estándar (17 €)"
+    elif shipping_cost == 21:
+        envio_text = "Estándar (21 €)"
     else:
         envio_text = "Gratuito"
 
@@ -3771,12 +3771,12 @@ def handle_orders():
 
                 # Información adicional
                 pdf.setFont("Helvetica", 10)
-                if new_order.shipping_cost == 49:
-                    envio_text = "Tarifa A (49 €)"
+                if new_order.shipping_cost == 59:
+                    envio_text = "Tarifa A (59 €)"
                 elif shipping_cost == 99:
                     envio_text = "Tarifa B (99 €)"
-                elif shipping_cost == 17:
-                    envio_text = "Estándar (17 €)"
+                elif shipping_cost == 21:
+                    envio_text = "Estándar (21 €)"
                 else:
                     envio_text = "Gratuito"
 

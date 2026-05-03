@@ -73,7 +73,7 @@ const buildPriceQuote = ({ rawHeight, rawWidth, product }) => {
 
     const base = product.precio_rebajado || product.precio;
     const area = (h * w) / 10000;
-    const basePrice = 80;
+    const basePrice = 95;
     let price = area * base;
     const multiplier =
         area >= 0.9

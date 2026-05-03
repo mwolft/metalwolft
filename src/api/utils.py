@@ -64,7 +64,7 @@ def calcular_precio_reja(alto_cm, ancho_cm, precio_m2):
     if alto < 30 or ancho < 30 or alto > 250 or ancho > 250 or alto + ancho > 400:
         raise ValueError("Dimensiones fuera de rango permitido")
 
-    base_price = 80
+    base_price = 95
     if area >= 0.9:
         multiplier = 1
     elif area >= 0.8:

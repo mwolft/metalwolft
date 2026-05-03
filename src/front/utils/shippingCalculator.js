@@ -1,4 +1,4 @@
-export const calcularEnvio = (cart, threshold = 150) => {
+﻿export const calcularEnvio = (cart, threshold = 150) => {
     let subtotal = 0;
     let tipoEnvioFinal = "normal";
     let costeFinal = 0;
@@ -14,7 +14,7 @@ export const calcularEnvio = (cart, threshold = 150) => {
         let tipo = "normal";
         let coste = 0;
 
-        // ----------- NORMA B (99 €) -----------
+        // ----------- NORMA B (99 â‚¬) -----------
         if (
             peso > 60 ||
             largo > 300 ||
@@ -24,7 +24,7 @@ export const calcularEnvio = (cart, threshold = 150) => {
             coste = 99;
         }
 
-        // ----------- NORMA A (49 €) -----------
+        // ----------- NORMA A (59 €) -----------
         else if (
             peso > 40 ||
             largo > 175 ||
@@ -32,7 +32,7 @@ export const calcularEnvio = (cart, threshold = 150) => {
             largo >= 315
         ) {
             tipo = "A";
-            coste = 49;
+            coste = 59;
         }
 
         subtotal += parseFloat(product.precio_total || 0) * (product.quantity || 1);
@@ -42,7 +42,7 @@ export const calcularEnvio = (cart, threshold = 150) => {
             costeFinal = Math.max(costeFinal, 99);
         } else if (tipo === "A" && tipoEnvioFinal !== "B") {
             tipoEnvioFinal = "A";
-            costeFinal = Math.max(costeFinal, 49);
+            costeFinal = Math.max(costeFinal, 59);
         }
 
         return {
@@ -58,7 +58,7 @@ export const calcularEnvio = (cart, threshold = 150) => {
     } else if (tipoEnvioFinal !== "normal") {
         totalShipping = costeFinal;
     } else {
-        totalShipping = 17;
+        totalShipping = 21;
     }
 
     return {
