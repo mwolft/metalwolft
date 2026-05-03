@@ -161,7 +161,6 @@ def prerender_io():
         '/robots.txt',
         '/favicon.ico',
         '/_debug_build_files',
-        '/db-check'
     ]
 
     # Excluir rutas API o estáticos
@@ -229,15 +228,6 @@ def debug_build_files():
 
 
 # 15) Endpoints auxiliares
-@app.route('/db-check', methods=['GET'])
-def db_check():
-    try:
-        result = db.session.execute("SELECT 1").fetchall()
-        return {"message": "Database connection successful", "result": [dict(row) for row in result]}, 200
-    except Exception as e:
-        current_app.logger.error(f"Database connection error: {e}")
-        return {"error": "Database connection failed", "details": str(e)}, 500
-
 @app.route('/sitemap.xml')
 def serve_sitemap():
     return send_from_directory(
