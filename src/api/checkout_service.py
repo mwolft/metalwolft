@@ -59,10 +59,10 @@ def _calculate_shipping_type(alto, ancho):
     peso = 10
     suma_dimensiones = largo + min(alto, ancho) + profundidad
 
-    if peso > 60 or largo > 300 or suma_dimensiones > 500:
+    if peso > 60 or largo > 220 or suma_dimensiones > 350:
         return "B", SPECIAL_SHIPPING_B_COST
 
-    if peso > 40 or largo > 175 or suma_dimensiones > 300 or largo >= 315:
+    if peso > 40 or largo > 175 or suma_dimensiones > 300:
         return "A", SPECIAL_SHIPPING_A_COST
 
     return "normal", 0.0
