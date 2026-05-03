@@ -1,4 +1,4 @@
-import React, { useContext, useEffect, useState } from "react";
+import React, { useContext, useEffect, useRef, useState } from "react";
 import Container from "react-bootstrap/Container";
 import Nav from "react-bootstrap/Nav";
 import Navbar from "react-bootstrap/Navbar";
@@ -13,6 +13,10 @@ export const MainNavbar = () => {
     const [expanded, setExpanded] = useState(false);
     const [catalogOpen, setCatalogOpen] = useState(false);
     const [isDesktopCatalog, setIsDesktopCatalog] = useState(false);
+    const mobileTouchStartYRef = useRef(null);
+    const mobileTouchCurrentYRef = useRef(null);
+    const mobileTouchStartXRef = useRef(null);
+    const mobileTouchCurrentXRef = useRef(null);
     const navigate = useNavigate();
     const isAdminUser = Boolean(store.isAdmin || store.currentUser?.is_admin);
 
@@ -53,16 +57,28 @@ export const MainNavbar = () => {
     }, [expanded]);
 
     const displayName = (() => {
-        const fn = store.currentUser?.firstname?.trim();
-        if (fn) return fn;
+        const firstname = store.currentUser?.firstname?.trim();
+        if (firstname) return firstname;
         const emailUser = store.currentUser?.email?.split("@")?.[0];
         return emailUser || "Usuario";
     })();
 
-    const handleLogout = () => {
-        actions.setIsLoged(false);
+    const resetMobileTouchGesture = () => {
+        mobileTouchStartYRef.current = null;
+        mobileTouchCurrentYRef.current = null;
+        mobileTouchStartXRef.current = null;
+        mobileTouchCurrentXRef.current = null;
+    };
+
+    const closeMenus = () => {
         setExpanded(false);
         setCatalogOpen(false);
+        resetMobileTouchGesture();
+    };
+
+    const handleLogout = () => {
+        actions.setIsLoged(false);
+        closeMenus();
         navigate("/");
     };
 
@@ -71,14 +87,14 @@ export const MainNavbar = () => {
             const nextExpanded = !prevExpanded;
             if (!nextExpanded) {
                 setCatalogOpen(false);
+                resetMobileTouchGesture();
             }
             return nextExpanded;
         });
     };
 
     const handleSelect = () => {
-        setExpanded(false);
-        setCatalogOpen(false);
+        closeMenus();
     };
 
     const handleFavoritesClick = () => {
@@ -90,15 +106,13 @@ export const MainNavbar = () => {
     };
 
     const handleLoginClick = () => {
-        setExpanded(false);
-        setCatalogOpen(false);
+        closeMenus();
         navigate("/login");
     };
 
     const handleMobileFavoritesClick = () => {
         handleFavoritesClick();
-        setExpanded(false);
-        setCatalogOpen(false);
+        closeMenus();
     };
 
     const handleCatalogToggle = (nextShow) => {
@@ -127,6 +141,53 @@ export const MainNavbar = () => {
         if (isDesktopCatalog && !event.currentTarget.contains(event.relatedTarget)) {
             setCatalogOpen(false);
         }
+    };
+
+    const handleMobileMenuTouchStart = (event) => {
+        if (isDesktopCatalog || !event.touches?.length) return;
+
+        const touch = event.touches[0];
+        mobileTouchStartYRef.current = touch.clientY;
+        mobileTouchCurrentYRef.current = touch.clientY;
+        mobileTouchStartXRef.current = touch.clientX;
+        mobileTouchCurrentXRef.current = touch.clientX;
+    };
+
+    const handleMobileMenuTouchMove = (event) => {
+        if (isDesktopCatalog || !event.touches?.length) return;
+
+        const touch = event.touches[0];
+        mobileTouchCurrentYRef.current = touch.clientY;
+        mobileTouchCurrentXRef.current = touch.clientX;
+    };
+
+    const handleMobileMenuTouchEnd = () => {
+        if (isDesktopCatalog) return;
+
+        const startY = mobileTouchStartYRef.current;
+        const currentY = mobileTouchCurrentYRef.current;
+        const startX = mobileTouchStartXRef.current;
+        const currentX = mobileTouchCurrentXRef.current;
+
+        if (
+            typeof startY !== "number" ||
+            typeof currentY !== "number" ||
+            typeof startX !== "number" ||
+            typeof currentX !== "number"
+        ) {
+            resetMobileTouchGesture();
+            return;
+        }
+
+        const deltaY = currentY - startY;
+        const deltaX = Math.abs(currentX - startX);
+        const isIntentionalSwipeUp = deltaY <= -72 && deltaX <= 48;
+
+        if (isIntentionalSwipeUp) {
+            closeMenus();
+        }
+
+        resetMobileTouchGesture();
     };
 
     const productMenuGroups = [
@@ -169,11 +230,11 @@ export const MainNavbar = () => {
                     aria-label="Más información sobre envíos"
                     onClick={() =>
                         alert(
-                            `Información sobre envíos especiales.\n\n` +
-                            `Se aplica una tarifa especial cuando:\n` +
-                            `- El lado más largo supera los 175 cm, o\n` +
-                            `- La suma de las dimensiones (alto + ancho + fondo) supera los 300 cm.\n\n` +
-                            `Los productos que cumplen estas condiciones tendrán un coste de envío especial.`
+                            "Información sobre envíos especiales.\n\n" +
+                            "Se aplica una tarifa especial cuando:\n" +
+                            "- El lado más largo supera los 175 cm, o\n" +
+                            "- La suma de las dimensiones (alto + ancho + fondo) supera los 300 cm.\n\n" +
+                            "Los productos que cumplen estas condiciones tendrán un coste de envío especial."
                         )
                     }
                 >
@@ -226,19 +287,13 @@ export const MainNavbar = () => {
                         />
                     </div>
 
-                    <Navbar.Collapse id="basic-navbar-nav" className="navbar-collapse-shell">
-                        <div className="navbar-mobile-panel-top d-lg-none">
-                            <span className="navbar-mobile-panel-title">Menú</span>
-                            <button
-                                type="button"
-                                className="navbar-mobile-close-button"
-                                onClick={handleSelect}
-                                aria-label="Cerrar menú"
-                            >
-                                <i className="fa-solid fa-xmark" aria-hidden="true"></i>
-                            </button>
-                        </div>
-
+                    <Navbar.Collapse
+                        id="basic-navbar-nav"
+                        className="navbar-collapse-shell"
+                        onTouchStart={handleMobileMenuTouchStart}
+                        onTouchMove={handleMobileMenuTouchMove}
+                        onTouchEnd={handleMobileMenuTouchEnd}
+                    >
                         <Nav className="navbar-primary-nav mx-auto" onSelect={handleSelect}>
                             <Nav.Link as={Link} to="/" onClick={handleSelect}>
                                 <span className="d-lg-none">
@@ -442,6 +497,17 @@ export const MainNavbar = () => {
                                         </span>
                                     </Nav.Link>
                                 </div>
+                            </div>
+
+                            <div className="navbar-mobile-close-row">
+                                <button
+                                    type="button"
+                                    className="navbar-mobile-close-button"
+                                    onClick={handleSelect}
+                                    aria-label="Cerrar menú"
+                                >
+                                    <i className="fa-solid fa-xmark" aria-hidden="true"></i>
+                                </button>
                             </div>
                         </Nav>
 
