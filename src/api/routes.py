@@ -4538,28 +4538,46 @@ def handle_cart():
             response.headers['Access-Control-Allow-Origin'] = '*'
             response.headers['Access-Control-Expose-Headers'] = 'Authorization'
             return response, 200
-        except Exception as e:
-            response = jsonify({"message": str(e)})
+        except Exception:
+            logger.exception("Error retrieving cart for user %s", current_user.get('user_id'))
+            response = jsonify({"message": "Internal server error"})
             response.headers['Access-Control-Allow-Origin'] = '*'
             response.headers['Access-Control-Expose-Headers'] = 'Authorization'
             return response, 500
     if request.method == 'POST':
-        data = request.get_json()
+        data = request.get_json() or {}
         product_id = data.get('product_id')
 
         if not product_id:
             return jsonify({"message": "Product ID is required"}), 400
 
         try:
+            quantity = int(data.get('quantity', 1))
+        except (TypeError, ValueError):
+            return jsonify({"message": "La cantidad debe ser al menos 1"}), 400
+
+        if quantity < 1:
+            return jsonify({"message": "La cantidad debe ser al menos 1"}), 400
+
+        try:
+            product = Products.query.get(product_id)
+            if not product:
+                return jsonify({"message": "Producto no encontrado"}), 404
+
+            alto = data.get('alto')
+            ancho = data.get('ancho')
+            precio_m2 = product.precio_rebajado if product.precio_rebajado else product.precio
+            recalculated_total = calcular_precio_reja(alto, ancho, precio_m2)
+
             new_cart_item = Cart(
                 usuario_id=current_user['user_id'],
                 producto_id=product_id,
-                alto=data.get('alto'),
-                ancho=data.get('ancho'),
+                alto=alto,
+                ancho=ancho,
                 anclaje=data.get('anclaje'),
                 color=data.get('color'),
-                precio_total=data.get('precio_total'),
-                quantity=data.get('quantity', 1),
+                precio_total=recalculated_total,
+                quantity=quantity,
                 added_at=datetime.now(timezone.utc)
             )
 
@@ -4575,16 +4593,20 @@ def handle_cart():
 
             return jsonify(updated_cart), 201
 
-        except Exception as e:
+        except ValueError as e:
             db.session.rollback()
-            return jsonify({"message": str(e)}), 500
+            return jsonify({"message": str(e)}), 400
+        except Exception:
+            db.session.rollback()
+            logger.exception("Error adding product %s to cart for user %s", product_id, current_user.get('user_id'))
+            return jsonify({"message": "Internal server error"}), 500
 
 
 @api.route('/cart/<int:product_id>', methods=['PUT'])
 @jwt_required()
 def update_cart_item(product_id):
     current_user = get_jwt_identity()
-    data = request.get_json()
+    data = request.get_json() or {}
 
     try:
         cart_item = Cart.query.filter_by(
@@ -4602,7 +4624,21 @@ def update_cart_item(product_id):
             response.headers['Access-Control-Expose-Headers'] = 'Authorization'
             return response, 404
 
-        cart_item.quantity = data.get('quantity', cart_item.quantity)
+        try:
+            quantity = int(data.get('quantity', cart_item.quantity))
+        except (TypeError, ValueError):
+            response = jsonify({"message": "La cantidad debe ser al menos 1"})
+            response.headers['Access-Control-Allow-Origin'] = '*'
+            response.headers['Access-Control-Expose-Headers'] = 'Authorization'
+            return response, 400
+
+        if quantity < 1:
+            response = jsonify({"message": "La cantidad debe ser al menos 1"})
+            response.headers['Access-Control-Allow-Origin'] = '*'
+            response.headers['Access-Control-Expose-Headers'] = 'Authorization'
+            return response, 400
+
+        cart_item.quantity = quantity
         db.session.commit()
 
         updated_cart_items = Cart.query.filter_by(usuario_id=current_user['user_id']).all()
@@ -4613,9 +4649,10 @@ def update_cart_item(product_id):
         response.headers['Access-Control-Expose-Headers'] = 'Authorization'
         return response, 200
 
-    except Exception as e:
+    except Exception:
         db.session.rollback()
-        response = jsonify({"message": f"Error al actualizar el carrito: {str(e)}"})
+        logger.exception("Error updating cart item %s for user %s", product_id, current_user.get('user_id'))
+        response = jsonify({"message": "Internal server error"})
         response.headers['Access-Control-Allow-Origin'] = '*'
         response.headers['Access-Control-Expose-Headers'] = 'Authorization'
         return response, 500
@@ -4626,7 +4663,7 @@ def update_cart_item(product_id):
 def remove_from_cart(product_id):
     current_user = get_jwt_identity()
     try:
-        data = request.get_json()  # Obtener las especificaciones del producto
+        data = request.get_json() or {}  # Obtener las especificaciones del producto
         cart_item = Cart.query.filter_by(
             usuario_id=current_user['user_id'],
             producto_id=product_id,
@@ -4643,9 +4680,10 @@ def remove_from_cart(product_id):
         updated_cart_items = Cart.query.filter_by(usuario_id=current_user['user_id']).all()
         updated_cart = [item.serialize() for item in updated_cart_items]
         return jsonify({"message": "Producto eliminado del carrito", "updated_cart": updated_cart}), 200
-    except Exception as e:
+    except Exception:
         db.session.rollback()
-        return jsonify({"message": str(e)}), 500
+        logger.exception("Error removing cart item %s for user %s", product_id, current_user.get('user_id'))
+        return jsonify({"message": "Internal server error"}), 500
 
 
 @api.route('/cart/clear', methods=['POST'])
@@ -4656,9 +4694,10 @@ def clear_cart():
         Cart.query.filter_by(usuario_id=current_user['user_id']).delete()
         db.session.commit()
         return jsonify({"message": "Carrito vaciado con éxito"}), 200
-    except Exception as e:
+    except Exception:
         db.session.rollback()
-        return jsonify({"message": f"Error al vaciar el carrito: {str(e)}"}), 500
+        logger.exception("Error clearing cart for user %s", current_user.get('user_id'))
+        return jsonify({"message": "Internal server error"}), 500
 
 
 @api.route('/admin/cart-reminders/<int:user_id>/send', methods=['POST'])
@@ -4816,7 +4855,7 @@ def update_me():
     try:
         db.session.commit()
         return jsonify({"message": "Profile updated"}), 200
-    except Exception as e:
+    except Exception:
         db.session.rollback()
-        print(f"Error en el servidor: {str(e)}") # Esto te dirá el error real en la terminal
-        return jsonify({"message": "Error interno", "error": str(e)}), 500
+        logger.exception("Error updating profile for user %s", user_id)
+        return jsonify({"message": "Error interno"}), 500
