@@ -2351,7 +2351,8 @@ def get_comments(post_id):
         response.headers['Access-Control-Expose-Headers'] = 'Authorization'
         return response, 200
     except Exception as e:
-        return jsonify({"message": "Error al obtener los comentarios", "error": str(e)}), 500
+        logger.exception("Error al obtener los comentarios")
+        return jsonify({"message": "Error al obtener los comentarios"}), 500
 
 
 @api.route('/posts/<int:post_id>/comments', methods=['POST'])
@@ -2381,7 +2382,8 @@ def add_comment(post_id):
         return response, 201
     except Exception as e:
         db.session.rollback()
-        return jsonify({"message": "Error al agregar el comentario", "error": str(e)}), 500
+        logger.exception("Error al agregar el comentario")
+        return jsonify({"message": "Error al agregar el comentario"}), 500
 
 
 @api.route('/posts', methods=['GET'])
@@ -2397,7 +2399,8 @@ def get_posts():
         response.headers['Access-Control-Allow-Origin'] = '*'
         return response, 200
     except Exception as e:
-        return jsonify({"message": "Error al obtener los posts", "error": str(e)}), 500
+        logger.exception("Error al obtener los posts")
+        return jsonify({"message": "Error al obtener los posts"}), 500
 
 
 @api.route('/posts/<int:post_id>', methods=['GET'])
@@ -2412,7 +2415,8 @@ def get_post(post_id):
             return response, 200
         return jsonify({"message": "Post no encontrado"}), 404
     except Exception as e:
-        return jsonify({"message": "Error al obtener el post", "error": str(e)}), 500
+        logger.exception("Error al obtener el post")
+        return jsonify({"message": "Error al obtener el post"}), 500
 
 
 @api.route('/posts', methods=['POST'])
@@ -2438,7 +2442,8 @@ def create_post():
         return response, 201
     except SQLAlchemyError as e:
         db.session.rollback()
-        return jsonify({"message": "Error al crear el post", "error": str(e)}), 500
+        logger.exception("Error al crear el post")
+        return jsonify({"message": "Error al crear el post"}), 500
 
 
 @api.route('/posts/<int:post_id>', methods=['PUT'])
@@ -2466,7 +2471,8 @@ def update_post(post_id):
         return response, 200
     except SQLAlchemyError as e:
         db.session.rollback()
-        return jsonify({"message": "Error al actualizar el post", "error": str(e)}), 500
+        logger.exception("Error al actualizar el post")
+        return jsonify({"message": "Error al actualizar el post"}), 500
 
 
 @api.route('/posts/<int:post_id>', methods=['DELETE'])
@@ -2489,7 +2495,8 @@ def delete_post(post_id):
         return response, 200
     except SQLAlchemyError as e:
         db.session.rollback()
-        return jsonify({"message": "Error al eliminar el post", "error": str(e)}), 500
+        logger.exception("Error al eliminar el post")
+        return jsonify({"message": "Error al eliminar el post"}), 500
 
 
 @api.route("/login", methods=["OPTIONS", "POST"])
@@ -2903,7 +2910,8 @@ def get_all_categories():
         return response, 200
     except SQLAlchemyError as e:
         db.session.rollback()
-        response = jsonify({"message": "Error retrieving categories", "error": str(e)})
+        logger.exception("Error retrieving categories")
+        response = jsonify({"message": "Error retrieving categories"})
         response.headers['Access-Control-Allow-Origin'] = '*'
         return response, 500
 
@@ -2978,7 +2986,8 @@ def get_subcategories(category_id):
         return response, 200
     except SQLAlchemyError as e:
         db.session.rollback()
-        response = jsonify({"message": "Error retrieving subcategories", "error": str(e)})
+        logger.exception("Error retrieving subcategories")
+        response = jsonify({"message": "Error retrieving subcategories"})
         response.headers['Access-Control-Allow-Origin'] = '*'
         response.headers['Access-Control-Expose-Headers'] = 'Authorization'
         return response, 500
@@ -3030,7 +3039,8 @@ def get_products():
         return response, 200
     except SQLAlchemyError as e:
         db.session.rollback()
-        response = jsonify({"message": "Error retrieving products", "error": str(e)})
+        logger.exception("Error retrieving products")
+        response = jsonify({"message": "Error retrieving products"})
         response.headers['Access-Control-Allow-Origin'] = '*'
         return response, 500
 
@@ -3067,7 +3077,8 @@ def create_product():
         return jsonify(new_product.serialize_with_images()), 201
     except SQLAlchemyError as e:
         db.session.rollback()
-        return jsonify({"message": "Error al crear el producto", "error": str(e)}), 500
+        logger.exception("Error al crear el producto")
+        return jsonify({"message": "Error al crear el producto"}), 500
 
 
 @api.route('/<string:category_slug>/<string:product_slug>', methods=['GET'])
@@ -3085,8 +3096,8 @@ def get_product_by_category_and_slug(category_slug, product_slug):
         response.headers['Access-Control-Expose-Headers'] = 'Authorization'
         return response, 200
     except Exception as e:
-        logger.error(f"Error al obtener el producto por categoría y slug: {str(e)}")
-    return jsonify({"message": "Error fetching product", "error": str(e)}), 500
+        logger.exception("Error al obtener el producto por categoría y slug")
+        return jsonify({"message": "Error fetching product"}), 500
 
 
 @api.route('/products/<int:product_id>', methods=['GET'])
@@ -3131,7 +3142,8 @@ def handle_product(product_id):
             return response, 200
         except SQLAlchemyError as e:
             db.session.rollback()
-            return jsonify({"message": "An error occurred while updating the product.", "error": str(e)}), 500
+            logger.exception("An error occurred while updating the product.")
+            return jsonify({"message": "An error occurred while updating the product."}), 500
     elif request.method == 'DELETE':
         if not current_user or not current_user.get("is_admin"):
             return jsonify({"message": "Access forbidden: Admins only"}), 403
@@ -3144,7 +3156,8 @@ def handle_product(product_id):
             return response, 200
         except SQLAlchemyError as e:
             db.session.rollback()
-            return jsonify({"message": "An error occurred while deleting the product.", "error": str(e)}), 500
+            logger.exception("An error occurred while deleting the product.")
+            return jsonify({"message": "An error occurred while deleting the product."}), 500
 
 
 @api.route('/products/<int:product_id>/images', methods=['POST'])
@@ -3171,7 +3184,8 @@ def add_product_images(product_id):
         return response, 201
     except SQLAlchemyError as e:
         db.session.rollback()
-        return jsonify({"message": "An error occurred while adding images.", "error": str(e)}), 500
+        logger.exception("An error occurred while adding images.")
+        return jsonify({"message": "An error occurred while adding images."}), 500
 
 
 @api.route('/product_images', methods=['GET'])

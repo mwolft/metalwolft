@@ -36,7 +36,8 @@ def forgot_password():
         return jsonify({"message": "Correo de recuperación enviado."}), 200
 
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        current_app.logger.exception("Error en forgot-password")
+        return jsonify({"error": "Internal server error"}), 500
 
 # Endpoint para restablecer contraseña
 @auth_bp.route('/reset-password', methods=['POST'])
@@ -69,4 +70,5 @@ def reset_password():
         return jsonify({"message": "Contraseña actualizada correctamente."}), 200
 
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        current_app.logger.exception("Error en reset-password")
+        return jsonify({"error": "Internal server error"}), 500

@@ -69,7 +69,8 @@ def contact():
         return jsonify({"message": "Mensaje enviado correctamente."}), 200
 
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        current_app.logger.exception("Error en contacto")
+        return jsonify({"error": "Internal server error"}), 500
     
 
 @event.listens_for(Orders, 'after_update')
@@ -305,4 +306,4 @@ def report_issue():
 
     except Exception as e:
         current_app.logger.error(f"❌ Error al enviar incidencia: {str(e)}")
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"error": "Internal server error"}), 500
