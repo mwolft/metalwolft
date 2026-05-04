@@ -113,12 +113,12 @@ def _group_invoice_lines(order_details: Sequence[Mapping[str, Any]]) -> list[lis
 
 
 def _shipping_label(shipping_cost: float) -> str:
-    if shipping_cost == 49:
-        return "Tarifa A (49 €)"
+    if shipping_cost == 59:
+        return "Tarifa A (59 €)"
     if shipping_cost == 99:
         return "Tarifa B (99 €)"
-    if shipping_cost == 17:
-        return "Estándar (17 €)"
+    if shipping_cost == 21:
+        return "Estándar (21 €)"
     return "Gratuito"
 
 
