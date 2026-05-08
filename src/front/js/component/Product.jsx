@@ -99,7 +99,7 @@ export const Product = ({ product }) => {
         const area = (h * w) / 10000;
         setCalculatedArea(area);
         let price = area * base;
-        const basePrice = 80;
+        const basePrice = 95;
         let multiplier = area >= 0.9 ? 1
             : area >= 0.8 ? 1.1
                 : area >= 0.7 ? 1.15

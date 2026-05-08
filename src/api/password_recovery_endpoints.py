@@ -7,21 +7,6 @@ import bcrypt
 
 auth_bp = Blueprint('auth_bp', __name__)
 
-@auth_bp.route('/test-email', methods=['GET'])
-def test_email():
-    try:
-        success = send_email(
-            subject="Correo de prueba",
-            recipients=["test@example.com"],
-            body="Este es un correo de prueba enviado desde Flask-Mail."
-        )
-        if success:
-            return jsonify({"message": "Correo enviado con éxito."}), 200
-        else:
-            return jsonify({"error": "No se pudo enviar el correo."}), 500
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
 
 # Endpoint para recuperar contraseña
 @auth_bp.route('/forgot-password', methods=['POST'])
@@ -51,7 +36,8 @@ def forgot_password():
         return jsonify({"message": "Correo de recuperación enviado."}), 200
 
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        current_app.logger.exception("Error en forgot-password")
+        return jsonify({"error": "Internal server error"}), 500
 
 # Endpoint para restablecer contraseña
 @auth_bp.route('/reset-password', methods=['POST'])
@@ -84,4 +70,5 @@ def reset_password():
         return jsonify({"message": "Contraseña actualizada correctamente."}), 200
 
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        current_app.logger.exception("Error en reset-password")
+        return jsonify({"error": "Internal server error"}), 500

@@ -69,7 +69,8 @@ def contact():
         return jsonify({"message": "Mensaje enviado correctamente."}), 200
 
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        current_app.logger.exception("Error en contacto")
+        return jsonify({"error": "Internal server error"}), 500
     
 
 @event.listens_for(Orders, 'after_update')
@@ -225,30 +226,6 @@ def enviar_correo_cambio_estado_o_entrega(mapper, connection, target: Orders):
             pass
 
 
-@email_bp.route('/test-change-order-status', methods=['POST'])
-def test_change_order_status():
-    try:
-        data = request.get_json()
-        order_id = data.get('order_id')
-        new_status = data.get('order_status')
-
-        if not order_id or not new_status:
-            return jsonify({"error": "Faltan datos: 'order_id' y 'order_status' son obligatorios."}), 400
-
-        order = Orders.query.get(order_id)
-        if not order:
-            return jsonify({"error": f"No se encontró el pedido con ID {order_id}."}), 404
-
-        order.order_status = new_status
-        db.session.commit()
-
-        return jsonify({"message": f"Estado del pedido {order_id} actualizado a '{new_status}'."}), 200
-
-    except Exception as e:
-        db.session.rollback()
-        return jsonify({"error": str(e)}), 500
-    
-    
 def send_order_status_email(user_email, order_status, locator):
     try:
         subject = f"Actualización de tu pedido ({locator})"
@@ -329,4 +306,4 @@ def report_issue():
 
     except Exception as e:
         current_app.logger.error(f"❌ Error al enviar incidencia: {str(e)}")
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"error": "Internal server error"}), 500

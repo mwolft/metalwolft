@@ -1343,12 +1343,12 @@ def _finalize_order_from_checkout_quote(user, checkout_quote, customer_snapshot,
     pdf.drawString(50, totals_y_position - 120, f"TOTAL A PAGAR: {total:.2f} €")
 
     pdf.setFont("Helvetica", 10)
-    if new_order.shipping_cost == 49:
-        envio_text = "Tarifa A (49 €)"
+    if new_order.shipping_cost == 59:
+        envio_text = "Tarifa A (59 €)"
     elif shipping_cost == 99:
         envio_text = "Tarifa B (99 €)"
-    elif shipping_cost == 17:
-        envio_text = "Estándar (17 €)"
+    elif shipping_cost == 21:
+        envio_text = "Estándar (21 €)"
     else:
         envio_text = "Gratuito"
 
@@ -2351,7 +2351,8 @@ def get_comments(post_id):
         response.headers['Access-Control-Expose-Headers'] = 'Authorization'
         return response, 200
     except Exception as e:
-        return jsonify({"message": "Error al obtener los comentarios", "error": str(e)}), 500
+        logger.exception("Error al obtener los comentarios")
+        return jsonify({"message": "Error al obtener los comentarios"}), 500
 
 
 @api.route('/posts/<int:post_id>/comments', methods=['POST'])
@@ -2381,7 +2382,8 @@ def add_comment(post_id):
         return response, 201
     except Exception as e:
         db.session.rollback()
-        return jsonify({"message": "Error al agregar el comentario", "error": str(e)}), 500
+        logger.exception("Error al agregar el comentario")
+        return jsonify({"message": "Error al agregar el comentario"}), 500
 
 
 @api.route('/posts', methods=['GET'])
@@ -2397,7 +2399,8 @@ def get_posts():
         response.headers['Access-Control-Allow-Origin'] = '*'
         return response, 200
     except Exception as e:
-        return jsonify({"message": "Error al obtener los posts", "error": str(e)}), 500
+        logger.exception("Error al obtener los posts")
+        return jsonify({"message": "Error al obtener los posts"}), 500
 
 
 @api.route('/posts/<int:post_id>', methods=['GET'])
@@ -2412,7 +2415,8 @@ def get_post(post_id):
             return response, 200
         return jsonify({"message": "Post no encontrado"}), 404
     except Exception as e:
-        return jsonify({"message": "Error al obtener el post", "error": str(e)}), 500
+        logger.exception("Error al obtener el post")
+        return jsonify({"message": "Error al obtener el post"}), 500
 
 
 @api.route('/posts', methods=['POST'])
@@ -2438,7 +2442,8 @@ def create_post():
         return response, 201
     except SQLAlchemyError as e:
         db.session.rollback()
-        return jsonify({"message": "Error al crear el post", "error": str(e)}), 500
+        logger.exception("Error al crear el post")
+        return jsonify({"message": "Error al crear el post"}), 500
 
 
 @api.route('/posts/<int:post_id>', methods=['PUT'])
@@ -2466,7 +2471,8 @@ def update_post(post_id):
         return response, 200
     except SQLAlchemyError as e:
         db.session.rollback()
-        return jsonify({"message": "Error al actualizar el post", "error": str(e)}), 500
+        logger.exception("Error al actualizar el post")
+        return jsonify({"message": "Error al actualizar el post"}), 500
 
 
 @api.route('/posts/<int:post_id>', methods=['DELETE'])
@@ -2489,7 +2495,8 @@ def delete_post(post_id):
         return response, 200
     except SQLAlchemyError as e:
         db.session.rollback()
-        return jsonify({"message": "Error al eliminar el post", "error": str(e)}), 500
+        logger.exception("Error al eliminar el post")
+        return jsonify({"message": "Error al eliminar el post"}), 500
 
 
 @api.route("/login", methods=["OPTIONS", "POST"])
@@ -2903,7 +2910,8 @@ def get_all_categories():
         return response, 200
     except SQLAlchemyError as e:
         db.session.rollback()
-        response = jsonify({"message": "Error retrieving categories", "error": str(e)})
+        logger.exception("Error retrieving categories")
+        response = jsonify({"message": "Error retrieving categories"})
         response.headers['Access-Control-Allow-Origin'] = '*'
         return response, 500
 
@@ -2978,7 +2986,8 @@ def get_subcategories(category_id):
         return response, 200
     except SQLAlchemyError as e:
         db.session.rollback()
-        response = jsonify({"message": "Error retrieving subcategories", "error": str(e)})
+        logger.exception("Error retrieving subcategories")
+        response = jsonify({"message": "Error retrieving subcategories"})
         response.headers['Access-Control-Allow-Origin'] = '*'
         response.headers['Access-Control-Expose-Headers'] = 'Authorization'
         return response, 500
@@ -3030,7 +3039,8 @@ def get_products():
         return response, 200
     except SQLAlchemyError as e:
         db.session.rollback()
-        response = jsonify({"message": "Error retrieving products", "error": str(e)})
+        logger.exception("Error retrieving products")
+        response = jsonify({"message": "Error retrieving products"})
         response.headers['Access-Control-Allow-Origin'] = '*'
         return response, 500
 
@@ -3067,7 +3077,8 @@ def create_product():
         return jsonify(new_product.serialize_with_images()), 201
     except SQLAlchemyError as e:
         db.session.rollback()
-        return jsonify({"message": "Error al crear el producto", "error": str(e)}), 500
+        logger.exception("Error al crear el producto")
+        return jsonify({"message": "Error al crear el producto"}), 500
 
 
 @api.route('/<string:category_slug>/<string:product_slug>', methods=['GET'])
@@ -3085,8 +3096,8 @@ def get_product_by_category_and_slug(category_slug, product_slug):
         response.headers['Access-Control-Expose-Headers'] = 'Authorization'
         return response, 200
     except Exception as e:
-        logger.error(f"Error al obtener el producto por categoría y slug: {str(e)}")
-    return jsonify({"message": "Error fetching product", "error": str(e)}), 500
+        logger.exception("Error al obtener el producto por categoría y slug")
+        return jsonify({"message": "Error fetching product"}), 500
 
 
 @api.route('/products/<int:product_id>', methods=['GET'])
@@ -3131,7 +3142,8 @@ def handle_product(product_id):
             return response, 200
         except SQLAlchemyError as e:
             db.session.rollback()
-            return jsonify({"message": "An error occurred while updating the product.", "error": str(e)}), 500
+            logger.exception("An error occurred while updating the product.")
+            return jsonify({"message": "An error occurred while updating the product."}), 500
     elif request.method == 'DELETE':
         if not current_user or not current_user.get("is_admin"):
             return jsonify({"message": "Access forbidden: Admins only"}), 403
@@ -3144,7 +3156,8 @@ def handle_product(product_id):
             return response, 200
         except SQLAlchemyError as e:
             db.session.rollback()
-            return jsonify({"message": "An error occurred while deleting the product.", "error": str(e)}), 500
+            logger.exception("An error occurred while deleting the product.")
+            return jsonify({"message": "An error occurred while deleting the product."}), 500
 
 
 @api.route('/products/<int:product_id>/images', methods=['POST'])
@@ -3171,7 +3184,8 @@ def add_product_images(product_id):
         return response, 201
     except SQLAlchemyError as e:
         db.session.rollback()
-        return jsonify({"message": "An error occurred while adding images.", "error": str(e)}), 500
+        logger.exception("An error occurred while adding images.")
+        return jsonify({"message": "An error occurred while adding images."}), 500
 
 
 @api.route('/product_images', methods=['GET'])
@@ -3771,12 +3785,12 @@ def handle_orders():
 
                 # Información adicional
                 pdf.setFont("Helvetica", 10)
-                if new_order.shipping_cost == 49:
-                    envio_text = "Tarifa A (49 €)"
+                if new_order.shipping_cost == 59:
+                    envio_text = "Tarifa A (59 €)"
                 elif shipping_cost == 99:
                     envio_text = "Tarifa B (99 €)"
-                elif shipping_cost == 17:
-                    envio_text = "Estándar (17 €)"
+                elif shipping_cost == 21:
+                    envio_text = "Estándar (21 €)"
                 else:
                     envio_text = "Gratuito"
 
@@ -3904,6 +3918,9 @@ def handle_order(order_id):
             return jsonify({"message": "An error occurred while updating the order.", "error": str(e)}), 500
 
     if request.method == 'DELETE':
+        if not current_user.get("is_admin"):
+            return jsonify({"message": "Access forbidden: Admins only"}), 403
+
         try:
             db.session.delete(order)
             db.session.commit()
@@ -4120,6 +4137,9 @@ def handle_order_detail(detail_id):
         return response, 200
 
     if request.method == 'DELETE':
+        if not current_user.get("is_admin"):
+            return jsonify({"message": "Access forbidden: Admins only"}), 403
+
         try:
             db.session.delete(detail)
             db.session.commit()
@@ -4518,28 +4538,46 @@ def handle_cart():
             response.headers['Access-Control-Allow-Origin'] = '*'
             response.headers['Access-Control-Expose-Headers'] = 'Authorization'
             return response, 200
-        except Exception as e:
-            response = jsonify({"message": str(e)})
+        except Exception:
+            logger.exception("Error retrieving cart for user %s", current_user.get('user_id'))
+            response = jsonify({"message": "Internal server error"})
             response.headers['Access-Control-Allow-Origin'] = '*'
             response.headers['Access-Control-Expose-Headers'] = 'Authorization'
             return response, 500
     if request.method == 'POST':
-        data = request.get_json()
+        data = request.get_json() or {}
         product_id = data.get('product_id')
 
         if not product_id:
             return jsonify({"message": "Product ID is required"}), 400
 
         try:
+            quantity = int(data.get('quantity', 1))
+        except (TypeError, ValueError):
+            return jsonify({"message": "La cantidad debe ser al menos 1"}), 400
+
+        if quantity < 1:
+            return jsonify({"message": "La cantidad debe ser al menos 1"}), 400
+
+        try:
+            product = Products.query.get(product_id)
+            if not product:
+                return jsonify({"message": "Producto no encontrado"}), 404
+
+            alto = data.get('alto')
+            ancho = data.get('ancho')
+            precio_m2 = product.precio_rebajado if product.precio_rebajado else product.precio
+            recalculated_total = calcular_precio_reja(alto, ancho, precio_m2)
+
             new_cart_item = Cart(
                 usuario_id=current_user['user_id'],
                 producto_id=product_id,
-                alto=data.get('alto'),
-                ancho=data.get('ancho'),
+                alto=alto,
+                ancho=ancho,
                 anclaje=data.get('anclaje'),
                 color=data.get('color'),
-                precio_total=data.get('precio_total'),
-                quantity=data.get('quantity', 1),
+                precio_total=recalculated_total,
+                quantity=quantity,
                 added_at=datetime.now(timezone.utc)
             )
 
@@ -4555,16 +4593,20 @@ def handle_cart():
 
             return jsonify(updated_cart), 201
 
-        except Exception as e:
+        except ValueError as e:
             db.session.rollback()
-            return jsonify({"message": str(e)}), 500
+            return jsonify({"message": str(e)}), 400
+        except Exception:
+            db.session.rollback()
+            logger.exception("Error adding product %s to cart for user %s", product_id, current_user.get('user_id'))
+            return jsonify({"message": "Internal server error"}), 500
 
 
 @api.route('/cart/<int:product_id>', methods=['PUT'])
 @jwt_required()
 def update_cart_item(product_id):
     current_user = get_jwt_identity()
-    data = request.get_json()
+    data = request.get_json() or {}
 
     try:
         cart_item = Cart.query.filter_by(
@@ -4582,7 +4624,21 @@ def update_cart_item(product_id):
             response.headers['Access-Control-Expose-Headers'] = 'Authorization'
             return response, 404
 
-        cart_item.quantity = data.get('quantity', cart_item.quantity)
+        try:
+            quantity = int(data.get('quantity', cart_item.quantity))
+        except (TypeError, ValueError):
+            response = jsonify({"message": "La cantidad debe ser al menos 1"})
+            response.headers['Access-Control-Allow-Origin'] = '*'
+            response.headers['Access-Control-Expose-Headers'] = 'Authorization'
+            return response, 400
+
+        if quantity < 1:
+            response = jsonify({"message": "La cantidad debe ser al menos 1"})
+            response.headers['Access-Control-Allow-Origin'] = '*'
+            response.headers['Access-Control-Expose-Headers'] = 'Authorization'
+            return response, 400
+
+        cart_item.quantity = quantity
         db.session.commit()
 
         updated_cart_items = Cart.query.filter_by(usuario_id=current_user['user_id']).all()
@@ -4593,9 +4649,10 @@ def update_cart_item(product_id):
         response.headers['Access-Control-Expose-Headers'] = 'Authorization'
         return response, 200
 
-    except Exception as e:
+    except Exception:
         db.session.rollback()
-        response = jsonify({"message": f"Error al actualizar el carrito: {str(e)}"})
+        logger.exception("Error updating cart item %s for user %s", product_id, current_user.get('user_id'))
+        response = jsonify({"message": "Internal server error"})
         response.headers['Access-Control-Allow-Origin'] = '*'
         response.headers['Access-Control-Expose-Headers'] = 'Authorization'
         return response, 500
@@ -4606,7 +4663,7 @@ def update_cart_item(product_id):
 def remove_from_cart(product_id):
     current_user = get_jwt_identity()
     try:
-        data = request.get_json()  # Obtener las especificaciones del producto
+        data = request.get_json() or {}  # Obtener las especificaciones del producto
         cart_item = Cart.query.filter_by(
             usuario_id=current_user['user_id'],
             producto_id=product_id,
@@ -4623,9 +4680,10 @@ def remove_from_cart(product_id):
         updated_cart_items = Cart.query.filter_by(usuario_id=current_user['user_id']).all()
         updated_cart = [item.serialize() for item in updated_cart_items]
         return jsonify({"message": "Producto eliminado del carrito", "updated_cart": updated_cart}), 200
-    except Exception as e:
+    except Exception:
         db.session.rollback()
-        return jsonify({"message": str(e)}), 500
+        logger.exception("Error removing cart item %s for user %s", product_id, current_user.get('user_id'))
+        return jsonify({"message": "Internal server error"}), 500
 
 
 @api.route('/cart/clear', methods=['POST'])
@@ -4636,9 +4694,10 @@ def clear_cart():
         Cart.query.filter_by(usuario_id=current_user['user_id']).delete()
         db.session.commit()
         return jsonify({"message": "Carrito vaciado con éxito"}), 200
-    except Exception as e:
+    except Exception:
         db.session.rollback()
-        return jsonify({"message": f"Error al vaciar el carrito: {str(e)}"}), 500
+        logger.exception("Error clearing cart for user %s", current_user.get('user_id'))
+        return jsonify({"message": "Internal server error"}), 500
 
 
 @api.route('/admin/cart-reminders/<int:user_id>/send', methods=['POST'])
@@ -4796,7 +4855,7 @@ def update_me():
     try:
         db.session.commit()
         return jsonify({"message": "Profile updated"}), 200
-    except Exception as e:
+    except Exception:
         db.session.rollback()
-        print(f"Error en el servidor: {str(e)}") # Esto te dirá el error real en la terminal
-        return jsonify({"message": "Error interno", "error": str(e)}), 500
+        logger.exception("Error updating profile for user %s", user_id)
+        return jsonify({"message": "Error interno"}), 500

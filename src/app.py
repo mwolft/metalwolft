@@ -9,7 +9,7 @@ from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 from datetime import timedelta
 from flask import Flask, jsonify, send_from_directory, request, current_app, redirect, abort
-from flask_migrate import Migrate, upgrade
+from flask_migrate import Migrate
 from flask_cors import CORS
 from flask_jwt_extended import JWTManager
 from flask_talisman import Talisman
@@ -161,8 +161,6 @@ def prerender_io():
         '/robots.txt',
         '/favicon.ico',
         '/_debug_build_files',
-        '/db-check',
-        '/run-migrations'
     ]
 
     # Excluir rutas API o estáticos
@@ -230,24 +228,6 @@ def debug_build_files():
 
 
 # 15) Endpoints auxiliares
-@app.route('/db-check', methods=['GET'])
-def db_check():
-    try:
-        result = db.session.execute("SELECT 1").fetchall()
-        return {"message": "Database connection successful", "result": [dict(row) for row in result]}, 200
-    except Exception as e:
-        current_app.logger.error(f"Database connection error: {e}")
-        return {"error": "Database connection failed", "details": str(e)}, 500
-
-@app.route('/run-migrations', methods=['GET'])
-def run_migrations():
-    try:
-        upgrade()
-        return {"message": "Migrations applied successfully"}, 200
-    except Exception as e:
-        return {"error": "Failed to apply migrations", "details": str(e)}, 500
-    
-
 @app.route('/sitemap.xml')
 def serve_sitemap():
     return send_from_directory(
