@@ -5,7 +5,6 @@
 
 .admin-panel-page {
   margin-top: 100px;
-  padding: 0 16px 35px;
 }
 
 .admin-panel-page,
@@ -19,6 +18,7 @@
 .admin-body .RaList-content {
   min-width: 0;
   max-width: 100%;
+  background-color: #FAFAFB;
 }
 
 .admin-loading-state {
@@ -34,7 +34,6 @@
   margin-bottom: 0 !important;
   color: #ffffff;
   text-align: center;
-  border-radius: 18px 18px 0 0;
 }
 
 .admin-title {
@@ -46,8 +45,7 @@
 }
 
 .admin-body {
-  background: #ffffff;
-  padding: 16px;
+  background-color: #FAFAFB;
   border-radius: 0 0 18px 18px;
   box-shadow: 0 20px 50px rgba(15, 23, 42, 0.08);
   overflow-x: hidden;
@@ -58,6 +56,8 @@
   flex-wrap: wrap;
   gap: 10px;
   margin-bottom: 14px;
+  margin-top: 14px;
+  padding-left: 14px;
 }
 
 .admin-resource-link {
@@ -411,6 +411,8 @@
   border-radius: 18px;
   background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
   padding: 16px;
+  margin-top: 50px;
+  margin-left: 10px;
 }
 
 .admin-order-details-calendar-header {
@@ -540,7 +542,6 @@
   }
 
   .admin-body {
-    padding: 12px;
     border-radius: 0 0 16px 16px;
   }
 
@@ -569,6 +570,7 @@
   .admin-order-details-layout {
     grid-template-columns: 1fr;
     gap: 14px;
+    background-color: #FAFAFB;
   }
 
   .admin-order-details-calendar-card {
