@@ -130,7 +130,7 @@ const OrderDetailsListTable = () => {
 };
 
 export const OrderDetailsList = (props) => (
-  <List {...props} className="admin-resource-list">
+  <List {...props} perPage={20} className="admin-resource-list">
     <OrderDetailsListTable />
   </List>
 );
