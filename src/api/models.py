@@ -458,6 +458,7 @@ class OrderDetails(db.Model):
             "precio_total": self.precio_total,
             "locator": self.order.locator if self.order else None,
             "invoice_number": self.order.invoice_number if self.order else None,
+            "estimated_delivery_at": self.order.estimated_delivery_at.isoformat() if self.order and self.order.estimated_delivery_at else None,
             "firstname": self.firstname,
             "lastname": self.lastname,
             "shipping_address": self.shipping_address,

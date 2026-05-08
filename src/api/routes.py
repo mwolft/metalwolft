@@ -4114,6 +4114,7 @@ def get_order_details():
     response.headers['Access-Control-Allow-Origin'] = '*'
     return response, 200
 
+
 @api.route('/orderdetails/<int:detail_id>', methods=['GET', 'DELETE'])
 @jwt_required()
 def handle_order_detail(detail_id):

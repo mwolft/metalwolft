@@ -5,7 +5,6 @@
 
 .admin-panel-page {
   margin-top: 100px;
-  padding: 0 16px 35px;
 }
 
 .admin-panel-page,
@@ -19,6 +18,7 @@
 .admin-body .RaList-content {
   min-width: 0;
   max-width: 100%;
+  background-color: #FAFAFB;
 }
 
 .admin-loading-state {
@@ -34,7 +34,6 @@
   margin-bottom: 0 !important;
   color: #ffffff;
   text-align: center;
-  border-radius: 18px 18px 0 0;
 }
 
 .admin-title {
@@ -46,8 +45,7 @@
 }
 
 .admin-body {
-  background: #ffffff;
-  padding: 16px;
+  background-color: #FAFAFB;
   border-radius: 0 0 18px 18px;
   box-shadow: 0 20px 50px rgba(15, 23, 42, 0.08);
   overflow-x: hidden;
@@ -58,6 +56,8 @@
   flex-wrap: wrap;
   gap: 10px;
   margin-bottom: 14px;
+  margin-top: 14px;
+  padding-left: 14px;
 }
 
 .admin-resource-link {
@@ -391,6 +391,146 @@
   margin-right: 6px !important;
 }
 
+.admin-order-details-layout {
+  display: grid;
+  grid-template-columns: 310px minmax(0, 1fr);
+  gap: 18px;
+  align-items: start;
+}
+
+.admin-order-details-table-panel {
+  min-width: 0;
+}
+
+.admin-order-details-calendar-panel {
+  min-width: 0;
+}
+
+.admin-order-details-calendar-card {
+  border: 1px solid #e2e8f0;
+  border-radius: 18px;
+  background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+  padding: 16px;
+  margin-top: 50px;
+  margin-left: 10px;
+}
+
+.admin-order-details-calendar-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.admin-order-details-calendar-eyebrow {
+  margin: 0 0 4px;
+  color: #64748b;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.admin-order-details-calendar-title {
+  margin: 0;
+  color: #0f172a;
+  font-size: 1.08rem;
+  font-weight: 700;
+  text-transform: capitalize;
+}
+
+.admin-order-details-calendar-weekdays {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.admin-order-details-calendar-weekdays span {
+  text-align: center;
+  color: #64748b;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.admin-order-details-calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.admin-order-details-calendar-day {
+  position: relative;
+  min-height: 42px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  background: #ffffff;
+  color: #94a3b8;
+  font-size: 0.88rem;
+  font-weight: 600;
+  padding: 0;
+  cursor: default;
+}
+
+.admin-order-details-calendar-day--empty {
+  border-color: transparent;
+  background: transparent;
+}
+
+.admin-order-details-calendar-day--active {
+  border-color: #fecdd3;
+  background: #fff1f3;
+  color: #be123c;
+  cursor: pointer;
+}
+
+.admin-order-details-calendar-day--selected {
+  border-color: #ff324d;
+  background: #ff324d;
+  color: #ffffff;
+}
+
+.admin-order-details-calendar-day:disabled {
+  opacity: 1;
+}
+
+.admin-order-details-calendar-count {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  min-width: 16px;
+  height: 16px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: #e11d48;
+  color: #ffffff;
+  font-size: 0.68rem;
+  font-weight: 700;
+  line-height: 1;
+  padding: 0 4px;
+}
+
+.admin-order-details-calendar-day--selected .admin-order-details-calendar-count {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.admin-order-details-calendar-help {
+  margin: 12px 0 0;
+  color: #64748b;
+  font-size: 0.84rem;
+  line-height: 1.45;
+}
+
+.admin-order-details-row--selected {
+  background: #fff7ed !important;
+}
+
 @media (max-width: 767px) {
   .admin-panel-page {
     margin-top: 92px;
@@ -402,7 +542,6 @@
   }
 
   .admin-body {
-    padding: 12px;
     border-radius: 0 0 16px 16px;
   }
 
@@ -426,5 +565,23 @@
 
   .admin-native-scroll {
     max-width: calc(100vw - 24px);
+  }
+
+  .admin-order-details-layout {
+    grid-template-columns: 1fr;
+    gap: 14px;
+    background-color: #FAFAFB;
+  }
+
+  .admin-order-details-calendar-card {
+    padding: 14px;
+  }
+
+  .admin-order-details-calendar-header {
+    flex-direction: column;
+  }
+
+  .admin-order-details-calendar-day {
+    min-height: 38px;
   }
 }
