@@ -4106,6 +4106,16 @@ def get_order_details():
         query = query.offset(start).limit(end - start)
 
     order_details = query.all()
+    for detail in order_details[:5]:
+        logger.info(
+            "ORDERDETAILS_DIAG detail_id=%s order_id=%s has_order=%s locator=%s estimated_delivery_at=%s estimated_delivery_note=%s",
+            detail.id,
+            detail.order_id,
+            bool(detail.order),
+            detail.order.locator if detail.order else None,
+            detail.order.estimated_delivery_at if detail.order else None,
+            detail.order.estimated_delivery_note if detail.order else None,
+        )
     results = [detail.serialize() for detail in order_details]
 
     response = jsonify(results)
