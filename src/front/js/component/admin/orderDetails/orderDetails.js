@@ -29,6 +29,19 @@ const getOrderDetailRecords = (data, ids) => {
   return Object.values(data || {});
 };
 
+const formatEstimatedDeliveryDate = (value) => {
+  if (!value) {
+    return "-";
+  }
+
+  const [year, month, day] = String(value).split("-");
+  if (year && month && day) {
+    return `${day}/${month}/${year}`;
+  }
+
+  return value;
+};
+
 const OrderDetailsListTable = () => {
   const { data, ids, isLoading, isPending } = useListContext();
   const records = getOrderDetailRecords(data, ids);
@@ -49,6 +62,7 @@ const OrderDetailsListTable = () => {
             <th>Nº</th>
             <th>Producto</th>
             <th>Cantidad</th>
+            <th>FECHA ENTREGA</th>
             <th>Alto</th>
             <th>Ancho</th>
             <th>Anclaje</th>
@@ -83,6 +97,7 @@ const OrderDetailsListTable = () => {
                   </ReferenceField>
                 </td>
                 <td><NumberField source="quantity" /></td>
+                <td>{formatEstimatedDeliveryDate(record.estimated_delivery_at)}</td>
                 <td><NumberField source="alto" /></td>
                 <td><NumberField source="ancho" /></td>
                 <td><TextField source="anclaje" /></td>
