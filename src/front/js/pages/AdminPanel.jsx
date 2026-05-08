@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
-import { Admin, Layout, Resource } from "react-admin";
-import { NavLink, useLocation, useNavigate } from "react-router-dom";
-import { FaFileInvoice, FaShoppingCart, FaUser } from "react-icons/fa";
+import { Admin, CustomRoutes, Layout, Resource } from "react-admin";
+import { NavLink, Route, useLocation, useNavigate } from "react-router-dom";
+import { FaCalendarAlt, FaFileInvoice, FaShoppingCart, FaUser } from "react-icons/fa";
 import { TbListDetails } from "react-icons/tb";
 import dataProvider from "../../../../src/dataProvider.js";
 import { authProvider } from "../authProvider.js";
@@ -13,6 +13,7 @@ import {
   OrderDetailsCreate,
 } from "../component/admin/orderDetails/orderDetails.js";
 import { InvoiceList, InvoiceCreate, InvoiceEdit } from "../component/admin/invoices/invoices.js";
+import DeliveryCalendarPage from "../component/admin/deliveryCalendar/DeliveryCalendarPage.jsx";
 import "../../styles/admin-panel.css";
 
 const EmptyAdminMenu = () => null;
@@ -25,6 +26,7 @@ const AdminShellLayout = (props) => (
 const adminNavItems = [
   { to: "/admin/users", label: "Usuarios", icon: <FaUser size={16} /> },
   { to: "/admin/orders", label: "Pedidos", icon: <FaShoppingCart size={16} /> },
+  { to: "/admin/delivery-calendar", label: "Calendario Entregas", icon: <FaCalendarAlt size={16} /> },
   { to: "/admin/orderdetails", label: "Detalles Pedido", icon: <TbListDetails size={16} /> },
   { to: "/admin/invoices", label: "Facturas", icon: <FaFileInvoice size={16} /> },
 ];
@@ -87,6 +89,9 @@ const AdminPanel = () => {
           basename="/admin"
           layout={AdminShellLayout}
         >
+          <CustomRoutes>
+            <Route path="/delivery-calendar" element={<DeliveryCalendarPage />} />
+          </CustomRoutes>
           <Resource
             name="users"
             list={UserList}

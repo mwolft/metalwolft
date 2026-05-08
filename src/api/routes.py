@@ -4114,6 +4114,66 @@ def get_order_details():
     response.headers['Access-Control-Allow-Origin'] = '*'
     return response, 200
 
+
+@api.route('/admin/delivery-calendar', methods=['GET'])
+@jwt_required()
+def get_delivery_calendar():
+    current_user = get_jwt_identity()
+    if not current_user.get("is_admin"):
+        return jsonify({"message": "Access forbidden: Admins only"}), 403
+
+    try:
+        delivery_rows = (
+            db.session.query(
+                Orders.id.label("order_id"),
+                Orders.locator.label("locator"),
+                Users.email.label("customer_email"),
+                Orders.estimated_delivery_at.label("estimated_delivery_at"),
+                Orders.estimated_delivery_note.label("estimated_delivery_note"),
+                Orders.order_status.label("order_status"),
+                Orders.total_amount.label("total_amount"),
+                func.count(OrderDetails.id).label("line_count"),
+                func.coalesce(func.sum(OrderDetails.quantity), 0).label("total_quantity"),
+            )
+            .outerjoin(Users, Orders.user_id == Users.id)
+            .outerjoin(OrderDetails, OrderDetails.order_id == Orders.id)
+            .filter(Orders.estimated_delivery_at.isnot(None))
+            .group_by(
+                Orders.id,
+                Orders.locator,
+                Users.email,
+                Orders.estimated_delivery_at,
+                Orders.estimated_delivery_note,
+                Orders.order_status,
+                Orders.total_amount,
+            )
+            .order_by(Orders.estimated_delivery_at.asc(), Orders.id.asc())
+            .all()
+        )
+
+        payload = [
+            {
+                "order_id": row.order_id,
+                "locator": row.locator,
+                "customer_email": row.customer_email,
+                "estimated_delivery_at": row.estimated_delivery_at.isoformat() if row.estimated_delivery_at else None,
+                "estimated_delivery_note": row.estimated_delivery_note,
+                "order_status": row.order_status,
+                "total_amount": float(row.total_amount or 0.0),
+                "line_count": int(row.line_count or 0),
+                "total_quantity": int(row.total_quantity or 0),
+            }
+            for row in delivery_rows
+        ]
+
+        response = jsonify(payload)
+        response.headers['Access-Control-Allow-Origin'] = '*'
+        return response, 200
+    except Exception:
+        logger.exception("Error fetching delivery calendar data")
+        return jsonify({"error": "Internal server error"}), 500
+
+
 @api.route('/orderdetails/<int:detail_id>', methods=['GET', 'DELETE'])
 @jwt_required()
 def handle_order_detail(detail_id):
