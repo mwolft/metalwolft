@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { authenticatedFetch } from "../../../utils/authenticatedFetch.js";
+import { authenticatedFetch } from "../../../../utils/authenticatedFetch.js";
 
 const formatCalendarDateLabel = (value) => {
   if (!value) {
