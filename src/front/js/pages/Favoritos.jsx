@@ -111,7 +111,7 @@ export const Favoritos = () => {
             <div className="favorites-page container">
                 <header className="favorites-page__header text-center">
                     <p className="favorites-page__eyebrow">Inspiracion guardada</p>
-                    <h2 className="h2-categories favorites-page__title">Favoritos</h2>
+                    <h2 className="h2-categories">Favoritos</h2>
                     <p className="favorites-page__subtitle">
                         Revisa tus modelos guardados, comparalos visualmente y vuelve a configurarlos cuando quieras.
                     </p>
