@@ -1,7 +1,8 @@
 from flask import request, jsonify, Blueprint, send_file, send_from_directory, current_app, redirect, abort, Response
-from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity
+from flask_jwt_extended import jwt_required
 from api.models import db, Users, Products, ProductImages, Categories, Subcategories, Orders, CheckoutSessions, OrderDetails, Favorites, Cart, Posts, Comments, Invoices, DeliveryEstimateConfig
 from api.utils import send_email, calcular_precio_reja
+from api.jwt_utils import create_user_access_token, get_current_user_context as get_jwt_identity
 from sqlalchemy.exc import SQLAlchemyError
 import bcrypt
 from datetime import datetime, timezone, date
@@ -2531,12 +2532,8 @@ def login():
         response.headers.add("Access-Control-Allow-Origin", "*")
         return response, 401
 
-    access_token = create_access_token(
-        identity={
-            "user_id": user.id,
-            "email": user.email,
-            "is_admin": user.is_admin
-        },
+    access_token = create_user_access_token(
+        user,
         expires_delta=timedelta(hours=24)
     )
 
@@ -2690,11 +2687,7 @@ def signup():
             f"No se pudo notificar a admins del registro de {email}: {e}"
         )
 
-    access_token = create_access_token(identity={
-        "user_id": user.id,
-        "email": user.email,
-        "is_admin": user.is_admin
-    })
+    access_token = create_user_access_token(user)
     response = jsonify({
         "results": user.serialize(),
         "message": "Usuario registrado",
