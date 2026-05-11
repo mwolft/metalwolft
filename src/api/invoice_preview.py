@@ -1,6 +1,7 @@
 from io import BytesIO
 from flask import Blueprint, request, send_file
-from flask_jwt_extended import jwt_required, get_jwt_identity
+from flask_jwt_extended import jwt_required
+from api.jwt_utils import get_current_user_context as get_jwt_identity
 
 from .invoice_service import render_invoice_pdf
 
