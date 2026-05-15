@@ -15,6 +15,7 @@ from reportlab.lib import colors
 from reportlab.lib.units import cm
 from reportlab.lib.styles import getSampleStyleSheet
 from sqlalchemy import func
+from sqlalchemy.orm import joinedload
 from flask_mail import Message
 from dotenv import load_dotenv
 from api.exceptions import APIException
@@ -29,6 +30,7 @@ from urllib.parse import urljoin
 from api.email_routes import send_email, get_admin_recipients
 from api.checkout_service import build_checkout_quote
 from api.original_invoice_renderer import render_original_order_invoice_pdf
+from api.work_order_service import generate_work_order_pdf
 
 
 logger = logging.getLogger(__name__)
@@ -3925,7 +3927,40 @@ def handle_order(order_id):
             db.session.rollback()
             return jsonify({"message": "An error occurred while deleting the order.", "error": str(e)}), 500
 
-        
+
+@api.route('/admin/work-order/<int:order_id>', methods=['GET'])
+@jwt_required()
+def download_work_order(order_id):
+    current_user = get_jwt_identity()
+
+    if not current_user.get("is_admin"):
+        return jsonify({"message": "Access forbidden: Admins only"}), 403
+
+    try:
+        order = Orders.query.options(
+            joinedload(Orders.order_details).joinedload(OrderDetails.product)
+        ).filter_by(id=order_id).first()
+
+        if not order:
+            return jsonify({"message": "Order not found"}), 404
+
+        pdf_bytes = generate_work_order_pdf(order)
+        locator = (order.locator or f"pedido-{order.id}").strip()
+        safe_locator = "".join(
+            char for char in locator if char.isalnum() or char in ("-", "_")
+        ) or f"pedido-{order.id}"
+
+        return send_file(
+            BytesIO(pdf_bytes),
+            mimetype='application/pdf',
+            as_attachment=True,
+            download_name=f"parte-trabajo-{safe_locator}.pdf"
+        )
+    except Exception:
+        logger.exception("Error generating work order PDF for order_id=%s", order_id)
+        return jsonify({"message": "No se pudo generar el parte de trabajo."}), 500
+
+
 @api.route('/orders/<int:order_id>/estimated-delivery', methods=['GET'])
 @jwt_required()
 def get_estimated_delivery(order_id):
