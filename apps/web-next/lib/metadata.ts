@@ -29,9 +29,13 @@ export function buildMetadata({
   image = siteConfig.defaultOgImage
 }: MetadataInput): Metadata {
   const url = absoluteUrl(path);
+  const normalizedTitle = title.trim();
+  const metadataTitle = normalizedTitle.includes(siteConfig.name)
+    ? { absolute: normalizedTitle }
+    : normalizedTitle;
 
   return {
-    title,
+    title: metadataTitle,
     description,
     alternates: {
       canonical: url
@@ -39,20 +43,20 @@ export function buildMetadata({
     openGraph: {
       type: "website",
       url,
-      title,
+      title: normalizedTitle,
       description,
       siteName: siteConfig.name,
       locale: "es_ES",
       images: [
         {
           url: image,
-          alt: title
+          alt: normalizedTitle
         }
       ]
     },
     twitter: {
       card: "summary_large_image",
-      title,
+      title: normalizedTitle,
       description,
       images: [image]
     }
