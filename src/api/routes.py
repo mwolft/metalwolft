@@ -1,4 +1,4 @@
-from flask import request, jsonify, Blueprint, send_file, send_from_directory, current_app, redirect, abort, Response
+from flask import request, jsonify, Blueprint, send_file, send_from_directory, current_app, abort, Response
 from flask_jwt_extended import jwt_required
 from api.models import db, Users, Products, ProductImages, Categories, Subcategories, Orders, CheckoutSessions, OrderDetails, Favorites, Cart, Posts, Comments, Invoices, DeliveryEstimateConfig
 from api.utils import send_email, calcular_precio_reja
@@ -408,7 +408,7 @@ def _serialize_user_for_admin(user):
 
 
 
-redirect_map = {
+_UNUSED_LEGACY_REDIRECT_MAP = {
     "/rejas/rejas-para-ventanas-pittsburgh": "/rejas-para-ventanas",
     "/rejas/rejas-para-ventanas-livingston": "/rejas-para-ventanas",
     "/rejas/rejas-para-ventanas-delhi": "/rejas-para-ventanas",
@@ -425,7 +425,7 @@ redirect_map = {
     "/preguntas-frecuentes": "/faq",
 }
 
-gone_list = [
+_UNUSED_LEGACY_GONE_LIST = [
     "/blog/instalation-rejas-para-ventanas",
     "/index.php",
     "/blog/medir_hueco_rejas_para_ventanas.php",
@@ -445,10 +445,9 @@ gone_list = [
 ]
 
 
-@api.before_request
-def handle_legacy_urls():
-    if request.path in redirect_map:
-        return redirect(redirect_map[request.path], code=301)
+# legacy public routing now lives in src/legacy_public_routes.py
+def _unused_legacy_public_routing_definition():
+    return None
     if request.path in gone_list:
         return "Página obsoleta", 410
 
