@@ -38,6 +38,25 @@ static_file_dir = os.path.abspath(
 hashed_asset_segment_pattern = re.compile(r"^[0-9a-f]{8,}$", re.IGNORECASE)
 
 
+def env_is_truthy(name):
+    return os.getenv(name, "").strip().lower() in {"1", "true", "t", "yes", "on"}
+
+
+def should_force_https():
+    explicit_force = os.getenv("FORCE_HTTPS")
+    if explicit_force is not None:
+        return explicit_force.strip().lower() in {"1", "true", "t", "yes", "on"}
+
+    is_local_or_dev = (
+        env != "production"
+        or env_is_truthy("FLASK_DEBUG")
+        or env_is_truthy("DEBUG")
+        or env_is_truthy("CODESPACES")
+        or bool(os.getenv("GITPOD_WORKSPACE_URL"))
+    )
+    return not is_local_or_dev
+
+
 def is_hashed_asset_path(path):
     filename = os.path.basename(path)
     if not filename or filename == "index.html":
@@ -88,7 +107,7 @@ talisman_csp = {
     "style-src": ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
     "font-src": ["'self'", "https://fonts.gstatic.com"],
 }
-force_https = env == "production"
+force_https = should_force_https()
 Talisman(app, content_security_policy=talisman_csp, force_https=force_https)
 
 
