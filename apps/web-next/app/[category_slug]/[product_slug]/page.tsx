@@ -4,7 +4,11 @@ import { PageContainer } from "@/components/layout/PageContainer";
 import { BreadcrumbJsonLd } from "@/components/seo/BreadcrumbJsonLd";
 import { JsonLd } from "@/components/seo/JsonLd";
 import { absoluteUrl, buildMetadata, siteConfig } from "@/lib/metadata";
-import { fetchProductBySlug, type ApiProduct } from "@/lib/api";
+import {
+  ApiRequestError,
+  fetchProductBySlug,
+  type ApiProduct
+} from "@/lib/api";
 
 type ProductPageParams = {
   category_slug: string;
@@ -18,7 +22,23 @@ type ProductPageProps = {
 async function getProduct(params: ProductPageParams): Promise<ApiProduct | null> {
   try {
     return await fetchProductBySlug(params.category_slug, params.product_slug);
-  } catch {
+  } catch (error) {
+    if (error instanceof ApiRequestError && error.status === 404) {
+      return null;
+    }
+
+    throw error;
+  }
+}
+
+async function getProductForMetadata(params: ProductPageParams): Promise<ApiProduct | null> {
+  try {
+    return await fetchProductBySlug(params.category_slug, params.product_slug);
+  } catch (error) {
+    if (error instanceof ApiRequestError && error.status === 404) {
+      return null;
+    }
+
     return null;
   }
 }
@@ -71,7 +91,7 @@ function buildProductJsonLd(product: ApiProduct) {
 export async function generateMetadata({
   params
 }: ProductPageProps): Promise<Metadata> {
-  const product = await getProduct(params);
+  const product = await getProductForMetadata(params);
 
   if (!product) {
     return buildMetadata({

@@ -1,8 +1,29 @@
-const DEFAULT_LOCAL_API_URL = "http://localhost:3001";
+const DEFAULT_LOCAL_API_URL = "http://127.0.0.1:3001";
+
+export class ApiRequestError extends Error {
+  status: number;
+  url: string;
+  body: string;
+
+  constructor(message: string, options: { status?: number; url: string; body?: string }) {
+    super(message);
+    this.name = "ApiRequestError";
+    this.status = options.status ?? 0;
+    this.url = options.url;
+    this.body = options.body ?? "";
+  }
+}
 
 export function getApiBaseUrl() {
-  const envUrl = process.env.NEXT_PUBLIC_API_URL?.trim();
-  return (envUrl && envUrl.replace(/\/$/, "")) || DEFAULT_LOCAL_API_URL;
+  const candidates = [
+    process.env.API_URL,
+    process.env.NEXT_PUBLIC_API_URL,
+    process.env.REACT_APP_BACKEND_URL,
+    DEFAULT_LOCAL_API_URL
+  ];
+
+  const resolved = candidates.find((value) => typeof value === "string" && value.trim().length > 0);
+  return resolved!.trim().replace(/\/$/, "");
 }
 
 export async function fetchApi<T>(path: string, init?: RequestInit): Promise<T> {
@@ -15,11 +36,32 @@ export async function fetchApi<T>(path: string, init?: RequestInit): Promise<T> 
     }
   });
 
+  const rawBody = await response.text();
+
   if (!response.ok) {
-    throw new Error(`API request failed: ${response.status} ${response.statusText}`);
+    throw new ApiRequestError(`API request failed: ${response.status} ${response.statusText}`, {
+      status: response.status,
+      url,
+      body: rawBody
+    });
   }
 
-  return response.json() as Promise<T>;
+  if (!rawBody) {
+    throw new ApiRequestError("API request returned an empty body", {
+      status: response.status,
+      url
+    });
+  }
+
+  try {
+    return JSON.parse(rawBody) as T;
+  } catch {
+    throw new ApiRequestError("API response is not valid JSON", {
+      status: response.status,
+      url,
+      body: rawBody
+    });
+  }
 }
 
 export type ApiProductImage = {
@@ -53,7 +95,38 @@ export type ApiProduct = {
 };
 
 export async function fetchProductBySlug(categorySlug: string, productSlug: string) {
-  return fetchApi<ApiProduct>(`/api/${categorySlug}/${productSlug}`, {
+  const payload = await fetchApi<ApiProduct | { results?: ApiProduct | ApiProduct[] } | ApiProduct[]>(
+    `/api/${categorySlug}/${productSlug}`,
+    {
     next: { revalidate: 300 }
+    }
+  );
+
+  if (Array.isArray(payload)) {
+    const firstProduct = payload[0];
+    if (firstProduct) {
+      return firstProduct;
+    }
+  }
+
+  if (payload && typeof payload === "object" && "results" in payload) {
+    const { results } = payload;
+    if (Array.isArray(results)) {
+      const firstProduct = results[0];
+      if (firstProduct) {
+        return firstProduct;
+      }
+    } else if (results) {
+      return results;
+    }
+  }
+
+  if (payload && typeof payload === "object" && "slug" in payload) {
+    return payload as ApiProduct;
+  }
+
+  throw new ApiRequestError("API response did not match the expected product shape", {
+    url: `${getApiBaseUrl()}/api/${categorySlug}/${productSlug}`,
+    body: JSON.stringify(payload)
   });
 }
