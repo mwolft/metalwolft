@@ -21,3 +21,39 @@ export async function fetchApi<T>(path: string, init?: RequestInit): Promise<T> 
 
   return response.json() as Promise<T>;
 }
+
+export type ApiProductImage = {
+  id: number;
+  product_id: number;
+  image_url: string;
+};
+
+export type ApiProduct = {
+  id: number;
+  slug: string;
+  nombre: string;
+  descripcion: string;
+  descripcion_seo: string | null;
+  titulo_seo: string | null;
+  h1_seo: string | null;
+  precio: number;
+  precio_rebajado: number | null;
+  porcentaje_rebaja: number | null;
+  categoria_id: number;
+  category_slug: string;
+  categoria_nombre: string;
+  subcategoria_id: number | null;
+  subcategoria_nombre: string | null;
+  imagen: string | null;
+  has_abatible: boolean;
+  has_door_model: boolean;
+  es_mas_vendido: boolean;
+  es_nuevo_diseno: boolean;
+  images: ApiProductImage[];
+};
+
+export async function fetchProductBySlug(categorySlug: string, productSlug: string) {
+  return fetchApi<ApiProduct>(`/api/${categorySlug}/${productSlug}`, {
+    next: { revalidate: 300 }
+  });
+}
