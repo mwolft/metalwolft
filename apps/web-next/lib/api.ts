@@ -83,16 +83,63 @@ export type ApiProduct = {
   porcentaje_rebaja: number | null;
   categoria_id: number;
   category_slug: string;
-  categoria_nombre: string;
+  categoria_nombre?: string;
   subcategoria_id: number | null;
-  subcategoria_nombre: string | null;
+  subcategoria_nombre?: string | null;
   imagen: string | null;
   has_abatible: boolean;
   has_door_model: boolean;
   es_mas_vendido: boolean;
   es_nuevo_diseno: boolean;
-  images: ApiProductImage[];
+  images?: ApiProductImage[];
 };
+
+export type ApiCategory = {
+  id: number;
+  nombre: string;
+  descripcion: string | null;
+  parent_id: number | null;
+  image_url: string | null;
+  slug: string;
+  product_count?: number;
+  subcategories?: Array<{
+    id: number;
+    nombre: string;
+    descripcion: string | null;
+    categoria_id: number;
+    product_count?: number;
+  }>;
+};
+
+function pickFirstEntity<T extends Record<string, unknown>>(payload: T | T[] | { results?: T | T[] }) {
+  if (Array.isArray(payload)) {
+    return payload[0] ?? null;
+  }
+
+  if (payload && typeof payload === "object" && "results" in payload) {
+    const { results } = payload;
+    if (Array.isArray(results)) {
+      return results[0] ?? null;
+    }
+
+    return results ?? null;
+  }
+
+  return payload ?? null;
+}
+
+function pickEntityList<T>(payload: T[] | { results?: T[] } | T) {
+  if (Array.isArray(payload)) {
+    return payload;
+  }
+
+  if (payload && typeof payload === "object" && "results" in payload) {
+    const { results } = payload as { results?: T[] };
+    return Array.isArray(results) ? results : [];
+  }
+
+  return [];
+}
 
 export async function fetchProductBySlug(categorySlug: string, productSlug: string) {
   const payload = await fetchApi<ApiProduct | { results?: ApiProduct | ApiProduct[] } | ApiProduct[]>(
@@ -102,31 +149,32 @@ export async function fetchProductBySlug(categorySlug: string, productSlug: stri
     }
   );
 
-  if (Array.isArray(payload)) {
-    const firstProduct = payload[0];
-    if (firstProduct) {
-      return firstProduct;
-    }
-  }
-
-  if (payload && typeof payload === "object" && "results" in payload) {
-    const { results } = payload;
-    if (Array.isArray(results)) {
-      const firstProduct = results[0];
-      if (firstProduct) {
-        return firstProduct;
-      }
-    } else if (results) {
-      return results;
-    }
-  }
-
-  if (payload && typeof payload === "object" && "slug" in payload) {
-    return payload as ApiProduct;
+  const product = pickFirstEntity<ApiProduct>(payload);
+  if (product && "slug" in product) {
+    return product;
   }
 
   throw new ApiRequestError("API response did not match the expected product shape", {
     url: `${getApiBaseUrl()}/api/${categorySlug}/${productSlug}`,
     body: JSON.stringify(payload)
   });
+}
+
+export async function fetchCategories() {
+  const payload = await fetchApi<ApiCategory[] | { results?: ApiCategory[] }>(`/api/categories`, {
+    next: { revalidate: 300 }
+  });
+
+  return pickEntityList<ApiCategory>(payload);
+}
+
+export async function fetchCategoryProducts(categorySlug: string) {
+  const payload = await fetchApi<ApiProduct[] | { results?: ApiProduct[] }>(
+    `/api/category/${categorySlug}/products`,
+    {
+      next: { revalidate: 300 }
+    }
+  );
+
+  return pickEntityList<ApiProduct>(payload);
 }

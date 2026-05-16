@@ -70,13 +70,14 @@ function getProductImage(product: ApiProduct) {
 function buildProductJsonLd(product: ApiProduct) {
   const canonicalPath = `/${product.category_slug}/${product.slug}`;
   const image = getProductImage(product);
+  const productImages = product.images ?? [];
 
   return {
     "@context": "https://schema.org",
     "@type": "Product",
     name: product.h1_seo || product.nombre,
     description: product.descripcion,
-    image: [image, ...product.images.map((item) => item.image_url)].filter(Boolean),
+    image: [image, ...productImages.map((item) => item.image_url)].filter(Boolean),
     sku: product.slug,
     mpn: String(product.id),
     category: product.categoria_nombre,
@@ -118,6 +119,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
 
   const h1 = product.h1_seo || product.nombre;
   const canonicalPath = `/${product.category_slug}/${product.slug}`;
+  const productImages = product.images ?? [];
   const visibleDescription =
     product.descripcion?.trim() ||
     "Descripción técnica no disponible en este momento.";
@@ -169,11 +171,11 @@ export default async function ProductPage({ params }: ProductPageProps) {
           <p>{visibleDescription}</p>
         </section>
 
-        {product.images.length > 0 ? (
+        {productImages.length > 0 ? (
           <section className="mw-section">
             <h2>Imágenes del producto</h2>
             <div className="mw-grid">
-              {product.images.slice(0, 4).map((image) => (
+              {productImages.slice(0, 4).map((image) => (
                 <article className="mw-card" key={image.id}>
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src={image.image_url} alt={h1} />
