@@ -42,10 +42,10 @@ function buildCategoryDescription(category: ApiCategory | null, slug: string, pr
   const categoryName = buildCategoryName(category, slug);
   const raw =
     category?.descripcion?.trim() ||
-    `Descubre ${categoryName.toLowerCase()} fabricadas a medida por MetalWolft, con soluciones pensadas para seguridad, instalación práctica y envío directo desde taller.`;
+    `Descubre ${categoryName.toLowerCase()} fabricadas a medida por MetalWolft, con soluciones pensadas para seguridad, instalacion practica y envio directo desde taller.`;
 
   if (productCount > 0 && !category?.descripcion?.trim()) {
-    return `${raw} Actualmente mostramos ${productCount} modelos preparados para servir como base del escaparate SEO público.`;
+    return `${raw} Actualmente mostramos ${productCount} modelos disponibles para que puedas revisar acabados, aperturas y enlaces a cada ficha de producto.`;
   }
 
   return raw;
@@ -114,8 +114,8 @@ export async function generateMetadata({
 
   if (!data) {
     return buildMetadata({
-      title: "Categoría no encontrada",
-      description: "La categoría solicitada no está disponible.",
+      title: "Categoria no encontrada",
+      description: "La categoria solicitada no esta disponible.",
       path: `/${params.category_slug}`
     });
   }
@@ -165,18 +165,18 @@ export default async function CategoryPage({ params }: CategoryPageProps) {
 
         <section className="mw-hero">
           <div className="mw-hero__copy">
-            <p className="mw-eyebrow">Categoría</p>
+            <p className="mw-eyebrow">Catalogo</p>
             <h1 className="mw-title mw-title--compact">{categoryName}</h1>
             <p className="mw-lead">{introDescription}</p>
           </div>
 
-          <aside className="mw-panel" aria-label="Resumen de la categoría">
-            <p className="mw-note">Resumen SEO</p>
+          <aside className="mw-panel" aria-label="Resumen de la categoria">
+            <p className="mw-note">Resumen de categoria</p>
             <h2>{categoryName}</h2>
             <ul className="mw-list">
-              <li>Slug: {params.category_slug}</li>
-              <li>Productos visibles: {data.products.length}</li>
-              {data.category?.parent_id ? <li>Categoría hija dentro del catálogo actual.</li> : null}
+              <li>Modelos visibles: {data.products.length}</li>
+              <li>Enlaces directos a cada ficha de producto.</li>
+              <li>Informacion orientada a fabricacion a medida.</li>
             </ul>
           </aside>
         </section>
@@ -185,8 +185,8 @@ export default async function CategoryPage({ params }: CategoryPageProps) {
           <h2>Modelos disponibles</h2>
           {data.products.length === 0 ? (
             <p>
-              Esta categoría existe en el catálogo, pero ahora mismo no devuelve
-              productos visibles desde la API pública.
+              Esta categoria existe en el catalogo, pero ahora mismo no devuelve
+              productos visibles desde la API publica.
             </p>
           ) : (
             <div className="mw-grid">
@@ -218,11 +218,11 @@ export default async function CategoryPage({ params }: CategoryPageProps) {
         </section>
 
         <section className="mw-section">
-          <h2>Preparada para siguientes fases</h2>
+          <h2>Fabricacion, medidas y envio</h2>
           <p>
-            Esta landing ya sale renderizada desde servidor y enlaza a fichas de
-            producto reales, dejando preparada la evolución hacia una arquitectura
-            SEO más completa sin tocar checkout, pagos ni flujos privados.
+            Cada categoria esta pensada para ayudarte a pasar de una vista
+            general a la ficha exacta del producto, con informacion clara sobre
+            medidas, acabados y envio desde taller.
           </p>
         </section>
       </PageContainer>

@@ -54,7 +54,7 @@ function buildProductDescription(product: ApiProduct) {
   const raw =
     product.descripcion_seo?.trim() ||
     product.descripcion?.trim() ||
-    "Producto de carpintería metálica a medida fabricado por MetalWolft.";
+    "Producto de carpinteria metalica a medida fabricado por MetalWolft.";
 
   return raw.length > 155 ? `${raw.slice(0, 152)}...` : raw;
 }
@@ -97,7 +97,7 @@ export async function generateMetadata({
   if (!product) {
     return buildMetadata({
       title: "Producto no encontrado",
-      description: "La ficha de producto solicitada no está disponible.",
+      description: "La ficha de producto solicitada no esta disponible.",
       path: `/${params.category_slug}/${params.product_slug}`
     });
   }
@@ -122,7 +122,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
   const productImages = product.images ?? [];
   const visibleDescription =
     product.descripcion?.trim() ||
-    "Descripción técnica no disponible en este momento.";
+    "Descripcion tecnica no disponible en este momento.";
 
   return (
     <div className="mw-page">
@@ -130,7 +130,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
         <BreadcrumbJsonLd
           items={[
             { name: "Inicio", path: "/" },
-            { name: product.categoria_nombre || "Catálogo", path: `/${product.category_slug}` },
+            { name: product.categoria_nombre || "Catalogo", path: `/${product.category_slug}` },
             { name: h1, path: canonicalPath }
           ]}
         />
@@ -139,7 +139,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
         <div className="mw-breadcrumbs" aria-label="Breadcrumb">
           <span>Inicio</span>
           <span>/</span>
-          <span>{product.categoria_nombre || "Catálogo"}</span>
+          <span>{product.categoria_nombre || "Catalogo"}</span>
           <span>/</span>
           <span>{h1}</span>
         </div>
@@ -152,28 +152,28 @@ export default async function ProductPage({ params }: ProductPageProps) {
           </div>
 
           <aside className="mw-panel" aria-label="Resumen del producto">
-            <p className="mw-note">Resumen técnico</p>
+            <p className="mw-note">Resumen de fabricacion</p>
             <h2>{product.nombre}</h2>
             <ul className="mw-list">
-              <li>Categoría: {product.categoria_nombre}</li>
+              <li>Categoria: {product.categoria_nombre}</li>
               {product.subcategoria_nombre ? (
-                <li>Subcategoría: {product.subcategoria_nombre}</li>
+                <li>Subcategoria: {product.subcategoria_nombre}</li>
               ) : null}
-              <li>Slug: {product.slug}</li>
-              {product.has_abatible ? <li>Incluye variante abatible.</li> : null}
-              {product.has_door_model ? <li>Incluye variante puerta.</li> : null}
+              {product.has_abatible ? <li>Disponible en version abatible.</li> : null}
+              {product.has_door_model ? <li>Disponible en version puerta.</li> : null}
+              <li>Fabricacion a medida y envio desde taller.</li>
             </ul>
           </aside>
         </section>
 
         <section className="mw-section">
-          <h2>Descripción técnica</h2>
+          <h2>Descripcion tecnica</h2>
           <p>{visibleDescription}</p>
         </section>
 
         {productImages.length > 0 ? (
           <section className="mw-section">
-            <h2>Imágenes del producto</h2>
+            <h2>Imagenes del producto</h2>
             <div className="mw-grid">
               {productImages.slice(0, 4).map((image) => (
                 <article className="mw-card" key={image.id}>
@@ -186,11 +186,11 @@ export default async function ProductPage({ params }: ProductPageProps) {
         ) : null}
 
         <section className="mw-section">
-          <h2>Arquitectura preparada para siguientes fases</h2>
+          <h2>Instalacion, medidas y acabado</h2>
           <p>
-            Esta ficha ya sale renderizada desde servidor y deja preparada la
-            migración posterior del configurador, contenido SEO ampliado y enlaces
-            internos hacia la categoría principal.
+            Esta ficha esta pensada para ayudarte a revisar el modelo, valorar
+            si encaja con tu hueco y continuar despues con la medicion, el tipo
+            de montaje y el acabado que mejor se adapte a tu vivienda.
           </p>
         </section>
       </PageContainer>

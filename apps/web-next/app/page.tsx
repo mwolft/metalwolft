@@ -6,7 +6,7 @@ import { buildMetadata, absoluteUrl, siteConfig } from "@/lib/metadata";
 export const metadata = buildMetadata({
   title: "Rejas para ventanas a medida",
   description:
-    "Front público SEO de MetalWolft enfocado en rejas para ventanas a medida, instalación sin obra y fabricación bajo pedido.",
+    "Rejas para ventanas a medida fabricadas por MetalWolft, con soluciones metalicas seguras, instalacion sin obra y envio directo desde taller.",
   path: "/"
 });
 
@@ -21,7 +21,7 @@ export default function HomePage() {
             name: "Rejas para ventanas a medida",
             url: absoluteUrl("/"),
             description:
-              "Front público SEO de MetalWolft enfocado en rejas para ventanas a medida, instalación sin obra y fabricación bajo pedido.",
+              "Rejas para ventanas a medida fabricadas por MetalWolft, con soluciones metalicas seguras, instalacion sin obra y envio directo desde taller.",
             isPartOf: {
               "@type": "WebSite",
               name: siteConfig.name,
@@ -32,12 +32,13 @@ export default function HomePage() {
 
         <section className="mw-hero">
           <div className="mw-hero__copy">
-            <p className="mw-eyebrow">Fase 1 SEO pública</p>
+            <p className="mw-eyebrow">Fabricacion a medida</p>
             <h1 className="mw-title">Rejas para ventanas a medida</h1>
             <p className="mw-lead">
-              Este shell Next.js nace para mejorar el renderizado inicial, la
-              indexabilidad y la estructura SEO de MetalWolft sin tocar todavía
-              checkout, pagos ni la lógica transaccional del stack actual.
+              Fabricamos rejas metalicas para ventanas con enfoque en seguridad,
+              medidas a medida y montaje limpio. Aqui puedes descubrir modelos
+              pensados para vivienda, comparar acabados y acceder al catalogo
+              principal de rejas para ventanas.
             </p>
             <div className="mw-actions">
               <Link className="mw-button mw-button--primary" href="/rejas-para-ventanas">
@@ -46,25 +47,26 @@ export default function HomePage() {
             </div>
           </div>
 
-          <aside className="mw-panel" aria-label="Resumen de alcance">
-            <p className="mw-note">Validación inicial</p>
-            <h2>Qué cubre esta fase</h2>
+          <aside className="mw-panel" aria-label="Puntos clave">
+            <p className="mw-note">Puntos clave</p>
+            <h2>Que encontrara aqui</h2>
             <ul className="mw-list">
-              <li>HTML inicial orientado a SEO.</li>
-              <li>Metadata base con canonical y Open Graph.</li>
-              <li>Robots y sitemap propios del frontend público.</li>
-              <li>Separación total respecto al backend transaccional.</li>
+              <li>Rejas para ventanas fabricadas a medida.</li>
+              <li>Soluciones de instalacion sin obra.</li>
+              <li>Modelos metalicos con foco en seguridad.</li>
+              <li>Acceso directo al catalogo y a las guias utiles.</li>
             </ul>
           </aside>
         </section>
 
         <section className="mw-section">
-          <h2>Base preparada para migración progresiva</h2>
+          <h2>Rejas metalicas para proteger la vivienda</h2>
           <p>
-            La siguiente ola podrá incorporar la landing principal de{" "}
-            <strong>rejas para ventanas</strong>, fichas dinámicas de producto y,
-            más adelante, blog y guías de apoyo para posicionar búsquedas con
-            intención comercial e informacional.
+            Si buscas una reja fija, abatible o una opcion pensada para una
+            instalacion sin obra, esta puerta de entrada te ayuda a llegar
+            rapido a la categoria principal y a las fichas de producto con
+            informacion clara sobre fabricacion, medicion del hueco y envio
+            desde taller.
           </p>
         </section>
       </PageContainer>

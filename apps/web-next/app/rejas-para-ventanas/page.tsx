@@ -31,7 +31,7 @@ function buildIntroText(productCount: number, categoryDescription?: string | nul
     "Fabricamos rejas para ventanas a medida con enfoque en seguridad, montaje limpio y soluciones pensadas para viviendas que necesitan una proteccion metalica duradera.";
 
   if (productCount > 0) {
-    return `${baseText} En esta landing ya mostramos ${productCount} modelos reales del catalogo para que Google y el usuario puedan navegar desde el HTML inicial hacia fichas de producto concretas.`;
+    return `${baseText} Mostramos ${productCount} modelos reales del catalogo para que puedas comparar acabados, tipos de apertura y opciones de instalacion sin obra desde la misma landing.`;
   }
 
   return baseText;
@@ -133,7 +133,7 @@ export default async function RejasParaVentanasPage() {
 
         <section className="mw-hero">
           <div className="mw-hero__copy">
-            <p className="mw-eyebrow">Landing SEO principal</p>
+            <p className="mw-eyebrow">Landing principal</p>
             <h1 className="mw-title mw-title--compact">Rejas para ventanas a medida</h1>
             <p className="mw-lead">{introText}</p>
             <div className="mw-actions">
@@ -147,12 +147,12 @@ export default async function RejasParaVentanasPage() {
           </div>
 
           <aside className="mw-panel" aria-label="Resumen de la landing">
-            <p className="mw-note">Resumen SEO</p>
+            <p className="mw-note">Resumen de compra</p>
             <h2>{data.categoryName}</h2>
             <ul className="mw-list">
-              <li>Categoria principal para la keyword rejas para ventanas.</li>
-              <li>Modelos visibles en HTML inicial: {data.products.length}</li>
-              <li>Enlaces internos a guias y fichas reales.</li>
+              <li>Rejas metalicas fabricadas a medida.</li>
+              <li>Modelos visibles en esta categoria: {data.products.length}.</li>
+              <li>Enlaces directos a guias y fichas de producto.</li>
             </ul>
           </aside>
         </section>
@@ -161,20 +161,20 @@ export default async function RejasParaVentanasPage() {
           <h2>Rejas para ventanas a medida</h2>
           <p>
             Esta landing concentra la intencion comercial principal del proyecto:
-            captar busquedas sobre rejas para ventanas, rejas para ventanas a medida
-            y soluciones metalicas fabricadas segun el hueco real del cliente.
+            ayudar a quien busca rejas para ventanas, rejas para ventanas a medida
+            y soluciones metalicas fabricadas segun el hueco real de cada vivienda.
           </p>
           <p>
-            En lugar de depender de una SPA vacia para SEO, aqui mostramos desde
-            servidor contenido legible, breadcrumbs y un listado real de productos
-            enlazado a cada ficha individual.
+            Aqui mostramos contenido legible desde servidor, un listado real de
+            productos y enlaces directos a cada ficha para que puedas comparar
+            diseno, apertura y acabado sin perder tiempo.
           </p>
         </section>
 
         <section className="mw-section">
           <h2>Rejas para ventanas sin obra</h2>
           <p>
-            Muchos usuarios buscan una instalacion limpia y rapida. Por eso esta
+            Muchos clientes buscan una instalacion limpia y rapida. Por eso esta
             pagina enlaza directamente a la guia de medicion, la guia de
             instalacion sin obra y los contenidos de apoyo que explican acabados,
             montaje y tiempos de fabricacion.
@@ -192,9 +192,8 @@ export default async function RejasParaVentanasPage() {
         <section className="mw-section" id="modelos-reales">
           <h2>Modelos reales de rejas metalicas</h2>
           <p>
-            Este listado sale del backend Flask en tiempo de render y refuerza la
-            arquitectura SEO con enlaces internos reales hacia cada ficha de
-            producto.
+            Este listado muestra productos reales del catalogo y te permite pasar
+            de la vision general a cada ficha individual con un solo clic.
           </p>
 
           {featuredProducts.length > 0 ? (
@@ -245,10 +244,9 @@ export default async function RejasParaVentanasPage() {
         <section className="mw-section">
           <h2>Guias y enlaces internos para elegir mejor</h2>
           <p>
-            La landing principal no debe quedarse sola. Estos enlaces ayudan a
-            cubrir intencion informacional y a reforzar la estructura interna del
-            sitio alrededor de rejas para ventanas, rejas metalicas y montaje sin
-            obra.
+            Estos enlaces ayudan a resolver dudas habituales sobre medicion,
+            instalacion, estilo y montaje sin obra antes de elegir el modelo
+            definitivo.
           </p>
           <ul className="mw-list">
             <li>
@@ -277,10 +275,9 @@ export default async function RejasParaVentanasPage() {
         <section className="mw-section">
           <h2>Fabricacion y envio desde taller</h2>
           <p>
-            El objetivo de esta fase no es tocar checkout ni pricing, pero si dejar
-            una base publica fuerte para explicar la propuesta de valor: fabricacion
-            a medida, tiempos claros y transicion limpia hacia fichas de producto
-            listas para una futura migracion SEO completa.
+            Trabajamos con fabricacion a medida, procesos claros y envio desde
+            taller para que puedas elegir la reja adecuada con una base tecnica
+            sencilla y sin mezclar informacion comercial innecesaria.
           </p>
         </section>
       </PageContainer>
