@@ -5,7 +5,7 @@ export const siteConfig = {
   siteUrl: process.env.NEXT_PUBLIC_SITE_URL || "https://www.metalwolft.com",
   defaultTitle: "Rejas para ventanas a medida | MetalWolft",
   defaultDescription:
-    "Fabricamos rejas para ventanas a medida, con enfoque en seguridad, instalacion sin obra y envio directo desde fabrica.",
+    "Fabricamos rejas para ventanas a medida, con enfoque en seguridad, instalación sin obra y envío directo desde fábrica.",
   defaultOgImage:
     "https://res.cloudinary.com/dewanllxn/image/upload/v1749024437/rejas-para-ventanas_nzmi8k.png"
 };
@@ -35,8 +35,13 @@ const WEAK_ENDINGS = new Set([
   "que",
   "y",
   "o",
+  "renunciar",
+  "disfrutar",
+  "conseguir",
+  "aportar",
   "ofrece",
   "aporta",
+  "ofrecer",
   "permite"
 ]);
 

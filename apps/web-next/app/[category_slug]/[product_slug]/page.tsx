@@ -56,11 +56,27 @@ function buildProductTitle(product: ApiProduct) {
   );
 }
 
+function buildProductDescriptionFallback(product: ApiProduct) {
+  const categoryName =
+    (product.categoria_nombre || "rejas metálicas").toLowerCase();
+
+  return `${product.nombre} fabricada a medida por MetalWolft, con una solución segura y un acabado metálico pensado para ${categoryName}.`;
+}
+
 function buildProductDescription(product: ApiProduct) {
+  const seoDescription = product.descripcion_seo?.trim();
+  const technicalDescription = product.descripcion?.trim();
+  const shouldUseFallback =
+    !seoDescription &&
+    (!technicalDescription ||
+      technicalDescription.length < 90 ||
+      /(?:\d+x\d+|\bmm\b|bastidor|chapa|perfil|pletina|tubo|hierro)/i.test(
+        technicalDescription
+      ));
   const raw =
-    product.descripcion_seo?.trim() ||
-    product.descripcion?.trim() ||
-    "Producto de carpinteria metalica a medida fabricado por MetalWolft.";
+    seoDescription ||
+    (shouldUseFallback ? buildProductDescriptionFallback(product) : technicalDescription) ||
+    "Producto de carpintería metálica a medida fabricado por MetalWolft.";
 
   return trimTextAtWord(raw, 155);
 }

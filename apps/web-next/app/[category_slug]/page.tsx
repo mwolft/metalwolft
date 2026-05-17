@@ -4,7 +4,12 @@ import { notFound } from "next/navigation";
 import { PageContainer } from "@/components/layout/PageContainer";
 import { BreadcrumbJsonLd } from "@/components/seo/BreadcrumbJsonLd";
 import { JsonLd } from "@/components/seo/JsonLd";
-import { absoluteUrl, buildMetadata, siteConfig } from "@/lib/metadata";
+import {
+  absoluteUrl,
+  buildMetadata,
+  siteConfig,
+  trimTextAtWord
+} from "@/lib/metadata";
 import {
   ApiCategory,
   ApiProduct,
@@ -42,10 +47,10 @@ function buildCategoryDescription(category: ApiCategory | null, slug: string, pr
   const categoryName = buildCategoryName(category, slug);
   const raw =
     category?.descripcion?.trim() ||
-    `Descubre ${categoryName.toLowerCase()} fabricadas a medida por MetalWolft, con soluciones pensadas para seguridad, instalacion practica y envio directo desde taller.`;
+    `Descubre ${categoryName.toLowerCase()} a medida de MetalWolft, con soluciones metálicas pensadas para mejorar seguridad, instalación y acabado final.`;
 
   if (productCount > 0 && !category?.descripcion?.trim()) {
-    return `${raw} Actualmente mostramos ${productCount} modelos disponibles para que puedas revisar acabados, aperturas y enlaces a cada ficha de producto.`;
+    return `${raw} Actualmente mostramos ${productCount} modelos reales para que puedas comparar acabados, aperturas y accesos directos a cada ficha de producto.`;
   }
 
   return raw;
@@ -57,7 +62,7 @@ function buildCategoryTitle(category: ApiCategory | null, slug: string) {
 
 function buildCategoryMetaDescription(category: ApiCategory | null, slug: string, productCount: number) {
   const raw = buildCategoryDescription(category, slug, productCount);
-  return raw.length > 155 ? `${raw.slice(0, 152)}...` : raw;
+  return trimTextAtWord(raw, 155);
 }
 
 function getCategoryImage(category: ApiCategory | null, products: ApiProduct[]) {
@@ -105,6 +110,25 @@ function buildItemListJsonLd(categoryName: string, categorySlug: string, product
       name: product.h1_seo || product.nombre
     }))
   };
+}
+
+function buildCollectionJsonLd(categoryName: string, categorySlug: string, description: string) {
+  return {
+    "@context": "https://schema.org",
+    "@type": "CollectionPage",
+    name: categoryName,
+    url: absoluteUrl(`/${categorySlug}`),
+    description
+  };
+}
+
+function buildProductExcerpt(product: ApiProduct) {
+  const raw =
+    product.descripcion_seo?.trim() ||
+    product.descripcion?.trim() ||
+    "Producto metálico fabricado a medida por MetalWolft.";
+
+  return trimTextAtWord(raw, 180);
 }
 
 export async function generateMetadata({
@@ -155,47 +179,51 @@ export default async function CategoryPage({ params }: CategoryPageProps) {
             { name: categoryName, path: `/${params.category_slug}` }
           ]}
         />
+        <JsonLd
+          data={buildCollectionJsonLd(categoryName, params.category_slug, introDescription)}
+        />
         <JsonLd data={buildItemListJsonLd(categoryName, params.category_slug, data.products)} />
 
-        <div className="mw-breadcrumbs" aria-label="Breadcrumb">
-          <span>Inicio</span>
+        <nav className="mw-breadcrumbs" aria-label="Breadcrumb">
+          <Link href="/">Inicio</Link>
           <span>/</span>
-          <span>{categoryName}</span>
-        </div>
+          <span aria-current="page">{categoryName}</span>
+        </nav>
 
         <section className="mw-hero">
           <div className="mw-hero__copy">
-            <p className="mw-eyebrow">Catalogo</p>
+            <p className="mw-eyebrow">Catálogo</p>
             <h1 className="mw-title mw-title--compact">{categoryName}</h1>
             <p className="mw-lead">{introDescription}</p>
           </div>
 
-          <aside className="mw-panel" aria-label="Resumen de la categoria">
-            <p className="mw-note">Resumen de categoria</p>
-            <h2>{categoryName}</h2>
+          <aside className="mw-panel" aria-label="Resumen de la categoría">
+            <p className="mw-note">Resumen de categoría</p>
+            <h2>Qué encontrarás en esta categoría</h2>
             <ul className="mw-list">
               <li>Modelos visibles: {data.products.length}</li>
-              <li>Enlaces directos a cada ficha de producto.</li>
-              <li>Informacion orientada a fabricacion a medida.</li>
+              <li>Acceso directo a cada ficha de producto.</li>
+              <li>Información orientada a fabricación a medida.</li>
             </ul>
           </aside>
         </section>
 
         <section className="mw-section">
           <h2>Modelos disponibles</h2>
+          <p>
+            Revisa esta selección de modelos para comparar acabados, medidas y
+            soluciones metálicas pensadas para exterior. Cada ficha enlaza a su
+            detalle técnico y a las opciones de fabricación a medida.
+          </p>
           {data.products.length === 0 ? (
             <p>
-              Esta categoria existe en el catalogo, pero ahora mismo no devuelve
-              productos visibles desde la API publica.
+              Esta categoría existe en el catálogo, pero ahora mismo no devuelve
+              productos visibles desde la API pública.
             </p>
           ) : (
             <div className="mw-grid">
               {data.products.map((product) => {
                 const productHref = `/${params.category_slug}/${product.slug}`;
-                const productDescription =
-                  product.descripcion_seo?.trim() ||
-                  product.descripcion?.trim() ||
-                  "Producto a medida fabricado por MetalWolft.";
 
                 return (
                   <article className="mw-card" key={product.id}>
@@ -204,10 +232,10 @@ export default async function CategoryPage({ params }: CategoryPageProps) {
                       <img src={product.imagen} alt={product.nombre} />
                     ) : null}
                     <h3>{product.h1_seo || product.nombre}</h3>
-                    <p>{productDescription}</p>
+                    <p>{buildProductExcerpt(product)}</p>
                     <div className="mw-actions">
                       <Link className="mw-button mw-button--primary" href={productHref}>
-                        Ver producto
+                        Ver ficha de {product.h1_seo || product.nombre}
                       </Link>
                     </div>
                   </article>
@@ -218,11 +246,11 @@ export default async function CategoryPage({ params }: CategoryPageProps) {
         </section>
 
         <section className="mw-section">
-          <h2>Fabricacion, medidas y envio</h2>
+          <h2>Fabricación, medidas y envío</h2>
           <p>
-            Cada categoria esta pensada para ayudarte a pasar de una vista
-            general a la ficha exacta del producto, con informacion clara sobre
-            medidas, acabados y envio desde taller.
+            Cada categoría está pensada para ayudarte a pasar de una vista
+            general a la ficha exacta del producto, con información clara sobre
+            medidas, acabados, instalación y envío directo desde taller.
           </p>
         </section>
       </PageContainer>

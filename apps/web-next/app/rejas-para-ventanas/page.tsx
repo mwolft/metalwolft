@@ -3,7 +3,12 @@ import type { Metadata } from "next";
 import { PageContainer } from "@/components/layout/PageContainer";
 import { BreadcrumbJsonLd } from "@/components/seo/BreadcrumbJsonLd";
 import { JsonLd } from "@/components/seo/JsonLd";
-import { absoluteUrl, buildMetadata, siteConfig } from "@/lib/metadata";
+import {
+  absoluteUrl,
+  buildMetadata,
+  siteConfig,
+  trimTextAtWord
+} from "@/lib/metadata";
 import { ApiProduct, fetchCategories, fetchCategoryProducts } from "@/lib/api";
 
 type RejasCategoryData = {
@@ -14,24 +19,13 @@ type RejasCategoryData = {
 
 const CATEGORY_SLUG = "rejas-para-ventanas";
 
-function trimText(value: string, maxLength: number) {
-  const normalized = value.replace(/\s+/g, " ").trim();
-  if (normalized.length <= maxLength) {
-    return normalized;
-  }
-
-  const sliced = normalized.slice(0, maxLength + 1);
-  const lastSpace = sliced.lastIndexOf(" ");
-  return `${sliced.slice(0, lastSpace > 80 ? lastSpace : maxLength).trim()}...`;
-}
-
 function buildIntroText(productCount: number, categoryDescription?: string | null) {
   const baseText =
     categoryDescription?.trim() ||
-    "Fabricamos rejas para ventanas a medida con enfoque en seguridad, montaje limpio y soluciones pensadas para viviendas que necesitan una proteccion metalica duradera.";
+    "Fabricamos rejas para ventanas a medida con enfoque en seguridad, montaje limpio y soluciones pensadas para viviendas que necesitan una protección metálica duradera.";
 
   if (productCount > 0) {
-    return `${baseText} Mostramos ${productCount} modelos reales del catalogo para que puedas comparar acabados, tipos de apertura y opciones de instalacion sin obra desde la misma landing.`;
+    return `${baseText} Mostramos ${productCount} modelos reales del catálogo para que puedas comparar acabados, tipos de apertura y opciones de instalación sin obra desde la misma landing.`;
   }
 
   return baseText;
@@ -40,10 +34,10 @@ function buildIntroText(productCount: number, categoryDescription?: string | nul
 function buildMetaDescription(productCount: number) {
   const baseDescription =
     productCount > 0
-      ? `Catalogo de rejas para ventanas a medida, rejas sin obra y rejas metalicas con ${productCount} modelos reales enlazados a sus fichas.`
-      : "Catalogo de rejas para ventanas a medida, rejas sin obra y rejas metalicas fabricadas por MetalWolft.";
+      ? `Catálogo de rejas para ventanas a medida, rejas sin obra y rejas metálicas con ${productCount} modelos reales enlazados a sus fichas.`
+      : "Catálogo de rejas para ventanas a medida, rejas sin obra y rejas metálicas fabricadas por MetalWolft.";
 
-  return trimText(baseDescription, 155);
+  return trimTextAtWord(baseDescription, 155);
 }
 
 async function getRejasCategoryData(): Promise<RejasCategoryData> {
@@ -89,9 +83,9 @@ function buildProductExcerpt(product: ApiProduct) {
   const raw =
     product.descripcion_seo?.trim() ||
     product.descripcion?.trim() ||
-    "Modelo de reja metalica fabricado a medida por MetalWolft.";
+    "Modelo de reja metálica fabricado a medida por MetalWolft.";
 
-  return trimText(raw, 180);
+  return trimTextAtWord(raw, 180);
 }
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -125,15 +119,15 @@ export default async function RejasParaVentanasPage() {
         <JsonLd data={buildCollectionJsonLd(description)} />
         <JsonLd data={buildItemListJsonLd(data.products)} />
 
-        <div className="mw-breadcrumbs" aria-label="Breadcrumb">
-          <span>Inicio</span>
+        <nav className="mw-breadcrumbs" aria-label="Breadcrumb">
+          <Link href="/">Inicio</Link>
           <span>/</span>
-          <span>Rejas para ventanas</span>
-        </div>
+          <span aria-current="page">Rejas para ventanas</span>
+        </nav>
 
         <section className="mw-hero">
           <div className="mw-hero__copy">
-            <p className="mw-eyebrow">Landing principal</p>
+            <p className="mw-eyebrow">Catálogo principal</p>
             <h1 className="mw-title mw-title--compact">Rejas para ventanas a medida</h1>
             <p className="mw-lead">{introText}</p>
             <div className="mw-actions">
@@ -141,7 +135,7 @@ export default async function RejasParaVentanasPage() {
                 Ver modelos reales
               </Link>
               <Link className="mw-button mw-button--secondary" href="/medir-hueco-rejas-para-ventanas">
-                Como medir el hueco
+                Cómo medir el hueco
               </Link>
             </div>
           </div>
@@ -150,9 +144,9 @@ export default async function RejasParaVentanasPage() {
             <p className="mw-note">Resumen de compra</p>
             <h2>{data.categoryName}</h2>
             <ul className="mw-list">
-              <li>Rejas metalicas fabricadas a medida.</li>
-              <li>Modelos visibles en esta categoria: {data.products.length}.</li>
-              <li>Enlaces directos a guias y fichas de producto.</li>
+              <li>Rejas metálicas fabricadas a medida.</li>
+              <li>Modelos visibles en esta categoría: {data.products.length}.</li>
+              <li>Enlaces directos a guías y fichas de producto.</li>
             </ul>
           </aside>
         </section>
@@ -160,28 +154,28 @@ export default async function RejasParaVentanasPage() {
         <section className="mw-section">
           <h2>Rejas para ventanas a medida</h2>
           <p>
-            Esta landing concentra la intencion comercial principal del proyecto:
+            Esta landing concentra la intención comercial principal del proyecto:
             ayudar a quien busca rejas para ventanas, rejas para ventanas a medida
-            y soluciones metalicas fabricadas segun el hueco real de cada vivienda.
+            y soluciones metálicas fabricadas según el hueco real de cada vivienda.
           </p>
           <p>
-            Aqui mostramos contenido legible desde servidor, un listado real de
+            Aquí mostramos contenido legible desde servidor, un listado real de
             productos y enlaces directos a cada ficha para que puedas comparar
-            diseno, apertura y acabado sin perder tiempo.
+            diseño, apertura y acabado sin perder tiempo.
           </p>
         </section>
 
         <section className="mw-section">
           <h2>Rejas para ventanas sin obra</h2>
           <p>
-            Muchos clientes buscan una instalacion limpia y rapida. Por eso esta
-            pagina enlaza directamente a la guia de medicion, la guia de
-            instalacion sin obra y los contenidos de apoyo que explican acabados,
-            montaje y tiempos de fabricacion.
+            Muchos clientes buscan una instalación limpia y rápida. Por eso esta
+            página enlaza directamente a la guía de medición, la guía de
+            instalación sin obra y los contenidos de apoyo que explican acabados,
+            montaje y tiempos de fabricación.
           </p>
           <div className="mw-actions">
             <Link className="mw-button mw-button--secondary" href="/instalation-rejas-para-ventanas">
-              Guia de instalacion sin obra
+              Guía de instalación sin obra
             </Link>
             <Link className="mw-button mw-button--secondary" href="/rejas-para-ventanas-sin-obra">
               Rejas sin obra
@@ -190,10 +184,10 @@ export default async function RejasParaVentanasPage() {
         </section>
 
         <section className="mw-section" id="modelos-reales">
-          <h2>Modelos reales de rejas metalicas</h2>
+          <h2>Modelos reales de rejas metálicas</h2>
           <p>
-            Este listado muestra productos reales del catalogo y te permite pasar
-            de la vision general a cada ficha individual con un solo clic.
+            Este listado muestra productos reales del catálogo y te permite pasar
+            de la visión general a cada ficha individual con un solo clic.
           </p>
 
           {featuredProducts.length > 0 ? (
@@ -231,7 +225,7 @@ export default async function RejasParaVentanasPage() {
                     <p>{buildProductExcerpt(product)}</p>
                     <div className="mw-actions">
                       <Link className="mw-button mw-button--primary" href={productHref}>
-                        Ver producto
+                        Ver ficha de {product.h1_seo || product.nombre}
                       </Link>
                     </div>
                   </article>
@@ -242,10 +236,10 @@ export default async function RejasParaVentanasPage() {
         </section>
 
         <section className="mw-section">
-          <h2>Guias y enlaces internos para elegir mejor</h2>
+          <h2>Guías y enlaces internos para elegir mejor</h2>
           <p>
-            Estos enlaces ayudan a resolver dudas habituales sobre medicion,
-            instalacion, estilo y montaje sin obra antes de elegir el modelo
+            Estos enlaces ayudan a resolver dudas habituales sobre medición,
+            instalación, estilo y montaje sin obra antes de elegir el modelo
             definitivo.
           </p>
           <ul className="mw-list">
@@ -273,11 +267,11 @@ export default async function RejasParaVentanasPage() {
         </section>
 
         <section className="mw-section">
-          <h2>Fabricacion y envio desde taller</h2>
+          <h2>Fabricación y envío desde taller</h2>
           <p>
-            Trabajamos con fabricacion a medida, procesos claros y envio desde
-            taller para que puedas elegir la reja adecuada con una base tecnica
-            sencilla y sin mezclar informacion comercial innecesaria.
+            Trabajamos con fabricación a medida, procesos claros y envío desde
+            taller para que puedas elegir la reja adecuada con una base técnica
+            sencilla y sin mezclar información comercial innecesaria.
           </p>
         </section>
       </PageContainer>
