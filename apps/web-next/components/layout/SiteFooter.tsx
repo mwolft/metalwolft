@@ -6,7 +6,6 @@ export function SiteFooter() {
     <footer className="mw-footer">
       <PageContainer>
         <div className="mw-footer__inner">
-          <p>Frontend público SEO en fase de validación para MetalWolft.</p>
           <div className="mw-footer__links">
             <Link href="/">Inicio</Link>
             <Link href="/rejas-para-ventanas">Rejas para ventanas</Link>

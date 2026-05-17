@@ -5,7 +5,7 @@ export const siteConfig = {
   siteUrl: process.env.NEXT_PUBLIC_SITE_URL || "https://www.metalwolft.com",
   defaultTitle: "Rejas para ventanas a medida | MetalWolft",
   defaultDescription:
-    "Fabricamos rejas para ventanas a medida, con enfoque en seguridad, instalación sin obra y envío directo de fábrica.",
+    "Fabricamos rejas para ventanas a medida, con enfoque en seguridad, instalacion sin obra y envio directo desde fabrica.",
   defaultOgImage:
     "https://res.cloudinary.com/dewanllxn/image/upload/v1749024437/rejas-para-ventanas_nzmi8k.png"
 };
@@ -13,6 +13,20 @@ export const siteConfig = {
 export function absoluteUrl(path = "/") {
   const normalizedPath = path.startsWith("/") ? path : `/${path}`;
   return new URL(normalizedPath, siteConfig.siteUrl).toString();
+}
+
+export function trimTextAtWord(value: string, maxLength: number) {
+  const normalized = value.replace(/\s+/g, " ").trim();
+
+  if (normalized.length <= maxLength) {
+    return /[.!?]$/.test(normalized) ? normalized : `${normalized}.`;
+  }
+
+  const sliced = normalized.slice(0, maxLength + 1);
+  const lastSpace = sliced.lastIndexOf(" ");
+  const safeLength = lastSpace > Math.floor(maxLength * 0.6) ? lastSpace : maxLength;
+
+  return `${sliced.slice(0, safeLength).trim()}.`;
 }
 
 type MetadataInput = {

@@ -1,9 +1,15 @@
+import Link from "next/link";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { PageContainer } from "@/components/layout/PageContainer";
 import { BreadcrumbJsonLd } from "@/components/seo/BreadcrumbJsonLd";
 import { JsonLd } from "@/components/seo/JsonLd";
-import { absoluteUrl, buildMetadata, siteConfig } from "@/lib/metadata";
+import {
+  absoluteUrl,
+  buildMetadata,
+  siteConfig,
+  trimTextAtWord
+} from "@/lib/metadata";
 import {
   ApiRequestError,
   fetchProductBySlug,
@@ -56,15 +62,11 @@ function buildProductDescription(product: ApiProduct) {
     product.descripcion?.trim() ||
     "Producto de carpinteria metalica a medida fabricado por MetalWolft.";
 
-  return raw.length > 155 ? `${raw.slice(0, 152)}...` : raw;
+  return trimTextAtWord(raw, 155);
 }
 
 function getProductImage(product: ApiProduct) {
-  return (
-    product.imagen ||
-    product.images?.[0]?.image_url ||
-    siteConfig.defaultOgImage
-  );
+  return product.imagen || product.images?.[0]?.image_url || siteConfig.defaultOgImage;
 }
 
 function buildProductJsonLd(product: ApiProduct) {
@@ -97,7 +99,7 @@ export async function generateMetadata({
   if (!product) {
     return buildMetadata({
       title: "Producto no encontrado",
-      description: "La ficha de producto solicitada no esta disponible.",
+      description: "La ficha de producto solicitada no está disponible.",
       path: `/${params.category_slug}/${params.product_slug}`
     });
   }
@@ -119,10 +121,10 @@ export default async function ProductPage({ params }: ProductPageProps) {
 
   const h1 = product.h1_seo || product.nombre;
   const canonicalPath = `/${product.category_slug}/${product.slug}`;
+  const categoryPath = `/${product.category_slug}`;
   const productImages = product.images ?? [];
   const visibleDescription =
-    product.descripcion?.trim() ||
-    "Descripcion tecnica no disponible en este momento.";
+    product.descripcion?.trim() || "Descripción técnica no disponible en este momento.";
 
   return (
     <div className="mw-page">
@@ -130,50 +132,66 @@ export default async function ProductPage({ params }: ProductPageProps) {
         <BreadcrumbJsonLd
           items={[
             { name: "Inicio", path: "/" },
-            { name: product.categoria_nombre || "Catalogo", path: `/${product.category_slug}` },
+            { name: product.categoria_nombre || "Catálogo", path: categoryPath },
             { name: h1, path: canonicalPath }
           ]}
         />
         <JsonLd data={buildProductJsonLd(product)} />
 
-        <div className="mw-breadcrumbs" aria-label="Breadcrumb">
-          <span>Inicio</span>
+        <nav className="mw-breadcrumbs" aria-label="Breadcrumb">
+          <Link href="/">Inicio</Link>
           <span>/</span>
-          <span>{product.categoria_nombre || "Catalogo"}</span>
+          <Link href={categoryPath}>{product.categoria_nombre || "Catálogo"}</Link>
           <span>/</span>
-          <span>{h1}</span>
-        </div>
+          <span aria-current="page">{h1}</span>
+        </nav>
 
         <section className="mw-hero">
           <div className="mw-hero__copy">
-            <p className="mw-eyebrow">Ficha de producto</p>
+            <p className="mw-eyebrow">Modelo a medida</p>
             <h1 className="mw-title mw-title--compact">{h1}</h1>
             <p className="mw-lead">{visibleDescription}</p>
+            <div className="mw-actions">
+              <Link className="mw-button mw-button--primary" href={categoryPath}>
+                Ver más modelos de la categoría
+              </Link>
+              <Link className="mw-button mw-button--secondary" href="/rejas-para-ventanas-sin-obra">
+                Rejas para ventanas sin obra
+              </Link>
+            </div>
           </div>
 
           <aside className="mw-panel" aria-label="Resumen del producto">
-            <p className="mw-note">Resumen de fabricacion</p>
+            <p className="mw-note">Resumen de fabricación</p>
             <h2>{product.nombre}</h2>
             <ul className="mw-list">
-              <li>Categoria: {product.categoria_nombre}</li>
+              <li>
+                Categoría:{" "}
+                <Link href={categoryPath}>{product.categoria_nombre || "Catálogo"}</Link>
+              </li>
               {product.subcategoria_nombre ? (
-                <li>Subcategoria: {product.subcategoria_nombre}</li>
+                <li>Subcategoría: {product.subcategoria_nombre}</li>
               ) : null}
-              {product.has_abatible ? <li>Disponible en version abatible.</li> : null}
-              {product.has_door_model ? <li>Disponible en version puerta.</li> : null}
-              <li>Fabricacion a medida y envio desde taller.</li>
+              {product.has_abatible ? <li>Disponible en versión abatible.</li> : null}
+              {product.has_door_model ? <li>Disponible en versión puerta.</li> : null}
+              <li>Fabricación a medida y envío directo desde taller.</li>
             </ul>
           </aside>
         </section>
 
         <section className="mw-section">
-          <h2>Descripcion tecnica</h2>
+          <h2>Descripción técnica</h2>
           <p>{visibleDescription}</p>
+          <p>
+            Esta ficha resume el modelo, sus acabados y el planteamiento de
+            fabricación para ayudarte a valorar si encaja con el hueco de tu
+            ventana y con el nivel de seguridad que buscas para tu vivienda.
+          </p>
         </section>
 
         {productImages.length > 0 ? (
           <section className="mw-section">
-            <h2>Imagenes del producto</h2>
+            <h2>Imágenes del producto</h2>
             <div className="mw-grid">
               {productImages.slice(0, 4).map((image) => (
                 <article className="mw-card" key={image.id}>
@@ -186,12 +204,44 @@ export default async function ProductPage({ params }: ProductPageProps) {
         ) : null}
 
         <section className="mw-section">
-          <h2>Instalacion, medidas y acabado</h2>
+          <h2>Instalación y medición</h2>
           <p>
-            Esta ficha esta pensada para ayudarte a revisar el modelo, valorar
-            si encaja con tu hueco y continuar despues con la medicion, el tipo
-            de montaje y el acabado que mejor se adapte a tu vivienda.
+            Antes de pedir una reja metálica a medida conviene revisar el hueco,
+            el tipo de apoyo y la instalación prevista. Por eso enlazamos
+            directamente a las guías que ayudan a medir mejor y a preparar una
+            instalación sin obra cuando el proyecto lo permite.
           </p>
+          <div className="mw-actions">
+            <Link className="mw-button mw-button--secondary" href="/medir-hueco-rejas-para-ventanas">
+              Cómo medir el hueco
+            </Link>
+            <Link className="mw-button mw-button--secondary" href="/instalation-rejas-para-ventanas">
+              Guía de instalación
+            </Link>
+          </div>
+        </section>
+
+        <section className="mw-section">
+          <h2>Fabricación a medida</h2>
+          <p>
+            Cada modelo se plantea para fabricar la reja según medidas reales,
+            con un acabado metálico adaptado al tipo de vivienda y al uso
+            previsto. Si quieres comparar alternativas, puedes volver a la
+            categoría y revisar otros modelos fijos o abatibles antes de tomar
+            una decisión.
+          </p>
+          <ul className="mw-list">
+            <li>
+              <Link href={categoryPath}>
+                Ver todos los modelos de {product.categoria_nombre || "la categoría"}
+              </Link>
+            </li>
+            <li>
+              <Link href="/rejas-para-ventanas-sin-obra">
+                Rejas para ventanas sin obra
+              </Link>
+            </li>
+          </ul>
         </section>
       </PageContainer>
     </div>
