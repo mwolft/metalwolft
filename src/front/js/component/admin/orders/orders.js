@@ -15,7 +15,9 @@ import {
   Create,
   useListContext,
   RecordContextProvider,
+  useRecordContext,
 } from "react-admin";
+import { FaFileAlt } from "react-icons/fa";
 
 const ORDER_STATUS_CHOICES = [
   { id: "pendiente", name: "Pendiente" },
@@ -36,6 +38,75 @@ const getOrderRecords = (data, ids) => {
   }
 
   return Object.values(data || {});
+};
+
+const WorkOrderButton = () => {
+  const record = useRecordContext();
+
+  const handleDownload = async () => {
+    if (!record?.id) {
+      alert("No se encontro informacion para este pedido.");
+      return;
+    }
+
+    const token = localStorage.getItem("token");
+    if (!token) {
+      alert("Debes iniciar sesion para descargar el parte de trabajo.");
+      return;
+    }
+
+    const backendUrl = process.env.REACT_APP_BACKEND_URL || "http://localhost:3001";
+
+    try {
+      const response = await fetch(`${backendUrl}/api/admin/work-order/${record.id}`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) {
+        if (response.status === 403) {
+          throw new Error("No tienes permiso para descargar este parte de trabajo.");
+        }
+
+        if (response.status === 404) {
+          throw new Error("No se encontro el pedido solicitado.");
+        }
+
+        const data = await response.json().catch(() => null);
+        throw new Error(data?.message || "No se pudo descargar el parte de trabajo.");
+      }
+
+      const blob = await response.blob();
+      const objectUrl = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      const fallbackName = `parte-trabajo-${record.locator || record.id}.pdf`;
+      const contentDisposition = response.headers.get("Content-Disposition") || "";
+      const matchedFilename = contentDisposition.match(/filename="?([^"]+)"?/i);
+
+      link.href = objectUrl;
+      link.download = matchedFilename?.[1] || fallbackName;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(objectUrl);
+    } catch (error) {
+      alert(error.message || "No se pudo descargar el parte de trabajo.");
+    }
+  };
+
+  return (
+    <button
+      type="button"
+      onClick={(event) => {
+        event.stopPropagation();
+        handleDownload();
+      }}
+      className="admin-action-button admin-action-button--primary"
+    >
+      <FaFileAlt /> Parte de trabajo
+    </button>
+  );
 };
 
 const OrderListTable = () => {
@@ -92,6 +163,7 @@ const OrderListTable = () => {
                 </td>
                 <td>
                   <div className="admin-action-group">
+                    <WorkOrderButton />
                     <EditButton className="admin-ra-button admin-ra-button--secondary" />
                     <DeleteButton className="admin-ra-button admin-ra-button--danger" />
                   </div>
