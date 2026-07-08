@@ -21,7 +21,7 @@ export const BlogListPage = () => {
             ? process.env.REACT_APP_BACKEND_URL
             : process.env.NODE_ENV === "production"
                 ? "https://api.metalwolft.com"
-                : "https://fuzzy-space-eureka-7v7jw6jv7v5jhp945-3001.app.github.dev/";
+                : "https://solid-happiness-r475wq5477g9cpvjp-3001.app.github.dev/";
 
         fetch(`${apiBaseUrl}/api/seo/blogs`)
             .then((response) => {
@@ -96,7 +96,7 @@ export const BlogListPage = () => {
                         ]}
                     />
                 </div>
-                <h1 className='h1-categories' style={{marginLeft: '40px'}}>Blog</h1>
+                <h1 className='h1-categories' style={{ marginLeft: '40px' }}>Blog</h1>
                 <p className="mx-3 mx-md-5 mb-4">
                     En esta sección encontrarás consejos prácticos sobre <Link to="/rejas-para-ventanas" className="link-categories">rejas para ventanas</Link>, la <Link to="/medir-hueco-rejas-para-ventanas" className="link-categories">guía para medir el hueco</Link>, la <Link to="/instalation-rejas-para-ventanas" className="link-categories">instalación sin obra</Link> y los <Link to="/plazos-entrega-rejas-a-medida" className="link-categories">plazos de entrega</Link>.
                 </p>

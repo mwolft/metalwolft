@@ -21,7 +21,7 @@ export const RejasParaVentanasModernas = () => {
         ? process.env.REACT_APP_BACKEND_URL
         : process.env.NODE_ENV === "production"
             ? "https://api.metalwolft.com"
-            : "https://fuzzy-space-eureka-7v7jw6jv7v5jhp945-3001.app.github.dev/";
+            : "https://solid-happiness-r475wq5477g9cpvjp-3001.app.github.dev/";
 
     useEffect(() => {
         fetch(`${apiBaseUrl}/api/seo/rejas-para-ventanas-modernas`)
@@ -175,7 +175,7 @@ export const RejasParaVentanasModernas = () => {
                             <RelatedProductsCarousel
                                 categorySlug="rejas-para-ventanas"
                                 categoryName="Rejas para ventanas"
-                                currentProductId={null}  
+                                currentProductId={null}
                                 productName="rejas modernas"
                             />
 

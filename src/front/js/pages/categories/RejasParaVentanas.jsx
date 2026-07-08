@@ -65,7 +65,7 @@ export const RejasParaVentanas = ({ onSelectCategory, onSelectSubcategory, categ
             ? process.env.REACT_APP_BACKEND_URL
             : process.env.NODE_ENV === "production"
                 ? "https://api.metalwolft.com"
-                : "https://fuzzy-space-eureka-7v7jw6jv7v5jhp945-3001.app.github.dev/";
+                : "https://solid-happiness-r475wq5477g9cpvjp-3001.app.github.dev/";
 
         fetch(`${apiBaseUrl}/api/seo/rejas-para-ventanas`)
             .then((response) => {
@@ -148,7 +148,7 @@ export const RejasParaVentanas = ({ onSelectCategory, onSelectSubcategory, categ
                                     backgroundImage: `linear-gradient(to right, transparent 95%, #ff324d 75%), url("https://res.cloudinary.com/dewanllxn/image/upload/v1769244778/rejas-para-ventanas_mlh9cq.avif")`,
                                     backgroundSize: 'cover',
                                     backgroundPosition: 'center',
-                                    overflow: 'visible' 
+                                    overflow: 'visible'
                                 }}
                             >
                                 <div
@@ -156,7 +156,7 @@ export const RejasParaVentanas = ({ onSelectCategory, onSelectSubcategory, categ
                                     style={{
                                         backgroundColor: 'rgba(255, 255, 255, 0.76)',
                                         borderRadius: '15px',
-                                        width: '90%', 
+                                        width: '90%',
                                         maxWidth: '500px',
                                         padding: '20px 25px',
                                         zIndex: 2,
