@@ -6,7 +6,12 @@ type SitemapEntry = MetadataRoute.Sitemap[number];
 
 const STATIC_ROUTES = [
   { path: "/", changeFrequency: "weekly", priority: 1 },
-  { path: "/rejas-para-ventanas", changeFrequency: "weekly", priority: 0.95 }
+  { path: "/rejas-para-ventanas", changeFrequency: "weekly", priority: 0.95 },
+  { path: "/blogs", changeFrequency: "weekly", priority: 0.85 },
+  { path: "/medir-hueco-rejas-para-ventanas", changeFrequency: "monthly", priority: 0.75 },
+  { path: "/instalation-rejas-para-ventanas", changeFrequency: "monthly", priority: 0.75 },
+  { path: "/rejas-para-ventanas-sin-obra", changeFrequency: "monthly", priority: 0.8 },
+  { path: "/rejas-para-ventanas-modernas", changeFrequency: "monthly", priority: 0.8 }
 ] as const;
 
 function createEntry(

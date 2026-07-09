@@ -197,6 +197,13 @@ img {
   margin-top: 1.5rem;
 }
 
+.mw-article-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1.25rem;
+  margin-top: 1.5rem;
+}
+
 .mw-card {
   padding: 1.2rem;
   border: 1px solid rgba(229, 231, 235, 0.92);
@@ -240,6 +247,17 @@ img {
   padding-left: 1.2rem;
 }
 
+.mw-steps {
+  margin: 0.75rem 0 0;
+  padding-left: 1.4rem;
+  color: #4b5563;
+  line-height: 1.75;
+}
+
+.mw-steps li + li {
+  margin-top: 0.6rem;
+}
+
 .mw-breadcrumbs {
   display: flex;
   gap: 0.55rem;
@@ -262,6 +280,99 @@ img {
   color: var(--mw-accent-dark);
   font-size: 0.92rem;
   font-weight: 700;
+}
+
+.mw-article-meta,
+.mw-card__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.85rem;
+  margin: 0 0 0.9rem;
+  color: var(--mw-muted);
+  font-size: 0.92rem;
+}
+
+.mw-card__meta {
+  margin-bottom: 0.75rem;
+}
+
+.mw-article-media {
+  padding: 1rem;
+}
+
+.mw-media-frame {
+  margin: 0;
+  overflow: hidden;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.96);
+}
+
+.mw-article-hero-image,
+.mw-media-frame img {
+  display: block;
+  width: 100%;
+  object-fit: cover;
+}
+
+.mw-article-card {
+  overflow: hidden;
+  border: 1px solid rgba(229, 231, 235, 0.92);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.93);
+  box-shadow: var(--mw-shadow);
+}
+
+.mw-article-card img {
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 10;
+  object-fit: cover;
+}
+
+.mw-article-card__body {
+  padding: 1.25rem;
+}
+
+.mw-article-card__body h2 {
+  margin: 0 0 0.65rem;
+  font-size: 1.35rem;
+  line-height: 1.2;
+}
+
+.mw-inline-link {
+  color: var(--mw-accent-dark);
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.16em;
+}
+
+.mw-inline-link:hover {
+  color: var(--mw-accent);
+}
+
+.mw-quote {
+  margin: 1.35rem 0 0;
+  padding: 1rem 1.1rem;
+  border-left: 4px solid var(--mw-accent);
+  border-radius: 12px;
+  background: rgba(255, 50, 77, 0.06);
+  color: #374151;
+  font-style: italic;
+}
+
+.mw-split-media {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+  margin-top: 1.4rem;
+}
+
+.mw-video {
+  width: 100%;
+  border-radius: 16px;
+  overflow: hidden;
+  margin-top: 1rem;
+  background: #111827;
 }
 
 .mw-footer {
@@ -294,7 +405,12 @@ img {
     grid-template-columns: 1fr;
   }
 
+  .mw-article-grid,
   .mw-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .mw-split-media {
     grid-template-columns: 1fr;
   }
 }

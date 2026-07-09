@@ -9,7 +9,12 @@ import {
   siteConfig,
   trimTextAtWord
 } from "@/lib/metadata";
-import { ApiProduct, fetchCategories, fetchCategoryProducts } from "@/lib/api";
+import {
+  ApiProduct,
+  fetchCategories,
+  fetchCategoryProducts,
+  getApiBaseUrl
+} from "@/lib/api";
 
 type RejasCategoryData = {
   categoryName: string;
@@ -18,6 +23,29 @@ type RejasCategoryData = {
 };
 
 const CATEGORY_SLUG = "rejas-para-ventanas";
+
+function shouldAllowLocalApiFallback() {
+  const apiBaseUrl = getApiBaseUrl().toLowerCase();
+
+  return (
+    apiBaseUrl.includes("localhost") ||
+    apiBaseUrl.includes("127.0.0.1") ||
+    apiBaseUrl.includes(".app.github.dev") ||
+    apiBaseUrl.includes(".gitpod.io")
+  );
+}
+
+function isApiUnavailableError(error: unknown) {
+  if (error instanceof TypeError) {
+    return true;
+  }
+
+  if (error instanceof Error) {
+    return /fetch failed|econnrefused|enotfound|connect/i.test(error.message);
+  }
+
+  return false;
+}
 
 function buildIntroText(productCount: number, categoryDescription?: string | null) {
   const baseText =
@@ -41,18 +69,30 @@ function buildMetaDescription(productCount: number) {
 }
 
 async function getRejasCategoryData(): Promise<RejasCategoryData> {
-  const [products, categories] = await Promise.all([
-    fetchCategoryProducts(CATEGORY_SLUG),
-    fetchCategories().catch(() => [])
-  ]);
+  try {
+    const [products, categories] = await Promise.all([
+      fetchCategoryProducts(CATEGORY_SLUG),
+      fetchCategories()
+    ]);
 
-  const category = categories.find((item) => item.slug === CATEGORY_SLUG) || null;
+    const category = categories.find((item) => item.slug === CATEGORY_SLUG) || null;
 
-  return {
-    categoryName: category?.nombre?.trim() || "Rejas para ventanas",
-    categoryDescription: category?.descripcion || null,
-    products
-  };
+    return {
+      categoryName: category?.nombre?.trim() || "Rejas para ventanas",
+      categoryDescription: category?.descripcion || null,
+      products
+    };
+  } catch (error) {
+    if (shouldAllowLocalApiFallback() && isApiUnavailableError(error)) {
+      return {
+        categoryName: "Rejas para ventanas",
+        categoryDescription: null,
+        products: []
+      };
+    }
+
+    throw error;
+  }
 }
 
 function buildItemListJsonLd(products: ApiProduct[]) {
@@ -207,7 +247,7 @@ export default async function RejasParaVentanasPage() {
 
           {data.products.length === 0 ? (
             <p>
-              La categoria existe, pero ahora mismo la API no devuelve productos
+              La categoría existe, pero ahora mismo la API no devuelve productos
               visibles para esta landing.
             </p>
           ) : (
@@ -250,7 +290,7 @@ export default async function RejasParaVentanasPage() {
             </li>
             <li>
               <Link href="/instalation-rejas-para-ventanas">
-                Instalacion de rejas para ventanas sin obra
+                Instalación de rejas para ventanas sin obra
               </Link>
             </li>
             <li>

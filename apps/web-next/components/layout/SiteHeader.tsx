@@ -12,6 +12,7 @@ export function SiteHeader() {
           <nav className="mw-nav" aria-label="Navegación principal">
             <Link href="/">Inicio</Link>
             <Link href="/rejas-para-ventanas">Rejas para ventanas</Link>
+            <Link href="/blogs">Blog</Link>
           </nav>
         </div>
       </PageContainer>

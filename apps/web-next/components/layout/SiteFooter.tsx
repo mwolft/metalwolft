@@ -9,6 +9,7 @@ export function SiteFooter() {
           <div className="mw-footer__links">
             <Link href="/">Inicio</Link>
             <Link href="/rejas-para-ventanas">Rejas para ventanas</Link>
+            <Link href="/blogs">Blog</Link>
           </div>
         </div>
       </PageContainer>
