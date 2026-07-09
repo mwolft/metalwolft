@@ -13,6 +13,7 @@ export function SiteHeader() {
             <Link href="/">Inicio</Link>
             <Link href="/rejas-para-ventanas">Rejas para ventanas</Link>
             <Link href="/blogs">Blog</Link>
+            <Link href="/contact">Contacto</Link>
           </nav>
         </div>
       </PageContainer>
