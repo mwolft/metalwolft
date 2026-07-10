@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { PageContainer } from "@/components/layout/PageContainer";
 import { contactDetails, contactLinks } from "@/lib/contact";
+import { legalFooterLinks } from "@/lib/legal";
 
 export function SiteFooter() {
   return (
@@ -34,6 +35,17 @@ export function SiteFooter() {
               <a href={contactLinks.whatsapp} rel="noopener noreferrer" target="_blank">
                 WhatsApp
               </a>
+            </div>
+          </div>
+
+          <div className="mw-footer__inner">
+            <p className="mw-footer__title">Legal</p>
+            <div className="mw-footer__links">
+              {legalFooterLinks.map((link) => (
+                <Link href={link.href} key={link.href}>
+                  {link.label}
+                </Link>
+              ))}
             </div>
           </div>
         </div>

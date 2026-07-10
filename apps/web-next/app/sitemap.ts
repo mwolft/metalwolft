@@ -12,7 +12,12 @@ const STATIC_ROUTES = [
   { path: "/medir-hueco-rejas-para-ventanas", changeFrequency: "monthly", priority: 0.75 },
   { path: "/instalation-rejas-para-ventanas", changeFrequency: "monthly", priority: 0.75 },
   { path: "/rejas-para-ventanas-sin-obra", changeFrequency: "monthly", priority: 0.8 },
-  { path: "/rejas-para-ventanas-modernas", changeFrequency: "monthly", priority: 0.8 }
+  { path: "/rejas-para-ventanas-modernas", changeFrequency: "monthly", priority: 0.8 },
+  { path: "/politica-privacidad", changeFrequency: "yearly", priority: 0.35 },
+  { path: "/politica-cookies", changeFrequency: "yearly", priority: 0.35 },
+  { path: "/politica-devolucion", changeFrequency: "yearly", priority: 0.4 },
+  { path: "/cambios-politica-cookies", changeFrequency: "yearly", priority: 0.3 },
+  { path: "/license", changeFrequency: "yearly", priority: 0.25 }
 ] as const;
 
 function createEntry(
