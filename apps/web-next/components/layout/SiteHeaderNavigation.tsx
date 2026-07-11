@@ -24,6 +24,25 @@ export function SiteHeaderNavigation() {
   const toggleRef = useRef<HTMLElement>(null);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
+  const renderNavigationLinks = (onNavigate?: () => void) =>
+    primaryNavigationLinks.map((link) => {
+      const isActive = isNavigationLinkActive(link, pathname);
+      const shouldSetAriaCurrent = isActive && link.allowAriaCurrent !== false;
+
+      return (
+        <li key={link.href}>
+          <Link
+            className={`mw-nav-link${isActive ? " is-active" : ""}`}
+            href={link.href}
+            aria-current={shouldSetAriaCurrent ? "page" : undefined}
+            onClick={onNavigate}
+          >
+            {link.label}
+          </Link>
+        </li>
+      );
+    });
+
   const closeMenu = (shouldRestoreFocus = false) => {
     const disclosureElement = navDisclosureRef.current;
 
@@ -107,59 +126,49 @@ export function SiteHeaderNavigation() {
   }, [isMenuOpen]);
 
   return (
-    <details
-      className="mw-header__nav-group mw-nav-disclosure"
-      onToggle={(event) => setIsMenuOpen(event.currentTarget.open)}
-      ref={navDisclosureRef}
-    >
-      <summary
-        className="mw-nav-toggle"
-        aria-controls={NAVIGATION_ID}
-        aria-expanded={isMenuOpen}
-        aria-label={
-          isMenuOpen ? "Cerrar navegación principal" : "Abrir navegación principal"
-        }
-        ref={toggleRef}
-      >
-        <span aria-hidden="true" />
-        <span aria-hidden="true" />
-        <span aria-hidden="true" />
-        <span className="mw-visually-hidden">
-          {isMenuOpen ? "Cerrar menú" : "Abrir menú"}
-        </span>
-      </summary>
-
-      <div className="mw-nav-shell">
-        <nav className="mw-nav" id={NAVIGATION_ID} aria-label="Navegación principal">
-          <ul className="mw-nav-list">
-            {primaryNavigationLinks.map((link) => {
-              const isActive = isNavigationLinkActive(link, pathname);
-              const shouldSetAriaCurrent = isActive && link.allowAriaCurrent !== false;
-
-              return (
-                <li key={link.href}>
-                  <Link
-                    className={`mw-nav-link${isActive ? " is-active" : ""}`}
-                    href={link.href}
-                    aria-current={shouldSetAriaCurrent ? "page" : undefined}
-                    onClick={() => closeMenu(false)}
-                  >
-                    {link.label}
-                  </Link>
-                </li>
-              );
-            })}
-          </ul>
+    <>
+      <div className="mw-header__nav-desktop">
+        <nav className="mw-nav" aria-label="Navegación principal">
+          <ul className="mw-nav-list">{renderNavigationLinks()}</ul>
         </nav>
 
-        <Link
-          className="mw-button mw-button--primary mw-header__cta"
-          href={headerPrimaryCta.href}
-          onClick={() => closeMenu(false)}
-        >
+        <Link className="mw-button mw-button--primary mw-header__cta" href={headerPrimaryCta.href}>
           {headerPrimaryCta.label}
         </Link>
       </div>
-    </details>
+
+      <details
+        className="mw-header__nav-group mw-nav-disclosure"
+        onToggle={(event) => setIsMenuOpen(event.currentTarget.open)}
+        ref={navDisclosureRef}
+      >
+        <summary
+          className="mw-nav-toggle"
+          aria-controls={NAVIGATION_ID}
+          aria-expanded={isMenuOpen}
+          aria-label={isMenuOpen ? "Cerrar navegación principal" : "Abrir navegación principal"}
+          ref={toggleRef}
+        >
+          <span aria-hidden="true" />
+          <span aria-hidden="true" />
+          <span aria-hidden="true" />
+          <span className="mw-visually-hidden">{isMenuOpen ? "Cerrar menú" : "Abrir menú"}</span>
+        </summary>
+
+        <div className="mw-nav-shell mw-nav-shell--mobile">
+          <nav className="mw-nav" id={NAVIGATION_ID} aria-label="Navegación principal">
+            <ul className="mw-nav-list">{renderNavigationLinks(() => closeMenu(false))}</ul>
+          </nav>
+
+          <Link
+            className="mw-button mw-button--primary mw-header__cta"
+            href={headerPrimaryCta.href}
+            onClick={() => closeMenu(false)}
+          >
+            {headerPrimaryCta.label}
+          </Link>
+        </div>
+      </details>
+    </>
   );
 }

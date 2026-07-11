@@ -128,7 +128,15 @@ textarea:focus-visible {
   gap: 0.75rem;
 }
 
+.mw-header__nav-desktop {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 1rem;
+}
+
 .mw-nav-disclosure {
+  display: none;
   position: relative;
 }
 
@@ -148,6 +156,10 @@ textarea:focus-visible {
   display: flex;
   align-items: center;
   gap: 1rem;
+}
+
+.mw-nav-shell--mobile {
+  display: none;
 }
 
 .mw-nav {
@@ -188,14 +200,9 @@ textarea:focus-visible {
   background: rgba(255, 50, 77, 0.12);
 }
 
-.mw-header__cta,
-.mw-header__quick-cta {
+.mw-header__cta {
   min-height: 44px;
   padding-inline: 1rem;
-}
-
-.mw-header__quick-cta {
-  display: none;
 }
 
 .mw-nav-toggle {
@@ -928,11 +935,13 @@ textarea:focus-visible {
     font-size: 0.76rem;
   }
 
-  .mw-header__nav-group {
-    flex: 0 0 auto;
+  .mw-header__nav-desktop {
+    display: none;
   }
 
   .mw-nav-disclosure {
+    display: flex;
+    flex: 0 0 auto;
     position: static;
   }
 
@@ -940,7 +949,7 @@ textarea:focus-visible {
     display: inline-flex;
   }
 
-  .mw-nav-shell {
+  .mw-nav-shell--mobile {
     position: absolute;
     top: calc(100% - 0.15rem);
     left: 0;
@@ -956,7 +965,7 @@ textarea:focus-visible {
     display: none;
   }
 
-  .mw-nav-disclosure[open] .mw-nav-shell {
+  .mw-nav-disclosure[open] .mw-nav-shell--mobile {
     display: flex;
   }
 
@@ -1019,10 +1028,6 @@ textarea:focus-visible {
 
   .mw-brand__tagline {
     display: none;
-  }
-
-  .mw-header__quick-cta {
-    padding-inline: 0.9rem;
   }
 
   .mw-footer__grid {
