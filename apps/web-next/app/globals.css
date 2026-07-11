@@ -207,8 +207,10 @@ textarea:focus-visible {
 
 .mw-nav-toggle {
   display: none;
+  position: relative;
   align-items: center;
   justify-content: center;
+  flex: 0 0 46px;
   width: 46px;
   height: 46px;
   padding: 0;
@@ -218,29 +220,41 @@ textarea:focus-visible {
   cursor: pointer;
 }
 
-.mw-nav-toggle span {
+.mw-nav-toggle > span[aria-hidden="true"] {
+  position: absolute;
+  top: 50%;
+  left: 50%;
   display: block;
-  width: 18px;
+  width: 21px;
   height: 2px;
   border-radius: 999px;
   background: var(--mw-text);
-  transition: transform 0.18s ease, opacity 0.18s ease;
+  transform-origin: center;
+  transition: transform 0.2s ease, opacity 0.16s ease;
 }
 
-.mw-nav-toggle span + span {
-  margin-top: 4px;
+.mw-nav-toggle > span:nth-child(1) {
+  transform: translate(-50%, calc(-50% - 6px));
 }
 
-.mw-nav-toggle[aria-expanded="true"] span:nth-child(1) {
-  transform: translateY(6px) rotate(45deg);
+.mw-nav-toggle > span:nth-child(2) {
+  transform: translate(-50%, -50%);
 }
 
-.mw-nav-toggle[aria-expanded="true"] span:nth-child(2) {
+.mw-nav-toggle > span:nth-child(3) {
+  transform: translate(-50%, calc(-50% + 6px));
+}
+
+.mw-nav-toggle[aria-expanded="true"] > span:nth-child(1) {
+  transform: translate(-50%, -50%) rotate(45deg);
+}
+
+.mw-nav-toggle[aria-expanded="true"] > span:nth-child(2) {
   opacity: 0;
 }
 
-.mw-nav-toggle[aria-expanded="true"] span:nth-child(3) {
-  transform: translateY(-6px) rotate(-45deg);
+.mw-nav-toggle[aria-expanded="true"] > span:nth-child(3) {
+  transform: translate(-50%, -50%) rotate(-45deg);
 }
 
 .mw-page {
