@@ -12,7 +12,7 @@ import {
 const NAVIGATION_ID = "mw-primary-navigation";
 const BODY_OPEN_CLASS = "mw-nav-open";
 const FOCUSABLE_SELECTOR =
-  'a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"])';
+  'summary, a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
 function isVisibleFocusableElement(element: HTMLElement) {
   return !element.hasAttribute("disabled") && element.getClientRects().length > 0;
@@ -20,43 +20,51 @@ function isVisibleFocusableElement(element: HTMLElement) {
 
 export function SiteHeaderNavigation() {
   const pathname = usePathname();
-  const [isHydrated, setIsHydrated] = useState(false);
+  const navDisclosureRef = useRef<HTMLDetailsElement>(null);
+  const toggleRef = useRef<HTMLElement>(null);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const navGroupRef = useRef<HTMLDivElement>(null);
-  const toggleButtonRef = useRef<HTMLButtonElement>(null);
+
+  const closeMenu = (shouldRestoreFocus = false) => {
+    const disclosureElement = navDisclosureRef.current;
+
+    if (disclosureElement) {
+      disclosureElement.open = false;
+    }
+
+    setIsMenuOpen(false);
+
+    if (shouldRestoreFocus) {
+      requestAnimationFrame(() => {
+        toggleRef.current?.focus();
+      });
+    }
+  };
 
   useEffect(() => {
-    setIsHydrated(true);
+    setIsMenuOpen(Boolean(navDisclosureRef.current?.open));
   }, []);
 
   useEffect(() => {
-    setIsMenuOpen(false);
+    closeMenu(false);
   }, [pathname]);
 
   useEffect(() => {
-    const navGroupElement = navGroupRef.current;
+    const disclosureElement = navDisclosureRef.current;
 
-    if (!isMenuOpen || !navGroupElement) {
+    if (!isMenuOpen || !disclosureElement) {
       document.body.classList.remove(BODY_OPEN_CLASS);
       return undefined;
     }
 
     const getFocusableElements = () =>
       Array.from(
-        navGroupElement.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR)
+        disclosureElement.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR)
       ).filter(isVisibleFocusableElement);
-
-    const closeMenuAndRestoreFocus = () => {
-      setIsMenuOpen(false);
-      requestAnimationFrame(() => {
-        toggleButtonRef.current?.focus();
-      });
-    };
 
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
         event.preventDefault();
-        closeMenuAndRestoreFocus();
+        closeMenu(true);
         return;
       }
 
@@ -99,34 +107,29 @@ export function SiteHeaderNavigation() {
   }, [isMenuOpen]);
 
   return (
-    <div
-      className={`mw-header__nav-group${isHydrated ? " is-hydrated" : ""}`}
-      ref={navGroupRef}
+    <details
+      className="mw-header__nav-group mw-nav-disclosure"
+      onToggle={(event) => setIsMenuOpen(event.currentTarget.open)}
+      ref={navDisclosureRef}
     >
-      <Link
-        className="mw-button mw-button--primary mw-header__quick-cta"
-        href={headerPrimaryCta.href}
-      >
-        {headerPrimaryCta.mobileLabel}
-      </Link>
-
-      <button
+      <summary
         className="mw-nav-toggle"
-        type="button"
-        aria-expanded={isMenuOpen}
         aria-controls={NAVIGATION_ID}
+        aria-expanded={isMenuOpen}
         aria-label={
           isMenuOpen ? "Cerrar navegación principal" : "Abrir navegación principal"
         }
-        onClick={() => setIsMenuOpen((currentValue) => !currentValue)}
-        ref={toggleButtonRef}
+        ref={toggleRef}
       >
         <span aria-hidden="true" />
         <span aria-hidden="true" />
         <span aria-hidden="true" />
-      </button>
+        <span className="mw-visually-hidden">
+          {isMenuOpen ? "Cerrar menú" : "Abrir menú"}
+        </span>
+      </summary>
 
-      <div className={`mw-nav-shell${isMenuOpen ? " is-open" : ""}`}>
+      <div className="mw-nav-shell">
         <nav className="mw-nav" id={NAVIGATION_ID} aria-label="Navegación principal">
           <ul className="mw-nav-list">
             {primaryNavigationLinks.map((link) => {
@@ -139,7 +142,7 @@ export function SiteHeaderNavigation() {
                     className={`mw-nav-link${isActive ? " is-active" : ""}`}
                     href={link.href}
                     aria-current={shouldSetAriaCurrent ? "page" : undefined}
-                    onClick={() => setIsMenuOpen(false)}
+                    onClick={() => closeMenu(false)}
                   >
                     {link.label}
                   </Link>
@@ -152,11 +155,11 @@ export function SiteHeaderNavigation() {
         <Link
           className="mw-button mw-button--primary mw-header__cta"
           href={headerPrimaryCta.href}
-          onClick={() => setIsMenuOpen(false)}
+          onClick={() => closeMenu(false)}
         >
           {headerPrimaryCta.label}
         </Link>
       </div>
-    </div>
+    </details>
   );
 }
