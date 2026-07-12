@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { PageContainer } from "@/components/layout/PageContainer";
+import { ProductConfigurator } from "@/components/product/ProductConfigurator";
 import { BreadcrumbJsonLd } from "@/components/seo/BreadcrumbJsonLd";
 import { JsonLd } from "@/components/seo/JsonLd";
 import {
@@ -177,21 +178,29 @@ export default async function ProductPage({ params }: ProductPageProps) {
             </div>
           </div>
 
-          <aside className="mw-panel" aria-label="Resumen del producto">
-            <p className="mw-note">Resumen de fabricación</p>
-            <h2>{product.nombre}</h2>
-            <ul className="mw-list">
-              <li>
-                Categoría:{" "}
-                <Link href={categoryPath}>{product.categoria_nombre || "Catálogo"}</Link>
-              </li>
-              {product.subcategoria_nombre ? (
-                <li>Subcategoría: {product.subcategoria_nombre}</li>
-              ) : null}
-              {product.has_abatible ? <li>Disponible en versión abatible.</li> : null}
-              {product.has_door_model ? <li>Disponible en versión puerta.</li> : null}
-              <li>Fabricación a medida y envío directo desde taller.</li>
-            </ul>
+          <aside className="mw-panel mw-product-panel" aria-label="Configurar producto">
+            <ProductConfigurator
+              productName={product.nombre}
+              pricePerM2={product.precio}
+              discountedPricePerM2={product.precio_rebajado}
+            />
+
+            <div className="mw-product-summary">
+              <p className="mw-note">Resumen de fabricación</p>
+              <h2>{product.nombre}</h2>
+              <ul className="mw-list">
+                <li>
+                  Categoría:{" "}
+                  <Link href={categoryPath}>{product.categoria_nombre || "Catálogo"}</Link>
+                </li>
+                {product.subcategoria_nombre ? (
+                  <li>Subcategoría: {product.subcategoria_nombre}</li>
+                ) : null}
+                {product.has_abatible ? <li>Disponible en versión abatible.</li> : null}
+                {product.has_door_model ? <li>Disponible en versión puerta.</li> : null}
+                <li>Fabricación a medida y envío directo desde taller.</li>
+              </ul>
+            </div>
           </aside>
         </section>
 
