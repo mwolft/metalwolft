@@ -1,7 +1,7 @@
 from flask import request, jsonify, Blueprint, send_file, send_from_directory, current_app, abort, Response
 from flask_jwt_extended import jwt_required
 from api.models import db, Users, Products, ProductImages, Categories, Subcategories, Orders, CheckoutSessions, OrderDetails, Favorites, Cart, Posts, Comments, Invoices, DeliveryEstimateConfig
-from api.utils import send_email, calcular_precio_reja
+from api.utils import send_email, build_configured_reja_quote
 from api.jwt_utils import create_user_access_token, get_current_user_context as get_jwt_identity
 from sqlalchemy.exc import SQLAlchemyError
 import bcrypt
@@ -4052,11 +4052,14 @@ def add_order_details():
 
             prod = Products.query.get(detail['producto_id'])
 
-            precio_recalculado = calcular_precio_reja(
+            price_quote = build_configured_reja_quote(
                 alto_cm=detail.get('alto'),
                 ancho_cm=detail.get('ancho'),
-                precio_m2=prod.precio_rebajado or prod.precio
+                precio_m2=prod.precio_rebajado or prod.precio,
+                anclaje=detail.get('anclaje'),
+                color=detail.get('color')
             )
+            precio_recalculado = price_quote["unit_price"]
 
             # Recoger el coste de envío enviado desde el frontend
             shipping_cost = float(detail.get('shipping_cost') or 0)
@@ -4073,8 +4076,8 @@ def add_order_details():
                 quantity=detail['quantity'],
                 alto=detail.get('alto'),
                 ancho=detail.get('ancho'),
-                anclaje=detail.get('anclaje'),
-                color=detail.get('color'),
+                anclaje=price_quote["anclaje"],
+                color=price_quote["color"],
                 precio_total=precio_recalculado,
                 firstname=detail.get('firstname'),
                 lastname=detail.get('lastname'),
@@ -4095,6 +4098,9 @@ def add_order_details():
         db.session.commit()
         return jsonify([detail.serialize() for detail in added_details]), 201
 
+    except ValueError as e:
+        db.session.rollback()
+        return jsonify({"message": str(e)}), 400
     except SQLAlchemyError as e:
         db.session.rollback()
         return jsonify({
@@ -4595,15 +4601,22 @@ def handle_cart():
             alto = data.get('alto')
             ancho = data.get('ancho')
             precio_m2 = product.precio_rebajado if product.precio_rebajado else product.precio
-            recalculated_total = calcular_precio_reja(alto, ancho, precio_m2)
+            price_quote = build_configured_reja_quote(
+                alto_cm=alto,
+                ancho_cm=ancho,
+                precio_m2=precio_m2,
+                anclaje=data.get('anclaje'),
+                color=data.get('color')
+            )
+            recalculated_total = price_quote["unit_price"]
 
             new_cart_item = Cart(
                 usuario_id=current_user['user_id'],
                 producto_id=product_id,
                 alto=alto,
                 ancho=ancho,
-                anclaje=data.get('anclaje'),
-                color=data.get('color'),
+                anclaje=price_quote["anclaje"],
+                color=price_quote["color"],
                 precio_total=recalculated_total,
                 quantity=quantity,
                 added_at=datetime.now(timezone.utc)
@@ -4666,7 +4679,25 @@ def update_cart_item(product_id):
             response.headers['Access-Control-Expose-Headers'] = 'Authorization'
             return response, 400
 
+        product = Products.query.get(product_id)
+        if not product:
+            response = jsonify({"message": "Producto no encontrado"})
+            response.headers['Access-Control-Allow-Origin'] = '*'
+            response.headers['Access-Control-Expose-Headers'] = 'Authorization'
+            return response, 404
+
+        price_quote = build_configured_reja_quote(
+            alto_cm=cart_item.alto,
+            ancho_cm=cart_item.ancho,
+            precio_m2=product.precio_rebajado or product.precio,
+            anclaje=cart_item.anclaje,
+            color=cart_item.color
+        )
+
         cart_item.quantity = quantity
+        cart_item.precio_total = price_quote["unit_price"]
+        cart_item.anclaje = price_quote["anclaje"]
+        cart_item.color = price_quote["color"]
         db.session.commit()
 
         updated_cart_items = Cart.query.filter_by(usuario_id=current_user['user_id']).all()
@@ -4677,6 +4708,12 @@ def update_cart_item(product_id):
         response.headers['Access-Control-Expose-Headers'] = 'Authorization'
         return response, 200
 
+    except ValueError as e:
+        db.session.rollback()
+        response = jsonify({"message": str(e)})
+        response.headers['Access-Control-Allow-Origin'] = '*'
+        response.headers['Access-Control-Expose-Headers'] = 'Authorization'
+        return response, 400
     except Exception:
         db.session.rollback()
         logger.exception("Error updating cart item %s for user %s", product_id, current_user.get('user_id'))

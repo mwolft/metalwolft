@@ -25,8 +25,20 @@ import { Breadcrumb } from "../component/Breadcrumb.jsx";
 
 const PENDING_PRODUCT_CONFIG_STORAGE_KEY = "mw_pending_product_config";
 const PENDING_PRODUCT_CONFIG_MAX_AGE_MS = 30 * 60 * 1000;
-const DEFAULT_MOUNTING = 'Sin obra: con agujeros interiores';
+const MOUNTING_INTERIOR_HOLES = 'Sin obra: con agujeros interiores';
+const MOUNTING_FRONT_PLATES = 'Sin obra: con pletinas';
+const MOUNTING_METAL_CLAWS = 'Con obra: con garras metálicas';
+const DEFAULT_MOUNTING = MOUNTING_INTERIOR_HOLES;
 const DEFAULT_COLOR = 'satinado_blanco';
+const MOUNTING_SUPPLEMENTS = {
+    [MOUNTING_INTERIOR_HOLES]: 0,
+    [MOUNTING_FRONT_PLATES]: 24.95
+};
+
+const normalizeMounting = (value) =>
+    Object.prototype.hasOwnProperty.call(MOUNTING_SUPPLEMENTS, value)
+        ? value
+        : DEFAULT_MOUNTING;
 
 const readPendingProductConfig = () => {
     if (typeof window === "undefined") return null;
@@ -62,10 +74,19 @@ const getDimensionValidationError = (rawHeight, rawWidth) => {
     return '';
 };
 
-const buildPriceQuote = ({ rawHeight, rawWidth, product }) => {
+const buildPriceQuote = ({ rawHeight, rawWidth, product, mounting }) => {
     const dimensionError = getDimensionValidationError(rawHeight, rawWidth);
     if (dimensionError) {
         return { error: dimensionError };
+    }
+
+    if (mounting === MOUNTING_METAL_CLAWS || (mounting || '').includes('garras')) {
+        return { error: 'Esta opción no está disponible temporalmente' };
+    }
+
+    const mountingSupplement = MOUNTING_SUPPLEMENTS[mounting];
+    if (mountingSupplement === undefined) {
+        return { error: 'Selecciona un tipo de instalación válido' };
     }
 
     const h = parseFloat(rawHeight);
@@ -94,7 +115,7 @@ const buildPriceQuote = ({ rawHeight, rawWidth, product }) => {
                                         ? 2.5
                                         : 3.0;
 
-    price = Math.max(price * multiplier, basePrice);
+    price = Math.max(price * multiplier, basePrice) + mountingSupplement;
 
     return {
         h,
@@ -292,7 +313,8 @@ export const ProductDetail = () => {
             buildPriceQuote({
                 rawHeight: height,
                 rawWidth: width,
-                product
+                product,
+                mounting
             })
         );
 
@@ -390,7 +412,7 @@ export const ProductDetail = () => {
 
         const restoredHeight = pendingConfig.height ?? '';
         const restoredWidth = pendingConfig.width ?? '';
-        const restoredMounting = pendingConfig.mounting || DEFAULT_MOUNTING;
+        const restoredMounting = normalizeMounting(pendingConfig.mounting || DEFAULT_MOUNTING);
         const restoredColor = COLOR_MAP[pendingConfig.color] ? pendingConfig.color : DEFAULT_COLOR;
 
         setHeight(restoredHeight);
@@ -403,7 +425,8 @@ export const ProductDetail = () => {
                 buildPriceQuote({
                     rawHeight: restoredHeight,
                     rawWidth: restoredWidth,
-                    product
+                    product,
+                    mounting: restoredMounting
                 })
             );
             setPriceNeedsRecalculation(false);
@@ -818,14 +841,6 @@ export const ProductDetail = () => {
                                                                 height="536"
                                                                 className="installation-popover-image"
                                                             />
-                                                            <p><b>Sin obra:</b> con agujeros frontales.</p>
-                                                            <img
-                                                                src="https://res.cloudinary.com/dewanllxn/image/upload/v1738176286/agujeros-frontales_low9pi.png"
-                                                                alt="frontales"
-                                                                width="1140"
-                                                                height="536"
-                                                                className="installation-popover-image"
-                                                            />
                                                             <p><b>Con obra:</b> con garras metálicas.</p>
                                                             <img
                                                                 src="https://res.cloudinary.com/dewanllxn/image/upload/v1734888241/rejas-para-ventanas-sin-obra_wukdzi.png"
@@ -849,10 +864,9 @@ export const ProductDetail = () => {
                                                     setMounting(e.target.value);
                                                 }}
                                             >
-                                                <option>Sin obra: con agujeros interiores</option>
-                                                <option>Sin obra: con agujeros frontales</option>
-                                                <option>Sin obra: con pletinas</option>
-                                                <option disabled>
+                                                <option value={MOUNTING_INTERIOR_HOLES}>Sin obra: con agujeros interiores</option>
+                                                <option value={MOUNTING_FRONT_PLATES}>Sin obra: con pletinas (+24,95 €)</option>
+                                                <option value={MOUNTING_METAL_CLAWS} disabled>
                                                     Con obra: con garras metálicas (no disponible)
                                                 </option>
                                             </Form.Select>
@@ -1244,12 +1258,6 @@ export const ProductDetail = () => {
                                                 alt: "Rejas con agujeros interiores",
                                                 title: "Con agujeros interiores",
                                                 description: "Ideal para marcos con profundidad reducida."
-                                            },
-                                            {
-                                                src: "https://res.cloudinary.com/dewanllxn/image/upload/v1738176286/agujeros-frontales_low9pi.png",
-                                                alt: "Rejas con agujeros frontales",
-                                                title: "Con agujeros frontales",
-                                                description: "Fijación directamente en la parte frontal de la pared."
                                             }
                                         ].map((item, index) => (
                                             <div key={index} className="col-12 col-lg-12 mb-4 text-center">

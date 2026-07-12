@@ -1,5 +1,5 @@
 from api.models import Products
-from api.utils import calcular_precio_reja
+from api.utils import build_configured_reja_quote
 
 
 DISCOUNT_CODES = {
@@ -78,11 +78,14 @@ def _build_line(item):
     if not product:
         raise ValueError(f"Producto con ID {product_id} no encontrado")
 
-    unit_price = calcular_precio_reja(
+    price_quote = build_configured_reja_quote(
         alto_cm=alto,
         ancho_cm=ancho,
-        precio_m2=product.precio_rebajado or product.precio
+        precio_m2=product.precio_rebajado or product.precio,
+        anclaje=item.get("anclaje"),
+        color=item.get("color")
     )
+    unit_price = price_quote["unit_price"]
     shipping_type, shipping_cost = _calculate_shipping_type(alto, ancho)
     frontend_unit_price = _to_optional_float(item.get("precio_total"))
 
@@ -93,8 +96,8 @@ def _build_line(item):
         "quantity": quantity,
         "alto": alto,
         "ancho": ancho,
-        "anclaje": item.get("anclaje"),
-        "color": item.get("color"),
+        "anclaje": price_quote["anclaje"],
+        "color": price_quote["color"],
         "unit_price": round(unit_price, 2),
         "line_total": round(unit_price * quantity, 2),
         "shipping_type": shipping_type,

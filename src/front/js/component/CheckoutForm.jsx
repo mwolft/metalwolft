@@ -565,7 +565,8 @@ const CheckoutForm = () => {
 
             if (!response.ok) {
                 console.error("Error en la respuesta del backend al crear el PaymentIntent.", response.statusText, data);
-                alert("Error al crear el PaymentIntent. Por favor, intentalo nuevamente.");
+                const backendErrorMessage = data?.message || data?.error;
+                alert(backendErrorMessage || "Error al crear el PaymentIntent. Por favor, intentalo nuevamente.");
                 return;
             }
 
