@@ -1,8 +1,6 @@
-import { legacyCartUrl } from "@/lib/legacy-app";
-
 export function HeaderCartLink() {
   return (
-    <a className="mw-header-cart" href={legacyCartUrl} aria-label="Ver carrito" title="Ver carrito">
+    <a className="mw-header-cart" href="/cart" aria-label="Ver carrito" title="Ver carrito">
       <svg className="mw-header-cart__icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
         <path
           d="M3.5 5h2.1l1.6 8.1a1 1 0 0 0 1 .8h8.5a1 1 0 0 0 1-.7l1.6-5.7H7.1"
