@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
+import { HeaderCartLink } from "@/components/layout/HeaderCartLink";
 import {
   headerPrimaryCta,
   isNavigationLinkActive,
@@ -132,11 +133,15 @@ export function SiteHeaderNavigation() {
           <ul className="mw-nav-list">{renderNavigationLinks()}</ul>
         </nav>
 
+        <HeaderCartLink />
+
         <Link className="mw-button mw-button--primary mw-header__cta" href={headerPrimaryCta.href}>
           {headerPrimaryCta.label}
         </Link>
       </div>
 
+      <div className="mw-header__mobile-actions">
+        <HeaderCartLink />
       <details
         className="mw-header__nav-group mw-nav-disclosure"
         onToggle={(event) => setIsMenuOpen(event.currentTarget.open)}
@@ -169,6 +174,7 @@ export function SiteHeaderNavigation() {
           </Link>
         </div>
       </details>
+      </div>
     </>
   );
 }

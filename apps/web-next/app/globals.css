@@ -135,6 +135,10 @@ textarea:focus-visible {
   gap: 1rem;
 }
 
+.mw-header__mobile-actions {
+  display: none;
+}
+
 .mw-nav-disclosure {
   display: none;
   position: relative;
@@ -203,6 +207,34 @@ textarea:focus-visible {
 .mw-header__cta {
   min-height: 44px;
   padding-inline: 1rem;
+}
+
+.mw-header-cart {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  width: 46px;
+  height: 46px;
+  min-width: 44px;
+  min-height: 44px;
+  border: 1px solid rgba(255, 50, 77, 0.18);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.96);
+  color: var(--mw-text);
+  transition: border-color 0.18s ease, background 0.18s ease, color 0.18s ease;
+}
+
+.mw-header-cart:hover,
+.mw-header-cart:focus-visible {
+  color: var(--mw-accent-dark);
+  border-color: rgba(255, 50, 77, 0.32);
+  background: rgba(255, 50, 77, 0.08);
+}
+
+.mw-header-cart__icon {
+  width: 21px;
+  height: 21px;
 }
 
 .mw-nav-toggle {
@@ -951,6 +983,14 @@ textarea:focus-visible {
 
   .mw-header__nav-desktop {
     display: none;
+  }
+
+  .mw-header__mobile-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-left: auto;
+    flex: 0 0 auto;
   }
 
   .mw-nav-disclosure {
