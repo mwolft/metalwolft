@@ -180,6 +180,9 @@ export default async function ProductPage({ params }: ProductPageProps) {
 
           <aside className="mw-panel mw-product-panel" aria-label="Configurar producto">
             <ProductConfigurator
+              productId={product.id}
+              categorySlug={product.category_slug}
+              productSlug={product.slug}
               productName={product.nombre}
               pricePerM2={product.precio}
               discountedPricePerM2={product.precio_rebajado}

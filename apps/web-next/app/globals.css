@@ -1024,6 +1024,26 @@ textarea:focus-visible {
   font-weight: 700;
 }
 
+.mw-configurator-cart-actions {
+  display: grid;
+  gap: 0.65rem;
+  margin-top: 1rem;
+}
+
+.mw-configurator-cart-actions .mw-button {
+  width: 100%;
+}
+
+.mw-configurator-cart-feedback {
+  margin-top: 0.8rem;
+  color: #065f46;
+  font-weight: 700;
+}
+
+.mw-configurator-cart-feedback--error {
+  color: #9f1239;
+}
+
 .mw-article-meta,
 .mw-card__meta {
   display: flex;

@@ -16,6 +16,15 @@ export type CartItem = {
   added_at: string;
 };
 
+export type AddCartItemInput = {
+  product_id: number;
+  alto: number;
+  ancho: number;
+  anclaje: string;
+  color: string;
+  quantity: number;
+};
+
 const CLIENT_LOCAL_API_URL = "http://127.0.0.1:3001";
 
 export class CartClientError extends Error {
@@ -94,6 +103,13 @@ export function isSessionError(error: unknown) {
 
 export function getCart(token: string) {
   return requestCart<CartItem[]>(token, "/api/cart");
+}
+
+export function addCartItem(token: string, item: AddCartItemInput) {
+  return requestCart<CartItem[]>(token, "/api/cart", {
+    method: "POST",
+    body: JSON.stringify(item)
+  });
 }
 
 export function updateCartItemQuantity(token: string, item: CartItem, quantity: number) {

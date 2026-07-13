@@ -1,13 +1,24 @@
 "use client";
 
-import { type CSSProperties, useId, useMemo, useState } from "react";
+import { type CSSProperties, useEffect, useId, useMemo, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { clearSession, getToken } from "@/lib/auth-client";
+import {
+  type CartItem,
+  CartClientError,
+  addCartItem,
+  getCart,
+  isSessionError,
+  updateCartItemQuantity
+} from "@/lib/cart-client";
 import {
   DEFAULT_ANCHORAGE,
   DEFAULT_COLOR,
   type AnchorageValue,
   type ConfiguratorColorValue,
   anchorageOptions,
+  colorOptions,
   colorGroups,
   getColorOption
 } from "@/lib/configurator-options";
@@ -19,13 +30,44 @@ import {
 } from "@/lib/configurator-pricing";
 
 type ProductConfiguratorProps = {
+  productId: number;
+  categorySlug: string;
+  productSlug: string;
   productName: string;
   pricePerM2: number;
   discountedPricePerM2?: number | null;
 };
 
+const PENDING_PRODUCT_CONFIG_STORAGE_KEY = "mw_pending_product_config";
+
 type ColorStyle = CSSProperties & {
   "--mw-configurator-color": string;
+};
+
+type PendingProductConfig = {
+  productId: number;
+  categorySlug: string;
+  productSlug: string;
+  alto: number;
+  ancho: number;
+  anclaje: AnchorageValue;
+  color: ConfiguratorColorValue;
+};
+
+type LegacyPendingProductConfig = {
+  productId?: unknown;
+  product_id?: unknown;
+  categorySlug?: unknown;
+  category_slug?: unknown;
+  productSlug?: unknown;
+  product_slug?: unknown;
+  alto?: unknown;
+  ancho?: unknown;
+  height?: unknown;
+  width?: unknown;
+  anclaje?: unknown;
+  mounting?: unknown;
+  color?: unknown;
 };
 
 function normalizeDecimalInput(value: string) {
@@ -38,11 +80,83 @@ function isValidQuote(
   return Boolean(quote?.ok);
 }
 
+function isAnchorageValue(value: unknown): value is AnchorageValue {
+  return typeof value === "string" && anchorageOptions.some((option) => option.value === value);
+}
+
+function isColorValue(value: unknown): value is ConfiguratorColorValue {
+  return typeof value === "string" && colorOptions.some((option) => option.value === value);
+}
+
+function normalizePendingNumber(value: unknown) {
+  const parsed = Number(typeof value === "string" ? normalizeDecimalInput(value) : value);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function readPendingProductConfig(
+  productId: number,
+  categorySlug: string,
+  productSlug: string
+): PendingProductConfig | null {
+  const rawPendingConfig = window.sessionStorage.getItem(PENDING_PRODUCT_CONFIG_STORAGE_KEY);
+  if (!rawPendingConfig) {
+    return null;
+  }
+
+  try {
+    const parsed = JSON.parse(rawPendingConfig) as LegacyPendingProductConfig;
+    const pendingProductId = Number(parsed.productId ?? parsed.product_id ?? productId);
+    const pendingCategorySlug = parsed.categorySlug ?? parsed.category_slug;
+    const pendingProductSlug = parsed.productSlug ?? parsed.product_slug;
+    const alto = normalizePendingNumber(parsed.alto ?? parsed.height);
+    const ancho = normalizePendingNumber(parsed.ancho ?? parsed.width);
+    const anclaje = parsed.anclaje ?? parsed.mounting;
+    const pendingColor = parsed.color;
+
+    if (
+      pendingProductId !== productId ||
+      pendingCategorySlug !== categorySlug ||
+      pendingProductSlug !== productSlug ||
+      alto === null ||
+      ancho === null ||
+      !isAnchorageValue(anclaje) ||
+      !isColorValue(pendingColor)
+    ) {
+      return null;
+    }
+
+    return {
+      productId,
+      categorySlug,
+      productSlug,
+      alto,
+      ancho,
+      anclaje,
+      color: pendingColor
+    };
+  } catch {
+    window.sessionStorage.removeItem(PENDING_PRODUCT_CONFIG_STORAGE_KEY);
+    return null;
+  }
+}
+
+function savePendingProductConfig(config: PendingProductConfig) {
+  window.sessionStorage.setItem(PENDING_PRODUCT_CONFIG_STORAGE_KEY, JSON.stringify(config));
+}
+
+function sameDimension(storedValue: number | null, configuredValue: number) {
+  return typeof storedValue === "number" && Math.abs(storedValue - configuredValue) < 0.001;
+}
+
 export function ProductConfigurator({
+  productId,
+  categorySlug,
+  productSlug,
   productName,
   pricePerM2,
   discountedPricePerM2
 }: ProductConfiguratorProps) {
+  const router = useRouter();
   const [height, setHeight] = useState("");
   const [width, setWidth] = useState("");
   const [anchorage, setAnchorage] = useState<AnchorageValue>(DEFAULT_ANCHORAGE);
@@ -51,8 +165,11 @@ export function ProductConfigurator({
   const [calculatedQuote, setCalculatedQuote] = useState<ConfiguratorPriceQuote | null>(null);
   const [calculationError, setCalculationError] = useState("");
   const [needsRecalculation, setNeedsRecalculation] = useState(false);
+  const [cartStatus, setCartStatus] = useState<"idle" | "adding" | "success" | "error">("idle");
+  const [cartFeedback, setCartFeedback] = useState("");
   const dimensionHelpId = useId();
   const dimensionErrorId = useId();
+  const cartFeedbackId = useId();
 
   const activeColor = getColorOption(previewColor ?? color);
   const selectedColor = getColorOption(color);
@@ -71,6 +188,9 @@ export function ProductConfigurator({
   const promptClassName = `mw-configurator-prompt${
     needsRecalculation ? " mw-configurator-prompt--warning" : dimensionsReadyForQuote ? " mw-configurator-prompt--ready" : ""
   }`;
+  const productPath = `/${categorySlug}/${productSlug}`;
+  const canAddToCart = isValidQuote(calculatedQuote) && !needsRecalculation;
+  const isAddingToCart = cartStatus === "adding";
 
   const previewStyle = useMemo<ColorStyle>(
     () => ({
@@ -80,7 +200,42 @@ export function ProductConfigurator({
     [activeColor.hex]
   );
 
+  useEffect(() => {
+    const pendingConfig = readPendingProductConfig(productId, categorySlug, productSlug);
+    if (!pendingConfig) {
+      return;
+    }
+
+    const restoredHeight = String(pendingConfig.alto);
+    const restoredWidth = String(pendingConfig.ancho);
+    const restoredQuote = calculateConfiguratorPrice({
+      rawHeight: restoredHeight,
+      rawWidth: restoredWidth,
+      pricePerM2,
+      discountedPricePerM2,
+      anchorage: pendingConfig.anclaje
+    });
+
+    setHeight(restoredHeight);
+    setWidth(restoredWidth);
+    setAnchorage(pendingConfig.anclaje);
+    setColor(pendingConfig.color);
+    setCalculatedQuote(restoredQuote);
+    setCalculationError(restoredQuote.ok ? "" : restoredQuote.error);
+    setNeedsRecalculation(false);
+    setCartStatus("idle");
+    setCartFeedback(
+      restoredQuote.ok
+        ? "Configuración restaurada. Ya puedes añadirla al carrito."
+        : "Revisa la configuración restaurada antes de añadirla al carrito."
+    );
+    window.sessionStorage.removeItem(PENDING_PRODUCT_CONFIG_STORAGE_KEY);
+  }, [categorySlug, discountedPricePerM2, pricePerM2, productId, productSlug]);
+
   const invalidateCalculatedPrice = () => {
+    setCartStatus("idle");
+    setCartFeedback("");
+
     if (isValidQuote(calculatedQuote)) {
       setCalculatedQuote(null);
       setNeedsRecalculation(true);
@@ -99,6 +254,93 @@ export function ProductConfigurator({
 
     setCalculatedQuote(quote);
     setCalculationError(quote.ok ? "" : quote.error);
+    setCartStatus("idle");
+    setCartFeedback("");
+  };
+
+  const buildPendingConfig = (
+    quote: Extract<ConfiguratorPriceQuote, { ok: true }>
+  ): PendingProductConfig => ({
+    productId,
+    categorySlug,
+    productSlug,
+    alto: quote.height,
+    ancho: quote.width,
+    anclaje: anchorage,
+    color
+  });
+
+  const saveCurrentConfigAndLogin = (quote: Extract<ConfiguratorPriceQuote, { ok: true }>) => {
+    savePendingProductConfig(buildPendingConfig(quote));
+    router.push(`/login?next=${encodeURIComponent(productPath)}`);
+  };
+
+  const findExistingCartItem = (
+    items: CartItem[],
+    quote: Extract<ConfiguratorPriceQuote, { ok: true }>
+  ) =>
+    items.find(
+      (item) =>
+        item.producto_id === productId &&
+        sameDimension(item.alto, quote.height) &&
+        sameDimension(item.ancho, quote.width) &&
+        item.anclaje === anchorage &&
+        item.color === color
+    );
+
+  const handleAddToCart = async () => {
+    if (!canAddToCart || isAddingToCart) {
+      return;
+    }
+
+    const quote = calculatedQuote;
+    if (!isValidQuote(quote)) {
+      return;
+    }
+
+    const token = getToken();
+    if (!token) {
+      saveCurrentConfigAndLogin(quote);
+      return;
+    }
+
+    setCartStatus("adding");
+    setCartFeedback("");
+
+    try {
+      const currentCart = await getCart(token);
+      const existingCartItem = findExistingCartItem(currentCart, quote);
+
+      if (existingCartItem) {
+        await updateCartItemQuantity(token, existingCartItem, Number(existingCartItem.quantity || 1) + 1);
+      } else {
+        await addCartItem(token, {
+          product_id: productId,
+          alto: quote.height,
+          ancho: quote.width,
+          anclaje: anchorage,
+          color,
+          quantity: 1
+        });
+      }
+
+      window.sessionStorage.removeItem(PENDING_PRODUCT_CONFIG_STORAGE_KEY);
+      setCartStatus("success");
+      setCartFeedback("Producto añadido al carrito.");
+    } catch (error) {
+      if (isSessionError(error)) {
+        clearSession();
+        saveCurrentConfigAndLogin(quote);
+        return;
+      }
+
+      setCartStatus("error");
+      setCartFeedback(
+        error instanceof CartClientError && error.status === 0
+          ? "No se pudo conectar con el carrito. Inténtalo de nuevo."
+          : "No se pudo añadir el producto al carrito. Inténtalo de nuevo."
+      );
+    }
   };
 
   return (
@@ -273,6 +515,34 @@ export function ProductConfigurator({
             <p>IVA incluido para esta configuración.</p>
             {calculatedQuote.area < 1 ? (
               <p className="mw-configurator-result__warning">Área &lt; 1 m² incrementa coste.</p>
+            ) : null}
+            {canAddToCart ? (
+              <div className="mw-configurator-cart-actions">
+                <button
+                  className="mw-button mw-button--primary"
+                  disabled={isAddingToCart}
+                  onClick={handleAddToCart}
+                  type="button"
+                >
+                  {isAddingToCart ? "Añadiendo..." : "Añadir al carrito"}
+                </button>
+                {cartStatus === "success" ? (
+                  <Link className="mw-button mw-button--secondary" href="/cart">
+                    Ver carrito
+                  </Link>
+                ) : null}
+              </div>
+            ) : null}
+            {cartFeedback ? (
+              <p
+                aria-live="polite"
+                className={`mw-configurator-cart-feedback${
+                  cartStatus === "error" ? " mw-configurator-cart-feedback--error" : ""
+                }`}
+                id={cartFeedbackId}
+              >
+                {cartFeedback}
+              </p>
             ) : null}
           </div>
         ) : (
