@@ -482,7 +482,6 @@ const CheckoutForm = () => {
             }
         }
 
-        await actions.clearCart();
         navigate(buildThankYouUrl(paymentIntentId, checkoutToken));
     };
 

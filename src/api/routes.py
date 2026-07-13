@@ -29,6 +29,8 @@ import uuid
 from urllib.parse import urljoin
 from api.email_routes import send_email, get_admin_recipients
 from api.checkout_service import build_checkout_quote
+from api.checkout_cart_cleanup import cleanup_cart_lines_from_checkout_quote
+from api.checkout_payment_security import is_modifiable_stripe_checkout_session
 from api.original_invoice_renderer import render_original_order_invoice_pdf
 from api.work_order_service import generate_work_order_pdf
 
@@ -1383,6 +1385,15 @@ def _finalize_order_from_checkout_quote(user, checkout_quote, customer_snapshot,
         if customer_snapshot:
             checkout_session.customer_snapshot = customer_snapshot
 
+    if checkout_session and checkout_session.payment_provider == "stripe":
+        cleanup_cart_lines_from_checkout_quote(
+            db_session=db.session,
+            cart_model=Cart,
+            user_id=user.id,
+            checkout_quote=checkout_quote,
+            logger=logger
+        )
+
     db.session.commit()
 
     try:
@@ -1444,7 +1455,8 @@ def create_payment_intent():
 
         # --- 1) Valores recibidos ---
         payment_method_id = data.get("payment_method_id")
-        existing_intent_id = data.get("payment_intent_id")
+        requested_existing_intent_id = data.get("payment_intent_id")
+        existing_intent_id = None
         idempotency_key = data.get("idempotency_key") or str(uuid.uuid4())
         receipt_email = data.get("email") or current_user.get("email")
         metadata = data.get("metadata") or {}
@@ -1452,6 +1464,23 @@ def create_payment_intent():
 
         if not payment_method_id:
             return jsonify({"error": "Missing required data"}), 400
+
+        if requested_existing_intent_id:
+            reusable_checkout_session = _get_checkout_session_by_payment_intent(
+                requested_existing_intent_id,
+                user_id=current_user['user_id']
+            )
+            if is_modifiable_stripe_checkout_session(
+                reusable_checkout_session,
+                requested_existing_intent_id
+            ):
+                existing_intent_id = requested_existing_intent_id
+            else:
+                logger.warning(
+                    "PaymentIntent reuse rejected for user_id=%s payment_intent_id=%s",
+                    current_user.get("user_id"),
+                    requested_existing_intent_id
+                )
 
         quote_request_data = {
             **data,
@@ -1565,7 +1594,8 @@ def create_payment_intent():
         return jsonify({"error": str(e)}), 400
     except Exception as e:
         db.session.rollback()
-        return jsonify({"error": str(e)}), 400
+        logger.exception("Unexpected error creating Stripe PaymentIntent: %s", str(e))
+        return jsonify({"error": "No hemos podido preparar el pago. Inténtalo de nuevo."}), 500
 
 
 @api.route('/paypal/create-order', methods=['POST'])
@@ -2123,7 +2153,7 @@ def stripe_webhook():
         logger.info("Webhook Stripe recibido: %s", event['type'])
     except Exception as e:
         logger.error("Error validando webhook Stripe: %s", str(e))
-        return jsonify({'error': str(e)}), 400
+        return jsonify({'error': 'Invalid webhook signature'}), 400
 
     try:
         event_type = event['type']
@@ -2255,8 +2285,8 @@ def checkout_quote():
     except ValueError as e:
         return jsonify({"message": str(e)}), 400
     except Exception as e:
-        logger.error(f"Error calculando checkout quote: {str(e)}")
-        return jsonify({"message": "Error calculating checkout quote", "error": str(e)}), 500
+        logger.exception("Unexpected error calculating checkout quote: %s", str(e))
+        return jsonify({"message": "No hemos podido calcular el resumen del checkout."}), 500
 
 
 @api.route('/checkout/status', methods=['GET'])
@@ -3850,12 +3880,12 @@ def handle_orders():
         except SQLAlchemyError as e:
             db.session.rollback()
             logger.error(f"Error al crear la orden: {str(e)}")
-            return jsonify({"message": "An error occurred while creating the order.", "error": str(e)}), 500
+            return jsonify({"message": "No hemos podido crear el pedido en este momento."}), 500
 
         except Exception as e:
             db.session.rollback()
-            logger.error(f"Error inesperado al cerrar la orden: {str(e)}")
-            return jsonify({"message": "An unexpected error occurred while creating the order.", "error": str(e)}), 500
+            logger.exception("Error inesperado al cerrar la orden: %s", str(e))
+            return jsonify({"message": "No hemos podido crear el pedido en este momento."}), 500
 
 
 @api.route('/orders/<int:order_id>', methods=['GET', 'PUT', 'DELETE'])
