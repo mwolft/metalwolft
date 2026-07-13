@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { Metadata } from "next";
-import { CartView } from "@/components/cart/CartView";
+import { Suspense } from "react";
+import { CartFlow } from "@/components/cart/CartFlow";
 import { PageContainer } from "@/components/layout/PageContainer";
 
 export const metadata: Metadata = {
@@ -34,7 +35,9 @@ export default function CartPage() {
           </p>
         </section>
 
-        <CartView />
+        <Suspense fallback={<div className="mw-cart-state">Cargando carrito...</div>}>
+          <CartFlow />
+        </Suspense>
       </PageContainer>
     </div>
   );

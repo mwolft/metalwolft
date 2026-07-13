@@ -394,8 +394,8 @@ export function CartView() {
               Preparando checkout
             </button>
           ) : (
-            <Link className="mw-button mw-button--primary" href="/checkout">
-              Ir al checkout
+            <Link className="mw-button mw-button--primary" href="/cart?step=details">
+              Continuar
             </Link>
           )}
           <Link className="mw-button mw-button--secondary" href="/rejas-para-ventanas">
