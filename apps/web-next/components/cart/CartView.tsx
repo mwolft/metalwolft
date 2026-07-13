@@ -389,9 +389,15 @@ export function CartView() {
         </div>
         <p>Envío calculado en el checkout.</p>
         <div className="mw-cart-summary__actions">
-          <button className="mw-button mw-button--primary" disabled type="button">
-            Checkout próximamente
-          </button>
+          {isBusy ? (
+            <button className="mw-button mw-button--primary" disabled type="button">
+              Preparando checkout
+            </button>
+          ) : (
+            <Link className="mw-button mw-button--primary" href="/checkout">
+              Ir al checkout
+            </Link>
+          )}
           <Link className="mw-button mw-button--secondary" href="/rejas-para-ventanas">
             Seguir comprando
           </Link>
