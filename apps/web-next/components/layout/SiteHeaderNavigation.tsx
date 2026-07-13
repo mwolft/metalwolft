@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
+import { HeaderAccountMenu } from "@/components/layout/HeaderAccountMenu";
 import { HeaderCartLink } from "@/components/layout/HeaderCartLink";
 import {
   headerPrimaryCta,
@@ -133,6 +134,7 @@ export function SiteHeaderNavigation() {
           <ul className="mw-nav-list">{renderNavigationLinks()}</ul>
         </nav>
 
+        <HeaderAccountMenu />
         <HeaderCartLink />
 
         <Link className="mw-button mw-button--primary mw-header__cta" href={headerPrimaryCta.href}>
@@ -164,6 +166,8 @@ export function SiteHeaderNavigation() {
           <nav className="mw-nav" id={NAVIGATION_ID} aria-label="Navegación principal">
             <ul className="mw-nav-list">{renderNavigationLinks(() => closeMenu(false))}</ul>
           </nav>
+
+          <HeaderAccountMenu variant="mobile" onNavigate={() => closeMenu(false)} />
 
           <Link
             className="mw-button mw-button--primary mw-header__cta"

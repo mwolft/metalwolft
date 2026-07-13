@@ -1,5 +1,6 @@
 const TOKEN_STORAGE_KEY = "token";
 const USER_STORAGE_KEY = "user";
+export const AUTH_SESSION_CHANGED_EVENT = "mw_auth_session_changed";
 
 export type AuthUser = {
   id: number;
@@ -17,16 +18,37 @@ export type AuthUser = {
   CIF?: string | null;
 };
 
+function emitAuthSessionChanged() {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  window.dispatchEvent(new Event(AUTH_SESSION_CHANGED_EVENT));
+}
+
 export function saveSession(accessToken: string, user: AuthUser) {
+  if (typeof window === "undefined") {
+    return;
+  }
+
   window.localStorage.setItem(TOKEN_STORAGE_KEY, accessToken);
   window.localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(user));
+  emitAuthSessionChanged();
 }
 
 export function getToken() {
+  if (typeof window === "undefined") {
+    return null;
+  }
+
   return window.localStorage.getItem(TOKEN_STORAGE_KEY);
 }
 
 export function getStoredUser(): AuthUser | null {
+  if (typeof window === "undefined") {
+    return null;
+  }
+
   const rawUser = window.localStorage.getItem(USER_STORAGE_KEY);
   if (!rawUser || rawUser === "undefined") {
     return null;
@@ -42,8 +64,25 @@ export function getStoredUser(): AuthUser | null {
 }
 
 export function clearSession() {
+  if (typeof window === "undefined") {
+    return;
+  }
+
   window.localStorage.removeItem(TOKEN_STORAGE_KEY);
   window.localStorage.removeItem(USER_STORAGE_KEY);
+  emitAuthSessionChanged();
+}
+
+export function subscribeToAuthSessionChanges(listener: () => void) {
+  if (typeof window === "undefined") {
+    return () => {};
+  }
+
+  window.addEventListener(AUTH_SESSION_CHANGED_EVENT, listener);
+
+  return () => {
+    window.removeEventListener(AUTH_SESSION_CHANGED_EVENT, listener);
+  };
 }
 
 export function getSafeInternalPath(value: string | null | undefined) {
