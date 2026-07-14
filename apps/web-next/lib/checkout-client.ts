@@ -29,6 +29,67 @@ export type CheckoutQuote = {
   };
 };
 
+export type CreateStripePaymentIntentInput = {
+  payment_method_id: string;
+  payment_intent_id?: string | null;
+  idempotency_key: string;
+  email: string;
+  customer_data: Record<string, string>;
+};
+
+export type StripePaymentIntentSummary = {
+  id: string;
+  status: string;
+  client_secret?: string | null;
+};
+
+export type CreateStripePaymentIntentResponse = {
+  clientSecret: string;
+  paymentIntent: StripePaymentIntentSummary;
+  amount_source: string;
+  amount_used_cents: number;
+  checkout_summary: CheckoutQuote;
+  amount_comparison?: {
+    has_difference?: boolean;
+  };
+  checkout_session_id: number;
+  checkout_session_status: string;
+  payment_provider: string;
+  provider_status: string | null;
+  public_checkout_token: string | null;
+};
+
+export type FinalizeStripeOrderResponse = {
+  data?: {
+    id?: number;
+    locator?: string;
+    total_amount?: number;
+  };
+  message?: string;
+};
+
+export type CheckoutStatusResponse = {
+  state: "confirmed" | "processing" | "failed" | "not_found" | string;
+  message: string;
+  public_checkout_token: string | null;
+  payment_intent_id: string | null;
+  checkout_session_id?: number | null;
+  checkout_session_status?: string | null;
+  payment_provider?: string | null;
+  provider_status?: string | null;
+  order_id?: number | null;
+  order?: {
+    id?: number;
+    locator?: string;
+    total_amount?: number;
+  } | null;
+  email?: string | null;
+  total_amount?: number | null;
+  shipping_cost?: number | null;
+  discount_code?: string | null;
+  discount_percent?: number | null;
+};
+
 export class CheckoutClientError extends Error {
   status: number;
 
@@ -60,6 +121,23 @@ function hasMessage(payload: unknown): payload is { message: string } {
     "message" in payload &&
     typeof payload.message === "string"
   );
+}
+
+function getPayloadMessage(payload: unknown, fallback: string) {
+  if (hasMessage(payload)) {
+    return payload.message;
+  }
+
+  if (
+    typeof payload === "object" &&
+    payload !== null &&
+    "error" in payload &&
+    typeof payload.error === "string"
+  ) {
+    return payload.error;
+  }
+
+  return fallback;
 }
 
 function isCheckoutQuote(payload: unknown): payload is CheckoutQuote {
@@ -105,4 +183,64 @@ export async function getCheckoutQuote(token: string) {
   }
 
   return payload;
+}
+
+async function requestCheckout<T>(token: string, path: string, init: RequestInit = {}) {
+  const response = await fetch(checkoutApiUrl(path), {
+    ...init,
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+      ...(init.headers || {})
+    }
+  }).catch(() => {
+    throw new CheckoutClientError("No se pudo conectar con la API.", 0);
+  });
+
+  const payload = (await response.json().catch(() => null)) as unknown;
+
+  if (!response.ok) {
+    throw new CheckoutClientError(
+      getPayloadMessage(payload, "No se pudo completar la operación de checkout."),
+      response.status
+    );
+  }
+
+  return payload as T;
+}
+
+export function createStripePaymentIntent(
+  token: string,
+  input: CreateStripePaymentIntentInput
+) {
+  return requestCheckout<CreateStripePaymentIntentResponse>(token, "/api/create-payment-intent", {
+    method: "POST",
+    body: JSON.stringify(input)
+  });
+}
+
+export function finalizeStripeOrder(token: string, paymentIntentId: string) {
+  return requestCheckout<FinalizeStripeOrderResponse>(token, "/api/orders", {
+    method: "POST",
+    body: JSON.stringify({
+      payment_intent_id: paymentIntentId
+    })
+  });
+}
+
+export function getCheckoutStatus(
+  token: string,
+  identifier: { checkoutToken?: string | null; paymentIntentId?: string | null }
+) {
+  const query = new URLSearchParams();
+
+  if (identifier.checkoutToken) {
+    query.set("checkout_token", identifier.checkoutToken);
+  } else if (identifier.paymentIntentId) {
+    query.set("payment_intent_id", identifier.paymentIntentId);
+  }
+
+  return requestCheckout<CheckoutStatusResponse>(token, `/api/checkout/status?${query.toString()}`, {
+    method: "GET"
+  });
 }

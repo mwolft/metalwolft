@@ -2,7 +2,7 @@
 
 import { useSearchParams } from "next/navigation";
 import { CartDetailsStep } from "@/components/cart/CartDetailsStep";
-import { CartPaymentPlaceholder } from "@/components/cart/CartPaymentPlaceholder";
+import { CartPaymentStep } from "@/components/cart/CartPaymentStep";
 import { CartView } from "@/components/cart/CartView";
 
 type CartStep = "review" | "details" | "payment";
@@ -45,7 +45,7 @@ export function CartFlow() {
       {currentStep === "details" ? (
         <CartDetailsStep />
       ) : currentStep === "payment" ? (
-        <CartPaymentPlaceholder />
+        <CartPaymentStep />
       ) : (
         <CartView />
       )}

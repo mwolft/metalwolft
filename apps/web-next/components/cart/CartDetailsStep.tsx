@@ -1,10 +1,20 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useState, type ChangeEvent, type FormEvent, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
-import { clearSession, getToken } from "@/lib/auth-client";
+import { clearSession, getStoredUser, getToken } from "@/lib/auth-client";
 import { CartClientError, getCart, isSessionError } from "@/lib/cart-client";
+import {
+  buildCheckoutDetailsFromUser,
+  EMPTY_CHECKOUT_CUSTOMER_DETAILS,
+  loadStoredCheckoutDetails,
+  saveCheckoutDetails,
+  sanitizeCheckoutDetails,
+  type CheckoutCustomerDetails,
+  type CheckoutDetailsErrors,
+  validateCheckoutDetails
+} from "@/lib/checkout-details";
 import {
   CheckoutClientError,
   type CheckoutQuote,
@@ -85,6 +95,8 @@ export function CartDetailsStep({
   const [status, setStatus] = useState<CheckoutStatus>("loading");
   const [quote, setQuote] = useState<CheckoutQuote | null>(null);
   const [errorMessage, setErrorMessage] = useState("");
+  const [details, setDetails] = useState<CheckoutCustomerDetails>(EMPTY_CHECKOUT_CUSTOMER_DETAILS);
+  const [detailsErrors, setDetailsErrors] = useState<CheckoutDetailsErrors>({});
   const loginHref = buildLoginHref(loginNextPath);
 
   function redirectToLogin() {
@@ -128,8 +140,49 @@ export function CartDetailsStep({
   }
 
   useEffect(() => {
+    const storedDetails = loadStoredCheckoutDetails();
+    setDetails(storedDetails || buildCheckoutDetailsFromUser(getStoredUser()));
     void loadCheckout();
   }, []);
+
+  function handleDetailChange(event: ChangeEvent<HTMLInputElement>) {
+    const { name, value, type, checked } = event.target;
+
+    setDetails((currentDetails) => {
+      const nextDetails = sanitizeCheckoutDetails({
+        ...currentDetails,
+        [name]: type === "checkbox" ? checked : value
+      });
+
+      if (name === "useDifferentShipping" && !checked) {
+        nextDetails.shipping_address = "";
+        nextDetails.shipping_city = "";
+        nextDetails.shipping_postal_code = "";
+      }
+
+      return nextDetails;
+    });
+
+    setDetailsErrors((currentErrors) => ({
+      ...currentErrors,
+      [name]: undefined
+    }));
+  }
+
+  function handleContinueToPayment(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    const validation = validateCheckoutDetails(details);
+    setDetails(validation.details);
+    setDetailsErrors(validation.errors);
+
+    if (!validation.isValid) {
+      return;
+    }
+
+    saveCheckoutDetails(validation.details);
+    router.push("/cart?step=payment");
+  }
 
   if (status === "loading") {
     return (
@@ -187,13 +240,140 @@ export function CartDetailsStep({
       <div className="mw-checkout-panel">
         <div className="mw-checkout-heading">
           <p className="mw-note">Datos</p>
-          <h2>Resumen verificado del pedido</h2>
+          <h2>Datos de contacto y entrega</h2>
           <p>
-            Tus productos y el importe ya estan verificados. Los datos personales
-            se anadiran en la siguiente tarea.
+            Completa los datos necesarios para preparar la factura, el envío y el
+            pago seguro. No guardaremos datos de tarjeta en MetalWolft.
           </p>
         </div>
 
+        <form className="mw-checkout-form" onSubmit={handleContinueToPayment}>
+          <div className="mw-checkout-form-grid">
+            <CheckoutTextField
+              error={detailsErrors.firstname}
+              label="Nombre"
+              name="firstname"
+              onChange={handleDetailChange}
+              value={details.firstname}
+            />
+            <CheckoutTextField
+              error={detailsErrors.lastname}
+              label="Apellidos"
+              name="lastname"
+              onChange={handleDetailChange}
+              value={details.lastname}
+            />
+            <CheckoutTextField
+              error={detailsErrors.email}
+              label="Correo electrónico"
+              name="email"
+              onChange={handleDetailChange}
+              type="email"
+              value={details.email}
+            />
+            <CheckoutTextField
+              error={detailsErrors.phone}
+              label="Teléfono"
+              name="phone"
+              onChange={handleDetailChange}
+              type="tel"
+              value={details.phone}
+            />
+            <CheckoutTextField
+              error={detailsErrors.billing_address}
+              label="Dirección de facturación"
+              name="billing_address"
+              onChange={handleDetailChange}
+              value={details.billing_address}
+              wide
+            />
+            <CheckoutTextField
+              error={detailsErrors.billing_postal_code}
+              label="Código postal"
+              name="billing_postal_code"
+              onChange={handleDetailChange}
+              value={details.billing_postal_code}
+            />
+            <CheckoutTextField
+              error={detailsErrors.billing_city}
+              label="Ciudad"
+              name="billing_city"
+              onChange={handleDetailChange}
+              value={details.billing_city}
+            />
+            <CheckoutTextField
+              error={detailsErrors.CIF}
+              label="DNI / CIF"
+              name="CIF"
+              onChange={handleDetailChange}
+              value={details.CIF}
+            />
+          </div>
+
+          <label className="mw-checkout-option">
+            <input
+              checked={details.useDifferentShipping}
+              name="useDifferentShipping"
+              onChange={handleDetailChange}
+              type="checkbox"
+            />
+            <span>La dirección de envío es diferente a la de facturación</span>
+          </label>
+
+          {details.useDifferentShipping ? (
+            <div className="mw-checkout-form-grid">
+              <CheckoutTextField
+                error={detailsErrors.shipping_address}
+                label="Dirección de envío"
+                name="shipping_address"
+                onChange={handleDetailChange}
+                value={details.shipping_address}
+                wide
+              />
+              <CheckoutTextField
+                error={detailsErrors.shipping_postal_code}
+                label="Código postal de envío"
+                name="shipping_postal_code"
+                onChange={handleDetailChange}
+                value={details.shipping_postal_code}
+              />
+              <CheckoutTextField
+                error={detailsErrors.shipping_city}
+                label="Ciudad de envío"
+                name="shipping_city"
+                onChange={handleDetailChange}
+                value={details.shipping_city}
+              />
+            </div>
+          ) : null}
+
+          <label className="mw-checkout-option mw-checkout-option--policy">
+            <input
+              checked={details.acceptedPolicy}
+              name="acceptedPolicy"
+              onChange={handleDetailChange}
+              type="checkbox"
+            />
+            <span>
+              He leído y acepto la{" "}
+              <Link href="/politica-devolucion">política de devoluciones y garantías</Link>.
+            </span>
+          </label>
+          {detailsErrors.acceptedPolicy ? (
+            <p className="mw-field-error" role="alert">
+              {detailsErrors.acceptedPolicy}
+            </p>
+          ) : null}
+
+          <button className="mw-button mw-button--primary mw-checkout-submit" type="submit">
+            Continuar al pago
+          </button>
+        </form>
+
+        <div className="mw-checkout-heading mw-checkout-heading--compact">
+          <p className="mw-note">Pedido</p>
+          <h2>Líneas verificadas</h2>
+        </div>
         <CheckoutLines lines={quote.lines} />
       </div>
 
@@ -208,16 +388,50 @@ export function CartDetailsStep({
           </div>
 
           <CheckoutTotals quote={quote} />
-
-          <button className="mw-button mw-button--primary mw-checkout-submit" disabled type="button">
-            Continuar al pago
-          </button>
-          <p className="mw-checkout-next-step">
-            El formulario de datos personales se anadira en la siguiente tarea.
-          </p>
+          <p className="mw-checkout-next-step">El importe final se recalculará antes del pago.</p>
         </div>
       </aside>
     </section>
+  );
+}
+
+function CheckoutTextField({
+  error,
+  label,
+  name,
+  onChange,
+  type = "text",
+  value,
+  wide = false
+}: {
+  error?: string;
+  label: string;
+  name: keyof CheckoutCustomerDetails;
+  onChange: (event: ChangeEvent<HTMLInputElement>) => void;
+  type?: string;
+  value: string;
+  wide?: boolean;
+}) {
+  const errorId = error ? `${name}-error` : undefined;
+
+  return (
+    <label className={`mw-field${wide ? " mw-field--wide" : ""}`}>
+      <span>{label}</span>
+      <input
+        aria-describedby={errorId}
+        aria-invalid={Boolean(error)}
+        autoComplete={name === "email" ? "email" : undefined}
+        name={name}
+        onChange={onChange}
+        type={type}
+        value={value}
+      />
+      {error ? (
+        <span className="mw-field-error" id={errorId}>
+          {error}
+        </span>
+      ) : null}
+    </label>
   );
 }
 
