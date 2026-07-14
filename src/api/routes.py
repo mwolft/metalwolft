@@ -31,8 +31,7 @@ from api.email_routes import send_email, get_admin_recipients
 from api.checkout_service import build_checkout_quote
 from api.checkout_cart_cleanup import cleanup_cart_lines_from_checkout_quote
 from api.checkout_payment_security import is_modifiable_stripe_checkout_session
-from api.invoice_email_service import send_invoice_email
-from api.invoice_issue_service import issue_invoice_for_order
+from api.order_confirmation_email_service import send_order_confirmation_email
 from api.original_invoice_renderer import render_original_order_invoice_pdf
 from api.work_order_service import generate_work_order_pdf
 
@@ -1189,15 +1188,6 @@ def _finalize_order_from_checkout_quote(user, checkout_quote, customer_snapshot,
         f"Envío: {shipping_cost:.2f} € | Total guardado: {backend_total:.2f} €"
     )
 
-    issued_invoice = issue_invoice_for_order(
-        order=new_order,
-        order_details=order_details,
-        customer_context=customer_context,
-        checkout_quote=checkout_quote,
-        invoice_folder=current_app.config['INVOICE_FOLDER'],
-        db_session=db.session,
-    )
-
     if checkout_session:
         checkout_session.order_id = new_order.id
         checkout_session.status = "order_created"
@@ -1224,11 +1214,11 @@ def _finalize_order_from_checkout_quote(user, checkout_quote, customer_snapshot,
         db.session.rollback()
         logger.error(f"Error al actualizar datos del usuario: {str(e)}")
 
-    send_invoice_email(
+    send_order_confirmation_email(
         user=user,
-        invoice_result=issued_invoice,
+        order=new_order,
+        checkout_quote=checkout_quote,
         customer_firstname=customer_firstname,
-        customer_lastname=customer_lastname,
         mail_username=current_app.config['MAIL_USERNAME'],
         logger=logger,
     )
@@ -3200,7 +3190,7 @@ def handle_orders():
 
             response = jsonify({
                 "data": new_order.serialize(),
-                "message": "Order, details, and invoice created successfully." if created else "Order already created for this payment intent."
+                "message": "Order created successfully." if created else "Order already created for this payment intent."
             })
             response.headers['Access-Control-Allow-Origin'] = '*'
             response.headers['Access-Control-Expose-Headers'] = 'X-Total-Count'
@@ -3675,7 +3665,7 @@ def handle_orders():
                 # Crear la respuesta con encabezados CORS
                 response = jsonify({
                     "data": new_order.serialize(),
-                    "message": "Order, details, and invoice created successfully."
+                    "message": "Order created successfully."
                 })
                 response.headers['Access-Control-Allow-Origin'] = '*'
                 response.headers['Access-Control-Expose-Headers'] = 'X-Total-Count'

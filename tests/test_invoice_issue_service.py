@@ -220,27 +220,62 @@ class InvoiceEmailServiceTest(unittest.TestCase):
 
 
 class InvoiceFinalizerSourceRegressionTest(unittest.TestCase):
-    def test_email_happens_after_main_commit(self):
+    def _finalizer_source(self):
         source = (ROOT_DIR / "src/api/routes.py").read_text(encoding="utf-8")
         start = source.index("def _finalize_order_from_checkout_quote")
         end = source.index("@api.route('/delivery-estimate'")
-        finalizer_source = source[start:end]
+        return source[start:end]
+
+    def test_order_confirmation_email_happens_after_main_commit(self):
+        finalizer_source = self._finalizer_source()
 
         self.assertLess(
             finalizer_source.index("db.session.commit()"),
-            finalizer_source.index("send_invoice_email("),
+            finalizer_source.index("send_order_confirmation_email("),
         )
 
-    def test_existing_checkout_session_returns_before_issuing_invoice(self):
-        source = (ROOT_DIR / "src/api/routes.py").read_text(encoding="utf-8")
-        start = source.index("def _finalize_order_from_checkout_quote")
-        end = source.index("@api.route('/delivery-estimate'")
-        finalizer_source = source[start:end]
+    def test_checkout_finalizer_no_longer_issues_invoice_automatically(self):
+        finalizer_source = self._finalizer_source()
+
+        self.assertNotIn("issue_invoice_for_order(", finalizer_source)
+        self.assertNotIn("send_invoice_email(", finalizer_source)
+        self.assertNotIn("Invoices(", finalizer_source)
+        self.assertNotIn("invoice_number =", finalizer_source)
+        self.assertNotIn(".invoice_number =", finalizer_source)
+
+    def test_order_and_lines_are_still_created(self):
+        finalizer_source = self._finalizer_source()
+
+        self.assertIn("new_order = Orders(", finalizer_source)
+        self.assertIn("new_detail = OrderDetails(", finalizer_source)
+        self.assertIn("db.session.add(new_order)", finalizer_source)
+        self.assertIn("db.session.add(new_detail)", finalizer_source)
+
+    def test_checkout_session_and_selective_cart_cleanup_are_preserved(self):
+        finalizer_source = self._finalizer_source()
+
+        self.assertIn("checkout_session.order_id = new_order.id", finalizer_source)
+        self.assertIn('checkout_session.status = "order_created"', finalizer_source)
+        self.assertIn("cleanup_cart_lines_from_checkout_quote(", finalizer_source)
+
+    def test_existing_checkout_session_returns_before_sending_confirmation_email(self):
+        finalizer_source = self._finalizer_source()
 
         self.assertLess(
             finalizer_source.index("if checkout_session and checkout_session.order_id:"),
-            finalizer_source.index("issue_invoice_for_order("),
+            finalizer_source.index("send_order_confirmation_email("),
         )
+
+    def test_order_created_response_no_longer_mentions_invoice(self):
+        source = (ROOT_DIR / "src/api/routes.py").read_text(encoding="utf-8")
+        self.assertIn('"message": "Order created successfully."', source)
+        self.assertNotIn("Order, details, and invoice created successfully.", source)
+
+    def test_historical_invoice_serialization_contract_is_preserved(self):
+        source = (ROOT_DIR / "src/api/models.py").read_text(encoding="utf-8")
+        self.assertIn('"invoice_number": self.invoice_number', source)
+        self.assertIn("class Invoices(db.Model):", source)
+        self.assertIn("def serialize_admin(self):", source)
 
     def test_stripe_and_paypal_still_use_shared_finalizer(self):
         source = (ROOT_DIR / "src/api/routes.py").read_text(encoding="utf-8")
