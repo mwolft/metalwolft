@@ -31,6 +31,8 @@ from api.email_routes import send_email, get_admin_recipients
 from api.checkout_service import build_checkout_quote
 from api.checkout_cart_cleanup import cleanup_cart_lines_from_checkout_quote
 from api.checkout_payment_security import is_modifiable_stripe_checkout_session
+from api.invoice_email_service import send_invoice_email
+from api.invoice_issue_service import issue_invoice_for_order
 from api.original_invoice_renderer import render_original_order_invoice_pdf
 from api.work_order_service import generate_work_order_pdf
 
@@ -1187,197 +1189,14 @@ def _finalize_order_from_checkout_quote(user, checkout_quote, customer_snapshot,
         f"Envío: {shipping_cost:.2f} € | Total guardado: {backend_total:.2f} €"
     )
 
-    invoice_number = Invoices.generate_next_invoice_number()
-    pdf_filename = f"invoice_{invoice_number}.pdf"
-    file_path = os.path.join(current_app.config['INVOICE_FOLDER'], pdf_filename)
-    pdf_path = f"/api/download-invoice/{pdf_filename}"
-    os.makedirs(current_app.config['INVOICE_FOLDER'], exist_ok=True)
-
-    pdf_buffer = BytesIO()
-    pdf = canvas.Canvas(pdf_buffer, pagesize=A4)
-
-    image_url = "https://res.cloudinary.com/dewanllxn/image/upload/v1740167674/logo_uxlqof.png"
-    pdf.drawImage(image_url, 300, 750, width=250, height=64)
-
-    pdf.setTitle(f"Factura_{invoice_number}")
-    pdf.setFont("Helvetica-Bold", 12)
-    pdf.drawString(50, 800, f"Factura No: {invoice_number}")
-
-    pdf.setFont("Helvetica", 10)
-    fecha_emision = datetime.now().strftime("%d/%m/%Y")
-    pdf.drawString(50, 780, f"Fecha: {fecha_emision}")
-
-    pdf.setFont("Helvetica-Bold", 12)
-    pdf.drawString(400, 700, "PROVEEDOR")
-    pdf.setFont("Helvetica", 10)
-    pdf.drawString(400, 680, "Sergio Arias Fernández")
-    pdf.drawString(400, 665, "05703874N")
-    pdf.drawString(400, 650, "Francisco Fernández Ordoñez 32")
-    pdf.drawString(400, 635, "13170 Miguelturra")
-    pdf.drawString(400, 620, "634112604")
-
-    pdf.setFont("Helvetica-Bold", 12)
-    pdf.drawString(50, 700, "CLIENTE")
-    pdf.setFont("Helvetica", 10)
-    pdf.drawString(50, 680, f"{customer_firstname or ''} {customer_lastname or ''}".strip())
-    pdf.drawString(50, 665, f"{customer_billing_address or ''}, {customer_billing_city or ''} ({customer_billing_postal_code or ''})")
-    pdf.drawString(50, 650, f"{customer_cif or ''}")
-    pdf.drawString(50, 635, f"{customer_phone or 'No proporcionado'}")
-
-    pdf.setFont("Helvetica-Bold", 12)
-    pdf.drawString(50, 580, "Dirección de Envío")
-    pdf.setFont("Helvetica", 10)
-
-    if not customer_shipping_address or customer_shipping_address == customer_billing_address:
-        pdf.drawString(50, 560, "La misma que la de facturación")
-    else:
-        pdf.drawString(50, 560, f"{customer_shipping_address or ''}, {customer_shipping_city or ''} ({customer_shipping_postal_code or ''})")
-
-    pdf.setFont("Helvetica-Bold", 12)
-    pdf.drawString(50, 510, "Detalles del Pedido")
-    pdf.setFont("Helvetica", 10)
-
-    from collections import defaultdict
-
-    color_labels = {
-        "satinado_blanco": "Blanco liso",
-        "satinado_negro": "Negro liso",
-        "satinado_gris": "Gris medio liso",
-        "satinado_verde": "Verde carruajes liso",
-        "forja_negro": "Negro forja",
-        "forja_gris": "Gris acero forja",
-        "forja_marron": "Marrón castaño forja",
-        "forja_azul": "Azul forja",
-        "forja_verde": "Verde bronce forja",
-        "forja_dorado": "Dorado forja",
-        "blanco": "Blanco",
-        "negro": "Negro",
-        "gris": "Gris",
-        "marrón": "Marrón",
-        "verde": "Verde"
-    }
-
-    data_table = [["Prod.", "Alto", "Ancho", "Anc.", "Col.", "Ud.", "Importe (€)"]]
-    grouped_details = defaultdict(lambda: {"quantity": 0, "precio_unitario": 0.0})
-
-    for detail in order_details:
-        key = (
-            detail['producto_id'],
-            detail.get('alto'),
-            detail.get('ancho'),
-            detail.get('anclaje'),
-            detail.get('color')
-        )
-        grouped_details[key]["quantity"] += detail.get("quantity", 1)
-        grouped_details[key]["precio_unitario"] = float(detail["precio_total"])
-
-    for (producto_id, alto, ancho, anclaje, color), values in grouped_details.items():
-        prod = Products.query.get(producto_id)
-        cantidad = values["quantity"]
-        precio_unitario = values["precio_unitario"]
-        importe_total = precio_unitario * cantidad
-
-        row = [
-            prod.nombre[:24] if prod else "Desconocido",
-            f"{alto} cm",
-            f"{ancho} cm",
-            (anclaje[:20] if anclaje else ''),
-            color_labels.get(color, color)[:18] if color else '',
-            str(cantidad),
-            f"{importe_total:.2f}"
-        ]
-        data_table.append(row)
-
-    table = Table(data_table, colWidths=[4*cm, 1.5*cm, 1.5*cm, 4.2*cm, 3.2*cm, 1*cm, 2.3*cm])
-    table.setStyle(TableStyle([
-        ('BACKGROUND', (0, 0), (-1, 0), colors.Color(1, 0.196, 0.302)),
-        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
-        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-        ('GRID', (0, 0), (-1, -1), 1, colors.black),
-    ]))
-    y_position = 480
-    table.wrapOn(pdf, 50, y_position)
-    table_height = table._height
-    table.drawOn(pdf, 50, y_position - table_height)
-
-    totals_y_position = y_position - table_height - 30
-    if totals_y_position < 50:
-        pdf.showPage()
-        totals_y_position = 750
-
-    total = new_order.total_amount
-    base_total = total / 1.21
-    iva_calculado = total - base_total
-    base_envio = new_order.shipping_cost / 1.21
-    base_productos = base_total - base_envio
-
-    pdf.setFont("Helvetica-Bold", 11)
-    pdf.drawString(50, totals_y_position, "DETALLE FISCAL")
-    pdf.setFont("Helvetica", 10)
-
-    pdf.drawString(50, totals_y_position - 15, f"Base imponible productos: {base_productos:.2f} €")
-    pdf.drawString(50, totals_y_position - 30, f"Base imponible envío: {base_envio:.2f} €")
-
-    pdf.setStrokeColor(colors.black)
-    pdf.line(50, totals_y_position - 35, 200, totals_y_position - 35)
-
-    pdf.drawString(50, totals_y_position - 50, f"Base imponible total: {base_total:.2f} €")
-    pdf.drawString(50, totals_y_position - 65, f"IVA (21%): {iva_calculado:.2f} €")
-
-    pdf.line(50, totals_y_position - 70, 200, totals_y_position - 70)
-
-    subtotal_con_iva = base_total + iva_calculado
-    pdf.setFont("Helvetica-Bold", 10)
-    pdf.drawString(50, totals_y_position - 85, f"Subtotal (IVA incl.): {subtotal_con_iva:.2f} €")
-
-    if new_order.discount_value and new_order.discount_value > 0:
-        pdf.setFont("Helvetica-Bold", 11)
-        pdf.setFillColor(colors.green)
-        pdf.drawString(
-            50,
-            totals_y_position - 100,
-            f"Descuento comercial ({discount_code or ''} {discount_percent:.0f}%): -{new_order.discount_value:.2f} €"
-        )
-        pdf.setFillColor(colors.black)
-
-    pdf.line(50, totals_y_position - 105, 200, totals_y_position - 105)
-
-    pdf.setFont("Helvetica-Bold", 12)
-    pdf.drawString(50, totals_y_position - 120, f"TOTAL A PAGAR: {total:.2f} €")
-
-    pdf.setFont("Helvetica", 10)
-    if new_order.shipping_cost == 59:
-        envio_text = "Tarifa A (59 €)"
-    elif shipping_cost == 99:
-        envio_text = "Tarifa B (99 €)"
-    elif shipping_cost == 21:
-        envio_text = "Estándar (21 €)"
-    else:
-        envio_text = "Gratuito"
-
-    pdf.drawString(50, totals_y_position - 140, f"Tipo de envío: {envio_text}")
-    if discount_code:
-        pdf.drawString(50, totals_y_position - 155, f"Código descuento: {discount_code}")
-
-    pdf.save()
-    pdf_buffer.seek(0)
-    with open(file_path, "wb") as f:
-        f.write(pdf_buffer.getvalue())
-
-    new_invoice = Invoices(
-        invoice_number=invoice_number,
-        order_id=new_order.id,
-        pdf_path=pdf_path,
-        client_name=f"{customer_firstname or ''} {customer_lastname or ''}".strip(),
-        client_address=customer_billing_address or "",
-        client_cif=customer_cif or "",
-        client_phone=customer_phone or "",
-        amount=new_order.total_amount,
-        order_details=[detail.serialize() for detail in new_order.order_details]
+    issued_invoice = issue_invoice_for_order(
+        order=new_order,
+        order_details=order_details,
+        customer_context=customer_context,
+        checkout_quote=checkout_quote,
+        invoice_folder=current_app.config['INVOICE_FOLDER'],
+        db_session=db.session,
     )
-    db.session.add(new_invoice)
-    new_order.invoice_number = invoice_number
 
     if checkout_session:
         checkout_session.order_id = new_order.id
@@ -1405,19 +1224,14 @@ def _finalize_order_from_checkout_quote(user, checkout_quote, customer_snapshot,
         db.session.rollback()
         logger.error(f"Error al actualizar datos del usuario: {str(e)}")
 
-    try:
-        email_sent = send_email(
-            subject=f"Factura de tu pedido #{invoice_number}",
-            recipients=[user.email, current_app.config['MAIL_USERNAME']],
-            body=f"Hola {(customer_firstname or '').strip()} {(customer_lastname or '').strip()},\n\nAdjuntamos la factura {invoice_number} de tu compra.\n\nGracias por tu confianza.",
-            attachment_path=file_path
-        )
-        if not email_sent:
-            logger.error(f"Error al enviar el correo con la factura {invoice_number}.")
-        else:
-            logger.info(f"Correo enviado correctamente con la factura {invoice_number}.")
-    except Exception as e:
-        logger.error(f"Error al enviar el correo con la factura {invoice_number}: {str(e)}")
+    send_invoice_email(
+        user=user,
+        invoice_result=issued_invoice,
+        customer_firstname=customer_firstname,
+        customer_lastname=customer_lastname,
+        mail_username=current_app.config['MAIL_USERNAME'],
+        logger=logger,
+    )
 
     return new_order, True
 

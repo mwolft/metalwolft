@@ -83,6 +83,7 @@ def _group_invoice_lines(order_details: Sequence[Mapping[str, Any]]) -> list[lis
         product_name = _display_product_name(detail)
         color = detail.get("color")
         key = (
+            detail.get("producto_id") or detail.get("product_id") or product_name,
             product_name,
             detail.get("alto"),
             detail.get("ancho"),
@@ -94,7 +95,7 @@ def _group_invoice_lines(order_details: Sequence[Mapping[str, Any]]) -> list[lis
         grouped_details[key]["product_name"] = product_name
 
     rows: list[list[str]] = []
-    for (product_name, alto, ancho, anclaje, color), values in grouped_details.items():
+    for (_, product_name, alto, ancho, anclaje, color), values in grouped_details.items():
         cantidad = values["quantity"]
         precio_unitario = values["precio_unitario"]
         importe_total = precio_unitario * cantidad
