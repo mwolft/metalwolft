@@ -59,6 +59,34 @@ export type CreateStripePaymentIntentResponse = {
   public_checkout_token: string | null;
 };
 
+export type CreatePayPalOrderInput = {
+  checkout_token?: string | null;
+  customer_data: Record<string, string>;
+};
+
+export type CreatePayPalOrderResponse = {
+  checkout_session_id: number;
+  checkout_session_status: string;
+  payment_provider: string;
+  provider_order_id: string | null;
+  provider_capture_id: string | null;
+  provider_status: string | null;
+  public_checkout_token: string | null;
+  checkout_summary: CheckoutQuote;
+  approve_url?: string | null;
+  provider?: string;
+};
+
+export type CapturePayPalOrderInput = {
+  checkout_token?: string | null;
+  provider_order_id: string;
+  customer_data: Record<string, string>;
+};
+
+export type CapturePayPalOrderResponse = CreatePayPalOrderResponse & {
+  message?: string;
+};
+
 export type FinalizeStripeOrderResponse = {
   data?: {
     id?: number;
@@ -225,6 +253,20 @@ export function finalizeStripeOrder(token: string, paymentIntentId: string) {
     body: JSON.stringify({
       payment_intent_id: paymentIntentId
     })
+  });
+}
+
+export function createPayPalOrder(token: string, input: CreatePayPalOrderInput) {
+  return requestCheckout<CreatePayPalOrderResponse>(token, "/api/paypal/create-order", {
+    method: "POST",
+    body: JSON.stringify(input)
+  });
+}
+
+export function capturePayPalOrder(token: string, input: CapturePayPalOrderInput) {
+  return requestCheckout<CapturePayPalOrderResponse>(token, "/api/paypal/capture-order", {
+    method: "POST",
+    body: JSON.stringify(input)
   });
 }
 

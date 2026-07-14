@@ -18,12 +18,15 @@ import {
   validateCheckoutDetails
 } from "@/lib/checkout-details";
 import { CheckoutPaymentSummary } from "@/components/cart/CheckoutPaymentSummary";
+import { PayPalPaymentForm } from "@/components/cart/PayPalPaymentForm";
 import { StripePaymentForm } from "@/components/cart/StripePaymentForm";
 
 const stripePublishableKey = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY?.trim();
 const stripePromise = stripePublishableKey ? loadStripe(stripePublishableKey) : null;
+const paypalClientId = process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID?.trim();
 
 type PaymentStatus = "loading" | "empty" | "missing-details" | "ready" | "error";
+type PaymentMethod = "card" | "paypal";
 
 function isApiSessionError(error: unknown) {
   return isSessionError(error) || isCheckoutSessionError(error);
@@ -35,6 +38,7 @@ export function CartPaymentStep() {
   const [quote, setQuote] = useState<CheckoutQuote | null>(null);
   const [customerDetails, setCustomerDetails] = useState<CheckoutCustomerDetails | null>(null);
   const [errorMessage, setErrorMessage] = useState("");
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("card");
 
   function redirectToLogin() {
     clearSession();
@@ -140,25 +144,64 @@ export function CartPaymentStep() {
       <div className="mw-checkout-panel">
         <div className="mw-checkout-heading">
           <p className="mw-note">Paso 3 de 3</p>
-          <h2>Pago seguro con tarjeta</h2>
+          <h2>Elige método de pago</h2>
           <p>
-            Introduce los datos de tu tarjeta en Stripe. MetalWolft no almacena datos de tarjeta.
+            Puedes pagar con tarjeta mediante Stripe o con PayPal Sandbox. MetalWolft no almacena
+            datos de tarjeta.
           </p>
         </div>
 
-        {!stripePromise ? (
+        <div className="mw-payment-methods" aria-label="Método de pago">
+          <button
+            aria-pressed={paymentMethod === "card"}
+            className={`mw-payment-method ${paymentMethod === "card" ? "is-active" : ""}`}
+            onClick={() => setPaymentMethod("card")}
+            type="button"
+          >
+            Tarjeta
+          </button>
+          <button
+            aria-pressed={paymentMethod === "paypal"}
+            className={`mw-payment-method ${paymentMethod === "paypal" ? "is-active" : ""}`}
+            onClick={() => setPaymentMethod("paypal")}
+            type="button"
+          >
+            PayPal
+          </button>
+        </div>
+
+        {paymentMethod === "card" && !stripePromise ? (
           <p className="mw-alert mw-alert--error">
             La clave pública de Stripe no está configurada en este entorno.
           </p>
-        ) : (
+        ) : null}
+
+        {paymentMethod === "card" && stripePromise ? (
           <Elements stripe={stripePromise}>
             <StripePaymentForm
               customerDetails={customerDetails}
               initialQuote={quote}
+              onQuoteUpdated={setQuote}
               onSessionExpired={redirectToLogin}
             />
           </Elements>
-        )}
+        ) : null}
+
+        {paymentMethod === "paypal" && !paypalClientId ? (
+          <p className="mw-alert mw-alert--error">
+            PayPal no está configurado en este entorno. Puedes continuar con tarjeta.
+          </p>
+        ) : null}
+
+        {paymentMethod === "paypal" && paypalClientId ? (
+          <PayPalPaymentForm
+            clientId={paypalClientId}
+            customerDetails={customerDetails}
+            initialQuote={quote}
+            onQuoteUpdated={setQuote}
+            onSessionExpired={redirectToLogin}
+          />
+        ) : null}
       </div>
 
       <aside className="mw-checkout-summary" aria-label="Resumen final del pago">

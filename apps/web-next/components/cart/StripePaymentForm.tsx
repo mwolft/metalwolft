@@ -16,6 +16,7 @@ import { buildCustomerData, type CheckoutCustomerDetails } from "@/lib/checkout-
 type StripePaymentFormProps = {
   customerDetails: CheckoutCustomerDetails;
   initialQuote: CheckoutQuote;
+  onQuoteUpdated: (quote: CheckoutQuote) => void;
   onSessionExpired: () => void;
 };
 
@@ -72,6 +73,7 @@ function hasTotalChanged(left: CheckoutQuote, right: CheckoutQuote) {
 export function StripePaymentForm({
   customerDetails,
   initialQuote,
+  onQuoteUpdated,
   onSessionExpired
 }: StripePaymentFormProps) {
   const router = useRouter();
@@ -180,6 +182,7 @@ export function StripePaymentForm({
 
       if (paymentIntentResponse.checkout_summary && hasTotalChanged(quote, paymentIntentResponse.checkout_summary)) {
         setQuote(paymentIntentResponse.checkout_summary);
+        onQuoteUpdated(paymentIntentResponse.checkout_summary);
         setFeedback({
           type: "info",
           message:
