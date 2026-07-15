@@ -1,5 +1,5 @@
 from flask_sqlalchemy import SQLAlchemy
-from sqlalchemy import Enum, event
+from sqlalchemy import Enum, event, text
 import random
 import string
 import uuid
@@ -475,10 +475,19 @@ class OrderDetails(db.Model):
 
 class Invoices(db.Model):
     __tablename__ = "invoices"
+    __table_args__ = (
+        db.Index(
+            "uq_invoices_one_ordinary_per_order",
+            "order_id",
+            unique=True,
+            postgresql_where=text("invoice_type = 'ordinary' AND order_id IS NOT NULL"),
+        ),
+    )
 
     id = db.Column(db.Integer, primary_key=True)
     invoice_number = db.Column(db.String(50), nullable=False, unique=True)
     order_id = db.Column(db.Integer, db.ForeignKey('orders.id'), nullable=True)
+    invoice_type = db.Column(db.String(20), nullable=True)
     created_at = db.Column(db.DateTime, default=db.func.current_timestamp())
     pdf_path = db.Column(db.String(255), nullable=False)
     amount = db.Column(db.Float, nullable=False)

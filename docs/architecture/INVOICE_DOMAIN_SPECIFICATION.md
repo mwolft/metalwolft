@@ -183,6 +183,12 @@ Compatibilidad:
 - Las facturas manuales sin `order_id` deben conservarse.
 - Las nuevas facturas ordinarias de pedido deben imponer relación única `Order 1 -> Invoice 0..1`.
 - Las futuras rectificativas deben usar una relación explícita con la factura original, no reutilizar la factura ordinaria.
+- `invoice_type` representa la naturaleza fiscal de la factura, no su origen.
+- Valores iniciales de `invoice_type`: `ordinary` y `corrective`.
+- Las facturas históricas pueden permanecer con `invoice_type = NULL`.
+- La unicidad se aplica únicamente a facturas `ordinary` con `order_id`.
+- Las futuras rectificativas podrán compartir el mismo pedido.
+- `issuance_source` representa el origen operativo (`manual`, `automatic`, `legacy`) y no debe mezclarse con `invoice_type`.
 
 ## 6. Invoice Snapshot
 
