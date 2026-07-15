@@ -15,6 +15,7 @@ import { buildCustomerData, type CheckoutCustomerDetails } from "@/lib/checkout-
 
 type StripePaymentFormProps = {
   customerDetails: CheckoutCustomerDetails;
+  discountCode?: string | null;
   initialQuote: CheckoutQuote;
   onQuoteUpdated: (quote: CheckoutQuote) => void;
   onSessionExpired: () => void;
@@ -70,8 +71,17 @@ function hasTotalChanged(left: CheckoutQuote, right: CheckoutQuote) {
   return Math.abs(Number(left.total_amount || 0) - Number(right.total_amount || 0)) >= 0.01;
 }
 
+function hasQuoteChanged(left: CheckoutQuote, right: CheckoutQuote) {
+  return (
+    hasTotalChanged(left, right) ||
+    (left.discount_code || "") !== (right.discount_code || "") ||
+    Math.abs(Number(left.discount_amount || 0) - Number(right.discount_amount || 0)) >= 0.01
+  );
+}
+
 export function StripePaymentForm({
   customerDetails,
+  discountCode,
   initialQuote,
   onQuoteUpdated,
   onSessionExpired
@@ -171,7 +181,8 @@ export function StripePaymentForm({
         payment_intent_id: paymentIntentId,
         idempotency_key: idempotencyKey,
         email: customerDetails.email,
-        customer_data: buildCustomerData(customerDetails)
+        customer_data: buildCustomerData(customerDetails),
+        discount_code: discountCode || undefined
       });
 
       const nextPaymentIntentId = paymentIntentResponse.paymentIntent?.id || null;
@@ -180,7 +191,7 @@ export function StripePaymentForm({
       setPaymentIntentId(nextPaymentIntentId);
       setCheckoutToken(nextCheckoutToken);
 
-      if (paymentIntentResponse.checkout_summary && hasTotalChanged(quote, paymentIntentResponse.checkout_summary)) {
+      if (paymentIntentResponse.checkout_summary && hasQuoteChanged(quote, paymentIntentResponse.checkout_summary)) {
         setQuote(paymentIntentResponse.checkout_summary);
         onQuoteUpdated(paymentIntentResponse.checkout_summary);
         setFeedback({

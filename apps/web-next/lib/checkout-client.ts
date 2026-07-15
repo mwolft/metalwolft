@@ -35,6 +35,7 @@ export type CreateStripePaymentIntentInput = {
   idempotency_key: string;
   email: string;
   customer_data: Record<string, string>;
+  discount_code?: string | null;
 };
 
 export type StripePaymentIntentSummary = {
@@ -62,6 +63,7 @@ export type CreateStripePaymentIntentResponse = {
 export type CreatePayPalOrderInput = {
   checkout_token?: string | null;
   customer_data: Record<string, string>;
+  discount_code?: string | null;
 };
 
 export type CreatePayPalOrderResponse = {
@@ -183,18 +185,24 @@ function isCheckoutQuote(payload: unknown): payload is CheckoutQuote {
   );
 }
 
+type CheckoutQuoteInput = {
+  discountCode?: string | null;
+};
+
 export function isCheckoutSessionError(error: unknown) {
   return error instanceof CheckoutClientError && (error.status === 401 || error.status === 422);
 }
 
-export async function getCheckoutQuote(token: string) {
+export async function getCheckoutQuote(token: string, input: CheckoutQuoteInput = {}) {
   const response = await fetch(checkoutApiUrl("/api/checkout/quote"), {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
       Authorization: `Bearer ${token}`
     },
-    body: JSON.stringify({})
+    body: JSON.stringify({
+      discount_code: input.discountCode || undefined
+    })
   }).catch(() => {
     throw new CheckoutClientError("No se pudo conectar con la API.", 0);
   });

@@ -22,6 +22,13 @@ import {
   getCheckoutQuote,
   isCheckoutSessionError
 } from "@/lib/checkout-client";
+import {
+  clearStoredCheckoutDiscountCode,
+  loadStoredCheckoutDiscountCode,
+  normalizeCheckoutDiscountCode,
+  saveStoredCheckoutDiscountCode
+} from "@/lib/checkout-discount";
+import { CheckoutDiscountForm } from "@/components/cart/CheckoutDiscountForm";
 
 type CheckoutStatus = "loading" | "empty" | "ready" | "error";
 
@@ -97,6 +104,12 @@ export function CartDetailsStep({
   const [errorMessage, setErrorMessage] = useState("");
   const [details, setDetails] = useState<CheckoutCustomerDetails>(EMPTY_CHECKOUT_CUSTOMER_DETAILS);
   const [detailsErrors, setDetailsErrors] = useState<CheckoutDetailsErrors>({});
+  const [discountInput, setDiscountInput] = useState("");
+  const [discountFeedback, setDiscountFeedback] = useState<{
+    type: "error" | "success";
+    message: string;
+  } | null>(null);
+  const [isApplyingDiscount, setIsApplyingDiscount] = useState(false);
   const loginHref = buildLoginHref(loginNextPath);
 
   function redirectToLogin() {
@@ -124,7 +137,19 @@ export function CartDetailsStep({
         return;
       }
 
-      const nextQuote = await getCheckoutQuote(token);
+      const storedDiscountCode = loadStoredCheckoutDiscountCode();
+      const nextQuote = await getCheckoutQuote(token, { discountCode: storedDiscountCode });
+      if (storedDiscountCode && nextQuote.discount_code_valid && nextQuote.discount_code) {
+        setDiscountInput(nextQuote.discount_code);
+        saveStoredCheckoutDiscountCode(nextQuote.discount_code);
+      } else if (storedDiscountCode) {
+        clearStoredCheckoutDiscountCode();
+        setDiscountInput(storedDiscountCode);
+        setDiscountFeedback({
+          type: "error",
+          message: "Ese codigo no es valido o ya no esta disponible."
+        });
+      }
       setQuote(nextQuote);
       setStatus("ready");
     } catch (error) {
@@ -167,6 +192,107 @@ export function CartDetailsStep({
       ...currentErrors,
       [name]: undefined
     }));
+  }
+
+  function handleDiscountInputChange(value: string) {
+    setDiscountInput(value);
+    setDiscountFeedback(null);
+  }
+
+  async function refreshQuoteWithDiscount(nextDiscountCode: string | null) {
+    const token = getToken();
+    if (!token) {
+      redirectToLogin();
+      return null;
+    }
+
+    const nextQuote = await getCheckoutQuote(token, { discountCode: nextDiscountCode });
+    setQuote(nextQuote);
+    return nextQuote;
+  }
+
+  async function handleApplyDiscount(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    if (isApplyingDiscount) {
+      return;
+    }
+
+    const normalizedCode = normalizeCheckoutDiscountCode(discountInput);
+    setIsApplyingDiscount(true);
+    setDiscountFeedback(null);
+
+    try {
+      if (!normalizedCode) {
+        clearStoredCheckoutDiscountCode();
+        await refreshQuoteWithDiscount(null);
+        setDiscountFeedback({
+          type: "success",
+          message: "Codigo de descuento retirado."
+        });
+        return;
+      }
+
+      const nextQuote = await refreshQuoteWithDiscount(normalizedCode);
+      if (nextQuote?.discount_code_valid && nextQuote.discount_code) {
+        saveStoredCheckoutDiscountCode(nextQuote.discount_code);
+        setDiscountInput(nextQuote.discount_code);
+        setDiscountFeedback({
+          type: "success",
+          message: "Codigo de descuento aplicado."
+        });
+        return;
+      }
+
+      clearStoredCheckoutDiscountCode();
+      setDiscountFeedback({
+        type: "error",
+        message: "Ese codigo no es valido o no esta disponible."
+      });
+    } catch (error) {
+      if (isApiSessionError(error)) {
+        redirectToLogin();
+        return;
+      }
+
+      setDiscountFeedback({
+        type: "error",
+        message: apiErrorMessage(error)
+      });
+    } finally {
+      setIsApplyingDiscount(false);
+    }
+  }
+
+  async function handleRemoveDiscount() {
+    if (isApplyingDiscount) {
+      return;
+    }
+
+    setIsApplyingDiscount(true);
+    setDiscountFeedback(null);
+
+    try {
+      clearStoredCheckoutDiscountCode();
+      setDiscountInput("");
+      await refreshQuoteWithDiscount(null);
+      setDiscountFeedback({
+        type: "success",
+        message: "Codigo de descuento retirado."
+      });
+    } catch (error) {
+      if (isApiSessionError(error)) {
+        redirectToLogin();
+        return;
+      }
+
+      setDiscountFeedback({
+        type: "error",
+        message: apiErrorMessage(error)
+      });
+    } finally {
+      setIsApplyingDiscount(false);
+    }
   }
 
   function handleContinueToPayment(event: FormEvent<HTMLFormElement>) {
@@ -387,6 +513,15 @@ export function CartDetailsStep({
             <Link href={backHref}>Volver al carrito</Link>
           </div>
 
+          <CheckoutDiscountForm
+            appliedCode={quote.discount_code}
+            feedback={discountFeedback}
+            inputValue={discountInput}
+            isApplying={isApplyingDiscount}
+            onApply={handleApplyDiscount}
+            onChange={handleDiscountInputChange}
+            onRemove={handleRemoveDiscount}
+          />
           <CheckoutTotals quote={quote} />
           <p className="mw-checkout-next-step">El importe final se recalculará antes del pago.</p>
         </div>

@@ -17,6 +17,7 @@ import { buildCustomerData, type CheckoutCustomerDetails } from "@/lib/checkout-
 type PayPalPaymentFormProps = {
   clientId: string;
   customerDetails: CheckoutCustomerDetails;
+  discountCode?: string | null;
   initialQuote: CheckoutQuote;
   onQuoteUpdated: (quote: CheckoutQuote) => void;
   onSessionExpired: () => void;
@@ -46,6 +47,14 @@ function hasTotalChanged(left: CheckoutQuote, right: CheckoutQuote) {
   return Math.abs(Number(left.total_amount || 0) - Number(right.total_amount || 0)) >= 0.01;
 }
 
+function hasQuoteChanged(left: CheckoutQuote, right: CheckoutQuote) {
+  return (
+    hasTotalChanged(left, right) ||
+    (left.discount_code || "") !== (right.discount_code || "") ||
+    Math.abs(Number(left.discount_amount || 0) - Number(right.discount_amount || 0)) >= 0.01
+  );
+}
+
 function persistCheckoutContext(checkoutToken: string | null) {
   if (typeof window === "undefined" || !checkoutToken) {
     return;
@@ -65,6 +74,7 @@ function buildThankYouUrl(checkoutToken: string | null) {
 export function PayPalPaymentForm({
   clientId,
   customerDetails,
+  discountCode,
   initialQuote,
   onQuoteUpdated,
   onSessionExpired
@@ -72,8 +82,10 @@ export function PayPalPaymentForm({
   const router = useRouter();
   const [quote, setQuote] = useState(initialQuote);
   const [checkoutToken, setCheckoutToken] = useState<string | null>(null);
+  const [isCreatingOrder, setIsCreatingOrder] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [feedback, setFeedback] = useState<Feedback | null>(null);
+  const isCreatingOrderRef = useRef(false);
   const suppressNextSdkError = useRef(false);
 
   function updateQuote(nextQuote: CheckoutQuote) {
@@ -86,17 +98,24 @@ export function PayPalPaymentForm({
   }
 
   const handleCreateOrder: PayPalCreateOrderHandler = async () => {
+    if (isProcessing || isCreatingOrderRef.current) {
+      suppressNextSdkError.current = true;
+      throw new Error("PAYPAL_CREATE_ORDER_IN_PROGRESS");
+    }
+
     const token = getToken();
     if (!token) {
       handleSessionExpired();
       throw new Error("SESSION_EXPIRED");
     }
 
+    isCreatingOrderRef.current = true;
+    setIsCreatingOrder(true);
     setFeedback(null);
 
     try {
-      const freshQuote = await getCheckoutQuote(token);
-      if (hasTotalChanged(quote, freshQuote)) {
+      const freshQuote = await getCheckoutQuote(token, { discountCode });
+      if (hasQuoteChanged(quote, freshQuote)) {
         updateQuote(freshQuote);
         setFeedback({
           type: "info",
@@ -109,10 +128,11 @@ export function PayPalPaymentForm({
 
       const paypalOrder = await createPayPalOrder(token, {
         checkout_token: checkoutToken,
-        customer_data: buildCustomerData(customerDetails)
+        customer_data: buildCustomerData(customerDetails),
+        discount_code: discountCode || undefined
       });
 
-      if (paypalOrder.checkout_summary && hasTotalChanged(freshQuote, paypalOrder.checkout_summary)) {
+      if (paypalOrder.checkout_summary && hasQuoteChanged(freshQuote, paypalOrder.checkout_summary)) {
         updateQuote(paypalOrder.checkout_summary);
         setCheckoutToken(paypalOrder.public_checkout_token || null);
         setFeedback({
@@ -146,6 +166,9 @@ export function PayPalPaymentForm({
       }
 
       throw error;
+    } finally {
+      isCreatingOrderRef.current = false;
+      setIsCreatingOrder(false);
     }
   };
 
@@ -223,8 +246,8 @@ export function PayPalPaymentForm({
         >
           <PayPalButtons
             createOrder={handleCreateOrder}
-            disabled={isProcessing}
-            forceReRender={[clientId, quote.total_amount, checkoutToken]}
+            disabled={isCreatingOrder || isProcessing}
+            forceReRender={[clientId, quote.total_amount, checkoutToken, discountCode]}
             onApprove={handleApprove}
             onCancel={() => {
               setFeedback({

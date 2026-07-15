@@ -17,6 +17,11 @@ import {
   type CheckoutCustomerDetails,
   validateCheckoutDetails
 } from "@/lib/checkout-details";
+import {
+  clearStoredCheckoutDiscountCode,
+  loadStoredCheckoutDiscountCode,
+  saveStoredCheckoutDiscountCode
+} from "@/lib/checkout-discount";
 import { CheckoutPaymentSummary } from "@/components/cart/CheckoutPaymentSummary";
 import { PayPalPaymentForm } from "@/components/cart/PayPalPaymentForm";
 import { StripePaymentForm } from "@/components/cart/StripePaymentForm";
@@ -37,12 +42,32 @@ export function CartPaymentStep() {
   const [status, setStatus] = useState<PaymentStatus>("loading");
   const [quote, setQuote] = useState<CheckoutQuote | null>(null);
   const [customerDetails, setCustomerDetails] = useState<CheckoutCustomerDetails | null>(null);
+  const [discountCode, setDiscountCode] = useState<string | null>(null);
+  const [discountNotice, setDiscountNotice] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("card");
 
   function redirectToLogin() {
     clearSession();
     router.replace("/login?next=/cart%3Fstep%3Dpayment");
+  }
+
+  function updateCheckoutQuote(nextQuote: CheckoutQuote, requestedDiscountCode: string | null = null) {
+    setQuote(nextQuote);
+
+    if (nextQuote.discount_code_valid && nextQuote.discount_code) {
+      saveStoredCheckoutDiscountCode(nextQuote.discount_code);
+      setDiscountCode(nextQuote.discount_code);
+      setDiscountNotice("");
+      return;
+    }
+
+    if (requestedDiscountCode || discountCode) {
+      setDiscountNotice("El codigo de descuento ya no es valido y se ha retirado del resumen.");
+    }
+
+    clearStoredCheckoutDiscountCode();
+    setDiscountCode(null);
   }
 
   async function loadPaymentStep() {
@@ -71,9 +96,10 @@ export function CartPaymentStep() {
         return;
       }
 
-      const nextQuote = await getCheckoutQuote(token);
+      const storedDiscountCode = loadStoredCheckoutDiscountCode();
+      const nextQuote = await getCheckoutQuote(token, { discountCode: storedDiscountCode });
       setCustomerDetails(validation.details);
-      setQuote(nextQuote);
+      updateCheckoutQuote(nextQuote, storedDiscountCode);
       setStatus("ready");
     } catch (error) {
       if (isApiSessionError(error)) {
@@ -176,12 +202,19 @@ export function CartPaymentStep() {
           </p>
         ) : null}
 
+        {discountNotice ? (
+          <p className="mw-alert mw-alert--error" aria-live="polite">
+            {discountNotice}
+          </p>
+        ) : null}
+
         {paymentMethod === "card" && stripePromise ? (
           <Elements stripe={stripePromise}>
             <StripePaymentForm
               customerDetails={customerDetails}
+              discountCode={discountCode}
               initialQuote={quote}
-              onQuoteUpdated={setQuote}
+              onQuoteUpdated={updateCheckoutQuote}
               onSessionExpired={redirectToLogin}
             />
           </Elements>
@@ -197,8 +230,9 @@ export function CartPaymentStep() {
           <PayPalPaymentForm
             clientId={paypalClientId}
             customerDetails={customerDetails}
+            discountCode={discountCode}
             initialQuote={quote}
-            onQuoteUpdated={setQuote}
+            onQuoteUpdated={updateCheckoutQuote}
             onSessionExpired={redirectToLogin}
           />
         ) : null}

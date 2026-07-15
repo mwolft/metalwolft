@@ -9,6 +9,7 @@ import {
   isCheckoutSessionError,
   type CheckoutStatusResponse
 } from "@/lib/checkout-client";
+import { clearStoredCheckoutDiscountCode } from "@/lib/checkout-discount";
 
 const MAX_STATUS_POLLS = 8;
 const STATUS_POLL_DELAY_MS = 3000;
@@ -145,6 +146,12 @@ export function ThankYouStatus() {
       }
     };
   }, [identifiers]);
+
+  useEffect(() => {
+    if (statusData?.state === "confirmed" && (statusData.order_id || statusData.order?.id)) {
+      clearStoredCheckoutDiscountCode();
+    }
+  }, [statusData?.order?.id, statusData?.order_id, statusData?.state]);
 
   if (isLoading) {
     return (
