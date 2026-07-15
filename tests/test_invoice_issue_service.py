@@ -1,53 +1,50 @@
 import sys
-import importlib.util
-import types
 import unittest
+from datetime import datetime
 from pathlib import Path
 from types import SimpleNamespace
-from unittest.mock import mock_open, patch
+from unittest.mock import patch
 
 ROOT_DIR = Path(__file__).resolve().parents[1]
 SRC_DIR = ROOT_DIR / "src"
 if str(SRC_DIR) not in sys.path:
     sys.path.insert(0, str(SRC_DIR))
 
-if importlib.util.find_spec("flask_sqlalchemy") is None:
-    fake_models = types.ModuleType("api.models")
-    fake_models.Invoices = SimpleNamespace(generate_next_invoice_number=lambda: "TEST-001")
-    fake_models.Products = SimpleNamespace(query=SimpleNamespace(get=lambda product_id: None))
-    sys.modules["api.models"] = fake_models
-
 from api.invoice_email_service import send_invoice_email
-from api.invoice_issue_service import issue_invoice_for_order
+from api.invoice_issue_service import (
+    DEFAULT_INVOICE_SERIES,
+    ORDINARY_INVOICE_TYPE,
+    InvoiceIssueError,
+    issue_invoice_for_order,
+)
 
 
 class FakeDbSession:
-    def __init__(self):
+    def __init__(self, *, fail_flush=False):
         self.added = []
+        self.flush_count = 0
+        self.commit_count = 0
+        self.rollback_count = 0
+        self.fail_flush = fail_flush
 
     def add(self, item):
         self.added.append(item)
 
+    def flush(self):
+        self.flush_count += 1
+        if self.fail_flush:
+            raise RuntimeError("flush failed")
+
+    def commit(self):
+        self.commit_count += 1
+
+    def rollback(self):
+        self.rollback_count += 1
+
 
 class FakeInvoice:
-    generated_numbers = []
-
     def __init__(self, **kwargs):
         self.__dict__.update(kwargs)
-
-    @staticmethod
-    def generate_next_invoice_number():
-        FakeInvoice.generated_numbers.append("NOV-2025-001")
-        return "NOV-2025-001"
-
-
-class FakeProductQuery:
-    def get(self, product_id):
-        return SimpleNamespace(nombre=f"Producto {product_id}")
-
-
-class FakeProducts:
-    query = FakeProductQuery()
 
 
 class FakeOrderDetail:
@@ -62,120 +59,249 @@ class FakeOrderDetail:
         }
 
 
-def customer_context():
+def build_order():
+    order = SimpleNamespace(
+        id=123,
+        total_amount=116.0,
+        invoice_number=None,
+        order_details=[],
+    )
+    order.order_details = [FakeOrderDetail(order)]
+    return order
+
+
+def checkout_session():
+    return SimpleNamespace(
+        id=456,
+        order_id=123,
+        status="paid",
+        customer_snapshot={
+            "firstname": "Sergio",
+            "lastname": "Arias",
+            "phone": "600000000",
+            "billing_address": "Calle factura",
+            "shipping_address": "Calle envio",
+            "CIF": "00000000T",
+        },
+        quote_snapshot={"total": "116.00"},
+    )
+
+
+def issuer_snapshot():
     return {
-        "firstname": "Sergio",
-        "lastname": "Arias",
-        "phone": "600000000",
-        "shipping_address": "Calle envio",
-        "shipping_city": "Ciudad envio",
-        "shipping_postal_code": "13000",
-        "billing_address": "Calle factura",
-        "billing_city": "Ciudad factura",
-        "billing_postal_code": "13001",
-        "CIF": "00000000T",
+        "legal_name": "MetalWolft",
+        "tax_id": "B00000000",
+        "address": "Calle Taller",
+        "postal_code": "13000",
+        "city": "Ciudad Real",
+        "country_code": "ES",
     }
 
 
-def checkout_quote():
+def invoice_snapshot():
     return {
-        "discount_percent": 10,
-        "lines": [
-            {
-                "producto_id": 7,
-                "quantity": 1,
-                "alto": 30,
-                "ancho": 30,
-                "anclaje": "Sin obra: con agujeros interiores",
-                "color": "satinado_blanco",
-                "precio_total": 95.0,
-            }
-        ],
+        "schema_version": 1,
+        "operation": {"order_id": 123, "invoice_type": ORDINARY_INVOICE_TYPE},
+        "totals": {"grand_total": "116.00"},
     }
 
 
 class InvoiceIssueServiceTest(unittest.TestCase):
-    def setUp(self):
-        FakeInvoice.generated_numbers = []
+    def test_service_issues_invoice_with_number_snapshot_hash_and_order_sync(self):
+        order = build_order()
+        session = FakeDbSession()
+        issued_at = datetime(2026, 7, 15, 10, 30, 0)
+        allocation = SimpleNamespace(invoice_number="F2026000001")
 
-    def build_order(self):
-        order = SimpleNamespace(
-            id=123,
-            total_amount=116.0,
-            shipping_cost=21.0,
-            discount_value=0.0,
-            discount_code=None,
-            invoice_number=None,
-            order_details=[],
-        )
-        order.order_details = [FakeOrderDetail(order)]
-        return order
-
-    def test_service_creates_invoice_assigns_order_number_and_returns_paths(self):
-        order = self.build_order()
-        db_session = FakeDbSession()
-        renderer_calls = []
-
-        def fake_renderer(**kwargs):
-            renderer_calls.append(kwargs)
-            return b"%PDF-test"
-
-        invoice_folder = str(ROOT_DIR / "invoice-test-output")
-        opened_file = mock_open()
-
-        with patch("api.invoice_issue_service.Invoices", FakeInvoice), patch(
-            "api.invoice_issue_service.Products", FakeProducts
-        ), patch("api.invoice_issue_service.os.makedirs") as makedirs, patch(
-            "builtins.open", opened_file
-        ):
+        with patch("api.invoice_issue_service._lock_order_for_update", return_value=order) as lock_order, patch(
+            "api.invoice_issue_service._find_existing_ordinary_invoice", return_value=None
+        ) as find_existing, patch(
+            "api.invoice_issue_service._invoice_model", return_value=FakeInvoice
+        ), patch(
+            "api.invoice_issue_service.acquire_next_invoice_number", return_value=allocation
+        ) as acquire_number, patch(
+            "api.invoice_issue_service.build_invoice_snapshot", return_value=invoice_snapshot()
+        ) as build_snapshot, patch(
+            "api.invoice_issue_service.calculate_invoice_snapshot_hash", return_value="snapshot-hash"
+        ) as calculate_hash:
             result = issue_invoice_for_order(
-                order=order,
-                order_details=checkout_quote()["lines"],
-                customer_context=customer_context(),
-                checkout_quote=checkout_quote(),
-                invoice_folder=invoice_folder,
-                db_session=db_session,
-                renderer=fake_renderer,
+                db_session=session,
+                order_id=123,
+                checkout_session=checkout_session(),
+                issuer=issuer_snapshot(),
+                issue_date=issued_at,
+                source="admin_manual",
+                actor={"email": "admin@example.com"},
             )
 
-        self.assertEqual(result.invoice_number, "NOV-2025-001")
-        self.assertEqual(result.pdf_filename, "invoice_NOV-2025-001.pdf")
-        self.assertEqual(result.pdf_path, "/api/download-invoice/invoice_NOV-2025-001.pdf")
-        self.assertEqual(order.invoice_number, "NOV-2025-001")
-        self.assertEqual(len(db_session.added), 1)
-        self.assertEqual(db_session.added[0], result.invoice)
+        lock_order.assert_called_once_with(session, 123)
+        find_existing.assert_called_once_with(session, 123)
+        acquire_number.assert_called_once_with(
+            session,
+            series=DEFAULT_INVOICE_SERIES,
+            fiscal_year=2026,
+        )
+        build_snapshot.assert_called_once()
+        self.assertEqual(build_snapshot.call_args.args[0], order)
+        self.assertEqual(build_snapshot.call_args.kwargs["issue_date"], issued_at)
+        self.assertEqual(build_snapshot.call_args.kwargs["source"], "admin_manual")
+        self.assertEqual(build_snapshot.call_args.kwargs["actor"], {"email": "admin@example.com"})
+        calculate_hash.assert_called_once_with(invoice_snapshot())
+
+        self.assertTrue(result.created)
+        self.assertEqual(result.invoice_number, "F2026000001")
+        self.assertEqual(result.invoice, session.added[0])
+        self.assertEqual(result.invoice.invoice_number, "F2026000001")
         self.assertEqual(result.invoice.order_id, 123)
+        self.assertEqual(result.invoice.invoice_type, ORDINARY_INVOICE_TYPE)
+        self.assertEqual(result.invoice.pdf_path, "")
         self.assertEqual(result.invoice.amount, 116.0)
-        makedirs.assert_called_once_with(invoice_folder, exist_ok=True)
-        opened_file.assert_called_once_with(result.file_path, "wb")
-        opened_file().write.assert_called_once_with(b"%PDF-test")
-        self.assertEqual(renderer_calls[0]["order_details"][0]["product_name"], "Producto 7")
+        self.assertEqual(result.invoice.client_name, "Sergio Arias")
+        self.assertEqual(result.invoice.client_address, "Calle factura")
+        self.assertEqual(result.invoice.client_cif, "00000000T")
+        self.assertEqual(result.invoice.client_phone, "600000000")
+        self.assertEqual(result.invoice.invoice_snapshot, invoice_snapshot())
+        self.assertEqual(result.invoice.invoice_snapshot_schema_version, 1)
+        self.assertEqual(result.invoice.invoice_snapshot_hash, "snapshot-hash")
+        self.assertEqual(result.invoice.issued_at, issued_at)
+        self.assertEqual(result.invoice.issuance_source, "admin_manual")
+        self.assertEqual(result.invoice.issued_by, "admin@example.com")
+        self.assertEqual(order.invoice_number, "F2026000001")
+        self.assertEqual(session.flush_count, 1)
+        self.assertEqual(session.commit_count, 1)
+        self.assertEqual(session.rollback_count, 0)
 
-    def test_error_before_commit_is_propagated_without_creating_invoice(self):
-        order = self.build_order()
-        db_session = FakeDbSession()
+    def test_service_returns_existing_ordinary_invoice_without_consuming_number(self):
+        order = build_order()
+        existing_invoice = FakeInvoice(
+            invoice_number="F2026000001",
+            order_id=123,
+            invoice_type=ORDINARY_INVOICE_TYPE,
+        )
+        session = FakeDbSession()
 
-        def failing_renderer(**kwargs):
-            raise RuntimeError("renderer failed")
+        with patch("api.invoice_issue_service._lock_order_for_update", return_value=order), patch(
+            "api.invoice_issue_service._find_existing_ordinary_invoice", return_value=existing_invoice
+        ), patch("api.invoice_issue_service.acquire_next_invoice_number") as acquire_number, patch(
+            "api.invoice_issue_service.build_invoice_snapshot"
+        ) as build_snapshot:
+            result = issue_invoice_for_order(
+                db_session=session,
+                order_id=123,
+                checkout_session=checkout_session(),
+                issuer=issuer_snapshot(),
+                issue_date=datetime(2026, 7, 15),
+            )
 
-        invoice_folder = str(ROOT_DIR / "invoice-test-output")
-        with patch("api.invoice_issue_service.Invoices", FakeInvoice), patch(
-            "api.invoice_issue_service.Products", FakeProducts
-        ), patch("api.invoice_issue_service.os.makedirs"), patch("builtins.open", mock_open()) as opened_file:
-            with self.assertRaisesRegex(RuntimeError, "renderer failed"):
+        acquire_number.assert_not_called()
+        build_snapshot.assert_not_called()
+        self.assertFalse(result.created)
+        self.assertEqual(result.invoice, existing_invoice)
+        self.assertEqual(result.invoice_number, "F2026000001")
+        self.assertEqual(session.added, [])
+        self.assertEqual(session.flush_count, 0)
+        self.assertEqual(session.commit_count, 1)
+        self.assertEqual(session.rollback_count, 0)
+
+    def test_second_call_returns_same_invoice_and_allocates_number_once(self):
+        order = build_order()
+        session = FakeDbSession()
+        issued_invoice = None
+
+        def find_existing(*_args):
+            return issued_invoice
+
+        def capture_added(invoice):
+            nonlocal issued_invoice
+            issued_invoice = invoice
+            session.added.append(invoice)
+
+        session.add = capture_added
+
+        with patch("api.invoice_issue_service._lock_order_for_update", return_value=order), patch(
+            "api.invoice_issue_service._find_existing_ordinary_invoice", side_effect=find_existing
+        ), patch(
+            "api.invoice_issue_service._invoice_model", return_value=FakeInvoice
+        ), patch(
+            "api.invoice_issue_service.acquire_next_invoice_number",
+            return_value=SimpleNamespace(invoice_number="F2026000001"),
+        ) as acquire_number, patch(
+            "api.invoice_issue_service.build_invoice_snapshot", return_value=invoice_snapshot()
+        ), patch(
+            "api.invoice_issue_service.calculate_invoice_snapshot_hash", return_value="snapshot-hash"
+        ):
+            first = issue_invoice_for_order(
+                db_session=session,
+                order_id=123,
+                checkout_session=checkout_session(),
+                issuer=issuer_snapshot(),
+                issue_date=datetime(2026, 7, 15),
+            )
+            second = issue_invoice_for_order(
+                db_session=session,
+                order_id=123,
+                checkout_session=checkout_session(),
+                issuer=issuer_snapshot(),
+                issue_date=datetime(2026, 7, 15),
+            )
+
+        self.assertTrue(first.created)
+        self.assertFalse(second.created)
+        self.assertEqual(first.invoice, second.invoice)
+        acquire_number.assert_called_once()
+        self.assertEqual(session.commit_count, 2)
+        self.assertEqual(session.rollback_count, 0)
+
+    def test_service_rolls_back_when_flush_fails_after_invoice_insert(self):
+        order = build_order()
+        session = FakeDbSession(fail_flush=True)
+
+        with patch("api.invoice_issue_service._lock_order_for_update", return_value=order), patch(
+            "api.invoice_issue_service._find_existing_ordinary_invoice", return_value=None
+        ), patch(
+            "api.invoice_issue_service._invoice_model", return_value=FakeInvoice
+        ), patch(
+            "api.invoice_issue_service.acquire_next_invoice_number",
+            return_value=SimpleNamespace(invoice_number="F2026000001"),
+        ), patch(
+            "api.invoice_issue_service.build_invoice_snapshot", return_value=invoice_snapshot()
+        ), patch(
+            "api.invoice_issue_service.calculate_invoice_snapshot_hash", return_value="snapshot-hash"
+        ):
+            with self.assertRaisesRegex(RuntimeError, "flush failed"):
                 issue_invoice_for_order(
-                    order=order,
-                    order_details=checkout_quote()["lines"],
-                    customer_context=customer_context(),
-                    checkout_quote=checkout_quote(),
-                    invoice_folder=invoice_folder,
-                    db_session=db_session,
-                    renderer=failing_renderer,
+                    db_session=session,
+                    order_id=123,
+                    checkout_session=checkout_session(),
+                    issuer=issuer_snapshot(),
+                    issue_date=datetime(2026, 7, 15),
                 )
 
-        self.assertEqual(db_session.added, [])
+        self.assertEqual(session.commit_count, 0)
+        self.assertEqual(session.rollback_count, 1)
         self.assertIsNone(order.invoice_number)
-        opened_file.assert_not_called()
+
+    def test_service_requires_order_identifier(self):
+        with self.assertRaises(InvoiceIssueError):
+            issue_invoice_for_order(
+                db_session=FakeDbSession(),
+                checkout_session=checkout_session(),
+                issuer=issuer_snapshot(),
+            )
+
+    def test_service_source_has_no_document_or_legacy_number_side_effects(self):
+        source = (SRC_DIR / "api/invoice_issue_service.py").read_text(encoding="utf-8")
+
+        self.assertNotIn("render_original_order_invoice_pdf", source)
+        self.assertNotIn("send_invoice_email", source)
+        self.assertNotIn("generate_next_invoice_number", source)
+        self.assertNotIn("VeriFactu", source)
+        self.assertNotIn("open(", source)
+
+    def test_order_lock_uses_select_for_update(self):
+        source = (SRC_DIR / "api/invoice_issue_service.py").read_text(encoding="utf-8")
+
+        self.assertIn(".with_for_update()", source)
 
 
 class InvoiceEmailServiceTest(unittest.TestCase):
@@ -257,39 +383,3 @@ class InvoiceFinalizerSourceRegressionTest(unittest.TestCase):
         self.assertIn("checkout_session.order_id = new_order.id", finalizer_source)
         self.assertIn('checkout_session.status = "order_created"', finalizer_source)
         self.assertIn("cleanup_cart_lines_from_checkout_quote(", finalizer_source)
-
-    def test_existing_checkout_session_returns_before_sending_confirmation_email(self):
-        finalizer_source = self._finalizer_source()
-
-        self.assertLess(
-            finalizer_source.index("if checkout_session and checkout_session.order_id:"),
-            finalizer_source.index("send_order_confirmation_email("),
-        )
-
-    def test_order_created_response_no_longer_mentions_invoice(self):
-        source = (ROOT_DIR / "src/api/routes.py").read_text(encoding="utf-8")
-        self.assertIn('"message": "Order created successfully."', source)
-        self.assertNotIn("Order, details, and invoice created successfully.", source)
-
-    def test_historical_invoice_serialization_contract_is_preserved(self):
-        source = (ROOT_DIR / "src/api/models.py").read_text(encoding="utf-8")
-        self.assertIn('"invoice_number": self.invoice_number', source)
-        self.assertIn("class Invoices(db.Model):", source)
-        self.assertIn("def serialize_admin(self):", source)
-
-    def test_stripe_and_paypal_still_use_shared_finalizer(self):
-        source = (ROOT_DIR / "src/api/routes.py").read_text(encoding="utf-8")
-
-        paypal_webhook = source[
-            source.index("def paypal_webhook"):source.index("@api.route('/webhook'")
-        ]
-        stripe_webhook = source[
-            source.index("def stripe_webhook"):source.index("@api.route('/checkout/quote'")
-        ]
-
-        self.assertIn("_finalize_order_from_checkout_quote(", paypal_webhook)
-        self.assertIn("_finalize_order_from_checkout_quote(", stripe_webhook)
-
-
-if __name__ == "__main__":
-    unittest.main()

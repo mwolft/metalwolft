@@ -219,15 +219,17 @@ class InvoiceNumberServiceSourceTest(unittest.TestCase):
         self.assertNotIn("Invoices", source)
         self.assertNotIn("Orders", source)
 
-    def test_helper_is_not_connected_to_legacy_callers_yet(self):
+    def test_helper_is_only_connected_to_invoice_issue_service(self):
         for relative_path in (
             "src/api/routes.py",
-            "src/api/invoice_issue_service.py",
             "src/api/admin.py",
         ):
             source = (ROOT_DIR / relative_path).read_text(encoding="utf-8")
             self.assertNotIn("invoice_number_service", source)
             self.assertNotIn("acquire_next_invoice_number", source)
+
+        issue_service_source = (ROOT_DIR / "src/api/invoice_issue_service.py").read_text(encoding="utf-8")
+        self.assertIn("acquire_next_invoice_number", issue_service_source)
 
 
 if __name__ == "__main__":

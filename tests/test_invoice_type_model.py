@@ -122,15 +122,17 @@ class InvoiceTypeMigrationTest(unittest.TestCase):
 
 
 class InvoiceTypeCompatibilityTest(unittest.TestCase):
-    def test_current_writers_do_not_start_setting_invoice_type(self):
+    def test_only_invoice_issue_service_sets_invoice_type_for_now(self):
         for relative_path in (
             "src/api/routes.py",
-            "src/api/invoice_issue_service.py",
             "src/api/admin.py",
         ):
             source = read(relative_path)
             self.assertNotIn("invoice_type=", source)
             self.assertNotIn('invoice_type":', source)
+
+        issue_service_source = read("src/api/invoice_issue_service.py")
+        self.assertIn("invoice_type=", issue_service_source)
 
     def test_legacy_generators_are_not_modified(self):
         source = models_source()
