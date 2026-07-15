@@ -2,6 +2,7 @@ import copy
 import sys
 import unittest
 from datetime import datetime
+from decimal import Decimal
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -81,6 +82,21 @@ def quote(overrides=None):
     return data
 
 
+def quote_line(product_id, amount, name=None):
+    return {
+        "product_id": product_id,
+        "producto_id": product_id,
+        "product_name": name or f"Producto {product_id}",
+        "quantity": 1,
+        "alto": 30,
+        "ancho": 30,
+        "anclaje": "Sin obra: con agujeros interiores",
+        "color": "satinado_blanco",
+        "unit_price": amount,
+        "line_total": amount,
+    }
+
+
 def order(overrides=None):
     data = {
         "id": 123,
@@ -131,6 +147,44 @@ def assert_no_floats(testcase, value):
             assert_no_floats(testcase, child)
 
 
+def money(value):
+    return Decimal(str(value))
+
+
+def assert_fiscal_totals(testcase, snapshot):
+    lines = snapshot["lines"]
+    totals = snapshot["totals"]
+    testcase.assertEqual(
+        sum(money(line["line_amount_before_discount"]) for line in lines),
+        money(totals["total_amount_before_discount"]),
+    )
+    testcase.assertEqual(
+        sum(money(line["discount_amount"]) for line in lines),
+        money(totals["discount_amount"]),
+    )
+    testcase.assertEqual(
+        sum(money(line["line_total"]) for line in lines),
+        money(totals["total_amount"]),
+    )
+    testcase.assertEqual(
+        sum(money(line["tax_base"]) for line in lines),
+        money(totals["tax_base"]),
+    )
+    testcase.assertEqual(
+        sum(money(line["tax_amount"]) for line in lines),
+        money(totals["tax_amount"]),
+    )
+    testcase.assertEqual(
+        money(totals["tax_base"]) + money(totals["tax_amount"]),
+        money(totals["total_amount"]),
+    )
+    for line in lines:
+        testcase.assertEqual(
+            money(line["tax_base"]) + money(line["tax_amount"]),
+            money(line["line_total"]),
+        )
+
+
 class InvoiceSnapshotBuilderTest(unittest.TestCase):
     def assert_validation_error(self, field, **overrides):
         with self.assertRaises(InvoiceSnapshotValidationError) as error:
@@ -164,7 +218,9 @@ class InvoiceSnapshotBuilderTest(unittest.TestCase):
         self.assertEqual(product_line["product_id"], 7)
         self.assertEqual(product_line["model"], "Reja fija Pittsburgh")
         self.assertEqual(product_line["quantity"], "1")
-        self.assertEqual(product_line["unit_total"], "95.00")
+        self.assertEqual(product_line["unit_amount_before_discount"], "95.00")
+        self.assertEqual(product_line["line_amount_before_discount"], "95.00")
+        self.assertEqual(product_line["discount_amount"], "0.00")
         self.assertEqual(product_line["line_total"], "95.00")
         self.assertEqual(product_line["tax_base"], "78.51")
         self.assertEqual(product_line["tax_amount"], "16.49")
@@ -181,22 +237,27 @@ class InvoiceSnapshotBuilderTest(unittest.TestCase):
         shipping_line = snapshot["lines"][1]
         self.assertEqual(shipping_line["line_type"], "shipping")
         self.assertEqual(shipping_line["description"], "Gastos de envío")
-        self.assertEqual(shipping_line["unit_total"], "21.00")
+        self.assertEqual(shipping_line["unit_amount_before_discount"], "21.00")
+        self.assertEqual(shipping_line["line_amount_before_discount"], "21.00")
+        self.assertEqual(shipping_line["discount_amount"], "0.00")
+        self.assertEqual(shipping_line["line_total"], "21.00")
         self.assertEqual(shipping_line["tax_base"], "17.36")
         self.assertEqual(shipping_line["tax_amount"], "3.64")
 
         self.assertEqual(
             snapshot["totals"],
             {
-                "products_total": "95.00",
-                "shipping_total": "21.00",
+                "products_amount_before_discount": "95.00",
+                "shipping_amount_before_discount": "21.00",
+                "total_amount_before_discount": "116.00",
                 "discount_amount": "0.00",
+                "total_amount": "116.00",
                 "tax_base": "95.87",
                 "tax_amount": "20.13",
-                "total_amount": "116.00",
                 "rounding_adjustment": "0.00",
             },
         )
+        assert_fiscal_totals(self, snapshot)
 
     def test_builds_valid_paypal_snapshot(self):
         paypal_session = checkout_session(
@@ -225,9 +286,38 @@ class InvoiceSnapshotBuilderTest(unittest.TestCase):
         snapshot = build(checkout_session=session)
 
         self.assertEqual(len(snapshot["lines"]), 1)
-        self.assertEqual(snapshot["totals"]["shipping_total"], "0.00")
+        self.assertEqual(snapshot["totals"]["shipping_amount_before_discount"], "0.00")
 
-    def test_discount_is_stored_in_totals_without_negative_line(self):
+    def test_ten_percent_discount_is_allocated_between_product_and_shipping(self):
+        discounted_quote = quote(
+            {
+                "discount_code": "REJAS10",
+                "discount_code_valid": True,
+                "discount_percent": 10.0,
+                "discount_amount": 11.60,
+                "total_amount": 104.40,
+            }
+        )
+        session = checkout_session({"quote_snapshot": discounted_quote})
+
+        snapshot = build(checkout_session=session)
+
+        product_line, shipping_line = snapshot["lines"]
+        self.assertEqual(product_line["discount_amount"], "9.50")
+        self.assertEqual(product_line["line_total"], "85.50")
+        self.assertEqual(product_line["tax_base"], "70.66")
+        self.assertEqual(product_line["tax_amount"], "14.84")
+        self.assertEqual(shipping_line["discount_amount"], "2.10")
+        self.assertEqual(shipping_line["line_total"], "18.90")
+        self.assertEqual(shipping_line["tax_base"], "15.62")
+        self.assertEqual(shipping_line["tax_amount"], "3.28")
+        self.assertEqual(snapshot["totals"]["discount_amount"], "11.60")
+        self.assertEqual(snapshot["totals"]["tax_base"], "86.28")
+        self.assertEqual(snapshot["totals"]["tax_amount"], "18.12")
+        self.assertEqual(snapshot["totals"]["total_amount"], "104.40")
+        assert_fiscal_totals(self, snapshot)
+
+    def test_sergio99_discount_is_allocated_without_negative_lines(self):
         discounted_quote = quote(
             {
                 "shipping_cost": 21.0,
@@ -246,11 +336,132 @@ class InvoiceSnapshotBuilderTest(unittest.TestCase):
         self.assertEqual(snapshot["totals"]["discount_amount"], "114.84")
         self.assertEqual(snapshot["totals"]["total_amount"], "1.16")
         self.assertEqual(snapshot["totals"]["tax_base"], "0.96")
+        self.assertEqual(snapshot["totals"]["tax_amount"], "0.20")
         self.assertFalse(any(line["line_type"] == "discount" for line in snapshot["lines"]))
-        line_tax_base_sum = sum(
-            float(line["tax_base"]) for line in snapshot["lines"]
+        self.assertEqual(snapshot["lines"][0]["discount_amount"], "94.05")
+        self.assertEqual(snapshot["lines"][0]["line_total"], "0.95")
+        self.assertEqual(snapshot["lines"][1]["discount_amount"], "20.79")
+        self.assertEqual(snapshot["lines"][1]["line_total"], "0.21")
+        assert_fiscal_totals(self, snapshot)
+
+    def test_discount_is_allocated_across_multiple_different_amounts_and_shipping(self):
+        multi_quote = quote(
+            {
+                "lines": [
+                    quote_line(1, "50.00", "A"),
+                    quote_line(2, "100.00", "B"),
+                ],
+                "subtotal": "150.00",
+                "shipping_cost": "50.00",
+                "discount_amount": "20.00",
+                "total_amount": "180.00",
+            }
         )
-        self.assertNotEqual(f"{line_tax_base_sum:.2f}", snapshot["totals"]["tax_base"])
+        session = checkout_session({"quote_snapshot": multi_quote})
+
+        snapshot = build(checkout_session=session)
+
+        self.assertEqual(
+            [line["discount_amount"] for line in snapshot["lines"]],
+            ["5.00", "10.00", "5.00"],
+        )
+        self.assertEqual(
+            [line["line_total"] for line in snapshot["lines"]],
+            ["45.00", "90.00", "45.00"],
+        )
+        self.assertEqual(snapshot["totals"]["tax_base"], "148.76")
+        self.assertEqual(snapshot["totals"]["tax_amount"], "31.24")
+        self.assertEqual(snapshot["totals"]["total_amount"], "180.00")
+        assert_fiscal_totals(self, snapshot)
+
+    def test_discount_residue_is_assigned_by_largest_remainder(self):
+        residue_quote = quote(
+            {
+                "lines": [
+                    quote_line(1, "33.33", "A"),
+                    quote_line(2, "33.33", "B"),
+                    quote_line(3, "33.34", "C"),
+                ],
+                "subtotal": "100.00",
+                "shipping_cost": "0.00",
+                "discount_amount": "10.00",
+                "total_amount": "90.00",
+            }
+        )
+        session = checkout_session({"quote_snapshot": residue_quote})
+
+        snapshot = build(checkout_session=session)
+
+        self.assertEqual(
+            [line["discount_amount"] for line in snapshot["lines"]],
+            ["3.33", "3.33", "3.34"],
+        )
+        self.assertEqual([line["line_total"] for line in snapshot["lines"]], ["30.00", "30.00", "30.00"])
+        self.assertEqual(snapshot["totals"]["tax_base"], "74.37")
+        self.assertEqual(snapshot["totals"]["tax_amount"], "15.63")
+        assert_fiscal_totals(self, snapshot)
+
+    def test_equal_remainder_residue_is_assigned_to_lowest_line_number(self):
+        tie_quote = quote(
+            {
+                "lines": [
+                    quote_line(1, "50.00", "A"),
+                    quote_line(2, "50.00", "B"),
+                ],
+                "subtotal": "100.00",
+                "shipping_cost": "0.00",
+                "discount_amount": "0.01",
+                "total_amount": "99.99",
+            }
+        )
+        session = checkout_session({"quote_snapshot": tie_quote})
+
+        snapshot = build(checkout_session=session)
+
+        self.assertEqual([line["discount_amount"] for line in snapshot["lines"]], ["0.01", "0.00"])
+        self.assertEqual([line["line_total"] for line in snapshot["lines"]], ["49.99", "50.00"])
+        assert_fiscal_totals(self, snapshot)
+
+    def test_discount_equal_to_total_leaves_zero_lines_without_negative_amounts(self):
+        full_discount_quote = quote({"discount_amount": "116.00", "total_amount": "0.00"})
+        session = checkout_session({"quote_snapshot": full_discount_quote})
+
+        snapshot = build(checkout_session=session)
+
+        self.assertEqual([line["discount_amount"] for line in snapshot["lines"]], ["95.00", "21.00"])
+        self.assertEqual([line["line_total"] for line in snapshot["lines"]], ["0.00", "0.00"])
+        self.assertEqual(snapshot["totals"]["tax_base"], "0.00")
+        self.assertEqual(snapshot["totals"]["tax_amount"], "0.00")
+        assert_fiscal_totals(self, snapshot)
+
+    def test_discount_greater_than_total_is_rejected(self):
+        excessive_discount_quote = quote({"discount_amount": "116.01", "total_amount": "0.00"})
+        session = checkout_session({"quote_snapshot": excessive_discount_quote})
+
+        self.assert_validation_error("totals.discount_amount", checkout_session=session)
+
+    def test_zero_amount_line_keeps_zero_discount_and_does_not_receive_residue(self):
+        zero_line_quote = quote(
+            {
+                "lines": [
+                    quote_line(1, "0.00", "Zero"),
+                    quote_line(2, "100.00", "A"),
+                ],
+                "subtotal": "100.00",
+                "shipping_cost": "0.00",
+                "discount_amount": "10.00",
+                "total_amount": "90.00",
+            }
+        )
+        session = checkout_session({"quote_snapshot": zero_line_quote})
+
+        snapshot = build(checkout_session=session)
+
+        self.assertEqual(snapshot["lines"][0]["discount_amount"], "0.00")
+        self.assertEqual(snapshot["lines"][0]["line_total"], "0.00")
+        self.assertEqual(snapshot["lines"][1]["discount_amount"], "10.00")
+        self.assertEqual(snapshot["lines"][1]["line_total"], "90.00")
+        assert_fiscal_totals(self, snapshot)
 
     def test_customer_without_tax_id_is_allowed(self):
         snapshot = build(
@@ -321,7 +532,9 @@ class InvoiceSnapshotBuilderTest(unittest.TestCase):
 
         snapshot = build(checkout_session=session)
 
-        self.assertEqual(snapshot["lines"][0]["unit_total"], "119.96")
+        self.assertEqual(snapshot["lines"][0]["unit_amount_before_discount"], "119.96")
+        self.assertEqual(snapshot["lines"][0]["line_amount_before_discount"], "239.91")
+        self.assertEqual(snapshot["lines"][0]["discount_amount"], "0.00")
         self.assertEqual(snapshot["lines"][0]["line_total"], "239.91")
         self.assertEqual(snapshot["totals"]["total_amount"], "239.91")
         self.assertEqual(snapshot["lines"][0]["configuration"]["height_cm"], "120.5")

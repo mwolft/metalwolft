@@ -1,6 +1,6 @@
 from copy import deepcopy
 from datetime import date, datetime, timezone
-from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
+from decimal import Decimal, InvalidOperation, ROUND_DOWN, ROUND_HALF_UP
 
 
 SNAPSHOT_SCHEMA_VERSION = 1
@@ -31,8 +31,9 @@ def build_invoice_snapshot(
 
     This builder is intentionally pure: it reads the provided objects only and
     does not query, persist, commit, call payment SDKs, or generate documents.
-    Discounts are stored in totals only; proportional fiscal allocation across
-    product/shipping lines is a pending decision before real invoice issuance.
+    A full discount can leave all lines at zero without producing negatives;
+    the future issuing service must still decide whether zero-total orders are
+    eligible for fiscal invoice issuance.
     """
     if order is None:
         raise InvoiceSnapshotValidationError("order", "El pedido es obligatorio.")
@@ -52,8 +53,7 @@ def build_invoice_snapshot(
     if currency != SUPPORTED_CURRENCY:
         raise InvoiceSnapshotValidationError("operation.currency", "Moneda no soportada.")
 
-    lines = _build_lines(quote)
-    totals = _build_totals(quote, lines)
+    lines, totals = _build_lines_and_totals(quote)
 
     order_date = _date_string(_getattr(order, "order_date"), "operation.order_date")
     issue_date_value = _date_string(issue_date, "operation.issue_date")
@@ -271,7 +271,19 @@ def _extract_currency(quote, checkout_session):
     return str(currency).upper()
 
 
-def _build_lines(quote):
+def _build_lines_and_totals(quote):
+    lines_before_discount = _build_lines_before_discount(quote)
+    totals = _build_totals(quote, lines_before_discount)
+    discounts = _allocate_discount(lines_before_discount, _to_decimal(totals["discount_amount"], "totals.discount_amount"))
+    lines = [
+        _finalize_line(line, discount)
+        for line, discount in zip(lines_before_discount, discounts)
+    ]
+    totals = _finalize_totals(totals, lines)
+    return lines, totals
+
+
+def _build_lines_before_discount(quote):
     source_lines = quote.get("lines")
     if not source_lines:
         raise InvoiceSnapshotValidationError("lines", "No hay lineas facturables.")
@@ -282,7 +294,7 @@ def _build_lines(quote):
         if not isinstance(source_line, dict):
             raise InvoiceSnapshotValidationError(f"lines.{index}", "Linea invalida.")
         line = _build_product_line(index, source_line)
-        products_total += _to_decimal(line["line_total"], f"lines.{index}.line_total")
+        products_total += line["line_amount_before_discount"]
         lines.append(line)
 
     shipping_total = _to_decimal(quote.get("shipping_cost", 0), "totals.shipping_total")
@@ -314,20 +326,19 @@ def _build_product_line(line_number, source_line):
     quantity = _quantity_string(source_line.get("quantity", 1), f"lines.{line_number}.quantity")
     unit_total = _to_decimal(
         source_line.get("unit_price", source_line.get("precio_total")),
-        f"lines.{line_number}.unit_total",
+        f"lines.{line_number}.unit_amount_before_discount",
     )
     line_total = _to_decimal(
         source_line.get("line_total", unit_total * _to_decimal(quantity, f"lines.{line_number}.quantity")),
-        f"lines.{line_number}.line_total",
+        f"lines.{line_number}.line_amount_before_discount",
     )
     expected_line_total = _quantize_money(unit_total * _to_decimal(quantity, f"lines.{line_number}.quantity"))
     if _quantize_money(line_total) != expected_line_total:
         raise InvoiceSnapshotValidationError(
-            f"lines.{line_number}.line_total",
+            f"lines.{line_number}.line_amount_before_discount",
             "El total de linea no coincide con cantidad por precio unitario.",
         )
 
-    tax_base, tax_amount = _tax_from_gross(line_total)
     model = source_line.get("product_name")
     return {
         "line_number": line_number,
@@ -336,11 +347,8 @@ def _build_product_line(line_number, source_line):
         "model": model,
         "description": model,
         "quantity": quantity,
-        "unit_total": _money(unit_total, f"lines.{line_number}.unit_total"),
-        "line_total": _money(line_total, f"lines.{line_number}.line_total"),
-        "tax_rate": _money(SUPPORTED_TAX_RATE, f"lines.{line_number}.tax_rate"),
-        "tax_base": _money(tax_base, f"lines.{line_number}.tax_base"),
-        "tax_amount": _money(tax_amount, f"lines.{line_number}.tax_amount"),
+        "unit_amount_before_discount": _quantize_money(unit_total),
+        "line_amount_before_discount": _quantize_money(line_total),
         "configuration": {
             "height_cm": _measurement_string(source_line.get("alto"), f"lines.{line_number}.configuration.height_cm"),
             "width_cm": _measurement_string(source_line.get("ancho"), f"lines.{line_number}.configuration.width_cm"),
@@ -361,7 +369,6 @@ def _measurement_string(value, field):
 
 
 def _build_shipping_line(line_number, shipping_total):
-    tax_base, tax_amount = _tax_from_gross(shipping_total)
     return {
         "line_number": line_number,
         "line_type": "shipping",
@@ -369,16 +376,13 @@ def _build_shipping_line(line_number, shipping_total):
         "model": None,
         "description": "Gastos de envío",
         "quantity": "1",
-        "unit_total": _money(shipping_total, "shipping.unit_total"),
-        "line_total": _money(shipping_total, "shipping.line_total"),
-        "tax_rate": _money(SUPPORTED_TAX_RATE, "shipping.tax_rate"),
-        "tax_base": _money(tax_base, "shipping.tax_base"),
-        "tax_amount": _money(tax_amount, "shipping.tax_amount"),
+        "unit_amount_before_discount": _quantize_money(shipping_total),
+        "line_amount_before_discount": _quantize_money(shipping_total),
         "configuration": None,
     }
 
 
-def _build_totals(quote, lines):
+def _build_totals(quote, lines_before_discount):
     products_total = _to_decimal(quote.get("subtotal"), "totals.products_total")
     shipping_total = _to_decimal(quote.get("shipping_cost", 0), "totals.shipping_total")
     discount_amount = _to_decimal(quote.get("discount_amount", 0), "totals.discount_amount")
@@ -393,38 +397,190 @@ def _build_totals(quote, lines):
     if total_amount < 0:
         raise InvoiceSnapshotValidationError("totals.total_amount", "El total no puede ser negativo.")
 
-    expected_total = _quantize_money(products_total + shipping_total - discount_amount)
-    if _quantize_money(total_amount) != expected_total:
+    products_total = _quantize_money(products_total)
+    shipping_total = _quantize_money(shipping_total)
+    discount_amount = _quantize_money(discount_amount)
+    total_amount = _quantize_money(total_amount)
+    total_amount_before_discount = _quantize_money(products_total + shipping_total)
+
+    if discount_amount > total_amount_before_discount:
+        raise InvoiceSnapshotValidationError(
+            "totals.discount_amount",
+            "El descuento no puede superar el total antes de descuento.",
+        )
+
+    expected_total = _quantize_money(total_amount_before_discount - discount_amount)
+    if total_amount != expected_total:
         raise InvoiceSnapshotValidationError(
             "totals.total_amount",
             "El total no coincide con subtotal, envio y descuento.",
         )
 
     product_line_sum = sum(
-        _to_decimal(line["line_total"], f"lines.{line['line_number']}.line_total")
-        for line in lines
+        line["line_amount_before_discount"]
+        for line in lines_before_discount
         if line["line_type"] == "product"
     )
-    if _quantize_money(product_line_sum) != _quantize_money(products_total):
+    if _quantize_money(product_line_sum) != products_total:
         raise InvoiceSnapshotValidationError(
             "totals.products_total",
             "El subtotal no coincide con las lineas de producto.",
         )
 
-    tax_base, tax_amount = _tax_from_gross(total_amount)
-    pre_discount_line_total = product_line_sum + shipping_total
-    rounding_adjustment = _quantize_money(
-        total_amount - (pre_discount_line_total - discount_amount)
+    lines_total_before_discount = _quantize_money(
+        sum(line["line_amount_before_discount"] for line in lines_before_discount)
     )
+    if lines_total_before_discount != total_amount_before_discount:
+        raise InvoiceSnapshotValidationError(
+            "totals.total_amount_before_discount",
+            "La base de reparto no coincide con subtotal mas envio.",
+        )
 
     return {
-        "products_total": _money(products_total, "totals.products_total"),
-        "shipping_total": _money(shipping_total, "totals.shipping_total"),
+        "products_amount_before_discount": _money(products_total, "totals.products_amount_before_discount"),
+        "shipping_amount_before_discount": _money(shipping_total, "totals.shipping_amount_before_discount"),
+        "total_amount_before_discount": _money(total_amount_before_discount, "totals.total_amount_before_discount"),
         "discount_amount": _money(discount_amount, "totals.discount_amount"),
+        "total_amount": _money(total_amount, "totals.total_amount"),
+    }
+
+
+def _allocate_discount(lines_before_discount, total_discount):
+    total_discount = _quantize_money(total_discount)
+    total_amount_before_discount = _quantize_money(
+        sum(line["line_amount_before_discount"] for line in lines_before_discount)
+    )
+
+    if total_discount < 0:
+        raise InvoiceSnapshotValidationError("totals.discount_amount", "El descuento no puede ser negativo.")
+    if total_discount > total_amount_before_discount:
+        raise InvoiceSnapshotValidationError(
+            "totals.discount_amount",
+            "El descuento no puede superar el total antes de descuento.",
+        )
+    if total_amount_before_discount == Decimal("0.00"):
+        if total_discount == Decimal("0.00"):
+            return [Decimal("0.00") for _ in lines_before_discount]
+        raise InvoiceSnapshotValidationError("totals.discount_amount", "Descuento incompatible con base cero.")
+
+    allocations = []
+    allocated = Decimal("0.00")
+    for line in lines_before_discount:
+        line_amount = line["line_amount_before_discount"]
+        if line_amount <= 0:
+            floor_discount = Decimal("0.00")
+            remainder = Decimal("0.00")
+        else:
+            raw_discount = total_discount * line_amount / total_amount_before_discount
+            floor_discount = raw_discount.quantize(Decimal("0.01"), rounding=ROUND_DOWN)
+            remainder = raw_discount - floor_discount
+
+        allocations.append({
+            "line_number": line["line_number"],
+            "line_amount": line_amount,
+            "discount": floor_discount,
+            "remainder": remainder,
+        })
+        allocated += floor_discount
+
+    residual_cents = int(((total_discount - allocated) * 100).to_integral_value(rounding=ROUND_HALF_UP))
+    for allocation in sorted(
+        allocations,
+        key=lambda item: (-item["remainder"], item["line_number"]),
+    ):
+        if residual_cents <= 0:
+            break
+        if allocation["line_amount"] <= 0:
+            continue
+        candidate_discount = allocation["discount"] + Decimal("0.01")
+        if candidate_discount <= allocation["line_amount"]:
+            allocation["discount"] = candidate_discount
+            residual_cents -= 1
+
+    if residual_cents != 0:
+        raise InvoiceSnapshotValidationError(
+            "totals.discount_amount",
+            "No se pudo repartir el descuento sin dejar lineas negativas.",
+        )
+
+    return [
+        _quantize_money(allocation["discount"])
+        for allocation in sorted(allocations, key=lambda item: item["line_number"])
+    ]
+
+
+def _finalize_line(line_before_discount, discount_amount):
+    line_amount_before_discount = line_before_discount["line_amount_before_discount"]
+    if discount_amount > line_amount_before_discount:
+        raise InvoiceSnapshotValidationError(
+            f"lines.{line_before_discount['line_number']}.discount_amount",
+            "El descuento de linea supera su importe.",
+        )
+
+    line_total = _quantize_money(line_amount_before_discount - discount_amount)
+    tax_base, tax_amount = _tax_from_gross(line_total)
+
+    return {
+        "line_number": line_before_discount["line_number"],
+        "line_type": line_before_discount["line_type"],
+        "product_id": line_before_discount["product_id"],
+        "model": line_before_discount["model"],
+        "description": line_before_discount["description"],
+        "quantity": line_before_discount["quantity"],
+        "unit_amount_before_discount": _money(
+            line_before_discount["unit_amount_before_discount"],
+            f"lines.{line_before_discount['line_number']}.unit_amount_before_discount",
+        ),
+        "line_amount_before_discount": _money(
+            line_amount_before_discount,
+            f"lines.{line_before_discount['line_number']}.line_amount_before_discount",
+        ),
+        "discount_amount": _money(
+            discount_amount,
+            f"lines.{line_before_discount['line_number']}.discount_amount",
+        ),
+        "line_total": _money(line_total, f"lines.{line_before_discount['line_number']}.line_total"),
+        "tax_rate": _money(SUPPORTED_TAX_RATE, f"lines.{line_before_discount['line_number']}.tax_rate"),
+        "tax_base": _money(tax_base, f"lines.{line_before_discount['line_number']}.tax_base"),
+        "tax_amount": _money(tax_amount, f"lines.{line_before_discount['line_number']}.tax_amount"),
+        "configuration": line_before_discount["configuration"],
+    }
+
+
+def _finalize_totals(totals, lines):
+    tax_base = sum(_to_decimal(line["tax_base"], f"lines.{line['line_number']}.tax_base") for line in lines)
+    tax_amount = sum(_to_decimal(line["tax_amount"], f"lines.{line['line_number']}.tax_amount") for line in lines)
+    total_amount = sum(_to_decimal(line["line_total"], f"lines.{line['line_number']}.line_total") for line in lines)
+    discount_amount = sum(
+        _to_decimal(line["discount_amount"], f"lines.{line['line_number']}.discount_amount")
+        for line in lines
+    )
+    amount_before_discount = sum(
+        _to_decimal(line["line_amount_before_discount"], f"lines.{line['line_number']}.line_amount_before_discount")
+        for line in lines
+    )
+
+    if _quantize_money(discount_amount) != _to_decimal(totals["discount_amount"], "totals.discount_amount"):
+        raise InvoiceSnapshotValidationError("totals.discount_amount", "La suma de descuentos no coincide.")
+    if _quantize_money(total_amount) != _to_decimal(totals["total_amount"], "totals.total_amount"):
+        raise InvoiceSnapshotValidationError("totals.total_amount", "La suma de lineas no coincide con la quote.")
+    if _quantize_money(amount_before_discount) != _to_decimal(
+        totals["total_amount_before_discount"],
+        "totals.total_amount_before_discount",
+    ):
+        raise InvoiceSnapshotValidationError(
+            "totals.total_amount_before_discount",
+            "La suma de importes antes de descuento no coincide.",
+        )
+    if _quantize_money(tax_base + tax_amount) != _quantize_money(total_amount):
+        raise InvoiceSnapshotValidationError("totals.tax_amount", "Base e IVA no coinciden con el total.")
+
+    return {
+        **totals,
         "tax_base": _money(tax_base, "totals.tax_base"),
         "tax_amount": _money(tax_amount, "totals.tax_amount"),
         "total_amount": _money(total_amount, "totals.total_amount"),
-        "rounding_adjustment": _money(rounding_adjustment, "totals.rounding_adjustment"),
+        "rounding_adjustment": "0.00",
     }
 
 
