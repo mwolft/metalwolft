@@ -1,6 +1,6 @@
 from flask import request, jsonify, Blueprint, send_file, send_from_directory, current_app, abort, Response
 from flask_jwt_extended import jwt_required
-from api.models import db, Users, Products, ProductImages, Categories, Subcategories, Orders, CheckoutSessions, OrderDetails, Favorites, Cart, Posts, Comments, Invoices, DeliveryEstimateConfig
+from api.models import db, Users, Products, ProductImages, Categories, Subcategories, Orders, CheckoutSessions, OrderDetails, Favorites, Cart, Posts, Comments, Invoices, DeliveryEstimateConfig, AccountingEntry
 from api.utils import send_email, build_configured_reja_quote
 from api.jwt_utils import create_user_access_token, get_current_user_context as get_jwt_identity
 from sqlalchemy.exc import SQLAlchemyError
@@ -42,6 +42,13 @@ from api.invoice_pdf_service import (
     InvoicePdfUnsupportedSchema,
     InvoicePdfWriteError,
     generate_invoice_pdf,
+)
+from api.invoice_accounting_service import (
+    ENTRY_TYPE_SALE,
+    AccountingEntryIntegrityError,
+    AccountingEntryUnsupportedSchema,
+    AccountingEntryValidationError,
+    create_accounting_entry,
 )
 from api.invoice_snapshot_builder import FINAL_CHECKOUT_STATUSES, InvoiceSnapshotValidationError
 
@@ -220,6 +227,28 @@ def _serialize_admin_generated_invoice_pdf(invoice, result, *, generated, regene
         "generated": generated,
         "regenerated": regenerated,
         "file_size": result.file_size,
+    }
+
+
+def _accounting_amount_string(value):
+    return f"{value:.2f}" if value is not None else None
+
+
+def _serialize_admin_accounting_entry(entry, *, already_existed):
+    invoice_date = entry.invoice_date.isoformat() if entry.invoice_date else None
+
+    return {
+        "id": entry.id,
+        "invoice_id": entry.invoice_id,
+        "invoice_number": entry.invoice_number,
+        "entry_type": entry.entry_type,
+        "status": entry.status,
+        "invoice_date": invoice_date,
+        "taxable_base": _accounting_amount_string(entry.taxable_base),
+        "vat_amount": _accounting_amount_string(entry.vat_amount),
+        "total_amount": _accounting_amount_string(entry.total_amount),
+        "currency": entry.currency,
+        "already_existed": already_existed,
     }
 
 
@@ -4489,6 +4518,88 @@ def admin_generate_invoice_pdf_v2(invoice_id):
         return jsonify({
             "message": "No se ha podido generar el PDF de la factura.",
             "code": "INVOICE_PDF_GENERATION_FAILED",
+        }), 500
+
+
+@api.route('/admin/invoices/<int:invoice_id>/record-accounting', methods=['POST'])
+@jwt_required()
+def admin_record_invoice_accounting(invoice_id):
+    current_user = get_jwt_identity()
+
+    if not current_user.get("is_admin"):
+        return jsonify({"message": "Access forbidden: Admins only"}), 403
+
+    request_data = request.get_json(silent=True) or {}
+    if not isinstance(request_data, dict):
+        return jsonify({
+            "message": "El cuerpo de la peticion debe ser un objeto JSON.",
+            "code": "INVALID_REQUEST_BODY",
+        }), 400
+    if request_data:
+        return jsonify({
+            "message": "No se aceptan datos contables en esta ruta.",
+            "code": "ACCOUNTING_BODY_NOT_ALLOWED",
+        }), 400
+
+    invoice = Invoices.query.get(invoice_id)
+    if not invoice:
+        return jsonify({
+            "message": "Invoice not found",
+            "code": "INVOICE_NOT_FOUND",
+        }), 404
+
+    if not invoice.invoice_number or not invoice.issued_at:
+        return jsonify({
+            "message": "La factura debe estar emitida antes de registrar el asiento contable.",
+            "code": "INVOICE_NOT_ISSUED",
+        }), 409
+
+    try:
+        existing_entry = AccountingEntry.query.filter_by(
+            invoice_id=invoice.id,
+            entry_type=ENTRY_TYPE_SALE,
+        ).first()
+        entry = create_accounting_entry(invoice, db_session=db.session)
+        db.session.commit()
+
+        return jsonify(_serialize_admin_accounting_entry(
+            entry,
+            already_existed=existing_entry is not None,
+        )), 200
+    except AccountingEntryValidationError:
+        db.session.rollback()
+        logger.exception("Invalid accounting entry snapshot for invoice_id=%s", invoice_id)
+        return jsonify({
+            "message": "La factura no contiene los datos necesarios para registrar el asiento contable.",
+            "code": "ACCOUNTING_ENTRY_SNAPSHOT_INVALID",
+        }), 422
+    except AccountingEntryUnsupportedSchema:
+        db.session.rollback()
+        logger.warning("Unsupported accounting snapshot schema for invoice_id=%s", invoice_id)
+        return jsonify({
+            "message": "La version del snapshot de factura no es compatible con contabilidad.",
+            "code": "ACCOUNTING_ENTRY_SCHEMA_UNSUPPORTED",
+        }), 422
+    except AccountingEntryIntegrityError:
+        db.session.rollback()
+        logger.warning("Accounting entry hash mismatch for invoice_id=%s", invoice_id)
+        return jsonify({
+            "message": "No se puede registrar el asiento porque la integridad fiscal no coincide.",
+            "code": "ACCOUNTING_ENTRY_INTEGRITY_ERROR",
+        }), 409
+    except IntegrityError:
+        db.session.rollback()
+        logger.exception("Accounting entry integrity conflict for invoice_id=%s", invoice_id)
+        return jsonify({
+            "message": "Ya existe un registro contable para esta factura.",
+            "code": "ACCOUNTING_ENTRY_CONFLICT",
+        }), 409
+    except Exception:
+        db.session.rollback()
+        logger.exception("Unexpected error recording accounting entry for invoice_id=%s", invoice_id)
+        return jsonify({
+            "message": "No se ha podido registrar el asiento contable.",
+            "code": "ACCOUNTING_ENTRY_FAILED",
         }), 500
 
 
