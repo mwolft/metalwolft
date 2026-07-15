@@ -31,6 +31,7 @@ from api.email_routes import send_email, get_admin_recipients
 from api.checkout_service import build_checkout_quote
 from api.checkout_cart_cleanup import cleanup_cart_lines_from_checkout_quote
 from api.checkout_payment_security import is_modifiable_stripe_checkout_session
+from api.payment_amounts import PaymentAmountValidationError, validate_payment_amount
 from api.order_confirmation_email_service import send_order_confirmation_email
 from api.original_invoice_renderer import render_original_order_invoice_pdf
 from api.work_order_service import generate_work_order_pdf
@@ -39,6 +40,11 @@ from api.work_order_service import generate_work_order_pdf
 logger = logging.getLogger(__name__)
 
 api = Blueprint('api', __name__)
+
+PAYMENT_AMOUNT_NOT_SUPPORTED_RESPONSE = {
+    "error": "El importe final no puede procesarse con este método de pago. Revisa el carrito o el código de descuento.",
+    "code": "PAYMENT_AMOUNT_NOT_SUPPORTED"
+}
 
 load_dotenv()
 
@@ -1294,6 +1300,15 @@ def create_payment_intent():
         if not checkout_quote["lines"]:
             return jsonify({"error": "Cart is empty"}), 400
 
+        try:
+            validate_payment_amount("stripe", checkout_quote["total_amount"], currency="eur")
+        except PaymentAmountValidationError as e:
+            logger.warning(
+                "Stripe PaymentIntent rejected due to unsupported amount: %s",
+                str(e)
+            )
+            return jsonify(PAYMENT_AMOUNT_NOT_SUPPORTED_RESPONSE), 400
+
         amount = int(round(checkout_quote["total_amount"] * 100))
 
         try:
@@ -1507,6 +1522,15 @@ def create_paypal_order():
             )
             return jsonify({"error": "Cart is empty"}), 400
 
+        try:
+            validate_payment_amount("paypal", checkout_quote["total_amount"], currency="eur")
+        except PaymentAmountValidationError as e:
+            logger.warning(
+                "PayPal create-order rejected due to unsupported amount: %s",
+                str(e)
+            )
+            return jsonify(PAYMENT_AMOUNT_NOT_SUPPORTED_RESPONSE), 400
+
         checkout_session = _upsert_paypal_checkout_session(
             current_user=current_user,
             checkout_quote=checkout_quote,
@@ -1552,7 +1576,11 @@ def create_paypal_order():
         return jsonify({"error": str(e)}), 400
     except RuntimeError as e:
         db.session.rollback()
-        return jsonify({"error": str(e)}), 502
+        logger.exception("PayPal provider error creating order: %s", str(e))
+        return jsonify({
+            "error": "No se ha podido iniciar el pago con PayPal.",
+            "code": "PAYPAL_ORDER_CREATION_FAILED"
+        }), 502
     except Exception as e:
         db.session.rollback()
         logger.error("Error creando orden PayPal: %s", str(e))
