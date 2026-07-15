@@ -611,6 +611,59 @@ class InvoiceFiscalSubmission(db.Model):
         )
 
 
+class AccountingEntry(db.Model):
+    __tablename__ = "accounting_entries"
+    __table_args__ = (
+        db.UniqueConstraint(
+            "invoice_id",
+            "entry_type",
+            name="uq_accounting_entries_invoice_entry_type",
+        ),
+    )
+
+    ENTRY_TYPE_SALE = "sale"
+
+    STATUS_PENDING = "pending"
+    STATUS_RECORDED = "recorded"
+    STATUS_FAILED = "failed"
+
+    id = db.Column(db.Integer, primary_key=True)
+    invoice_id = db.Column(db.Integer, db.ForeignKey('invoices.id'), nullable=False)
+    entry_type = db.Column(db.String(30), nullable=False, default=ENTRY_TYPE_SALE)
+    status = db.Column(db.String(30), nullable=False, default=STATUS_PENDING)
+    invoice_number = db.Column(db.String(50), nullable=False)
+    invoice_date = db.Column(db.Date, nullable=False)
+    customer_name = db.Column(db.String(255), nullable=False)
+    customer_tax_id = db.Column(db.String(50), nullable=True)
+    taxable_base = db.Column(db.Numeric(12, 2), nullable=False)
+    vat_amount = db.Column(db.Numeric(12, 2), nullable=False)
+    total_amount = db.Column(db.Numeric(12, 2), nullable=False)
+    currency = db.Column(db.String(3), nullable=False)
+    payment_provider = db.Column(db.String(30), nullable=True)
+    order_id = db.Column(db.Integer, nullable=True)
+    created_at = db.Column(db.DateTime, nullable=False, server_default=db.func.now())
+    updated_at = db.Column(
+        db.DateTime,
+        nullable=False,
+        server_default=db.func.now(),
+        onupdate=db.func.now()
+    )
+    recorded_at = db.Column(db.DateTime, nullable=True)
+    error_message = db.Column(db.Text, nullable=True)
+
+    invoice = db.relationship(
+        'Invoices',
+        backref=db.backref('accounting_entries', lazy=True),
+        lazy=True,
+    )
+
+    def __repr__(self):
+        return (
+            f'<AccountingEntry invoice={self.invoice_id} '
+            f'type={self.entry_type} status={self.status}>'
+        )
+
+
 class InvoiceSequence(db.Model):
     __tablename__ = "invoice_sequences"
     __table_args__ = (
