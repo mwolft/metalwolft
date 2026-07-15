@@ -488,6 +488,12 @@ class Invoices(db.Model):
     client_cif = db.Column(db.String(50), nullable=True)
     client_phone = db.Column(db.String(50), nullable=True)
     order_details = db.Column(db.JSON, nullable=False)
+    invoice_snapshot = db.Column(db.JSON, nullable=True)
+    invoice_snapshot_schema_version = db.Column(db.Integer, nullable=True)
+    invoice_snapshot_hash = db.Column(db.String(64), nullable=True)
+    issued_at = db.Column(db.DateTime, nullable=True)
+    issuance_source = db.Column(db.String(50), nullable=True)
+    issued_by = db.Column(db.String(255), nullable=True)
     order = db.relationship('Orders', backref='invoice', lazy=True)
 
     def __repr__(self):
