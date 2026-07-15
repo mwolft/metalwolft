@@ -36,6 +36,13 @@ from api.order_confirmation_email_service import send_order_confirmation_email
 from api.original_invoice_renderer import render_original_order_invoice_pdf
 from api.work_order_service import generate_work_order_pdf
 from api.invoice_issue_service import InvoiceIssueError, InvoiceNumberError, issue_invoice_for_order
+from api.invoice_pdf_service import (
+    InvoicePdfIntegrityError,
+    InvoicePdfSnapshotMissing,
+    InvoicePdfUnsupportedSchema,
+    InvoicePdfWriteError,
+    generate_invoice_pdf,
+)
 from api.invoice_snapshot_builder import FINAL_CHECKOUT_STATUSES, InvoiceSnapshotValidationError
 
 
@@ -194,6 +201,25 @@ def _serialize_admin_issued_invoice(invoice, *, already_existed):
         "invoice_snapshot_hash": invoice.invoice_snapshot_hash,
         "pdf_available": bool(invoice.pdf_path),
         "already_existed": already_existed,
+    }
+
+
+def _invoice_pdf_file_exists(output_dir, pdf_path):
+    filename = os.path.basename(pdf_path or "")
+    if not filename:
+        return False
+    return os.path.exists(os.path.join(output_dir, filename))
+
+
+def _serialize_admin_generated_invoice_pdf(invoice, result, *, generated, regenerated):
+    return {
+        "id": invoice.id,
+        "invoice_number": invoice.invoice_number,
+        "pdf_available": bool(invoice.pdf_path),
+        "pdf_path": result.filename,
+        "generated": generated,
+        "regenerated": regenerated,
+        "file_size": result.file_size,
     }
 
 
@@ -4356,6 +4382,115 @@ def create_manual_invoice():
     except Exception as e:
         current_app.logger.error(f"Error al crear la factura manual: {str(e)}")
         return jsonify({"message": "An error occurred while creating the manual invoice.", "error": str(e)}), 500
+
+
+@api.route('/admin/invoices/<int:invoice_id>/generate-pdf', methods=['POST'])
+@jwt_required()
+def admin_generate_invoice_pdf_v2(invoice_id):
+    current_user = get_jwt_identity()
+
+    if not current_user.get("is_admin"):
+        return jsonify({"message": "Access forbidden: Admins only"}), 403
+
+    request_data = request.get_json(silent=True) or {}
+    if not isinstance(request_data, dict):
+        return jsonify({
+            "message": "El cuerpo de la peticion debe ser un objeto JSON.",
+            "code": "INVALID_REQUEST_BODY",
+        }), 400
+
+    unexpected_fields = set(request_data) - {"regenerate"}
+    if unexpected_fields:
+        return jsonify({
+            "message": "Solo se permite indicar si se desea regenerar el PDF.",
+            "code": "INVOICE_PDF_BODY_NOT_ALLOWED",
+        }), 400
+
+    regenerate = request_data.get("regenerate", False)
+    if not isinstance(regenerate, bool):
+        return jsonify({
+            "message": "El campo regenerate debe ser booleano.",
+            "code": "INVALID_REGENERATE_VALUE",
+        }), 400
+
+    invoice = Invoices.query.get(invoice_id)
+    if not invoice:
+        return jsonify({
+            "message": "Invoice not found",
+            "code": "INVOICE_NOT_FOUND",
+        }), 404
+
+    try:
+        invoice_folder = current_app.config["INVOICE_FOLDER"]
+        previous_pdf_path = invoice.pdf_path
+        previous_file_existed = _invoice_pdf_file_exists(invoice_folder, previous_pdf_path)
+
+        result = generate_invoice_pdf(
+            invoice,
+            output_dir=invoice_folder,
+            regenerate=regenerate,
+        )
+        reused_existing = (
+            not regenerate
+            and previous_file_existed
+            and previous_pdf_path == result.pdf_path
+        )
+        db.session.commit()
+
+        return jsonify(_serialize_admin_generated_invoice_pdf(
+            invoice,
+            result,
+            generated=not reused_existing,
+            regenerated=bool(regenerate),
+        )), 200
+    except InvoicePdfSnapshotMissing as exc:
+        db.session.rollback()
+        logger.warning(
+            "Invoice PDF v2 cannot be generated for invoice_id=%s: snapshot or number missing",
+            invoice_id,
+        )
+        message = "La factura emitida no tiene los datos necesarios para generar el PDF."
+        code = "INVOICE_PDF_SNAPSHOT_MISSING"
+        status_code = 422
+        if "numero fiscal" in str(exc):
+            message = "La factura no tiene numero fiscal emitido."
+            code = "INVOICE_PDF_NOT_ISSUED"
+            status_code = 409
+        return jsonify({"message": message, "code": code}), status_code
+    except InvoicePdfUnsupportedSchema:
+        db.session.rollback()
+        logger.warning("Invoice PDF v2 unsupported schema for invoice_id=%s", invoice_id)
+        return jsonify({
+            "message": "La version del snapshot de factura no es compatible con este PDF.",
+            "code": "INVOICE_PDF_SCHEMA_UNSUPPORTED",
+        }), 422
+    except InvoicePdfIntegrityError:
+        db.session.rollback()
+        logger.warning("Invoice PDF v2 hash mismatch for invoice_id=%s", invoice_id)
+        return jsonify({
+            "message": "No se puede generar el PDF porque la integridad fiscal no coincide.",
+            "code": "INVOICE_PDF_INTEGRITY_ERROR",
+        }), 409
+    except InvoicePdfWriteError as exc:
+        db.session.rollback()
+        logger.exception("Invoice PDF v2 write failed for invoice_id=%s", invoice_id)
+        if "sobrescribir" in str(exc):
+            return jsonify({
+                "message": "Ya existe un PDF para esta factura y no se puede sobrescribir sin regeneracion explicita.",
+                "code": "INVOICE_PDF_FILE_CONFLICT",
+            }), 409
+        return jsonify({
+            "message": "No se ha podido escribir el PDF de la factura.",
+            "code": "INVOICE_PDF_WRITE_FAILED",
+        }), 500
+    except Exception:
+        db.session.rollback()
+        logger.exception("Unexpected error generating Invoice PDF v2 for invoice_id=%s", invoice_id)
+        return jsonify({
+            "message": "No se ha podido generar el PDF de la factura.",
+            "code": "INVOICE_PDF_GENERATION_FAILED",
+        }), 500
+
 
 # Descarga un archivo PDF de factura generado previamente
 @api.route('/download-invoice/<filename>', methods=['GET'])
