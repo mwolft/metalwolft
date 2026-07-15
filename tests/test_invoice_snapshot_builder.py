@@ -1,0 +1,369 @@
+import copy
+import sys
+import unittest
+from datetime import datetime
+from pathlib import Path
+from types import SimpleNamespace
+
+
+ROOT_DIR = Path(__file__).resolve().parents[1]
+SRC_DIR = ROOT_DIR / "src"
+if str(SRC_DIR) not in sys.path:
+    sys.path.insert(0, str(SRC_DIR))
+
+from api.invoice_snapshot_builder import (  # noqa: E402
+    InvoiceSnapshotValidationError,
+    build_invoice_snapshot,
+)
+
+
+def issuer(overrides=None):
+    data = {
+        "legal_name": "MetalWolft Legal",
+        "trade_name": "MetalWolft",
+        "tax_id": "B00000000",
+        "address": "Calle Taller 1",
+        "postal_code": "13000",
+        "city": "Ciudad Real",
+        "province": "Ciudad Real",
+        "country_code": "ES",
+        "email": None,
+        "phone": None,
+    }
+    data.update(overrides or {})
+    return data
+
+
+def customer_snapshot(overrides=None):
+    data = {
+        "firstname": "Sergio",
+        "lastname": "Arias",
+        "phone": "600000000",
+        "shipping_address": "Calle Envio 2",
+        "shipping_city": "Ciudad Real",
+        "shipping_postal_code": "13000",
+        "billing_address": "Calle Factura 3",
+        "billing_city": "Ciudad Real",
+        "billing_postal_code": "13001",
+        "CIF": "00000000T",
+    }
+    data.update(overrides or {})
+    return data
+
+
+def quote(overrides=None):
+    data = {
+        "lines": [
+            {
+                "product_id": 7,
+                "producto_id": 7,
+                "product_name": "Reja fija Pittsburgh",
+                "quantity": 1,
+                "alto": 30,
+                "ancho": 30,
+                "anclaje": "Sin obra: con agujeros interiores",
+                "color": "satinado_blanco",
+                "unit_price": 95.0,
+                "line_total": 95.0,
+                "shipping_type": "normal",
+                "shipping_cost": 0.0,
+            }
+        ],
+        "subtotal": 95.0,
+        "shipping_cost": 21.0,
+        "discount_code": None,
+        "discount_code_valid": False,
+        "discount_percent": 0.0,
+        "discount_amount": 0.0,
+        "total_amount": 116.0,
+    }
+    data.update(overrides or {})
+    return data
+
+
+def order(overrides=None):
+    data = {
+        "id": 123,
+        "locator": "AB1234",
+        "order_date": datetime(2026, 7, 15, 10, 30),
+        "user": SimpleNamespace(email="cliente@example.com"),
+    }
+    data.update(overrides or {})
+    return SimpleNamespace(**data)
+
+
+def checkout_session(overrides=None):
+    data = {
+        "id": 10,
+        "order_id": 123,
+        "payment_provider": "stripe",
+        "payment_intent_id": "pi_test",
+        "provider_order_id": None,
+        "provider_capture_id": None,
+        "status": "order_created",
+        "quote_snapshot": quote(),
+        "customer_snapshot": customer_snapshot(),
+        "user": SimpleNamespace(email="cliente@example.com"),
+    }
+    data.update(overrides or {})
+    return SimpleNamespace(**data)
+
+
+def build(**overrides):
+    return build_invoice_snapshot(
+        overrides.get("order", order()),
+        overrides.get("checkout_session", checkout_session()),
+        overrides.get("issuer", issuer()),
+        issue_date=overrides.get("issue_date", datetime(2026, 7, 16, 9, 0)),
+        source=overrides.get("source", "manual"),
+        actor=overrides.get("actor"),
+    )
+
+
+def assert_no_floats(testcase, value):
+    if isinstance(value, float):
+        testcase.fail(f"Snapshot contains float value: {value!r}")
+    if isinstance(value, dict):
+        for child in value.values():
+            assert_no_floats(testcase, child)
+    if isinstance(value, list):
+        for child in value:
+            assert_no_floats(testcase, child)
+
+
+class InvoiceSnapshotBuilderTest(unittest.TestCase):
+    def assert_validation_error(self, field, **overrides):
+        with self.assertRaises(InvoiceSnapshotValidationError) as error:
+            build(**overrides)
+        self.assertEqual(error.exception.field, field)
+
+    def test_builds_valid_stripe_snapshot_without_discount(self):
+        snapshot = build()
+
+        self.assertEqual(snapshot["schema_version"], 1)
+        self.assertEqual(snapshot["metadata"]["generator"], "invoice_snapshot_builder_v1")
+        self.assertEqual(snapshot["issuer"]["trade_name"], "MetalWolft")
+        self.assertEqual(snapshot["customer"]["legal_name"], "Sergio Arias")
+        self.assertEqual(snapshot["customer"]["email"], "cliente@example.com")
+        self.assertEqual(snapshot["operation"]["order_id"], 123)
+        self.assertEqual(snapshot["operation"]["order_locator"], "AB1234")
+        self.assertEqual(snapshot["operation"]["order_date"], "2026-07-15")
+        self.assertEqual(snapshot["operation"]["issue_date"], "2026-07-16")
+        self.assertEqual(snapshot["operation"]["operation_date"], "2026-07-15")
+        self.assertEqual(snapshot["operation"]["currency"], "EUR")
+        self.assertEqual(snapshot["operation"]["discount_code"], None)
+        self.assertEqual(snapshot["payment"]["provider"], "stripe")
+        self.assertEqual(snapshot["payment"]["provider_reference"], "pi_test")
+        self.assertEqual(snapshot["payment"]["status"], "paid")
+        self.assertEqual(snapshot["references"]["checkout_session_id"], 10)
+        self.assertEqual(snapshot["references"]["source"], "manual")
+
+        self.assertEqual(len(snapshot["lines"]), 2)
+        product_line = snapshot["lines"][0]
+        self.assertEqual(product_line["line_type"], "product")
+        self.assertEqual(product_line["product_id"], 7)
+        self.assertEqual(product_line["model"], "Reja fija Pittsburgh")
+        self.assertEqual(product_line["quantity"], "1")
+        self.assertEqual(product_line["unit_total"], "95.00")
+        self.assertEqual(product_line["line_total"], "95.00")
+        self.assertEqual(product_line["tax_base"], "78.51")
+        self.assertEqual(product_line["tax_amount"], "16.49")
+        self.assertEqual(
+            product_line["configuration"],
+            {
+                "height_cm": "30",
+                "width_cm": "30",
+                "anchoring": "Sin obra: con agujeros interiores",
+                "color": "satinado_blanco",
+            },
+        )
+
+        shipping_line = snapshot["lines"][1]
+        self.assertEqual(shipping_line["line_type"], "shipping")
+        self.assertEqual(shipping_line["description"], "Gastos de envío")
+        self.assertEqual(shipping_line["unit_total"], "21.00")
+        self.assertEqual(shipping_line["tax_base"], "17.36")
+        self.assertEqual(shipping_line["tax_amount"], "3.64")
+
+        self.assertEqual(
+            snapshot["totals"],
+            {
+                "products_total": "95.00",
+                "shipping_total": "21.00",
+                "discount_amount": "0.00",
+                "tax_base": "95.87",
+                "tax_amount": "20.13",
+                "total_amount": "116.00",
+                "rounding_adjustment": "0.00",
+            },
+        )
+
+    def test_builds_valid_paypal_snapshot(self):
+        paypal_session = checkout_session(
+            {
+                "payment_provider": "paypal",
+                "payment_intent_id": None,
+                "provider_order_id": "PAYPAL-ORDER",
+                "provider_capture_id": "PAYPAL-CAPTURE",
+            }
+        )
+
+        snapshot = build(checkout_session=paypal_session)
+
+        self.assertEqual(snapshot["payment"]["provider"], "paypal")
+        self.assertEqual(snapshot["payment"]["provider_reference"], "PAYPAL-CAPTURE")
+
+    def test_includes_shipping_line_when_shipping_is_positive(self):
+        snapshot = build()
+
+        self.assertEqual([line["line_type"] for line in snapshot["lines"]], ["product", "shipping"])
+
+    def test_omits_shipping_line_when_shipping_is_zero(self):
+        free_shipping_quote = quote({"shipping_cost": 0.0, "total_amount": 95.0})
+        session = checkout_session({"quote_snapshot": free_shipping_quote})
+
+        snapshot = build(checkout_session=session)
+
+        self.assertEqual(len(snapshot["lines"]), 1)
+        self.assertEqual(snapshot["totals"]["shipping_total"], "0.00")
+
+    def test_discount_is_stored_in_totals_without_negative_line(self):
+        discounted_quote = quote(
+            {
+                "shipping_cost": 21.0,
+                "discount_code": "SERGIO99",
+                "discount_code_valid": True,
+                "discount_percent": 99.0,
+                "discount_amount": 114.84,
+                "total_amount": 1.16,
+            }
+        )
+        session = checkout_session({"quote_snapshot": discounted_quote})
+
+        snapshot = build(checkout_session=session)
+
+        self.assertEqual(snapshot["operation"]["discount_code"], "SERGIO99")
+        self.assertEqual(snapshot["totals"]["discount_amount"], "114.84")
+        self.assertEqual(snapshot["totals"]["total_amount"], "1.16")
+        self.assertEqual(snapshot["totals"]["tax_base"], "0.96")
+        self.assertFalse(any(line["line_type"] == "discount" for line in snapshot["lines"]))
+        line_tax_base_sum = sum(
+            float(line["tax_base"]) for line in snapshot["lines"]
+        )
+        self.assertNotEqual(f"{line_tax_base_sum:.2f}", snapshot["totals"]["tax_base"])
+
+    def test_customer_without_tax_id_is_allowed(self):
+        snapshot = build(
+            checkout_session=checkout_session(
+                {"customer_snapshot": customer_snapshot({"CIF": ""})}
+            )
+        )
+
+        self.assertIsNone(snapshot["customer"]["tax_id"])
+
+    def test_incomplete_issuer_is_rejected(self):
+        self.assert_validation_error("issuer.tax_id", issuer=issuer({"tax_id": ""}))
+
+    def test_customer_without_address_is_rejected(self):
+        session = checkout_session(
+            {"customer_snapshot": customer_snapshot({"billing_address": "", "shipping_address": ""})}
+        )
+
+        self.assert_validation_error("customer.address", checkout_session=session)
+
+    def test_missing_quote_is_rejected(self):
+        session = checkout_session({"quote_snapshot": None})
+
+        self.assert_validation_error("quote_snapshot", checkout_session=session)
+
+    def test_empty_lines_are_rejected(self):
+        empty_quote = quote({"lines": [], "subtotal": 0.0, "shipping_cost": 0.0, "total_amount": 0.0})
+        session = checkout_session({"quote_snapshot": empty_quote})
+
+        self.assert_validation_error("lines", checkout_session=session)
+
+    def test_invalid_amount_is_rejected(self):
+        invalid_quote = quote({"subtotal": "not-a-number"})
+        session = checkout_session({"quote_snapshot": invalid_quote})
+
+        self.assert_validation_error("totals.products_total", checkout_session=session)
+
+    def test_incoherent_total_is_rejected(self):
+        incoherent_quote = quote({"total_amount": 999.0})
+        session = checkout_session({"quote_snapshot": incoherent_quote})
+
+        self.assert_validation_error("totals.total_amount", checkout_session=session)
+
+    def test_money_is_serialized_with_two_decimal_places(self):
+        decimal_quote = quote(
+            {
+                "lines": [
+                    {
+                        "product_id": 8,
+                        "producto_id": 8,
+                        "product_name": "Reja fija Albany",
+                        "quantity": 2,
+                        "alto": "120.5",
+                        "ancho": "80.25",
+                        "anclaje": "Sin obra: con pletinas",
+                        "color": "forja_negro",
+                        "unit_price": "119.955",
+                        "line_total": "239.91",
+                    }
+                ],
+                "subtotal": "239.91",
+                "shipping_cost": "0",
+                "discount_amount": "0",
+                "total_amount": "239.91",
+            }
+        )
+        session = checkout_session({"quote_snapshot": decimal_quote})
+
+        snapshot = build(checkout_session=session)
+
+        self.assertEqual(snapshot["lines"][0]["unit_total"], "119.96")
+        self.assertEqual(snapshot["lines"][0]["line_total"], "239.91")
+        self.assertEqual(snapshot["totals"]["total_amount"], "239.91")
+        self.assertEqual(snapshot["lines"][0]["configuration"]["height_cm"], "120.5")
+
+    def test_snapshot_contains_no_float_values(self):
+        snapshot = build()
+
+        assert_no_floats(self, snapshot)
+
+    def test_builder_does_not_mutate_inputs(self):
+        session = checkout_session()
+        original_quote = copy.deepcopy(session.quote_snapshot)
+        original_customer = copy.deepcopy(session.customer_snapshot)
+
+        build(checkout_session=session)
+
+        self.assertEqual(session.quote_snapshot, original_quote)
+        self.assertEqual(session.customer_snapshot, original_customer)
+
+    def test_repeated_builds_are_equal_except_generated_at(self):
+        first = build()
+        second = build()
+        first["metadata"]["generated_at"] = "<generated>"
+        second["metadata"]["generated_at"] = "<generated>"
+
+        self.assertEqual(first, second)
+
+    def test_non_final_checkout_session_is_rejected(self):
+        session = checkout_session({"status": "processing"})
+
+        self.assert_validation_error("checkout_session.status", checkout_session=session)
+
+    def test_order_mismatch_is_rejected(self):
+        session = checkout_session({"order_id": 999})
+
+        self.assert_validation_error("checkout_session.order_id", checkout_session=session)
+
+    def test_missing_customer_snapshot_is_rejected(self):
+        session = checkout_session({"customer_snapshot": None})
+
+        self.assert_validation_error("customer_snapshot", checkout_session=session)
+
+
+if __name__ == "__main__":
+    unittest.main()
