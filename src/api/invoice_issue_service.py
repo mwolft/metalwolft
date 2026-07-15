@@ -150,7 +150,7 @@ def _build_invoice_record(
         invoice_number=invoice_number,
         order_id=order.id,
         invoice_type=ORDINARY_INVOICE_TYPE,
-        pdf_path="",
+        pdf_path=None,
         amount=getattr(order, "total_amount", 0),
         client_name=_customer_name(customer_snapshot),
         client_address=_customer_address(customer_snapshot),

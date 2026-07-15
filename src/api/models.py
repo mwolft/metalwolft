@@ -489,7 +489,7 @@ class Invoices(db.Model):
     order_id = db.Column(db.Integer, db.ForeignKey('orders.id'), nullable=True)
     invoice_type = db.Column(db.String(20), nullable=True)
     created_at = db.Column(db.DateTime, default=db.func.current_timestamp())
-    pdf_path = db.Column(db.String(255), nullable=False)
+    pdf_path = db.Column(db.String(255), nullable=True)
     amount = db.Column(db.Float, nullable=False)
 
     client_name = db.Column(db.String(255), nullable=False)

@@ -154,7 +154,7 @@ class InvoiceIssueServiceTest(unittest.TestCase):
         self.assertEqual(result.invoice.invoice_number, "F2026000001")
         self.assertEqual(result.invoice.order_id, 123)
         self.assertEqual(result.invoice.invoice_type, ORDINARY_INVOICE_TYPE)
-        self.assertEqual(result.invoice.pdf_path, "")
+        self.assertIsNone(result.invoice.pdf_path)
         self.assertEqual(result.invoice.amount, 116.0)
         self.assertEqual(result.invoice.client_name, "Sergio Arias")
         self.assertEqual(result.invoice.client_address, "Calle factura")
@@ -297,6 +297,7 @@ class InvoiceIssueServiceTest(unittest.TestCase):
         self.assertNotIn("generate_next_invoice_number", source)
         self.assertNotIn("VeriFactu", source)
         self.assertNotIn("open(", source)
+        self.assertNotIn('pdf_path=""', source)
 
     def test_order_lock_uses_select_for_update(self):
         source = (SRC_DIR / "api/invoice_issue_service.py").read_text(encoding="utf-8")
