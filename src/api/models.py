@@ -554,6 +554,63 @@ class Invoices(db.Model):
         return self.serialize_admin()
 
 
+class InvoiceFiscalSubmission(db.Model):
+    __tablename__ = "invoice_fiscal_submissions"
+    __table_args__ = (
+        db.UniqueConstraint(
+            "invoice_id",
+            "provider",
+            "attempt_number",
+            name="uq_invoice_fiscal_submissions_invoice_provider_attempt",
+        ),
+    )
+
+    PROVIDER_VERIFACTU = "verifactu"
+
+    STATUS_PENDING = "PENDING"
+    STATUS_SENT = "SENT"
+    STATUS_ACCEPTED = "ACCEPTED"
+    STATUS_REJECTED = "REJECTED"
+    STATUS_FAILED = "FAILED"
+
+    id = db.Column(db.Integer, primary_key=True)
+    invoice_id = db.Column(db.Integer, db.ForeignKey('invoices.id'), nullable=False)
+    provider = db.Column(db.String(30), nullable=False, default=PROVIDER_VERIFACTU)
+    status = db.Column(db.String(30), nullable=False, default=STATUS_PENDING)
+    attempt_number = db.Column(db.Integer, nullable=False)
+    created_at = db.Column(db.DateTime, nullable=False, server_default=db.func.now())
+    updated_at = db.Column(
+        db.DateTime,
+        nullable=False,
+        server_default=db.func.now(),
+        onupdate=db.func.now()
+    )
+    submitted_at = db.Column(db.DateTime, nullable=True)
+    response_at = db.Column(db.DateTime, nullable=True)
+    request_payload = db.Column(db.JSON, nullable=True)
+    response_payload = db.Column(db.JSON, nullable=True)
+    response_code = db.Column(db.String(100), nullable=True)
+    response_message = db.Column(db.Text, nullable=True)
+    verification_csv = db.Column(db.String(255), nullable=True)
+    verification_url = db.Column(db.String(500), nullable=True)
+    external_reference = db.Column(db.String(255), nullable=True)
+    error_type = db.Column(db.String(100), nullable=True)
+    error_detail = db.Column(db.Text, nullable=True)
+
+    invoice = db.relationship(
+        'Invoices',
+        backref=db.backref('fiscal_submissions', lazy=True),
+        lazy=True,
+    )
+
+    def __repr__(self):
+        return (
+            f'<InvoiceFiscalSubmission invoice={self.invoice_id} '
+            f'provider={self.provider} attempt={self.attempt_number} '
+            f'status={self.status}>'
+        )
+
+
 class InvoiceSequence(db.Model):
     __tablename__ = "invoice_sequences"
     __table_args__ = (
