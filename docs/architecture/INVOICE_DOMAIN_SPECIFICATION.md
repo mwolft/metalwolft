@@ -339,6 +339,18 @@ Principios:
 - Si la transacción hace rollback, el número no debe considerarse emitido.
 - Los números históricos se conservan aunque usen formatos anteriores.
 
+Formato cerrado para nuevas emisiones:
+
+- Facturas ordinarias: `FYYYYNNNNNN`.
+- Facturas rectificativas futuras: `RYYYYNNNNNN`.
+- Ejemplo ordinaria: `F2026000001`.
+- Ejemplo rectificativa futura: `R2026000001`.
+- La secuencia reinicia por serie y ejercicio.
+- Las series mensuales históricas quedan congeladas.
+- El nuevo motor no volverá a crear series por mes.
+- El número no se reserva fuera de la transacción de emisión.
+- El formato de una serie activa no se modifica después de entrar en producción.
+
 Problemas actuales reconocidos:
 
 - Existen dos generadores.
@@ -787,7 +799,6 @@ Queda fuera: integración logística compleja.
 
 No deben resolverse arbitrariamente:
 
-- Formato definitivo de serie y número.
 - Datos fiscales exactos del emisor.
 - Cuándo emitir automáticamente.
 - Política de factura para clientes particulares.

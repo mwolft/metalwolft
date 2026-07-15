@@ -15,7 +15,7 @@ MIGRATION_PATH = (
     ROOT_DIR
     / "src/migrations/versions/b7c9d1e2f3a4_add_invoice_sequences_table.py"
 )
-FUTURE_FORMAT_EXAMPLE = "F-2026-000001"
+FUTURE_FORMAT_EXAMPLE = "F2026000001"
 
 
 def has_package(package):
@@ -82,7 +82,7 @@ class InvoiceSequenceModelSourceTest(unittest.TestCase):
             "last_number = ultimo numero fiscal confirmado dentro de una transaccion.",
             source,
         )
-        self.assertEqual(FUTURE_FORMAT_EXAMPLE, "F-2026-000001")
+        self.assertEqual(FUTURE_FORMAT_EXAMPLE, "F2026000001")
         self.assertNotIn("generate_next_invoice_number", source)
 
     def test_legacy_generators_are_not_modified_to_use_invoice_sequence(self):
