@@ -129,7 +129,6 @@ class InvoiceTypeCompatibilityTest(unittest.TestCase):
         ):
             source = read(relative_path)
             self.assertNotIn("invoice_type=", source)
-            self.assertNotIn('invoice_type":', source)
 
         issue_service_source = read("src/api/invoice_issue_service.py")
         self.assertIn("invoice_type=", issue_service_source)

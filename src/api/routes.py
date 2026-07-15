@@ -35,6 +35,8 @@ from api.payment_amounts import PaymentAmountValidationError, validate_payment_a
 from api.order_confirmation_email_service import send_order_confirmation_email
 from api.original_invoice_renderer import render_original_order_invoice_pdf
 from api.work_order_service import generate_work_order_pdf
+from api.invoice_issue_service import InvoiceIssueError, InvoiceNumberError, issue_invoice_for_order
+from api.invoice_snapshot_builder import FINAL_CHECKOUT_STATUSES, InvoiceSnapshotValidationError
 
 
 logger = logging.getLogger(__name__)
@@ -44,6 +46,22 @@ api = Blueprint('api', __name__)
 PAYMENT_AMOUNT_NOT_SUPPORTED_RESPONSE = {
     "error": "El importe final no puede procesarse con este método de pago. Revisa el carrito o el código de descuento.",
     "code": "PAYMENT_AMOUNT_NOT_SUPPORTED"
+}
+
+REQUIRED_INVOICE_ISSUER_CONFIG = {
+    "legal_name": "INVOICE_ISSUER_LEGAL_NAME",
+    "trade_name": "INVOICE_ISSUER_TRADE_NAME",
+    "tax_id": "INVOICE_ISSUER_TAX_ID",
+    "address": "INVOICE_ISSUER_ADDRESS",
+    "postal_code": "INVOICE_ISSUER_POSTAL_CODE",
+    "city": "INVOICE_ISSUER_CITY",
+    "country_code": "INVOICE_ISSUER_COUNTRY_CODE",
+}
+
+OPTIONAL_INVOICE_ISSUER_CONFIG = {
+    "province": "INVOICE_ISSUER_PROVINCE",
+    "email": "INVOICE_ISSUER_EMAIL",
+    "phone": "INVOICE_ISSUER_PHONE",
 }
 
 load_dotenv()
@@ -160,6 +178,90 @@ def _regenerate_invoice_pdf_to_storage(invoice):
         "pdf_path": pdf_path,
         "file_path": file_path,
     }
+
+
+def _serialize_admin_issued_invoice(invoice, *, already_existed):
+    issued_at = invoice.issued_at.isoformat() if invoice.issued_at else None
+
+    return {
+        "id": invoice.id,
+        "order_id": invoice.order_id,
+        "invoice_number": invoice.invoice_number,
+        "invoice_type": invoice.invoice_type,
+        "issued_at": issued_at,
+        "issuance_source": invoice.issuance_source,
+        "invoice_snapshot_schema_version": invoice.invoice_snapshot_schema_version,
+        "invoice_snapshot_hash": invoice.invoice_snapshot_hash,
+        "pdf_available": bool(invoice.pdf_path),
+        "already_existed": already_existed,
+    }
+
+
+def _invoice_admin_actor(current_user):
+    return current_user.get("email") or str(current_user.get("user_id") or "")
+
+
+def _invoice_issuer_config_value(env_name):
+    value = current_app.config.get(env_name)
+    if value is None:
+        value = os.getenv(env_name)
+    return (str(value).strip() if value is not None else "")
+
+
+def _build_invoice_issuer_from_config():
+    issuer = {}
+    missing = []
+
+    for field, env_name in REQUIRED_INVOICE_ISSUER_CONFIG.items():
+        value = _invoice_issuer_config_value(env_name)
+        if not value:
+            missing.append(env_name)
+        issuer[field] = value or None
+
+    if missing:
+        raise InvoiceSnapshotValidationError(
+            "issuer",
+            "Missing invoice issuer configuration: " + ", ".join(sorted(missing)),
+        )
+
+    for field, env_name in OPTIONAL_INVOICE_ISSUER_CONFIG.items():
+        issuer[field] = _invoice_issuer_config_value(env_name) or None
+
+    return issuer
+
+
+def _is_checkout_session_usable_for_invoice(checkout_session):
+    if checkout_session.status not in FINAL_CHECKOUT_STATUSES:
+        return False
+
+    if checkout_session.payment_provider == "stripe":
+        return bool(checkout_session.payment_intent_id)
+
+    if checkout_session.payment_provider == "paypal":
+        return bool(checkout_session.provider_capture_id or checkout_session.provider_order_id)
+
+    return bool(
+        checkout_session.payment_intent_id
+        or checkout_session.provider_capture_id
+        or checkout_session.provider_order_id
+    )
+
+
+def _select_checkout_session_for_invoice(order):
+    checkout_sessions = CheckoutSessions.query.filter_by(order_id=order.id).all()
+    usable_sessions = [
+        checkout_session
+        for checkout_session in checkout_sessions
+        if _is_checkout_session_usable_for_invoice(checkout_session)
+    ]
+
+    if not usable_sessions:
+        return None, "El pedido no esta listo para facturacion."
+
+    if len(usable_sessions) > 1:
+        return None, "El pedido tiene varias sesiones de checkout facturables."
+
+    return usable_sessions[0], None
 
 
 def _format_cart_dimension(value):
@@ -3787,6 +3889,79 @@ def handle_order(order_id):
         except SQLAlchemyError as e:
             db.session.rollback()
             return jsonify({"message": "An error occurred while deleting the order.", "error": str(e)}), 500
+
+
+@api.route('/admin/orders/<int:order_id>/issue-invoice', methods=['POST'])
+@jwt_required()
+def admin_issue_invoice_for_order(order_id):
+    current_user = get_jwt_identity()
+
+    if not current_user.get("is_admin"):
+        return jsonify({"message": "Access forbidden: Admins only"}), 403
+
+    request_data = request.get_json(silent=True) or {}
+    if not isinstance(request_data, dict):
+        return jsonify({
+            "message": "El cuerpo de la peticion debe ser un objeto JSON.",
+            "code": "INVALID_REQUEST_BODY",
+        }), 400
+    if request_data:
+        return jsonify({
+            "message": "No se aceptan datos fiscales en esta ruta.",
+            "code": "INVOICE_BODY_NOT_ALLOWED",
+        }), 400
+
+    order = Orders.query.get(order_id)
+    if not order:
+        return jsonify({
+            "message": "Order not found",
+            "code": "ORDER_NOT_FOUND",
+        }), 404
+
+    checkout_session, invoiceability_error = _select_checkout_session_for_invoice(order)
+    if invoiceability_error:
+        return jsonify({
+            "message": invoiceability_error,
+            "code": "ORDER_NOT_INVOICEABLE",
+        }), 409
+
+    try:
+        result = issue_invoice_for_order(
+            db_session=db.session,
+            order_id=order.id,
+            checkout_session=checkout_session,
+            issuer=_build_invoice_issuer_from_config(),
+            actor=_invoice_admin_actor(current_user),
+            source="manual",
+        )
+        return jsonify(_serialize_admin_issued_invoice(
+            result.invoice,
+            already_existed=not result.created,
+        )), 200
+    except InvoiceIssueError:
+        logger.warning("Invoice issue requested for missing order_id=%s", order_id)
+        return jsonify({
+            "message": "Order not found",
+            "code": "ORDER_NOT_FOUND",
+        }), 404
+    except InvoiceSnapshotValidationError:
+        logger.exception("Invalid invoice snapshot for order_id=%s", order_id)
+        return jsonify({
+            "message": "No se puede emitir la factura para este pedido.",
+            "code": "INVOICE_SNAPSHOT_INVALID",
+        }), 422
+    except InvoiceNumberError:
+        logger.exception("Invoice number allocation failed for order_id=%s", order_id)
+        return jsonify({
+            "message": "No se ha podido reservar un numero de factura.",
+            "code": "INVOICE_NUMBER_UNAVAILABLE",
+        }), 409
+    except Exception:
+        logger.exception("Unexpected error issuing invoice for order_id=%s", order_id)
+        return jsonify({
+            "message": "No se ha podido emitir la factura.",
+            "code": "INVOICE_ISSUE_FAILED",
+        }), 500
 
 
 @api.route('/admin/work-order/<int:order_id>', methods=['GET'])

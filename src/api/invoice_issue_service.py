@@ -2,7 +2,7 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Mapping
 
-from api.invoice_number_service import acquire_next_invoice_number
+from api.invoice_number_service import InvoiceNumberError, acquire_next_invoice_number
 from api.invoice_snapshot_builder import build_invoice_snapshot
 from api.invoice_snapshot_integrity import calculate_invoice_snapshot_hash
 
