@@ -544,6 +544,40 @@ class Invoices(db.Model):
     def serialize(self):
         return self.serialize_admin()
 
+
+class InvoiceSequence(db.Model):
+    __tablename__ = "invoice_sequences"
+    __table_args__ = (
+        db.UniqueConstraint(
+            "series",
+            "fiscal_year",
+            name="uq_invoice_sequences_series_fiscal_year",
+        ),
+    )
+
+    id = db.Column(db.Integer, primary_key=True)
+    series = db.Column(db.String(10), nullable=False)
+    fiscal_year = db.Column(db.Integer, nullable=False)
+    # last_number = ultimo numero fiscal confirmado dentro de una transaccion.
+    # El siguiente numero fiscal sera last_number + 1.
+    last_number = db.Column(
+        db.Integer,
+        nullable=False,
+        default=0,
+        server_default="0",
+    )
+    created_at = db.Column(db.DateTime, nullable=False, server_default=db.func.now())
+    updated_at = db.Column(
+        db.DateTime,
+        nullable=False,
+        server_default=db.func.now(),
+        onupdate=db.func.now()
+    )
+
+    def __repr__(self):
+        return f'<InvoiceSequence {self.series}-{self.fiscal_year}: {self.last_number}>'
+
+
 class Favorites(db.Model):
     __tablename__ = "favorites"
 
