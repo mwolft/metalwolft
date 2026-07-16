@@ -110,6 +110,28 @@ class InvoiceFiscalSubmissionModelSourceTest(unittest.TestCase):
         self.assertIn("'Invoices'", source)
         self.assertIn("backref=db.backref('fiscal_submissions', lazy=True)", source)
 
+    def test_model_declares_invoice_id_index_matching_existing_migration(self):
+        source = submission_model_block()
+
+        self.assertIn("db.Index(", source)
+        self.assertIn('"ix_invoice_fiscal_submissions_invoice_id"', source)
+        self.assertIn('"invoice_id"', source)
+        self.assertIn("unique=False", source)
+
+    def test_model_index_matches_migration_name_without_new_migration(self):
+        source = migration_source()
+
+        self.assertIn("'ix_invoice_fiscal_submissions_invoice_id'", source)
+        migration_files = [
+            path.name
+            for path in (ROOT_DIR / "src/migrations/versions").glob("*.py")
+            if "invoice_fiscal_submissions_invoice_id" in path.read_text(encoding="utf-8")
+        ]
+        self.assertEqual(
+            migration_files,
+            ["e6f7a8b9c0d1_add_invoice_fiscal_submissions_table.py"],
+        )
+
 
 class InvoiceFiscalSubmissionMigrationTest(unittest.TestCase):
     def test_migration_creates_only_fiscal_submissions_table(self):
@@ -348,6 +370,16 @@ class InvoiceFiscalSubmissionServiceSQLiteTest(unittest.TestCase):
             [submission.attempt_number for submission in invoice.fiscal_submissions],
             [1, 2],
         )
+
+    def test_metadata_contains_non_unique_invoice_id_index_for_create_all(self):
+        indexes = {
+            index.name: index
+            for index in InvoiceFiscalSubmission.__table__.indexes
+        }
+        index = indexes["ix_invoice_fiscal_submissions_invoice_id"]
+
+        self.assertFalse(index.unique)
+        self.assertEqual([column.name for column in index.columns], ["invoice_id"])
 
 
 if __name__ == "__main__":

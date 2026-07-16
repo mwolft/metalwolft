@@ -583,6 +583,11 @@ class InvoiceFiscalSubmission(db.Model):
             "attempt_number",
             name="uq_invoice_fiscal_submissions_invoice_provider_attempt",
         ),
+        db.Index(
+            "ix_invoice_fiscal_submissions_invoice_id",
+            "invoice_id",
+            unique=False,
+        ),
     )
 
     PROVIDER_VERIFACTU = "verifactu"
@@ -638,6 +643,11 @@ class AccountingEntry(db.Model):
             "invoice_id",
             "entry_type",
             name="uq_accounting_entries_invoice_entry_type",
+        ),
+        db.Index(
+            "ix_accounting_entries_invoice_id",
+            "invoice_id",
+            unique=False,
         ),
     )
 

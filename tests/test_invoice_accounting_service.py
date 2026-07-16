@@ -104,6 +104,28 @@ class AccountingEntryModelSourceTest(unittest.TestCase):
         self.assertIn('"entry_type"', source)
         self.assertIn('name="uq_accounting_entries_invoice_entry_type"', source)
 
+    def test_model_declares_invoice_id_index_matching_existing_migration(self):
+        source = accounting_entry_block()
+
+        self.assertIn("db.Index(", source)
+        self.assertIn('"ix_accounting_entries_invoice_id"', source)
+        self.assertIn('"invoice_id"', source)
+        self.assertIn("unique=False", source)
+
+    def test_model_index_matches_migration_name_without_new_migration(self):
+        source = migration_source()
+
+        self.assertIn("'ix_accounting_entries_invoice_id'", source)
+        migration_files = [
+            path.name
+            for path in (ROOT_DIR / "src/migrations/versions").glob("*.py")
+            if "ix_accounting_entries_invoice_id" in path.read_text(encoding="utf-8")
+        ]
+        self.assertEqual(
+            migration_files,
+            ["f1a2b3c4d5e6_add_accounting_entries_table.py"],
+        )
+
     def test_model_relates_many_entries_to_one_invoice(self):
         source = accounting_entry_block()
 
@@ -376,6 +398,16 @@ class AccountingEntryServiceSQLiteTest(unittest.TestCase):
         db.session.commit()
 
         self.assertEqual(len(invoice.accounting_entries), 1)
+
+    def test_metadata_contains_non_unique_invoice_id_index_for_create_all(self):
+        indexes = {
+            index.name: index
+            for index in AccountingEntry.__table__.indexes
+        }
+        index = indexes["ix_accounting_entries_invoice_id"]
+
+        self.assertFalse(index.unique)
+        self.assertEqual([column.name for column in index.columns], ["invoice_id"])
 
 
 if __name__ == "__main__":
