@@ -52,6 +52,17 @@ from api.invoice_accounting_service import (
     create_accounting_entry,
 )
 from api.accounting_excel_service import AccountingExcelExportError, export_sales_accounting_entries
+from api.flask_mail_invoice_adapter import FlaskMailInvoiceAdapter, FlaskMailInvoiceAdapterError
+from api.invoice_email_service import (
+    EMAIL_STATUS_FAILED,
+    InvoiceEmailIntegrityError,
+    InvoiceEmailPdfMissing,
+    InvoiceEmailRecipientMissing,
+    InvoiceEmailSendError,
+    InvoiceEmailSnapshotMissing,
+    InvoiceEmailUnsupportedSchema,
+    send_invoice_email as send_invoice_email_v2,
+)
 from api.invoice_snapshot_builder import FINAL_CHECKOUT_STATUSES, InvoiceSnapshotValidationError
 
 
@@ -232,6 +243,31 @@ def _serialize_admin_generated_invoice_pdf(invoice, result, *, generated, regene
         "regenerated": regenerated,
         "file_size": result.file_size,
     }
+
+
+def _serialize_admin_invoice_email(invoice, result):
+    sent_at = invoice.email_sent_at.isoformat() if invoice.email_sent_at else None
+
+    return {
+        "id": invoice.id,
+        "invoice_number": invoice.invoice_number,
+        "recipient": result.recipient,
+        "email_status": invoice.email_status,
+        "email_sent_at": sent_at,
+        "email_attempts": invoice.email_attempts,
+        "already_sent": result.already_sent,
+    }
+
+
+def _persist_invoice_email_failure(invoice_id, attempts_before):
+    failed_invoice = Invoices.query.get(invoice_id)
+    if not failed_invoice:
+        return
+
+    failed_invoice.email_status = EMAIL_STATUS_FAILED
+    failed_invoice.email_attempts = int(attempts_before or 0) + 1
+    failed_invoice.email_last_error = "No se pudo enviar el email de factura."
+    db.session.commit()
 
 
 def _accounting_amount_string(value):
@@ -4552,6 +4588,109 @@ def admin_generate_invoice_pdf_v2(invoice_id):
         return jsonify({
             "message": "No se ha podido generar el PDF de la factura.",
             "code": "INVOICE_PDF_GENERATION_FAILED",
+        }), 500
+
+
+@api.route('/admin/invoices/<int:invoice_id>/send-email', methods=['POST'])
+@jwt_required()
+def admin_send_invoice_email_v2(invoice_id):
+    current_user = get_jwt_identity()
+
+    if not current_user.get("is_admin"):
+        return jsonify({"message": "Access forbidden: Admins only"}), 403
+
+    request_data = request.get_json(silent=True) or {}
+    if not isinstance(request_data, dict):
+        return jsonify({
+            "message": "El cuerpo de la peticion debe ser un objeto JSON.",
+            "code": "INVALID_REQUEST_BODY",
+        }), 400
+    if request_data:
+        return jsonify({
+            "message": "No se aceptan datos de email en esta ruta.",
+            "code": "INVOICE_EMAIL_BODY_NOT_ALLOWED",
+        }), 400
+
+    invoice = Invoices.query.get(invoice_id)
+    if not invoice:
+        return jsonify({
+            "message": "Invoice not found",
+            "code": "INVOICE_NOT_FOUND",
+        }), 404
+
+    if not invoice.invoice_number or not invoice.issued_at:
+        return jsonify({
+            "message": "La factura debe estar emitida antes de enviarse por email.",
+            "code": "INVOICE_EMAIL_NOT_ISSUED",
+        }), 409
+
+    if not invoice.pdf_path:
+        return jsonify({
+            "message": "La factura debe tener PDF generado antes de enviarse por email.",
+            "code": "INVOICE_EMAIL_PDF_MISSING",
+        }), 409
+
+    attempts_before = int(invoice.email_attempts or 0)
+
+    try:
+        adapter = FlaskMailInvoiceAdapter(mail)
+        result = send_invoice_email_v2(invoice, mailer=adapter)
+        db.session.commit()
+
+        return jsonify(_serialize_admin_invoice_email(invoice, result)), 200
+    except InvoiceEmailSnapshotMissing:
+        db.session.rollback()
+        logger.warning("Invoice email v2 snapshot missing for invoice_id=%s", invoice_id)
+        return jsonify({
+            "message": "La factura no contiene los datos necesarios para enviar el email.",
+            "code": "INVOICE_EMAIL_SNAPSHOT_MISSING",
+        }), 422
+    except InvoiceEmailUnsupportedSchema:
+        db.session.rollback()
+        logger.warning("Invoice email v2 unsupported schema for invoice_id=%s", invoice_id)
+        return jsonify({
+            "message": "La version del snapshot de factura no es compatible con el envio por email.",
+            "code": "INVOICE_EMAIL_SCHEMA_UNSUPPORTED",
+        }), 422
+    except InvoiceEmailIntegrityError:
+        db.session.rollback()
+        logger.warning("Invoice email v2 hash mismatch for invoice_id=%s", invoice_id)
+        return jsonify({
+            "message": "No se puede enviar el email porque la integridad fiscal no coincide.",
+            "code": "INVOICE_EMAIL_INTEGRITY_ERROR",
+        }), 409
+    except InvoiceEmailRecipientMissing:
+        db.session.rollback()
+        logger.warning("Invoice email v2 missing recipient for invoice_id=%s", invoice_id)
+        return jsonify({
+            "message": "La factura no contiene email de cliente.",
+            "code": "INVOICE_EMAIL_RECIPIENT_MISSING",
+        }), 422
+    except InvoiceEmailPdfMissing:
+        db.session.rollback()
+        logger.warning("Invoice email v2 missing PDF for invoice_id=%s", invoice_id)
+        return jsonify({
+            "message": "El PDF de la factura no esta disponible para enviarse por email.",
+            "code": "INVOICE_EMAIL_PDF_MISSING",
+        }), 409
+    except (InvoiceEmailSendError, FlaskMailInvoiceAdapterError):
+        db.session.rollback()
+        logger.exception("Invoice email v2 delivery failed for invoice_id=%s", invoice_id)
+        try:
+            _persist_invoice_email_failure(invoice_id, attempts_before)
+        except Exception:
+            db.session.rollback()
+            logger.exception("Could not persist invoice email failure for invoice_id=%s", invoice_id)
+        return jsonify({
+            "message": "No se ha podido enviar el email de la factura.",
+            "code": "INVOICE_EMAIL_SEND_FAILED",
+        }), 502
+    except Exception:
+        db.session.rollback()
+        logger.exception("Unexpected invoice email v2 error for invoice_id=%s", invoice_id)
+        return jsonify({
+            "message": "No se ha podido enviar el email de la factura.",
+            "code": "INVOICE_EMAIL_FAILED",
         }), 500
 
 
