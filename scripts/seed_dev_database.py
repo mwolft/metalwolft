@@ -14,6 +14,10 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable, Mapping, Sequence
 
+ROOT_DIR = Path(__file__).resolve().parents[1]
+if str(ROOT_DIR) not in sys.path:
+    sys.path.insert(0, str(ROOT_DIR))
+
 from scripts.bootstrap_dev_database import (
     BootstrapSafetyError,
     DatabaseTarget,
@@ -48,8 +52,7 @@ class SeedResult:
 
 
 def load_application():
-    root_dir = Path(__file__).resolve().parents[1]
-    src_dir = root_dir / "src"
+    src_dir = ROOT_DIR / "src"
     if str(src_dir) not in sys.path:
         sys.path.insert(0, str(src_dir))
 
