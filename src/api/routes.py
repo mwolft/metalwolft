@@ -64,6 +64,10 @@ from api.invoice_email_service import (
     send_invoice_email as send_invoice_email_v2,
 )
 from api.invoice_snapshot_builder import FINAL_CHECKOUT_STATUSES, InvoiceSnapshotValidationError
+from api.invoice_workflow_service import (
+    InvoiceWorkflowConfigurationError,
+    run_invoice_workflow_for_order,
+)
 
 
 logger = logging.getLogger(__name__)
@@ -4086,6 +4090,80 @@ def admin_issue_invoice_for_order(order_id):
         return jsonify({
             "message": "No se ha podido emitir la factura.",
             "code": "INVOICE_ISSUE_FAILED",
+        }), 500
+
+
+@api.route('/admin/orders/<int:order_id>/run-invoice-workflow', methods=['POST'])
+@jwt_required()
+def admin_run_invoice_workflow_for_order(order_id):
+    current_user = get_jwt_identity()
+
+    if not current_user.get("is_admin"):
+        return jsonify({"message": "Access forbidden: Admins only"}), 403
+
+    request_data = request.get_json(silent=True) or {}
+    if not isinstance(request_data, dict):
+        return jsonify({
+            "message": "El cuerpo de la peticion debe ser un objeto JSON.",
+            "code": "INVALID_REQUEST_BODY",
+        }), 400
+    if request_data:
+        return jsonify({
+            "message": "No se aceptan datos documentales en esta ruta.",
+            "code": "INVOICE_WORKFLOW_BODY_NOT_ALLOWED",
+        }), 400
+
+    order = Orders.query.get(order_id)
+    if not order:
+        return jsonify({
+            "message": "Order not found",
+            "code": "ORDER_NOT_FOUND",
+        }), 404
+
+    checkout_session, invoiceability_error = _select_checkout_session_for_invoice(order)
+    if invoiceability_error:
+        return jsonify({
+            "message": invoiceability_error,
+            "code": "ORDER_NOT_INVOICEABLE",
+        }), 409
+
+    try:
+        invoice_folder = current_app.config.get("INVOICE_FOLDER") or os.getenv("INVOICE_FOLDER")
+        if not invoice_folder:
+            raise InvoiceWorkflowConfigurationError("Missing INVOICE_FOLDER configuration.")
+
+        result = run_invoice_workflow_for_order(
+            order.id,
+            issuer=_build_invoice_issuer_from_config(),
+            checkout_session=checkout_session,
+            actor=_invoice_admin_actor(current_user),
+            invoice_output_dir=invoice_folder,
+            mailer=FlaskMailInvoiceAdapter(mail),
+            db_session=db.session,
+        )
+
+        status_code = 200 if result.completed else 409
+        return jsonify(result.to_dict()), status_code
+    except InvoiceSnapshotValidationError:
+        db.session.rollback()
+        logger.exception("Invalid invoice workflow configuration for order_id=%s", order_id)
+        return jsonify({
+            "message": "La configuracion fiscal de facturacion no es valida.",
+            "code": "INVOICE_WORKFLOW_CONFIGURATION_INVALID",
+        }), 422
+    except InvoiceWorkflowConfigurationError:
+        db.session.rollback()
+        logger.exception("Missing invoice workflow configuration for order_id=%s", order_id)
+        return jsonify({
+            "message": "La configuracion documental no esta completa.",
+            "code": "INVOICE_WORKFLOW_CONFIGURATION_MISSING",
+        }), 422
+    except Exception:
+        db.session.rollback()
+        logger.exception("Unexpected invoice workflow error for order_id=%s", order_id)
+        return jsonify({
+            "message": "No se ha podido ejecutar el flujo documental de factura.",
+            "code": "INVOICE_WORKFLOW_FAILED",
         }), 500
 
 
