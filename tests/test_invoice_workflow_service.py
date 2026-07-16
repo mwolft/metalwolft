@@ -44,8 +44,9 @@ if HAS_DB_TEST_DEPENDENCIES:
 
 
 class FakeDbSession:
-    def __init__(self, invoice):
+    def __init__(self, invoice, *, lookup_invoice=True):
         self.invoice = invoice
+        self.lookup_invoice = lookup_invoice
         self.accounting_entry = None
         self.fiscal_submission = None
         self.commit_count = 0
@@ -67,7 +68,11 @@ class FakeQuery:
         self.model_name = getattr(model, "__name__", str(model))
 
     def get(self, item_id):
-        if self.model_name == "Invoices" and item_id == self.session.invoice.id:
+        if (
+            self.model_name == "Invoices"
+            and self.session.lookup_invoice
+            and item_id == self.session.invoice.id
+        ):
             return self.session.invoice
         return None
 
@@ -345,6 +350,37 @@ class InvoiceWorkflowServiceTest(unittest.TestCase):
         self.assertEqual(db_session.commit_count, 5)
         self.assertEqual(db_session.rollback_count, 1)
 
+    def test_failure_in_email_uses_invoice_fallback_and_still_commits_failure(self):
+        invoice = make_invoice(email_attempts=0)
+        db_session = FakeDbSession(invoice, lookup_invoice=False)
+
+        with patch("api.invoice_workflow_service.issue_invoice_for_order") as issue, patch(
+            "api.invoice_workflow_service.generate_invoice_pdf"
+        ) as pdf, patch("api.invoice_workflow_service.create_accounting_entry") as accounting, patch(
+            "api.invoice_workflow_service.create_pending_submission"
+        ) as submission, patch(
+            "api.invoice_workflow_service.send_invoice_email", side_effect=RuntimeError("smtp detail")
+        ):
+            issue.return_value = SimpleNamespace(invoice=invoice, invoice_number=invoice.invoice_number, created=True)
+            pdf.side_effect = lambda target_invoice, **_kwargs: setattr(
+                target_invoice, "pdf_path", "/api/download-invoice/invoice_F2026000001.pdf"
+            )
+            accounting.side_effect = lambda _invoice, **kwargs: setattr(
+                kwargs["db_session"], "accounting_entry", SimpleNamespace(id=1)
+            )
+            submission.side_effect = lambda _invoice, **kwargs: setattr(
+                kwargs["db_session"], "fiscal_submission", SimpleNamespace(id=1, status="PENDING")
+            )
+            result, _db_session = run_workflow(invoice, session=db_session)
+
+        self.assertFalse(result.completed)
+        self.assertEqual(result.failed_step, STEP_EMAIL)
+        self.assertEqual(invoice.email_status, "failed")
+        self.assertEqual(invoice.email_attempts, 1)
+        self.assertEqual(invoice.email_last_error, "No se pudo enviar el email de factura.")
+        self.assertEqual(db_session.commit_count, 5)
+        self.assertEqual(db_session.rollback_count, 1)
+
     def test_configuration_is_required(self):
         with self.assertRaises(InvoiceWorkflowConfigurationError):
             run_invoice_workflow_for_order(
@@ -392,6 +428,19 @@ class InvoiceWorkflowServiceSourceTest(unittest.TestCase):
             "STEP_EMAIL = \"email\"",
         ):
             self.assertIn(expected, source)
+
+    def test_email_failure_is_persisted_after_rollback_with_separate_commit(self):
+        source = (SRC_DIR / "api/invoice_workflow_service.py").read_text(encoding="utf-8")
+        email_step = source[source.index("def _run_email_step"):source.index("def _find_usable_fiscal_submission")]
+        persist_helper = source[source.index("def _persist_email_failure"):source.index("def _refresh_invoice")]
+
+        self.assertIn("db_session.rollback()", email_step)
+        self.assertIn("_persist_email_failure(db_session, invoice, attempts_before)", email_step)
+        self.assertIn('failed_invoice.email_status = EMAIL_STATUS_FAILED', persist_helper)
+        self.assertIn('failed_invoice.email_attempts = int(attempts_before or 0) + 1', persist_helper)
+        self.assertIn('failed_invoice.email_last_error = "No se pudo enviar el email de factura."', persist_helper)
+        self.assertIn("failed_invoice = db_session.query(Invoices).get(invoice_id) or invoice", persist_helper)
+        self.assertIn("db_session.commit()", persist_helper)
 
 
 if __name__ == "__main__":

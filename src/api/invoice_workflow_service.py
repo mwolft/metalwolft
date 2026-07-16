@@ -246,9 +246,8 @@ def _run_email_step(invoice, mailer, db_session):
             already_completed=already_sent_before,
         )
     except Exception:
-        invoice_id = getattr(invoice, "id", None)
         db_session.rollback()
-        _persist_email_failure(db_session, invoice_id, attempts_before)
+        _persist_email_failure(db_session, invoice, attempts_before)
         return _step(STEP_EMAIL, STATUS_FAILED, detail="No se ha podido enviar el email de factura.")
 
 
@@ -265,17 +264,20 @@ def _find_usable_fiscal_submission(db_session, invoice_id):
     )
 
 
-def _persist_email_failure(db_session, invoice_id, attempts_before):
+def _persist_email_failure(db_session, invoice, attempts_before):
+    invoice_id = getattr(invoice, "id", None)
     if not invoice_id:
         return
 
-    failed_invoice = db_session.query(Invoices).get(invoice_id)
+    failed_invoice = db_session.query(Invoices).get(invoice_id) or invoice
     if not failed_invoice:
         return
 
     failed_invoice.email_status = EMAIL_STATUS_FAILED
     failed_invoice.email_attempts = int(attempts_before or 0) + 1
     failed_invoice.email_last_error = "No se pudo enviar el email de factura."
+    if hasattr(db_session, "add"):
+        db_session.add(failed_invoice)
     db_session.commit()
 
 
