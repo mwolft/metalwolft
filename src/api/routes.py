@@ -1448,6 +1448,11 @@ def _finalize_order_from_checkout_quote(user, checkout_quote, customer_snapshot,
             order=new_order,
             checkout_session=checkout_session,
             db_session=db.session,
+            enabled=current_app.config.get("ENABLE_INVOICE_WORKFLOW_AFTER_CHECKOUT", False),
+            issuer_factory=_build_invoice_issuer_from_config,
+            invoice_output_dir=current_app.config.get("INVOICE_FOLDER") or os.getenv("INVOICE_FOLDER"),
+            mailer_factory=lambda: FlaskMailInvoiceAdapter(mail),
+            logger=logger,
         )
     except Exception:
         logger.exception(

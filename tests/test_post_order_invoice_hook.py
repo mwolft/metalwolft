@@ -2,7 +2,7 @@ import sys
 import unittest
 from pathlib import Path
 from types import SimpleNamespace
-from unittest.mock import patch
+from unittest.mock import Mock
 
 
 ROOT_DIR = Path(__file__).resolve().parents[1]
@@ -11,8 +11,10 @@ if str(SRC_DIR) not in sys.path:
     sys.path.insert(0, str(SRC_DIR))
 
 from api.post_order_invoice_hook import (
+    CHECKOUT_AUTO_ACTOR,
+    CONFIGURATION_ERROR_STEP,
     FEATURE_DISABLED_REASON,
-    WORKFLOW_NOT_CONNECTED_REASON,
+    UNEXPECTED_ERROR_STEP,
     handle_post_order_invoice_workflow,
 )
 
@@ -51,9 +53,13 @@ class FakeSession:
 class FakeLogger:
     def __init__(self):
         self.warnings = []
+        self.exceptions = []
 
-    def warning(self, *args):
-        self.warnings.append(args)
+    def warning(self, *args, **kwargs):
+        self.warnings.append((args, kwargs))
+
+    def exception(self, *args, **kwargs):
+        self.exceptions.append((args, kwargs))
 
 
 def make_order():
@@ -65,38 +71,58 @@ def make_checkout_session():
 
 
 class PostOrderInvoiceHookTest(unittest.TestCase):
-    def app_context(self, *, enabled=False):
-        fake_app = SimpleNamespace(
-            config={"ENABLE_INVOICE_WORKFLOW_AFTER_CHECKOUT": enabled},
-            logger=FakeLogger(),
-        )
-        return patch("api.post_order_invoice_hook._get_current_app", return_value=fake_app)
+    def call_hook(self, **overrides):
+        values = {
+            "order": make_order(),
+            "checkout_session": make_checkout_session(),
+            "db_session": FakeSession(),
+            "enabled": False,
+            "issuer_factory": Mock(return_value={"legal_name": "MetalWolft"}),
+            "invoice_output_dir": "/tmp/invoices",
+            "mailer_factory": Mock(return_value=SimpleNamespace(name="mailer")),
+            "logger": FakeLogger(),
+            "workflow_runner": Mock(return_value=SimpleNamespace(
+                completed=True,
+                failed_step=None,
+                invoice_id=789,
+                invoice_number="F2026000001",
+            )),
+        }
+        values.update(overrides)
+        return handle_post_order_invoice_workflow(**values), values
 
     def test_flag_false_returns_feature_disabled(self):
-        with self.app_context(enabled=False):
-            result = handle_post_order_invoice_workflow(
-                order=make_order(),
-                checkout_session=make_checkout_session(),
-                db_session=FakeSession(),
-            )
+        result, _ = self.call_hook(enabled=False)
 
         self.assertFalse(result.enabled)
         self.assertFalse(result.executed)
+        self.assertFalse(result.completed)
         self.assertEqual(result.skipped_reason, FEATURE_DISABLED_REASON)
 
     def test_flag_false_does_not_commit_or_rollback(self):
         session = FakeSession()
 
-        with self.app_context(enabled=False):
-            handle_post_order_invoice_workflow(
-                order=make_order(),
-                checkout_session=make_checkout_session(),
-                db_session=session,
-            )
+        self.call_hook(enabled=False, db_session=session)
 
         self.assertEqual(session.commit_count, 0)
         self.assertEqual(session.rollback_count, 0)
         self.assertEqual(session.flush_count, 0)
+
+    def test_flag_false_does_not_build_dependencies_or_execute_workflow(self):
+        issuer_factory = Mock(side_effect=AssertionError("issuer must not be built"))
+        mailer_factory = Mock(side_effect=AssertionError("mailer must not be built"))
+        workflow_runner = Mock(side_effect=AssertionError("workflow must not run"))
+
+        self.call_hook(
+            enabled=False,
+            issuer_factory=issuer_factory,
+            mailer_factory=mailer_factory,
+            workflow_runner=workflow_runner,
+        )
+
+        issuer_factory.assert_not_called()
+        mailer_factory.assert_not_called()
+        workflow_runner.assert_not_called()
 
     def test_flag_false_does_not_modify_order_or_checkout_session(self):
         order = make_order()
@@ -104,37 +130,126 @@ class PostOrderInvoiceHookTest(unittest.TestCase):
         original_order_state = vars(order).copy()
         original_checkout_state = vars(checkout_session).copy()
 
-        with self.app_context(enabled=False):
-            handle_post_order_invoice_workflow(
-                order=order,
-                checkout_session=checkout_session,
-                db_session=FakeSession(),
-            )
+        self.call_hook(enabled=False, order=order, checkout_session=checkout_session)
 
         self.assertEqual(vars(order), original_order_state)
         self.assertEqual(vars(checkout_session), original_checkout_state)
 
-    def test_hook_does_not_execute_document_workflow_yet(self):
-        source = hook_source()
+    def test_flag_true_executes_workflow_once_with_expected_contract(self):
+        order = make_order()
+        checkout_session = make_checkout_session()
+        session = FakeSession()
+        issuer = {"legal_name": "MetalWolft"}
+        mailer = SimpleNamespace(name="mailer")
+        issuer_factory = Mock(return_value=issuer)
+        mailer_factory = Mock(return_value=mailer)
+        workflow_runner = Mock(return_value=SimpleNamespace(
+            completed=True,
+            failed_step=None,
+            invoice_id=789,
+            invoice_number="F2026000001",
+        ))
 
-        self.assertNotIn("run_invoice_workflow_for_order", source)
-        self.assertNotIn("issue_invoice_for_order", source)
-        self.assertNotIn("generate_invoice_pdf", source)
-        self.assertNotIn("create_accounting_entry", source)
-        self.assertNotIn("create_pending_submission", source)
-        self.assertNotIn("send_invoice_email", source)
+        result, _ = self.call_hook(
+            enabled=True,
+            order=order,
+            checkout_session=checkout_session,
+            db_session=session,
+            issuer_factory=issuer_factory,
+            invoice_output_dir="/tmp/invoices",
+            mailer_factory=mailer_factory,
+            workflow_runner=workflow_runner,
+        )
 
-    def test_flag_true_is_explicitly_not_connected_yet(self):
-        with self.app_context(enabled=True):
-            result = handle_post_order_invoice_workflow(
-                order=make_order(),
-                checkout_session=make_checkout_session(),
-                db_session=FakeSession(),
-            )
+        issuer_factory.assert_called_once_with()
+        mailer_factory.assert_called_once_with()
+        workflow_runner.assert_called_once_with(
+            123,
+            issuer=issuer,
+            checkout_session=checkout_session,
+            actor=CHECKOUT_AUTO_ACTOR,
+            invoice_output_dir="/tmp/invoices",
+            mailer=mailer,
+            db_session=session,
+        )
 
         self.assertTrue(result.enabled)
+        self.assertTrue(result.executed)
+        self.assertTrue(result.completed)
+        self.assertIsNone(result.failed_step)
+        self.assertEqual(result.invoice_id, 789)
+        self.assertEqual(result.invoice_number, "F2026000001")
+
+    def test_configuration_error_is_controlled_and_does_not_execute_workflow(self):
+        workflow_runner = Mock()
+        logger = FakeLogger()
+
+        result, _ = self.call_hook(
+            enabled=True,
+            invoice_output_dir="",
+            logger=logger,
+            workflow_runner=workflow_runner,
+        )
+
+        workflow_runner.assert_not_called()
+        self.assertTrue(result.enabled)
         self.assertFalse(result.executed)
-        self.assertEqual(result.skipped_reason, WORKFLOW_NOT_CONNECTED_REASON)
+        self.assertFalse(result.completed)
+        self.assertEqual(result.failed_step, CONFIGURATION_ERROR_STEP)
+        self.assertEqual(len(logger.warnings), 1)
+
+    def test_partial_workflow_failure_is_returned_without_propagating(self):
+        logger = FakeLogger()
+        workflow_runner = Mock(return_value=SimpleNamespace(
+            completed=False,
+            failed_step="email",
+            invoice_id=789,
+            invoice_number="F2026000001",
+        ))
+
+        result, _ = self.call_hook(
+            enabled=True,
+            logger=logger,
+            workflow_runner=workflow_runner,
+        )
+
+        self.assertTrue(result.executed)
+        self.assertFalse(result.completed)
+        self.assertEqual(result.failed_step, "email")
+        self.assertEqual(result.invoice_id, 789)
+        self.assertEqual(result.invoice_number, "F2026000001")
+        self.assertEqual(len(logger.warnings), 1)
+
+    def test_unexpected_workflow_error_is_sanitized_and_not_propagated(self):
+        logger = FakeLogger()
+        workflow_runner = Mock(side_effect=RuntimeError("smtp detail"))
+
+        result, _ = self.call_hook(
+            enabled=True,
+            logger=logger,
+            workflow_runner=workflow_runner,
+        )
+
+        self.assertTrue(result.executed)
+        self.assertFalse(result.completed)
+        self.assertEqual(result.failed_step, UNEXPECTED_ERROR_STEP)
+        self.assertEqual(len(logger.exceptions), 1)
+
+    def test_unexpected_workflow_error_does_not_modify_confirmed_order_or_session(self):
+        order = make_order()
+        checkout_session = make_checkout_session()
+        original_order_state = vars(order).copy()
+        original_checkout_state = vars(checkout_session).copy()
+
+        self.call_hook(
+            enabled=True,
+            order=order,
+            checkout_session=checkout_session,
+            workflow_runner=Mock(side_effect=RuntimeError("boom")),
+        )
+
+        self.assertEqual(vars(order), original_order_state)
+        self.assertEqual(vars(checkout_session), original_checkout_state)
 
     def test_finalizer_calls_hook_once_after_order_id_link_and_commit(self):
         source = finalizer_source()
@@ -148,6 +263,10 @@ class PostOrderInvoiceHookTest(unittest.TestCase):
             source.index("db.session.commit()"),
             source.index("handle_post_order_invoice_workflow("),
         )
+        self.assertIn('enabled=current_app.config.get("ENABLE_INVOICE_WORKFLOW_AFTER_CHECKOUT", False)', source)
+        self.assertIn("issuer_factory=_build_invoice_issuer_from_config", source)
+        self.assertIn('invoice_output_dir=current_app.config.get("INVOICE_FOLDER") or os.getenv("INVOICE_FOLDER")', source)
+        self.assertIn("mailer_factory=lambda: FlaskMailInvoiceAdapter(mail)", source)
 
     def test_unexpected_hook_error_is_logged_and_does_not_rollback_order(self):
         source = finalizer_source()
@@ -157,6 +276,14 @@ class PostOrderInvoiceHookTest(unittest.TestCase):
         self.assertIn("logger.exception(", hook_call)
         self.assertNotIn("db.session.rollback()", hook_call)
         self.assertNotIn("raise", hook_call)
+
+    def test_checkout_paths_do_not_call_workflow_outside_hook(self):
+        source = routes_source()
+        finalizer = finalizer_source()
+
+        self.assertEqual(finalizer.count("handle_post_order_invoice_workflow("), 1)
+        self.assertIn("run_invoice_workflow_for_order(", source)
+        self.assertNotIn("run_invoice_workflow_for_order(", finalizer)
 
 
 if __name__ == "__main__":
