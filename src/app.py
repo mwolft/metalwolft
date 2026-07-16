@@ -36,16 +36,38 @@ static_file_dir = os.path.abspath(
     os.path.join(os.path.dirname(os.path.realpath(__file__)), "..", "build")
 )
 hashed_asset_segment_pattern = re.compile(r"^[0-9a-f]{8,}$", re.IGNORECASE)
+BOOLEAN_TRUE_VALUES = {"1", "true", "t", "yes", "on"}
+BOOLEAN_FALSE_VALUES = {"0", "false", "f", "no", "off"}
+
+
+def parse_boolean_env(name, *, default=False):
+    raw_value = os.getenv(name)
+    if raw_value is None or raw_value.strip() == "":
+        return default
+
+    normalized_value = raw_value.strip().lower()
+    if normalized_value in BOOLEAN_TRUE_VALUES:
+        return True
+    if normalized_value in BOOLEAN_FALSE_VALUES:
+        return False
+
+    logging.getLogger(__name__).warning(
+        "Invalid boolean value for %s=%r. Falling back to %s.",
+        name,
+        raw_value,
+        default,
+    )
+    return default
 
 
 def env_is_truthy(name):
-    return os.getenv(name, "").strip().lower() in {"1", "true", "t", "yes", "on"}
+    return parse_boolean_env(name, default=False)
 
 
 def should_force_https():
     explicit_force = os.getenv("FORCE_HTTPS")
     if explicit_force is not None:
-        return explicit_force.strip().lower() in {"1", "true", "t", "yes", "on"}
+        return parse_boolean_env("FORCE_HTTPS", default=False)
 
     is_local_or_dev = (
         env != "production"
@@ -159,6 +181,10 @@ app.config["INVOICE_FOLDER"] = os.path.join(
     "src",
     "assets",
     "invoices",
+)
+app.config["ENABLE_INVOICE_WORKFLOW_AFTER_CHECKOUT"] = parse_boolean_env(
+    "ENABLE_INVOICE_WORKFLOW_AFTER_CHECKOUT",
+    default=False,
 )
 mail.init_app(app)
 
