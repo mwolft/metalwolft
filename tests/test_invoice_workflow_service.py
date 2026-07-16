@@ -51,12 +51,27 @@ class FakeDbSession:
         self.fiscal_submission = None
         self.commit_count = 0
         self.rollback_count = 0
+        self.flush_count = 0
+        self.merge_count = 0
 
     def commit(self):
         self.commit_count += 1
 
     def rollback(self):
         self.rollback_count += 1
+
+    def flush(self):
+        self.flush_count += 1
+
+    def get(self, model, item_id):
+        model_name = getattr(model, "__name__", str(model))
+        if model_name == "Invoices" and self.lookup_invoice and item_id == self.invoice.id:
+            return self.invoice
+        return None
+
+    def merge(self, item):
+        self.merge_count += 1
+        return item
 
     def query(self, model):
         return FakeQuery(self, model)
@@ -129,6 +144,14 @@ def run_workflow(invoice, *, session=None, output_dir=None, mailer=None):
     ), db_session
 
 
+def issue_invoice_side_effect(invoice, *, created=True):
+    def fake_issue(**kwargs):
+        kwargs["db_session"].commit()
+        return SimpleNamespace(invoice=invoice, invoice_number=invoice.invoice_number, created=created)
+
+    return fake_issue
+
+
 @unittest.skipUnless(HAS_DB_TEST_DEPENDENCIES, "Flask/SQLAlchemy test dependencies are not installed.")
 class InvoiceWorkflowServiceTest(unittest.TestCase):
     def test_complete_workflow_runs_steps_in_order_and_commits_each_phase(self):
@@ -183,7 +206,7 @@ class InvoiceWorkflowServiceTest(unittest.TestCase):
         ) as pdf, patch("api.invoice_workflow_service.create_accounting_entry") as accounting, patch(
             "api.invoice_workflow_service.create_pending_submission"
         ) as submission, patch("api.invoice_workflow_service.send_invoice_email") as email:
-            issue.return_value = SimpleNamespace(invoice=invoice, invoice_number=invoice.invoice_number, created=False)
+            issue.side_effect = issue_invoice_side_effect(invoice, created=False)
             pdf.side_effect = lambda target_invoice, **_kwargs: setattr(
                 target_invoice, "pdf_path", "/api/download-invoice/invoice_F2026000001.pdf"
             )
@@ -219,7 +242,7 @@ class InvoiceWorkflowServiceTest(unittest.TestCase):
             ) as pdf, patch("api.invoice_workflow_service.create_accounting_entry") as accounting, patch(
                 "api.invoice_workflow_service.create_pending_submission"
             ) as submission, patch("api.invoice_workflow_service.send_invoice_email") as email:
-                issue.return_value = SimpleNamespace(invoice=invoice, invoice_number=invoice.invoice_number, created=False)
+                issue.side_effect = issue_invoice_side_effect(invoice, created=False)
                 email.return_value = SimpleNamespace(already_sent=True)
 
                 result, _db_session = run_workflow(invoice, session=db_session, output_dir=temp_dir)
@@ -266,7 +289,7 @@ class InvoiceWorkflowServiceTest(unittest.TestCase):
         ), patch("api.invoice_workflow_service.create_accounting_entry") as accounting, patch(
             "api.invoice_workflow_service.create_pending_submission"
         ) as submission, patch("api.invoice_workflow_service.send_invoice_email") as email:
-            issue.return_value = SimpleNamespace(invoice=invoice, invoice_number=invoice.invoice_number, created=True)
+            issue.side_effect = issue_invoice_side_effect(invoice, created=True)
             result, db_session = run_workflow(invoice)
 
         self.assertFalse(result.completed)
@@ -287,7 +310,7 @@ class InvoiceWorkflowServiceTest(unittest.TestCase):
         ), patch("api.invoice_workflow_service.create_pending_submission") as submission, patch(
             "api.invoice_workflow_service.send_invoice_email"
         ) as email:
-            issue.return_value = SimpleNamespace(invoice=invoice, invoice_number=invoice.invoice_number, created=True)
+            issue.side_effect = issue_invoice_side_effect(invoice, created=True)
             pdf.side_effect = lambda target_invoice, **_kwargs: setattr(
                 target_invoice, "pdf_path", "/api/download-invoice/invoice_F2026000001.pdf"
             )
@@ -307,7 +330,7 @@ class InvoiceWorkflowServiceTest(unittest.TestCase):
         ) as pdf, patch("api.invoice_workflow_service.create_accounting_entry") as accounting, patch(
             "api.invoice_workflow_service.create_pending_submission", side_effect=RuntimeError("http must not happen")
         ), patch("api.invoice_workflow_service.send_invoice_email") as email:
-            issue.return_value = SimpleNamespace(invoice=invoice, invoice_number=invoice.invoice_number, created=True)
+            issue.side_effect = issue_invoice_side_effect(invoice, created=True)
             pdf.side_effect = lambda target_invoice, **_kwargs: setattr(
                 target_invoice, "pdf_path", "/api/download-invoice/invoice_F2026000001.pdf"
             )
@@ -330,7 +353,7 @@ class InvoiceWorkflowServiceTest(unittest.TestCase):
         ) as submission, patch(
             "api.invoice_workflow_service.send_invoice_email", side_effect=RuntimeError("smtp detail")
         ):
-            issue.return_value = SimpleNamespace(invoice=invoice, invoice_number=invoice.invoice_number, created=True)
+            issue.side_effect = issue_invoice_side_effect(invoice, created=True)
             pdf.side_effect = lambda target_invoice, **_kwargs: setattr(
                 target_invoice, "pdf_path", "/api/download-invoice/invoice_F2026000001.pdf"
             )
@@ -349,6 +372,7 @@ class InvoiceWorkflowServiceTest(unittest.TestCase):
         self.assertEqual(invoice.email_last_error, "No se pudo enviar el email de factura.")
         self.assertEqual(db_session.commit_count, 5)
         self.assertEqual(db_session.rollback_count, 1)
+        self.assertEqual(db_session.flush_count, 1)
 
     def test_failure_in_email_uses_invoice_fallback_and_still_commits_failure(self):
         invoice = make_invoice(email_attempts=0)
@@ -361,7 +385,7 @@ class InvoiceWorkflowServiceTest(unittest.TestCase):
         ) as submission, patch(
             "api.invoice_workflow_service.send_invoice_email", side_effect=RuntimeError("smtp detail")
         ):
-            issue.return_value = SimpleNamespace(invoice=invoice, invoice_number=invoice.invoice_number, created=True)
+            issue.side_effect = issue_invoice_side_effect(invoice, created=True)
             pdf.side_effect = lambda target_invoice, **_kwargs: setattr(
                 target_invoice, "pdf_path", "/api/download-invoice/invoice_F2026000001.pdf"
             )
@@ -380,6 +404,8 @@ class InvoiceWorkflowServiceTest(unittest.TestCase):
         self.assertEqual(invoice.email_last_error, "No se pudo enviar el email de factura.")
         self.assertEqual(db_session.commit_count, 5)
         self.assertEqual(db_session.rollback_count, 1)
+        self.assertEqual(db_session.merge_count, 1)
+        self.assertEqual(db_session.flush_count, 1)
 
     def test_configuration_is_required(self):
         with self.assertRaises(InvoiceWorkflowConfigurationError):
@@ -439,8 +465,12 @@ class InvoiceWorkflowServiceSourceTest(unittest.TestCase):
         self.assertIn('failed_invoice.email_status = EMAIL_STATUS_FAILED', persist_helper)
         self.assertIn('failed_invoice.email_attempts = int(attempts_before or 0) + 1', persist_helper)
         self.assertIn('failed_invoice.email_last_error = "No se pudo enviar el email de factura."', persist_helper)
-        self.assertIn("failed_invoice = db_session.query(Invoices).get(invoice_id) or invoice", persist_helper)
+        self.assertIn("failed_invoice = _get_invoice_by_id(db_session, invoice_id) or _merge_invoice(db_session, invoice)", persist_helper)
+        self.assertIn("db_session.flush()", persist_helper)
         self.assertIn("db_session.commit()", persist_helper)
+        self.assertIn("def _get_invoice_by_id", source)
+        self.assertIn("return db_session.get(Invoices, invoice_id)", source)
+        self.assertNotIn(".query(Invoices).get", source)
 
 
 if __name__ == "__main__":

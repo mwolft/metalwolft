@@ -269,15 +269,15 @@ def _persist_email_failure(db_session, invoice, attempts_before):
     if not invoice_id:
         return
 
-    failed_invoice = db_session.query(Invoices).get(invoice_id) or invoice
+    failed_invoice = _get_invoice_by_id(db_session, invoice_id) or _merge_invoice(db_session, invoice)
     if not failed_invoice:
         return
 
     failed_invoice.email_status = EMAIL_STATUS_FAILED
     failed_invoice.email_attempts = int(attempts_before or 0) + 1
     failed_invoice.email_last_error = "No se pudo enviar el email de factura."
-    if hasattr(db_session, "add"):
-        db_session.add(failed_invoice)
+    if hasattr(db_session, "flush"):
+        db_session.flush()
     db_session.commit()
 
 
@@ -285,7 +285,17 @@ def _refresh_invoice(db_session, invoice):
     invoice_id = getattr(invoice, "id", None)
     if not invoice_id:
         return invoice
-    return db_session.query(Invoices).get(invoice_id) or invoice
+    return _get_invoice_by_id(db_session, invoice_id) or invoice
+
+
+def _get_invoice_by_id(db_session, invoice_id):
+    return db_session.get(Invoices, invoice_id)
+
+
+def _merge_invoice(db_session, invoice):
+    if invoice is None:
+        return None
+    return db_session.merge(invoice) if hasattr(db_session, "merge") else invoice
 
 
 def _invoice_pdf_file_exists(output_dir, pdf_path):
