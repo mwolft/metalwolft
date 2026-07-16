@@ -503,6 +503,10 @@ class Invoices(db.Model):
     issued_at = db.Column(db.DateTime, nullable=True)
     issuance_source = db.Column(db.String(50), nullable=True)
     issued_by = db.Column(db.String(255), nullable=True)
+    email_status = db.Column(db.String(20), nullable=True)
+    email_sent_at = db.Column(db.DateTime, nullable=True)
+    email_last_error = db.Column(db.Text, nullable=True)
+    email_attempts = db.Column(db.Integer, nullable=False, default=0, server_default="0")
     order = db.relationship('Orders', backref='invoice', lazy=True)
 
     def __repr__(self):

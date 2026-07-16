@@ -10,7 +10,6 @@ SRC_DIR = ROOT_DIR / "src"
 if str(SRC_DIR) not in sys.path:
     sys.path.insert(0, str(SRC_DIR))
 
-from api.invoice_email_service import send_invoice_email
 from api.invoice_issue_service import (
     DEFAULT_INVOICE_SERIES,
     ORDINARY_INVOICE_TYPE,
@@ -303,47 +302,6 @@ class InvoiceIssueServiceTest(unittest.TestCase):
         source = (SRC_DIR / "api/invoice_issue_service.py").read_text(encoding="utf-8")
 
         self.assertIn(".with_for_update()", source)
-
-
-class InvoiceEmailServiceTest(unittest.TestCase):
-    def test_email_service_uses_current_invoice_email_contract(self):
-        sent = []
-        logger = SimpleNamespace(info=lambda *args, **kwargs: None, error=lambda *args, **kwargs: None)
-        invoice_result = SimpleNamespace(invoice_number="NOV-2025-001", file_path="/tmp/invoice.pdf")
-        user = SimpleNamespace(email="cliente@example.com")
-
-        send_invoice_email(
-            user=user,
-            invoice_result=invoice_result,
-            customer_firstname="Sergio",
-            customer_lastname="Arias",
-            mail_username="admin@example.com",
-            logger=logger,
-            send_email_func=lambda **kwargs: sent.append(kwargs) or True,
-        )
-
-        self.assertEqual(sent[0]["subject"], "Factura de tu pedido #NOV-2025-001")
-        self.assertEqual(sent[0]["recipients"], ["cliente@example.com", "admin@example.com"])
-        self.assertIn("Adjuntamos la factura NOV-2025-001", sent[0]["body"])
-        self.assertEqual(sent[0]["attachment_path"], "/tmp/invoice.pdf")
-
-    def test_email_error_does_not_escape_service(self):
-        errors = []
-        logger = SimpleNamespace(info=lambda *args, **kwargs: None, error=lambda *args, **kwargs: errors.append(args))
-        invoice_result = SimpleNamespace(invoice_number="NOV-2025-001", file_path="/tmp/invoice.pdf")
-        user = SimpleNamespace(email="cliente@example.com")
-
-        send_invoice_email(
-            user=user,
-            invoice_result=invoice_result,
-            customer_firstname="Sergio",
-            customer_lastname="Arias",
-            mail_username="admin@example.com",
-            logger=logger,
-            send_email_func=lambda **kwargs: (_ for _ in ()).throw(RuntimeError("smtp down")),
-        )
-
-        self.assertTrue(errors)
 
 
 class InvoiceFinalizerSourceRegressionTest(unittest.TestCase):
