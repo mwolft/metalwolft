@@ -34,6 +34,7 @@ from api.checkout_cart_cleanup import cleanup_cart_lines_from_checkout_quote
 from api.checkout_payment_security import is_modifiable_stripe_checkout_session
 from api.payment_amounts import PaymentAmountValidationError, validate_payment_amount
 from api.order_confirmation_email_service import send_order_confirmation_email
+from api.post_order_invoice_hook import handle_post_order_invoice_workflow
 from api.original_invoice_renderer import render_original_order_invoice_pdf
 from api.work_order_service import generate_work_order_pdf
 from api.invoice_issue_service import InvoiceIssueError, InvoiceNumberError, issue_invoice_for_order
@@ -1441,6 +1442,18 @@ def _finalize_order_from_checkout_quote(user, checkout_quote, customer_snapshot,
         )
 
     db.session.commit()
+
+    try:
+        handle_post_order_invoice_workflow(
+            order=new_order,
+            checkout_session=checkout_session,
+            db_session=db.session,
+        )
+    except Exception:
+        logger.exception(
+            "Unexpected error running post-order invoice hook for order_id=%s",
+            new_order.id,
+        )
 
     try:
         persisted_user = Users.query.get(user.id)

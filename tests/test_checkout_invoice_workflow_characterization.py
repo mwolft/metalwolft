@@ -152,6 +152,10 @@ class CheckoutFinalizerInvoiceWorkflowCharacterizationTest(unittest.TestCase):
 
         self.assertLess(
             source.index("db.session.commit()"),
+            source.index("handle_post_order_invoice_workflow("),
+        )
+        self.assertLess(
+            source.index("handle_post_order_invoice_workflow("),
             source.index("send_order_confirmation_email("),
         )
         self.assertIn("checkout_quote=checkout_quote", source)
@@ -165,6 +169,22 @@ class CheckoutFinalizerInvoiceWorkflowCharacterizationTest(unittest.TestCase):
         self.assertNotIn("invoice_number =", source)
         self.assertNotIn(".invoice_number =", source)
         self.assertNotIn("pdf_path", source)
+
+    def test_finalizer_calls_passive_post_order_invoice_hook_once_after_order_commit(self):
+        source = finalizer_source()
+
+        self.assertEqual(source.count("handle_post_order_invoice_workflow("), 1)
+        self.assertLess(
+            source.index("checkout_session.order_id = new_order.id"),
+            source.index("db.session.commit()"),
+        )
+        self.assertLess(
+            source.index("db.session.commit()"),
+            source.index("handle_post_order_invoice_workflow("),
+        )
+        self.assertIn("order=new_order", source)
+        self.assertIn("checkout_session=checkout_session", source)
+        self.assertIn("db_session=db.session", source)
 
     def test_finalizer_keeps_order_valid_without_invoice_number(self):
         source = finalizer_source()
