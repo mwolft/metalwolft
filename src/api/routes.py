@@ -7,6 +7,7 @@ from sqlalchemy.exc import SQLAlchemyError
 import bcrypt
 from datetime import datetime, timezone, date
 import os
+import tempfile
 from io import BytesIO
 from reportlab.pdfgen import canvas
 from reportlab.platypus import Table, TableStyle, Paragraph, Frame
@@ -50,6 +51,7 @@ from api.invoice_accounting_service import (
     AccountingEntryValidationError,
     create_accounting_entry,
 )
+from api.accounting_excel_service import AccountingExcelExportError, export_sales_accounting_entries
 from api.invoice_snapshot_builder import FINAL_CHECKOUT_STATUSES, InvoiceSnapshotValidationError
 
 
@@ -77,6 +79,8 @@ OPTIONAL_INVOICE_ISSUER_CONFIG = {
     "email": "INVOICE_ISSUER_EMAIL",
     "phone": "INVOICE_ISSUER_PHONE",
 }
+
+ALLOWED_ACCOUNTING_EXPORT_QUERY_PARAMS = {"date_from", "date_to"}
 
 load_dotenv()
 
@@ -250,6 +254,36 @@ def _serialize_admin_accounting_entry(entry, *, already_existed):
         "currency": entry.currency,
         "already_existed": already_existed,
     }
+
+
+def _parse_accounting_export_date(value, field_name):
+    if not value:
+        return None
+    try:
+        return datetime.strptime(value, "%Y-%m-%d").date()
+    except ValueError as exc:
+        raise ValueError(f"{field_name} must use YYYY-MM-DD format") from exc
+
+
+def _accounting_sales_export_filename(date_from, date_to):
+    if date_from is None and date_to is None:
+        return "ingresos_completo.xlsx"
+
+    from_label = date_from.isoformat() if date_from else "inicio"
+    to_label = date_to.isoformat() if date_to else "fin"
+    return f"ingresos_{from_label}_{to_label}.xlsx"
+
+
+def _accounting_export_folder():
+    configured_folder = current_app.config.get("ACCOUNTING_EXPORT_FOLDER") or os.getenv("ACCOUNTING_EXPORT_FOLDER")
+    if configured_folder:
+        return configured_folder
+
+    instance_path = getattr(current_app, "instance_path", None)
+    if instance_path:
+        return os.path.join(instance_path, "accounting_exports")
+
+    return os.path.join(tempfile.gettempdir(), "metalwolft-accounting-exports")
 
 
 def _invoice_admin_actor(current_user):
@@ -4600,6 +4634,79 @@ def admin_record_invoice_accounting(invoice_id):
         return jsonify({
             "message": "No se ha podido registrar el asiento contable.",
             "code": "ACCOUNTING_ENTRY_FAILED",
+        }), 500
+
+
+@api.route('/admin/accounting/sales/export', methods=['GET'])
+@jwt_required()
+def admin_export_sales_accounting_entries():
+    current_user = get_jwt_identity()
+
+    if not current_user.get("is_admin"):
+        return jsonify({"message": "Access forbidden: Admins only"}), 403
+
+    unexpected_params = set(request.args.keys()) - ALLOWED_ACCOUNTING_EXPORT_QUERY_PARAMS
+    if unexpected_params:
+        return jsonify({
+            "message": "Solo se aceptan los filtros date_from y date_to.",
+            "code": "ACCOUNTING_EXPORT_QUERY_NOT_ALLOWED",
+        }), 400
+
+    try:
+        date_from = _parse_accounting_export_date(request.args.get("date_from"), "date_from")
+        date_to = _parse_accounting_export_date(request.args.get("date_to"), "date_to")
+    except ValueError:
+        return jsonify({
+            "message": "Las fechas deben tener formato YYYY-MM-DD.",
+            "code": "ACCOUNTING_EXPORT_INVALID_DATE",
+        }), 400
+
+    if date_from and date_to and date_from > date_to:
+        return jsonify({
+            "message": "date_from no puede ser posterior a date_to.",
+            "code": "ACCOUNTING_EXPORT_INVALID_RANGE",
+        }), 400
+
+    query = AccountingEntry.query.filter_by(entry_type=ENTRY_TYPE_SALE)
+    if date_from:
+        query = query.filter(AccountingEntry.invoice_date >= date_from)
+    if date_to:
+        query = query.filter(AccountingEntry.invoice_date <= date_to)
+
+    entries = query.order_by(
+        AccountingEntry.invoice_date.asc(),
+        AccountingEntry.invoice_number.asc(),
+        AccountingEntry.id.asc(),
+    ).all()
+
+    if not entries:
+        return jsonify({
+            "message": "No hay registros contables de ingresos para exportar.",
+            "code": "ACCOUNTING_EXPORT_NO_RECORDS",
+        }), 404
+
+    filename = _accounting_sales_export_filename(date_from, date_to)
+    output_path = os.path.join(_accounting_export_folder(), filename)
+
+    try:
+        result = export_sales_accounting_entries(entries, output_path=output_path, overwrite=True)
+        return send_file(
+            result.output_path,
+            as_attachment=True,
+            download_name=result.filename,
+            mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        )
+    except AccountingExcelExportError:
+        logger.exception("Accounting sales export failed")
+        return jsonify({
+            "message": "No se ha podido generar la exportacion de ingresos.",
+            "code": "ACCOUNTING_EXPORT_FAILED",
+        }), 500
+    except Exception:
+        logger.exception("Unexpected accounting sales export error")
+        return jsonify({
+            "message": "No se ha podido generar la exportacion de ingresos.",
+            "code": "ACCOUNTING_EXPORT_FAILED",
         }), 500
 
 
