@@ -540,18 +540,34 @@ class Invoices(db.Model):
         }
 
     def serialize_admin(self):
+        sale_accounting_entry = next(
+            (
+                entry for entry in (self.accounting_entries or [])
+                if entry.entry_type == "sale"
+            ),
+            None,
+        )
+
         return {
             "id": self.id,
             "invoice_number": self.invoice_number,
             "order_id": self.order_id,
+            "invoice_type": self.invoice_type,
             "created_at": self.created_at.strftime("%Y-%m-%d %H:%M:%S"),
             "pdf_path": self.pdf_path,
+            "pdf_available": bool(self.pdf_path),
             "amount": self.amount,
             "client_name": self.client_name,
             "client_address": self.client_address,
             "client_cif": self.client_cif,
             "client_phone": self.client_phone,
             "order_details": self.order_details,
+            "invoice_snapshot_schema_version": self.invoice_snapshot_schema_version,
+            "email_status": self.email_status,
+            "email_sent_at": self.email_sent_at.isoformat() if self.email_sent_at else None,
+            "email_attempts": self.email_attempts,
+            "accounting_entry_id": sale_accounting_entry.id if sale_accounting_entry else None,
+            "accounting_entry_status": sale_accounting_entry.status if sale_accounting_entry else None,
         }
 
     def serialize(self):

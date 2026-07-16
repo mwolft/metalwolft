@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import {
   List,
   TextField,
@@ -14,32 +14,46 @@ import {
   useRecordContext,
   useRefresh,
   useListContext,
+  useNotify,
   RecordContextProvider,
 } from "react-admin";
-import { FaDownload, FaSyncAlt } from "react-icons/fa";
+import { FaBook, FaDownload, FaEnvelope, FaFilePdf } from "react-icons/fa";
+
+const getBackendUrl = () => process.env.REACT_APP_BACKEND_URL || "http://localhost:3001";
+
+const getAdminToken = () => localStorage.getItem("token");
+
+const readActionError = async (response, fallbackMessage) => {
+  const data = await response.json().catch(() => null);
+  return data?.message || data?.error || fallbackMessage;
+};
+
+const AdminStatusChip = ({ children, tone = "neutral" }) => (
+  <span className={`admin-status-chip admin-status-chip--${tone}`}>{children}</span>
+);
 
 const DownloadButton = () => {
   const record = useRecordContext();
 
   const handleDownload = async () => {
     if (!record) {
-      alert("No se encontró información para esta factura.");
+      alert("No se encontro informacion para esta factura.");
       return;
     }
 
     if (!record.pdf_path) {
-      alert("No se encontró el archivo PDF para esta factura.");
+      alert("No se encontro el archivo PDF para esta factura.");
       return;
     }
 
-    const backendUrl = process.env.REACT_APP_BACKEND_URL || "http://localhost:3001";
+    const backendUrl = getBackendUrl();
     const downloadUrl = record.pdf_path?.startsWith("http")
       ? record.pdf_path
       : `${backendUrl}${record.pdf_path}`;
-    const token = localStorage.getItem("token");
+    const token = getAdminToken();
 
     if (!token) {
-      alert("Debes iniciar sesión para descargar la factura.");
+      alert("Debes iniciar sesion para descargar la factura.");
       return;
     }
 
@@ -84,40 +98,104 @@ const DownloadButton = () => {
   );
 };
 
-const RegenerateButton = () => {
+const InvoicePdfActionButton = () => {
   const record = useRecordContext();
+  const notify = useNotify();
   const refresh = useRefresh();
+  const [isLoading, setIsLoading] = useState(false);
+  const hasPdf = Boolean(record?.pdf_available);
 
-  const handleRegenerate = async () => {
-    if (!record) {
-      alert("No se encontró información para esta factura.");
+  const handlePdfAction = async () => {
+    if (isLoading) return;
+
+    if (!record?.id) {
+      notify("No se encontro informacion para esta factura.", { type: "warning" });
       return;
     }
 
-    if (!record.order_id) {
-      alert("Solo se pueden regenerar facturas asociadas a pedidos.");
-      return;
+    if (hasPdf) {
+      const confirmed = window.confirm(
+        `Regenerar el PDF de la factura ${record.invoice_number}?`
+      );
+      if (!confirmed) return;
     }
 
-    const confirmed = window.confirm(
-      `¿Seguro que quieres regenerar manualmente el PDF de la factura ${record.invoice_number}?`
-    );
-
-    if (!confirmed) {
-      return;
-    }
-
-    const backendUrl = process.env.REACT_APP_BACKEND_URL || "http://localhost:3001";
-    const token = localStorage.getItem("token");
-
+    const token = getAdminToken();
     if (!token) {
-      alert("Debes iniciar sesión para regenerar la factura.");
+      notify("Debes iniciar sesion para gestionar facturas.", { type: "warning" });
       return;
     }
 
+    setIsLoading(true);
     try {
       const response = await fetch(
-        `${backendUrl}/api/invoices/${record.id}/regenerate-pdf`,
+        `${getBackendUrl()}/api/admin/invoices/${record.id}/generate-pdf`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ regenerate: hasPdf }),
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(await readActionError(response, "No se pudo generar el PDF."));
+      }
+
+      notify(hasPdf ? "PDF regenerado correctamente." : "PDF generado correctamente.", {
+        type: "success",
+      });
+      refresh();
+    } catch (error) {
+      notify(error.message || "No se pudo generar el PDF.", { type: "error" });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  if (!record?.invoice_number) return null;
+
+  return (
+    <button
+      type="button"
+      onClick={(event) => {
+        event.stopPropagation();
+        handlePdfAction();
+      }}
+      disabled={isLoading}
+      className={hasPdf ? "admin-action-button admin-action-button--danger" : "admin-action-button admin-action-button--primary"}
+    >
+      <FaFilePdf /> {isLoading ? "Procesando..." : hasPdf ? "Regenerar PDF" : "Generar PDF"}
+    </button>
+  );
+};
+
+const RecordAccountingButton = () => {
+  const record = useRecordContext();
+  const notify = useNotify();
+  const refresh = useRefresh();
+  const [isLoading, setIsLoading] = useState(false);
+
+  const handleRecordAccounting = async () => {
+    if (isLoading) return;
+
+    if (!record?.id) {
+      notify("No se encontro informacion para esta factura.", { type: "warning" });
+      return;
+    }
+
+    const token = getAdminToken();
+    if (!token) {
+      notify("Debes iniciar sesion para registrar contabilidad.", { type: "warning" });
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const response = await fetch(
+        `${getBackendUrl()}/api/admin/invoices/${record.id}/record-accounting`,
         {
           method: "POST",
           headers: {
@@ -126,21 +204,25 @@ const RegenerateButton = () => {
         }
       );
 
-      const data = await response.json().catch(() => null);
-
       if (!response.ok) {
-        throw new Error(data?.message || "No se pudo regenerar la factura.");
+        throw new Error(await readActionError(response, "No se pudo registrar la contabilidad."));
       }
 
-      alert(data?.message || "Factura regenerada correctamente.");
+      notify("Registro contable creado correctamente.", { type: "success" });
       refresh();
     } catch (error) {
-      alert(error.message || "No se pudo regenerar la factura.");
+      notify(error.message || "No se pudo registrar la contabilidad.", { type: "error" });
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  if (!record?.order_id) {
-    return null;
+  if (record?.accounting_entry_status) {
+    return (
+      <AdminStatusChip tone="success">
+        Contabilidad: {record.accounting_entry_status}
+      </AdminStatusChip>
+    );
   }
 
   return (
@@ -148,11 +230,96 @@ const RegenerateButton = () => {
       type="button"
       onClick={(event) => {
         event.stopPropagation();
-        handleRegenerate();
+        handleRecordAccounting();
       }}
-      className="admin-action-button admin-action-button--danger"
+      disabled={isLoading}
+      className="admin-action-button admin-action-button--secondary"
     >
-      <FaSyncAlt /> Regenerar PDF
+      <FaBook /> {isLoading ? "Registrando..." : "Registrar contabilidad"}
+    </button>
+  );
+};
+
+const SendInvoiceEmailButton = () => {
+  const record = useRecordContext();
+  const notify = useNotify();
+  const refresh = useRefresh();
+  const [isLoading, setIsLoading] = useState(false);
+
+  const handleSendEmail = async () => {
+    if (isLoading) return;
+
+    if (!record?.id) {
+      notify("No se encontro informacion para esta factura.", { type: "warning" });
+      return;
+    }
+
+    if (!record.pdf_available) {
+      notify("Genera el PDF antes de enviar la factura por email.", { type: "warning" });
+      return;
+    }
+
+    const confirmed = window.confirm(`Enviar por email la factura ${record.invoice_number}?`);
+    if (!confirmed) return;
+
+    const token = getAdminToken();
+    if (!token) {
+      notify("Debes iniciar sesion para enviar facturas.", { type: "warning" });
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const response = await fetch(
+        `${getBackendUrl()}/api/admin/invoices/${record.id}/send-email`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(await readActionError(response, "No se pudo enviar la factura por email."));
+      }
+
+      notify("Factura enviada por email correctamente.", { type: "success" });
+      refresh();
+    } catch (error) {
+      notify(error.message || "No se pudo enviar la factura por email.", { type: "error" });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  if (record?.email_status === "sent") {
+    return <AdminStatusChip tone="success">Email enviado</AdminStatusChip>;
+  }
+
+  if (!record?.pdf_available) {
+    return (
+      <button
+        type="button"
+        disabled
+        className="admin-action-button admin-action-button--secondary"
+      >
+        <FaEnvelope /> PDF requerido
+      </button>
+    );
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={(event) => {
+        event.stopPropagation();
+        handleSendEmail();
+      }}
+      disabled={isLoading}
+      className="admin-action-button admin-action-button--success"
+    >
+      <FaEnvelope /> {isLoading ? "Enviando..." : "Enviar email"}
     </button>
   );
 };
@@ -186,11 +353,14 @@ const InvoiceListTable = () => {
       <table className="admin-native-table admin-native-table--invoices">
         <thead>
           <tr>
-            <th>Número de Factura</th>
+            <th>Numero de Factura</th>
             <th>Cliente</th>
-            <th>Teléfono</th>
+            <th>Telefono</th>
             <th>Total</th>
             <th>Fecha</th>
+            <th>PDF</th>
+            <th>Contabilidad</th>
+            <th>Email</th>
             <th>Acciones</th>
           </tr>
         </thead>
@@ -204,9 +374,26 @@ const InvoiceListTable = () => {
                 <td><NumberField source="amount" options={{ style: "currency", currency: "EUR" }} /></td>
                 <td><DateField source="created_at" /></td>
                 <td>
+                  <AdminStatusChip tone={record.pdf_available ? "success" : "warning"}>
+                    {record.pdf_available ? "Generado" : "Pendiente"}
+                  </AdminStatusChip>
+                </td>
+                <td>
+                  <AdminStatusChip tone={record.accounting_entry_status ? "success" : "warning"}>
+                    {record.accounting_entry_status || "Pendiente"}
+                  </AdminStatusChip>
+                </td>
+                <td>
+                  <AdminStatusChip tone={record.email_status === "sent" ? "success" : "warning"}>
+                    {record.email_status === "sent" ? "Enviado" : "Pendiente"}
+                  </AdminStatusChip>
+                </td>
+                <td>
                   <div className="admin-action-group">
                     <DownloadButton />
-                    <RegenerateButton />
+                    <InvoicePdfActionButton />
+                    <RecordAccountingButton />
+                    <SendInvoiceEmailButton />
                   </div>
                 </td>
               </tr>
@@ -228,15 +415,15 @@ export const InvoiceCreate = (props) => (
   <Create {...props} title="Crear Factura Manual">
     <SimpleForm>
       <TextInput source="client_name" label="Nombre del Cliente" />
-      <TextInput source="client_address" label="Dirección del Cliente" />
+      <TextInput source="client_address" label="Direccion del Cliente" />
       <TextInput source="client_cif" label="CIF del Cliente" />
-      <TextInput source="client_phone" label="Teléfono" />
-      <NumberInput source="amount" label="Monto Total (€)" />
+      <TextInput source="client_phone" label="Telefono" />
+      <NumberInput source="amount" label="Monto Total (EUR)" />
       <ArrayInput source="order_details" label="Detalles del Pedido">
         <SimpleFormIterator>
           <TextInput source="product" label="Producto" />
           <NumberInput source="quantity" label="Cantidad" />
-          <NumberInput source="price" label="Precio Unitario (€)" />
+          <NumberInput source="price" label="Precio Unitario (EUR)" />
         </SimpleFormIterator>
       </ArrayInput>
     </SimpleForm>
@@ -247,21 +434,26 @@ export const InvoiceEdit = (props) => (
   <Edit {...props} title="Editar Factura">
     <SimpleForm>
       <TextInput source="client_name" label="Nombre del Cliente" />
-      <TextInput source="client_address" label="Dirección del Cliente" />
+      <TextInput source="client_address" label="Direccion del Cliente" />
       <TextInput source="client_cif" label="CIF del Cliente" />
-      <TextInput source="client_phone" label="Teléfono" />
-      <NumberInput source="amount" label="Monto Total (€)" />
+      <TextInput source="client_phone" label="Telefono" />
+      <NumberInput source="amount" label="Monto Total (EUR)" />
       <ArrayInput source="order_details" label="Detalles del Pedido">
         <SimpleFormIterator>
           <TextInput source="product" label="Producto" />
           <NumberInput source="quantity" label="Cantidad" />
-          <NumberInput source="price" label="Precio Unitario (€)" />
+          <NumberInput source="price" label="Precio Unitario (EUR)" />
         </SimpleFormIterator>
       </ArrayInput>
       <TextField source="pdf_path" label="Ruta del PDF" />
+      <TextField source="invoice_type" label="Tipo fiscal" />
+      <TextField source="email_status" label="Estado email" />
+      <TextField source="accounting_entry_status" label="Estado contable" />
       <div className="admin-action-group admin-action-group--form">
         <DownloadButton />
-        <RegenerateButton />
+        <InvoicePdfActionButton />
+        <RecordAccountingButton />
+        <SendInvoiceEmailButton />
       </div>
     </SimpleForm>
   </Edit>

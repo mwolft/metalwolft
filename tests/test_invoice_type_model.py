@@ -63,11 +63,14 @@ class InvoiceTypeModelTest(unittest.TestCase):
         self.assertNotIn("order_id = db.Column(db.Integer, db.ForeignKey('orders.id'), nullable=True, unique=True)", source)
         self.assertIn("order = db.relationship('Orders', backref='invoice', lazy=True)", source)
 
-    def test_serializers_do_not_expose_or_require_invoice_type_yet(self):
+    def test_admin_serializer_exposes_invoice_type_but_summary_does_not_require_it(self):
         source = invoices_block()
+        summary = source[source.index("def serialize_summary(self):"):source.index("def serialize_admin(self):")]
+        admin = source[source.index("def serialize_admin(self):"):source.index("def serialize(self):")]
 
-        self.assertIn('"invoice_number": self.invoice_number', source)
-        self.assertNotIn('"invoice_type": self.invoice_type', source)
+        self.assertIn('"invoice_number": self.invoice_number', summary)
+        self.assertNotIn('"invoice_type": self.invoice_type', summary)
+        self.assertIn('"invoice_type": self.invoice_type', admin)
 
 
 class InvoiceTypeMigrationTest(unittest.TestCase):
