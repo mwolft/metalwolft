@@ -1,10 +1,13 @@
 import Link from "next/link";
 import { PageContainer } from "@/components/layout/PageContainer";
 import { contactDetails, contactLinks } from "@/lib/contact";
+import { legacyAdminUrl } from "@/lib/legacy-app";
 import { legalFooterLinks } from "@/lib/legal";
 import { footerCatalogLinks, footerGuideLinks } from "@/lib/navigation";
 
 export function SiteFooter() {
+  const showDevelopmentAdminLink = process.env.NODE_ENV !== "production";
+
   return (
     <footer className="mw-footer">
       <PageContainer>
@@ -61,6 +64,11 @@ export function SiteFooter() {
                   {link.label}
                 </Link>
               ))}
+              {showDevelopmentAdminLink ? (
+                <a href={legacyAdminUrl} rel="nofollow">
+                  React Admin desarrollo
+                </a>
+              ) : null}
             </div>
           </nav>
         </div>

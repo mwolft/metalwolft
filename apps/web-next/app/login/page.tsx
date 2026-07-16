@@ -26,6 +26,10 @@ function getNextPath(searchParams?: LoginPageProps["searchParams"]) {
   return Array.isArray(rawNext) ? rawNext[0] : rawNext;
 }
 
+function buildRegisterHref(nextPath?: string) {
+  return nextPath ? `/registro?next=${encodeURIComponent(nextPath)}` : "/registro";
+}
+
 export default function LoginPage({ searchParams }: LoginPageProps) {
   const nextPath = getNextPath(searchParams);
 
@@ -47,6 +51,9 @@ export default function LoginPage({ searchParams }: LoginPageProps) {
               tu compra de rejas para ventanas a medida.
             </p>
             <LoginForm nextPath={nextPath} />
+            <p className="mw-auth-footnote">
+              ¿No tienes cuenta? <Link href={buildRegisterHref(nextPath)}>Crear cuenta</Link>.
+            </p>
           </div>
 
           <aside className="mw-auth-aside" aria-label="Información de acceso">
