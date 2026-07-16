@@ -51,6 +51,21 @@ class InvoiceEmailResult:
     already_sent: bool
 
 
+@dataclass(frozen=True)
+class InvoiceEmailAttachment:
+    filename: str
+    content_type: str
+    data: bytes
+
+
+@dataclass(frozen=True)
+class InvoiceEmailMessage:
+    subject: str
+    recipients: tuple[str, ...]
+    body: str
+    attachments: tuple[InvoiceEmailAttachment, ...]
+
+
 def send_invoice_email(invoice, *, mailer=None):
     """Send an issued invoice PDF using only the persisted InvoiceSnapshot v1.
 
@@ -204,13 +219,7 @@ def _safe_pdf_filename(stored_pdf_path):
 
 
 def _invoice_pdf_base_dir():
-    try:
-        from flask import current_app
-
-        configured_folder = current_app.config.get("INVOICE_FOLDER")
-    except RuntimeError:
-        configured_folder = None
-
+    configured_folder = os.getenv("INVOICE_FOLDER")
     return Path(configured_folder or os.path.join(os.getcwd(), "invoices")).resolve()
 
 
@@ -222,24 +231,24 @@ def _invoice_pdf_filename(invoice_number):
 
 
 def _build_message(*, subject, recipient, body, attachment_path, attachment_filename):
-    from flask_mail import Message
-
-    message = Message(subject=subject, recipients=[recipient], body=body)
-    message.attach(
+    attachment = InvoiceEmailAttachment(
         filename=attachment_filename,
         content_type=PDF_MIME_TYPE,
         data=attachment_path.read_bytes(),
     )
-    return message
+    return InvoiceEmailMessage(
+        subject=subject,
+        recipients=(recipient,),
+        body=body,
+        attachments=(attachment,),
+    )
 
 
 def _resolved_mailer(mailer):
     if mailer is not None:
         return mailer
 
-    from api.utils import mail
-
-    return mail
+    raise InvoiceEmailSendError("No hay adaptador de email configurado.")
 
 
 def _email_body(*, customer_name, invoice_number, order_reference, trade_name):

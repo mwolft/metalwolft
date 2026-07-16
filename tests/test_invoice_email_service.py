@@ -1,8 +1,6 @@
 import copy
-import importlib.util
 import shutil
 import sys
-import types
 import unittest
 import uuid
 from contextlib import contextmanager
@@ -21,31 +19,6 @@ MIGRATION_PATH = (
 
 if str(SRC_DIR) not in sys.path:
     sys.path.insert(0, str(SRC_DIR))
-
-try:
-    HAS_FLASK_MAIL = importlib.util.find_spec("flask_mail") is not None
-except (ImportError, ValueError):
-    HAS_FLASK_MAIL = False
-
-if not HAS_FLASK_MAIL:
-    fake_flask_mail = types.ModuleType("flask_mail")
-
-    class FakeMessage:
-        def __init__(self, subject=None, recipients=None, body=None, **kwargs):
-            self.subject = subject
-            self.recipients = recipients or []
-            self.body = body
-            self.attachments = []
-
-        def attach(self, filename=None, content_type=None, data=None, **kwargs):
-            self.attachments.append({
-                "filename": filename,
-                "content_type": content_type,
-                "data": data,
-            })
-
-    fake_flask_mail.Message = FakeMessage
-    sys.modules["flask_mail"] = fake_flask_mail
 
 from api.invoice_email_service import (  # noqa: E402
     EMAIL_STATUS_FAILED,
@@ -184,11 +157,11 @@ def attachment(message):
 
 
 def attachment_filename(attached):
-    return attached["filename"] if isinstance(attached, dict) else attached.filename
+    return attached.filename
 
 
 def attachment_content_type(attached):
-    return attached["content_type"] if isinstance(attached, dict) else attached.content_type
+    return attached.content_type
 
 
 class InvoiceEmailServiceTest(unittest.TestCase):
@@ -226,7 +199,7 @@ class InvoiceEmailServiceTest(unittest.TestCase):
 
         message = mailer.sent[0]
         self.assertEqual(message.subject, "Factura F2026000001 - MetalWolft")
-        self.assertEqual(message.recipients, ["cliente@example.com"])
+        self.assertEqual(message.recipients, ("cliente@example.com",))
         self.assertIn("Hola Sergio Arias", message.body)
         self.assertIn("Factura F2026000001", message.subject)
         self.assertIn("Adjuntamos la factura F2026000001", message.body)
@@ -454,6 +427,11 @@ class InvoiceEmailServiceSourceTest(unittest.TestCase):
     def test_source_does_not_expose_smtp_details_or_payment_references(self):
         source = (SRC_DIR / "api/invoice_email_service.py").read_text(encoding="utf-8")
 
+        self.assertNotIn("from flask", source)
+        self.assertNotIn("flask_mail", source)
+        self.assertNotIn("from flask_mail import Message", source)
+        self.assertNotIn("flask_mail.Message", source)
+        self.assertIn("class InvoiceEmailMessage", source)
         self.assertNotIn("provider_reference", source)
         self.assertNotIn("stripe", source.lower())
         self.assertNotIn("paypal", source.lower())
