@@ -15,6 +15,8 @@ import {
   RecordContextProvider,
 } from "react-admin";
 
+const ADMIN_TOKEN_STORAGE_KEY = "mw_admin_token";
+
 const SendCartReminderButton = () => {
   const record = useRecordContext();
   const refresh = useRefresh();
@@ -35,7 +37,7 @@ const SendCartReminderButton = () => {
       return;
     }
 
-    const token = localStorage.getItem("token");
+    const token = localStorage.getItem(ADMIN_TOKEN_STORAGE_KEY);
     if (!token) {
       alert("Debes iniciar sesion como administrador para enviar recordatorios.");
       return;

@@ -1,11 +1,13 @@
 import jsonServerProvider from 'ra-data-json-server';
 import { fetchUtils } from 'ra-core';
 
+const ADMIN_TOKEN_STORAGE_KEY = 'mw_admin_token';
+
 const httpClient = (url, options = {}) => {
   if (!options.headers) {
     options.headers = new Headers({ Accept: 'application/json' });
   }
-  const token = localStorage.getItem('token');
+  const token = localStorage.getItem(ADMIN_TOKEN_STORAGE_KEY);
   if (token) {
     options.headers.set('Authorization', `Bearer ${token}`);
   }

@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useState } from "react";
 import {
+  CUSTOMER_TOKEN_STORAGE_KEY,
+  CUSTOMER_USER_STORAGE_KEY,
   clearSession,
   getStoredUser,
   getToken,
@@ -49,7 +51,11 @@ export function useAuthSession() {
 
     const unsubscribe = subscribeToAuthSessionChanges(refreshSession);
     const handleStorage = (event: StorageEvent) => {
-      if (event.key === "token" || event.key === "user" || event.key === null) {
+      if (
+        event.key === CUSTOMER_TOKEN_STORAGE_KEY ||
+        event.key === CUSTOMER_USER_STORAGE_KEY ||
+        event.key === null
+      ) {
         refreshSession();
       }
     };

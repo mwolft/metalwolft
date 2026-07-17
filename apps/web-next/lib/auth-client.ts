@@ -1,5 +1,5 @@
-const TOKEN_STORAGE_KEY = "token";
-const USER_STORAGE_KEY = "user";
+export const CUSTOMER_TOKEN_STORAGE_KEY = "mw_customer_token";
+export const CUSTOMER_USER_STORAGE_KEY = "mw_customer_user";
 export const AUTH_SESSION_CHANGED_EVENT = "mw_auth_session_changed";
 
 export type AuthUser = {
@@ -31,8 +31,8 @@ export function saveSession(accessToken: string, user: AuthUser) {
     return;
   }
 
-  window.localStorage.setItem(TOKEN_STORAGE_KEY, accessToken);
-  window.localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(user));
+  window.localStorage.setItem(CUSTOMER_TOKEN_STORAGE_KEY, accessToken);
+  window.localStorage.setItem(CUSTOMER_USER_STORAGE_KEY, JSON.stringify(user));
   emitAuthSessionChanged();
 }
 
@@ -41,7 +41,7 @@ export function getToken() {
     return null;
   }
 
-  return window.localStorage.getItem(TOKEN_STORAGE_KEY);
+  return window.localStorage.getItem(CUSTOMER_TOKEN_STORAGE_KEY);
 }
 
 export function getStoredUser(): AuthUser | null {
@@ -49,7 +49,7 @@ export function getStoredUser(): AuthUser | null {
     return null;
   }
 
-  const rawUser = window.localStorage.getItem(USER_STORAGE_KEY);
+  const rawUser = window.localStorage.getItem(CUSTOMER_USER_STORAGE_KEY);
   if (!rawUser || rawUser === "undefined") {
     return null;
   }
@@ -68,8 +68,8 @@ export function clearSession() {
     return;
   }
 
-  window.localStorage.removeItem(TOKEN_STORAGE_KEY);
-  window.localStorage.removeItem(USER_STORAGE_KEY);
+  window.localStorage.removeItem(CUSTOMER_TOKEN_STORAGE_KEY);
+  window.localStorage.removeItem(CUSTOMER_USER_STORAGE_KEY);
   emitAuthSessionChanged();
 }
 

@@ -65,7 +65,7 @@ export function SiteFooter() {
                 </Link>
               ))}
               {showDevelopmentAdminLink ? (
-                <a href={legacyAdminUrl} rel="nofollow">
+                <a href={legacyAdminUrl} rel="nofollow noreferrer" target="_blank">
                   React Admin desarrollo
                 </a>
               ) : null}

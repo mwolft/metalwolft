@@ -44,7 +44,9 @@ const getOrderRecords = (data, ids) => {
 
 const getBackendUrl = () => process.env.REACT_APP_BACKEND_URL || "http://localhost:3001";
 
-const getAdminToken = () => localStorage.getItem("token");
+const ADMIN_TOKEN_STORAGE_KEY = "mw_admin_token";
+
+const getAdminToken = () => localStorage.getItem(ADMIN_TOKEN_STORAGE_KEY);
 
 const WorkOrderButton = () => {
   const record = useRecordContext();
@@ -55,7 +57,7 @@ const WorkOrderButton = () => {
       return;
     }
 
-    const token = localStorage.getItem("token");
+    const token = getAdminToken();
     if (!token) {
       alert("Debes iniciar sesion para descargar el parte de trabajo.");
       return;

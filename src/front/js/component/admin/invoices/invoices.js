@@ -21,7 +21,9 @@ import { FaBook, FaDownload, FaEnvelope, FaFilePdf } from "react-icons/fa";
 
 const getBackendUrl = () => process.env.REACT_APP_BACKEND_URL || "http://localhost:3001";
 
-const getAdminToken = () => localStorage.getItem("token");
+const ADMIN_TOKEN_STORAGE_KEY = "mw_admin_token";
+
+const getAdminToken = () => localStorage.getItem(ADMIN_TOKEN_STORAGE_KEY);
 
 const readActionError = async (response, fallbackMessage) => {
   const data = await response.json().catch(() => null);
