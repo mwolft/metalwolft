@@ -36,6 +36,11 @@ from api.payment_amounts import PaymentAmountValidationError, validate_payment_a
 from api.order_confirmation_email_service import send_order_confirmation_email
 from api.post_order_invoice_hook import handle_post_order_invoice_workflow
 from api.original_invoice_renderer import render_original_order_invoice_pdf
+from api.invoice_admin_helpers import (
+    build_invoice_issuer_from_config as _build_invoice_issuer_from_config,
+    invoice_admin_actor_from_jwt as _invoice_admin_actor,
+    select_checkout_session_for_invoice as _select_checkout_session_for_invoice,
+)
 from api.invoice_pdf_download_service import (
     InvoicePdfDownloadFileMissing,
     InvoicePdfDownloadInvalidPath,
@@ -69,7 +74,7 @@ from api.invoice_email_service import (
     InvoiceEmailUnsupportedSchema,
     send_invoice_email as send_invoice_email_v2,
 )
-from api.invoice_snapshot_builder import FINAL_CHECKOUT_STATUSES, InvoiceSnapshotValidationError
+from api.invoice_snapshot_builder import InvoiceSnapshotValidationError
 from api.invoice_workflow_service import (
     InvoiceWorkflowConfigurationError,
     run_invoice_workflow_for_order,
@@ -83,22 +88,6 @@ api = Blueprint('api', __name__)
 PAYMENT_AMOUNT_NOT_SUPPORTED_RESPONSE = {
     "error": "El importe final no puede procesarse con este método de pago. Revisa el carrito o el código de descuento.",
     "code": "PAYMENT_AMOUNT_NOT_SUPPORTED"
-}
-
-REQUIRED_INVOICE_ISSUER_CONFIG = {
-    "legal_name": "INVOICE_ISSUER_LEGAL_NAME",
-    "trade_name": "INVOICE_ISSUER_TRADE_NAME",
-    "tax_id": "INVOICE_ISSUER_TAX_ID",
-    "address": "INVOICE_ISSUER_ADDRESS",
-    "postal_code": "INVOICE_ISSUER_POSTAL_CODE",
-    "city": "INVOICE_ISSUER_CITY",
-    "country_code": "INVOICE_ISSUER_COUNTRY_CODE",
-}
-
-OPTIONAL_INVOICE_ISSUER_CONFIG = {
-    "province": "INVOICE_ISSUER_PROVINCE",
-    "email": "INVOICE_ISSUER_EMAIL",
-    "phone": "INVOICE_ISSUER_PHONE",
 }
 
 ALLOWED_ACCOUNTING_EXPORT_QUERY_PARAMS = {"date_from", "date_to"}
@@ -330,73 +319,6 @@ def _accounting_export_folder():
         return os.path.join(instance_path, "accounting_exports")
 
     return os.path.join(tempfile.gettempdir(), "metalwolft-accounting-exports")
-
-
-def _invoice_admin_actor(current_user):
-    return current_user.get("email") or str(current_user.get("user_id") or "")
-
-
-def _invoice_issuer_config_value(env_name):
-    value = current_app.config.get(env_name)
-    if value is None:
-        value = os.getenv(env_name)
-    return (str(value).strip() if value is not None else "")
-
-
-def _build_invoice_issuer_from_config():
-    issuer = {}
-    missing = []
-
-    for field, env_name in REQUIRED_INVOICE_ISSUER_CONFIG.items():
-        value = _invoice_issuer_config_value(env_name)
-        if not value:
-            missing.append(env_name)
-        issuer[field] = value or None
-
-    if missing:
-        raise InvoiceSnapshotValidationError(
-            "issuer",
-            "Missing invoice issuer configuration: " + ", ".join(sorted(missing)),
-        )
-
-    for field, env_name in OPTIONAL_INVOICE_ISSUER_CONFIG.items():
-        issuer[field] = _invoice_issuer_config_value(env_name) or None
-
-    return issuer
-
-
-def _is_checkout_session_usable_for_invoice(checkout_session):
-    if checkout_session.status not in FINAL_CHECKOUT_STATUSES:
-        return False
-
-    if checkout_session.payment_provider == "stripe":
-        return bool(checkout_session.payment_intent_id)
-
-    if checkout_session.payment_provider == "paypal":
-        return bool(checkout_session.provider_capture_id or checkout_session.provider_order_id)
-
-    return bool(
-        checkout_session.payment_intent_id
-        or checkout_session.provider_capture_id
-        or checkout_session.provider_order_id
-    )
-
-
-def _select_checkout_session_for_invoice(order):
-    checkout_sessions = CheckoutSessions.query.filter_by(order_id=order.id).all()
-    usable_sessions = [
-        checkout_session
-        for checkout_session in checkout_sessions
-        if _is_checkout_session_usable_for_invoice(checkout_session)
-    ]
-
-    if not usable_sessions:
-        return None, "El pedido no esta listo para facturacion."
-
-    if len(usable_sessions) > 1:
-        return None, "El pedido tiene varias sesiones de checkout facturables."
-
-    return usable_sessions[0], None
 
 
 def _format_cart_dimension(value):

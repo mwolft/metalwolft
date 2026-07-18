@@ -24,8 +24,21 @@ from api.invoice_pdf_service import (
     InvoicePdfWriteError,
     generate_invoice_pdf,
 )
+from api.invoice_admin_helpers import (
+    build_invoice_issuer_from_config,
+    invoice_admin_actor_from_basic_auth,
+    select_checkout_session_for_invoice,
+)
+from api.invoice_issue_service import (
+    ORDINARY_INVOICE_TYPE,
+    InvoiceIssueError,
+    InvoiceNumberError,
+    issue_invoice_for_order,
+)
+from api.invoice_snapshot_builder import InvoiceSnapshotValidationError
 from datetime import timedelta
 from sqlalchemy import inspect 
+from sqlalchemy.exc import IntegrityError
 
 
 # Credenciales desde ENV
@@ -378,7 +391,53 @@ class ProductAdminView(SafeModelView):
     }
 
 
+def _find_order_ordinary_invoice(view, order):
+    return (
+        view.session.query(Invoices)
+        .filter_by(order_id=order.id, invoice_type=ORDINARY_INVOICE_TYPE)
+        .order_by(Invoices.id.asc())
+        .first()
+    )
+
+
+def _format_order_invoice_detail(view, context, model, name):
+    invoice = _find_order_ordinary_invoice(view, model)
+    if invoice:
+        return Markup("<span>Factura emitida: {}</span>").format(invoice.invoice_number)
+
+    legacy_invoice_number = getattr(model, name, None)
+    legacy_notice = (
+        Markup('<div class="text-muted">Número legacy en pedido: {}</div>').format(legacy_invoice_number)
+        if legacy_invoice_number
+        else Markup('<div class="text-muted">Sin factura fiscal emitida.</div>')
+    )
+    action_url = view.get_url(".issue_invoice", order_id=model.id)
+    confirmation = "Se asignará un número fiscal y la factura emitida será inmutable. ¿Continuar?"
+
+    return Markup(
+        '<div class="order-invoice-admin-action">'
+        "{legacy_notice}"
+        '<form method="post" action="{action_url}" style="margin-top: 8px;" '
+        'onsubmit="return confirm(\'{confirmation}\');">'
+        '<button type="submit" class="btn btn-success btn-sm">Emitir factura</button>'
+        "</form>"
+        "</div>"
+    ).format(
+        legacy_notice=legacy_notice,
+        action_url=action_url,
+        confirmation=confirmation,
+    )
+
+
+def _admin_issue_invoice_success_message(result):
+    if result.created:
+        return f"Factura {result.invoice_number} emitida correctamente."
+    return f"El pedido ya tenía emitida la factura {result.invoice_number}."
+
+
 class OrderAdminView(SafeModelView):
+    can_view_details = True
+
     form_columns = [
         'user_id',
         'total_amount',
@@ -405,6 +464,7 @@ class OrderAdminView(SafeModelView):
         'estimated_delivery_at',
         'estimated_delivery_note',
     ]
+    column_details_list = column_list
 
     column_editable_list = ['total_amount', 'order_status']
     column_searchable_list = ['invoice_number', 'locator', 'discount_code']
@@ -438,6 +498,10 @@ class OrderAdminView(SafeModelView):
             m.estimated_delivery_at.strftime("%d/%m/%Y") if m.estimated_delivery_at else '—'
         ),
     }
+    column_formatters_detail = {
+        **column_formatters,
+        'invoice_number': _format_order_invoice_detail,
+    }
 
     form_extra_fields = {
         'locator': StringField('Localizador', render_kw={'readonly': True}),
@@ -469,6 +533,72 @@ class OrderAdminView(SafeModelView):
         if not form.locator.data:
             form.locator.data = Orders.generate_locator()
         return form
+
+    @expose('/issue-invoice/<int:order_id>', methods=['POST'])
+    def issue_invoice(self, order_id):
+        order = self.session.get(Orders, order_id)
+        if not order:
+            flash('Pedido no encontrado.', 'error')
+            return redirect(self.get_url(".index_view"))
+
+        redirect_url = self.get_url(".details_view", id=order.id)
+        request_data = request.get_json(silent=True) if request.is_json else None
+        if request.args or request.form or (
+            request_data is not None and (not isinstance(request_data, dict) or request_data)
+        ):
+            flash('Esta acción no acepta datos fiscales desde el navegador.', 'error')
+            return redirect(redirect_url)
+
+        checkout_session, invoiceability_error = select_checkout_session_for_invoice(order)
+        if invoiceability_error:
+            flash(invoiceability_error, 'error')
+            return redirect(redirect_url)
+
+        try:
+            result = issue_invoice_for_order(
+                db_session=self.session,
+                checkout_session=checkout_session,
+                issuer=build_invoice_issuer_from_config(),
+                order=order,
+                source="manual",
+                actor=invoice_admin_actor_from_basic_auth(request.authorization),
+            )
+            flash(_admin_issue_invoice_success_message(result), 'success' if result.created else 'info')
+        except InvoiceIssueError:
+            current_app.logger.warning(
+                "Flask Admin invoice issue requested for missing order_id=%s",
+                order_id,
+            )
+            flash('Pedido no encontrado.', 'error')
+        except InvoiceSnapshotValidationError as exc:
+            current_app.logger.exception(
+                "Invalid Flask Admin invoice issue request for order_id=%s",
+                order_id,
+            )
+            if getattr(exc, "field", "") == "issuer":
+                flash('La configuración fiscal del emisor no está completa.', 'error')
+            else:
+                flash('No se puede emitir la factura para este pedido.', 'error')
+        except InvoiceNumberError:
+            current_app.logger.exception(
+                "Flask Admin invoice number allocation failed for order_id=%s",
+                order_id,
+            )
+            flash('No se ha podido reservar un número de factura.', 'error')
+        except IntegrityError:
+            current_app.logger.exception(
+                "Flask Admin ordinary invoice conflict for order_id=%s",
+                order_id,
+            )
+            flash('Ya existe una factura ordinaria para este pedido.', 'error')
+        except Exception:
+            current_app.logger.exception(
+                "Unexpected Flask Admin invoice issue error for order_id=%s",
+                order_id,
+            )
+            flash('No se ha podido emitir la factura.', 'error')
+
+        return redirect(redirect_url)
 
 
     # Hook para evitar errores al borrar por FK: eliminar detalles primero

@@ -12,6 +12,10 @@ def routes_source():
     return (ROOT_DIR / "src/api/routes.py").read_text(encoding="utf-8")
 
 
+def helpers_source():
+    return (ROOT_DIR / "src/api/invoice_admin_helpers.py").read_text(encoding="utf-8")
+
+
 def function_source(function_name):
     source = routes_source()
     start = source.index(f"def {function_name}")
@@ -128,8 +132,11 @@ class AdminIssueInvoiceEndpointSourceTest(unittest.TestCase):
         self.assertNotIn("db.session.rollback()", source)
 
     def test_checkout_session_selector_only_reads_final_checkout_sessions(self):
-        source = function_source("_select_checkout_session_for_invoice")
-        usability_source = function_source("_is_checkout_session_usable_for_invoice")
+        helper_source = helpers_source()
+        source_start = helper_source.index("def select_checkout_session_for_invoice")
+        source_end = helper_source.index("def is_checkout_session_usable_for_invoice")
+        source = helper_source[source_start:source_end]
+        usability_source = helper_source[source_end:]
 
         self.assertIn("CheckoutSessions.query.filter_by(order_id=order.id).all()", source)
         self.assertIn("FINAL_CHECKOUT_STATUSES", usability_source)

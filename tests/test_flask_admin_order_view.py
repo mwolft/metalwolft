@@ -95,7 +95,9 @@ class FlaskAdminOrderViewInvoiceNumberTest(unittest.TestCase):
         self.assertNotIn("Orders.generate_next_invoice_number()", create_form_source)
         self.assertNotIn("form.invoice_number", create_form_source)
 
-    def test_order_admin_view_does_not_call_fiscal_issue_or_document_services(self):
+    def test_create_form_does_not_call_fiscal_issue_or_document_services(self):
+        create_form_source = method_source("OrderAdminView", "create_form")
+
         for forbidden_call in (
             "issue_invoice_for_order",
             "generate_invoice_pdf",
@@ -104,13 +106,18 @@ class FlaskAdminOrderViewInvoiceNumberTest(unittest.TestCase):
             "create_pending_submission",
             "run_invoice_workflow",
         ):
-            self.assertNotIn(forbidden_call, self.view_source)
+            self.assertNotIn(forbidden_call, create_form_source)
 
     def test_order_admin_view_does_not_create_invoices_or_consume_fiscal_sequence(self):
         self.assertNotIn("Invoices(", self.view_source)
         self.assertNotIn("InvoiceSequence", self.view_source)
         self.assertNotIn("acquire_next_invoice_number", self.view_source)
         self.assertNotIn("generate_next_invoice_number", self.view_source)
+
+    def test_order_admin_view_exposes_details_for_contextual_invoice_action(self):
+        self.assertIn("can_view_details = True", self.view_source)
+        self.assertIn("column_details_list = column_list", self.view_source)
+        self.assertIn("'invoice_number': _format_order_invoice_detail", self.view_source)
 
 
 if __name__ == "__main__":
