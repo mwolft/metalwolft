@@ -385,7 +385,6 @@ class OrderAdminView(SafeModelView):
         'discount_code',
         'discount_value',
         'order_date',
-        'invoice_number',
         'locator',
         'order_status',
         'estimated_delivery_at',
@@ -441,7 +440,6 @@ class OrderAdminView(SafeModelView):
     }
 
     form_extra_fields = {
-        'invoice_number': StringField('Número de Factura', render_kw={'readonly': True}),
         'locator': StringField('Localizador', render_kw={'readonly': True}),
         'order_status': SelectField(
             'Estado del Pedido',
@@ -468,8 +466,6 @@ class OrderAdminView(SafeModelView):
 
     def create_form(self, obj=None):
         form = super().create_form(obj)
-        if not form.invoice_number.data:
-            form.invoice_number.data = Orders.generate_next_invoice_number()
         if not form.locator.data:
             form.locator.data = Orders.generate_locator()
         return form
