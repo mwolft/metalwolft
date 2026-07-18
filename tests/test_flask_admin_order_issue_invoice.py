@@ -135,7 +135,7 @@ class FlaskAdminOrderIssueInvoiceSourceTest(unittest.TestCase):
         finder_source = function_source("_find_order_ordinary_invoice")
 
         self.assertIn("view.session.query(Invoices)", finder_source)
-        self.assertIn("invoice_type=ORDINARY_INVOICE_TYPE", finder_source)
+        self.assertIn("Invoices.invoice_type == ORDINARY_INVOICE_TYPE", finder_source)
         self.assertIn("invoice = _find_order_ordinary_invoice(view, model)", self.formatter_source)
         self.assertLess(
             self.formatter_source.index("if invoice:"),

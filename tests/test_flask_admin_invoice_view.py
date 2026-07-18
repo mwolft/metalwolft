@@ -18,6 +18,7 @@ LIST_COLUMNS = [
     "created_at",
     "issued_at",
     "pdf_path",
+    "accounting_entries",
     "email_status",
     "invoice_snapshot_schema_version",
 ]
@@ -34,6 +35,7 @@ DETAIL_COLUMNS = [
     "created_at",
     "issued_at",
     "pdf_path",
+    "accounting_entries",
     "email_status",
     "invoice_snapshot_schema_version",
 ]
@@ -102,6 +104,15 @@ def invoice_fields():
     return fields
 
 
+def invoice_relationship_fields():
+    source_text = source(MODELS_PATH)
+    fields = set()
+    for relationship in ("accounting_entries",):
+        if f"backref=db.backref('{relationship}', lazy=True)" in source_text:
+            fields.add(relationship)
+    return fields
+
+
 class FlaskAdminInvoiceViewTest(unittest.TestCase):
     def setUp(self):
         self.view = class_node(ADMIN_PATH, "InvoiceAdminView")
@@ -138,7 +149,7 @@ class FlaskAdminInvoiceViewTest(unittest.TestCase):
         configured.update(literal_assignment(self.view, "column_searchable_list"))
         configured.update(literal_assignment(self.view, "column_filters"))
 
-        self.assertLessEqual(configured, invoice_fields())
+        self.assertLessEqual(configured, invoice_fields() | invoice_relationship_fields())
 
     def test_detail_and_list_do_not_expose_sensitive_invoice_payloads(self):
         exposed = set(LIST_COLUMNS + DETAIL_COLUMNS)
@@ -160,6 +171,8 @@ class FlaskAdminInvoiceViewTest(unittest.TestCase):
         self.assertLessEqual(set(LIST_COLUMNS), labels)
         self.assertIn("pdf_path", formatters)
         self.assertIn("pdf_path", detail_formatters)
+        self.assertIn("accounting_entries", formatters)
+        self.assertIn("accounting_entries", detail_formatters)
         self.assertIn("amount", formatters)
         self.assertIn("created_at", formatters)
         self.assertIn("issued_at", formatters)
@@ -277,6 +290,63 @@ class FlaskAdminInvoiceViewTest(unittest.TestCase):
             "invoice.order_id =",
         ):
             self.assertNotIn(forbidden_assignment, route_source)
+
+    def test_accounting_detail_action_is_post_only_and_uses_no_browser_data(self):
+        detail_formatter = function_source("_format_admin_invoice_accounting_detail")
+        route_source = function_source("record_accounting")
+
+        self.assertIn("view.get_url(\".record_accounting\", invoice_id=model.id)", detail_formatter)
+        self.assertIn('method="post"', detail_formatter)
+        self.assertIn("Registrar contabilidad", detail_formatter)
+        self.assertIn("Exportar Excel de ingresos", detail_formatter)
+        self.assertNotIn('name="tax_base"', detail_formatter)
+        self.assertNotIn('name="total_amount"', detail_formatter)
+
+        self.assertIn("@expose('/record-accounting/<int:invoice_id>', methods=['POST'])", self.view_source)
+        self.assertIn("request.args", route_source)
+        self.assertIn("request.form", route_source)
+        self.assertIn("request.get_json(silent=True)", route_source)
+        self.assertIn("Esta acción no acepta datos contables desde el navegador.", route_source)
+
+    def test_accounting_record_route_delegates_to_service_and_controls_transaction(self):
+        route_source = function_source("record_accounting")
+
+        self.assertIn("self.session.get(Invoices, invoice_id)", route_source)
+        self.assertIn("_find_invoice_sale_accounting_entry(self, invoice)", route_source)
+        self.assertIn("create_accounting_entry(invoice, db_session=self.session)", route_source)
+        self.assertIn("self.session.commit()", route_source)
+        self.assertIn("self.session.rollback()", route_source)
+        self.assertIn("_admin_invoice_accounting_success_message", route_source)
+        self.assertNotIn("AccountingEntry(", route_source)
+        self.assertNotIn("invoice.invoice_number =", route_source)
+        self.assertNotIn("invoice.invoice_snapshot =", route_source)
+        self.assertNotIn("generate_invoice_pdf(", route_source)
+        self.assertNotIn("send_invoice_email", route_source)
+        self.assertNotIn("create_pending_submission", route_source)
+
+    def test_accounting_export_route_uses_only_accounting_entries(self):
+        route_source = function_source("export_accounting")
+
+        self.assertIn("@expose('/export-accounting')", self.view_source)
+        self.assertIn("self.session.query(AccountingEntry)", route_source)
+        self.assertIn("filter_by(entry_type=AccountingEntry.ENTRY_TYPE_SALE)", route_source)
+        self.assertIn("AccountingEntry.invoice_date.asc()", route_source)
+        self.assertIn("AccountingEntry.invoice_number.asc()", route_source)
+        self.assertIn("AccountingEntry.id.asc()", route_source)
+        self.assertIn("export_sales_accounting_entries(entries, output_path=output_path, overwrite=True)", route_source)
+        self.assertIn("send_file(", route_source)
+        self.assertIn("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", route_source)
+
+        for forbidden in (
+            "Invoices.query",
+            "Orders.query",
+            "Users.query",
+            "CheckoutSessions.query",
+            "invoice_snapshot",
+            "db.session.commit",
+            "db.session.rollback",
+        ):
+            self.assertNotIn(forbidden, route_source)
 
 if __name__ == "__main__":
     unittest.main()

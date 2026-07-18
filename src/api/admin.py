@@ -8,9 +8,20 @@ from .models import (
     db, Users, Products, ProductImages,
     Categories, Subcategories, Cart,
     Orders, OrderDetails, Favorites,
-    Posts, Comments, Invoices, DeliveryEstimateConfig
+    Posts, Comments, Invoices, DeliveryEstimateConfig,
+    AccountingEntry
+)
+from api.accounting_excel_service import (
+    AccountingExcelExportError,
+    export_sales_accounting_entries,
 )
 from api.email_routes import send_order_status_email
+from api.invoice_accounting_service import (
+    AccountingEntryIntegrityError,
+    AccountingEntryUnsupportedSchema,
+    AccountingEntryValidationError,
+    create_accounting_entry,
+)
 from api.invoice_pdf_download_service import (
     InvoicePdfDownloadFileMissing,
     InvoicePdfDownloadInvalidPath,
@@ -394,7 +405,10 @@ class ProductAdminView(SafeModelView):
 def _find_order_ordinary_invoice(view, order):
     return (
         view.session.query(Invoices)
-        .filter_by(order_id=order.id, invoice_type=ORDINARY_INVOICE_TYPE)
+        .filter(
+            Invoices.order_id == order.id,
+            Invoices.invoice_type == ORDINARY_INVOICE_TYPE,
+        )
         .order_by(Invoices.id.asc())
         .first()
     )
@@ -780,6 +794,81 @@ def _admin_invoice_pdf_success_message(*, regenerate, previous_pdf_path, result)
     return "PDF generado correctamente."
 
 
+def _find_invoice_sale_accounting_entry(view, invoice):
+    for entry in (getattr(invoice, "accounting_entries", None) or []):
+        if entry.entry_type == AccountingEntry.ENTRY_TYPE_SALE:
+            return entry
+
+    invoice_id = getattr(invoice, "id", None)
+    if not invoice_id:
+        return None
+
+    return (
+        view.session.query(AccountingEntry)
+        .filter_by(invoice_id=invoice_id, entry_type=AccountingEntry.ENTRY_TYPE_SALE)
+        .one_or_none()
+    )
+
+
+def _format_admin_invoice_accounting_status(view, context, model, name):
+    entry = _find_invoice_sale_accounting_entry(view, model)
+    if not entry:
+        return "Sin registrar"
+    return _format_admin_invoice_nullable(entry.status)
+
+
+def _format_admin_invoice_accounting_detail(view, context, model, name):
+    entry = _find_invoice_sale_accounting_entry(view, model)
+    export_url = view.get_url(".export_accounting")
+
+    if entry:
+        return Markup(
+            '<div class="invoice-accounting-admin-action">'
+            '<div>Registrada: {status}</div>'
+            '<div style="margin-top: 8px;">'
+            '<a class="btn btn-default btn-sm" href="{export_url}">Exportar Excel de ingresos</a>'
+            '</div>'
+            '</div>'
+        ).format(
+            status=_format_admin_invoice_nullable(entry.status),
+            export_url=export_url,
+        )
+
+    if not getattr(model, "invoice_number", None) or not getattr(model, "issued_at", None):
+        return Markup("Factura no emitida")
+
+    action_url = view.get_url(".record_accounting", invoice_id=model.id)
+    return Markup(
+        '<div class="invoice-accounting-admin-action">'
+        '<div>Sin registrar</div>'
+        '<form method="post" action="{action_url}" style="margin-top: 8px;">'
+        '<button type="submit" class="btn btn-primary btn-sm">Registrar contabilidad</button>'
+        '</form>'
+        '<div style="margin-top: 8px;">'
+        '<a class="btn btn-default btn-sm" href="{export_url}">Exportar Excel de ingresos</a>'
+        '</div>'
+        '</div>'
+    ).format(action_url=action_url, export_url=export_url)
+
+
+def _admin_invoice_accounting_success_message(*, already_existed):
+    if already_existed:
+        return "La factura ya tenía registro contable."
+    return "Registro contable creado correctamente."
+
+
+def _admin_accounting_export_folder():
+    configured_folder = current_app.config.get("ACCOUNTING_EXPORT_FOLDER") or os.getenv("ACCOUNTING_EXPORT_FOLDER")
+    if configured_folder:
+        return configured_folder
+
+    instance_path = getattr(current_app, "instance_path", None)
+    if instance_path:
+        return os.path.join(instance_path, "accounting_exports")
+
+    return os.path.join(os.getcwd(), ".tmp_accounting_exports")
+
+
 class InvoiceAdminView(SafeModelView):
     can_create = False
     can_edit = False
@@ -797,6 +886,7 @@ class InvoiceAdminView(SafeModelView):
         'created_at',
         'issued_at',
         'pdf_path',
+        'accounting_entries',
         'email_status',
         'invoice_snapshot_schema_version',
     ]
@@ -812,6 +902,7 @@ class InvoiceAdminView(SafeModelView):
         'created_at',
         'issued_at',
         'pdf_path',
+        'accounting_entries',
         'email_status',
         'invoice_snapshot_schema_version',
     ]
@@ -851,6 +942,7 @@ class InvoiceAdminView(SafeModelView):
         'created_at': 'Creada',
         'issued_at': 'Emitida',
         'pdf_path': 'PDF',
+        'accounting_entries': 'Contabilidad',
         'email_status': 'Email',
         'invoice_snapshot_schema_version': 'Versión snapshot',
     }
@@ -864,12 +956,14 @@ class InvoiceAdminView(SafeModelView):
         'issued_at': _format_admin_invoice_datetime,
         'invoice_type': _format_admin_invoice_value,
         'pdf_path': _format_admin_invoice_pdf_available,
+        'accounting_entries': _format_admin_invoice_accounting_status,
         'email_status': _format_admin_invoice_value,
         'invoice_snapshot_schema_version': _format_admin_invoice_value,
     }
     column_formatters_detail = {
         **column_formatters,
         'pdf_path': _format_admin_invoice_pdf_detail,
+        'accounting_entries': _format_admin_invoice_accounting_detail,
     }
 
     column_default_sort = ('created_at', True)
@@ -955,6 +1049,101 @@ class InvoiceAdminView(SafeModelView):
             flash('No se pudo generar el PDF.', 'error')
 
         return redirect(self.get_url(".details_view", id=invoice.id))
+
+    @expose('/record-accounting/<int:invoice_id>', methods=['POST'])
+    def record_accounting(self, invoice_id):
+        invoice = self.session.get(Invoices, invoice_id)
+        if not invoice:
+            flash('Factura no encontrada.', 'error')
+            return redirect(self.get_url(".index_view"))
+
+        if request.args or request.form or (request.get_json(silent=True) or {}):
+            flash('Esta acción no acepta datos contables desde el navegador.', 'error')
+            return redirect(self.get_url(".details_view", id=invoice.id))
+
+        try:
+            existing_entry = _find_invoice_sale_accounting_entry(self, invoice)
+            create_accounting_entry(invoice, db_session=self.session)
+            self.session.commit()
+            flash(
+                _admin_invoice_accounting_success_message(
+                    already_existed=existing_entry is not None,
+                ),
+                'success',
+            )
+        except AccountingEntryValidationError:
+            self.session.rollback()
+            current_app.logger.warning(
+                "Invalid Flask Admin accounting entry request for invoice %s",
+                invoice_id,
+            )
+            flash('La factura no contiene los datos necesarios para registrar contabilidad.', 'error')
+        except AccountingEntryUnsupportedSchema:
+            self.session.rollback()
+            current_app.logger.warning(
+                "Unsupported Flask Admin accounting snapshot schema for invoice %s",
+                invoice_id,
+            )
+            flash('La versión del snapshot fiscal no es compatible con contabilidad.', 'error')
+        except AccountingEntryIntegrityError:
+            self.session.rollback()
+            current_app.logger.warning(
+                "Flask Admin accounting snapshot hash mismatch for invoice %s",
+                invoice_id,
+            )
+            flash('No se puede registrar contabilidad porque la integridad fiscal no coincide.', 'error')
+        except IntegrityError:
+            self.session.rollback()
+            current_app.logger.exception(
+                "Flask Admin accounting entry conflict for invoice %s",
+                invoice_id,
+            )
+            flash('Ya existe un registro contable para esta factura.', 'error')
+        except Exception:
+            self.session.rollback()
+            current_app.logger.exception(
+                "Unexpected Flask Admin accounting entry error for invoice %s",
+                invoice_id,
+            )
+            flash('No se ha podido registrar contabilidad.', 'error')
+
+        return redirect(self.get_url(".details_view", id=invoice.id))
+
+    @expose('/export-accounting')
+    def export_accounting(self):
+        entries = (
+            self.session.query(AccountingEntry)
+            .filter_by(entry_type=AccountingEntry.ENTRY_TYPE_SALE)
+            .order_by(
+                AccountingEntry.invoice_date.asc(),
+                AccountingEntry.invoice_number.asc(),
+                AccountingEntry.id.asc(),
+            )
+            .all()
+        )
+
+        if not entries:
+            flash('No hay registros contables de ingresos para exportar.', 'error')
+            return redirect(self.get_url(".index_view"))
+
+        output_path = os.path.join(_admin_accounting_export_folder(), "ingresos_completo.xlsx")
+
+        try:
+            result = export_sales_accounting_entries(entries, output_path=output_path, overwrite=True)
+            return send_file(
+                result.output_path,
+                as_attachment=True,
+                download_name=result.filename,
+                mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            )
+        except AccountingExcelExportError:
+            current_app.logger.exception("Flask Admin accounting sales export failed")
+            flash('No se ha podido generar la exportación de ingresos.', 'error')
+        except Exception:
+            current_app.logger.exception("Unexpected Flask Admin accounting sales export error")
+            flash('No se ha podido generar la exportación de ingresos.', 'error')
+
+        return redirect(self.get_url(".index_view"))
 
 # ========================== SETUP ADMIN ==========================
 def setup_admin(app):
