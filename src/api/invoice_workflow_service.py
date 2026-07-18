@@ -94,6 +94,7 @@ def run_invoice_workflow_for_order(
     issuer,
     checkout_session,
     actor,
+    source="manual",
     invoice_output_dir,
     mailer,
     db_session,
@@ -124,7 +125,7 @@ def run_invoice_workflow_for_order(
             checkout_session=checkout_session,
             issuer=issuer,
             actor=actor,
-            source="manual",
+            source=source,
         )
         invoice = issued_result.invoice
         steps.append(_step(

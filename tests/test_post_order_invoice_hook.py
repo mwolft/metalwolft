@@ -12,6 +12,7 @@ if str(SRC_DIR) not in sys.path:
 
 from api.post_order_invoice_hook import (
     CHECKOUT_AUTO_ACTOR,
+    CHECKOUT_AUTO_SOURCE,
     CONFIGURATION_ERROR_STEP,
     FEATURE_DISABLED_REASON,
     UNEXPECTED_ERROR_STEP,
@@ -124,6 +125,16 @@ class PostOrderInvoiceHookTest(unittest.TestCase):
         mailer_factory.assert_not_called()
         workflow_runner.assert_not_called()
 
+    def test_only_boolean_true_enables_workflow(self):
+        workflow_runner = Mock(side_effect=AssertionError("workflow must not run"))
+
+        result, _ = self.call_hook(enabled="true", workflow_runner=workflow_runner)
+
+        workflow_runner.assert_not_called()
+        self.assertFalse(result.enabled)
+        self.assertFalse(result.executed)
+        self.assertEqual(result.skipped_reason, FEATURE_DISABLED_REASON)
+
     def test_flag_false_does_not_modify_order_or_checkout_session(self):
         order = make_order()
         checkout_session = make_checkout_session()
@@ -170,6 +181,7 @@ class PostOrderInvoiceHookTest(unittest.TestCase):
             issuer=issuer,
             checkout_session=checkout_session,
             actor=CHECKOUT_AUTO_ACTOR,
+            source=CHECKOUT_AUTO_SOURCE,
             invoice_output_dir="/tmp/invoices",
             mailer=mailer,
             db_session=session,

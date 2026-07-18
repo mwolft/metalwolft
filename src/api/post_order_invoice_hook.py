@@ -5,6 +5,7 @@ FEATURE_DISABLED_REASON = "feature_disabled"
 CONFIGURATION_ERROR_STEP = "configuration"
 UNEXPECTED_ERROR_STEP = "unexpected"
 CHECKOUT_AUTO_ACTOR = "checkout:auto"
+CHECKOUT_AUTO_SOURCE = "automatic"
 
 
 @dataclass(frozen=True)
@@ -30,7 +31,7 @@ def handle_post_order_invoice_workflow(
     logger,
     workflow_runner=None,
 ):
-    enabled = bool(enabled)
+    enabled = enabled is True
     if not enabled:
         return PostOrderInvoiceHookResult(
             enabled=False,
@@ -75,6 +76,7 @@ def handle_post_order_invoice_workflow(
             issuer=issuer,
             checkout_session=checkout_session,
             actor=CHECKOUT_AUTO_ACTOR,
+            source=CHECKOUT_AUTO_SOURCE,
             invoice_output_dir=invoice_output_dir,
             mailer=mailer,
             db_session=db_session,

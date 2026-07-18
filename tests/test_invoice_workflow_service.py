@@ -148,6 +148,7 @@ def run_workflow(invoice, *, session=None, output_dir=None, mailer=None, logger=
         issuer={"legal_name": "MetalWolft"},
         checkout_session=make_checkout_session(),
         actor="admin@example.com",
+        source="manual",
         invoice_output_dir=output_dir,
         mailer=mailer or SimpleNamespace(send=lambda _message: None),
         db_session=db_session,
@@ -212,6 +213,44 @@ class InvoiceWorkflowServiceTest(unittest.TestCase):
         self.assertEqual(db_session.commit_count, 5)
         self.assertEqual(db_session.rollback_count, 0)
         self.assertEqual(email_kwargs[0]["invoice_folder"], output_dir)
+
+    def test_workflow_passes_source_to_invoice_issue(self):
+        invoice = make_invoice()
+        captured_kwargs = {}
+
+        def fake_issue(**kwargs):
+            captured_kwargs.update(kwargs)
+            kwargs["db_session"].commit()
+            return SimpleNamespace(invoice=invoice, invoice_number=invoice.invoice_number, created=True)
+
+        with patch("api.invoice_workflow_service.issue_invoice_for_order", side_effect=fake_issue), patch(
+            "api.invoice_workflow_service.generate_invoice_pdf",
+            side_effect=lambda target_invoice, **_kwargs: setattr(
+                target_invoice, "pdf_path", "/api/download-invoice/invoice_F2026000001.pdf"
+            ),
+        ), patch(
+            "api.invoice_workflow_service.create_accounting_entry",
+            side_effect=lambda _invoice, **kwargs: setattr(
+                kwargs["db_session"], "accounting_entry", SimpleNamespace(id=1)
+            ),
+        ), patch(
+            "api.invoice_workflow_service.create_pending_submission",
+            side_effect=lambda _invoice, **kwargs: setattr(
+                kwargs["db_session"], "fiscal_submission", SimpleNamespace(id=1, status="PENDING")
+            ),
+        ), patch("api.invoice_workflow_service.send_invoice_email"):
+            run_invoice_workflow_for_order(
+                355,
+                issuer={"legal_name": "MetalWolft"},
+                checkout_session=make_checkout_session(),
+                actor="checkout:auto",
+                source="automatic",
+                invoice_output_dir=tempfile.mkdtemp(),
+                mailer=SimpleNamespace(send=lambda _message: None),
+                db_session=FakeDbSession(invoice),
+            )
+
+        self.assertEqual(captured_kwargs["source"], "automatic")
 
     def test_existing_invoice_does_not_consume_second_number(self):
         invoice = make_invoice()
