@@ -814,7 +814,16 @@ def _format_admin_invoice_accounting_status(view, context, model, name):
     entry = _find_invoice_sale_accounting_entry(view, model)
     if not entry:
         return "Sin registrar"
-    return _format_admin_invoice_nullable(entry.status)
+    return _format_admin_accounting_status_label(entry.status)
+
+
+def _format_admin_accounting_status_label(status):
+    labels = {
+        AccountingEntry.STATUS_PENDING: "Registrada",
+        AccountingEntry.STATUS_RECORDED: "Contabilizada",
+        AccountingEntry.STATUS_FAILED: "Con error",
+    }
+    return labels.get(status, _format_admin_invoice_nullable(status))
 
 
 def _format_admin_invoice_accounting_detail(view, context, model, name):
@@ -824,13 +833,13 @@ def _format_admin_invoice_accounting_detail(view, context, model, name):
     if entry:
         return Markup(
             '<div class="invoice-accounting-admin-action">'
-            '<div>Registrada: {status}</div>'
+            '<div>{status}</div>'
             '<div style="margin-top: 8px;">'
             '<a class="btn btn-default btn-sm" href="{export_url}">Exportar Excel de ingresos</a>'
             '</div>'
             '</div>'
         ).format(
-            status=_format_admin_invoice_nullable(entry.status),
+            status=_format_admin_accounting_status_label(entry.status),
             export_url=export_url,
         )
 

@@ -308,6 +308,16 @@ class FlaskAdminInvoiceViewTest(unittest.TestCase):
         self.assertIn("request.get_json(silent=True)", route_source)
         self.assertIn("Esta acción no acepta datos contables desde el navegador.", route_source)
 
+    def test_accounting_status_formatter_hides_internal_status_values(self):
+        status_helper = function_source("_format_admin_accounting_status_label")
+        detail_formatter = function_source("_format_admin_invoice_accounting_detail")
+
+        self.assertIn('AccountingEntry.STATUS_PENDING: "Registrada"', status_helper)
+        self.assertIn('AccountingEntry.STATUS_RECORDED: "Contabilizada"', status_helper)
+        self.assertIn('AccountingEntry.STATUS_FAILED: "Con error"', status_helper)
+        self.assertIn("_format_admin_accounting_status_label(entry.status)", detail_formatter)
+        self.assertNotIn("Registrada: {status}", detail_formatter)
+
     def test_accounting_record_route_delegates_to_service_and_controls_transaction(self):
         route_source = function_source("record_accounting")
 
