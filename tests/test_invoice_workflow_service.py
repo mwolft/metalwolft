@@ -41,6 +41,7 @@ if HAS_DB_TEST_DEPENDENCIES:
         InvoiceWorkflowConfigurationError,
         run_invoice_workflow_for_order,
     )
+    from api.invoice_email_service import InvoiceEmailPdfMissing  # noqa: E402
 
 
 class FakeDbSession:
@@ -75,6 +76,14 @@ class FakeDbSession:
 
     def query(self, model):
         return FakeQuery(self, model)
+
+
+class FakeLogger:
+    def __init__(self):
+        self.exceptions = []
+
+    def exception(self, *args, **kwargs):
+        self.exceptions.append((args, kwargs))
 
 
 class FakeQuery:
@@ -116,6 +125,7 @@ class FakeQuery:
 def make_invoice(**overrides):
     data = {
         "id": 123,
+        "order_id": 355,
         "invoice_number": "F2026000001",
         "pdf_path": None,
         "email_status": None,
@@ -130,7 +140,7 @@ def make_checkout_session():
     return SimpleNamespace(id=99, order_id=355)
 
 
-def run_workflow(invoice, *, session=None, output_dir=None, mailer=None):
+def run_workflow(invoice, *, session=None, output_dir=None, mailer=None, logger=None):
     db_session = session or FakeDbSession(invoice)
     output_dir = output_dir or tempfile.mkdtemp()
     return run_invoice_workflow_for_order(
@@ -141,6 +151,7 @@ def run_workflow(invoice, *, session=None, output_dir=None, mailer=None):
         invoice_output_dir=output_dir,
         mailer=mailer or SimpleNamespace(send=lambda _message: None),
         db_session=db_session,
+        logger=logger,
     ), db_session
 
 
@@ -157,6 +168,8 @@ class InvoiceWorkflowServiceTest(unittest.TestCase):
     def test_complete_workflow_runs_steps_in_order_and_commits_each_phase(self):
         invoice = make_invoice()
         calls = []
+        email_kwargs = []
+        output_dir = tempfile.mkdtemp()
 
         def fake_issue(**kwargs):
             calls.append(STEP_INVOICE)
@@ -178,8 +191,9 @@ class InvoiceWorkflowServiceTest(unittest.TestCase):
             kwargs["db_session"].fiscal_submission = SimpleNamespace(id=55, status="PENDING")
             return kwargs["db_session"].fiscal_submission
 
-        def fake_email(target_invoice, **_kwargs):
+        def fake_email(target_invoice, **kwargs):
             calls.append(STEP_EMAIL)
+            email_kwargs.append(kwargs)
             target_invoice.email_status = "sent"
             target_invoice.email_attempts = 1
             return SimpleNamespace(already_sent=False)
@@ -189,7 +203,7 @@ class InvoiceWorkflowServiceTest(unittest.TestCase):
         ), patch("api.invoice_workflow_service.create_accounting_entry", side_effect=fake_accounting), patch(
             "api.invoice_workflow_service.create_pending_submission", side_effect=fake_submission
         ), patch("api.invoice_workflow_service.send_invoice_email", side_effect=fake_email):
-            result, db_session = run_workflow(invoice)
+            result, db_session = run_workflow(invoice, output_dir=output_dir)
 
         self.assertTrue(result.completed)
         self.assertIsNone(result.failed_step)
@@ -197,6 +211,7 @@ class InvoiceWorkflowServiceTest(unittest.TestCase):
         self.assertEqual([step.status for step in result.steps], [STATUS_COMPLETED] * 5)
         self.assertEqual(db_session.commit_count, 5)
         self.assertEqual(db_session.rollback_count, 0)
+        self.assertEqual(email_kwargs[0]["invoice_folder"], output_dir)
 
     def test_existing_invoice_does_not_consume_second_number(self):
         invoice = make_invoice()
@@ -406,6 +421,75 @@ class InvoiceWorkflowServiceTest(unittest.TestCase):
         self.assertEqual(db_session.rollback_count, 1)
         self.assertEqual(db_session.merge_count, 1)
         self.assertEqual(db_session.flush_count, 1)
+
+    def test_failure_in_email_logs_sanitized_exception_context(self):
+        invoice = make_invoice(email_attempts=0)
+        logger = FakeLogger()
+
+        with patch("api.invoice_workflow_service.issue_invoice_for_order") as issue, patch(
+            "api.invoice_workflow_service.generate_invoice_pdf"
+        ) as pdf, patch("api.invoice_workflow_service.create_accounting_entry") as accounting, patch(
+            "api.invoice_workflow_service.create_pending_submission"
+        ) as submission, patch(
+            "api.invoice_workflow_service.send_invoice_email",
+            side_effect=RuntimeError("smtp password secret body"),
+        ):
+            issue.side_effect = issue_invoice_side_effect(invoice, created=True)
+            pdf.side_effect = lambda target_invoice, **_kwargs: setattr(
+                target_invoice, "pdf_path", "/api/download-invoice/invoice_F2026000001.pdf"
+            )
+            accounting.side_effect = lambda _invoice, **kwargs: setattr(
+                kwargs["db_session"], "accounting_entry", SimpleNamespace(id=1)
+            )
+            submission.side_effect = lambda _invoice, **kwargs: setattr(
+                kwargs["db_session"], "fiscal_submission", SimpleNamespace(id=1, status="PENDING")
+            )
+            result, _db_session = run_workflow(invoice, logger=logger)
+
+        self.assertFalse(result.completed)
+        self.assertEqual(result.failed_step, STEP_EMAIL)
+        self.assertEqual(len(logger.exceptions), 1)
+        args, kwargs = logger.exceptions[0]
+        logged_text = " ".join(str(value) for value in args)
+        self.assertIn("phase=invoice_email", logged_text)
+        self.assertIn("RuntimeError", logged_text)
+        self.assertIn(str(invoice.id), logged_text)
+        self.assertIn(str(invoice.order_id), logged_text)
+        self.assertIn(invoice.invoice_number, logged_text)
+        self.assertIn("Fallo inesperado durante el envio de email de factura.", logged_text)
+        self.assertNotIn("smtp password", logged_text)
+        self.assertNotIn("secret body", logged_text)
+        self.assertEqual(kwargs, {"exc_info": False})
+
+    def test_pdf_resolution_failure_marks_email_step_failed(self):
+        invoice = make_invoice(email_attempts=0)
+
+        with patch("api.invoice_workflow_service.issue_invoice_for_order") as issue, patch(
+            "api.invoice_workflow_service.generate_invoice_pdf"
+        ) as pdf, patch("api.invoice_workflow_service.create_accounting_entry") as accounting, patch(
+            "api.invoice_workflow_service.create_pending_submission"
+        ) as submission, patch(
+            "api.invoice_workflow_service.send_invoice_email",
+            side_effect=InvoiceEmailPdfMissing("absolute /secret/path.pdf"),
+        ):
+            issue.side_effect = issue_invoice_side_effect(invoice, created=True)
+            pdf.side_effect = lambda target_invoice, **_kwargs: setattr(
+                target_invoice, "pdf_path", "/api/download-invoice/invoice_F2026000001.pdf"
+            )
+            accounting.side_effect = lambda _invoice, **kwargs: setattr(
+                kwargs["db_session"], "accounting_entry", SimpleNamespace(id=1)
+            )
+            submission.side_effect = lambda _invoice, **kwargs: setattr(
+                kwargs["db_session"], "fiscal_submission", SimpleNamespace(id=1, status="PENDING")
+            )
+            result, db_session = run_workflow(invoice)
+
+        self.assertFalse(result.completed)
+        self.assertEqual(result.failed_step, STEP_EMAIL)
+        self.assertEqual(invoice.email_status, "failed")
+        self.assertEqual(invoice.email_last_error, "No se pudo enviar el email de factura.")
+        self.assertEqual(db_session.commit_count, 5)
+        self.assertEqual(db_session.rollback_count, 1)
 
     def test_configuration_is_required(self):
         with self.assertRaises(InvoiceWorkflowConfigurationError):

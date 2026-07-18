@@ -81,6 +81,7 @@ class AdminRunInvoiceWorkflowEndpointSourceTest(unittest.TestCase):
         self.assertIn("invoice_output_dir=invoice_folder", source)
         self.assertIn("mailer=FlaskMailInvoiceAdapter(mail)", source)
         self.assertIn("db_session=db.session", source)
+        self.assertIn("logger=logger", source)
         self.assertIn("run_invoice_workflow_for_order(", source)
 
     def test_endpoint_does_not_duplicate_workflow_logic(self):

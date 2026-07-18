@@ -5,6 +5,12 @@ from api.invoice_accounting_service import create_accounting_entry
 from api.invoice_email_service import (
     EMAIL_STATUS_FAILED,
     EMAIL_STATUS_SENT,
+    InvoiceEmailPdfMissing,
+    InvoiceEmailRecipientMissing,
+    InvoiceEmailSendError,
+    InvoiceEmailSnapshotMissing,
+    InvoiceEmailUnsupportedSchema,
+    InvoiceEmailIntegrityError,
     send_invoice_email,
 )
 from api.invoice_fiscal_submission_service import (
@@ -91,6 +97,7 @@ def run_invoice_workflow_for_order(
     invoice_output_dir,
     mailer,
     db_session,
+    logger=None,
 ):
     """Run the ordinary invoice document workflow with one commit per phase.
 
@@ -154,7 +161,7 @@ def run_invoice_workflow_for_order(
         return _workflow_result(order_id, invoice, steps, completed=False, failed_step=STEP_VERIFACTU)
 
     invoice = _refresh_invoice(db_session, invoice)
-    email_step = _run_email_step(invoice, mailer, db_session)
+    email_step = _run_email_step(invoice, mailer, invoice_output_dir, db_session, logger=logger)
     steps.append(email_step)
     if email_step.status == STATUS_FAILED:
         return _workflow_result(order_id, invoice, steps, completed=False, failed_step=STEP_EMAIL)
@@ -233,19 +240,20 @@ def _run_verifactu_step(invoice, db_session):
         return _step(STEP_VERIFACTU, STATUS_FAILED, detail="No se ha podido crear el envio fiscal pendiente.")
 
 
-def _run_email_step(invoice, mailer, db_session):
+def _run_email_step(invoice, mailer, invoice_folder, db_session, *, logger=None):
     attempts_before = int(getattr(invoice, "email_attempts", None) or 0)
     already_sent_before = getattr(invoice, "email_status", None) == EMAIL_STATUS_SENT
 
     try:
-        send_invoice_email(invoice, mailer=mailer)
+        send_invoice_email(invoice, mailer=mailer, invoice_folder=invoice_folder)
         db_session.commit()
         return _step(
             STEP_EMAIL,
             STATUS_SKIPPED if already_sent_before else STATUS_COMPLETED,
             already_completed=already_sent_before,
         )
-    except Exception:
+    except Exception as exc:
+        _log_email_step_failure(logger, invoice, exc)
         db_session.rollback()
         _persist_email_failure(db_session, invoice, attempts_before)
         return _step(STEP_EMAIL, STATUS_FAILED, detail="No se ha podido enviar el email de factura.")
@@ -279,6 +287,40 @@ def _persist_email_failure(db_session, invoice, attempts_before):
     if hasattr(db_session, "flush"):
         db_session.flush()
     db_session.commit()
+
+
+def _log_email_step_failure(logger, invoice, exc):
+    if logger is None:
+        return
+
+    logger.exception(
+        "Invoice workflow step failed phase=invoice_email invoice_id=%s order_id=%s "
+        "invoice_number=%s error_type=%s message=%s",
+        getattr(invoice, "id", None),
+        getattr(invoice, "order_id", None),
+        getattr(invoice, "invoice_number", None),
+        exc.__class__.__name__,
+        _safe_email_failure_message(exc),
+        exc_info=False,
+    )
+
+
+def _safe_email_failure_message(exc):
+    if isinstance(exc, InvoiceEmailPdfMissing):
+        return "No se ha podido localizar un PDF de factura valido."
+    if isinstance(exc, InvoiceEmailRecipientMissing):
+        return "La factura no contiene un destinatario de email valido."
+    if isinstance(exc, InvoiceEmailSendError):
+        return "El adaptador de email no ha confirmado el envio."
+    if isinstance(exc, InvoiceEmailIntegrityError):
+        return "La integridad fiscal de la factura no coincide."
+    if isinstance(exc, InvoiceEmailSnapshotMissing):
+        return "La factura no contiene snapshot fiscal usable."
+    if isinstance(exc, InvoiceEmailUnsupportedSchema):
+        return "La version del snapshot fiscal no es compatible."
+    if exc.__class__.__name__ == "FlaskMailInvoiceAdapterError":
+        return "El adaptador SMTP no ha confirmado el envio."
+    return "Fallo inesperado durante el envio de email de factura."
 
 
 def _refresh_invoice(db_session, invoice):

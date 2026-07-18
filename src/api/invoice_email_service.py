@@ -1,9 +1,9 @@
-import os
 import re
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 
+from api.invoice_pdf_download_service import InvoicePdfDownloadError, resolve_invoice_pdf_download
 from api.invoice_snapshot_integrity import calculate_invoice_snapshot_hash
 
 
@@ -66,7 +66,7 @@ class InvoiceEmailMessage:
     attachments: tuple[InvoiceEmailAttachment, ...]
 
 
-def send_invoice_email(invoice, *, mailer=None):
+def send_invoice_email(invoice, *, mailer=None, invoice_folder=None):
     """Send an issued invoice PDF using only the persisted InvoiceSnapshot v1.
 
     The service deliberately does not commit or rollback. It only updates email
@@ -82,7 +82,7 @@ def send_invoice_email(invoice, *, mailer=None):
     issuer = _required_mapping(snapshot, "issuer")
     operation = _required_mapping(snapshot, "operation")
     recipient = _required_email(customer)
-    attachment_path, attachment_filename = _validated_pdf_path(invoice, invoice_number)
+    attachment_path, attachment_filename = _validated_pdf_path(invoice, invoice_number, invoice_folder)
 
     sent_at = getattr(invoice, "email_sent_at", None)
     if getattr(invoice, "email_status", None) == EMAIL_STATUS_SENT:
@@ -184,43 +184,17 @@ def _required_email(customer):
     return email
 
 
-def _validated_pdf_path(invoice, invoice_number):
-    stored_pdf_path = getattr(invoice, "pdf_path", None)
-    if not stored_pdf_path:
-        raise InvoiceEmailPdfMissing("La factura no tiene PDF generado.")
+def _validated_pdf_path(invoice, invoice_number, invoice_folder):
+    try:
+        resolved_pdf = resolve_invoice_pdf_download(invoice, invoice_folder)
+    except InvoicePdfDownloadError as exc:
+        raise InvoiceEmailPdfMissing("La factura no tiene un PDF disponible para enviar.") from exc
 
-    filename = _safe_pdf_filename(stored_pdf_path)
+    filename = resolved_pdf.filename
     expected_filename = _invoice_pdf_filename(invoice_number)
     if filename != expected_filename:
         raise InvoiceEmailPdfMissing("El PDF no corresponde a la factura.")
-
-    base_dir = _invoice_pdf_base_dir()
-    output_path = (base_dir / filename).resolve()
-    if output_path.parent != base_dir:
-        raise InvoiceEmailPdfMissing("Ruta de PDF no permitida.")
-    if not output_path.exists() or not output_path.is_file():
-        raise InvoiceEmailPdfMissing("El archivo PDF no existe.")
-    return output_path, filename
-
-
-def _safe_pdf_filename(stored_pdf_path):
-    normalized = str(stored_pdf_path).replace("\\", "/")
-    if "\x00" in normalized:
-        raise InvoiceEmailPdfMissing("Nombre de PDF no valido.")
-
-    parts = [part for part in normalized.split("/") if part]
-    if not parts or any(part == ".." for part in parts):
-        raise InvoiceEmailPdfMissing("Nombre de PDF no valido.")
-
-    filename = parts[-1]
-    if filename != Path(filename).name or not filename.lower().endswith(".pdf"):
-        raise InvoiceEmailPdfMissing("Nombre de PDF no valido.")
-    return filename
-
-
-def _invoice_pdf_base_dir():
-    configured_folder = os.getenv("INVOICE_FOLDER")
-    return Path(configured_folder or os.path.join(os.getcwd(), "invoices")).resolve()
+    return Path(resolved_pdf.file_path), filename
 
 
 def _invoice_pdf_filename(invoice_number):

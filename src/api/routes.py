@@ -4085,6 +4085,7 @@ def admin_run_invoice_workflow_for_order(order_id):
             invoice_output_dir=invoice_folder,
             mailer=FlaskMailInvoiceAdapter(mail),
             db_session=db.session,
+            logger=logger,
         )
 
         status_code = 200 if result.completed else 409
@@ -4656,8 +4657,9 @@ def admin_send_invoice_email_v2(invoice_id):
     attempts_before = int(invoice.email_attempts or 0)
 
     try:
+        invoice_folder = current_app.config["INVOICE_FOLDER"]
         adapter = FlaskMailInvoiceAdapter(mail)
-        result = send_invoice_email_v2(invoice, mailer=adapter)
+        result = send_invoice_email_v2(invoice, mailer=adapter, invoice_folder=invoice_folder)
         db.session.commit()
 
         return jsonify(_serialize_admin_invoice_email(invoice, result)), 200
@@ -4696,9 +4698,15 @@ def admin_send_invoice_email_v2(invoice_id):
             "message": "El PDF de la factura no esta disponible para enviarse por email.",
             "code": "INVOICE_EMAIL_PDF_MISSING",
         }), 409
-    except (InvoiceEmailSendError, FlaskMailInvoiceAdapterError):
+    except (InvoiceEmailSendError, FlaskMailInvoiceAdapterError) as exc:
         db.session.rollback()
-        logger.exception("Invoice email v2 delivery failed for invoice_id=%s", invoice_id)
+        logger.exception(
+            "Invoice email v2 delivery failed phase=invoice_email invoice_id=%s error_type=%s message=%s",
+            invoice_id,
+            exc.__class__.__name__,
+            "El adaptador de email no ha confirmado el envio.",
+            exc_info=False,
+        )
         try:
             _persist_invoice_email_failure(invoice_id, attempts_before)
         except Exception:

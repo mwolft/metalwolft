@@ -78,6 +78,7 @@ def handle_post_order_invoice_workflow(
             invoice_output_dir=invoice_output_dir,
             mailer=mailer,
             db_session=db_session,
+            logger=logger,
         )
     except Exception:
         logger.exception(

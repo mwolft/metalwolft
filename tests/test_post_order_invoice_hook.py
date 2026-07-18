@@ -141,6 +141,7 @@ class PostOrderInvoiceHookTest(unittest.TestCase):
         session = FakeSession()
         issuer = {"legal_name": "MetalWolft"}
         mailer = SimpleNamespace(name="mailer")
+        logger = FakeLogger()
         issuer_factory = Mock(return_value=issuer)
         mailer_factory = Mock(return_value=mailer)
         workflow_runner = Mock(return_value=SimpleNamespace(
@@ -158,6 +159,7 @@ class PostOrderInvoiceHookTest(unittest.TestCase):
             issuer_factory=issuer_factory,
             invoice_output_dir="/tmp/invoices",
             mailer_factory=mailer_factory,
+            logger=logger,
             workflow_runner=workflow_runner,
         )
 
@@ -171,6 +173,7 @@ class PostOrderInvoiceHookTest(unittest.TestCase):
             invoice_output_dir="/tmp/invoices",
             mailer=mailer,
             db_session=session,
+            logger=logger,
         )
 
         self.assertTrue(result.enabled)
@@ -267,6 +270,7 @@ class PostOrderInvoiceHookTest(unittest.TestCase):
         self.assertIn("issuer_factory=_build_invoice_issuer_from_config", source)
         self.assertIn('invoice_output_dir=current_app.config.get("INVOICE_FOLDER") or os.getenv("INVOICE_FOLDER")', source)
         self.assertIn("mailer_factory=lambda: FlaskMailInvoiceAdapter(mail)", source)
+        self.assertIn("logger=logger", source)
 
     def test_unexpected_hook_error_is_logged_and_does_not_rollback_order(self):
         source = finalizer_source()

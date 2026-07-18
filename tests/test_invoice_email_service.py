@@ -1,4 +1,5 @@
 import copy
+import os
 import shutil
 import sys
 import unittest
@@ -6,7 +7,6 @@ import uuid
 from contextlib import contextmanager
 from datetime import datetime
 from pathlib import Path
-from unittest.mock import patch
 
 
 ROOT_DIR = Path(__file__).resolve().parents[1]
@@ -169,12 +169,9 @@ class InvoiceEmailServiceTest(unittest.TestCase):
         invoice = SnapshotInvoice()
         mailer = FakeMailer()
 
-        with temp_invoice_dir() as tmpdir, patch(
-            "api.invoice_email_service._invoice_pdf_base_dir",
-            return_value=tmpdir.resolve(),
-        ):
+        with temp_invoice_dir() as tmpdir:
             write_pdf(tmpdir)
-            result = send_invoice_email(invoice, mailer=mailer)
+            result = send_invoice_email(invoice, mailer=mailer, invoice_folder=tmpdir)
 
         self.assertEqual(result.recipient, "cliente@example.com")
         self.assertEqual(result.invoice_number, "F2026000001")
@@ -190,12 +187,9 @@ class InvoiceEmailServiceTest(unittest.TestCase):
         invoice = SnapshotInvoice()
         mailer = FakeMailer()
 
-        with temp_invoice_dir() as tmpdir, patch(
-            "api.invoice_email_service._invoice_pdf_base_dir",
-            return_value=tmpdir.resolve(),
-        ):
+        with temp_invoice_dir() as tmpdir:
             write_pdf(tmpdir)
-            send_invoice_email(invoice, mailer=mailer)
+            send_invoice_email(invoice, mailer=mailer, invoice_folder=tmpdir)
 
         message = mailer.sent[0]
         self.assertEqual(message.subject, "Factura F2026000001 - MetalWolft")
@@ -219,7 +213,7 @@ class InvoiceEmailServiceTest(unittest.TestCase):
         invoice = SnapshotInvoice(invoice_snapshot=None)
         invoice.invoice_snapshot = None
         with self.assertRaises(InvoiceEmailSnapshotMissing):
-            send_invoice_email(invoice, mailer=FakeMailer())
+            send_invoice_email(invoice, mailer=FakeMailer(), invoice_folder=TEST_TMP_ROOT)
 
     def test_unsupported_schema_is_blocked(self):
         invalid_snapshot = snapshot({"schema_version": 99})
@@ -229,13 +223,13 @@ class InvoiceEmailServiceTest(unittest.TestCase):
         )
 
         with self.assertRaises(InvoiceEmailUnsupportedSchema):
-            send_invoice_email(invoice, mailer=FakeMailer())
+            send_invoice_email(invoice, mailer=FakeMailer(), invoice_folder=TEST_TMP_ROOT)
 
     def test_hash_mismatch_is_blocked(self):
         invoice = SnapshotInvoice(stored_hash="bad-hash")
 
         with self.assertRaises(InvoiceEmailIntegrityError):
-            send_invoice_email(invoice, mailer=FakeMailer())
+            send_invoice_email(invoice, mailer=FakeMailer(), invoice_folder=TEST_TMP_ROOT)
 
     def test_customer_without_email_is_blocked(self):
         invalid_snapshot = snapshot({
@@ -250,21 +244,18 @@ class InvoiceEmailServiceTest(unittest.TestCase):
         )
 
         with self.assertRaises(InvoiceEmailRecipientMissing):
-            send_invoice_email(invoice, mailer=FakeMailer())
+            send_invoice_email(invoice, mailer=FakeMailer(), invoice_folder=TEST_TMP_ROOT)
 
     def test_missing_pdf_is_blocked(self):
         invoice = SnapshotInvoice(pdf_path=None)
 
         with self.assertRaises(InvoiceEmailPdfMissing):
-            send_invoice_email(invoice, mailer=FakeMailer())
+            send_invoice_email(invoice, mailer=FakeMailer(), invoice_folder=TEST_TMP_ROOT)
 
         invoice = SnapshotInvoice()
-        with temp_invoice_dir() as tmpdir, patch(
-            "api.invoice_email_service._invoice_pdf_base_dir",
-            return_value=tmpdir.resolve(),
-        ):
+        with temp_invoice_dir() as tmpdir:
             with self.assertRaises(InvoiceEmailPdfMissing):
-                send_invoice_email(invoice, mailer=FakeMailer())
+                send_invoice_email(invoice, mailer=FakeMailer(), invoice_folder=tmpdir)
 
     def test_path_traversal_and_wrong_filename_are_blocked(self):
         for unsafe_path in (
@@ -275,7 +266,7 @@ class InvoiceEmailServiceTest(unittest.TestCase):
         ):
             invoice = SnapshotInvoice(pdf_path=unsafe_path)
             with self.assertRaises(InvoiceEmailPdfMissing):
-                send_invoice_email(invoice, mailer=FakeMailer())
+                send_invoice_email(invoice, mailer=FakeMailer(), invoice_folder=TEST_TMP_ROOT)
 
     def test_does_not_query_live_relations_or_modify_fiscal_data(self):
         invoice = SnapshotInvoice()
@@ -286,12 +277,9 @@ class InvoiceEmailServiceTest(unittest.TestCase):
             "issued_at": invoice.issued_at,
         }
 
-        with temp_invoice_dir() as tmpdir, patch(
-            "api.invoice_email_service._invoice_pdf_base_dir",
-            return_value=tmpdir.resolve(),
-        ):
+        with temp_invoice_dir() as tmpdir:
             write_pdf(tmpdir)
-            send_invoice_email(invoice, mailer=FakeMailer())
+            send_invoice_email(invoice, mailer=FakeMailer(), invoice_folder=tmpdir)
 
         self.assertEqual(invoice.invoice_number, before["invoice_number"])
         self.assertEqual(invoice.invoice_snapshot, before["snapshot"])
@@ -301,13 +289,10 @@ class InvoiceEmailServiceTest(unittest.TestCase):
     def test_failed_send_marks_failed_and_sanitizes_error(self):
         invoice = SnapshotInvoice()
 
-        with temp_invoice_dir() as tmpdir, patch(
-            "api.invoice_email_service._invoice_pdf_base_dir",
-            return_value=tmpdir.resolve(),
-        ):
+        with temp_invoice_dir() as tmpdir:
             write_pdf(tmpdir)
             with self.assertRaises(InvoiceEmailSendError):
-                send_invoice_email(invoice, mailer=FakeMailer(fail=True))
+                send_invoice_email(invoice, mailer=FakeMailer(fail=True), invoice_folder=tmpdir)
 
         self.assertEqual(invoice.email_status, EMAIL_STATUS_FAILED)
         self.assertEqual(invoice.email_attempts, 1)
@@ -321,12 +306,9 @@ class InvoiceEmailServiceTest(unittest.TestCase):
         invoice.email_attempts = 1
         mailer = FakeMailer()
 
-        with temp_invoice_dir() as tmpdir, patch(
-            "api.invoice_email_service._invoice_pdf_base_dir",
-            return_value=tmpdir.resolve(),
-        ):
+        with temp_invoice_dir() as tmpdir:
             write_pdf(tmpdir)
-            result = send_invoice_email(invoice, mailer=mailer)
+            result = send_invoice_email(invoice, mailer=mailer, invoice_folder=tmpdir)
 
         self.assertTrue(result.already_sent)
         self.assertEqual(result.sent_at, invoice.email_sent_at)
@@ -336,15 +318,37 @@ class InvoiceEmailServiceTest(unittest.TestCase):
     def test_service_does_not_commit_or_rollback(self):
         invoice = SnapshotInvoice()
 
-        with temp_invoice_dir() as tmpdir, patch(
-            "api.invoice_email_service._invoice_pdf_base_dir",
-            return_value=tmpdir.resolve(),
-        ):
+        with temp_invoice_dir() as tmpdir:
             write_pdf(tmpdir)
-            send_invoice_email(invoice, mailer=FakeMailer())
+            send_invoice_email(invoice, mailer=FakeMailer(), invoice_folder=tmpdir)
 
         self.assertFalse(invoice.commit_called)
         self.assertFalse(invoice.rollback_called)
+
+    def test_uses_explicit_invoice_folder_when_environment_points_elsewhere(self):
+        invoice = SnapshotInvoice()
+        mailer = FakeMailer()
+        original_env_value = os.environ.get("INVOICE_FOLDER")
+
+        with temp_invoice_dir() as valid_dir, temp_invoice_dir() as wrong_dir:
+            write_pdf(valid_dir)
+            os.environ["INVOICE_FOLDER"] = str(wrong_dir)
+            try:
+                result = send_invoice_email(invoice, mailer=mailer, invoice_folder=valid_dir)
+            finally:
+                if original_env_value is None:
+                    os.environ.pop("INVOICE_FOLDER", None)
+                else:
+                    os.environ["INVOICE_FOLDER"] = original_env_value
+
+        self.assertEqual(result.attachment_filename, "invoice_F2026000001.pdf")
+        self.assertEqual(len(mailer.sent), 1)
+
+    def test_missing_invoice_folder_is_blocked(self):
+        invoice = SnapshotInvoice()
+
+        with self.assertRaises(InvoiceEmailPdfMissing):
+            send_invoice_email(invoice, mailer=FakeMailer(), invoice_folder=None)
 
 
 class InvoiceEmailModelAndMigrationTest(unittest.TestCase):
@@ -398,7 +402,7 @@ class InvoiceEmailServiceSourceTest(unittest.TestCase):
             'getattr(invoice, "issued_at"',
             'getattr(invoice, "invoice_snapshot"',
             'getattr(invoice, "invoice_snapshot_hash"',
-            'getattr(invoice, "pdf_path"',
+            "resolve_invoice_pdf_download",
             "invoice.email_status",
             "invoice.email_sent_at",
             "invoice.email_last_error",
@@ -431,6 +435,8 @@ class InvoiceEmailServiceSourceTest(unittest.TestCase):
         self.assertNotIn("flask_mail", source)
         self.assertNotIn("from flask_mail import Message", source)
         self.assertNotIn("flask_mail.Message", source)
+        self.assertNotIn("os.getenv", source)
+        self.assertIn("invoice_folder", source)
         self.assertIn("class InvoiceEmailMessage", source)
         self.assertNotIn("provider_reference", source)
         self.assertNotIn("stripe", source.lower())

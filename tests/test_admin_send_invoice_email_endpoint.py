@@ -85,7 +85,8 @@ class AdminSendInvoiceEmailEndpointSourceTest(unittest.TestCase):
         source = endpoint_source()
 
         self.assertIn("adapter = FlaskMailInvoiceAdapter(mail)", source)
-        self.assertIn("send_invoice_email_v2(invoice, mailer=adapter)", source)
+        self.assertIn('invoice_folder = current_app.config["INVOICE_FOLDER"]', source)
+        self.assertIn("send_invoice_email_v2(invoice, mailer=adapter, invoice_folder=invoice_folder)", source)
         self.assertNotIn("Message(", source)
         self.assertNotIn("mail.send(", source)
 
@@ -100,8 +101,10 @@ class AdminSendInvoiceEmailEndpointSourceTest(unittest.TestCase):
         source = endpoint_source()
         helper = function_source("_persist_invoice_email_failure")
 
-        self.assertIn("except (InvoiceEmailSendError, FlaskMailInvoiceAdapterError):", source)
+        self.assertIn("except (InvoiceEmailSendError, FlaskMailInvoiceAdapterError) as exc:", source)
         self.assertIn("db.session.rollback()", source)
+        self.assertIn("exc.__class__.__name__", source)
+        self.assertIn("exc_info=False", source)
         self.assertIn("_persist_invoice_email_failure(invoice_id, attempts_before)", source)
         self.assertIn("failed_invoice.email_status = EMAIL_STATUS_FAILED", helper)
         self.assertIn("failed_invoice.email_attempts = int(attempts_before or 0) + 1", helper)
@@ -177,7 +180,7 @@ class AdminSendInvoiceEmailEndpointSourceTest(unittest.TestCase):
 
         self.assertIn('getattr(invoice, "email_status", None) == EMAIL_STATUS_SENT', service_source)
         self.assertIn("already_sent=True", service_source)
-        self.assertIn("send_invoice_email_v2(invoice, mailer=adapter)", endpoint)
+        self.assertIn("send_invoice_email_v2(invoice, mailer=adapter, invoice_folder=invoice_folder)", endpoint)
         self.assertNotIn("invoice.email_status = EMAIL_STATUS_SENT", endpoint)
 
     def test_endpoint_does_not_modify_fiscal_invoice_or_order_fields(self):
@@ -239,7 +242,7 @@ class AdminSendInvoiceEmailEndpointSourceTest(unittest.TestCase):
 
         self.assertNotIn("if invoice.email_status", source)
         self.assertNotIn("adapter.send(", source)
-        self.assertIn("send_invoice_email_v2(invoice, mailer=adapter)", source)
+        self.assertIn("send_invoice_email_v2(invoice, mailer=adapter, invoice_folder=invoice_folder)", source)
 
 
 if __name__ == "__main__":
