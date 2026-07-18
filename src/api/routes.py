@@ -36,6 +36,11 @@ from api.payment_amounts import PaymentAmountValidationError, validate_payment_a
 from api.order_confirmation_email_service import send_order_confirmation_email
 from api.post_order_invoice_hook import handle_post_order_invoice_workflow
 from api.original_invoice_renderer import render_original_order_invoice_pdf
+from api.invoice_pdf_download_service import (
+    InvoicePdfDownloadFileMissing,
+    InvoicePdfDownloadInvalidPath,
+    resolve_invoice_pdf_download,
+)
 from api.work_order_service import generate_work_order_pdf
 from api.invoice_issue_service import InvoiceIssueError, InvoiceNumberError, issue_invoice_for_order
 from api.invoice_pdf_service import (
@@ -4965,14 +4970,16 @@ def download_invoice(filename):
             if not invoice.order or invoice.order.user_id != current_user['user_id']:
                 return jsonify({"message": "Invoice not found"}), 404
 
-        file_path = os.path.join(current_app.config['INVOICE_FOLDER'], safe_filename)
-        current_app.logger.info(f"Buscando archivo en: {file_path}")
-
-        if not os.path.exists(file_path):
+        try:
+            resolved_pdf = resolve_invoice_pdf_download(
+                invoice,
+                current_app.config['INVOICE_FOLDER'],
+            )
+        except InvoicePdfDownloadFileMissing:
             current_app.logger.warning(
                 "No se encontró el PDF físico para la factura %s en %s.",
                 invoice.invoice_number,
-                file_path
+                safe_filename
             )
             if current_user.get("is_admin"):
                 current_app.logger.info(
@@ -4989,11 +4996,18 @@ def download_invoice(filename):
                     mimetype='application/pdf'
                 )
             return jsonify({"message": "No se encontró el archivo PDF para esta factura."}), 404
+        except InvoicePdfDownloadInvalidPath:
+            return jsonify({"message": "Invoice not found"}), 404
 
-        return send_file(file_path, as_attachment=True, download_name=safe_filename, mimetype='application/pdf')
-    except Exception as e:
-        current_app.logger.error(f"Error al descargar la factura: {str(e)}")
-        return jsonify({"message": "An error occurred while downloading the invoice.", "error": str(e)}), 500
+        return send_file(
+            resolved_pdf.file_path,
+            as_attachment=True,
+            download_name=safe_filename,
+            mimetype='application/pdf'
+        )
+    except Exception:
+        current_app.logger.exception("Error inesperado al descargar la factura.")
+        return jsonify({"message": "An error occurred while downloading the invoice."}), 500
 
 # Recupera todas las facturas con paginación
 @api.route('/invoices/<int:invoice_id>/regenerate-pdf', methods=['POST'])

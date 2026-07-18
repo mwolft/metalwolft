@@ -1,5 +1,5 @@
 import os
-from flask import request, Response, current_app
+from flask import request, Response, current_app, send_file
 from flask_admin import Admin, AdminIndexView, expose
 from markupsafe import Markup
 from flask_admin.contrib.sqla import ModelView
@@ -11,6 +11,12 @@ from .models import (
     Posts, Comments, Invoices, DeliveryEstimateConfig
 )
 from api.email_routes import send_order_status_email
+from api.invoice_pdf_download_service import (
+    InvoicePdfDownloadFileMissing,
+    InvoicePdfDownloadInvalidPath,
+    InvoicePdfDownloadUnavailable,
+    resolve_invoice_pdf_download,
+)
 from datetime import timedelta
 from sqlalchemy import inspect 
 
@@ -573,29 +579,159 @@ class FavoritesAdminView(SafeModelView):
     can_edit = False
 
 
-class InvoiceAdminView(SafeModelView):
-    form_columns = ['invoice_number','client_name','client_address','client_cif','amount','order_id','created_at']
-    column_list    = ['id','invoice_number','client_name','amount','created_at','order_id']
-    column_editable_list = ['client_name','client_address','client_cif','amount']
-    form_extra_fields = {
-        'invoice_number': StringField('Número de Factura', render_kw={'readonly': True})
-    }
+def _format_admin_invoice_nullable(value):
+    return value if value not in (None, "") else "—"
 
+
+def _format_admin_invoice_value(view, context, model, name):
+    return _format_admin_invoice_nullable(getattr(model, name, None))
+
+
+def _format_admin_invoice_amount(view, context, model, name):
+    value = getattr(model, name, None)
+    if value is None:
+        return "—"
+    try:
+        return f"{value:.2f}€"
+    except (TypeError, ValueError):
+        return str(value)
+
+
+def _format_admin_invoice_datetime(view, context, model, name):
+    value = getattr(model, name, None)
+    if not value:
+        return "—"
+    if hasattr(value, "strftime"):
+        return (value + timedelta(hours=2)).strftime("%d/%m/%Y %H:%M")
+    return str(value)
+
+
+def _format_admin_invoice_pdf_available(view, context, model, name):
+    if not getattr(model, name, None):
+        return "—"
+    download_url = view.get_url(".download_pdf", invoice_id=model.id)
+    return Markup('<a href="{}">Descargar PDF</a>').format(download_url)
+
+
+class InvoiceAdminView(SafeModelView):
+    can_create = False
+    can_edit = False
+    can_delete = False
+    can_view_details = True
+
+    column_list = [
+        'id',
+        'invoice_number',
+        'invoice_type',
+        'order_id',
+        'client_name',
+        'client_cif',
+        'amount',
+        'created_at',
+        'issued_at',
+        'pdf_path',
+        'email_status',
+        'invoice_snapshot_schema_version',
+    ]
+    column_details_list = [
+        'id',
+        'invoice_number',
+        'invoice_type',
+        'order_id',
+        'client_name',
+        'client_address',
+        'client_cif',
+        'amount',
+        'created_at',
+        'issued_at',
+        'pdf_path',
+        'email_status',
+        'invoice_snapshot_schema_version',
+    ]
+    column_searchable_list = [
+        'invoice_number',
+        'client_name',
+        'client_cif',
+    ]
+    column_filters = [
+        'invoice_type',
+        'email_status',
+        'created_at',
+        'issued_at',
+        'invoice_snapshot_schema_version',
+    ]
+    column_sortable_list = [
+        'id',
+        'invoice_number',
+        'invoice_type',
+        'order_id',
+        'client_name',
+        'client_cif',
+        'amount',
+        'created_at',
+        'issued_at',
+        'email_status',
+        'invoice_snapshot_schema_version',
+    ]
+    column_labels = {
+        'id': 'ID',
+        'invoice_number': 'N.º factura',
+        'invoice_type': 'Tipo',
+        'order_id': 'Pedido',
+        'client_name': 'Cliente',
+        'client_cif': 'NIF/CIF',
+        'amount': 'Total',
+        'created_at': 'Creada',
+        'issued_at': 'Emitida',
+        'pdf_path': 'PDF',
+        'email_status': 'Email',
+        'invoice_snapshot_schema_version': 'Versión snapshot',
+    }
     column_formatters = {
-        'amount': lambda v, c, m, p: f"{m.amount:.2f}€" if m.amount is not None else "0.00€",
-        'created_at': lambda v, c, m, p: (
-            (m.created_at + timedelta(hours=2)).strftime("%d/%m %H:%M") if m.created_at else ''
-        )
+        'invoice_number': _format_admin_invoice_value,
+        'order_id': _format_admin_invoice_value,
+        'client_name': _format_admin_invoice_value,
+        'client_cif': _format_admin_invoice_value,
+        'amount': _format_admin_invoice_amount,
+        'created_at': _format_admin_invoice_datetime,
+        'issued_at': _format_admin_invoice_datetime,
+        'invoice_type': _format_admin_invoice_value,
+        'pdf_path': _format_admin_invoice_pdf_available,
+        'email_status': _format_admin_invoice_value,
+        'invoice_snapshot_schema_version': _format_admin_invoice_value,
     }
 
     column_default_sort = ('created_at', True)
 
-    def create_form(self, obj=None):
-        form = super().create_form(obj)
-        if not form.invoice_number.data:
-            form.invoice_number.data = Invoices.generate_next_invoice_number()
-        return form
+    @expose('/download-pdf/<int:invoice_id>')
+    def download_pdf(self, invoice_id):
+        invoice = self.session.get(Invoices, invoice_id)
+        if not invoice:
+            return Response('Factura no encontrada.', status=404)
 
+        try:
+            resolved_pdf = resolve_invoice_pdf_download(
+                invoice,
+                current_app.config.get("INVOICE_FOLDER"),
+            )
+            return send_file(
+                resolved_pdf.file_path,
+                as_attachment=True,
+                download_name=resolved_pdf.download_name,
+                mimetype='application/pdf',
+            )
+        except InvoicePdfDownloadUnavailable:
+            return Response('PDF no disponible.', status=404)
+        except InvoicePdfDownloadFileMissing:
+            return Response('Archivo PDF no encontrado.', status=404)
+        except InvoicePdfDownloadInvalidPath:
+            return Response('Ruta de PDF no válida.', status=400)
+        except Exception:
+            current_app.logger.exception(
+                "Unexpected Flask Admin invoice PDF download error for invoice %s",
+                invoice_id,
+            )
+            return Response('No se ha podido descargar la factura.', status=500)
 
 # ========================== SETUP ADMIN ==========================
 def setup_admin(app):
