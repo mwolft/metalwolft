@@ -1,5 +1,5 @@
 import os
-from flask import request, Response, current_app, send_file
+from flask import request, Response, current_app, send_file, flash, redirect
 from flask_admin import Admin, AdminIndexView, expose
 from markupsafe import Markup
 from flask_admin.contrib.sqla import ModelView
@@ -16,6 +16,13 @@ from api.invoice_pdf_download_service import (
     InvoicePdfDownloadInvalidPath,
     InvoicePdfDownloadUnavailable,
     resolve_invoice_pdf_download,
+)
+from api.invoice_pdf_service import (
+    InvoicePdfIntegrityError,
+    InvoicePdfSnapshotMissing,
+    InvoicePdfUnsupportedSchema,
+    InvoicePdfWriteError,
+    generate_invoice_pdf,
 )
 from datetime import timedelta
 from sqlalchemy import inspect 
@@ -613,6 +620,40 @@ def _format_admin_invoice_pdf_available(view, context, model, name):
     return Markup('<a href="{}">Descargar PDF</a>').format(download_url)
 
 
+def _format_admin_invoice_pdf_detail(view, context, model, name):
+    has_pdf = bool(getattr(model, name, None))
+    status = _format_admin_invoice_pdf_available(view, context, model, name) if has_pdf else Markup("PDF pendiente")
+    action_url = view.get_url(".generate_pdf", invoice_id=model.id)
+    button_label = "Regenerar PDF" if has_pdf else "Generar PDF"
+    confirm_attr = (
+        Markup(' onsubmit="return confirm(\'¿Seguro que quieres regenerar el PDF existente?\');"')
+        if has_pdf
+        else Markup("")
+    )
+
+    return Markup(
+        '<div class="invoice-pdf-admin-action">'
+        '<div>{status}</div>'
+        '<form method="post" action="{action_url}" style="margin-top: 8px;"{confirm_attr}>'
+        '<button type="submit" class="btn btn-warning btn-sm">{button_label}</button>'
+        '</form>'
+        '</div>'
+    ).format(
+        status=status,
+        action_url=action_url,
+        confirm_attr=confirm_attr,
+        button_label=button_label,
+    )
+
+
+def _admin_invoice_pdf_success_message(*, regenerate, previous_pdf_path, result):
+    if not regenerate and previous_pdf_path == result.pdf_path:
+        return "El PDF ya estaba generado."
+    if regenerate:
+        return "PDF regenerado correctamente."
+    return "PDF generado correctamente."
+
+
 class InvoiceAdminView(SafeModelView):
     can_create = False
     can_edit = False
@@ -700,6 +741,10 @@ class InvoiceAdminView(SafeModelView):
         'email_status': _format_admin_invoice_value,
         'invoice_snapshot_schema_version': _format_admin_invoice_value,
     }
+    column_formatters_detail = {
+        **column_formatters,
+        'pdf_path': _format_admin_invoice_pdf_detail,
+    }
 
     column_default_sort = ('created_at', True)
 
@@ -732,6 +777,58 @@ class InvoiceAdminView(SafeModelView):
                 invoice_id,
             )
             return Response('No se ha podido descargar la factura.', status=500)
+
+    @expose('/generate-pdf/<int:invoice_id>', methods=['POST'])
+    def generate_pdf(self, invoice_id):
+        invoice = self.session.get(Invoices, invoice_id)
+        if not invoice:
+            flash('Factura no encontrada.', 'error')
+            return redirect(self.get_url(".index_view"))
+
+        regenerate = bool(invoice.pdf_path)
+        previous_pdf_path = invoice.pdf_path
+
+        try:
+            result = generate_invoice_pdf(
+                invoice,
+                regenerate=regenerate,
+            )
+            self.session.commit()
+            flash(
+                _admin_invoice_pdf_success_message(
+                    regenerate=regenerate,
+                    previous_pdf_path=previous_pdf_path,
+                    result=result,
+                ),
+                'success',
+            )
+        except InvoicePdfSnapshotMissing:
+            self.session.rollback()
+            if not getattr(invoice, "invoice_number", None):
+                flash('La factura todavía no está emitida.', 'error')
+            else:
+                flash('La factura no dispone de un snapshot fiscal válido.', 'error')
+        except InvoicePdfIntegrityError:
+            self.session.rollback()
+            flash('No se puede generar el PDF porque la integridad fiscal no es válida.', 'error')
+        except InvoicePdfUnsupportedSchema:
+            self.session.rollback()
+            flash('La versión del snapshot fiscal no está soportada.', 'error')
+        except InvoicePdfWriteError as exc:
+            self.session.rollback()
+            if "sobrescribir" in str(exc).lower():
+                flash('No se puede sobrescribir un PDF que no está asociado a esta factura.', 'error')
+            else:
+                flash('No se pudo generar el PDF.', 'error')
+        except Exception:
+            self.session.rollback()
+            current_app.logger.exception(
+                "Unexpected Flask Admin invoice PDF generation error for invoice %s",
+                invoice_id,
+            )
+            flash('No se pudo generar el PDF.', 'error')
+
+        return redirect(self.get_url(".details_view", id=invoice.id))
 
 # ========================== SETUP ADMIN ==========================
 def setup_admin(app):
