@@ -644,10 +644,48 @@ class VeriFactuRecord(db.Model):
             "record_type",
             name="uq_verifactu_records_invoice_record_type",
         ),
+        db.UniqueConstraint(
+            "fingerprint",
+            name="uq_verifactu_records_fingerprint",
+        ),
+        db.UniqueConstraint(
+            "chain_key",
+            "chain_sequence",
+            name="uq_verifactu_records_chain_sequence",
+        ),
         db.Index(
             "ix_verifactu_records_invoice_id",
             "invoice_id",
             unique=False,
+        ),
+        db.Index(
+            "ix_verifactu_records_chain_key_sequence",
+            "chain_key",
+            "chain_sequence",
+            unique=False,
+        ),
+        db.Index(
+            "ix_verifactu_records_previous_record_id",
+            "previous_record_id",
+            unique=True,
+        ),
+        db.CheckConstraint(
+            "previous_record_id IS NULL OR previous_record_id != id",
+            name="ck_verifactu_records_previous_not_self",
+        ),
+        db.CheckConstraint(
+            "chain_sequence IS NULL OR chain_sequence >= 1",
+            name="ck_verifactu_records_chain_sequence_positive",
+        ),
+        db.CheckConstraint(
+            "status != 'READY' OR (chain_key IS NOT NULL AND chain_sequence IS NOT NULL AND fingerprint IS NOT NULL)",
+            name="ck_verifactu_records_ready_chain_complete",
+        ),
+        db.CheckConstraint(
+            "is_first_record IS NULL OR "
+            "(is_first_record = true AND previous_record_id IS NULL AND chain_sequence = 1) OR "
+            "(is_first_record = false AND previous_record_id IS NOT NULL AND chain_sequence > 1)",
+            name="ck_verifactu_records_first_previous_coherent",
         ),
     )
 
@@ -658,6 +696,7 @@ class VeriFactuRecord(db.Model):
     RECORD_TYPE_ANULACION = "anulacion"
 
     STATUS_BUILT = "BUILT"
+    STATUS_READY = "READY"
 
     id = db.Column(db.Integer, primary_key=True)
     invoice_id = db.Column(db.Integer, db.ForeignKey('invoices.id'), nullable=False)
@@ -671,12 +710,27 @@ class VeriFactuRecord(db.Model):
     invoice_snapshot_hash = db.Column(db.String(64), nullable=False)
     record_payload = db.Column(db.JSON, nullable=False)
     record_payload_hash = db.Column(db.String(64), nullable=False)
+    official_payload = db.Column(db.JSON, nullable=True)
+    official_payload_schema_version = db.Column(db.Integer, nullable=True)
+    chain_key = db.Column(db.String(300), nullable=True)
+    chain_sequence = db.Column(db.Integer, nullable=True)
     fingerprint = db.Column(db.String(128), nullable=True)
     fingerprint_algorithm = db.Column(db.String(100), nullable=True)
     fingerprint_status = db.Column(db.String(30), nullable=False, default="NOT_CALCULATED")
+    fingerprint_input = db.Column(db.Text, nullable=True)
+    fingerprint_calculated_at = db.Column(db.DateTime, nullable=True)
+    previous_record_id = db.Column(db.Integer, db.ForeignKey('verifactu_records.id'), nullable=True)
+    previous_fingerprint = db.Column(db.String(128), nullable=True)
+    is_first_record = db.Column(db.Boolean, nullable=True)
     system_id = db.Column(db.String(100), nullable=False)
     software_name = db.Column(db.String(120), nullable=False)
     software_version = db.Column(db.String(50), nullable=False)
+    installation_id = db.Column(db.String(100), nullable=True)
+    producer_name = db.Column(db.String(120), nullable=True)
+    producer_tax_id = db.Column(db.String(50), nullable=True)
+    generation_timestamp = db.Column(db.DateTime, nullable=True)
+    generation_timezone = db.Column(db.String(50), nullable=True)
+    ready_at = db.Column(db.DateTime, nullable=True)
     issuer_tax_id = db.Column(db.String(50), nullable=False)
     recipient_tax_id = db.Column(db.String(50), nullable=True)
     total_amount = db.Column(db.Numeric(12, 2), nullable=False)
@@ -694,11 +748,62 @@ class VeriFactuRecord(db.Model):
         backref=db.backref('verifactu_records', lazy=True),
         lazy=True,
     )
+    previous_record = db.relationship(
+        'VeriFactuRecord',
+        remote_side=[id],
+        lazy=True,
+    )
 
     def __repr__(self):
         return (
             f'<VeriFactuRecord invoice={self.invoice_id} '
             f'type={self.record_type} status={self.status}>'
+        )
+
+
+class VeriFactuChainState(db.Model):
+    __tablename__ = "verifactu_chain_states"
+    __table_args__ = (
+        db.UniqueConstraint(
+            "chain_key",
+            name="uq_verifactu_chain_states_chain_key",
+        ),
+        db.Index(
+            "ix_verifactu_chain_states_chain_key",
+            "chain_key",
+            unique=False,
+        ),
+    )
+
+    id = db.Column(db.Integer, primary_key=True)
+    chain_key = db.Column(db.String(300), nullable=False)
+    issuer_tax_id = db.Column(db.String(50), nullable=False)
+    provider = db.Column(db.String(30), nullable=False, default=VeriFactuRecord.PROVIDER_VERIFACTU)
+    mode = db.Column(db.String(30), nullable=False, default=VeriFactuRecord.MODE_VERIFACTU)
+    system_id = db.Column(db.String(100), nullable=False)
+    installation_id = db.Column(db.String(100), nullable=False)
+    producer_tax_id = db.Column(db.String(50), nullable=False)
+    last_record_id = db.Column(db.Integer, db.ForeignKey('verifactu_records.id'), nullable=True)
+    last_fingerprint = db.Column(db.String(128), nullable=True)
+    next_sequence = db.Column(db.Integer, nullable=False, default=1, server_default="1")
+    created_at = db.Column(db.DateTime, nullable=False, server_default=db.func.now())
+    updated_at = db.Column(
+        db.DateTime,
+        nullable=False,
+        server_default=db.func.now(),
+        onupdate=db.func.now()
+    )
+
+    last_record = db.relationship(
+        'VeriFactuRecord',
+        foreign_keys=[last_record_id],
+        lazy=True,
+    )
+
+    def __repr__(self):
+        return (
+            f'<VeriFactuChainState chain={self.chain_key} '
+            f'next={self.next_sequence}>'
         )
 
 

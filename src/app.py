@@ -155,6 +155,13 @@ app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {
     "pool_size": 5,
     "max_overflow": 10,
 }
+app.config["VERIFACTU_ENABLED"] = parse_boolean_env("VERIFACTU_ENABLED", default=False)
+app.config["VERIFACTU_SYSTEM_NAME"] = os.getenv("VERIFACTU_SYSTEM_NAME")
+app.config["VERIFACTU_SYSTEM_VERSION"] = os.getenv("VERIFACTU_SYSTEM_VERSION")
+app.config["VERIFACTU_SYSTEM_ID"] = os.getenv("VERIFACTU_SYSTEM_ID")
+app.config["VERIFACTU_INSTALLATION_ID"] = os.getenv("VERIFACTU_INSTALLATION_ID")
+app.config["VERIFACTU_PRODUCER_NAME"] = os.getenv("VERIFACTU_PRODUCER_NAME")
+app.config["VERIFACTU_PRODUCER_TAX_ID"] = os.getenv("VERIFACTU_PRODUCER_TAX_ID")
 Migrate(app, db, directory="src/migrations", compare_type=True)
 db.init_app(app)
 

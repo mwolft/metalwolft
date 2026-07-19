@@ -17,9 +17,13 @@ EXPECTED_LIST_COLUMNS = [
     "invoice_snapshot_hash",
     "record_payload_hash",
     "fingerprint_status",
+    "fingerprint",
+    "chain_sequence",
+    "previous_record_id",
     "system_id",
     "software_name",
     "software_version",
+    "ready_at",
     "created_at",
 ]
 
@@ -35,12 +39,26 @@ EXPECTED_DETAIL_COLUMNS = [
     "invoice_issued_at",
     "invoice_snapshot_hash",
     "record_payload_hash",
+    "official_payload_schema_version",
+    "chain_key",
+    "chain_sequence",
     "fingerprint",
     "fingerprint_algorithm",
     "fingerprint_status",
+    "fingerprint_input",
+    "fingerprint_calculated_at",
+    "previous_record_id",
+    "previous_fingerprint",
+    "is_first_record",
     "system_id",
     "software_name",
     "software_version",
+    "installation_id",
+    "producer_name",
+    "producer_tax_id",
+    "generation_timestamp",
+    "generation_timezone",
+    "ready_at",
     "issuer_tax_id",
     "recipient_tax_id",
     "total_amount",
@@ -108,12 +126,13 @@ class FlaskAdminVeriFactuRecordViewTest(unittest.TestCase):
         self.assertIs(literal_assignment(self.view, "can_view_details"), True)
         self.assertNotIn("column_editable_list", self.view_source)
 
-    def test_visible_columns_are_safe_and_do_not_expose_payload(self):
+    def test_visible_columns_are_safe_and_do_not_expose_raw_payloads(self):
         self.assertEqual(literal_assignment(self.view, "column_list"), EXPECTED_LIST_COLUMNS)
         self.assertEqual(literal_assignment(self.view, "column_details_list"), EXPECTED_DETAIL_COLUMNS)
 
         exposed = set(EXPECTED_LIST_COLUMNS + EXPECTED_DETAIL_COLUMNS)
         self.assertNotIn("record_payload", exposed)
+        self.assertNotIn("official_payload", exposed)
         self.assertNotIn("invoice", exposed)
 
     def test_configured_columns_exist_on_model(self):
@@ -129,7 +148,15 @@ class FlaskAdminVeriFactuRecordViewTest(unittest.TestCase):
         self.assertIn("VeriFactuRecord", admin_source)
         self.assertIn("VeriFactuRecordAdminView(VeriFactuRecord, db.session, name=\"VeriFactu\")", admin_source)
 
-    def test_view_has_no_actions_or_mutating_domain_calls(self):
+    def test_view_only_exposes_the_manual_prepare_action(self):
+        self.assertIn("@action(", self.view_source)
+        self.assertIn("action_prepare_verifactu_records", self.view_source)
+        self.assertIn("prepare_verifactu_record_for_submission(", self.view_source)
+        self.assertIn("verifactu_system_identity_from_config(current_app.config)", self.view_source)
+        self.assertIn("VeriFactuRecordConcurrencyError", self.view_source)
+        self.assertIn("self.session.commit()", self.view_source)
+        self.assertIn("self.session.rollback()", self.view_source)
+
         for forbidden in (
             "@expose(",
             "create_verifactu",
@@ -141,8 +168,6 @@ class FlaskAdminVeriFactuRecordViewTest(unittest.TestCase):
             "send_invoice_email",
             "generate_invoice_pdf",
             "issue_invoice_for_order",
-            "commit(",
-            "rollback(",
         ):
             self.assertNotIn(forbidden, self.view_source)
 

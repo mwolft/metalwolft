@@ -1,6 +1,7 @@
 import os
 from flask import request, Response, current_app, send_file, flash, redirect
 from flask_admin import Admin, AdminIndexView, expose
+from flask_admin.actions import action
 from markupsafe import Markup
 from flask_admin.contrib.sqla import ModelView
 from wtforms.fields import SelectField, StringField, DateField, TextAreaField
@@ -64,6 +65,13 @@ from api.invoice_issue_service import (
     issue_invoice_for_order,
 )
 from api.invoice_snapshot_builder import InvoiceSnapshotValidationError
+from api.verifactu_record_service import (
+    VeriFactuRecordConcurrencyError,
+    VeriFactuRecordIntegrityError,
+    VeriFactuRecordValidationError,
+    prepare_verifactu_record_for_submission,
+    verifactu_system_identity_from_config,
+)
 from datetime import timedelta
 from sqlalchemy import inspect 
 from sqlalchemy.exc import IntegrityError
@@ -1338,9 +1346,13 @@ class VeriFactuRecordAdminView(SafeModelView):
         'invoice_snapshot_hash',
         'record_payload_hash',
         'fingerprint_status',
+        'fingerprint',
+        'chain_sequence',
+        'previous_record_id',
         'system_id',
         'software_name',
         'software_version',
+        'ready_at',
         'created_at',
     ]
     column_details_list = [
@@ -1355,12 +1367,26 @@ class VeriFactuRecordAdminView(SafeModelView):
         'invoice_issued_at',
         'invoice_snapshot_hash',
         'record_payload_hash',
+        'official_payload_schema_version',
+        'chain_key',
+        'chain_sequence',
         'fingerprint',
         'fingerprint_algorithm',
         'fingerprint_status',
+        'fingerprint_input',
+        'fingerprint_calculated_at',
+        'previous_record_id',
+        'previous_fingerprint',
+        'is_first_record',
         'system_id',
         'software_name',
         'software_version',
+        'installation_id',
+        'producer_name',
+        'producer_tax_id',
+        'generation_timestamp',
+        'generation_timezone',
+        'ready_at',
         'issuer_tax_id',
         'recipient_tax_id',
         'total_amount',
@@ -1378,7 +1404,9 @@ class VeriFactuRecordAdminView(SafeModelView):
         'record_type',
         'status',
         'fingerprint_status',
+        'chain_key',
         'software_name',
+        'ready_at',
         'created_at',
     ]
     column_sortable_list = [
@@ -1387,6 +1415,8 @@ class VeriFactuRecordAdminView(SafeModelView):
         'record_type',
         'status',
         'invoice_number',
+        'chain_sequence',
+        'ready_at',
         'created_at',
     ]
     column_labels = {
@@ -1404,6 +1434,20 @@ class VeriFactuRecordAdminView(SafeModelView):
         'fingerprint': 'Huella VeriFactu',
         'fingerprint_algorithm': 'Algoritmo huella',
         'fingerprint_status': 'Estado huella',
+        'chain_key': 'Clave de cadena',
+        'chain_sequence': 'Secuencia',
+        'official_payload_schema_version': 'Version payload oficial',
+        'fingerprint_input': 'Cadena de huella',
+        'fingerprint_calculated_at': 'Huella calculada',
+        'previous_record_id': 'Registro anterior',
+        'previous_fingerprint': 'Huella anterior',
+        'is_first_record': 'Primer registro',
+        'installation_id': 'N. instalacion',
+        'producer_name': 'Productor',
+        'producer_tax_id': 'NIF productor',
+        'generation_timestamp': 'Generado',
+        'generation_timezone': 'Huso horario',
+        'ready_at': 'Preparado',
         'system_id': 'Instalación',
         'software_name': 'Software',
         'software_version': 'Versión software',
@@ -1416,14 +1460,60 @@ class VeriFactuRecordAdminView(SafeModelView):
     }
     column_formatters = {
         'invoice_issued_at': _format_admin_invoice_datetime,
+        'fingerprint_calculated_at': _format_admin_invoice_datetime,
+        'generation_timestamp': _format_admin_invoice_datetime,
+        'ready_at': _format_admin_invoice_datetime,
         'created_at': _format_admin_invoice_datetime,
         'updated_at': _format_admin_invoice_datetime,
         'total_amount': _format_admin_invoice_amount,
         'fingerprint': _format_admin_invoice_value,
         'fingerprint_algorithm': _format_admin_invoice_value,
+        'previous_fingerprint': _format_admin_invoice_value,
     }
     column_formatters_detail = column_formatters
     column_default_sort = ('created_at', True)
+
+    @action(
+        'prepare_verifactu_records',
+        'Preparar VeriFactu',
+        'Calcular huella y marcar READY para los registros seleccionados?',
+    )
+    def action_prepare_verifactu_records(self, ids):
+        prepared = 0
+        already_ready = 0
+
+        try:
+            system_identity = verifactu_system_identity_from_config(current_app.config)
+            for record_id in ids:
+                record = self.session.get(VeriFactuRecord, int(record_id))
+                if record is None:
+                    continue
+                result = prepare_verifactu_record_for_submission(
+                    record,
+                    db_session=self.session,
+                    system_identity=system_identity,
+                )
+                if result.prepared:
+                    prepared += 1
+                else:
+                    already_ready += 1
+            self.session.commit()
+            flash(
+                f'Registros VeriFactu preparados: {prepared}. Ya preparados: {already_ready}.',
+                'success',
+            )
+        except (
+            VeriFactuRecordValidationError,
+            VeriFactuRecordIntegrityError,
+            VeriFactuRecordConcurrencyError,
+        ) as exc:
+            self.session.rollback()
+            current_app.logger.warning("VeriFactu admin preparation rejected: %s", exc)
+            flash(str(exc), 'error')
+        except Exception:
+            self.session.rollback()
+            current_app.logger.exception("Unexpected VeriFactu admin preparation error")
+            flash('No se han podido preparar los registros VeriFactu.', 'error')
 
 # ========================== SETUP ADMIN ==========================
 def setup_admin(app):

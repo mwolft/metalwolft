@@ -5,14 +5,30 @@ from datetime import date, datetime, timezone
 from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 from typing import Mapping
 
+from sqlalchemy.exc import IntegrityError
+
 from api.invoice_snapshot_integrity import calculate_invoice_snapshot_hash
-from api.models import VeriFactuRecord, db
+from api.models import VeriFactuChainState, VeriFactuRecord, db
+from api.verifactu_fingerprint import (
+    OfficialRegistrationData,
+    VERIFACTU_FINGERPRINT_ALGORITHM,
+    VERIFACTU_FINGERPRINT_STATUS_CALCULATED,
+    VERIFACTU_OFFICIAL_PAYLOAD_SCHEMA_VERSION,
+    VERIFACTU_ORDINARY_INVOICE_TYPE_CODE,
+    VeriFactuFingerprintError,
+    VeriFactuSystemIdentity,
+    build_official_registration_payload,
+    build_registration_fingerprint_input,
+    calculate_verifactu_fingerprint,
+    normalize_system_identity,
+)
 
 
 RECORD_TYPE_ALTA = VeriFactuRecord.RECORD_TYPE_ALTA
 PROVIDER_VERIFACTU = VeriFactuRecord.PROVIDER_VERIFACTU
 MODE_VERIFACTU = VeriFactuRecord.MODE_VERIFACTU
 STATUS_BUILT = VeriFactuRecord.STATUS_BUILT
+STATUS_READY = VeriFactuRecord.STATUS_READY
 FINGERPRINT_STATUS_NOT_CALCULATED = "NOT_CALCULATED"
 SUPPORTED_INVOICE_SCHEMA_VERSION = 1
 SUPPORTED_CURRENCY = "EUR"
@@ -35,10 +51,24 @@ class VeriFactuRecordUnsupportedSchema(VeriFactuRecordError):
     """Raised when the invoice snapshot schema is not supported."""
 
 
+class VeriFactuRecordConcurrencyError(VeriFactuRecordError):
+    """Raised when the local VeriFactu chain cannot be advanced safely."""
+
+
 @dataclass(frozen=True)
 class VeriFactuRecordResult:
     record: object
     created: bool
+
+
+@dataclass(frozen=True)
+class VeriFactuRecordReadyResult:
+    record: object
+    prepared: bool
+    chain_key: str | None
+    chain_sequence: int | None
+    previous_record_id: int | None
+    is_first_record: bool
 
 
 def create_verifactu_registration_record(
@@ -110,6 +140,143 @@ def create_verifactu_registration_record(
     session.add(record)
     session.flush()
     return VeriFactuRecordResult(record=record, created=True)
+
+
+def prepare_verifactu_record_for_submission(
+    record,
+    *,
+    db_session=None,
+    system_identity: VeriFactuSystemIdentity,
+    generation_timestamp=None,
+):
+    """Calculate and persist the official local fingerprint for a registration record."""
+    session = db_session or db.session
+    _required_record_id(record)
+
+    if record.status == STATUS_READY and record.fingerprint:
+        return VeriFactuRecordReadyResult(
+            record=record,
+            prepared=False,
+            chain_key=record.chain_key,
+            chain_sequence=record.chain_sequence,
+            previous_record_id=record.previous_record_id,
+            is_first_record=bool(record.is_first_record),
+        )
+    if record.fingerprint:
+        raise VeriFactuRecordIntegrityError("El registro ya tiene huella pero no esta en estado READY.")
+    if record.status not in {STATUS_BUILT, "generated", "GENERATED"}:
+        raise VeriFactuRecordValidationError("Solo se pueden preparar registros generados.")
+
+    system = _validated_official_system_identity(system_identity)
+    if record.system_id != system.system_id:
+        raise VeriFactuRecordValidationError("La instalacion configurada no coincide con el registro.")
+
+    _validate_record_payload_hash(record)
+    generated_at = _generation_timestamp(generation_timestamp)
+    chain_key = build_verifactu_chain_key(
+        issuer_tax_id=record.issuer_tax_id,
+        mode=record.mode,
+        system_identity=system,
+    )
+    chain_state = _locked_chain_state(session, chain_key=chain_key, record=record, system=system)
+
+    session.refresh(record)
+    if record.status == STATUS_READY and record.fingerprint:
+        return VeriFactuRecordReadyResult(
+            record=record,
+            prepared=False,
+            chain_key=record.chain_key,
+            chain_sequence=record.chain_sequence,
+            previous_record_id=record.previous_record_id,
+            is_first_record=bool(record.is_first_record),
+        )
+    if record.fingerprint:
+        raise VeriFactuRecordIntegrityError("El registro ya tiene huella pero no esta en estado READY.")
+
+    previous_record = _validated_chain_head(session, chain_state)
+    previous_fingerprint = chain_state.last_fingerprint
+    chain_sequence = chain_state.next_sequence
+    is_first_record = previous_record is None
+    official_data = _official_registration_data_from_record(
+        record,
+        previous_fingerprint=previous_fingerprint,
+        generation_timestamp=generated_at,
+    )
+    try:
+        fingerprint_input = build_registration_fingerprint_input(official_data)
+        fingerprint = calculate_verifactu_fingerprint(fingerprint_input)
+        official_payload = build_official_registration_payload(
+            official_data,
+            system=system,
+            fingerprint_input=fingerprint_input,
+            fingerprint=fingerprint,
+            is_first_record=is_first_record,
+        )
+    except VeriFactuFingerprintError as exc:
+        raise VeriFactuRecordValidationError(str(exc)) from exc
+
+    record.official_payload = official_payload
+    record.official_payload_schema_version = VERIFACTU_OFFICIAL_PAYLOAD_SCHEMA_VERSION
+    record.fingerprint_input = fingerprint_input.value
+    record.fingerprint = fingerprint
+    record.fingerprint_algorithm = VERIFACTU_FINGERPRINT_ALGORITHM
+    record.fingerprint_status = VERIFACTU_FINGERPRINT_STATUS_CALCULATED
+    record.fingerprint_calculated_at = generated_at
+    record.chain_key = chain_key
+    record.chain_sequence = chain_sequence
+    record.previous_record_id = previous_record.id if previous_record else None
+    record.previous_fingerprint = previous_fingerprint
+    record.is_first_record = is_first_record
+    record.installation_id = system.installation_id
+    record.producer_name = system.producer_name
+    record.producer_tax_id = system.producer_tax_id
+    record.generation_timestamp = generated_at
+    record.generation_timezone = _timezone_suffix(generated_at)
+    record.ready_at = generated_at
+    record.software_name = system.system_name
+    record.software_version = system.system_version
+    record.status = STATUS_READY
+    chain_state.last_record_id = record.id
+    chain_state.last_fingerprint = fingerprint
+    chain_state.next_sequence = chain_sequence + 1
+    session.add(record)
+    session.add(chain_state)
+    session.flush()
+
+    return VeriFactuRecordReadyResult(
+        record=record,
+        prepared=True,
+        chain_key=record.chain_key,
+        chain_sequence=record.chain_sequence,
+        previous_record_id=record.previous_record_id,
+        is_first_record=record.is_first_record,
+    )
+
+
+def build_verifactu_chain_key(*, issuer_tax_id, mode, system_identity: VeriFactuSystemIdentity):
+    system = _validated_official_system_identity(system_identity)
+    parts = (
+        _required_text(issuer_tax_id, "issuer_tax_id").upper(),
+        _required_text(mode, "mode").upper(),
+        system.producer_tax_id.upper(),
+        system.system_id,
+        system.installation_id,
+    )
+    return "|".join(parts)
+
+
+def verifactu_system_identity_from_config(config):
+    try:
+        return normalize_system_identity(
+            system_id=config.get("VERIFACTU_SYSTEM_ID"),
+            system_name=config.get("VERIFACTU_SYSTEM_NAME"),
+            system_version=config.get("VERIFACTU_SYSTEM_VERSION"),
+            installation_id=config.get("VERIFACTU_INSTALLATION_ID"),
+            producer_name=config.get("VERIFACTU_PRODUCER_NAME"),
+            producer_tax_id=config.get("VERIFACTU_PRODUCER_TAX_ID"),
+        )
+    except VeriFactuFingerprintError as exc:
+        raise VeriFactuRecordValidationError(str(exc)) from exc
 
 
 def build_verifactu_registration_payload(invoice, *, snapshot, system):
@@ -216,6 +383,162 @@ def _validated_system(*, system_id, software_name, software_version):
         "software_name": _required_text(software_name, "software_name"),
         "software_version": _required_text(software_version, "software_version"),
     }
+
+
+def _validated_official_system_identity(system_identity):
+    if not isinstance(system_identity, VeriFactuSystemIdentity):
+        raise VeriFactuRecordValidationError("La identidad del sistema VeriFactu no es valida.")
+    try:
+        return normalize_system_identity(
+            system_id=system_identity.system_id,
+            system_name=system_identity.system_name,
+            system_version=system_identity.system_version,
+            installation_id=system_identity.installation_id,
+            producer_name=system_identity.producer_name,
+            producer_tax_id=system_identity.producer_tax_id,
+        )
+    except VeriFactuFingerprintError as exc:
+        raise VeriFactuRecordValidationError(str(exc)) from exc
+
+
+def _locked_chain_state(session, *, chain_key, record, system):
+    chain_state = (
+        session.query(VeriFactuChainState)
+        .filter_by(chain_key=chain_key)
+        .with_for_update()
+        .one_or_none()
+    )
+    if chain_state is not None:
+        _validate_chain_state_identity(chain_state, record=record, system=system)
+        return chain_state
+
+    chain_state = VeriFactuChainState(
+        chain_key=chain_key,
+        issuer_tax_id=_required_text(record.issuer_tax_id, "issuer_tax_id"),
+        provider=PROVIDER_VERIFACTU,
+        mode=MODE_VERIFACTU,
+        system_id=system.system_id,
+        installation_id=system.installation_id,
+        producer_tax_id=system.producer_tax_id,
+        last_record_id=None,
+        last_fingerprint=None,
+        next_sequence=1,
+    )
+    session.add(chain_state)
+    try:
+        session.flush()
+    except IntegrityError as exc:
+        raise VeriFactuRecordConcurrencyError("Conflicto creando la cabeza de cadena VeriFactu.") from exc
+    return chain_state
+
+
+def _validate_chain_state_identity(chain_state, *, record, system):
+    expected = {
+        "issuer_tax_id": _required_text(record.issuer_tax_id, "issuer_tax_id"),
+        "provider": PROVIDER_VERIFACTU,
+        "mode": MODE_VERIFACTU,
+        "system_id": system.system_id,
+        "installation_id": system.installation_id,
+        "producer_tax_id": system.producer_tax_id,
+    }
+    for field, expected_value in expected.items():
+        if getattr(chain_state, field) != expected_value:
+            raise VeriFactuRecordIntegrityError("La cabeza de cadena VeriFactu no coincide con el registro.")
+
+
+def _validated_chain_head(session, chain_state):
+    if chain_state.next_sequence < 1:
+        raise VeriFactuRecordIntegrityError("La secuencia VeriFactu no es valida.")
+    if chain_state.next_sequence == 1:
+        if chain_state.last_record_id is not None or chain_state.last_fingerprint is not None:
+            raise VeriFactuRecordIntegrityError("La primera posicion de cadena tiene anterior.")
+        return None
+
+    if not chain_state.last_record_id or not chain_state.last_fingerprint:
+        raise VeriFactuRecordIntegrityError("La cabeza de cadena VeriFactu esta incompleta.")
+
+    previous_record = session.get(VeriFactuRecord, chain_state.last_record_id)
+    if previous_record is None:
+        raise VeriFactuRecordIntegrityError("El registro anterior de cadena no existe.")
+    if previous_record.chain_key != chain_state.chain_key:
+        raise VeriFactuRecordIntegrityError("El registro anterior pertenece a otra cadena.")
+    if previous_record.chain_sequence != chain_state.next_sequence - 1:
+        raise VeriFactuRecordIntegrityError("El registro anterior no es la posicion inmediata.")
+    if previous_record.fingerprint != chain_state.last_fingerprint:
+        raise VeriFactuRecordIntegrityError("La huella anterior no coincide con la cabeza de cadena.")
+    if previous_record.status != STATUS_READY:
+        raise VeriFactuRecordIntegrityError("El registro anterior no esta preparado.")
+    return previous_record
+
+
+def _required_record_id(record):
+    record_id = getattr(record, "id", None)
+    if not record_id:
+        raise VeriFactuRecordValidationError("El id del registro VeriFactu es obligatorio.")
+    return record_id
+
+
+def _validate_record_payload_hash(record):
+    payload = getattr(record, "record_payload", None)
+    if not isinstance(payload, dict):
+        raise VeriFactuRecordValidationError("El registro VeriFactu debe tener payload interno.")
+    stored_hash = getattr(record, "record_payload_hash", None)
+    if not stored_hash:
+        raise VeriFactuRecordIntegrityError("El registro VeriFactu no tiene hash interno.")
+    if calculate_verifactu_record_payload_hash(payload) != stored_hash:
+        raise VeriFactuRecordIntegrityError("El hash interno del registro VeriFactu no coincide.")
+
+
+def _official_registration_data_from_record(record, *, previous_fingerprint, generation_timestamp):
+    payload = getattr(record, "record_payload", None)
+    issuer = _required_mapping(payload, "issuer")
+    invoice = _required_mapping(payload, "invoice")
+    totals = _required_mapping(payload, "totals")
+
+    invoice_type = invoice.get("invoice_type")
+    if invoice_type != SUPPORTED_INVOICE_TYPE:
+        raise VeriFactuRecordValidationError("Solo se soporta RegistroAlta F1 para facturas ordinarias.")
+
+    return OfficialRegistrationData(
+        issuer_tax_id=_required_text(issuer.get("tax_id"), "issuer.tax_id"),
+        invoice_number=_required_text(invoice.get("invoice_number"), "invoice.invoice_number"),
+        issue_date=_parse_date(invoice.get("issue_date"), "invoice.issue_date"),
+        invoice_type_code=VERIFACTU_ORDINARY_INVOICE_TYPE_CODE,
+        tax_amount=_money(totals.get("tax_amount"), "totals.tax_amount"),
+        total_amount=_money(totals.get("total_amount"), "totals.total_amount"),
+        previous_fingerprint=previous_fingerprint,
+        generation_timestamp=generation_timestamp,
+    )
+
+
+def _generation_timestamp(value):
+    if value is None:
+        return datetime.now(timezone.utc).replace(microsecond=0)
+    if not isinstance(value, datetime):
+        raise VeriFactuRecordValidationError("La fecha de generacion debe ser fecha/hora.")
+    if value.tzinfo is None or value.utcoffset() is None:
+        raise VeriFactuRecordValidationError("La fecha de generacion debe incluir huso horario.")
+    return value.replace(microsecond=0)
+
+
+def _parse_date(value, field):
+    if isinstance(value, datetime):
+        return value.date()
+    if isinstance(value, date):
+        return value
+    if isinstance(value, str) and value:
+        try:
+            return datetime.fromisoformat(value).date()
+        except ValueError as exc:
+            raise VeriFactuRecordValidationError(f"Fecha invalida en {field}.") from exc
+    raise VeriFactuRecordValidationError(f"Fecha obligatoria ausente: {field}.")
+
+
+def _timezone_suffix(value):
+    text = value.isoformat()
+    if text.endswith("+00:00"):
+        return "+00:00"
+    return text[-6:]
 
 
 def _tax_breakdown(snapshot):
