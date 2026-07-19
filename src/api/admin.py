@@ -19,6 +19,7 @@ from api.aeat_sales_ledger_service import (
     AeatSalesLedgerError,
     export_aeat_sales_ledger,
 )
+from api.flask_mail_invoice_adapter import FlaskMailInvoiceAdapter, FlaskMailInvoiceAdapterError
 from api.email_routes import send_order_status_email
 from api.invoice_accounting_service import (
     AccountingEntryIntegrityError,
@@ -39,6 +40,18 @@ from api.invoice_pdf_service import (
     InvoicePdfWriteError,
     generate_invoice_pdf,
 )
+from api.invoice_email_service import (
+    EMAIL_STATUS_FAILED,
+    EMAIL_STATUS_SENT,
+    InvoiceEmailIntegrityError,
+    InvoiceEmailPdfMissing,
+    InvoiceEmailRecipientMissing,
+    InvoiceEmailSendError,
+    InvoiceEmailSnapshotMissing,
+    InvoiceEmailUnsupportedSchema,
+    send_invoice_email as send_invoice_email_v2,
+)
+from api.utils import mail
 from api.invoice_admin_helpers import (
     build_invoice_issuer_from_config,
     invoice_admin_actor_from_basic_auth,
@@ -868,6 +881,45 @@ def _format_admin_invoice_accounting_detail(view, context, model, name):
     ).format(action_url=action_url, export_url=export_url, aeat_export_url=aeat_export_url)
 
 
+def _format_admin_invoice_email_detail(view, context, model, name):
+    status = getattr(model, name, None)
+    if not getattr(model, "invoice_number", None) or not getattr(model, "issued_at", None):
+        return Markup("Factura no emitida")
+
+    action_url = view.get_url(".send_invoice_email", invoice_id=model.id)
+    button_label = "Reenviar factura" if status == EMAIL_STATUS_SENT else "Enviar factura"
+    confirm_attr = (
+        ' onsubmit="return confirm(\'La factura ya consta como enviada. ¿Quieres reenviarla?\')"'
+        if status == EMAIL_STATUS_SENT
+        else ""
+    )
+
+    return Markup(
+        '<div class="invoice-email-admin-action">'
+        '<div>{status}</div>'
+        '<form method="post" action="{action_url}" style="margin-top: 8px;"{confirm_attr}>'
+        '<button type="submit" class="btn btn-primary btn-sm">{button_label}</button>'
+        '</form>'
+        '</div>'
+    ).format(
+        status=_format_admin_invoice_nullable(status),
+        action_url=action_url,
+        confirm_attr=Markup(confirm_attr),
+        button_label=button_label,
+    )
+
+
+def _persist_admin_invoice_email_failure(session, invoice_id, attempts_before):
+    failed_invoice = session.get(Invoices, invoice_id)
+    if not failed_invoice:
+        return
+
+    failed_invoice.email_status = EMAIL_STATUS_FAILED
+    failed_invoice.email_attempts = int(attempts_before or 0) + 1
+    failed_invoice.email_last_error = "No se pudo enviar el email de factura."
+    session.commit()
+
+
 def _admin_invoice_accounting_success_message(*, already_existed):
     if already_existed:
         return "La factura ya tenía registro contable."
@@ -981,6 +1033,7 @@ class InvoiceAdminView(SafeModelView):
         **column_formatters,
         'pdf_path': _format_admin_invoice_pdf_detail,
         'accounting_entries': _format_admin_invoice_accounting_detail,
+        'email_status': _format_admin_invoice_email_detail,
     }
 
     column_default_sort = ('created_at', True)
@@ -1064,6 +1117,77 @@ class InvoiceAdminView(SafeModelView):
                 invoice_id,
             )
             flash('No se pudo generar el PDF.', 'error')
+
+        return redirect(self.get_url(".details_view", id=invoice.id))
+
+    @expose('/send-email/<int:invoice_id>', methods=['POST'])
+    def send_invoice_email(self, invoice_id):
+        invoice = self.session.get(Invoices, invoice_id)
+        if not invoice:
+            flash('Factura no encontrada.', 'error')
+            return redirect(self.get_url(".index_view"))
+
+        if request.args or request.form or (request.get_json(silent=True) or {}):
+            flash('Esta acción no acepta datos de email desde el navegador.', 'error')
+            return redirect(self.get_url(".details_view", id=invoice.id))
+
+        if not invoice.invoice_number or not invoice.issued_at:
+            flash('La factura debe estar emitida antes de enviarse por email.', 'error')
+            return redirect(self.get_url(".details_view", id=invoice.id))
+
+        if not invoice.pdf_path:
+            flash('No existe PDF.', 'error')
+            return redirect(self.get_url(".details_view", id=invoice.id))
+
+        attempts_before = int(invoice.email_attempts or 0)
+
+        try:
+            adapter = FlaskMailInvoiceAdapter(mail)
+            send_invoice_email_v2(
+                invoice,
+                mailer=adapter,
+                invoice_folder=current_app.config.get("INVOICE_FOLDER"),
+                allow_resend=True,
+            )
+            self.session.commit()
+            flash('Factura enviada correctamente.', 'success')
+        except InvoiceEmailRecipientMissing:
+            self.session.rollback()
+            flash('No existe email del cliente.', 'error')
+        except InvoiceEmailPdfMissing:
+            self.session.rollback()
+            flash('No existe PDF.', 'error')
+        except (InvoiceEmailSendError, FlaskMailInvoiceAdapterError):
+            self.session.rollback()
+            current_app.logger.exception(
+                "Flask Admin invoice email SMTP error for invoice %s",
+                invoice_id,
+            )
+            try:
+                _persist_admin_invoice_email_failure(self.session, invoice_id, attempts_before)
+            except Exception:
+                self.session.rollback()
+                current_app.logger.exception(
+                    "Could not persist Flask Admin invoice email failure for invoice %s",
+                    invoice_id,
+                )
+            flash('Error SMTP.', 'error')
+        except InvoiceEmailSnapshotMissing:
+            self.session.rollback()
+            flash('La factura no contiene los datos necesarios para enviar el email.', 'error')
+        except InvoiceEmailUnsupportedSchema:
+            self.session.rollback()
+            flash('La versión del snapshot fiscal no está soportada para email.', 'error')
+        except InvoiceEmailIntegrityError:
+            self.session.rollback()
+            flash('No se puede enviar el email porque la integridad fiscal no coincide.', 'error')
+        except Exception:
+            self.session.rollback()
+            current_app.logger.exception(
+                "Unexpected Flask Admin invoice email error for invoice %s",
+                invoice_id,
+            )
+            flash('No se ha podido enviar la factura por email.', 'error')
 
         return redirect(self.get_url(".details_view", id=invoice.id))
 

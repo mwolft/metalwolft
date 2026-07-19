@@ -194,9 +194,9 @@ class InvoiceEmailServiceTest(unittest.TestCase):
         message = mailer.sent[0]
         self.assertEqual(message.subject, "Factura F2026000001 - MetalWolft")
         self.assertEqual(message.recipients, ("cliente@example.com",))
-        self.assertIn("Hola Sergio Arias", message.body)
+        self.assertIn("Buenos dias", message.body)
         self.assertIn("Factura F2026000001", message.subject)
-        self.assertIn("Adjuntamos la factura F2026000001", message.body)
+        self.assertIn("Adjuntamos la factura F2026000001 correspondiente a su pedido.", message.body)
         self.assertIn("Referencia del pedido: AB1234", message.body)
         self.assertIn("MetalWolft", message.body)
         self.assertNotIn("stripe", message.body.lower())
@@ -314,6 +314,28 @@ class InvoiceEmailServiceTest(unittest.TestCase):
         self.assertEqual(result.sent_at, invoice.email_sent_at)
         self.assertEqual(mailer.sent, [])
         self.assertEqual(invoice.email_attempts, 1)
+
+    def test_manual_resend_option_sends_again_and_increments_attempts(self):
+        invoice = SnapshotInvoice()
+        invoice.email_status = EMAIL_STATUS_SENT
+        invoice.email_sent_at = datetime(2026, 7, 16, 10, 0)
+        invoice.email_attempts = 1
+        mailer = FakeMailer()
+
+        with temp_invoice_dir() as tmpdir:
+            write_pdf(tmpdir)
+            result = send_invoice_email(
+                invoice,
+                mailer=mailer,
+                invoice_folder=tmpdir,
+                allow_resend=True,
+            )
+
+        self.assertFalse(result.already_sent)
+        self.assertEqual(len(mailer.sent), 1)
+        self.assertEqual(invoice.email_status, EMAIL_STATUS_SENT)
+        self.assertEqual(invoice.email_attempts, 2)
+        self.assertIsNone(invoice.email_last_error)
 
     def test_service_does_not_commit_or_rollback(self):
         invoice = SnapshotInvoice()

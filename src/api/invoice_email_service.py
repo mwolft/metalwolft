@@ -66,7 +66,7 @@ class InvoiceEmailMessage:
     attachments: tuple[InvoiceEmailAttachment, ...]
 
 
-def send_invoice_email(invoice, *, mailer=None, invoice_folder=None):
+def send_invoice_email(invoice, *, mailer=None, invoice_folder=None, allow_resend=False):
     """Send an issued invoice PDF using only the persisted InvoiceSnapshot v1.
 
     The service deliberately does not commit or rollback. It only updates email
@@ -85,7 +85,7 @@ def send_invoice_email(invoice, *, mailer=None, invoice_folder=None):
     attachment_path, attachment_filename = _validated_pdf_path(invoice, invoice_number, invoice_folder)
 
     sent_at = getattr(invoice, "email_sent_at", None)
-    if getattr(invoice, "email_status", None) == EMAIL_STATUS_SENT:
+    if not allow_resend and getattr(invoice, "email_status", None) == EMAIL_STATUS_SENT:
         return InvoiceEmailResult(
             recipient=recipient,
             sent_at=sent_at,
@@ -228,10 +228,9 @@ def _resolved_mailer(mailer):
 def _email_body(*, customer_name, invoice_number, order_reference, trade_name):
     order_line = f"Referencia del pedido: {order_reference}\n" if order_reference else ""
     return (
-        f"Hola {customer_name},\n\n"
-        f"Adjuntamos la factura {invoice_number} correspondiente a tu pedido.\n"
+        "Buenos dias,\n\n"
+        f"Adjuntamos la factura {invoice_number} correspondiente a su pedido.\n"
         f"{order_line}"
-        "Encontraras el documento en PDF adjunto a este correo.\n\n"
         f"Gracias por confiar en {trade_name}.\n\n"
         "Un saludo,\n"
         "MetalWolft"
