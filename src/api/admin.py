@@ -8,7 +8,7 @@ from .models import (
     db, Users, Products, ProductImages,
     Categories, Subcategories, Cart,
     Orders, OrderDetails, Favorites,
-    Posts, Comments, Invoices, DeliveryEstimateConfig,
+    Posts, Comments, Invoices, VeriFactuRecord, DeliveryEstimateConfig,
     AccountingEntry
 )
 from api.accounting_excel_service import (
@@ -1322,6 +1322,109 @@ class InvoiceAdminView(SafeModelView):
 
         return redirect(self.get_url(".index_view"))
 
+
+class VeriFactuRecordAdminView(SafeModelView):
+    can_create = False
+    can_edit = False
+    can_delete = False
+    can_view_details = True
+
+    column_list = [
+        'id',
+        'invoice_id',
+        'record_type',
+        'status',
+        'invoice_number',
+        'invoice_snapshot_hash',
+        'record_payload_hash',
+        'fingerprint_status',
+        'system_id',
+        'software_name',
+        'software_version',
+        'created_at',
+    ]
+    column_details_list = [
+        'id',
+        'invoice_id',
+        'provider',
+        'mode',
+        'record_type',
+        'status',
+        'schema_version',
+        'invoice_number',
+        'invoice_issued_at',
+        'invoice_snapshot_hash',
+        'record_payload_hash',
+        'fingerprint',
+        'fingerprint_algorithm',
+        'fingerprint_status',
+        'system_id',
+        'software_name',
+        'software_version',
+        'issuer_tax_id',
+        'recipient_tax_id',
+        'total_amount',
+        'currency',
+        'created_at',
+        'updated_at',
+    ]
+    column_searchable_list = [
+        'invoice_number',
+        'issuer_tax_id',
+        'recipient_tax_id',
+        'system_id',
+    ]
+    column_filters = [
+        'record_type',
+        'status',
+        'fingerprint_status',
+        'software_name',
+        'created_at',
+    ]
+    column_sortable_list = [
+        'id',
+        'invoice_id',
+        'record_type',
+        'status',
+        'invoice_number',
+        'created_at',
+    ]
+    column_labels = {
+        'id': 'ID',
+        'invoice_id': 'Factura',
+        'provider': 'Proveedor',
+        'mode': 'Modalidad',
+        'record_type': 'Tipo registro',
+        'status': 'Estado',
+        'schema_version': 'Versión esquema',
+        'invoice_number': 'N.º factura',
+        'invoice_issued_at': 'Emitida',
+        'invoice_snapshot_hash': 'Hash snapshot interno',
+        'record_payload_hash': 'Hash registro interno',
+        'fingerprint': 'Huella VeriFactu',
+        'fingerprint_algorithm': 'Algoritmo huella',
+        'fingerprint_status': 'Estado huella',
+        'system_id': 'Instalación',
+        'software_name': 'Software',
+        'software_version': 'Versión software',
+        'issuer_tax_id': 'NIF emisor',
+        'recipient_tax_id': 'NIF destinatario',
+        'total_amount': 'Total',
+        'currency': 'Moneda',
+        'created_at': 'Creado',
+        'updated_at': 'Actualizado',
+    }
+    column_formatters = {
+        'invoice_issued_at': _format_admin_invoice_datetime,
+        'created_at': _format_admin_invoice_datetime,
+        'updated_at': _format_admin_invoice_datetime,
+        'total_amount': _format_admin_invoice_amount,
+        'fingerprint': _format_admin_invoice_value,
+        'fingerprint_algorithm': _format_admin_invoice_value,
+    }
+    column_formatters_detail = column_formatters
+    column_default_sort = ('created_at', True)
+
 # ========================== SETUP ADMIN ==========================
 def setup_admin(app):
     # Secret key y tema
@@ -1350,4 +1453,5 @@ def setup_admin(app):
     admin.add_view(SafeModelView(Posts, db.session))
     admin.add_view(SafeModelView(Comments, db.session))
     admin.add_view(InvoiceAdminView(Invoices, db.session))
+    admin.add_view(VeriFactuRecordAdminView(VeriFactuRecord, db.session, name="VeriFactu"))
     admin.add_view(SafeModelView(DeliveryEstimateConfig, db.session))

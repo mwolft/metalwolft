@@ -636,6 +636,72 @@ class InvoiceFiscalSubmission(db.Model):
         )
 
 
+class VeriFactuRecord(db.Model):
+    __tablename__ = "verifactu_records"
+    __table_args__ = (
+        db.UniqueConstraint(
+            "invoice_id",
+            "record_type",
+            name="uq_verifactu_records_invoice_record_type",
+        ),
+        db.Index(
+            "ix_verifactu_records_invoice_id",
+            "invoice_id",
+            unique=False,
+        ),
+    )
+
+    PROVIDER_VERIFACTU = "verifactu"
+    MODE_VERIFACTU = "VERI*FACTU"
+
+    RECORD_TYPE_ALTA = "alta"
+    RECORD_TYPE_ANULACION = "anulacion"
+
+    STATUS_BUILT = "BUILT"
+
+    id = db.Column(db.Integer, primary_key=True)
+    invoice_id = db.Column(db.Integer, db.ForeignKey('invoices.id'), nullable=False)
+    provider = db.Column(db.String(30), nullable=False, default=PROVIDER_VERIFACTU)
+    mode = db.Column(db.String(30), nullable=False, default=MODE_VERIFACTU)
+    record_type = db.Column(db.String(30), nullable=False)
+    status = db.Column(db.String(30), nullable=False, default=STATUS_BUILT)
+    schema_version = db.Column(db.Integer, nullable=False)
+    invoice_number = db.Column(db.String(50), nullable=False)
+    invoice_issued_at = db.Column(db.DateTime, nullable=False)
+    invoice_snapshot_hash = db.Column(db.String(64), nullable=False)
+    record_payload = db.Column(db.JSON, nullable=False)
+    record_payload_hash = db.Column(db.String(64), nullable=False)
+    fingerprint = db.Column(db.String(128), nullable=True)
+    fingerprint_algorithm = db.Column(db.String(100), nullable=True)
+    fingerprint_status = db.Column(db.String(30), nullable=False, default="NOT_CALCULATED")
+    system_id = db.Column(db.String(100), nullable=False)
+    software_name = db.Column(db.String(120), nullable=False)
+    software_version = db.Column(db.String(50), nullable=False)
+    issuer_tax_id = db.Column(db.String(50), nullable=False)
+    recipient_tax_id = db.Column(db.String(50), nullable=True)
+    total_amount = db.Column(db.Numeric(12, 2), nullable=False)
+    currency = db.Column(db.String(3), nullable=False)
+    created_at = db.Column(db.DateTime, nullable=False, server_default=db.func.now())
+    updated_at = db.Column(
+        db.DateTime,
+        nullable=False,
+        server_default=db.func.now(),
+        onupdate=db.func.now()
+    )
+
+    invoice = db.relationship(
+        'Invoices',
+        backref=db.backref('verifactu_records', lazy=True),
+        lazy=True,
+    )
+
+    def __repr__(self):
+        return (
+            f'<VeriFactuRecord invoice={self.invoice_id} '
+            f'type={self.record_type} status={self.status}>'
+        )
+
+
 class AccountingEntry(db.Model):
     __tablename__ = "accounting_entries"
     __table_args__ = (
