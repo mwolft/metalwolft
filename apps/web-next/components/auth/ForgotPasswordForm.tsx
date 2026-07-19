@@ -3,25 +3,21 @@
 import type { FormEvent } from "react";
 import { useId, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { getApiBaseUrl } from "@/lib/api";
-import { getSafeInternalPath, saveSession, type AuthUser } from "@/lib/auth-client";
+import {
+  FORGOT_PASSWORD_PATH,
+  buildForgotPasswordPayload,
+  getSafePasswordRecoveryMessage,
+  validateRecoveryEmail,
+  type PasswordRecoveryResponse
+} from "@/lib/password-recovery";
 
-type LoginFormProps = {
-  nextPath?: string;
-};
+const DEFAULT_SUCCESS_MESSAGE =
+  "Si el correo está registrado, recibirás un enlace para restablecer tu contraseña.";
 
-type LoginResponse = {
-  access_token?: string;
-  message?: string;
-  results?: AuthUser;
-};
-
-export function LoginForm({ nextPath }: LoginFormProps) {
-  const router = useRouter();
+export function ForgotPasswordForm() {
   const feedbackId = useId();
   const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [feedback, setFeedback] = useState<{
     type: "success" | "error";
@@ -36,47 +32,49 @@ export function LoginForm({ nextPath }: LoginFormProps) {
     }
 
     setFeedback(null);
+
+    if (!validateRecoveryEmail(email)) {
+      setFeedback({
+        type: "error",
+        message: "Introduce un correo electrónico válido."
+      });
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
-      const response = await fetch(`${getApiBaseUrl()}/api/login`, {
+      const response = await fetch(`${getApiBaseUrl()}${FORGOT_PASSWORD_PATH}`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json"
         },
-        body: JSON.stringify({ email, password })
+        body: JSON.stringify(buildForgotPasswordPayload(email))
       }).catch(() => {
         throw new Error("API no disponible. Inténtalo de nuevo.");
       });
-      const payload = (await response.json().catch(() => null)) as LoginResponse | null;
+      const payload = (await response.json().catch(() => null)) as PasswordRecoveryResponse | null;
 
       if (!response.ok) {
         throw new Error(
-          response.status === 401
-            ? "Correo o contraseña incorrectos."
-            : "No se pudo iniciar sesión. Inténtalo de nuevo."
+          getSafePasswordRecoveryMessage(
+            payload,
+            "No se pudo solicitar la recuperación. Inténtalo de nuevo."
+          )
         );
       }
 
-      if (!payload?.access_token || !payload.results) {
-        throw new Error("Respuesta de login inválida. Inténtalo de nuevo.");
-      }
-
-      saveSession(payload.access_token, payload.results);
-      const destination = getSafeInternalPath(nextPath);
-
       setFeedback({
         type: "success",
-        message: "Inicio de sesión correcto. Redirigiendo..."
+        message: getSafePasswordRecoveryMessage(payload, DEFAULT_SUCCESS_MESSAGE)
       });
-      router.replace(destination);
     } catch (error) {
       setFeedback({
         type: "error",
         message:
           error instanceof Error
             ? error.message
-            : "No se pudo iniciar sesión. Inténtalo de nuevo."
+            : "No se pudo solicitar la recuperación. Inténtalo de nuevo."
       });
     } finally {
       setIsSubmitting(false);
@@ -102,26 +100,9 @@ export function LoginForm({ nextPath }: LoginFormProps) {
         />
       </label>
 
-      <label className="mw-field">
-        <span>Contraseña</span>
-        <input
-          autoComplete="current-password"
-          disabled={isSubmitting}
-          name="password"
-          onChange={(event) => setPassword(event.target.value)}
-          required
-          type="password"
-          value={password}
-        />
-      </label>
-
       <button className="mw-button mw-button--primary" disabled={isSubmitting} type="submit">
-        {isSubmitting ? "Iniciando sesión..." : "Iniciar sesión"}
+        {isSubmitting ? "Enviando..." : "Enviar enlace de recuperación"}
       </button>
-
-      <p className="mw-auth-footnote">
-        <Link href="/forgot-password">¿Has olvidado tu contraseña?</Link>
-      </p>
 
       {feedback ? (
         <p
@@ -134,6 +115,10 @@ export function LoginForm({ nextPath }: LoginFormProps) {
           {feedback.message}
         </p>
       ) : null}
+
+      <p className="mw-auth-footnote">
+        <Link href="/login">Volver a iniciar sesión</Link>.
+      </p>
     </form>
   );
 }
