@@ -46,6 +46,7 @@ if HAS_FLASK_ADMIN_DEPS:
     from flask_admin import Admin  # noqa: E402
 
     import api.admin as admin_module  # noqa: E402
+    from api.aeat_sales_ledger_service import AeatSalesLedgerExportResult  # noqa: E402
     from api.accounting_excel_service import AccountingExcelExportResult  # noqa: E402
     from api.invoice_snapshot_integrity import calculate_invoice_snapshot_hash  # noqa: E402
     from api.models import AccountingEntry, Invoices, db  # noqa: E402
@@ -58,6 +59,7 @@ class FlaskAdminInvoiceAccountingSourceTest(unittest.TestCase):
         self.assertIn("AccountingEntry", admin_source)
         self.assertIn("create_accounting_entry", admin_source)
         self.assertIn("export_sales_accounting_entries", admin_source)
+        self.assertIn("export_aeat_sales_ledger", admin_source)
         self.assertNotIn("Workbook(", admin_source)
         self.assertNotIn("openpyxl", admin_source)
 
@@ -105,6 +107,32 @@ class FlaskAdminInvoiceAccountingSourceTest(unittest.TestCase):
             "invoice_snapshot",
             "db.session.commit",
             "db.session.rollback",
+        ):
+            self.assertNotIn(forbidden, route_source)
+
+    def test_aeat_export_route_is_independent_and_does_not_commit(self):
+        route_source = function_source("export_aeat_accounting")
+
+        self.assertIn("@expose('/export-aeat-accounting')", source())
+        self.assertIn("self.session.query(AccountingEntry)", route_source)
+        self.assertIn("filter_by(entry_type=AccountingEntry.ENTRY_TYPE_SALE)", route_source)
+        self.assertIn("AccountingEntry.invoice_date.asc()", route_source)
+        self.assertIn("AccountingEntry.invoice_number.asc()", route_source)
+        self.assertIn("AccountingEntry.id.asc()", route_source)
+        self.assertIn("export_aeat_sales_ledger(entries, output_path=output_path, overwrite=True)", route_source)
+        self.assertIn("aeat_expedidas_ingresos.xlsx", route_source)
+        self.assertIn("send_file(", route_source)
+
+        for forbidden in (
+            "Invoices.query",
+            "Orders.query",
+            "Users.query",
+            "CheckoutSessions.query",
+            "db.session.commit",
+            "db.session.rollback",
+            "generate_invoice_pdf(",
+            "send_invoice_email",
+            "issue_invoice_for_order",
         ):
             self.assertNotIn(forbidden, route_source)
 
@@ -174,6 +202,7 @@ class FlaskAdminInvoiceAccountingHttpTest(unittest.TestCase):
         self.client = self.app.test_client()
         self.record_rule = self._rule(".record_accounting")
         self.export_rule = self._rule(".export_accounting")
+        self.aeat_export_rule = self._rule(".export_aeat_accounting")
 
     def tearDown(self):
         with self.app.app_context():
@@ -191,6 +220,9 @@ class FlaskAdminInvoiceAccountingHttpTest(unittest.TestCase):
 
     def _export_url(self):
         return self.export_rule.rule
+
+    def _aeat_export_url(self):
+        return self.aeat_export_rule.rule
 
     def _auth_header(self, username="admin", password="secret"):
         token = base64.b64encode(f"{username}:{password}".encode("utf-8")).decode("ascii")
@@ -286,6 +318,37 @@ class FlaskAdminInvoiceAccountingHttpTest(unittest.TestCase):
         self.assertTrue(exporter.call_args.kwargs["output_path"].endswith("ingresos_completo.xlsx"))
         self.assertIs(exporter.call_args.kwargs["overwrite"], True)
         self.assertEqual(send_file.call_args.kwargs["download_name"], "ingresos_completo.xlsx")
+        self.assertEqual(
+            send_file.call_args.kwargs["mimetype"],
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        )
+        commit.assert_not_called()
+
+    def test_aeat_export_uses_accounting_entries_and_downloads_xlsx(self):
+        self.client.post(self._record_url(self.invoice_id), headers=self._auth_header())
+        result = AeatSalesLedgerExportResult(
+            output_path="/safe/accounting/aeat_expedidas_ingresos.xlsx",
+            filename="aeat_expedidas_ingresos.xlsx",
+            row_count=1,
+            generated_at=datetime.now(timezone.utc),
+            file_size=1234,
+        )
+
+        with (
+            patch("api.admin.export_aeat_sales_ledger", return_value=result) as exporter,
+            patch("api.admin.send_file") as send_file,
+            patch("api.admin.db.session.commit") as commit,
+        ):
+            send_file.return_value = Response(b"xlsx", mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+            response = self.client.get(self._aeat_export_url(), headers=self._auth_header())
+
+        self.assertEqual(response.status_code, 200)
+        entries = exporter.call_args.args[0]
+        self.assertEqual(len(entries), 1)
+        self.assertEqual(entries[0].invoice_id, self.invoice_id)
+        self.assertTrue(exporter.call_args.kwargs["output_path"].endswith("aeat_expedidas_ingresos.xlsx"))
+        self.assertIs(exporter.call_args.kwargs["overwrite"], True)
+        self.assertEqual(send_file.call_args.kwargs["download_name"], "aeat_expedidas_ingresos.xlsx")
         self.assertEqual(
             send_file.call_args.kwargs["mimetype"],
             "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",

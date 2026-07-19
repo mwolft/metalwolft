@@ -15,6 +15,10 @@ from api.accounting_excel_service import (
     AccountingExcelExportError,
     export_sales_accounting_entries,
 )
+from api.aeat_sales_ledger_service import (
+    AeatSalesLedgerError,
+    export_aeat_sales_ledger,
+)
 from api.email_routes import send_order_status_email
 from api.invoice_accounting_service import (
     AccountingEntryIntegrityError,
@@ -829,6 +833,7 @@ def _format_admin_accounting_status_label(status):
 def _format_admin_invoice_accounting_detail(view, context, model, name):
     entry = _find_invoice_sale_accounting_entry(view, model)
     export_url = view.get_url(".export_accounting")
+    aeat_export_url = view.get_url(".export_aeat_accounting")
 
     if entry:
         return Markup(
@@ -836,11 +841,13 @@ def _format_admin_invoice_accounting_detail(view, context, model, name):
             '<div>{status}</div>'
             '<div style="margin-top: 8px;">'
             '<a class="btn btn-default btn-sm" href="{export_url}">Exportar Excel de ingresos</a>'
+            ' <a class="btn btn-default btn-sm" href="{aeat_export_url}">Exportar libro AEAT de ingresos</a>'
             '</div>'
             '</div>'
         ).format(
             status=_format_admin_accounting_status_label(entry.status),
             export_url=export_url,
+            aeat_export_url=aeat_export_url,
         )
 
     if not getattr(model, "invoice_number", None) or not getattr(model, "issued_at", None):
@@ -855,9 +862,10 @@ def _format_admin_invoice_accounting_detail(view, context, model, name):
         '</form>'
         '<div style="margin-top: 8px;">'
         '<a class="btn btn-default btn-sm" href="{export_url}">Exportar Excel de ingresos</a>'
+        ' <a class="btn btn-default btn-sm" href="{aeat_export_url}">Exportar libro AEAT de ingresos</a>'
         '</div>'
         '</div>'
-    ).format(action_url=action_url, export_url=export_url)
+    ).format(action_url=action_url, export_url=export_url, aeat_export_url=aeat_export_url)
 
 
 def _admin_invoice_accounting_success_message(*, already_existed):
@@ -1151,6 +1159,42 @@ class InvoiceAdminView(SafeModelView):
         except Exception:
             current_app.logger.exception("Unexpected Flask Admin accounting sales export error")
             flash('No se ha podido generar la exportación de ingresos.', 'error')
+
+        return redirect(self.get_url(".index_view"))
+
+    @expose('/export-aeat-accounting')
+    def export_aeat_accounting(self):
+        entries = (
+            self.session.query(AccountingEntry)
+            .filter_by(entry_type=AccountingEntry.ENTRY_TYPE_SALE)
+            .order_by(
+                AccountingEntry.invoice_date.asc(),
+                AccountingEntry.invoice_number.asc(),
+                AccountingEntry.id.asc(),
+            )
+            .all()
+        )
+
+        if not entries:
+            flash('No hay registros contables de ingresos para exportar al libro AEAT.', 'error')
+            return redirect(self.get_url(".index_view"))
+
+        output_path = os.path.join(_admin_accounting_export_folder(), "aeat_expedidas_ingresos.xlsx")
+
+        try:
+            result = export_aeat_sales_ledger(entries, output_path=output_path, overwrite=True)
+            return send_file(
+                result.output_path,
+                as_attachment=True,
+                download_name=result.filename,
+                mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            )
+        except AeatSalesLedgerError:
+            current_app.logger.exception("Flask Admin AEAT sales ledger export failed")
+            flash('No se ha podido generar el libro AEAT de ingresos.', 'error')
+        except Exception:
+            current_app.logger.exception("Unexpected Flask Admin AEAT sales ledger export error")
+            flash('No se ha podido generar el libro AEAT de ingresos.', 'error')
 
         return redirect(self.get_url(".index_view"))
 

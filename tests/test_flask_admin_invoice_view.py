@@ -299,6 +299,8 @@ class FlaskAdminInvoiceViewTest(unittest.TestCase):
         self.assertIn('method="post"', detail_formatter)
         self.assertIn("Registrar contabilidad", detail_formatter)
         self.assertIn("Exportar Excel de ingresos", detail_formatter)
+        self.assertIn("Exportar libro AEAT de ingresos", detail_formatter)
+        self.assertIn("view.get_url(\".export_aeat_accounting\")", detail_formatter)
         self.assertNotIn('name="tax_base"', detail_formatter)
         self.assertNotIn('name="total_amount"', detail_formatter)
 
@@ -353,6 +355,29 @@ class FlaskAdminInvoiceViewTest(unittest.TestCase):
             "Users.query",
             "CheckoutSessions.query",
             "invoice_snapshot",
+            "db.session.commit",
+            "db.session.rollback",
+        ):
+            self.assertNotIn(forbidden, route_source)
+
+    def test_aeat_accounting_export_route_uses_only_accounting_entries(self):
+        route_source = function_source("export_aeat_accounting")
+
+        self.assertIn("@expose('/export-aeat-accounting')", self.view_source)
+        self.assertIn("self.session.query(AccountingEntry)", route_source)
+        self.assertIn("filter_by(entry_type=AccountingEntry.ENTRY_TYPE_SALE)", route_source)
+        self.assertIn("AccountingEntry.invoice_date.asc()", route_source)
+        self.assertIn("AccountingEntry.invoice_number.asc()", route_source)
+        self.assertIn("AccountingEntry.id.asc()", route_source)
+        self.assertIn("export_aeat_sales_ledger(entries, output_path=output_path, overwrite=True)", route_source)
+        self.assertIn("send_file(", route_source)
+        self.assertIn("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", route_source)
+
+        for forbidden in (
+            "Invoices.query",
+            "Orders.query",
+            "Users.query",
+            "CheckoutSessions.query",
             "db.session.commit",
             "db.session.rollback",
         ):
