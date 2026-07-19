@@ -68,7 +68,9 @@ from api.invoice_snapshot_builder import InvoiceSnapshotValidationError
 from api.verifactu_record_service import (
     VeriFactuRecordConcurrencyError,
     VeriFactuRecordIntegrityError,
+    VeriFactuRecordUnsupportedSchema,
     VeriFactuRecordValidationError,
+    create_verifactu_registration_record,
     prepare_verifactu_record_for_submission,
     verifactu_system_identity_from_config,
 )
@@ -928,6 +930,73 @@ def _persist_admin_invoice_email_failure(session, invoice_id, attempts_before):
     session.commit()
 
 
+def _find_invoice_verifactu_registration_record(view, invoice):
+    for record in (getattr(invoice, "verifactu_records", None) or []):
+        if record.record_type == VeriFactuRecord.RECORD_TYPE_ALTA:
+            return record
+
+    invoice_id = getattr(invoice, "id", None)
+    if not invoice_id:
+        return None
+
+    return (
+        view.session.query(VeriFactuRecord)
+        .filter_by(invoice_id=invoice_id, record_type=VeriFactuRecord.RECORD_TYPE_ALTA)
+        .one_or_none()
+    )
+
+
+def _format_admin_verifactu_record_link(view, record):
+    record_url = view.get_url("verifacturecord.details_view", id=record.id)
+    return Markup('<a href="{url}">Ver registro #{record_id}</a>').format(
+        url=record_url,
+        record_id=record.id,
+    )
+
+
+def _format_admin_invoice_verifactu_detail(view, context, model, name):
+    record = _find_invoice_verifactu_registration_record(view, model)
+
+    if record:
+        record_link = _format_admin_verifactu_record_link(view, record)
+        if record.status == VeriFactuRecord.STATUS_READY:
+            fingerprint = getattr(record, "fingerprint", None)
+            fingerprint_label = f"{fingerprint[:12]}..." if fingerprint else "—"
+            return Markup(
+                '<div class="invoice-verifactu-admin-action">'
+                '<div>Preparado</div>'
+                '<div>Secuencia: {sequence}</div>'
+                '<div>Huella: {fingerprint}</div>'
+                '<div style="margin-top: 8px;">{record_link}</div>'
+                '</div>'
+            ).format(
+                sequence=_format_admin_invoice_nullable(record.chain_sequence),
+                fingerprint=fingerprint_label,
+                record_link=record_link,
+            )
+
+        return Markup(
+            '<div class="invoice-verifactu-admin-action">'
+            '<div>Generado</div>'
+            '<div>ID registro: {record_id}</div>'
+            '<div style="margin-top: 8px;">{record_link}</div>'
+            '</div>'
+        ).format(record_id=record.id, record_link=record_link)
+
+    if not getattr(model, "invoice_number", None) or not getattr(model, "issued_at", None):
+        return Markup("Factura no emitida")
+
+    action_url = view.get_url(".generate_verifactu_record", invoice_id=model.id)
+    return Markup(
+        '<div class="invoice-verifactu-admin-action">'
+        '<div>No generado</div>'
+        '<form method="post" action="{action_url}" style="margin-top: 8px;">'
+        '<button type="submit" class="btn btn-primary btn-sm">GENERAR REGISTRO VERIFACTU</button>'
+        '</form>'
+        '</div>'
+    ).format(action_url=action_url)
+
+
 def _admin_invoice_accounting_success_message(*, already_existed):
     if already_existed:
         return "La factura ya tenía registro contable."
@@ -981,6 +1050,7 @@ class InvoiceAdminView(SafeModelView):
         'pdf_path',
         'accounting_entries',
         'email_status',
+        'verifactu_records',
         'invoice_snapshot_schema_version',
     ]
     column_searchable_list = [
@@ -1021,6 +1091,7 @@ class InvoiceAdminView(SafeModelView):
         'pdf_path': 'PDF',
         'accounting_entries': 'Contabilidad',
         'email_status': 'Email',
+        'verifactu_records': 'VeriFactu',
         'invoice_snapshot_schema_version': 'Versión snapshot',
     }
     column_formatters = {
@@ -1042,6 +1113,7 @@ class InvoiceAdminView(SafeModelView):
         'pdf_path': _format_admin_invoice_pdf_detail,
         'accounting_entries': _format_admin_invoice_accounting_detail,
         'email_status': _format_admin_invoice_email_detail,
+        'verifactu_records': _format_admin_invoice_verifactu_detail,
     }
 
     column_default_sort = ('created_at', True)
@@ -1255,6 +1327,51 @@ class InvoiceAdminView(SafeModelView):
                 invoice_id,
             )
             flash('No se ha podido registrar contabilidad.', 'error')
+
+        return redirect(self.get_url(".details_view", id=invoice.id))
+
+    @expose('/generate-verifactu-record/<int:invoice_id>', methods=['POST'])
+    def generate_verifactu_record(self, invoice_id):
+        invoice = self.session.get(Invoices, invoice_id)
+        if not invoice:
+            flash('Factura no encontrada.', 'error')
+            return redirect(self.get_url(".index_view"))
+
+        if request.args or request.form or (request.get_json(silent=True) or {}):
+            flash('Esta acción no acepta datos VeriFactu desde el navegador.', 'error')
+            return redirect(self.get_url(".details_view", id=invoice.id))
+
+        try:
+            result = create_verifactu_registration_record(
+                invoice,
+                db_session=self.session,
+                system_id=current_app.config.get("VERIFACTU_SYSTEM_ID"),
+                software_name=current_app.config.get("VERIFACTU_SYSTEM_NAME"),
+                software_version=current_app.config.get("VERIFACTU_SYSTEM_VERSION"),
+            )
+            self.session.commit()
+            if result.created:
+                flash('Registro VeriFactu generado correctamente.', 'success')
+            else:
+                flash('La factura ya tiene un registro VeriFactu generado.', 'success')
+        except VeriFactuRecordUnsupportedSchema:
+            self.session.rollback()
+            flash('La versión del snapshot fiscal no está soportada para VeriFactu.', 'error')
+        except VeriFactuRecordIntegrityError:
+            self.session.rollback()
+            flash('No se puede generar VeriFactu porque la integridad fiscal no coincide.', 'error')
+        except VeriFactuRecordValidationError as exc:
+            self.session.rollback()
+            current_app.logger.warning("Invalid Flask Admin VeriFactu record request for invoice %s: %s", invoice_id, exc)
+            flash(f'No se puede generar el registro VeriFactu: {exc}', 'error')
+        except IntegrityError:
+            self.session.rollback()
+            current_app.logger.exception("Flask Admin VeriFactu record conflict for invoice %s", invoice_id)
+            flash('La factura ya tiene un registro VeriFactu o se está creando en otra operación.', 'error')
+        except Exception:
+            self.session.rollback()
+            current_app.logger.exception("Unexpected Flask Admin VeriFactu record generation error for invoice %s", invoice_id)
+            flash('No se ha podido generar el registro VeriFactu.', 'error')
 
         return redirect(self.get_url(".details_view", id=invoice.id))
 

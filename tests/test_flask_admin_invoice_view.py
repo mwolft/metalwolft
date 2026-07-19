@@ -37,6 +37,7 @@ DETAIL_COLUMNS = [
     "pdf_path",
     "accounting_entries",
     "email_status",
+    "verifactu_records",
     "invoice_snapshot_schema_version",
 ]
 
@@ -107,7 +108,7 @@ def invoice_fields():
 def invoice_relationship_fields():
     source_text = source(MODELS_PATH)
     fields = set()
-    for relationship in ("accounting_entries",):
+    for relationship in ("accounting_entries", "verifactu_records"):
         if f"backref=db.backref('{relationship}', lazy=True)" in source_text:
             fields.add(relationship)
     return fields
@@ -173,6 +174,7 @@ class FlaskAdminInvoiceViewTest(unittest.TestCase):
         self.assertIn("pdf_path", detail_formatters)
         self.assertIn("accounting_entries", formatters)
         self.assertIn("accounting_entries", detail_formatters)
+        self.assertIn("verifactu_records", detail_formatters)
         self.assertIn("amount", formatters)
         self.assertIn("created_at", formatters)
         self.assertIn("issued_at", formatters)
@@ -359,6 +361,54 @@ class FlaskAdminInvoiceViewTest(unittest.TestCase):
             "db.session.rollback",
         ):
             self.assertNotIn(forbidden, route_source)
+
+    def test_verifactu_detail_action_is_post_only_and_uses_no_browser_data(self):
+        detail_formatter = function_source("_format_admin_invoice_verifactu_detail")
+        route_source = function_source("generate_verifactu_record")
+
+        self.assertIn("view.get_url(\".generate_verifactu_record\", invoice_id=model.id)", detail_formatter)
+        self.assertIn("No generado", detail_formatter)
+        self.assertIn("GENERAR REGISTRO VERIFACTU", detail_formatter)
+        self.assertIn("Generado", detail_formatter)
+        self.assertIn("Preparado", detail_formatter)
+        self.assertIn("Secuencia:", detail_formatter)
+        self.assertIn("Huella:", detail_formatter)
+        self.assertIn("Ver registro #", function_source("_format_admin_verifactu_record_link"))
+        self.assertNotIn("prepare_verifactu_record_for_submission", detail_formatter)
+
+        self.assertIn("@expose('/generate-verifactu-record/<int:invoice_id>', methods=['POST'])", self.view_source)
+        self.assertIn("request.args", route_source)
+        self.assertIn("request.form", route_source)
+        self.assertIn("request.get_json(silent=True)", route_source)
+        self.assertIn("Esta acción no acepta datos VeriFactu desde el navegador.", route_source)
+        self.assertNotIn("invoice_number = request", route_source)
+        self.assertNotIn("output_dir", route_source)
+
+    def test_verifactu_record_generation_route_delegates_and_keeps_phases_separate(self):
+        route_source = function_source("generate_verifactu_record")
+
+        self.assertIn("self.session.get(Invoices, invoice_id)", route_source)
+        self.assertIn("create_verifactu_registration_record(", route_source)
+        self.assertIn("db_session=self.session", route_source)
+        self.assertIn('system_id=current_app.config.get("VERIFACTU_SYSTEM_ID")', route_source)
+        self.assertIn("self.session.commit()", route_source)
+        self.assertIn("self.session.rollback()", route_source)
+        self.assertIn("result.created", route_source)
+
+        for forbidden in (
+            "prepare_verifactu_record_for_submission(",
+            "create_pending_submission",
+            "mark_sent",
+            "mark_accepted",
+            "generate_invoice_pdf(",
+            "send_invoice_email",
+            "run_invoice_workflow",
+            "xml",
+            "aeat",
+            "certificate",
+            "transmit",
+        ):
+            self.assertNotIn(forbidden, route_source.lower())
 
     def test_aeat_accounting_export_route_uses_only_accounting_entries(self):
         route_source = function_source("export_aeat_accounting")
