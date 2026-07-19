@@ -196,7 +196,7 @@ class FlaskAdminInvoiceVeriFactuHttpTest(unittest.TestCase):
             record = db.session.query(VeriFactuRecord).one()
             record.status = VeriFactuRecord.STATUS_READY
             record.chain_key = "B00000000|VERI*FACTU|B00000000|metalwolft-dev-01|DEV-001"
-            record.chain_sequence = 7
+            record.chain_sequence = 1
             record.fingerprint = "ABCDEF1234567890"
             record.fingerprint_status = "CALCULATED"
             record.is_first_record = True
@@ -204,7 +204,7 @@ class FlaskAdminInvoiceVeriFactuHttpTest(unittest.TestCase):
             html = self._formatter_html(self._invoice())
 
         self.assertIn("Preparado", html)
-        self.assertIn("Secuencia: 7", html)
+        self.assertIn("Secuencia: 1", html)
         self.assertIn("Huella: ABCDEF123456...", html)
         self.assertNotIn("GENERAR REGISTRO VERIFACTU", html)
 
