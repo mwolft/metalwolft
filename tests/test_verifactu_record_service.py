@@ -203,6 +203,7 @@ class VeriFactuRecordServiceSQLiteTest(unittest.TestCase):
         self.context = self.app.app_context()
         self.context.push()
         db.create_all()
+        self._invoice_number_sequence = 1
 
     def tearDown(self):
         db.session.remove()
@@ -211,8 +212,10 @@ class VeriFactuRecordServiceSQLiteTest(unittest.TestCase):
 
     def make_invoice(self, *, invoice_snapshot=None, stored_hash=None):
         fiscal_snapshot = invoice_snapshot if invoice_snapshot is not None else snapshot()
+        invoice_number = f"F2026{self._invoice_number_sequence:06d}"
+        self._invoice_number_sequence += 1
         invoice = Invoices(
-            invoice_number="F2026000001",
+            invoice_number=invoice_number,
             invoice_type="ordinary",
             amount=121.00,
             client_name="Cliente VeriFactu",
@@ -295,7 +298,9 @@ class VeriFactuRecordServiceSQLiteTest(unittest.TestCase):
         invoice = self.make_invoice()
         first = self.create_record(invoice)
         db.session.commit()
-        first.record.record_payload["manual_marker"] = "kept"
+        payload = dict(first.record.record_payload)
+        payload["manual_marker"] = "kept"
+        first.record.record_payload = payload
         db.session.commit()
 
         second = self.create_record(invoice)
