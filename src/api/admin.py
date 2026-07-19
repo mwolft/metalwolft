@@ -1596,14 +1596,34 @@ class VeriFactuRecordAdminView(SafeModelView):
         'Calcular huella y marcar READY para los registros seleccionados?',
     )
     def action_prepare_verifactu_records(self, ids):
+        selected_ids = list(ids or [])
+        if not selected_ids:
+            flash('Selecciona al menos un registro VeriFactu.', 'warning')
+            return redirect(self.get_url(".index_view"))
+
         prepared = 0
         already_ready = 0
+        skipped = 0
+        missing = 0
 
         try:
             system_identity = verifactu_system_identity_from_config(current_app.config)
-            for record_id in ids:
-                record = self.session.get(VeriFactuRecord, int(record_id))
+            for record_id in selected_ids:
+                try:
+                    record_pk = int(record_id)
+                except (TypeError, ValueError):
+                    missing += 1
+                    continue
+
+                record = self.session.get(VeriFactuRecord, record_pk)
                 if record is None:
+                    missing += 1
+                    continue
+                if record.status == VeriFactuRecord.STATUS_READY:
+                    already_ready += 1
+                    continue
+                if record.status != VeriFactuRecord.STATUS_BUILT:
+                    skipped += 1
                     continue
                 result = prepare_verifactu_record_for_submission(
                     record,
@@ -1615,10 +1635,15 @@ class VeriFactuRecordAdminView(SafeModelView):
                 else:
                     already_ready += 1
             self.session.commit()
-            flash(
-                f'Registros VeriFactu preparados: {prepared}. Ya preparados: {already_ready}.',
-                'success',
-            )
+
+            messages = [f'Registros VeriFactu preparados: {prepared}.']
+            if already_ready:
+                messages.append(f'Ya preparados: {already_ready}.')
+            if skipped:
+                messages.append(f'Omitidos por estado no preparable: {skipped}.')
+            if missing:
+                messages.append(f'No encontrados: {missing}.')
+            flash(' '.join(messages), 'success' if prepared else 'warning')
         except (
             VeriFactuRecordValidationError,
             VeriFactuRecordIntegrityError,
@@ -1631,6 +1656,8 @@ class VeriFactuRecordAdminView(SafeModelView):
             self.session.rollback()
             current_app.logger.exception("Unexpected VeriFactu admin preparation error")
             flash('No se han podido preparar los registros VeriFactu.', 'error')
+
+        return redirect(self.get_url(".index_view"))
 
 # ========================== SETUP ADMIN ==========================
 def setup_admin(app):
