@@ -30,14 +30,15 @@ from legacy_public_routes import REDIRECT_MAP, GONE_PATHS
 
 
 # 1) Entorno y paths
-env = os.getenv("FLASK_ENV", "production")
-print(f"Flask env: {env}")
 static_file_dir = os.path.abspath(
     os.path.join(os.path.dirname(os.path.realpath(__file__)), "..", "build")
 )
 hashed_asset_segment_pattern = re.compile(r"^[0-9a-f]{8,}$", re.IGNORECASE)
 BOOLEAN_TRUE_VALUES = {"1", "true", "t", "yes", "on"}
 BOOLEAN_FALSE_VALUES = {"0", "false", "f", "no", "off"}
+LOCAL_SQLITE_DATABASE_URI = "sqlite:////tmp/test.db"
+PRODUCTION_APP_ENV = "production"
+VALID_APP_ENVIRONMENTS = {PRODUCTION_APP_ENV, "development", "test"}
 
 
 def parse_boolean_env(name, *, default=False):
@@ -60,8 +61,41 @@ def parse_boolean_env(name, *, default=False):
     return default
 
 
-def env_is_truthy(name):
-    return parse_boolean_env(name, default=False)
+def resolve_app_environment(app_env=None):
+    environment_name = app_env if app_env is not None else os.getenv("APP_ENV")
+    if environment_name is None or environment_name.strip() == "":
+        raise RuntimeError(
+            "APP_ENV is required and must be one of: production, development, test."
+        )
+
+    normalized_environment = environment_name.strip().lower()
+    if normalized_environment not in VALID_APP_ENVIRONMENTS:
+        raise RuntimeError(
+            "Invalid APP_ENV. Expected one of: production, development, test."
+        )
+
+    return normalized_environment
+
+
+def resolve_database_uri(database_url=None, app_env=None):
+    environment = resolve_app_environment(app_env)
+    configured_database_url = (
+        database_url if database_url is not None else os.getenv("DATABASE_URL")
+    )
+    if configured_database_url:
+        return configured_database_url.replace("postgres://", "postgresql://")
+
+    if environment == PRODUCTION_APP_ENV:
+        raise RuntimeError(
+            "DATABASE_URL is required when APP_ENV=production. "
+            "Production startup is blocked to avoid unsafe SQLite fallback."
+        )
+
+    return LOCAL_SQLITE_DATABASE_URI
+
+
+env = resolve_app_environment()
+print(f"App env: {env}")
 
 
 def should_force_https():
@@ -69,13 +103,7 @@ def should_force_https():
     if explicit_force is not None:
         return parse_boolean_env("FORCE_HTTPS", default=False)
 
-    is_local_or_dev = (
-        env != "production"
-        or env_is_truthy("FLASK_DEBUG")
-        or env_is_truthy("DEBUG")
-        or env_is_truthy("CODESPACES")
-        or bool(os.getenv("GITPOD_WORKSPACE_URL"))
-    )
+    is_local_or_dev = env != PRODUCTION_APP_ENV
     return not is_local_or_dev
 
 
@@ -143,11 +171,7 @@ CORS(
 
 
 # 6) Base de datos
-db_url = os.getenv("DATABASE_URL")
-if db_url:
-    app.config["SQLALCHEMY_DATABASE_URI"] = db_url.replace("postgres://", "postgresql://")
-else:
-    app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:////tmp/test.db"
+app.config["SQLALCHEMY_DATABASE_URI"] = resolve_database_uri()
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {
     "pool_pre_ping": True,

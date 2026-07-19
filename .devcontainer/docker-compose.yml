@@ -14,6 +14,7 @@ services:
       - db
 
     environment:
+      APP_ENV: development
       DATABASE_URL: postgres://gitpod:postgres@db:5432/example
 
     # Use "forwardPorts" in **devcontainer.json** to forward an app port locally.
