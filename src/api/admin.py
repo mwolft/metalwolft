@@ -1596,7 +1596,16 @@ class VeriFactuRecordAdminView(SafeModelView):
         'Calcular huella y marcar READY para los registros seleccionados?',
     )
     def action_prepare_verifactu_records(self, ids):
+        current_app.logger.info(
+            "VeriFactu admin prepare action entered ids=%r ids_type=%s",
+            ids,
+            type(ids).__name__,
+        )
         selected_ids = list(ids or [])
+        current_app.logger.info(
+            "VeriFactu admin prepare action normalized ids=%r",
+            selected_ids,
+        )
         if not selected_ids:
             flash('Selecciona al menos un registro VeriFactu.', 'warning')
             return redirect(self.get_url(".index_view"))
@@ -1609,6 +1618,10 @@ class VeriFactuRecordAdminView(SafeModelView):
         try:
             system_identity = verifactu_system_identity_from_config(current_app.config)
             for record_id in selected_ids:
+                current_app.logger.info(
+                    "VeriFactu admin prepare action loading record_id=%r",
+                    record_id,
+                )
                 try:
                     record_pk = int(record_id)
                 except (TypeError, ValueError):
@@ -1616,6 +1629,11 @@ class VeriFactuRecordAdminView(SafeModelView):
                     continue
 
                 record = self.session.get(VeriFactuRecord, record_pk)
+                current_app.logger.info(
+                    "VeriFactu admin prepare action loaded record id=%s status=%s",
+                    getattr(record, "id", None),
+                    getattr(record, "status", None),
+                )
                 if record is None:
                     missing += 1
                     continue
@@ -1625,16 +1643,39 @@ class VeriFactuRecordAdminView(SafeModelView):
                 if record.status != VeriFactuRecord.STATUS_BUILT:
                     skipped += 1
                     continue
+                current_app.logger.info(
+                    "VeriFactu admin prepare action calling prepare service record_id=%s",
+                    record.id,
+                )
                 result = prepare_verifactu_record_for_submission(
                     record,
                     db_session=self.session,
                     system_identity=system_identity,
                 )
+                current_app.logger.info(
+                    "VeriFactu admin prepare action prepare service returned record_id=%s prepared=%s",
+                    record.id,
+                    getattr(result, "prepared", None),
+                )
                 if result.prepared:
                     prepared += 1
                 else:
                     already_ready += 1
+            current_app.logger.info(
+                "VeriFactu admin prepare action committing prepared=%s already_ready=%s skipped=%s missing=%s",
+                prepared,
+                already_ready,
+                skipped,
+                missing,
+            )
             self.session.commit()
+            current_app.logger.info(
+                "VeriFactu admin prepare action committed prepared=%s already_ready=%s skipped=%s missing=%s",
+                prepared,
+                already_ready,
+                skipped,
+                missing,
+            )
 
             messages = [f'Registros VeriFactu preparados: {prepared}.']
             if already_ready:
@@ -1650,7 +1691,7 @@ class VeriFactuRecordAdminView(SafeModelView):
             VeriFactuRecordConcurrencyError,
         ) as exc:
             self.session.rollback()
-            current_app.logger.warning("VeriFactu admin preparation rejected: %s", exc)
+            current_app.logger.warning("VeriFactu admin preparation rejected: %s", exc, exc_info=True)
             flash(str(exc), 'error')
         except Exception:
             self.session.rollback()
