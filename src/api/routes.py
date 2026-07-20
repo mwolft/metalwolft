@@ -32,6 +32,7 @@ from api.email_routes import send_email, get_admin_recipients
 from api.checkout_service import build_checkout_quote
 from api.checkout_cart_cleanup import cleanup_cart_lines_from_checkout_quote
 from api.checkout_payment_security import is_modifiable_stripe_checkout_session
+from api.customer_order_serializers import serialize_customer_order_summary
 from api.payment_amounts import PaymentAmountValidationError, validate_payment_amount
 from api.order_confirmation_email_service import send_order_confirmation_email
 from api.post_order_invoice_hook import handle_post_order_invoice_workflow
@@ -3233,6 +3234,28 @@ def get_product_images():
     response.headers['Access-Control-Expose-Headers'] = 'X-Total-Count, Authorization'
     response.headers['Access-Control-Allow-Origin'] = '*'
     return response, 200
+
+
+@api.route('/customer/orders', methods=['GET'])
+@jwt_required()
+def get_customer_orders():
+    current_user = get_jwt_identity()
+    customer_id = current_user.get("user_id") if current_user else None
+
+    if customer_id is None or db.session.get(Users, customer_id) is None:
+        return jsonify({"message": "Invalid customer session"}), 401
+
+    orders = (
+        Orders.query
+        .filter(Orders.user_id == customer_id)
+        .order_by(Orders.order_date.desc(), Orders.id.desc())
+        .all()
+    )
+
+    return jsonify({
+        "orders": [serialize_customer_order_summary(order) for order in orders]
+    }), 200
+
 
 @api.route('/orders', methods=['GET', 'POST'])
 @jwt_required()
