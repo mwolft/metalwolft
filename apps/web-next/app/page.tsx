@@ -285,6 +285,7 @@ export default async function HomePage() {
                 height={960}
                 priority
                 sizes="(max-width: 1024px) 100vw, 42vw"
+                unoptimized={HERO_IMAGE_PATH.split(/[?#]/)[0].toLowerCase().endsWith(".avif")}
               />
             </div>
             <div className="mw-home-hero__route">
@@ -355,6 +356,7 @@ export default async function HomePage() {
                         alt={product.title}
                         fill
                         sizes="(max-width: 767px) 100vw, (max-width: 1120px) 50vw, 33vw"
+                        unoptimized={product.image.split(/[?#]/)[0].toLowerCase().endsWith(".avif")}
                       />
                     ) : (
                       <div className="mw-home-product-card__placeholder" aria-hidden="true">
