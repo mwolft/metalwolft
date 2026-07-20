@@ -15,7 +15,7 @@ from reportlab.lib.pagesizes import A4
 from reportlab.lib import colors
 from reportlab.lib.units import cm
 from reportlab.lib.styles import getSampleStyleSheet
-from sqlalchemy import func
+from sqlalchemy import case, func, or_
 from sqlalchemy.orm import joinedload
 from flask_mail import Message
 from dotenv import load_dotenv
@@ -32,7 +32,10 @@ from api.email_routes import send_email, get_admin_recipients
 from api.checkout_service import build_checkout_quote
 from api.checkout_cart_cleanup import cleanup_cart_lines_from_checkout_quote
 from api.checkout_payment_security import is_modifiable_stripe_checkout_session
-from api.customer_order_serializers import serialize_customer_order_summary
+from api.customer_order_serializers import (
+    serialize_customer_order_detail,
+    serialize_customer_order_summary,
+)
 from api.payment_amounts import PaymentAmountValidationError, validate_payment_amount
 from api.order_confirmation_email_service import send_order_confirmation_email
 from api.post_order_invoice_hook import handle_post_order_invoice_workflow
@@ -45,6 +48,7 @@ from api.invoice_admin_helpers import (
 from api.invoice_pdf_download_service import (
     InvoicePdfDownloadFileMissing,
     InvoicePdfDownloadInvalidPath,
+    InvoicePdfDownloadUnavailable,
     resolve_invoice_pdf_download,
 )
 from api.work_order_service import generate_work_order_pdf
@@ -3239,10 +3243,8 @@ def get_product_images():
 @api.route('/customer/orders', methods=['GET'])
 @jwt_required()
 def get_customer_orders():
-    current_user = get_jwt_identity()
-    customer_id = current_user.get("user_id") if current_user else None
-
-    if customer_id is None or db.session.get(Users, customer_id) is None:
+    customer_id = _get_authenticated_customer_id()
+    if customer_id is None:
         return jsonify({"message": "Invalid customer session"}), 401
 
     orders = (
@@ -3255,6 +3257,129 @@ def get_customer_orders():
     return jsonify({
         "orders": [serialize_customer_order_summary(order) for order in orders]
     }), 200
+
+
+@api.route('/customer/orders/<int:order_id>', methods=['GET'])
+@jwt_required()
+def get_customer_order_detail(order_id):
+    customer_id = _get_authenticated_customer_id()
+    if customer_id is None:
+        return jsonify({"message": "Invalid customer session"}), 401
+
+    order = (
+        Orders.query
+        .options(joinedload(Orders.order_details).joinedload(OrderDetails.product))
+        .filter(Orders.id == order_id, Orders.user_id == customer_id)
+        .first()
+    )
+
+    if not order:
+        return jsonify({"message": "Order not found"}), 404
+
+    invoice = _get_customer_order_invoice(order.id)
+    invoice_pdf_available = _customer_order_invoice_pdf_available(invoice)
+
+    return jsonify({
+        "order": serialize_customer_order_detail(
+            order,
+            invoice,
+            invoice_pdf_available=invoice_pdf_available,
+        )
+    }), 200
+
+
+@api.route('/customer/orders/<int:order_id>/invoice', methods=['GET'])
+@jwt_required()
+def download_customer_order_invoice(order_id):
+    customer_id = _get_authenticated_customer_id()
+    if customer_id is None:
+        return jsonify({"message": "Invalid customer session"}), 401
+
+    try:
+        order = (
+            Orders.query
+            .filter(Orders.id == order_id, Orders.user_id == customer_id)
+            .first()
+        )
+        if not order:
+            return jsonify({"message": "Invoice not found"}), 404
+
+        invoice = _get_customer_order_invoice(order.id)
+        if not invoice:
+            return jsonify({"message": "Invoice not found"}), 404
+
+        try:
+            resolved_pdf = resolve_invoice_pdf_download(
+                invoice,
+                current_app.config.get('INVOICE_FOLDER'),
+            )
+        except (
+            InvoicePdfDownloadUnavailable,
+            InvoicePdfDownloadFileMissing,
+            InvoicePdfDownloadInvalidPath,
+        ):
+            return jsonify({"message": "Invoice not found"}), 404
+
+        return send_file(
+            resolved_pdf.file_path,
+            as_attachment=True,
+            download_name=resolved_pdf.download_name,
+            mimetype='application/pdf',
+        )
+    except Exception:
+        current_app.logger.exception(
+            "Unexpected customer invoice download error for order_id=%s",
+            order_id,
+        )
+        return jsonify({"message": "No se ha podido descargar la factura."}), 500
+
+
+def _get_customer_order_invoice(order_id):
+    return (
+        Invoices.query
+        .filter(
+            Invoices.order_id == order_id,
+            Invoices.invoice_number.isnot(None),
+            Invoices.invoice_number != "",
+            or_(Invoices.invoice_type == "ordinary", Invoices.invoice_type.is_(None)),
+        )
+        .order_by(
+            case((Invoices.invoice_type == "ordinary", 0), else_=1),
+            Invoices.id.desc(),
+        )
+        .first()
+    )
+
+
+def _customer_order_invoice_pdf_available(invoice):
+    if not invoice:
+        return False
+
+    try:
+        resolve_invoice_pdf_download(
+            invoice,
+            current_app.config.get('INVOICE_FOLDER'),
+        )
+        return True
+    except (
+        InvoicePdfDownloadUnavailable,
+        InvoicePdfDownloadFileMissing,
+        InvoicePdfDownloadInvalidPath,
+    ):
+        return False
+
+
+def _get_authenticated_customer_id():
+    current_user = get_jwt_identity()
+    customer_id = current_user.get("user_id") if current_user else None
+
+    if not isinstance(customer_id, int):
+        return None
+
+    if db.session.get(Users, customer_id) is None:
+        return None
+
+    return customer_id
 
 
 @api.route('/orders', methods=['GET', 'POST'])

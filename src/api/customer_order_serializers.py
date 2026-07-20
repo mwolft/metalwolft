@@ -31,6 +31,67 @@ def serialize_customer_order_summary(order):
     }
 
 
+def serialize_customer_order_detail(order, invoice=None, *, invoice_pdf_available=False):
+    return {
+        **serialize_customer_order_summary(order),
+        "shipping_address": _serialize_shipping_address(order.order_details),
+        "lines": [
+            _serialize_customer_order_line(detail)
+            for detail in sorted(order.order_details, key=lambda item: item.id or 0)
+        ],
+        "invoice": _serialize_customer_order_invoice(invoice, invoice_pdf_available),
+    }
+
+
+def _serialize_shipping_address(order_details):
+    first_detail = next(iter(order_details), None)
+    if not first_detail:
+        return {
+            "recipient": None,
+            "city": None,
+        }
+
+    recipient = " ".join(
+        part.strip()
+        for part in (first_detail.firstname or "", first_detail.lastname or "")
+        if part and part.strip()
+    ) or None
+
+    return {
+        "recipient": recipient,
+        "city": first_detail.shipping_city,
+    }
+
+
+def _serialize_customer_order_line(detail):
+    return {
+        "id": detail.id,
+        "product_name": detail.product.nombre if detail.product else None,
+        "quantity": detail.quantity,
+        "configuration": {
+            "alto": _format_optional_number(detail.alto),
+            "ancho": _format_optional_number(detail.ancho),
+            "color": detail.color,
+            "anclaje": detail.anclaje,
+        },
+    }
+
+
+def _serialize_customer_order_invoice(invoice, invoice_pdf_available):
+    if not invoice or not invoice_pdf_available:
+        return {
+            "available": False,
+            "number": None,
+            "issued_at": None,
+        }
+
+    return {
+        "available": True,
+        "number": invoice.invoice_number,
+        "issued_at": invoice.issued_at.isoformat() if invoice.issued_at else None,
+    }
+
+
 def _format_decimal_amount(value):
     try:
         decimal_value = Decimal(str(value))
@@ -38,3 +99,18 @@ def _format_decimal_amount(value):
         decimal_value = Decimal("0")
 
     return str(decimal_value.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP))
+
+
+def _format_optional_number(value):
+    if value is None:
+        return None
+
+    try:
+        decimal_value = Decimal(str(value))
+    except (InvalidOperation, TypeError, ValueError):
+        return None
+
+    normalized = decimal_value.normalize()
+    if normalized == normalized.to_integral():
+        return str(normalized.quantize(Decimal("1")))
+    return format(normalized, "f")

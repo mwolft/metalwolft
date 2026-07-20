@@ -17,6 +17,10 @@ function isProtectedAfterLogout() {
     return true;
   }
 
+  if (pathname === "/mi-cuenta" || pathname.startsWith("/mi-cuenta/")) {
+    return true;
+  }
+
   if (pathname !== "/cart") {
     return false;
   }
@@ -96,7 +100,9 @@ export function HeaderAccountMenu({ variant = "desktop", onNavigate }: HeaderAcc
 
     return (
       <div className="mw-account-mobile" aria-label="Cuenta cliente">
-        <p className="mw-account-mobile__label">Mi cuenta</p>
+        <Link className="mw-account-mobile-link" href="/mi-cuenta" onClick={onNavigate}>
+          Mi cuenta
+        </Link>
         <button className="mw-account-mobile__action" type="button" onClick={handleLogout}>
           Cerrar sesión
         </button>
@@ -127,6 +133,16 @@ export function HeaderAccountMenu({ variant = "desktop", onNavigate }: HeaderAcc
         Mi cuenta
       </summary>
       <div className="mw-account-menu__panel">
+        <Link className="mw-account-menu__action" href="/mi-cuenta" onClick={() => closeMenu(false)}>
+          Resumen
+        </Link>
+        <Link
+          className="mw-account-menu__action"
+          href="/mi-cuenta/pedidos"
+          onClick={() => closeMenu(false)}
+        >
+          Mis pedidos
+        </Link>
         <button className="mw-account-menu__action" type="button" onClick={handleLogout}>
           Cerrar sesión
         </button>
