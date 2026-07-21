@@ -30,6 +30,11 @@ import uuid
 from urllib.parse import urljoin
 from api.email_routes import send_email, get_admin_recipients
 from api.checkout_service import build_checkout_quote
+from api.product_lifecycle import (
+    ensure_product_available_for_sale,
+    publicly_accessible_products_query,
+    publicly_discoverable_products_query,
+)
 from api.checkout_cart_cleanup import cleanup_cart_lines_from_checkout_quote
 from api.checkout_payment_security import is_modifiable_stripe_checkout_session
 from api.customer_order_serializers import (
@@ -2928,11 +2933,15 @@ def get_all_categories():
         categories = Categories.query.all()
         response_data = []
         for category in categories:
-            product_count = Products.query.filter(Products.categoria_id == category.id).count()
+            product_count = publicly_discoverable_products_query().filter(
+                Products.categoria_id == category.id
+            ).count()
             subcategories = Subcategories.query.filter_by(categoria_id=category.id).all()
             subcategories_data = []
             for subcat in subcategories:
-                subcat_product_count = Products.query.filter(Products.subcategoria_id == subcat.id).count()
+                subcat_product_count = publicly_discoverable_products_query().filter(
+                    Products.subcategoria_id == subcat.id
+                ).count()
                 subcategories_data.append({
                     **subcat.serialize(),
                     "product_count": subcat_product_count
@@ -3037,7 +3046,7 @@ def get_products_by_category(slug):
         return jsonify({"message": "Categoría no encontrada"}), 404
 
     products = (
-        Products.query
+        publicly_discoverable_products_query()
         .filter_by(categoria_id=category.id)
         .order_by(Products.sort_order.asc(), Products.id.asc())    
         .all()
@@ -3045,12 +3054,36 @@ def get_products_by_category(slug):
     return jsonify([p.serialize() for p in products]), 200
 
 
+@api.route("/sitemap/products", methods=["GET"])
+def get_sitemap_products():
+    products = (
+        publicly_accessible_products_query()
+        .join(Categories, Products.categoria_id == Categories.id)
+        .with_entities(
+            Categories.slug.label("category_slug"),
+            Products.slug.label("product_slug"),
+        )
+        .order_by(Categories.slug.asc(), Products.slug.asc())
+        .all()
+    )
+
+    return jsonify(
+        [
+            {
+                "category_slug": product.category_slug,
+                "slug": product.product_slug,
+            }
+            for product in products
+        ]
+    ), 200
+
+
 @api.route('/products', methods=['GET'])
 def get_products():
     category_id = request.args.get('category_id', type=int)
     subcategory_id = request.args.get('subcategory_id', type=int)
     try:
-        query = Products.query
+        query = publicly_discoverable_products_query()
         if subcategory_id:
             query = query.filter(Products.subcategoria_id == subcategory_id)
         elif category_id:
@@ -3124,7 +3157,10 @@ def get_product_by_category_and_slug(category_slug, product_slug):
         category = Categories.query.filter_by(slug=category_slug).first()
         if not category:
             return jsonify({"message": "Category not found"}), 404
-        product = Products.query.filter_by(slug=product_slug, categoria_id=category.id).first()
+        product = publicly_accessible_products_query().filter_by(
+            slug=product_slug,
+            categoria_id=category.id,
+        ).first()
 
         if not product:
             return jsonify({"message": "Product not found in this category"}), 404
@@ -3139,7 +3175,9 @@ def get_product_by_category_and_slug(category_slug, product_slug):
 
 @api.route('/products/<int:product_id>', methods=['GET'])
 def get_product(product_id):
-    product = Products.query.get(product_id)
+    product = publicly_accessible_products_query().filter(
+        Products.id == product_id
+    ).first()
     if not product:
         return jsonify({"message": "Product not found"}), 404
     response = jsonify(product.serialize_with_images())
@@ -5314,6 +5352,7 @@ def handle_cart():
             product = Products.query.get(product_id)
             if not product:
                 return jsonify({"message": "Producto no encontrado"}), 404
+            ensure_product_available_for_sale(product)
 
             alto = data.get('alto')
             ancho = data.get('ancho')
@@ -5402,6 +5441,7 @@ def update_cart_item(product_id):
             response.headers['Access-Control-Allow-Origin'] = '*'
             response.headers['Access-Control-Expose-Headers'] = 'Authorization'
             return response, 404
+        ensure_product_available_for_sale(product)
 
         price_quote = build_configured_reja_quote(
             alto_cm=cart_item.alto,

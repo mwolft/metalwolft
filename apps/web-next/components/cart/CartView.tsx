@@ -13,6 +13,10 @@ import {
   isSessionError,
   updateCartItemQuantity
 } from "@/lib/cart-client";
+import {
+  PRODUCT_UNAVAILABLE_MESSAGE,
+  isAvailableForSale
+} from "@/lib/product-lifecycle";
 
 const colorLabels: Record<string, string> = {
   satinado_blanco: "Blanco liso",
@@ -67,6 +71,7 @@ export function CartView() {
     null
   );
   const isBusy = pendingAction !== null;
+  const hasUnavailableItems = items.some((item) => !isAvailableForSale(item));
 
   const subtotal = useMemo(
     () =>
@@ -139,6 +144,11 @@ export function CartView() {
 
     if (quantity < 1) {
       await removeItem(item);
+      return;
+    }
+
+    if (!isAvailableForSale(item)) {
+      setFeedback({ type: "error", message: PRODUCT_UNAVAILABLE_MESSAGE });
       return;
     }
 
@@ -301,6 +311,7 @@ export function CartView() {
           const href = productHref(item);
           const quantity = Number(item.quantity || 1);
           const lineTotal = Number(item.precio_total || 0) * quantity;
+          const availableForSale = isAvailableForSale(item);
 
           return (
             <article className="mw-cart-line" key={key}>
@@ -319,6 +330,11 @@ export function CartView() {
                     <h2>
                       {href ? <Link href={href}>{item.nombre}</Link> : item.nombre}
                     </h2>
+                    {!availableForSale ? (
+                      <p className="mw-alert" role="status">
+                        {PRODUCT_UNAVAILABLE_MESSAGE}
+                      </p>
+                    ) : null}
                   </div>
                   <div className="mw-cart-line__prices">
                     <span>{formatCurrency(Number(item.precio_total || 0))} / unidad</span>
@@ -349,7 +365,7 @@ export function CartView() {
                   <div className="mw-cart-quantity" aria-label={`Cantidad de ${item.nombre}`}>
                     <button
                       aria-label={`Reducir cantidad de ${item.nombre}`}
-                      disabled={isBusy}
+                      disabled={isBusy || !availableForSale}
                       onClick={() => changeQuantity(item, quantity - 1)}
                       type="button"
                     >
@@ -358,7 +374,7 @@ export function CartView() {
                     <span aria-live="polite">{quantity}</span>
                     <button
                       aria-label={`Aumentar cantidad de ${item.nombre}`}
-                      disabled={isBusy}
+                      disabled={isBusy || !availableForSale}
                       onClick={() => changeQuantity(item, quantity + 1)}
                       type="button"
                     >
@@ -388,10 +404,15 @@ export function CartView() {
           <strong>{formatCurrency(subtotal)}</strong>
         </div>
         <p>Envío calculado en el checkout.</p>
+        {hasUnavailableItems ? (
+          <p className="mw-alert" role="alert">
+            Elimina los productos no disponibles antes de continuar.
+          </p>
+        ) : null}
         <div className="mw-cart-summary__actions">
-          {isBusy ? (
+          {isBusy || hasUnavailableItems ? (
             <button className="mw-button mw-button--primary" disabled type="button">
-              Preparando checkout
+              {hasUnavailableItems ? "Revisa el carrito" : "Preparando checkout"}
             </button>
           ) : (
             <Link className="mw-button mw-button--primary" href="/cart?step=details">

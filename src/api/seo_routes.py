@@ -1,5 +1,6 @@
 from flask import Blueprint, jsonify
 from api.models import Products, Categories 
+from api.product_lifecycle import publicly_accessible_products_query
 from datetime import datetime, timezone
 import logging 
 
@@ -129,7 +130,10 @@ def seo_product_new(category_slug, product_slug):
             return jsonify({"message": "Category not found for SEO"}), 404
 
         # 2. Obtener producto
-        product = Products.query.filter_by(slug=product_slug, categoria_id=category.id).first()
+        product = publicly_accessible_products_query().filter_by(
+            slug=product_slug,
+            categoria_id=category.id,
+        ).first()
         if not product:
             logger.warning(f"SEO: Product not found for slug: {product_slug} in category: {category_slug}")
             return jsonify({"message": "Product not found for SEO"}), 404

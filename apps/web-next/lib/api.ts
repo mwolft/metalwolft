@@ -91,6 +91,7 @@ export type ApiProduct = {
   has_door_model: boolean;
   es_mas_vendido: boolean;
   es_nuevo_diseno: boolean;
+  available_for_sale: boolean;
   images?: ApiProductImage[];
 };
 
@@ -109,6 +110,11 @@ export type ApiCategory = {
     categoria_id: number;
     product_count?: number;
   }>;
+};
+
+export type ApiSitemapProduct = {
+  category_slug: string;
+  slug: string;
 };
 
 function pickFirstEntity<T extends Record<string, unknown>>(payload: T | T[] | { results?: T | T[] }) {
@@ -177,4 +183,15 @@ export async function fetchCategoryProducts(categorySlug: string) {
   );
 
   return pickEntityList<ApiProduct>(payload);
+}
+
+export async function fetchSitemapProducts() {
+  const payload = await fetchApi<ApiSitemapProduct[] | { results?: ApiSitemapProduct[] }>(
+    "/api/sitemap/products",
+    {
+      next: { revalidate: 300 }
+    }
+  );
+
+  return pickEntityList<ApiSitemapProduct>(payload);
 }

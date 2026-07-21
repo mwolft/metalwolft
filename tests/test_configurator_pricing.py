@@ -69,12 +69,19 @@ def quote(alto, ancho, anclaje=ANCHORAGE_INTERIOR_HOLES, color=DEFAULT_COLOR):
 
 
 class FakeProductQuery:
+    def __init__(self, *, exists=True, available_for_sale=True):
+        self.exists = exists
+        self.available_for_sale = available_for_sale
+
     def get(self, product_id):
+        if not self.exists:
+            return None
         return SimpleNamespace(
             id=product_id,
             nombre="Reja test",
             precio=PRICE_M2,
             precio_rebajado=None,
+            available_for_sale=self.available_for_sale,
         )
 
 
@@ -272,6 +279,78 @@ class ConfiguratorPricingTest(unittest.TestCase):
                 )
 
         self.assertIn("Vuelve a configurar", LEGACY_ANCHORAGE_RECONFIGURE_MESSAGE)
+
+    def test_checkout_quote_accepts_available_product(self):
+        checkout_service = load_checkout_service_with_fake_models()
+
+        result = checkout_service.build_checkout_quote(
+            raw_products=[
+                {
+                    "product_id": 1,
+                    "quantity": 1,
+                    "alto": 30,
+                    "ancho": 30,
+                    "anclaje": ANCHORAGE_INTERIOR_HOLES,
+                    "color": DEFAULT_COLOR,
+                }
+            ]
+        )
+
+        self.assertEqual(result["lines"][0]["product_id"], 1)
+
+    def test_checkout_quote_rejects_unavailable_product(self):
+        checkout_service = load_checkout_service_with_fake_models()
+        unavailable_query = FakeProductQuery(available_for_sale=False)
+
+        with patch.object(
+            checkout_service.Products,
+            "query",
+            unavailable_query,
+            create=True,
+        ):
+            with patch.object(
+                checkout_service,
+                "build_configured_reja_quote",
+            ) as pricing:
+                with self.assertRaisesRegex(ValueError, "no esta disponible"):
+                    checkout_service.build_checkout_quote(
+                        raw_products=[
+                            {
+                                "product_id": 1,
+                                "quantity": 1,
+                                "alto": 30,
+                                "ancho": 30,
+                                "anclaje": ANCHORAGE_INTERIOR_HOLES,
+                                "color": DEFAULT_COLOR,
+                                "available_for_sale": True,
+                            }
+                        ]
+                    )
+                pricing.assert_not_called()
+
+    def test_checkout_quote_rejects_missing_product(self):
+        checkout_service = load_checkout_service_with_fake_models()
+        missing_query = FakeProductQuery(exists=False)
+
+        with patch.object(
+            checkout_service.Products,
+            "query",
+            missing_query,
+            create=True,
+        ):
+            with self.assertRaisesRegex(ValueError, "no encontrado"):
+                checkout_service.build_checkout_quote(
+                    raw_products=[
+                        {
+                            "product_id": 999,
+                            "quantity": 1,
+                            "alto": 30,
+                            "ancho": 30,
+                            "anclaje": ANCHORAGE_INTERIOR_HOLES,
+                            "color": DEFAULT_COLOR,
+                        }
+                    ]
+                )
 
 
 if __name__ == "__main__":

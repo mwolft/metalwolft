@@ -127,6 +127,13 @@ class Comments(db.Model):
 
 class Products(db.Model):
     __tablename__ = "products"
+    __table_args__ = (
+        db.CheckConstraint(
+            "published OR NOT available_for_sale",
+            name="ck_products_published_available_for_sale",
+        ),
+    )
+
     id = db.Column(db.Integer, primary_key=True)
     sort_order = db.Column(db.Integer, default=0)   
     slug = db.Column(db.String(120), unique=True, nullable=False)
@@ -137,6 +144,18 @@ class Products(db.Model):
     h1_seo = db.Column(db.String(180), nullable=True)
     es_mas_vendido = db.Column(db.Boolean, default=False)
     es_nuevo_diseno = db.Column(db.Boolean, default=False)
+    published = db.Column(
+        db.Boolean,
+        nullable=False,
+        default=True,
+        server_default=db.true(),
+    )
+    available_for_sale = db.Column(
+        db.Boolean,
+        nullable=False,
+        default=True,
+        server_default=db.true(),
+    )
     precio = db.Column(db.Float, nullable=False)
     precio_rebajado = db.Column(db.Float, nullable=True)
     porcentaje_rebaja = db.Column(db.Integer, nullable=True)
@@ -184,6 +203,7 @@ class Products(db.Model):
             "has_door_model": self.has_door_model,
             "es_mas_vendido": self.es_mas_vendido,
             "es_nuevo_diseno": self.es_nuevo_diseno,
+            "available_for_sale": self.available_for_sale,
         }
 
     def serialize_with_images(self):
@@ -951,8 +971,22 @@ class Cart(db.Model):
             "color": self.color,
             "precio_total": self.precio_total,
             "quantity": self.quantity,
-            "added_at": self.added_at
+            "added_at": self.added_at,
+            "available_for_sale": self.product.available_for_sale,
         }
+
+
+@event.listens_for(Products, 'before_insert')
+@event.listens_for(Products, 'before_update')
+def validate_product_lifecycle(mapper, connection, target):
+    published = True if target.published is None else target.published
+    available_for_sale = (
+        True if target.available_for_sale is None else target.available_for_sale
+    )
+    if not published and available_for_sale:
+        raise ValueError(
+            "A product cannot be available for sale when it is not published."
+        )
 
 
 @event.listens_for(Products, 'before_insert')

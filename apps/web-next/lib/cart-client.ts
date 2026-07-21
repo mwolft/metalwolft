@@ -14,6 +14,7 @@ export type CartItem = {
   precio_total: number;
   quantity: number;
   added_at: string;
+  available_for_sale: boolean;
 };
 
 export type AddCartItemInput = {

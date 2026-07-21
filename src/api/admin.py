@@ -342,7 +342,23 @@ class ProductAdminView(SafeModelView):
     column_sortable_list = ('id', 'sort_order', 'nombre', 'precio', 'precio_rebajado', 'categoria_id')  # 👈 AÑADIDO
 
     column_searchable_list = ('nombre',)
-    column_filters = ('categoria_id',)
+    column_filters = ('categoria_id', 'published', 'available_for_sale')
+    column_labels = {
+        'published': 'Publicado',
+        'available_for_sale': 'Disponible para venta',
+    }
+    form_args = {
+        'published': {
+            'label': 'Publicado',
+            'description': 'Determina si la ficha pública existe y puede aparecer en el sitemap.',
+            'default': True,
+        },
+        'available_for_sale': {
+            'label': 'Disponible para venta',
+            'description': 'Determina si puede aparecer en catálogos y aceptar nuevos pedidos.',
+            'default': True,
+        },
+    }
     page_size = 50
     can_set_page_size = True
 
@@ -363,6 +379,8 @@ class ProductAdminView(SafeModelView):
         'has_door_model',
         'es_mas_vendido',
         'es_nuevo_diseno',
+        'published',
+        'available_for_sale',
         'imagen'
     ]
 
@@ -420,6 +438,33 @@ class ProductAdminView(SafeModelView):
         form = super().edit_form(obj)
         form.categoria_id.choices = [(c.id, c.nombre) for c in Categories.query.all()]
         return form
+
+    def on_model_change(self, form, model, is_created):
+        if not model.published and model.available_for_sale:
+            model.available_for_sale = False
+            flash(
+                'Al despublicar el producto también se ha desactivado su disponibilidad para venta.',
+                'warning',
+            )
+
+        return super().on_model_change(form, model, is_created)
+
+    def handle_view_exception(self, exc):
+        if isinstance(exc, IntegrityError) and (
+            'ck_products_published_available_for_sale'
+            in str(getattr(exc, 'orig', ''))
+        ):
+            current_app.logger.warning(
+                'Product lifecycle constraint rejected an administrative update.',
+                exc_info=True,
+            )
+            flash(
+                'Un producto no publicado no puede estar disponible para la venta.',
+                'error',
+            )
+            return True
+
+        return super().handle_view_exception(exc)
 
     column_formatters = {
         'descripcion': lambda v, c, m, p: (m.descripcion[:30] + '…') if m.descripcion and len(m.descripcion) > 30 else (m.descripcion or ''),

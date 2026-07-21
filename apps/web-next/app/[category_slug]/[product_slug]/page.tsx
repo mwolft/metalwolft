@@ -186,6 +186,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
               productName={product.nombre}
               pricePerM2={product.precio}
               discountedPricePerM2={product.precio_rebajado}
+              availableForSale={product.available_for_sale}
             />
 
             <div className="mw-product-summary">

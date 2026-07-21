@@ -1,5 +1,5 @@
 import type { MetadataRoute } from "next";
-import { fetchCategories, fetchCategoryProducts } from "@/lib/api";
+import { fetchCategories, fetchSitemapProducts } from "@/lib/api";
 import { absoluteUrl } from "@/lib/metadata";
 
 type SitemapEntry = MetadataRoute.Sitemap[number];
@@ -58,6 +58,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   try {
     const categories = await fetchCategories();
+    const sitemapProducts = await fetchSitemapProducts().catch(() => []);
     const categoryEntries = categories
       .filter((category) => typeof category.slug === "string" && category.slug.trim().length > 0)
       .map((category) =>
@@ -69,24 +70,13 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         )
       );
 
-    const productResults = await Promise.allSettled(
-      categories
-        .filter((category) => typeof category.slug === "string" && category.slug.trim().length > 0)
-        .map(async (category) => {
-          const products = await fetchCategoryProducts(category.slug);
-          return products.map((product) =>
-            createEntry(
-              `/${product.category_slug || category.slug}/${product.slug}`,
-              lastModified,
-              "weekly",
-              0.7
-            )
-          );
-        })
-    );
-
-    const productEntries = productResults.flatMap((result) =>
-      result.status === "fulfilled" ? result.value : []
+    const productEntries = sitemapProducts.map((product) =>
+      createEntry(
+        `/${product.category_slug}/${product.slug}`,
+        lastModified,
+        "weekly",
+        0.7
+      )
     );
 
     return dedupeEntries([...staticEntries, ...categoryEntries, ...productEntries]);

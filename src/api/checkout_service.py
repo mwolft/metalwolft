@@ -1,4 +1,5 @@
 from api.models import Products
+from api.product_lifecycle import ensure_product_available_for_sale
 from api.utils import build_configured_reja_quote
 
 
@@ -77,6 +78,7 @@ def _build_line(item):
     product = Products.query.get(product_id)
     if not product:
         raise ValueError(f"Producto con ID {product_id} no encontrado")
+    ensure_product_available_for_sale(product)
 
     price_quote = build_configured_reja_quote(
         alto_cm=alto,

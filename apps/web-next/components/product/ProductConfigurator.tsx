@@ -28,6 +28,10 @@ import {
   getDimensionValidationError,
   type ConfiguratorPriceQuote
 } from "@/lib/configurator-pricing";
+import {
+  PRODUCT_UNAVAILABLE_MESSAGE,
+  isAvailableForSale
+} from "@/lib/product-lifecycle";
 
 type ProductConfiguratorProps = {
   productId: number;
@@ -36,6 +40,7 @@ type ProductConfiguratorProps = {
   productName: string;
   pricePerM2: number;
   discountedPricePerM2?: number | null;
+  availableForSale: boolean;
 };
 
 const PENDING_PRODUCT_CONFIG_STORAGE_KEY = "mw_pending_product_config";
@@ -154,7 +159,8 @@ export function ProductConfigurator({
   productSlug,
   productName,
   pricePerM2,
-  discountedPricePerM2
+  discountedPricePerM2,
+  availableForSale
 }: ProductConfiguratorProps) {
   const router = useRouter();
   const [height, setHeight] = useState("");
@@ -189,7 +195,8 @@ export function ProductConfigurator({
     needsRecalculation ? " mw-configurator-prompt--warning" : dimensionsReadyForQuote ? " mw-configurator-prompt--ready" : ""
   }`;
   const productPath = `/${categorySlug}/${productSlug}`;
-  const canAddToCart = isValidQuote(calculatedQuote) && !needsRecalculation;
+  const canAddToCart =
+    availableForSale && isValidQuote(calculatedQuote) && !needsRecalculation;
   const isAddingToCart = cartStatus === "adding";
 
   const previewStyle = useMemo<ColorStyle>(
@@ -243,6 +250,10 @@ export function ProductConfigurator({
   };
 
   const handleCalculate = () => {
+    if (!availableForSale) {
+      return;
+    }
+
     setNeedsRecalculation(false);
     const quote = calculateConfiguratorPrice({
       rawHeight: height,
@@ -289,6 +300,12 @@ export function ProductConfigurator({
     );
 
   const handleAddToCart = async () => {
+    if (!isAvailableForSale({ available_for_sale: availableForSale })) {
+      setCartStatus("error");
+      setCartFeedback(PRODUCT_UNAVAILABLE_MESSAGE);
+      return;
+    }
+
     if (!canAddToCart || isAddingToCart) {
       return;
     }
@@ -342,6 +359,16 @@ export function ProductConfigurator({
       );
     }
   };
+
+  if (!availableForSale) {
+    return (
+      <section className="mw-product-configurator" aria-label={`Disponibilidad de ${productName}`}>
+        <p className="mw-alert" role="status">
+          {PRODUCT_UNAVAILABLE_MESSAGE}
+        </p>
+      </section>
+    );
+  }
 
   return (
     <section className="mw-product-configurator" aria-label={`Configurar ${productName}`}>

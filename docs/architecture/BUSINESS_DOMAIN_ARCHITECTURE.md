@@ -16,13 +16,14 @@ Documentos normativos actuales:
 
 - `docs/architecture/BUSINESS_DOMAIN_ARCHITECTURE.md`: autoridad general del dominio comercial y documental.
 - `docs/architecture/INVOICE_DOMAIN_SPECIFICATION.md`: autoridad especializada del dominio de facturacion, snapshot fiscal, numeracion, PDF de factura, email de factura, contabilidad y VeriFactu.
+- `docs/architecture/PRODUCT_LIFECYCLE_SPECIFICATION.md`: autoridad especializada del ciclo de vida publico y comercial de productos, incluyendo publicacion, disponibilidad de venta, retirada, sitemap y compatibilidad con carrito/checkout.
 
 Documentos especializados futuros:
 
 - Especificacion de checkout y pagos.
 - Especificacion de pedidos y lineas comerciales.
 - Especificacion de albaranes y preparacion logistica.
-- Especificacion de productos, catalogo y configurador.
+- Especificacion de catalogo, configurador y tipos de linea no cubiertos por el ciclo de vida de producto.
 - ADRs puntuales para decisiones irreversibles o de alto riesgo.
 
 Regla de conflicto:

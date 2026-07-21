@@ -22,6 +22,10 @@ import '../../styles/cards-carrusel.css';
 import { WhatsAppWidget } from "../component/WhatsAppWidget.jsx";
 import DeliveryEstimate from "../component/DeliveryEstimate.jsx"
 import { Breadcrumb } from "../component/Breadcrumb.jsx";
+import {
+    PRODUCT_UNAVAILABLE_MESSAGE,
+    isAvailableForSale
+} from "../utils/productLifecycle";
 
 const PENDING_PRODUCT_CONFIG_STORAGE_KEY = "mw_pending_product_config";
 const PENDING_PRODUCT_CONFIG_MAX_AGE_MS = 30 * 60 * 1000;
@@ -307,6 +311,11 @@ export const ProductDetail = () => {
     };
 
     const handleCalculatePrice = () => {
+        if (!isAvailableForSale(product)) {
+            setNotification(PRODUCT_UNAVAILABLE_MESSAGE);
+            return;
+        }
+
         setShowRestoredPriceReady(false);
         setPriceNeedsRecalculation(false);
         const quote = applyPriceQuote(
@@ -336,6 +345,11 @@ export const ProductDetail = () => {
     };
 
     const handleAddToCart = async () => {
+        if (!isAvailableForSale(product)) {
+            setNotification(PRODUCT_UNAVAILABLE_MESSAGE);
+            return;
+        }
+
         if (!calculatedPrice) {
             setNotification('Primero calcula el precio con tus medidas.');
             return;
@@ -358,7 +372,8 @@ export const ProductDetail = () => {
             ancho: parseFloat(width),
             anclaje: mounting,
             color,
-            precio_total: calculatedPrice
+            precio_total: calculatedPrice,
+            available_for_sale: product.available_for_sale
         });
 
         setNotification('Producto añadido al carrito');
@@ -681,6 +696,8 @@ export const ProductDetail = () => {
                                 </p>
                             )}
 
+                            {isAvailableForSale(product) ? (
+                            <>
                             <div className="product-purchase-guide" aria-label="Cómo comprar esta reja">
                                 <p className="product-purchase-guide-label">Cómo comprar</p>
                                 <div className="product-purchase-steps">
@@ -1057,6 +1074,12 @@ export const ProductDetail = () => {
                                     </div>
                                 </div>
                             </Form>
+                            </>
+                            ) : (
+                                <div className="alert alert-warning" role="status">
+                                    {PRODUCT_UNAVAILABLE_MESSAGE}
+                                </div>
+                            )}
                         </div>
                     </Col>
                     <div className="custom-accordion product-detail-accordion my-5">
