@@ -347,16 +347,22 @@ class FlaskAdminVeriFactuRecordActionHttpTest(unittest.TestCase):
         return db.session.get(VeriFactuRecord, record_id or self.record_id)
 
     def test_action_receives_selected_ids_and_redirects_to_index(self):
+        prepared_record_ids = []
+
+        def capture_prepared_record(record, **_kwargs):
+            prepared_record_ids.append(record.id)
+            return SimpleNamespace(prepared=True)
+
         with patch(
             "api.admin.prepare_verifactu_record_for_submission",
-            return_value=SimpleNamespace(prepared=True),
+            side_effect=capture_prepared_record,
         ) as prepare:
             response = self._post_prepare_action([self.record_id])
 
         self.assertEqual(response.status_code, 302)
         self.assertIn("/admin/verifacturecord/", response.headers["Location"])
         prepare.assert_called_once()
-        self.assertEqual(prepare.call_args.args[0].id, self.record_id)
+        self.assertEqual(prepared_record_ids, [self.record_id])
 
     def test_action_prepares_built_record_and_assigns_chain_data(self):
         with patch.object(admin_module.db.session, "commit", wraps=admin_module.db.session.commit) as commit:
