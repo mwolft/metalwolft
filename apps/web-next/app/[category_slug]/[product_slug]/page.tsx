@@ -23,7 +23,7 @@ type ProductPageParams = {
 };
 
 type ProductPageProps = {
-  params: ProductPageParams;
+  params: Promise<ProductPageParams>;
 };
 
 async function getProduct(params: ProductPageParams): Promise<ApiProduct | null> {
@@ -111,13 +111,14 @@ function buildProductJsonLd(product: ApiProduct) {
 export async function generateMetadata({
   params
 }: ProductPageProps): Promise<Metadata> {
-  const product = await getProductForMetadata(params);
+  const resolvedParams = await params;
+  const product = await getProductForMetadata(resolvedParams);
 
   if (!product) {
     return buildMetadata({
       title: "Producto no encontrado",
       description: "La ficha de producto solicitada no está disponible.",
-      path: `/${params.category_slug}/${params.product_slug}`
+      path: `/${resolvedParams.category_slug}/${resolvedParams.product_slug}`
     });
   }
 
@@ -130,7 +131,8 @@ export async function generateMetadata({
 }
 
 export default async function ProductPage({ params }: ProductPageProps) {
-  const product = await getProduct(params);
+  const resolvedParams = await params;
+  const product = await getProduct(resolvedParams);
 
   if (!product) {
     notFound();

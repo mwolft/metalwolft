@@ -3,10 +3,12 @@ import type { Metadata } from "next";
 import { RegisterForm } from "@/components/auth/RegisterForm";
 import { PageContainer } from "@/components/layout/PageContainer";
 
+type RegisterSearchParams = {
+  next?: string | string[];
+};
+
 type RegisterPageProps = {
-  searchParams?: {
-    next?: string | string[];
-  };
+  searchParams?: Promise<RegisterSearchParams>;
 };
 
 export const metadata: Metadata = {
@@ -21,7 +23,7 @@ export const metadata: Metadata = {
   }
 };
 
-function getNextPath(searchParams?: RegisterPageProps["searchParams"]) {
+function getNextPath(searchParams?: RegisterSearchParams) {
   const rawNext = searchParams?.next;
   return Array.isArray(rawNext) ? rawNext[0] : rawNext;
 }
@@ -30,8 +32,9 @@ function buildLoginHref(nextPath?: string) {
   return nextPath ? `/login?next=${encodeURIComponent(nextPath)}` : "/login";
 }
 
-export default function RegisterPage({ searchParams }: RegisterPageProps) {
-  const nextPath = getNextPath(searchParams);
+export default async function RegisterPage({ searchParams }: RegisterPageProps) {
+  const resolvedSearchParams = searchParams ? await searchParams : undefined;
+  const nextPath = getNextPath(resolvedSearchParams);
 
   return (
     <div className="mw-page">

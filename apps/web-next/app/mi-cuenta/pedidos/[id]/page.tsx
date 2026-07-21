@@ -3,9 +3,9 @@ import { notFound } from "next/navigation";
 import { CustomerOrderDetailView } from "@/components/account/CustomerOrderDetailView";
 
 type CustomerOrderDetailPageProps = {
-  params: {
+  params: Promise<{
     id: string;
-  };
+  }>;
 };
 
 export const metadata: Metadata = {
@@ -26,8 +26,9 @@ function parseOrderId(value: string) {
   return Number.isSafeInteger(orderId) ? orderId : null;
 }
 
-export default function CustomerOrderDetailPage({ params }: CustomerOrderDetailPageProps) {
-  const orderId = parseOrderId(params.id);
+export default async function CustomerOrderDetailPage({ params }: CustomerOrderDetailPageProps) {
+  const resolvedParams = await params;
+  const orderId = parseOrderId(resolvedParams.id);
 
   if (orderId === null) {
     notFound();

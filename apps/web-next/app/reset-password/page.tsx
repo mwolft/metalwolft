@@ -3,10 +3,12 @@ import type { Metadata } from "next";
 import { ResetPasswordForm } from "@/components/auth/ResetPasswordForm";
 import { PageContainer } from "@/components/layout/PageContainer";
 
+type ResetPasswordSearchParams = {
+  token?: string | string[];
+};
+
 type ResetPasswordPageProps = {
-  searchParams?: {
-    token?: string | string[];
-  };
+  searchParams?: Promise<ResetPasswordSearchParams>;
 };
 
 export const metadata: Metadata = {
@@ -21,14 +23,15 @@ export const metadata: Metadata = {
   }
 };
 
-function getToken(searchParams?: ResetPasswordPageProps["searchParams"]) {
+function getToken(searchParams?: ResetPasswordSearchParams) {
   const rawToken = searchParams?.token;
   const token = Array.isArray(rawToken) ? rawToken[0] : rawToken;
   return token?.trim() || undefined;
 }
 
-export default function ResetPasswordPage({ searchParams }: ResetPasswordPageProps) {
-  const token = getToken(searchParams);
+export default async function ResetPasswordPage({ searchParams }: ResetPasswordPageProps) {
+  const resolvedSearchParams = searchParams ? await searchParams : undefined;
+  const token = getToken(resolvedSearchParams);
 
   return (
     <div className="mw-page">

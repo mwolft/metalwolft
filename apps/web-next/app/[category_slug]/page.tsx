@@ -23,7 +23,7 @@ type CategoryPageParams = {
 };
 
 type CategoryPageProps = {
-  params: CategoryPageParams;
+  params: Promise<CategoryPageParams>;
 };
 
 type CategoryPageData = {
@@ -134,39 +134,41 @@ function buildProductExcerpt(product: ApiProduct) {
 export async function generateMetadata({
   params
 }: CategoryPageProps): Promise<Metadata> {
-  const data = await getCategoryPageDataForMetadata(params);
+  const resolvedParams = await params;
+  const data = await getCategoryPageDataForMetadata(resolvedParams);
 
   if (!data) {
     return buildMetadata({
       title: "Categoria no encontrada",
       description: "La categoria solicitada no esta disponible.",
-      path: `/${params.category_slug}`
+      path: `/${resolvedParams.category_slug}`
     });
   }
 
   return buildMetadata({
-    title: buildCategoryTitle(data.category, params.category_slug),
+    title: buildCategoryTitle(data.category, resolvedParams.category_slug),
     description: buildCategoryMetaDescription(
       data.category,
-      params.category_slug,
+      resolvedParams.category_slug,
       data.products.length
     ),
-    path: `/${params.category_slug}`,
+    path: `/${resolvedParams.category_slug}`,
     image: getCategoryImage(data.category, data.products)
   });
 }
 
 export default async function CategoryPage({ params }: CategoryPageProps) {
-  const data = await getCategoryPageData(params);
+  const resolvedParams = await params;
+  const data = await getCategoryPageData(resolvedParams);
 
   if (!data) {
     notFound();
   }
 
-  const categoryName = buildCategoryName(data.category, params.category_slug);
+  const categoryName = buildCategoryName(data.category, resolvedParams.category_slug);
   const introDescription = buildCategoryDescription(
     data.category,
-    params.category_slug,
+    resolvedParams.category_slug,
     data.products.length
   );
 
@@ -176,13 +178,15 @@ export default async function CategoryPage({ params }: CategoryPageProps) {
         <BreadcrumbJsonLd
           items={[
             { name: "Inicio", path: "/" },
-            { name: categoryName, path: `/${params.category_slug}` }
+            { name: categoryName, path: `/${resolvedParams.category_slug}` }
           ]}
         />
         <JsonLd
-          data={buildCollectionJsonLd(categoryName, params.category_slug, introDescription)}
+          data={buildCollectionJsonLd(categoryName, resolvedParams.category_slug, introDescription)}
         />
-        <JsonLd data={buildItemListJsonLd(categoryName, params.category_slug, data.products)} />
+        <JsonLd
+          data={buildItemListJsonLd(categoryName, resolvedParams.category_slug, data.products)}
+        />
 
         <nav className="mw-breadcrumbs" aria-label="Breadcrumb">
           <Link href="/">Inicio</Link>
@@ -223,7 +227,7 @@ export default async function CategoryPage({ params }: CategoryPageProps) {
           ) : (
             <div className="mw-grid">
               {data.products.map((product) => {
-                const productHref = `/${params.category_slug}/${product.slug}`;
+                const productHref = `/${resolvedParams.category_slug}/${product.slug}`;
 
                 return (
                   <article className="mw-card" key={product.id}>
