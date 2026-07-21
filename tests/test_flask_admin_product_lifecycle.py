@@ -158,8 +158,15 @@ class ProductLifecycleAdminFunctionalTest(unittest.TestCase):
             self.view.on_model_change(None, product, is_created)
             db.session.add(product)
             db.session.commit()
+            product_id = product.id
+            db.session.expire_all()
+            persisted = db.session.get(Products, product_id)
+            persisted_state = (
+                persisted.published,
+                persisted.available_for_sale,
+            )
             messages = get_flashed_messages(with_categories=True)
-        return messages
+        return messages, persisted_state
 
     def test_list_and_form_expose_lifecycle_fields(self):
         with self.app.test_request_context("/admin/products/new"):
@@ -184,17 +191,15 @@ class ProductLifecycleAdminFunctionalTest(unittest.TestCase):
                 published=published,
                 available_for_sale=available_for_sale,
             )
-            self.persist_through_admin_hook(product)
-            self.assertIs(product.published, published)
-            self.assertIs(product.available_for_sale, available_for_sale)
+            _messages, persisted_state = self.persist_through_admin_hook(product)
+            self.assertEqual(persisted_state, (published, available_for_sale))
 
     def test_new_product_preserves_available_defaults(self):
         product = self.make_product("defaults")
 
-        self.persist_through_admin_hook(product)
+        _messages, persisted_state = self.persist_through_admin_hook(product)
 
-        self.assertIs(product.published, True)
-        self.assertIs(product.available_for_sale, True)
+        self.assertEqual(persisted_state, (True, True))
 
     def test_unpublishing_normalizes_sale_availability_and_flashes_warning(self):
         product = self.make_product(
@@ -203,10 +208,9 @@ class ProductLifecycleAdminFunctionalTest(unittest.TestCase):
             available_for_sale=True,
         )
 
-        messages = self.persist_through_admin_hook(product)
+        messages, persisted_state = self.persist_through_admin_hook(product)
 
-        self.assertIs(product.published, False)
-        self.assertIs(product.available_for_sale, False)
+        self.assertEqual(persisted_state, (False, False))
         self.assertIn(
             (
                 "warning",

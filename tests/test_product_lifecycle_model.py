@@ -35,7 +35,7 @@ if HAS_DB_TEST_DEPENDENCIES:
     from flask import Flask  # noqa: E402
     from sqlalchemy.exc import IntegrityError  # noqa: E402
 
-    from api.models import Categories, Products, db  # noqa: E402
+    from api.models import Categories, ProductImages, Products, db  # noqa: E402
 
 
 def load_migration_module():
@@ -136,6 +136,7 @@ class ProductLifecycleSQLiteModelTest(unittest.TestCase):
         self.context.push()
         Categories.__table__.create(bind=db.engine)
         Products.__table__.create(bind=db.engine)
+        ProductImages.__table__.create(bind=db.engine)
 
         self.category = Categories(
             nombre="Lifecycle test",
@@ -147,6 +148,7 @@ class ProductLifecycleSQLiteModelTest(unittest.TestCase):
 
     def tearDown(self):
         db.session.remove()
+        ProductImages.__table__.drop(bind=db.engine)
         Products.__table__.drop(bind=db.engine)
         Categories.__table__.drop(bind=db.engine)
         self.context.pop()

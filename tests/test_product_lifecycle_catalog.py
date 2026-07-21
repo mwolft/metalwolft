@@ -32,7 +32,7 @@ HAS_ENDPOINT_DEPS = all(
 if HAS_ENDPOINT_DEPS:
     from flask import Flask
 
-    from api.models import Categories, ProductImages, Products, db
+    from api.models import Categories, ProductImages, Products, Subcategories, db
     from api.routes import api
     from api.seo_routes import seo_bp
 
@@ -55,6 +55,7 @@ class ProductLifecyclePublicCatalogTest(unittest.TestCase):
 
         with self.app.app_context():
             Categories.__table__.create(bind=db.engine)
+            Subcategories.__table__.create(bind=db.engine)
             Products.__table__.create(bind=db.engine)
             ProductImages.__table__.create(bind=db.engine)
 
@@ -118,6 +119,7 @@ class ProductLifecyclePublicCatalogTest(unittest.TestCase):
             db.session.remove()
             ProductImages.__table__.drop(bind=db.engine)
             Products.__table__.drop(bind=db.engine)
+            Subcategories.__table__.drop(bind=db.engine)
             Categories.__table__.drop(bind=db.engine)
 
     def assert_public_product_shape(self, product):
