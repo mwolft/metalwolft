@@ -190,36 +190,37 @@ class ProductLifecyclePublicCatalogTest(unittest.TestCase):
         self.assertEqual(hidden.get_json(), missing.get_json())
 
     def test_shared_public_product_resolver_uses_category_and_publication_rules(self):
-        category, available = resolve_publicly_accessible_product_by_slugs(
-            "rejas-publicas",
-            "reja-disponible",
-        )
-        _, withdrawn = resolve_publicly_accessible_product_by_slugs(
-            "rejas-publicas",
-            "reja-retirada",
-        )
-        _, unpublished = resolve_publicly_accessible_product_by_slugs(
-            "rejas-publicas",
-            "reja-borrador",
-        )
-        _, missing = resolve_publicly_accessible_product_by_slugs(
-            "rejas-publicas",
-            "no-existe",
-        )
-        unknown_category, unknown_product = (
-            resolve_publicly_accessible_product_by_slugs(
-                "mi-cuenta",
-                "pedidos",
+        with self.app.app_context():
+            category, available = resolve_publicly_accessible_product_by_slugs(
+                "rejas-publicas",
+                "reja-disponible",
             )
-        )
+            _, withdrawn = resolve_publicly_accessible_product_by_slugs(
+                "rejas-publicas",
+                "reja-retirada",
+            )
+            _, unpublished = resolve_publicly_accessible_product_by_slugs(
+                "rejas-publicas",
+                "reja-borrador",
+            )
+            _, missing = resolve_publicly_accessible_product_by_slugs(
+                "rejas-publicas",
+                "no-existe",
+            )
+            unknown_category, unknown_product = (
+                resolve_publicly_accessible_product_by_slugs(
+                    "mi-cuenta",
+                    "pedidos",
+                )
+            )
 
-        self.assertEqual(category.id, self.category_id)
-        self.assertEqual(available.id, self.available_id)
-        self.assertEqual(withdrawn.id, self.unavailable_id)
-        self.assertIsNone(unpublished)
-        self.assertIsNone(missing)
-        self.assertIsNone(unknown_category)
-        self.assertIsNone(unknown_product)
+            self.assertEqual(category.id, self.category_id)
+            self.assertEqual(available.id, self.available_id)
+            self.assertEqual(withdrawn.id, self.unavailable_id)
+            self.assertIsNone(unpublished)
+            self.assertIsNone(missing)
+            self.assertIsNone(unknown_category)
+            self.assertIsNone(unknown_product)
 
     def test_id_detail_keeps_published_unavailable_product_accessible(self):
         response = self.client.get(f"/api/products/{self.unavailable_id}")
