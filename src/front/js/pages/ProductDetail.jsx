@@ -22,6 +22,7 @@ import '../../styles/cards-carrusel.css';
 import { WhatsAppWidget } from "../component/WhatsAppWidget.jsx";
 import DeliveryEstimate from "../component/DeliveryEstimate.jsx"
 import { Breadcrumb } from "../component/Breadcrumb.jsx";
+import { Error404 } from "./Error404.jsx";
 import {
     PRODUCT_UNAVAILABLE_MESSAGE,
     isAvailableForSale
@@ -138,6 +139,9 @@ export const ProductDetail = () => {
     const [notification, setNotification] = useState(null);
     // --- NUEVO ESTADO PARA LOS METADATOS SEO ---
     const [seoData, setSeoData] = useState(null);
+    const [loadError, setLoadError] = useState(null);
+    const [retryRequest, setRetryRequest] = useState(0);
+    const [loadedProductRoute, setLoadedProductRoute] = useState(null);
 
     // Estados “modal-like”
     const [currentIndex, setCurrentIndex] = useState(0);
@@ -233,28 +237,41 @@ export const ProductDetail = () => {
 
 
     useEffect(() => {
+        const abortController = new AbortController();
+        let isCurrentRequest = true;
+
         const fetchProductAndSeoData = async () => {
             setLoading(true);
             setNotification(null);
+            setProduct(null);
+            setSeoData(null);
+            setLoadError(null);
+            setLoadedProductRoute(null);
             try {
                 // Fetch de los datos del producto
                 const productRes = await fetch(
-                    `${process.env.REACT_APP_BACKEND_URL}/api/${category_slug}/${product_slug}`
+                    `${process.env.REACT_APP_BACKEND_URL}/api/${category_slug}/${product_slug}`,
+                    { signal: abortController.signal }
                 );
                 if (!productRes.ok) {
-                    const errorData = await productRes.json();
-                    throw new Error(errorData.message || 'Producto no encontrado');
+                    if (isCurrentRequest) {
+                        setLoadError(productRes.status === 404 ? 'not_found' : 'temporary_error');
+                    }
+                    return;
                 }
                 const productData = await productRes.json();
+                if (!isCurrentRequest) return;
                 setProduct(productData);
+                setLoadedProductRoute(`${category_slug}/${product_slug}`);
 
                 // --- NUEVO FETCH PARA LOS METADATOS SEO ---
                 const seoRes = await fetch(
-                    `${process.env.REACT_APP_BACKEND_URL}/api/seo/${category_slug}/${product_slug}`
+                    `${process.env.REACT_APP_BACKEND_URL}/api/seo/${category_slug}/${product_slug}`,
+                    { signal: abortController.signal }
                 );
                 if (seoRes.ok) {
                     const seoJson = await seoRes.json();
-                    setSeoData(seoJson);
+                    if (isCurrentRequest) setSeoData(seoJson);
                 } else {
                     console.warn("No se pudieron cargar los metadatos SEO. Usando valores por defecto o los del producto.");
                     // Opcional: Generar un SEOData básico si el fetch falla
@@ -280,18 +297,24 @@ export const ProductDetail = () => {
                 }
 
             } catch (err) {
+                if (err.name === 'AbortError' || !isCurrentRequest) return;
                 console.error("Error al cargar el producto o SEO data:", err);
-                setNotification(err.message || 'Error al cargar los detalles del producto.');
-                navigate('/');
+                setProduct(null);
+                setSeoData(null);
+                setLoadError('temporary_error');
             } finally {
-                setLoading(false);
+                if (isCurrentRequest) setLoading(false);
             }
         };
 
         if (category_slug && product_slug) {
             fetchProductAndSeoData();
         }
-    }, [category_slug, product_slug, navigate, actions.apiFetch]);
+        return () => {
+            isCurrentRequest = false;
+            abortController.abort();
+        };
+    }, [category_slug, product_slug, retryRequest]);
 
     const handleSelect = (selectedIndex) => setCurrentIndex(selectedIndex);
 
@@ -454,7 +477,10 @@ export const ProductDetail = () => {
 
 
 
-    if (loading) {
+    if (
+        loading ||
+        (product && loadedProductRoute !== `${category_slug}/${product_slug}`)
+    ) {
         return (
             <Container style={{ marginTop: '100px', marginBottom: '100px' }}>
                 <Row>
@@ -481,6 +507,28 @@ export const ProductDetail = () => {
                     </Col>
                 </Row>
             </Container>
+        );
+    }
+
+    if (loadError === 'not_found') {
+        return <Error404 />;
+    }
+
+    if (loadError === 'temporary_error' || !product) {
+        return (
+            <>
+                <Helmet>
+                    <title>No se pudo cargar el producto | Metal Wolft</title>
+                    <meta name="robots" content="noindex, nofollow" />
+                </Helmet>
+                <Container className="text-center" style={{ marginTop: '120px', marginBottom: '160px' }}>
+                    <h1>No hemos podido cargar este producto</h1>
+                    <p>Se ha producido un problema temporal. Inténtalo de nuevo en unos instantes.</p>
+                    <Button onClick={() => setRetryRequest((current) => current + 1)}>
+                        Reintentar
+                    </Button>
+                </Container>
+            </>
         );
     }
 

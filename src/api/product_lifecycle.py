@@ -23,3 +23,17 @@ def publicly_accessible_products_query():
     from api.models import Products
 
     return Products.query.filter(Products.published.is_(True))
+
+
+def resolve_publicly_accessible_product_by_slugs(category_slug, product_slug):
+    from api.models import Categories
+
+    category = Categories.query.filter_by(slug=category_slug).first()
+    if category is None:
+        return None, None
+
+    product = publicly_accessible_products_query().filter_by(
+        slug=product_slug,
+        categoria_id=category.id,
+    ).first()
+    return category, product

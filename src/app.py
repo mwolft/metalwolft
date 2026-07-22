@@ -9,13 +9,12 @@ import requests
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 from datetime import timedelta
-from flask import Flask, jsonify, send_from_directory, request, current_app, redirect
+from flask import Flask, jsonify, send_from_directory, request, current_app, redirect, g
 from flask_migrate import Migrate
 from flask_cors import CORS
 from flask_jwt_extended import JWTManager
 from flask_talisman import Talisman
 
-from api.models import Products
 from api.utils import APIException, mail
 from api.routes import api
 from api.admin import setup_admin
@@ -26,6 +25,7 @@ from api.email_routes import email_bp
 from api.password_recovery_endpoints import auth_bp
 from api.invoice_preview import api_invoice_preview
 from api.budget_routes import budget_bp
+from api.product_lifecycle import resolve_publicly_accessible_product_by_slugs
 from legacy_public_routes import REDIRECT_MAP, GONE_PATHS
 
 
@@ -39,6 +39,61 @@ BOOLEAN_FALSE_VALUES = {"0", "false", "f", "no", "off"}
 LOCAL_SQLITE_DATABASE_URI = "sqlite:////tmp/test.db"
 PRODUCTION_APP_ENV = "production"
 VALID_APP_ENVIRONMENTS = {PRODUCTION_APP_ENV, "development", "test"}
+NON_PRODUCT_PATH_PREFIXES = {"admin", "api", "mi-cuenta", "static"}
+# Exact, non-dynamic routes currently owned by the legacy React Router.
+LEGACY_SPA_STATIC_PATHS = frozenset(
+    {
+        "/",
+        "/aside-categories",
+        "/aside-otherscategories",
+        "/aside-post",
+        "/body-home-main",
+        "/body-home-quarter",
+        "/body-home-secondary",
+        "/body-home-tertiary",
+        "/blogs",
+        "/breadcrumb",
+        "/cambios-politica-cookies",
+        "/cards-carrusel",
+        "/carrusel",
+        "/cart",
+        "/cerramientos-de-cocina-con-cristal",
+        "/checkout-form",
+        "/contact",
+        "/cookies-esenciales",
+        "/delivery-estimate",
+        "/delivery-estimate-banner",
+        "/donde-comprar-rejas-leroy-ikea",
+        "/favoritos",
+        "/formulario-incidencias",
+        "/informacion-recogida",
+        "/instalation-rejas-para-ventanas",
+        "/license",
+        "/login",
+        "/medir-hueco-rejas-para-ventanas",
+        "/mi-cuenta",
+        "/notification",
+        "/pay-pal-button",
+        "/plazos-entrega-rejas-a-medida",
+        "/politica-cookies",
+        "/politica-devolucion",
+        "/politica-privacidad",
+        "/product",
+        "/profile",
+        "/puertas-correderas-exteriores",
+        "/puertas-correderas-interiores",
+        "/puertas-peatonales-metalicas",
+        "/recepcion-pedidos-revisar-antes-firmar",
+        "/rejas-para-ventanas",
+        "/rejas-para-ventanas-modernas",
+        "/rejas-para-ventanas-sin-obra",
+        "/reset-password",
+        "/seasonal-banner",
+        "/sidebar",
+        "/thank-you",
+        "/vallados-metalicos-exteriores",
+    }
+)
 
 
 def parse_boolean_env(name, *, default=False):
@@ -241,6 +296,99 @@ def handle_legacy_public_urls():
 
     if request.path in GONE_PATHS:
         return "Pagina obsoleta", 410
+
+
+def _public_product_path_segments(path):
+    segments = path.strip("/").split("/")
+    if len(segments) != 2 or not all(segments):
+        return None
+    return tuple(segments)
+
+
+def _normalized_public_path(path):
+    normalized = path.strip("/")
+    return f"/{normalized}" if normalized else "/"
+
+
+def _legacy_spa_asset_exists(path):
+    relative_path = path.lstrip("/")
+    if not relative_path:
+        return False
+
+    candidate = os.path.abspath(os.path.join(static_file_dir, relative_path))
+    try:
+        is_inside_build = (
+            os.path.commonpath((static_file_dir, candidate)) == static_file_dir
+        )
+    except ValueError:
+        return False
+    return is_inside_build and os.path.isfile(candidate)
+
+
+@app.before_request
+def classify_public_product_route():
+    if request.method not in {"GET", "HEAD"} or request.endpoint != "serve_spa":
+        return None
+
+    segments = _public_product_path_segments(request.path)
+    if segments is None:
+        return None
+
+    category_slug, product_slug = segments
+    if (
+        category_slug in NON_PRODUCT_PATH_PREFIXES
+        or os.path.splitext(product_slug)[1]
+    ):
+        return None
+
+    try:
+        category, product = resolve_publicly_accessible_product_by_slugs(
+            category_slug,
+            product_slug,
+        )
+    except Exception:
+        current_app.logger.exception(
+            "Unable to resolve public product route %s/%s",
+            category_slug,
+            product_slug,
+        )
+        response = jsonify({"message": "Service temporarily unavailable"})
+        response.status_code = 503
+        response.headers["X-Robots-Tag"] = "noindex, nofollow"
+        return response
+
+    if category is None:
+        return None
+
+    if product is None:
+        response = jsonify({"message": "Product not found"})
+        response.status_code = 404
+        response.headers["X-Robots-Tag"] = "noindex, nofollow"
+        return response
+
+    g.is_public_product_route = True
+    return None
+
+
+@app.before_request
+def classify_legacy_spa_route():
+    if request.method not in {"GET", "HEAD"} or request.endpoint != "serve_spa":
+        return None
+
+    if getattr(g, "is_public_product_route", False):
+        return None
+
+    normalized_path = _normalized_public_path(request.path)
+    if (
+        normalized_path in LEGACY_SPA_STATIC_PATHS
+        or _legacy_spa_asset_exists(request.path)
+    ):
+        return None
+
+    response = jsonify({"message": "Not found"})
+    response.status_code = 404
+    response.headers["X-Robots-Tag"] = "noindex, nofollow"
+    return response
 
 
 # 11) Prerender.io para bots

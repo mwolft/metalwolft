@@ -1,4 +1,5 @@
 import importlib.util
+import json
 import sys
 import unittest
 from pathlib import Path
@@ -35,6 +36,7 @@ if HAS_ENDPOINT_DEPS:
     from api.models import Categories, ProductImages, Products, Subcategories, db
     from api.routes import api
     from api.seo_routes import seo_bp
+    from api.product_lifecycle import resolve_publicly_accessible_product_by_slugs
 
 
 @unittest.skipUnless(
@@ -187,6 +189,38 @@ class ProductLifecyclePublicCatalogTest(unittest.TestCase):
         self.assertEqual(missing.status_code, 404)
         self.assertEqual(hidden.get_json(), missing.get_json())
 
+    def test_shared_public_product_resolver_uses_category_and_publication_rules(self):
+        category, available = resolve_publicly_accessible_product_by_slugs(
+            "rejas-publicas",
+            "reja-disponible",
+        )
+        _, withdrawn = resolve_publicly_accessible_product_by_slugs(
+            "rejas-publicas",
+            "reja-retirada",
+        )
+        _, unpublished = resolve_publicly_accessible_product_by_slugs(
+            "rejas-publicas",
+            "reja-borrador",
+        )
+        _, missing = resolve_publicly_accessible_product_by_slugs(
+            "rejas-publicas",
+            "no-existe",
+        )
+        unknown_category, unknown_product = (
+            resolve_publicly_accessible_product_by_slugs(
+                "mi-cuenta",
+                "pedidos",
+            )
+        )
+
+        self.assertEqual(category.id, self.category_id)
+        self.assertEqual(available.id, self.available_id)
+        self.assertEqual(withdrawn.id, self.unavailable_id)
+        self.assertIsNone(unpublished)
+        self.assertIsNone(missing)
+        self.assertIsNone(unknown_category)
+        self.assertIsNone(unknown_product)
+
     def test_id_detail_keeps_published_unavailable_product_accessible(self):
         response = self.client.get(f"/api/products/{self.unavailable_id}")
 
@@ -212,6 +246,165 @@ class ProductLifecyclePublicCatalogTest(unittest.TestCase):
         self.assertEqual(hidden.status_code, 404)
         self.assertEqual(missing.status_code, 404)
         self.assertEqual(hidden.get_json(), missing.get_json())
+
+    def test_seo_product_schema_excludes_unverified_ratings_and_reviews(self):
+        response = self.client.get("/api/seo/rejas-publicas/reja-disponible")
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.get_json()
+        schema = json.loads(json.dumps(payload["json_ld"]))
+        serialized_schema = json.dumps(schema)
+
+        for unsupported_rating_field in (
+            "AggregateRating",
+            "Review",
+            "Rating",
+            "aggregateRating",
+            "review",
+            "reviewCount",
+            "ratingValue",
+            "reviewRating",
+            "bestRating",
+            "reviewBody",
+            "datePublished",
+            "Cliente verificado",
+            "Muy satisfecho con la compra",
+        ):
+            self.assertNotIn(unsupported_rating_field, serialized_schema)
+
+        self.assertEqual(schema["@type"], "Product")
+        self.assertEqual(schema["sku"], "reja-disponible")
+        self.assertEqual(
+            payload["canonical"],
+            "https://www.metalwolft.com/rejas-publicas/reja-disponible",
+        )
+        self.assertEqual(payload["robots"], "index, follow")
+
+    def test_seo_product_offer_excludes_unverified_commercial_claims(self):
+        response = self.client.get("/api/seo/rejas-publicas/reja-disponible")
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.get_json()
+        schema = json.loads(json.dumps(payload["json_ld"]))
+        serialized_schema = json.dumps(schema)
+
+        for unsupported_commercial_claim in (
+            "availability",
+            "InStock",
+            "priceValidUntil",
+            "shippingDetails",
+            "OfferShippingDetails",
+            "shippingRate",
+            "MonetaryAmount",
+            "shippingDestination",
+            "DefinedRegion",
+            "deliveryTime",
+            "ShippingDeliveryTime",
+            "handlingTime",
+            "transitTime",
+            "QuantitativeValue",
+            "hasMerchantReturnPolicy",
+            "MerchantReturnPolicy",
+            "applicableCountry",
+            "returnPolicyCategory",
+            "merchantReturnDays",
+            "returnMethod",
+            "returnFees",
+            "FreeReturn",
+            "refundType",
+        ):
+            self.assertNotIn(unsupported_commercial_claim, serialized_schema)
+
+        for removed_rating_claim in (
+            "AggregateRating",
+            "Review",
+            "aggregateRating",
+            "reviewCount",
+            "ratingValue",
+            "reviewRating",
+            "reviewBody",
+        ):
+            self.assertNotIn(removed_rating_claim, serialized_schema)
+
+        self.assertEqual(schema["@type"], "Product")
+        self.assertEqual(schema["sku"], "reja-disponible")
+        self.assertEqual(
+            payload["canonical"],
+            "https://www.metalwolft.com/rejas-publicas/reja-disponible",
+        )
+        self.assertEqual(payload["robots"], "index, follow")
+
+    def test_seo_product_schema_excludes_non_reproducible_offer(self):
+        response = self.client.get("/api/seo/rejas-publicas/reja-disponible")
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.get_json()
+        schema = json.loads(json.dumps(payload["json_ld"]))
+        serialized_schema = json.dumps(schema)
+
+        self.assertNotIn("offers", schema)
+        for unsupported_offer_field in (
+            "price",
+            "priceCurrency",
+            "lowPrice",
+            "highPrice",
+        ):
+            self.assertNotIn(f'"{unsupported_offer_field}"', serialized_schema)
+        for unsupported_offer_type in ("Offer", "AggregateOffer"):
+            self.assertNotIn(
+                f'"@type": "{unsupported_offer_type}"',
+                serialized_schema,
+            )
+
+        self.assertEqual(schema["@context"], "https://schema.org/")
+        self.assertEqual(schema["@type"], "Product")
+        self.assertEqual(schema["name"], "Reja disponible")
+        self.assertEqual(schema["description"], "Disponible")
+        self.assertIsInstance(schema["image"], list)
+        self.assertEqual(schema["sku"], "reja-disponible")
+        self.assertEqual(schema["brand"]["@type"], "Brand")
+        self.assertEqual(schema["brand"]["name"], "Metal Wolft")
+        self.assertEqual(
+            payload["canonical"],
+            "https://www.metalwolft.com/rejas-publicas/reja-disponible",
+        )
+        self.assertEqual(payload["robots"], "index, follow")
+
+    def test_seo_product_schema_excludes_internal_id_as_mpn(self):
+        response = self.client.get("/api/seo/rejas-publicas/reja-disponible")
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.get_json()
+        schema = json.loads(json.dumps(payload["json_ld"]))
+        serialized_schema = json.dumps(schema)
+
+        self.assertNotIn("mpn", schema)
+        self.assertNotIn('"mpn"', serialized_schema)
+        self.assertEqual(
+            set(schema),
+            {
+                "@context",
+                "@type",
+                "@id",
+                "name",
+                "description",
+                "image",
+                "sku",
+                "brand",
+            },
+        )
+        self.assertEqual(schema["@type"], "Product")
+        self.assertEqual(schema["name"], "Reja disponible")
+        self.assertEqual(schema["description"], "Disponible")
+        self.assertIsInstance(schema["image"], list)
+        self.assertEqual(schema["sku"], "reja-disponible")
+        self.assertEqual(schema["brand"]["@type"], "Brand")
+        self.assertEqual(schema["brand"]["name"], "Metal Wolft")
+        self.assertEqual(
+            payload["canonical"],
+            "https://www.metalwolft.com/rejas-publicas/reja-disponible",
+        )
+        self.assertEqual(payload["robots"], "index, follow")
 
 
 if __name__ == "__main__":

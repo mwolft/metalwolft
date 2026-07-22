@@ -34,6 +34,7 @@ from api.product_lifecycle import (
     ensure_product_available_for_sale,
     publicly_accessible_products_query,
     publicly_discoverable_products_query,
+    resolve_publicly_accessible_product_by_slugs,
 )
 from api.checkout_cart_cleanup import cleanup_cart_lines_from_checkout_quote
 from api.checkout_payment_security import is_modifiable_stripe_checkout_session
@@ -3154,13 +3155,12 @@ def create_product():
 @api.route('/<string:category_slug>/<string:product_slug>', methods=['GET'])
 def get_product_by_category_and_slug(category_slug, product_slug):
     try:
-        category = Categories.query.filter_by(slug=category_slug).first()
+        category, product = resolve_publicly_accessible_product_by_slugs(
+            category_slug,
+            product_slug,
+        )
         if not category:
             return jsonify({"message": "Category not found"}), 404
-        product = publicly_accessible_products_query().filter_by(
-            slug=product_slug,
-            categoria_id=category.id,
-        ).first()
 
         if not product:
             return jsonify({"message": "Product not found in this category"}), 404
