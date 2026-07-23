@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { PageContainer } from "@/components/layout/PageContainer";
+import { DeliveryEstimate } from "@/components/product/DeliveryEstimate";
 import { ProductConfigurator } from "@/components/product/ProductConfigurator";
 import { BreadcrumbJsonLd } from "@/components/seo/BreadcrumbJsonLd";
 import { JsonLd } from "@/components/seo/JsonLd";
@@ -16,6 +17,7 @@ import {
   fetchProductBySlug,
   type ApiProduct
 } from "@/lib/api";
+import { fetchDeliveryEstimate } from "@/lib/delivery-estimate";
 
 type ProductPageParams = {
   category_slug: string;
@@ -132,7 +134,10 @@ export async function generateMetadata({
 
 export default async function ProductPage({ params }: ProductPageProps) {
   const resolvedParams = await params;
-  const product = await getProduct(resolvedParams);
+  const [product, deliveryEstimate] = await Promise.all([
+    getProduct(resolvedParams),
+    fetchDeliveryEstimate()
+  ]);
 
   if (!product) {
     notFound();
@@ -189,6 +194,9 @@ export default async function ProductPage({ params }: ProductPageProps) {
               pricePerM2={product.precio}
               discountedPricePerM2={product.precio_rebajado}
               availableForSale={product.available_for_sale}
+              deliveryEstimate={
+                deliveryEstimate ? <DeliveryEstimate estimate={deliveryEstimate} /> : null
+              }
             />
 
             <div className="mw-product-summary">

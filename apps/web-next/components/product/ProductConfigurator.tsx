@@ -1,6 +1,14 @@
 "use client";
 
-import { type CSSProperties, useEffect, useId, useMemo, useRef, useState } from "react";
+import {
+  type CSSProperties,
+  type ReactNode,
+  useEffect,
+  useId,
+  useMemo,
+  useRef,
+  useState
+} from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { clearSession, getToken } from "@/lib/auth-client";
@@ -49,6 +57,7 @@ type ProductConfiguratorProps = {
   pricePerM2: number;
   discountedPricePerM2?: number | null;
   availableForSale: boolean;
+  deliveryEstimate?: ReactNode;
 };
 
 const PENDING_PRODUCT_CONFIG_STORAGE_KEY = "mw_pending_product_config";
@@ -220,7 +229,8 @@ export function ProductConfigurator({
   productName,
   pricePerM2,
   discountedPricePerM2,
-  availableForSale
+  availableForSale,
+  deliveryEstimate
 }: ProductConfiguratorProps) {
   const router = useRouter();
   const [height, setHeight] = useState("");
@@ -878,6 +888,7 @@ export function ProductConfigurator({
             {calculatedQuote.area < 1 ? (
               <p className="mw-configurator-result__warning">Área &lt; 1 m² incrementa coste.</p>
             ) : null}
+            {deliveryEstimate}
             {canAddToCart ? (
               <div className="mw-configurator-cart-actions">
                 <button

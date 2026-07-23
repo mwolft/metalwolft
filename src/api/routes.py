@@ -1440,8 +1440,12 @@ def get_delivery_estimate():
         response.headers['Access-Control-Allow-Origin'] = '*'
         response.headers['Access-Control-Expose-Headers'] = 'Authorization'
         return response, 200
-    except Exception as e:
-        response = jsonify({"message": "Error al obtener la estimación", "error": str(e)})
+    except Exception as error:
+        current_app.logger.error(
+            "delivery_estimate_lookup_failed error_type=%s",
+            type(error).__name__,
+        )
+        response = jsonify({"message": "Error al obtener la estimación"})
         response.headers['Access-Control-Allow-Origin'] = '*'
         response.headers['Access-Control-Expose-Headers'] = 'Authorization'
         return response, 500
