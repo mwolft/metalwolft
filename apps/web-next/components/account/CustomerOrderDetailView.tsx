@@ -14,6 +14,7 @@ import {
   type CustomerOrderDetail,
   type CustomerOrderLineConfiguration
 } from "@/lib/customer-orders-client";
+import { formatCivilDateEs } from "@/lib/delivery-estimate";
 
 type OrderDetailStatus = "loading" | "ready" | "not-found" | "unauthenticated" | "error";
 
@@ -254,6 +255,9 @@ export function CustomerOrderDetailView({ orderId }: { orderId: number }) {
 
   const hasShippingAddress =
     hasText(order.shipping_address.recipient) || hasText(order.shipping_address.city);
+  const estimatedDeliveryDate = order.estimated_delivery_at
+    ? formatCivilDateEs(order.estimated_delivery_at)
+    : null;
 
   return (
     <article className="mw-customer-order-detail" aria-labelledby="customer-order-title">
@@ -266,6 +270,17 @@ export function CustomerOrderDetailView({ orderId }: { orderId: number }) {
           <p className="mw-note">Pedido</p>
           <h2 id="customer-order-title">{order.reference || `Pedido #${order.id}`}</h2>
           <p>{formatOrderDate(order.created_at)}</p>
+          {estimatedDeliveryDate ? (
+            <div className="mw-customer-order-estimate">
+              <p>
+                <strong>Entrega estimada:</strong>{" "}
+                <time dateTime={order.estimated_delivery_at || undefined}>
+                  {estimatedDeliveryDate}
+                </time>
+              </p>
+              <p>Fecha orientativa sujeta al proceso de fabricación y transporte.</p>
+            </div>
+          ) : null}
         </div>
 
         <div className="mw-customer-order-detail__summary" aria-label="Resumen del pedido">

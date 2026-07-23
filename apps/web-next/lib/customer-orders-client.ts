@@ -1,4 +1,5 @@
 import { getApiBaseUrl } from "@/lib/api";
+import { formatCivilDateEs } from "@/lib/delivery-estimate";
 
 export type CustomerOrderStatus = {
   code: string;
@@ -12,6 +13,7 @@ export type CustomerOrderSummary = {
   total: string;
   currency: string;
   status: CustomerOrderStatus;
+  estimated_delivery_at: string | null;
 };
 
 export type CustomerOrdersResponse = {
@@ -80,6 +82,10 @@ function isNullableString(value: unknown): value is string | null {
   return typeof value === "string" || value === null;
 }
 
+function isNullableCivilDate(value: unknown): value is string | null {
+  return value === null || (typeof value === "string" && formatCivilDateEs(value) !== null);
+}
+
 function isCustomerOrderStatus(value: unknown): value is CustomerOrderStatus {
   return (
     isRecord(value) &&
@@ -97,7 +103,8 @@ function isCustomerOrderSummary(value: unknown): value is CustomerOrderSummary {
     isNullableString(value.created_at) &&
     typeof value.total === "string" &&
     typeof value.currency === "string" &&
-    isCustomerOrderStatus(value.status)
+    isCustomerOrderStatus(value.status) &&
+    isNullableCivilDate(value.estimated_delivery_at)
   );
 }
 

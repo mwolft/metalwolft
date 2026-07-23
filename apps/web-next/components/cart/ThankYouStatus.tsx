@@ -10,6 +10,7 @@ import {
   type CheckoutStatusResponse
 } from "@/lib/checkout-client";
 import { clearStoredCheckoutDiscountCode } from "@/lib/checkout-discount";
+import { MetalSpinner } from "@/components/ui/MetalSpinner";
 
 const MAX_STATUS_POLLS = 8;
 const STATUS_POLL_DELAY_MS = 3000;
@@ -158,6 +159,7 @@ export function ThankYouStatus() {
       <ThankYouState
         title="Estamos comprobando tu pedido"
         description="Un momento, estamos consultando el estado real de tu compra."
+        isLoading
       />
     );
   }
@@ -168,7 +170,8 @@ export function ThankYouStatus() {
     return (
       <ThankYouState
         title="Gracias por tu compra"
-        description="Tu pedido ha quedado confirmado correctamente."
+        description="Tu pedido se ha confirmado correctamente."
+        tone="success"
       >
         {statusData.order?.locator ? (
           <p>
@@ -181,8 +184,18 @@ export function ThankYouStatus() {
           </p>
         ) : null}
         <div className="mw-actions">
-          <Link className="mw-button mw-button--primary" href="/rejas-para-ventanas">
-            Seguir comprando
+          <Link
+            className="mw-button mw-button--primary"
+            href={
+              statusData.order?.id
+                ? `/mi-cuenta/pedidos/${statusData.order.id}`
+                : "/mi-cuenta/pedidos"
+            }
+          >
+            {statusData.order?.id ? "Ver mi pedido" : "Ir a mis pedidos"}
+          </Link>
+          <Link className="mw-button mw-button--secondary" href="/rejas-para-ventanas">
+            Volver a la tienda
           </Link>
         </div>
       </ThankYouState>
@@ -194,6 +207,7 @@ export function ThankYouStatus() {
       <ThankYouState
         title="Estamos confirmando tu pedido"
         description="El pago se está procesando. Actualizaremos este estado automáticamente durante unos segundos."
+        isLoading
       >
         <p>{statusData.message}</p>
       </ThankYouState>
@@ -205,6 +219,7 @@ export function ThankYouStatus() {
       <ThankYouState
         title="No hemos podido confirmar tu pedido"
         description={statusData.message || "El pago no se ha completado correctamente."}
+        tone="error"
       >
         <div className="mw-actions">
           <Link className="mw-button mw-button--primary" href="/cart?step=payment">
@@ -235,6 +250,7 @@ export function ThankYouStatus() {
     <ThankYouState
       title="No hemos encontrado tu pedido"
       description={statusData?.message || "No hemos podido localizar esta compra."}
+      tone="error"
     >
       <div className="mw-actions">
         <Link className="mw-button mw-button--primary" href="/cart">
@@ -251,18 +267,38 @@ export function ThankYouStatus() {
 function ThankYouState({
   title,
   description,
+  tone = "neutral",
+  isLoading = false,
   children
 }: {
   title: string;
   description: string;
+  tone?: "neutral" | "success" | "error";
+  isLoading?: boolean;
   children?: ReactNode;
 }) {
   return (
-    <section className="mw-cart-state">
+    <section className={`mw-thank-you-card mw-thank-you-card--${tone}`}>
+      {tone === "success" ? <ConfirmationIcon /> : null}
+      {isLoading ? <MetalSpinner variant="block" label={title} /> : null}
       <p className="mw-eyebrow">Pedido</p>
       <h1 className="mw-title mw-title--compact">{title}</h1>
       <p className="mw-lead">{description}</p>
-      {children}
+      {children ? <div className="mw-thank-you-card__details">{children}</div> : null}
     </section>
+  );
+}
+
+function ConfirmationIcon() {
+  return (
+    <svg
+      className="mw-thank-you-confirmation"
+      viewBox="0 0 72 72"
+      aria-hidden="true"
+      focusable="false"
+    >
+      <circle cx="36" cy="36" r="31" />
+      <path d="M21 37.5 31.5 48 52 27" />
+    </svg>
   );
 }

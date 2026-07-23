@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 import { PageContainer } from "@/components/layout/PageContainer";
+import { DeliveryEstimate } from "@/components/product/DeliveryEstimate";
 import { BreadcrumbJsonLd } from "@/components/seo/BreadcrumbJsonLd";
 import { JsonLd } from "@/components/seo/JsonLd";
 import {
@@ -15,6 +16,7 @@ import {
   fetchCategoryProducts,
   getApiBaseUrl
 } from "@/lib/api";
+import { fetchDeliveryEstimate } from "@/lib/delivery-estimate";
 
 type RejasCategoryData = {
   categoryName: string;
@@ -142,7 +144,10 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function RejasParaVentanasPage() {
-  const data = await getRejasCategoryData();
+  const [data, deliveryEstimate] = await Promise.all([
+    getRejasCategoryData(),
+    fetchDeliveryEstimate()
+  ]);
   const introText = buildIntroText(data.products.length, data.categoryDescription);
   const description = buildMetaDescription(data.products.length);
   const featuredProducts = data.products.filter((product) => product.es_mas_vendido);
@@ -190,6 +195,8 @@ export default async function RejasParaVentanasPage() {
             </ul>
           </aside>
         </section>
+
+        <DeliveryEstimate estimate={deliveryEstimate} variant="banner" />
 
         <section className="mw-section">
           <h2>Rejas para ventanas a medida</h2>

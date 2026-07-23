@@ -28,6 +28,11 @@ def serialize_customer_order_summary(order):
         "total": _format_decimal_amount(order.total_amount),
         "currency": "EUR",
         "status": public_order_status(order.order_status),
+        "estimated_delivery_at": (
+            order.estimated_delivery_at.isoformat()
+            if order.estimated_delivery_at
+            else None
+        ),
     }
 
 

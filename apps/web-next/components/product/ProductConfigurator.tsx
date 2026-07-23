@@ -20,6 +20,7 @@ import {
   isSessionError,
   updateCartItemQuantity
 } from "@/lib/cart-client";
+import { useNotification } from "@/components/notifications/NotificationProvider";
 import {
   type AnchorageValue,
   type ConfiguratorColorValue,
@@ -232,6 +233,7 @@ export function ProductConfigurator({
   availableForSale,
   deliveryEstimate
 }: ProductConfiguratorProps) {
+  const { notify } = useNotification();
   const router = useRouter();
   const [height, setHeight] = useState("");
   const [width, setWidth] = useState("");
@@ -337,6 +339,19 @@ export function ProductConfigurator({
     quoteStatus !== "loading" &&
     !needsRecalculation;
   const isAddingToCart = cartStatus === "adding";
+
+  useEffect(() => {
+    if (cartStatus !== "success") {
+      return undefined;
+    }
+
+    const timeout = window.setTimeout(() => {
+      setCartStatus("idle");
+      setCartFeedback("");
+    }, 2400);
+
+    return () => window.clearTimeout(timeout);
+  }, [cartStatus]);
 
   const previewStyle = useMemo<ColorStyle>(
     () => ({
@@ -652,7 +667,14 @@ export function ProductConfigurator({
 
       window.sessionStorage.removeItem(PENDING_PRODUCT_CONFIG_STORAGE_KEY);
       setCartStatus("success");
-      setCartFeedback("Producto añadido al carrito.");
+      setCartFeedback("Añadido al carrito.");
+      notify({
+        title: "Añadido al carrito",
+        message: `${productName} · ${quote.height} × ${quote.width} cm`,
+        tone: "success",
+        dismissLabel: "Seguir comprando",
+        action: { label: "Ver carrito", href: "/cart" }
+      });
     } catch (error) {
       if (isSessionError(error)) {
         clearSession();
@@ -892,12 +914,18 @@ export function ProductConfigurator({
             {canAddToCart ? (
               <div className="mw-configurator-cart-actions">
                 <button
-                  className="mw-button mw-button--primary"
+                  className={`mw-button mw-button--primary${
+                    cartStatus === "success" ? " is-cart-success" : ""
+                  }`}
                   disabled={isAddingToCart}
                   onClick={handleAddToCart}
                   type="button"
                 >
-                  {isAddingToCart ? "Añadiendo..." : "Añadir al carrito"}
+                  {isAddingToCart
+                    ? "Añadiendo..."
+                    : cartStatus === "success"
+                      ? "Añadido"
+                      : "Añadir al carrito"}
                 </button>
                 {cartStatus === "success" ? (
                   <Link className="mw-button mw-button--secondary" href="/cart">

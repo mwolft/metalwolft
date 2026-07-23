@@ -11,6 +11,7 @@ import {
   isCustomerOrdersSessionError,
   type CustomerOrderSummary
 } from "@/lib/customer-orders-client";
+import { formatCivilDateEs } from "@/lib/delivery-estimate";
 
 type OrdersStatus = "loading" | "ready" | "empty" | "unauthenticated" | "error";
 
@@ -183,28 +184,45 @@ export function CustomerOrdersList() {
       </div>
 
       <div className="mw-customer-orders__list">
-        {orders.map((order) => (
-          <article className="mw-customer-order-card" key={order.id}>
-            <div>
-              <p className="mw-customer-order-card__reference">
-                {order.reference || `Pedido #${order.id}`}
-              </p>
-              <p className="mw-customer-order-card__date">{formatOrderDate(order.created_at)}</p>
-            </div>
+        {orders.map((order) => {
+          const estimatedDeliveryDate = order.estimated_delivery_at
+            ? formatCivilDateEs(order.estimated_delivery_at)
+            : null;
 
-            <div className="mw-customer-order-card__meta">
-              <span>{order.status.label}</span>
-              <strong>{formatOrderTotal(order)}</strong>
-            </div>
+          return (
+            <article className="mw-customer-order-card" key={order.id}>
+              <div>
+                <p className="mw-customer-order-card__reference">
+                  {order.reference || `Pedido #${order.id}`}
+                </p>
+                <p className="mw-customer-order-card__date">{formatOrderDate(order.created_at)}</p>
+                {estimatedDeliveryDate ? (
+                  <div className="mw-customer-order-estimate">
+                    <p>
+                      <strong>Entrega estimada:</strong>{" "}
+                      <time dateTime={order.estimated_delivery_at || undefined}>
+                        {estimatedDeliveryDate}
+                      </time>
+                    </p>
+                    <p>Fecha orientativa sujeta al proceso de fabricación y transporte.</p>
+                  </div>
+                ) : null}
+              </div>
 
-            <Link
-              className="mw-button mw-button--secondary"
-              href={`/mi-cuenta/pedidos/${order.id}`}
-            >
-              Ver pedido
-            </Link>
-          </article>
-        ))}
+              <div className="mw-customer-order-card__meta">
+                <span>{order.status.label}</span>
+                <strong>{formatOrderTotal(order)}</strong>
+              </div>
+
+              <Link
+                className="mw-button mw-button--secondary"
+                href={`/mi-cuenta/pedidos/${order.id}`}
+              >
+                Ver pedido
+              </Link>
+            </article>
+          );
+        })}
       </div>
     </section>
   );

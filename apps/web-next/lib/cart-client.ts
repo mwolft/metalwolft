@@ -26,6 +26,10 @@ export type AddCartItemInput = {
   quantity: number;
 };
 
+export function countCartLines(items: readonly CartItem[]) {
+  return items.length;
+}
+
 const CLIENT_LOCAL_API_URL = "http://127.0.0.1:3001";
 
 export class CartClientError extends Error {
@@ -42,6 +46,42 @@ type DeleteCartResponse = {
   message?: string;
   updated_cart?: CartItem[];
 };
+
+export const CART_SNAPSHOT_CHANGED_EVENT = "mw_cart_snapshot_changed";
+
+export type CartSnapshotChange = {
+  items: CartItem[];
+  reason: "sync" | "mutation";
+};
+
+type GetCartOptions = {
+  publishSnapshot?: boolean;
+};
+
+function emitCartSnapshotChanged(change: CartSnapshotChange) {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  window.dispatchEvent(
+    new CustomEvent<CartSnapshotChange>(CART_SNAPSHOT_CHANGED_EVENT, { detail: change })
+  );
+}
+
+export function subscribeToCartSnapshotChanges(
+  listener: (change: CartSnapshotChange) => void
+) {
+  if (typeof window === "undefined") {
+    return () => {};
+  }
+
+  const handleChange = (event: Event) => {
+    listener((event as CustomEvent<CartSnapshotChange>).detail);
+  };
+
+  window.addEventListener(CART_SNAPSHOT_CHANGED_EVENT, handleChange);
+  return () => window.removeEventListener(CART_SNAPSHOT_CHANGED_EVENT, handleChange);
+}
 
 function cartApiUrl(path: string) {
   const configuredApiUrl = process.env.NEXT_PUBLIC_API_URL?.trim();
@@ -102,22 +142,30 @@ export function isSessionError(error: unknown) {
   return error instanceof CartClientError && (error.status === 401 || error.status === 422);
 }
 
-export function getCart(token: string) {
-  return requestCart<CartItem[]>(token, "/api/cart");
+export async function getCart(token: string, options: GetCartOptions = {}) {
+  const items = await requestCart<CartItem[]>(token, "/api/cart");
+  if (options.publishSnapshot !== false) {
+    emitCartSnapshotChanged({ items, reason: "sync" });
+  }
+  return items;
 }
 
-export function addCartItem(token: string, item: AddCartItemInput) {
-  return requestCart<CartItem[]>(token, "/api/cart", {
+export async function addCartItem(token: string, item: AddCartItemInput) {
+  const items = await requestCart<CartItem[]>(token, "/api/cart", {
     method: "POST",
     body: JSON.stringify(item)
   });
+  emitCartSnapshotChanged({ items, reason: "mutation" });
+  return items;
 }
 
-export function updateCartItemQuantity(token: string, item: CartItem, quantity: number) {
-  return requestCart<CartItem[]>(token, `/api/cart/${item.producto_id}`, {
+export async function updateCartItemQuantity(token: string, item: CartItem, quantity: number) {
+  const items = await requestCart<CartItem[]>(token, `/api/cart/${item.producto_id}`, {
     method: "PUT",
     body: cartLineBody(item, quantity)
   });
+  emitCartSnapshotChanged({ items, reason: "mutation" });
+  return items;
 }
 
 export async function deleteCartItem(token: string, item: CartItem) {
@@ -126,7 +174,9 @@ export async function deleteCartItem(token: string, item: CartItem) {
     body: cartLineBody(item)
   });
 
-  return Array.isArray(payload.updated_cart) ? payload.updated_cart : [];
+  const items = Array.isArray(payload.updated_cart) ? payload.updated_cart : [];
+  emitCartSnapshotChanged({ items, reason: "mutation" });
+  return items;
 }
 
 export async function clearCart(token: string) {
@@ -134,5 +184,6 @@ export async function clearCart(token: string) {
     method: "POST"
   });
 
+  emitCartSnapshotChanged({ items: [], reason: "mutation" });
   return [];
 }

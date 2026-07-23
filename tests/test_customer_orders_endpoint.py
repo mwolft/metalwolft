@@ -3,7 +3,7 @@ import os
 import sys
 import tempfile
 import unittest
-from datetime import datetime
+from datetime import date, datetime
 from pathlib import Path
 from unittest.mock import patch
 
@@ -62,6 +62,7 @@ class CustomerOrderSerializerTest(unittest.TestCase):
             order_date = datetime(2026, 7, 20, 8, 30, 0)
             total_amount = 245.9
             order_status = "pendiente"
+            estimated_delivery_at = date(2026, 8, 14)
 
         self.assertEqual(
             serialize_customer_order_summary(Order()),
@@ -72,6 +73,7 @@ class CustomerOrderSerializerTest(unittest.TestCase):
                 "total": "245.90",
                 "currency": "EUR",
                 "status": {"code": "pendiente", "label": "Pendiente"},
+                "estimated_delivery_at": "2026-08-14",
             },
         )
 
@@ -97,6 +99,7 @@ class CustomerOrderSerializerTest(unittest.TestCase):
             order_date = datetime(2026, 7, 20, 8, 30, 0)
             total_amount = 245.9
             order_status = "fabricacion"
+            estimated_delivery_at = None
             order_details = [Detail()]
 
         self.assertEqual(
@@ -108,6 +111,7 @@ class CustomerOrderSerializerTest(unittest.TestCase):
                 "total": "245.90",
                 "currency": "EUR",
                 "status": {"code": "fabricacion", "label": "En fabricación"},
+                "estimated_delivery_at": None,
                 "shipping_address": {
                     "recipient": "Ana Cliente",
                     "city": "Madrid",
@@ -166,6 +170,7 @@ class CustomerOrdersEndpointTest(unittest.TestCase):
                 order_status="fabricacion",
                 order_date=datetime(2026, 7, 19, 8, 30, 0),
             )
+            self.user_a_old_order.estimated_delivery_at = date(2026, 8, 14)
             self._create_order_detail(
                 self.user_a_old_order,
                 product=self.product,
@@ -204,6 +209,7 @@ class CustomerOrdersEndpointTest(unittest.TestCase):
                 order_status="entregado",
                 order_date=datetime(2026, 7, 21, 8, 30, 0),
             )
+            self.user_b_order.estimated_delivery_at = date(2030, 1, 2)
             self._create_order_detail(
                 self.user_b_order,
                 product=self.product,
@@ -446,7 +452,15 @@ class CustomerOrdersEndpointTest(unittest.TestCase):
 
         self.assertEqual(
             set(order.keys()),
-            {"id", "reference", "created_at", "total", "currency", "status"},
+            {
+                "id",
+                "reference",
+                "created_at",
+                "total",
+                "currency",
+                "status",
+                "estimated_delivery_at",
+            },
         )
         self.assertEqual(set(order["status"].keys()), {"code", "label"})
 
@@ -505,7 +519,10 @@ class CustomerOrdersEndpointTest(unittest.TestCase):
         self.assertEqual(orders[0]["created_at"], "2026-07-20T08:30:00")
         self.assertEqual(orders[0]["total"], "95.00")
         self.assertEqual(orders[0]["currency"], "EUR")
+        self.assertIsNone(orders[0]["estimated_delivery_at"])
         self.assertEqual(orders[1]["total"], "245.90")
+        self.assertEqual(orders[1]["estimated_delivery_at"], "2026-08-14")
+        self.assertNotIn("2030-01-02", response.get_data(as_text=True))
 
     def test_admin_uses_customer_view_and_only_receives_own_orders(self):
         response = self.client.get(
@@ -531,6 +548,7 @@ class CustomerOrdersEndpointTest(unittest.TestCase):
 
         self.assertEqual(payload["order"]["reference"], "AA0001")
         self.assertEqual(payload["order"]["status"], {"code": "fabricacion", "label": "En fabricación"})
+        self.assertEqual(payload["order"]["estimated_delivery_at"], "2026-08-14")
 
     def test_detail_foreign_order_returns_404(self):
         response = self.client.get(
@@ -568,6 +586,7 @@ class CustomerOrdersEndpointTest(unittest.TestCase):
                 "total",
                 "currency",
                 "status",
+                "estimated_delivery_at",
                 "shipping_address",
                 "lines",
                 "invoice",

@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { PageContainer } from "@/components/layout/PageContainer";
+import { DeliveryEstimate } from "@/components/product/DeliveryEstimate";
 import { BreadcrumbJsonLd } from "@/components/seo/BreadcrumbJsonLd";
 import { JsonLd } from "@/components/seo/JsonLd";
 import {
@@ -17,6 +18,7 @@ import {
   fetchCategories,
   fetchCategoryProducts
 } from "@/lib/api";
+import { fetchDeliveryEstimate } from "@/lib/delivery-estimate";
 
 type CategoryPageParams = {
   category_slug: string;
@@ -159,7 +161,10 @@ export async function generateMetadata({
 
 export default async function CategoryPage({ params }: CategoryPageProps) {
   const resolvedParams = await params;
-  const data = await getCategoryPageData(resolvedParams);
+  const [data, deliveryEstimate] = await Promise.all([
+    getCategoryPageData(resolvedParams),
+    fetchDeliveryEstimate()
+  ]);
 
   if (!data) {
     notFound();
@@ -211,6 +216,8 @@ export default async function CategoryPage({ params }: CategoryPageProps) {
             </ul>
           </aside>
         </section>
+
+        <DeliveryEstimate estimate={deliveryEstimate} variant="banner" />
 
         <section className="mw-section">
           <h2>Modelos disponibles</h2>

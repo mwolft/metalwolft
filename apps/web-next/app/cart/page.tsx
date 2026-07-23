@@ -3,6 +3,8 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 import { CartFlow } from "@/components/cart/CartFlow";
 import { PageContainer } from "@/components/layout/PageContainer";
+import { DeliveryEstimate } from "@/components/product/DeliveryEstimate";
+import { fetchDeliveryEstimate } from "@/lib/delivery-estimate";
 
 export const metadata: Metadata = {
   title: "Carrito | MetalWolft",
@@ -16,7 +18,9 @@ export const metadata: Metadata = {
   }
 };
 
-export default function CartPage() {
+export default async function CartPage() {
+  const deliveryEstimate = await fetchDeliveryEstimate();
+
   return (
     <div className="mw-page">
       <PageContainer>
@@ -36,7 +40,11 @@ export default function CartPage() {
         </section>
 
         <Suspense fallback={<div className="mw-cart-state">Cargando carrito...</div>}>
-          <CartFlow />
+          <CartFlow
+            deliveryEstimate={
+              <DeliveryEstimate estimate={deliveryEstimate} variant="compact" />
+            }
+          />
         </Suspense>
       </PageContainer>
     </div>

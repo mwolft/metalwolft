@@ -60,7 +60,7 @@ function productHref(item: CartItem) {
   return item.category_slug && item.slug ? `/${item.category_slug}/${item.slug}` : null;
 }
 
-export function CartView() {
+export function CartView({ deliveryEstimate }: { deliveryEstimate?: ReactNode }) {
   const router = useRouter();
   const [items, setItems] = useState<CartItem[]>([]);
   const [status, setStatus] = useState<"loading" | "ready" | "empty" | "unauthenticated" | "error">(
@@ -404,6 +404,7 @@ export function CartView() {
           <strong>{formatCurrency(subtotal)}</strong>
         </div>
         <p>Envío calculado en el checkout.</p>
+        {deliveryEstimate}
         {hasUnavailableItems ? (
           <p className="mw-alert" role="alert">
             Elimina los productos no disponibles antes de continuar.

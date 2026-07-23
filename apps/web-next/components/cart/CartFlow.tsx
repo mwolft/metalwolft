@@ -1,6 +1,7 @@
 "use client";
 
 import { useSearchParams } from "next/navigation";
+import type { ReactNode } from "react";
 import { CartDetailsStep } from "@/components/cart/CartDetailsStep";
 import { CartPaymentStep } from "@/components/cart/CartPaymentStep";
 import { CartView } from "@/components/cart/CartView";
@@ -21,7 +22,7 @@ const steps: Array<{ id: CartStep; label: string }> = [
   { id: "payment", label: "Pago" }
 ];
 
-export function CartFlow() {
+export function CartFlow({ deliveryEstimate }: { deliveryEstimate?: ReactNode }) {
   const searchParams = useSearchParams();
   const currentStep = normalizeStep(searchParams.get("step"));
 
@@ -45,9 +46,9 @@ export function CartFlow() {
       {currentStep === "details" ? (
         <CartDetailsStep />
       ) : currentStep === "payment" ? (
-        <CartPaymentStep />
+        <CartPaymentStep deliveryEstimate={deliveryEstimate} />
       ) : (
-        <CartView />
+        <CartView deliveryEstimate={deliveryEstimate} />
       )}
     </>
   );

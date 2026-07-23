@@ -37,7 +37,7 @@ function isApiSessionError(error: unknown) {
   return isSessionError(error) || isCheckoutSessionError(error);
 }
 
-export function CartPaymentStep() {
+export function CartPaymentStep({ deliveryEstimate }: { deliveryEstimate?: ReactNode }) {
   const router = useRouter();
   const [status, setStatus] = useState<PaymentStatus>("loading");
   const [quote, setQuote] = useState<CheckoutQuote | null>(null);
@@ -249,6 +249,7 @@ export function CartPaymentStep() {
           </div>
 
           <CheckoutPaymentSummary quote={quote} />
+          {deliveryEstimate}
           <p className="mw-checkout-next-step">
             Este importe procede del cálculo autoritativo de Flask.
           </p>
