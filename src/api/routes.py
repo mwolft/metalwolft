@@ -1,7 +1,11 @@
 from flask import request, jsonify, Blueprint, send_file, send_from_directory, current_app, abort, Response
 from flask_jwt_extended import jwt_required
 from api.models import db, Users, Products, ProductImages, Categories, Subcategories, Orders, CheckoutSessions, OrderDetails, Favorites, Cart, Posts, Comments, Invoices, DeliveryEstimateConfig, AccountingEntry
-from api.utils import send_email, build_configured_reja_quote
+from api.utils import (
+    build_configured_reja_quote,
+    send_email,
+    serialize_configurator_configuration,
+)
 from api.jwt_utils import create_user_access_token, get_current_user_context as get_jwt_identity
 from sqlalchemy.exc import SQLAlchemyError
 import bcrypt
@@ -29,7 +33,10 @@ import requests
 import uuid
 from urllib.parse import urljoin
 from api.email_routes import send_email, get_admin_recipients
-from api.checkout_service import build_checkout_quote
+from api.checkout_service import (
+    build_checkout_quote,
+    build_product_configuration_quote,
+)
 from api.product_lifecycle import (
     ensure_product_available_for_sale,
     publicly_accessible_products_query,
@@ -3186,6 +3193,65 @@ def get_product(product_id):
     return response, 200
 
 
+@api.route('/products/<int:product_id>/quote', methods=['POST'])
+def get_product_quote(product_id):
+    data = request.get_json(silent=True)
+    if not isinstance(data, dict):
+        return jsonify({"message": "La configuración no es válida"}), 400
+
+    allowed_fields = {"alto", "ancho", "anclaje", "color", "quantity"}
+    if set(data) - allowed_fields:
+        return jsonify({"message": "La configuración contiene campos no permitidos"}), 400
+
+    try:
+        product = publicly_accessible_products_query().filter(
+            Products.id == product_id
+        ).first()
+        if not product:
+            return jsonify({"message": "Product not found"}), 404
+
+        quote = build_product_configuration_quote(
+            product=product,
+            alto=data.get("alto"),
+            ancho=data.get("ancho"),
+            anclaje=data.get("anclaje"),
+            color=data.get("color"),
+            quantity=data.get("quantity", 1),
+        )
+        return jsonify(quote), 200
+    except ValueError as error:
+        return jsonify({"message": str(error)}), 400
+    except SQLAlchemyError:
+        db.session.rollback()
+        logger.exception("Error building product quote for product %s", product_id)
+        return jsonify({"message": "Quote service unavailable"}), 503
+    except Exception:
+        logger.exception("Unexpected error building product quote for product %s", product_id)
+        return jsonify({"message": "Internal server error"}), 500
+
+
+@api.route('/products/<int:product_id>/configuration', methods=['GET'])
+def get_product_configuration(product_id):
+    try:
+        product = publicly_accessible_products_query().filter(
+            Products.id == product_id
+        ).first()
+        if not product:
+            return jsonify({"message": "Product not found"}), 404
+
+        ensure_product_available_for_sale(product)
+        return jsonify(serialize_configurator_configuration(product.id)), 200
+    except ValueError as error:
+        return jsonify({"message": str(error)}), 400
+    except SQLAlchemyError:
+        db.session.rollback()
+        logger.exception("Error loading product configuration for product %s", product_id)
+        return jsonify({"message": "Configuration service unavailable"}), 503
+    except Exception:
+        logger.exception("Unexpected error loading product configuration for product %s", product_id)
+        return jsonify({"message": "Internal server error"}), 500
+
+
 @api.route('/products/<int:product_id>', methods=['PUT', 'DELETE'])
 @jwt_required()
 def handle_product(product_id):
@@ -5352,17 +5418,16 @@ def handle_cart():
             product = Products.query.get(product_id)
             if not product:
                 return jsonify({"message": "Producto no encontrado"}), 404
-            ensure_product_available_for_sale(product)
 
             alto = data.get('alto')
             ancho = data.get('ancho')
-            precio_m2 = product.precio_rebajado if product.precio_rebajado else product.precio
-            price_quote = build_configured_reja_quote(
-                alto_cm=alto,
-                ancho_cm=ancho,
-                precio_m2=precio_m2,
+            price_quote = build_product_configuration_quote(
+                product=product,
+                alto=alto,
+                ancho=ancho,
                 anclaje=data.get('anclaje'),
-                color=data.get('color')
+                color=data.get('color'),
+                quantity=quantity,
             )
             recalculated_total = price_quote["unit_price"]
 
@@ -5441,14 +5506,14 @@ def update_cart_item(product_id):
             response.headers['Access-Control-Allow-Origin'] = '*'
             response.headers['Access-Control-Expose-Headers'] = 'Authorization'
             return response, 404
-        ensure_product_available_for_sale(product)
 
-        price_quote = build_configured_reja_quote(
-            alto_cm=cart_item.alto,
-            ancho_cm=cart_item.ancho,
-            precio_m2=product.precio_rebajado or product.precio,
+        price_quote = build_product_configuration_quote(
+            product=product,
+            alto=cart_item.alto,
+            ancho=cart_item.ancho,
             anclaje=cart_item.anclaje,
-            color=cart_item.color
+            color=cart_item.color,
+            quantity=quantity,
         )
 
         cart_item.quantity = quantity

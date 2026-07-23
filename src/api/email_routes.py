@@ -1,11 +1,190 @@
+from collections import deque
+from email.message import EmailMessage
+import hashlib
+import math
+import os
+import re
+import smtplib
+import ssl
+import threading
+import time
+
 from flask import Blueprint, request, jsonify, current_app
 from flask_mail import Mail, Message
 from sqlalchemy import event, inspect as sqla_inspect
+
 from api.models import db, Orders
-import os
 
 email_bp = Blueprint('email_bp', __name__)
 mail = Mail()
+
+CONTACT_MAX_REQUEST_BYTES = 16_384
+CONTACT_RATE_LIMIT_REQUESTS = 5
+CONTACT_RATE_LIMIT_WINDOW_SECONDS = 600
+CONTACT_GLOBAL_RATE_LIMIT_REQUESTS = 60
+CONTACT_SMTP_TIMEOUT_SECONDS = 10
+CONTACT_RECIPIENT = "admin@metalwolft.com"
+
+_EMAIL_PATTERN = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+_PHONE_PATTERN = re.compile(r"^[0-9+().\-\s]+$")
+
+
+class ContactEmailDeliveryError(RuntimeError):
+    """Raised when the configured SMTP service cannot deliver contact mail."""
+
+
+class _ContactRateLimiter:
+    def __init__(self):
+        self._lock = threading.Lock()
+        self._client_requests = {}
+        self._global_requests = deque()
+        self._last_cleanup = 0
+
+    @staticmethod
+    def _prune(requests, cutoff):
+        while requests and requests[0] <= cutoff:
+            requests.popleft()
+
+    def allow(self, client_key):
+        now = time.monotonic()
+        cutoff = now - CONTACT_RATE_LIMIT_WINDOW_SECONDS
+
+        with self._lock:
+            self._prune(self._global_requests, cutoff)
+            if now - self._last_cleanup >= CONTACT_RATE_LIMIT_WINDOW_SECONDS:
+                for existing_key, requests in list(self._client_requests.items()):
+                    self._prune(requests, cutoff)
+                    if not requests:
+                        del self._client_requests[existing_key]
+                self._last_cleanup = now
+
+            client_requests = self._client_requests.setdefault(client_key, deque())
+            self._prune(client_requests, cutoff)
+
+            if len(self._global_requests) >= CONTACT_GLOBAL_RATE_LIMIT_REQUESTS:
+                retry_after = math.ceil(
+                    CONTACT_RATE_LIMIT_WINDOW_SECONDS
+                    - (now - self._global_requests[0])
+                )
+                return False, max(1, retry_after)
+
+            if len(client_requests) >= CONTACT_RATE_LIMIT_REQUESTS:
+                retry_after = math.ceil(
+                    CONTACT_RATE_LIMIT_WINDOW_SECONDS
+                    - (now - client_requests[0])
+                )
+                return False, max(1, retry_after)
+
+            client_requests.append(now)
+            self._global_requests.append(now)
+            return True, None
+
+    def reset(self):
+        with self._lock:
+            self._client_requests.clear()
+            self._global_requests.clear()
+            self._last_cleanup = 0
+
+
+_contact_rate_limiter = _ContactRateLimiter()
+
+
+def _contact_client_key():
+    client_address = (
+        request.headers.get("CF-Connecting-IP")
+        or request.headers.get("X-Forwarded-For", "").split(",", 1)[0].strip()
+        or request.remote_addr
+        or "unknown"
+    )
+    return hashlib.sha256(client_address.encode("utf-8")).hexdigest()
+
+
+def _normalize_contact_data(data):
+    if not isinstance(data, dict):
+        return None, "La solicitud no contiene datos válidos."
+
+    field_rules = {
+        "name": ("El nombre", 1, 80),
+        "firstname": ("Los apellidos", 1, 120),
+        "email": ("El email", 3, 254),
+        "phone": ("El teléfono", 7, 25),
+        "message": ("El mensaje", 10, 4_000),
+    }
+    normalized = {}
+
+    for field, (label, minimum, maximum) in field_rules.items():
+        value = data.get(field)
+        if not isinstance(value, str):
+            return None, f"{label} es obligatorio."
+
+        value = value.strip()
+        if field != "message":
+            value = " ".join(value.split())
+
+        if len(value) < minimum or len(value) > maximum:
+            return None, f"{label} debe tener entre {minimum} y {maximum} caracteres."
+        normalized[field] = value
+
+    if not _EMAIL_PATTERN.fullmatch(normalized["email"]):
+        return None, "El email no tiene un formato válido."
+
+    phone = normalized["phone"]
+    digit_count = sum(character.isdigit() for character in phone)
+    if not _PHONE_PATTERN.fullmatch(phone) or not 7 <= digit_count <= 15:
+        return None, "El teléfono no tiene un formato válido."
+
+    return normalized, None
+
+
+def _send_contact_email(contact_data):
+    smtp_server = current_app.config.get("MAIL_SERVER")
+    smtp_port = current_app.config.get("MAIL_PORT")
+    sender = current_app.config.get("MAIL_DEFAULT_SENDER") or os.getenv(
+        "MAIL_DEFAULT_SENDER"
+    )
+
+    if not smtp_server or not smtp_port or not sender:
+        raise ContactEmailDeliveryError("SMTP is not configured")
+
+    message = EmailMessage()
+    message["Subject"] = "Mensaje desde la web"
+    message["From"] = sender
+    message["To"] = CONTACT_RECIPIENT
+    message.set_content(
+        "\n".join(
+            [
+                f"Nombre: {contact_data['name']} {contact_data['firstname']}",
+                f"Teléfono: {contact_data['phone']}",
+                f"Correo: {contact_data['email']}",
+                f"Mensaje: {contact_data['message']}",
+            ]
+        )
+    )
+
+    try:
+        use_ssl = bool(current_app.config.get("MAIL_USE_SSL"))
+        use_tls = bool(current_app.config.get("MAIL_USE_TLS"))
+        smtp_class = smtplib.SMTP_SSL if use_ssl else smtplib.SMTP
+        smtp_options = {
+            "host": smtp_server,
+            "port": int(smtp_port),
+            "timeout": CONTACT_SMTP_TIMEOUT_SECONDS,
+        }
+        if use_ssl:
+            smtp_options["context"] = ssl.create_default_context()
+
+        with smtp_class(**smtp_options) as smtp:
+            if use_tls and not use_ssl:
+                smtp.starttls(context=ssl.create_default_context())
+
+            username = current_app.config.get("MAIL_USERNAME")
+            password = current_app.config.get("MAIL_PASSWORD")
+            if username:
+                smtp.login(username, password or "")
+
+            smtp.send_message(message)
+    except (OSError, TimeoutError, smtplib.SMTPException) as error:
+        raise ContactEmailDeliveryError("SMTP delivery failed") from error
 
 def configure_mail(app):
     app.config['MAIL_SERVER'] = os.getenv('MAIL_SERVER', 'smtp.example.com')
@@ -44,32 +223,39 @@ def get_admin_recipients():
 
 @email_bp.route('/contact', methods=['POST'])
 def contact():
+    allowed, retry_after = _contact_rate_limiter.allow(_contact_client_key())
+    if not allowed:
+        response = jsonify({
+            "error": "Has enviado demasiadas solicitudes. Inténtalo de nuevo más tarde."
+        })
+        response.status_code = 429
+        response.headers["Retry-After"] = str(retry_after)
+        return response
+
+    if (
+        request.content_length is not None
+        and request.content_length > CONTACT_MAX_REQUEST_BYTES
+    ):
+        return jsonify({"error": "La solicitud es demasiado grande."}), 400
+
     try:
-        data = request.get_json()
+        data, validation_error = _normalize_contact_data(request.get_json(silent=True))
+        if validation_error:
+            return jsonify({"error": validation_error}), 400
 
-        # Validación de datos
-        if not data or not all(key in data for key in ('name', 'firstname', 'phone', 'email', 'message')):
-            return jsonify({"error": "Faltan datos obligatorios."}), 400
-
-        # Preparar el correo
-        message = Message(
-            subject="Mensaje desde la web",
-            sender=os.getenv('MAIL_DEFAULT_SENDER'),
-            recipients=['admin@metalwolft.com'],
-            body=(
-                f"Nombre: {data['name']} {data['firstname']}\n"
-                f"Teléfono: {data['phone']}\n"
-                f"Correo: {data['email']}\n"
-                f"Mensaje: {data['message']}"
-            )
-        )
-
-        # Enviar el correo
-        mail.send(message)
+        _send_contact_email(data)
         return jsonify({"message": "Mensaje enviado correctamente."}), 200
-
-    except Exception as e:
-        current_app.logger.exception("Error en contacto")
+    except ContactEmailDeliveryError as error:
+        current_app.logger.warning(
+            "Contact email delivery unavailable (error_type=%s)",
+            type(error.__cause__ or error).__name__,
+        )
+        return jsonify({"error": "El servicio de contacto no está disponible."}), 503
+    except Exception as error:
+        current_app.logger.error(
+            "Unexpected contact endpoint failure (error_type=%s)",
+            type(error).__name__,
+        )
         return jsonify({"error": "Internal server error"}), 500
     
 

@@ -1,0 +1,144 @@
+import assert from "node:assert/strict";
+import {
+  ProductConfigurationClientError,
+  isTemporaryConfigurationNetworkError,
+  requestProductConfiguration
+} from "./product-configuration-client.ts";
+
+const validConfiguration = {
+  schema_version: 1,
+  product_id: 7,
+  dimensions: {
+    alto: { min_cm: 30, max_cm: 250 },
+    ancho: { min_cm: 30, max_cm: 250 },
+    max_sum_cm: 400
+  },
+  anchorages: [
+    {
+      value: "Sin obra: con agujeros interiores",
+      name: "Agujeros interiores",
+      label: "Sin obra: con agujeros interiores",
+      description: "Instalación sin obra mediante agujeros interiores.",
+      supplement: 0,
+      enabled: true
+    },
+    {
+      value: "Sin obra: con pletinas",
+      name: "Pletinas",
+      label: "Sin obra: con pletinas",
+      description: "Instalación sin obra mediante pletinas.",
+      supplement: 24.95,
+      enabled: true
+    }
+  ],
+  colors: [
+    {
+      value: "satinado_blanco",
+      name: "Blanco",
+      label: "Blanco liso",
+      finish: "liso",
+      finish_label: "Satinado liso",
+      enabled: true
+    }
+  ],
+  defaults: {
+    anchorage: "Sin obra: con agujeros interiores",
+    color: "satinado_blanco"
+  }
+};
+
+{
+  let capturedUrl = "";
+  const controller = new AbortController();
+  const configuration = await requestProductConfiguration(7, {
+    apiBaseUrl: "https://api.example.test/",
+    signal: controller.signal,
+    fetcher: async (url, init) => {
+      capturedUrl = String(url);
+      assert.equal(init?.signal, controller.signal);
+      return Response.json(validConfiguration);
+    }
+  });
+
+  assert.deepEqual(configuration, validConfiguration);
+  assert.equal(capturedUrl, "https://api.example.test/api/products/7/configuration");
+}
+
+{
+  await assert.rejects(
+    requestProductConfiguration(7, {
+      apiBaseUrl: "https://api.example.test",
+      fetcher: async () => {
+        throw new TypeError("network unavailable");
+      }
+    }),
+    (error) => isTemporaryConfigurationNetworkError(error)
+  );
+}
+
+for (const status of [400, 404, 429, 500, 503]) {
+  await assert.rejects(
+    requestProductConfiguration(7, {
+      apiBaseUrl: "https://api.example.test",
+      fetcher: async () => Response.json({ message: "Internal error" }, { status })
+    }),
+    (error) =>
+      error instanceof ProductConfigurationClientError &&
+      error.kind === "http" &&
+      error.status === status &&
+      !isTemporaryConfigurationNetworkError(error)
+  );
+}
+
+{
+  await assert.rejects(
+    requestProductConfiguration(7, {
+      apiBaseUrl: "https://api.example.test",
+      fetcher: async () =>
+        Response.json({
+          ...validConfiguration,
+          defaults: { ...validConfiguration.defaults, color: "color_inexistente" }
+        })
+    }),
+    (error) => error instanceof ProductConfigurationClientError && error.kind === "contract"
+  );
+}
+
+{
+  await assert.rejects(
+    requestProductConfiguration(7, {
+      apiBaseUrl: "https://api.example.test",
+      fetcher: async () => Response.json({ ...validConfiguration, product_id: 9 })
+    }),
+    (error) => error instanceof ProductConfigurationClientError && error.kind === "contract"
+  );
+}
+
+{
+  await assert.rejects(
+    requestProductConfiguration(7, {
+      apiBaseUrl: "https://api.example.test",
+      fetcher: async () =>
+        Response.json({
+          ...validConfiguration,
+          colors: validConfiguration.colors.map(({ label, ...color }) => color)
+        })
+    }),
+    (error) => error instanceof ProductConfigurationClientError && error.kind === "contract"
+  );
+}
+
+{
+  const abortError = new DOMException("Aborted", "AbortError");
+  await assert.rejects(
+    requestProductConfiguration(7, {
+      apiBaseUrl: "https://api.example.test",
+      fetcher: async () => {
+        throw abortError;
+      }
+    }),
+    (error) => error === abortError && !isTemporaryConfigurationNetworkError(error)
+  );
+}
+
+console.log("11 product configuration client tests passed");

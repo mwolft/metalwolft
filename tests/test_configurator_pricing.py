@@ -52,6 +52,7 @@ from api.utils import (
     ANCHORAGE_METAL_CLAWS,
     LEGACY_ANCHORAGE_RECONFIGURE_MESSAGE,
     build_configured_reja_quote,
+    serialize_configurator_configuration,
 )
 
 DEFAULT_COLOR = "satinado_blanco"
@@ -110,6 +111,99 @@ def load_checkout_service_with_fake_models():
 
 
 class ConfiguratorPricingTest(unittest.TestCase):
+    def test_serialized_configuration_uses_the_authoritative_rules(self):
+        configuration = serialize_configurator_configuration(7)
+
+        self.assertEqual(configuration["schema_version"], 1)
+        self.assertEqual(configuration["product_id"], 7)
+        self.assertEqual(
+            configuration["dimensions"],
+            {
+                "alto": {"min_cm": 30.0, "max_cm": 250.0},
+                "ancho": {"min_cm": 30.0, "max_cm": 250.0},
+                "max_sum_cm": 400.0,
+            },
+        )
+        self.assertEqual(
+            [option["supplement"] for option in configuration["anchorages"]],
+            [0.0, 24.95, 39.95],
+        )
+        self.assertEqual(
+            [option["enabled"] for option in configuration["anchorages"]],
+            [True, True, False],
+        )
+        self.assertEqual(len(configuration["colors"]), 10)
+        self.assertEqual(
+            {option["finish"] for option in configuration["colors"]},
+            {"liso", "forja"},
+        )
+        self.assertEqual(
+            configuration["colors"][0]["label"],
+            "Blanco liso",
+        )
+        self.assertTrue(
+            all(option["description"] for option in configuration["anchorages"])
+        )
+        self.assertEqual(quote(30, 250)["base_unit_price"], 95.0)
+        with self.assertRaisesRegex(ValueError, "Dimensiones"):
+            quote(151, 250)
+
+    def test_authoritative_product_quote_returns_commercial_breakdown(self):
+        checkout_service = load_checkout_service_with_fake_models()
+        product = SimpleNamespace(
+            id=7,
+            precio=PRICE_M2,
+            precio_rebajado=None,
+            available_for_sale=True,
+        )
+
+        result = checkout_service.build_product_configuration_quote(
+            product=product,
+            alto=30,
+            ancho=30,
+            anclaje=ANCHORAGE_FRONT_PLATES,
+            color=DEFAULT_COLOR,
+            quantity=2,
+        )
+
+        self.assertEqual(
+            result,
+            {
+                "product_id": 7,
+                "quantity": 2,
+                "alto": 30.0,
+                "ancho": 30.0,
+                "anclaje": ANCHORAGE_FRONT_PLATES,
+                "color": DEFAULT_COLOR,
+                "currency": "EUR",
+                "base_unit_price": 95.0,
+                "anchorage_supplement": 24.95,
+                "unit_price": 119.95,
+                "subtotal": 239.9,
+            },
+        )
+
+    def test_authoritative_product_quote_is_idempotent(self):
+        checkout_service = load_checkout_service_with_fake_models()
+        product = SimpleNamespace(
+            id=7,
+            precio=PRICE_M2,
+            precio_rebajado=None,
+            available_for_sale=True,
+        )
+        configuration = {
+            "product": product,
+            "alto": 100,
+            "ancho": 100,
+            "anclaje": ANCHORAGE_INTERIOR_HOLES,
+            "color": DEFAULT_COLOR,
+        }
+
+        first = checkout_service.build_product_configuration_quote(**configuration)
+        second = checkout_service.build_product_configuration_quote(**configuration)
+
+        self.assertEqual(first, second)
+
     def test_30x30_interior_uses_minimum_price(self):
         self.assertEqual(quote(30, 30)["unit_price"], 95.0)
 

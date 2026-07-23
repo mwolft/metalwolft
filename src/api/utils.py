@@ -15,34 +15,150 @@ LEGACY_ANCHORAGE_RECONFIGURE_MESSAGE = (
 
 CONFIGURATOR_ANCHORAGES = {
     ANCHORAGE_INTERIOR_HOLES: {
+        "name": "Agujeros interiores",
         "label": ANCHORAGE_INTERIOR_HOLES,
+        "description": "Instalación sin obra mediante agujeros interiores.",
         "supplement": 0.0,
         "enabled": True,
     },
     ANCHORAGE_FRONT_PLATES: {
+        "name": "Pletinas",
         "label": ANCHORAGE_FRONT_PLATES,
+        "description": "Instalación sin obra mediante pletinas.",
         "supplement": 24.95,
         "enabled": True,
     },
     ANCHORAGE_METAL_CLAWS: {
+        "name": "Garras metálicas",
         "label": ANCHORAGE_METAL_CLAWS,
+        "description": "Instalación con obra mediante garras metálicas.",
         "supplement": 39.95,
         "enabled": False,
     },
 }
 
 CONFIGURATOR_COLORS = {
-    "satinado_blanco",
-    "satinado_negro",
-    "satinado_gris",
-    "satinado_verde",
-    "forja_negro",
-    "forja_gris",
-    "forja_marron",
-    "forja_azul",
-    "forja_verde",
-    "forja_dorado",
+    "satinado_blanco": {
+        "name": "Blanco",
+        "label": "Blanco liso",
+        "finish": "liso",
+        "finish_label": "Satinado liso",
+        "enabled": True,
+    },
+    "satinado_negro": {
+        "name": "Negro",
+        "label": "Negro liso",
+        "finish": "liso",
+        "finish_label": "Satinado liso",
+        "enabled": True,
+    },
+    "satinado_gris": {
+        "name": "Gris medio",
+        "label": "Gris medio liso",
+        "finish": "liso",
+        "finish_label": "Satinado liso",
+        "enabled": True,
+    },
+    "satinado_verde": {
+        "name": "Verde carruajes",
+        "label": "Verde carruajes liso",
+        "finish": "liso",
+        "finish_label": "Satinado liso",
+        "enabled": True,
+    },
+    "forja_negro": {
+        "name": "Negro",
+        "label": "Negro forja",
+        "finish": "forja",
+        "finish_label": "Efecto forja",
+        "enabled": True,
+    },
+    "forja_gris": {
+        "name": "Gris acero",
+        "label": "Gris acero forja",
+        "finish": "forja",
+        "finish_label": "Efecto forja",
+        "enabled": True,
+    },
+    "forja_marron": {
+        "name": "Marrón castaño",
+        "label": "Marrón castaño forja",
+        "finish": "forja",
+        "finish_label": "Efecto forja",
+        "enabled": True,
+    },
+    "forja_azul": {
+        "name": "Azul",
+        "label": "Azul forja",
+        "finish": "forja",
+        "finish_label": "Efecto forja",
+        "enabled": True,
+    },
+    "forja_verde": {
+        "name": "Verde bronce",
+        "label": "Verde bronce forja",
+        "finish": "forja",
+        "finish_label": "Efecto forja",
+        "enabled": True,
+    },
+    "forja_dorado": {
+        "name": "Dorado",
+        "label": "Dorado forja",
+        "finish": "forja",
+        "finish_label": "Efecto forja",
+        "enabled": True,
+    },
 }
+
+CONFIGURATOR_MIN_DIMENSION_CM = 30.0
+CONFIGURATOR_MAX_DIMENSION_CM = 250.0
+CONFIGURATOR_MAX_DIMENSION_SUM_CM = 400.0
+DEFAULT_CONFIGURATOR_ANCHORAGE = ANCHORAGE_INTERIOR_HOLES
+DEFAULT_CONFIGURATOR_COLOR = "satinado_blanco"
+
+
+def serialize_configurator_configuration(product_id):
+    return {
+        "schema_version": 1,
+        "product_id": int(product_id),
+        "dimensions": {
+            "alto": {
+                "min_cm": CONFIGURATOR_MIN_DIMENSION_CM,
+                "max_cm": CONFIGURATOR_MAX_DIMENSION_CM,
+            },
+            "ancho": {
+                "min_cm": CONFIGURATOR_MIN_DIMENSION_CM,
+                "max_cm": CONFIGURATOR_MAX_DIMENSION_CM,
+            },
+            "max_sum_cm": CONFIGURATOR_MAX_DIMENSION_SUM_CM,
+        },
+        "anchorages": [
+            {
+                "value": value,
+                "name": rule["name"],
+                "label": rule["label"],
+                "description": rule["description"],
+                "supplement": rule["supplement"],
+                "enabled": rule["enabled"],
+            }
+            for value, rule in CONFIGURATOR_ANCHORAGES.items()
+        ],
+        "colors": [
+            {
+                "value": value,
+                "name": rule["name"],
+                "label": rule["label"],
+                "finish": rule["finish"],
+                "finish_label": rule["finish_label"],
+                "enabled": rule["enabled"],
+            }
+            for value, rule in CONFIGURATOR_COLORS.items()
+        ],
+        "defaults": {
+            "anchorage": DEFAULT_CONFIGURATOR_ANCHORAGE,
+            "color": DEFAULT_CONFIGURATOR_COLOR,
+        },
+    }
 
 
 def _normalize_anchorage_value(value):
@@ -75,8 +191,12 @@ def validate_configurator_options(anclaje, color):
     if not anchorage_rule["enabled"]:
         raise ValueError("Esta opción de instalación no está disponible actualmente")
 
-    if normalized_color not in CONFIGURATOR_COLORS:
+    color_rule = CONFIGURATOR_COLORS.get(normalized_color)
+    if not color_rule:
         raise ValueError("Selecciona un color válido")
+
+    if not color_rule["enabled"]:
+        raise ValueError("Este color no está disponible actualmente")
 
     return normalized_anclaje, normalized_color
 
@@ -138,7 +258,13 @@ def calcular_precio_reja(alto_cm, ancho_cm, precio_m2):
     ancho = float(ancho_cm)
     area = (alto * ancho) / 10000  # cm² → m²
 
-    if alto < 30 or ancho < 30 or alto > 250 or ancho > 250 or alto + ancho > 400:
+    if (
+        alto < CONFIGURATOR_MIN_DIMENSION_CM
+        or ancho < CONFIGURATOR_MIN_DIMENSION_CM
+        or alto > CONFIGURATOR_MAX_DIMENSION_CM
+        or ancho > CONFIGURATOR_MAX_DIMENSION_CM
+        or alto + ancho > CONFIGURATOR_MAX_DIMENSION_SUM_CM
+    ):
         raise ValueError("Dimensiones fuera de rango permitido")
 
     base_price = 95

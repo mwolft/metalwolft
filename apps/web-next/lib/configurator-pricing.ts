@@ -1,8 +1,10 @@
 import {
   ANCHORAGE_METAL_CLAWS,
+  LOCAL_CONFIGURATOR_DIMENSIONS,
   type AnchorageValue,
-  getAnchorageOption
+  getFallbackAnchorage
 } from "./configurator-options";
+import type { ProductConfigurationResponse } from "./product-configuration-client";
 
 export type ConfiguratorPriceInput = {
   rawHeight: string;
@@ -50,7 +52,11 @@ export function roundCurrency(value: number) {
   return Math.round((value + Number.EPSILON) * 100) / 100;
 }
 
-export function getDimensionValidationError(rawHeight: string, rawWidth: string) {
+export function getDimensionValidationError(
+  rawHeight: string,
+  rawWidth: string,
+  rules: ProductConfigurationResponse["dimensions"] = LOCAL_CONFIGURATOR_DIMENSIONS
+) {
   const height = parseDimension(rawHeight);
   const width = parseDimension(rawWidth);
 
@@ -58,22 +64,29 @@ export function getDimensionValidationError(rawHeight: string, rawWidth: string)
     return "Introduce alto y ancho válidos en centímetros.";
   }
 
-  if (height < 30 || width < 30) {
-    return "El alto y el ancho deben ser de al menos 30 cm.";
+  if (height < rules.alto.min_cm || width < rules.ancho.min_cm) {
+    if (rules.alto.min_cm === rules.ancho.min_cm) {
+      return `El alto y el ancho deben ser de al menos ${rules.alto.min_cm} cm.`;
+    }
+    return `El alto debe ser de al menos ${rules.alto.min_cm} cm y el ancho de al menos ${rules.ancho.min_cm} cm.`;
   }
 
-  if (height > 250 || width > 250) {
-    return "El alto y el ancho no pueden superar 250 cm.";
+  if (height > rules.alto.max_cm || width > rules.ancho.max_cm) {
+    if (rules.alto.max_cm === rules.ancho.max_cm) {
+      return `El alto y el ancho no pueden superar ${rules.alto.max_cm} cm.`;
+    }
+    return `El alto no puede superar ${rules.alto.max_cm} cm ni el ancho ${rules.ancho.max_cm} cm.`;
   }
 
-  if (height + width > 400) {
-    return "La suma de alto y ancho no puede superar 400 cm.";
+  if (height + width > rules.max_sum_cm) {
+    return `La suma de alto y ancho no puede superar ${rules.max_sum_cm} cm.`;
   }
 
   return "";
 }
 
 export function calculateConfiguratorPrice(input: ConfiguratorPriceInput): ConfiguratorPriceQuote {
+  // Compatibility-only calculation used after a transport failure.
   const dimensionError = getDimensionValidationError(input.rawHeight, input.rawWidth);
   if (dimensionError) {
     return { ok: false, error: dimensionError };
@@ -83,8 +96,8 @@ export function calculateConfiguratorPrice(input: ConfiguratorPriceInput): Confi
     return { ok: false, error: "Esta opción de instalación no está disponible actualmente." };
   }
 
-  const anchorageOption = getAnchorageOption(input.anchorage);
-  if (anchorageOption.disabled) {
+  const anchorageOption = getFallbackAnchorage(input.anchorage);
+  if (!anchorageOption || !anchorageOption.enabled) {
     return { ok: false, error: "Esta opción de instalación no está disponible actualmente." };
   }
 

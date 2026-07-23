@@ -1,6 +1,6 @@
 "use client";
 
-import { type CSSProperties, useEffect, useId, useMemo, useState } from "react";
+import { type CSSProperties, useEffect, useId, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { clearSession, getToken } from "@/lib/auth-client";
@@ -13,15 +13,17 @@ import {
   updateCartItemQuantity
 } from "@/lib/cart-client";
 import {
-  DEFAULT_ANCHORAGE,
-  DEFAULT_COLOR,
   type AnchorageValue,
   type ConfiguratorColorValue,
-  anchorageOptions,
-  colorOptions,
-  colorGroups,
-  getColorOption
+  buildLocalProductConfiguration,
+  getColorVisual
 } from "@/lib/configurator-options";
+import {
+  ProductConfigurationClientError,
+  type ProductConfigurationResponse,
+  isTemporaryConfigurationNetworkError,
+  requestProductConfiguration
+} from "@/lib/product-configuration-client";
 import {
   calculateConfiguratorPrice,
   formatCurrency,
@@ -32,6 +34,12 @@ import {
   PRODUCT_UNAVAILABLE_MESSAGE,
   isAvailableForSale
 } from "@/lib/product-lifecycle";
+import {
+  ProductQuoteClientError,
+  type ProductQuoteResponse,
+  isTemporaryQuoteNetworkError,
+  requestProductQuote
+} from "@/lib/product-quote-client";
 
 type ProductConfiguratorProps = {
   productId: number;
@@ -75,22 +83,74 @@ type LegacyPendingProductConfig = {
   color?: unknown;
 };
 
+type LocalValidQuote = Extract<ConfiguratorPriceQuote, { ok: true }>;
+type DisplayedQuote = Omit<LocalValidQuote, "pricePerM2Used"> & {
+  pricePerM2Used?: number;
+  source: "flask" | "local-fallback";
+};
+
+type RenderedColorOption = ProductConfigurationResponse["colors"][number] & {
+  hex: string;
+  swatchClass?: "forja";
+};
+
+type RenderedColorGroup = {
+  value: string;
+  label: string;
+  options: RenderedColorOption[];
+};
+
+const QUOTE_DEBOUNCE_MS = 400;
+
 function normalizeDecimalInput(value: string) {
   return value.replace(",", ".");
 }
 
 function isValidQuote(
-  quote: ConfiguratorPriceQuote | null
-): quote is Extract<ConfiguratorPriceQuote, { ok: true }> {
-  return Boolean(quote?.ok);
+  quote: DisplayedQuote | null
+): quote is DisplayedQuote {
+  return quote !== null;
 }
 
-function isAnchorageValue(value: unknown): value is AnchorageValue {
-  return typeof value === "string" && anchorageOptions.some((option) => option.value === value);
+function isAbortError(error: unknown) {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "name" in error &&
+    error.name === "AbortError"
+  );
 }
 
-function isColorValue(value: unknown): value is ConfiguratorColorValue {
-  return typeof value === "string" && colorOptions.some((option) => option.value === value);
+function parseQuoteDimension(value: string) {
+  const normalized = normalizeDecimalInput(value.trim());
+  if (!normalized) {
+    return null;
+  }
+
+  const parsed = Number(normalized);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function toDisplayedAuthoritativeQuote(quote: ProductQuoteResponse): DisplayedQuote {
+  return {
+    ok: true,
+    height: quote.alto,
+    width: quote.ancho,
+    area: (quote.alto * quote.ancho) / 10_000,
+    baseUnitPrice: quote.base_unit_price,
+    anchorageSupplement: quote.anchorage_supplement,
+    unitPrice: quote.unit_price,
+    formattedUnitPrice: formatCurrency(quote.unit_price),
+    source: "flask"
+  };
+}
+
+function toDisplayedFallbackQuote(quote: LocalValidQuote): DisplayedQuote {
+  return { ...quote, source: "local-fallback" };
+}
+
+function isNonEmptyString(value: unknown): value is string {
+  return typeof value === "string" && Boolean(value.trim());
 }
 
 function normalizePendingNumber(value: unknown) {
@@ -124,8 +184,8 @@ function readPendingProductConfig(
       pendingProductSlug !== productSlug ||
       alto === null ||
       ancho === null ||
-      !isAnchorageValue(anclaje) ||
-      !isColorValue(pendingColor)
+      !isNonEmptyString(anclaje) ||
+      !isNonEmptyString(pendingColor)
     ) {
       return null;
     }
@@ -165,47 +225,197 @@ export function ProductConfigurator({
   const router = useRouter();
   const [height, setHeight] = useState("");
   const [width, setWidth] = useState("");
-  const [anchorage, setAnchorage] = useState<AnchorageValue>(DEFAULT_ANCHORAGE);
-  const [color, setColor] = useState<ConfiguratorColorValue>(DEFAULT_COLOR);
+  const [anchorage, setAnchorage] = useState<AnchorageValue>("");
+  const [color, setColor] = useState<ConfiguratorColorValue>("");
   const [previewColor, setPreviewColor] = useState<ConfiguratorColorValue | null>(null);
-  const [calculatedQuote, setCalculatedQuote] = useState<ConfiguratorPriceQuote | null>(null);
+  const [productConfiguration, setProductConfiguration] =
+    useState<ProductConfigurationResponse | null>(null);
+  const [configurationStatus, setConfigurationStatus] = useState<
+    "loading" | "ready" | "fallback" | "error"
+  >(availableForSale ? "loading" : "ready");
+  const [configurationMessage, setConfigurationMessage] = useState("");
+  const [calculatedQuote, setCalculatedQuote] = useState<DisplayedQuote | null>(null);
   const [calculationError, setCalculationError] = useState("");
+  const [quoteNotice, setQuoteNotice] = useState("");
+  const [quoteStatus, setQuoteStatus] = useState<"idle" | "loading">("idle");
+  const [quoteRequestVersion, setQuoteRequestVersion] = useState(0);
   const [needsRecalculation, setNeedsRecalculation] = useState(false);
+  const activeQuoteController = useRef<AbortController | null>(null);
   const [cartStatus, setCartStatus] = useState<"idle" | "adding" | "success" | "error">("idle");
   const [cartFeedback, setCartFeedback] = useState("");
   const dimensionHelpId = useId();
   const dimensionErrorId = useId();
   const cartFeedbackId = useId();
 
-  const activeColor = getColorOption(previewColor ?? color);
-  const selectedColor = getColorOption(color);
-  const dimensionError = getDimensionValidationError(height, width);
-  const dimensionsReadyForQuote = !dimensionError;
+  const configuredAnchorageOptions = useMemo(() => {
+    if (!productConfiguration) {
+      return [];
+    }
+
+    return productConfiguration.anchorages.map((rule) => {
+      const supplementLabel =
+        rule.enabled && rule.supplement > 0
+          ? ` (+${formatCurrency(rule.supplement)} €)`
+          : "";
+      return {
+        ...rule,
+        value: rule.value as AnchorageValue,
+        label: rule.enabled ? `${rule.label}${supplementLabel}` : `${rule.label} (no disponible)`,
+        disabled: !rule.enabled
+      };
+    });
+  }, [productConfiguration]);
+  const configuredColorGroups = useMemo(() => {
+    if (!productConfiguration) {
+      return [];
+    }
+
+    const groups = new Map<string, RenderedColorGroup>();
+    productConfiguration.colors
+      .filter((option) => option.enabled)
+      .forEach((option) => {
+        const visual = getColorVisual(option.value);
+        const renderedOption = { ...option, ...visual };
+        const currentGroup = groups.get(option.finish);
+        if (currentGroup) {
+          currentGroup.options.push(renderedOption);
+          return;
+        }
+        groups.set(option.finish, {
+          value: option.finish,
+          label: option.finish_label,
+          options: [renderedOption]
+        });
+      });
+    return Array.from(groups.values());
+  }, [productConfiguration]);
+  const configuredColors = useMemo(
+    () => configuredColorGroups.flatMap((group) => group.options),
+    [configuredColorGroups]
+  );
+  const configurationReady =
+    configurationStatus === "ready" || configurationStatus === "fallback";
+  const controlsDisabled = !configurationReady;
+  const activeColorValue = previewColor ?? color;
+  const activeColorVisual = getColorVisual(activeColorValue);
+  const selectedColor = configuredColors.find((option) => option.value === color);
+  const dimensionError = productConfiguration
+    ? getDimensionValidationError(height, width, productConfiguration.dimensions)
+    : "";
+  const dimensionsReadyForQuote = Boolean(productConfiguration) && !dimensionError;
   const effectivePricePerM2 =
     discountedPricePerM2 && discountedPricePerM2 > 0 ? discountedPricePerM2 : pricePerM2;
   const hasDiscount = Boolean(discountedPricePerM2 && discountedPricePerM2 > 0);
 
-  const promptMessage = needsRecalculation
-    ? "Has cambiado la configuración. Vuelve a calcular el precio."
-    : dimensionsReadyForQuote
-      ? "Medidas listas. Calcula el precio para continuar."
-      : "Introduce tus medidas y calcula el precio para ver el coste final.";
+  const promptMessage =
+    quoteStatus === "loading"
+      ? "Calculando el presupuesto..."
+      : needsRecalculation
+        ? "La configuración ha cambiado. Actualizando el presupuesto..."
+        : dimensionsReadyForQuote
+          ? "Medidas listas. El precio se calculará automáticamente."
+          : "Introduce tus medidas para ver el coste final.";
 
   const promptClassName = `mw-configurator-prompt${
     needsRecalculation ? " mw-configurator-prompt--warning" : dimensionsReadyForQuote ? " mw-configurator-prompt--ready" : ""
   }`;
   const productPath = `/${categorySlug}/${productSlug}`;
   const canAddToCart =
-    availableForSale && isValidQuote(calculatedQuote) && !needsRecalculation;
+    availableForSale &&
+    configurationReady &&
+    isValidQuote(calculatedQuote) &&
+    quoteStatus !== "loading" &&
+    !needsRecalculation;
   const isAddingToCart = cartStatus === "adding";
 
   const previewStyle = useMemo<ColorStyle>(
     () => ({
-      "--mw-configurator-color": activeColor.hex,
-      backgroundColor: activeColor.hex
+      "--mw-configurator-color": activeColorVisual.hex,
+      backgroundColor: activeColorVisual.hex
     }),
-    [activeColor.hex]
+    [activeColorVisual.hex]
   );
+
+  useEffect(() => {
+    if (!availableForSale) {
+      return;
+    }
+
+    const controller = new AbortController();
+    setProductConfiguration(null);
+    setConfigurationStatus("loading");
+    setConfigurationMessage("Cargando configuración disponible...");
+
+    requestProductConfiguration(productId, { signal: controller.signal })
+      .then((configuration) => {
+        if (controller.signal.aborted) {
+          return;
+        }
+        setProductConfiguration(configuration);
+        setConfigurationStatus("ready");
+        setConfigurationMessage("");
+      })
+      .catch((error) => {
+        if (controller.signal.aborted || isAbortError(error)) {
+          return;
+        }
+
+        if (isTemporaryConfigurationNetworkError(error)) {
+          setProductConfiguration(buildLocalProductConfiguration(productId));
+          setConfigurationStatus("fallback");
+          setConfigurationMessage(
+            "Configuración temporal cargada localmente por un problema de conexión."
+          );
+          return;
+        }
+
+        setProductConfiguration(null);
+        setConfigurationStatus("error");
+        setConfigurationMessage(
+          error instanceof ProductConfigurationClientError
+            ? error.message
+            : "No se pudo cargar la configuración del producto."
+        );
+      });
+
+    return () => controller.abort();
+  }, [availableForSale, productId]);
+
+  useEffect(() => {
+    if (!configurationReady || !productConfiguration) {
+      return;
+    }
+
+    const enabledAnchorages = configuredAnchorageOptions.filter((option) => !option.disabled);
+    setAnchorage((current) => {
+      if (enabledAnchorages.some((option) => option.value === current)) {
+        return current;
+      }
+      return (
+        enabledAnchorages.find(
+          (option) => option.value === productConfiguration.defaults.anchorage
+        )?.value ??
+        enabledAnchorages[0]?.value ??
+        current
+      );
+    });
+    setColor((current) => {
+      if (configuredColors.some((option) => option.value === current)) {
+        return current;
+      }
+      return (
+        configuredColors.find((option) => option.value === productConfiguration.defaults.color)
+          ?.value ??
+        configuredColors[0]?.value ??
+        current
+      );
+    });
+  }, [
+    configurationReady,
+    configuredAnchorageOptions,
+    configuredColors,
+    productConfiguration
+  ]);
 
   useEffect(() => {
     const pendingConfig = readPendingProductConfig(productId, categorySlug, productSlug);
@@ -215,63 +425,152 @@ export function ProductConfigurator({
 
     const restoredHeight = String(pendingConfig.alto);
     const restoredWidth = String(pendingConfig.ancho);
-    const restoredQuote = calculateConfiguratorPrice({
-      rawHeight: restoredHeight,
-      rawWidth: restoredWidth,
-      pricePerM2,
-      discountedPricePerM2,
-      anchorage: pendingConfig.anclaje
-    });
 
     setHeight(restoredHeight);
     setWidth(restoredWidth);
     setAnchorage(pendingConfig.anclaje);
     setColor(pendingConfig.color);
-    setCalculatedQuote(restoredQuote);
-    setCalculationError(restoredQuote.ok ? "" : restoredQuote.error);
-    setNeedsRecalculation(false);
+    setCalculatedQuote(null);
+    setCalculationError("");
+    setQuoteNotice("");
+    setNeedsRecalculation(true);
     setCartStatus("idle");
-    setCartFeedback(
-      restoredQuote.ok
-        ? "Configuración restaurada. Ya puedes añadirla al carrito."
-        : "Revisa la configuración restaurada antes de añadirla al carrito."
-    );
+    setCartFeedback("Configuración restaurada. Actualizando el presupuesto.");
     window.sessionStorage.removeItem(PENDING_PRODUCT_CONFIG_STORAGE_KEY);
-  }, [categorySlug, discountedPricePerM2, pricePerM2, productId, productSlug]);
+  }, [categorySlug, productId, productSlug]);
 
-  const invalidateCalculatedPrice = () => {
-    setCartStatus("idle");
-    setCartFeedback("");
-
-    if (isValidQuote(calculatedQuote)) {
-      setCalculatedQuote(null);
-      setNeedsRecalculation(true);
-    }
-  };
-
-  const handleCalculate = () => {
-    if (!availableForSale) {
+  useEffect(() => {
+    if (!availableForSale || !configurationReady || !productConfiguration) {
       return;
     }
 
-    setNeedsRecalculation(false);
-    const quote = calculateConfiguratorPrice({
-      rawHeight: height,
-      rawWidth: width,
-      pricePerM2,
-      discountedPricePerM2,
-      anchorage
-    });
+    const parsedHeight = parseQuoteDimension(height);
+    const parsedWidth = parseQuoteDimension(width);
+    if (parsedHeight === null || parsedWidth === null) {
+      setCalculatedQuote(null);
+      setQuoteNotice("");
+      setQuoteStatus("idle");
+      setNeedsRecalculation(false);
+      setCalculationError(
+        height.trim() || width.trim()
+          ? getDimensionValidationError(height, width, productConfiguration.dimensions)
+          : ""
+      );
+      return;
+    }
 
-    setCalculatedQuote(quote);
-    setCalculationError(quote.ok ? "" : quote.error);
+    const controller = new AbortController();
+    activeQuoteController.current = controller;
+    const timer = window.setTimeout(async () => {
+      setQuoteStatus("loading");
+      setCalculationError("");
+      setQuoteNotice("");
+
+      try {
+        const quote = await requestProductQuote(
+          {
+            productId,
+            alto: parsedHeight,
+            ancho: parsedWidth,
+            anclaje: anchorage,
+            color,
+            quantity: 1
+          },
+          { signal: controller.signal }
+        );
+
+        if (controller.signal.aborted) {
+          return;
+        }
+
+        setCalculatedQuote(toDisplayedAuthoritativeQuote(quote));
+        setNeedsRecalculation(false);
+      } catch (error) {
+        if (controller.signal.aborted || isAbortError(error)) {
+          return;
+        }
+
+        if (isTemporaryQuoteNetworkError(error)) {
+          const fallbackQuote = calculateConfiguratorPrice({
+            rawHeight: height,
+            rawWidth: width,
+            pricePerM2,
+            discountedPricePerM2,
+            anchorage
+          });
+
+          if (fallbackQuote.ok) {
+            setCalculatedQuote(toDisplayedFallbackQuote(fallbackQuote));
+            setQuoteNotice(
+              "Precio temporal calculado localmente por un problema de conexión."
+            );
+            setNeedsRecalculation(false);
+          } else {
+            setCalculatedQuote(null);
+            setCalculationError(fallbackQuote.error);
+            setNeedsRecalculation(false);
+          }
+        } else {
+          setCalculatedQuote(null);
+          setCalculationError(
+            error instanceof ProductQuoteClientError
+              ? error.message
+              : "No se pudo calcular el presupuesto."
+          );
+          setNeedsRecalculation(false);
+        }
+      } finally {
+        if (!controller.signal.aborted) {
+          setQuoteStatus("idle");
+        }
+        if (activeQuoteController.current === controller) {
+          activeQuoteController.current = null;
+        }
+      }
+    }, QUOTE_DEBOUNCE_MS);
+
+    return () => {
+      window.clearTimeout(timer);
+      controller.abort();
+      if (activeQuoteController.current === controller) {
+        activeQuoteController.current = null;
+      }
+    };
+  }, [
+    anchorage,
+    availableForSale,
+    color,
+    configurationReady,
+    discountedPricePerM2,
+    height,
+    pricePerM2,
+    productId,
+    productConfiguration,
+    quoteRequestVersion,
+    width
+  ]);
+
+  const invalidateCalculatedPrice = () => {
+    activeQuoteController.current?.abort();
     setCartStatus("idle");
     setCartFeedback("");
+    setCalculatedQuote(null);
+    setCalculationError("");
+    setQuoteNotice("");
+    setQuoteStatus("idle");
+    setNeedsRecalculation(true);
   };
 
-  const buildPendingConfig = (
-    quote: Extract<ConfiguratorPriceQuote, { ok: true }>
-  ): PendingProductConfig => ({
+  const handleCalculate = () => {
+    if (!availableForSale || !configurationReady) {
+      return;
+    }
+
+    invalidateCalculatedPrice();
+    setQuoteRequestVersion((version) => version + 1);
+  };
+
+  const buildPendingConfig = (quote: DisplayedQuote): PendingProductConfig => ({
     productId,
     categorySlug,
     productSlug,
@@ -281,14 +580,14 @@ export function ProductConfigurator({
     color
   });
 
-  const saveCurrentConfigAndLogin = (quote: Extract<ConfiguratorPriceQuote, { ok: true }>) => {
+  const saveCurrentConfigAndLogin = (quote: DisplayedQuote) => {
     savePendingProductConfig(buildPendingConfig(quote));
     router.push(`/login?next=${encodeURIComponent(productPath)}`);
   };
 
   const findExistingCartItem = (
     items: CartItem[],
-    quote: Extract<ConfiguratorPriceQuote, { ok: true }>
+    quote: DisplayedQuote
   ) =>
     items.find(
       (item) =>
@@ -414,6 +713,7 @@ export function ProductConfigurator({
           <label className="mw-configurator-field">
             <span>Alto (cm)</span>
             <input
+              disabled={controlsDisabled}
               type="text"
               value={height}
               placeholder="Ej.: 120.1"
@@ -432,6 +732,7 @@ export function ProductConfigurator({
           <label className="mw-configurator-field">
             <span>Ancho (cm)</span>
             <input
+              disabled={controlsDisabled}
               type="text"
               value={width}
               inputMode="decimal"
@@ -456,6 +757,18 @@ export function ProductConfigurator({
         <p className="mw-configurator-helper" id={dimensionHelpId}>
           Introduce alto y ancho en centímetros para calcular el precio exacto de tu reja.
         </p>
+        {configurationMessage ? (
+          <p
+            className={
+              configurationStatus === "error"
+                ? "mw-configurator-error"
+                : "mw-configurator-helper"
+            }
+            role={configurationStatus === "error" ? "alert" : "status"}
+          >
+            {configurationMessage}
+          </p>
+        ) : null}
 
         <div className="mw-configurator-help">
           <p className="mw-configurator-help__title">¿No estás seguro de las medidas?</p>
@@ -467,6 +780,7 @@ export function ProductConfigurator({
           <label className="mw-configurator-field">
             <span>Instalación</span>
             <select
+              disabled={controlsDisabled}
               value={anchorage}
               onChange={(event) => {
                 invalidateCalculatedPrice();
@@ -474,8 +788,13 @@ export function ProductConfigurator({
                 setAnchorage(event.target.value as AnchorageValue);
               }}
             >
-              {anchorageOptions.map((option) => (
-                <option key={option.value} value={option.value} disabled={option.disabled}>
+              {configuredAnchorageOptions.map((option) => (
+                <option
+                  key={option.value}
+                  value={option.value}
+                  disabled={option.disabled}
+                  title={option.description}
+                >
                   {option.label}
                 </option>
               ))}
@@ -484,10 +803,12 @@ export function ProductConfigurator({
 
           <div className="mw-configurator-selected-color">
             <span>Seleccionado:</span>
-            <strong>{selectedColor.label}</strong>
+            <strong>{selectedColor?.label ?? "Cargando..."}</strong>
             <div
               className={`mw-configurator-color-preview${
-                activeColor.finish === "forja" ? " mw-configurator-color-preview--forja" : ""
+                activeColorVisual.swatchClass === "forja"
+                  ? " mw-configurator-color-preview--forja"
+                  : ""
               }`}
               style={previewStyle}
               aria-hidden="true"
@@ -497,7 +818,7 @@ export function ProductConfigurator({
 
         <fieldset className="mw-configurator-colors">
           <legend>Color</legend>
-          {colorGroups.map((group) => (
+          {configuredColorGroups.map((group) => (
             <div className="mw-configurator-color-group" key={group.label}>
               <p>{group.label}</p>
               <div className="mw-configurator-swatches">
@@ -505,8 +826,9 @@ export function ProductConfigurator({
                   <button
                     key={option.value}
                     type="button"
+                    disabled={controlsDisabled}
                     className={`mw-configurator-swatch${
-                      option.finish === "forja" ? " mw-configurator-swatch--forja" : ""
+                      option.swatchClass === "forja" ? " mw-configurator-swatch--forja" : ""
                     }${color === option.value ? " is-selected" : ""}`}
                     style={{ "--mw-configurator-color": option.hex } as ColorStyle}
                     aria-pressed={color === option.value}
@@ -515,6 +837,9 @@ export function ProductConfigurator({
                     onFocus={() => setPreviewColor(option.value)}
                     onBlur={() => setPreviewColor(null)}
                     onClick={() => {
+                      if (color === option.value) {
+                        return;
+                      }
                       invalidateCalculatedPrice();
                       setCalculationError("");
                       setColor(option.value);
@@ -530,8 +855,13 @@ export function ProductConfigurator({
         </fieldset>
 
         <div className="mw-configurator-calculate">
-          <button className="mw-button mw-button--primary" type="button" onClick={handleCalculate}>
-            Calcular precio ahora
+          <button
+            className="mw-button mw-button--primary"
+            disabled={controlsDisabled || quoteStatus === "loading"}
+            type="button"
+            onClick={handleCalculate}
+          >
+            {quoteStatus === "loading" ? "Calculando..." : "Actualizar precio ahora"}
           </button>
         </div>
 
@@ -540,6 +870,11 @@ export function ProductConfigurator({
             <span>Precio calculado para tus medidas</span>
             <strong>{calculatedQuote.formattedUnitPrice} €</strong>
             <p>IVA incluido para esta configuración.</p>
+            {quoteNotice ? (
+              <p className="mw-configurator-result__warning" role="status">
+                {quoteNotice}
+              </p>
+            ) : null}
             {calculatedQuote.area < 1 ? (
               <p className="mw-configurator-result__warning">Área &lt; 1 m² incrementa coste.</p>
             ) : null}
