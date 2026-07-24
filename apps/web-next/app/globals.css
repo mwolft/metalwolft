@@ -1000,7 +1000,7 @@ textarea:focus-visible {
 .mw-product-card__media {
   position: relative;
   display: grid;
-  aspect-ratio: 9 / 10;
+  aspect-ratio: 5 / 4;
   place-items: center;
   overflow: hidden;
   border-bottom: 1px solid rgba(229, 231, 235, 0.92);
@@ -1023,7 +1023,7 @@ textarea:focus-visible {
   flex: 1;
   min-width: 0;
   flex-direction: column;
-  padding: 1rem;
+  padding: 0.9rem 1rem;
 }
 
 .mw-product-card__title {
@@ -1040,7 +1040,7 @@ textarea:focus-visible {
 .mw-product-card__description {
   display: -webkit-box;
   min-height: 3.2em;
-  margin: 0.65rem 0 0;
+  margin: 0.55rem 0 0;
   overflow: hidden;
   color: #4b5563;
   line-height: 1.6;
@@ -1051,7 +1051,7 @@ textarea:focus-visible {
 .mw-product-card__cta {
   align-self: flex-start;
   margin-top: auto;
-  padding-top: 1rem;
+  padding-top: 0.8rem;
   color: var(--mw-accent);
   font-weight: 800;
   white-space: nowrap;

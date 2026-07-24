@@ -1,14 +1,11 @@
-import Image from "next/image";
 import Link from "next/link";
+import { ProductCardImage } from "@/components/product/ProductCardImage";
 import type { ApiProduct } from "@/lib/api";
 
 type ProductCardProps = {
   product: ApiProduct;
   href: string;
 };
-
-const PRODUCT_IMAGE_SIZES =
-  "(min-width: 1200px) 340px, (min-width: 900px) 29vw, (min-width: 620px) 44vw, calc(100vw - 5rem)";
 
 export function ProductCard({ product, href }: ProductCardProps) {
   const productName = product.h1_seo || product.nombre;
@@ -25,16 +22,7 @@ export function ProductCard({ product, href }: ProductCardProps) {
         aria-label={`Ver modelo ${productName}`}
       >
         <div className="mw-product-card__media">
-          {product.imagen ? (
-            <Image
-              src={product.imagen}
-              alt={productName}
-              fill
-              sizes={PRODUCT_IMAGE_SIZES}
-            />
-          ) : (
-            <span className="mw-product-card__image-fallback">Imagen no disponible</span>
-          )}
+          <ProductCardImage alt={productName} src={product.imagen} />
         </div>
         <div className="mw-product-card__body">
           <h3 className="mw-product-card__title">{productName}</h3>
