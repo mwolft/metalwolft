@@ -48,9 +48,43 @@ const changes = [];
 const unsubscribe = subscribeToCartSnapshotChanges((change) => changes.push(change));
 
 try {
-  let quoteRequest;
+  const quoteRequests = [];
+  const quoteResponses = [
+    {
+      lines: [],
+      subtotal: 100,
+      shipping_cost: 21,
+      discount_code: null,
+      discount_code_valid: false,
+      discount_percent: 0,
+      discount_amount: 0,
+      total_amount: 121
+    },
+    {
+      lines: [],
+      subtotal: 180,
+      shipping_cost: 0,
+      discount_code: null,
+      discount_code_valid: false,
+      discount_percent: 0,
+      discount_amount: 0,
+      total_amount: 180
+    }
+  ];
   globalThis.fetch = async (url, init) => {
-    quoteRequest = { url: String(url), method: init?.method };
+    quoteRequests.push({ url: String(url), method: init?.method });
+    return Response.json(quoteResponses.shift());
+  };
+  const belowFreeShippingThreshold = await getCheckoutQuote("token");
+  assert.equal(belowFreeShippingThreshold.shipping_cost, 21);
+  assert.equal(belowFreeShippingThreshold.total_amount, 121);
+  const aboveFreeShippingThreshold = await getCheckoutQuote("token");
+  assert.equal(aboveFreeShippingThreshold.shipping_cost, 0);
+  assert.equal(aboveFreeShippingThreshold.total_amount, 180);
+  assert.match(quoteRequests[0].url, /\/api\/checkout\/quote$/);
+  assert.equal(quoteRequests[0].method, "POST");
+
+  globalThis.fetch = async (url, init) => {
     return Response.json({
       lines: [],
       subtotal: 200,
@@ -64,8 +98,7 @@ try {
   };
   const authoritativeQuote = await getCheckoutQuote("token");
   assert.equal(authoritativeQuote.shipping_cost, 39.95);
-  assert.match(quoteRequest.url, /\/api\/checkout\/quote$/);
-  assert.equal(quoteRequest.method, "POST");
+  assert.equal(authoritativeQuote.total_amount, 239.95);
 
   globalThis.fetch = async () => Response.json(twoConfigurations);
   assert.deepEqual(await getCart("token"), twoConfigurations);
@@ -150,16 +183,21 @@ assert.match(sources.provider, /promise\.then\(resetInitialHydration, resetIniti
 assert.match(sources.provider, /\.catch\(\(\) =>/);
 assert.match(sources.cartView, /getCheckoutQuote\(token\)/);
 assert.match(sources.cartView, /quote\.shipping_cost/);
-assert.match(sources.cartView, /shippingCost === 0 \? "GRATIS" : formatCurrency\(shippingCost\)/);
-assert.match(sources.cartView, /shippingCost !== null/);
+assert.match(sources.cartView, /quote\.total_amount/);
+assert.match(sources.cartView, /setCheckoutQuote\(hasValidAmounts \? quote : null\)/);
+assert.match(sources.cartView, /checkoutQuote\.shipping_cost === 0/);
+assert.match(sources.cartView, /formatCurrency\(checkoutQuote\.total_amount\)/);
+assert.match(sources.cartView, /checkoutQuote !== null/);
 assert.match(sources.cartView, /Envío calculado en el checkout\./);
-assert.match(sources.cartView, /shippingRequestVersion\.current === requestVersion/);
+assert.match(sources.cartView, /Total calculado en el checkout\./);
+assert.match(sources.cartView, /checkoutQuoteRequestVersion\.current === requestVersion/);
 assert.match(sources.cartView, /updatedCart\.length > 0/);
-assert.doesNotMatch(sources.cartView, /shippingCost\s*[+*\/]/);
+assert.doesNotMatch(sources.cartView, /checkoutQuote\.subtotal\s*\+\s*checkoutQuote\.shipping_cost/);
+assert.doesNotMatch(sources.cartView, /subtotal\s*\+\s*(checkoutQuote\.)?shipping/);
 assert.match(sources.notification, /aria-live="polite"/);
 assert.match(sources.notification, /notification\.dismissLabel/);
 assert.match(sources.configurator, /title: "Añadido al carrito"/);
 assert.match(sources.configurator, /dismissLabel: "Seguir comprando"/);
 assert.match(sources.configurator, /cartStatus === "success"[\s\S]*?"Añadido"/);
 
-console.log("45 cart feedback, hydration, and shipping assertions passed");
+console.log("55 cart feedback, hydration, shipping, and total assertions passed");

@@ -13,7 +13,7 @@ import {
   isSessionError,
   updateCartItemQuantity
 } from "@/lib/cart-client";
-import { getCheckoutQuote } from "@/lib/checkout-client";
+import { getCheckoutQuote, type CheckoutQuote } from "@/lib/checkout-client";
 import {
   PRODUCT_UNAVAILABLE_MESSAGE,
   isAvailableForSale
@@ -68,11 +68,11 @@ export function CartView({ deliveryEstimate }: { deliveryEstimate?: ReactNode })
     "loading"
   );
   const [pendingAction, setPendingAction] = useState<string | null>(null);
-  const [shippingCost, setShippingCost] = useState<number | null>(null);
+  const [checkoutQuote, setCheckoutQuote] = useState<CheckoutQuote | null>(null);
   const [feedback, setFeedback] = useState<{ type: "success" | "error"; message: string } | null>(
     null
   );
-  const shippingRequestVersion = useRef(0);
+  const checkoutQuoteRequestVersion = useRef(0);
   const isBusy = pendingAction !== null;
   const hasUnavailableItems = items.some((item) => !isAvailableForSale(item));
 
@@ -85,29 +85,30 @@ export function CartView({ deliveryEstimate }: { deliveryEstimate?: ReactNode })
     [items]
   );
 
-  function clearShippingCost() {
-    shippingRequestVersion.current += 1;
-    setShippingCost(null);
+  function clearCheckoutQuote() {
+    checkoutQuoteRequestVersion.current += 1;
+    setCheckoutQuote(null);
   }
 
-  function refreshShippingCost(token: string) {
-    const requestVersion = shippingRequestVersion.current + 1;
-    shippingRequestVersion.current = requestVersion;
-    setShippingCost(null);
+  function refreshCheckoutQuote(token: string) {
+    const requestVersion = checkoutQuoteRequestVersion.current + 1;
+    checkoutQuoteRequestVersion.current = requestVersion;
+    setCheckoutQuote(null);
 
     void getCheckoutQuote(token)
       .then((quote) => {
-        if (shippingRequestVersion.current === requestVersion) {
-          setShippingCost(
-            Number.isFinite(quote.shipping_cost) && quote.shipping_cost >= 0
-              ? quote.shipping_cost
-              : null
-          );
+        if (checkoutQuoteRequestVersion.current === requestVersion) {
+          const hasValidAmounts =
+            Number.isFinite(quote.shipping_cost) &&
+            quote.shipping_cost >= 0 &&
+            Number.isFinite(quote.total_amount) &&
+            quote.total_amount >= 0;
+          setCheckoutQuote(hasValidAmounts ? quote : null);
         }
       })
       .catch(() => {
-        if (shippingRequestVersion.current === requestVersion) {
-          setShippingCost(null);
+        if (checkoutQuoteRequestVersion.current === requestVersion) {
+          setCheckoutQuote(null);
         }
       });
   }
@@ -115,7 +116,7 @@ export function CartView({ deliveryEstimate }: { deliveryEstimate?: ReactNode })
   function redirectToLogin(message = "Tu sesión ha caducado. Vuelve a iniciar sesión.") {
     clearSession();
     setItems([]);
-    clearShippingCost();
+    clearCheckoutQuote();
     setStatus("unauthenticated");
     setFeedback({ type: "error", message });
     window.setTimeout(() => {
@@ -157,9 +158,9 @@ export function CartView({ deliveryEstimate }: { deliveryEstimate?: ReactNode })
         setItems(cartItems);
         setStatus(cartItems.length > 0 ? "ready" : "empty");
         if (cartItems.length > 0) {
-          refreshShippingCost(token);
+          refreshCheckoutQuote(token);
         } else {
-          clearShippingCost();
+          clearCheckoutQuote();
         }
       })
       .catch((error) => {
@@ -170,7 +171,7 @@ export function CartView({ deliveryEstimate }: { deliveryEstimate?: ReactNode })
 
     return () => {
       isActive = false;
-      shippingRequestVersion.current += 1;
+      checkoutQuoteRequestVersion.current += 1;
     };
   }, []);
 
@@ -203,7 +204,7 @@ export function CartView({ deliveryEstimate }: { deliveryEstimate?: ReactNode })
       const updatedCart = await updateCartItemQuantity(token, item, quantity);
       setItems(updatedCart);
       setStatus(updatedCart.length > 0 ? "ready" : "empty");
-      refreshShippingCost(token);
+      refreshCheckoutQuote(token);
       setFeedback({ type: "success", message: "Cantidad actualizada." });
     } catch (error) {
       handleCartError(error);
@@ -232,9 +233,9 @@ export function CartView({ deliveryEstimate }: { deliveryEstimate?: ReactNode })
       setItems(updatedCart);
       setStatus(updatedCart.length > 0 ? "ready" : "empty");
       if (updatedCart.length > 0) {
-        refreshShippingCost(token);
+        refreshCheckoutQuote(token);
       } else {
-        clearShippingCost();
+        clearCheckoutQuote();
       }
       setFeedback({ type: "success", message: "Producto eliminado del carrito." });
     } catch (error) {
@@ -265,7 +266,7 @@ export function CartView({ deliveryEstimate }: { deliveryEstimate?: ReactNode })
     try {
       await clearCart(token);
       setItems([]);
-      clearShippingCost();
+      clearCheckoutQuote();
       setStatus("empty");
       setFeedback({ type: "success", message: "Carrito vaciado correctamente." });
     } catch (error) {
@@ -448,13 +449,26 @@ export function CartView({ deliveryEstimate }: { deliveryEstimate?: ReactNode })
             <span>Subtotal</span>
             <strong>{formatCurrency(subtotal)}</strong>
           </div>
-          {shippingCost !== null ? (
-            <div className="mw-checkout-total-row">
-              <span>Envío</span>
-              <strong>{shippingCost === 0 ? "GRATIS" : formatCurrency(shippingCost)}</strong>
-            </div>
+          {checkoutQuote !== null ? (
+            <>
+              <div className="mw-checkout-total-row">
+                <span>Envío</span>
+                <strong>
+                  {checkoutQuote.shipping_cost === 0
+                    ? "GRATIS"
+                    : formatCurrency(checkoutQuote.shipping_cost)}
+                </strong>
+              </div>
+              <div className="mw-checkout-total-row mw-checkout-total-row--final">
+                <span>Total</span>
+                <strong>{formatCurrency(checkoutQuote.total_amount)}</strong>
+              </div>
+            </>
           ) : (
-            <p>Envío calculado en el checkout.</p>
+            <div>
+              <p>Envío calculado en el checkout.</p>
+              <p>Total calculado en el checkout.</p>
+            </div>
           )}
         </div>
         {deliveryEstimate}
