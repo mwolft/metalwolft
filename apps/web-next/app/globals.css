@@ -1060,6 +1060,8 @@ textarea:focus-visible {
   border-radius: var(--mw-radius);
   background: linear-gradient(145deg, #f8fafc, #fff);
   box-shadow: var(--mw-shadow);
+  touch-action: pan-y;
+  user-select: none;
 }
 
 .mw-product-gallery__stage img,
@@ -1087,19 +1089,31 @@ textarea:focus-visible {
   width: 48px;
   height: 48px;
   padding: 0;
-  border: 1px solid rgba(255, 255, 255, 0.58);
+  border: 1px solid rgba(255, 255, 255, 0.62);
   border-radius: 50%;
   place-items: center;
   color: #fff;
-  background: rgba(17, 24, 39, 0.72);
-  box-shadow: 0 5px 18px rgba(17, 24, 39, 0.24);
-  backdrop-filter: blur(6px);
+  background: rgba(17, 24, 39, 0.38);
+  box-shadow: 0 2px 8px rgba(17, 24, 39, 0.12);
+  backdrop-filter: blur(4px);
   cursor: pointer;
+  opacity: 0.62;
   transform: translateY(-50%);
+  transition:
+    opacity 140ms ease,
+    background-color 140ms ease,
+    transform 140ms ease;
 }
 
-.mw-product-gallery__control:hover {
-  background: rgba(17, 24, 39, 0.88);
+.mw-product-gallery__control:hover,
+.mw-product-gallery__control:focus-visible,
+.mw-product-gallery__control:active {
+  background: rgba(17, 24, 39, 0.62);
+  opacity: 1;
+}
+
+.mw-product-gallery__control:active {
+  transform: translateY(-50%) scale(0.96);
 }
 
 .mw-product-gallery__control:focus-visible {
@@ -1108,13 +1122,30 @@ textarea:focus-visible {
 }
 
 .mw-product-gallery__control svg {
-  width: 25px;
-  height: 25px;
+  width: 20px;
+  height: 20px;
   fill: none;
   stroke: currentColor;
   stroke-linecap: round;
   stroke-linejoin: round;
-  stroke-width: 2.25;
+  stroke-width: 2;
+}
+
+.mw-product-gallery__hit-zone {
+  position: absolute;
+  z-index: 1;
+  top: 0;
+  bottom: 0;
+  width: 30%;
+  cursor: pointer;
+}
+
+.mw-product-gallery__hit-zone--previous {
+  left: 0;
+}
+
+.mw-product-gallery__hit-zone--next {
+  right: 0;
 }
 
 .mw-product-gallery__control--previous {
@@ -1123,6 +1154,19 @@ textarea:focus-visible {
 
 .mw-product-gallery__control--next {
   right: 0.75rem;
+}
+
+@media (hover: hover) {
+  .mw-product-gallery:hover .mw-product-gallery__control,
+  .mw-product-gallery:focus-within .mw-product-gallery__control {
+    opacity: 0.82;
+  }
+
+  .mw-product-gallery .mw-product-gallery__control:hover,
+  .mw-product-gallery .mw-product-gallery__control:focus-visible,
+  .mw-product-gallery .mw-product-gallery__control:active {
+    opacity: 1;
+  }
 }
 
 .mw-product-gallery__thumbnails {
@@ -2932,6 +2976,7 @@ textarea:focus-visible {
   .mw-product-gallery__control {
     width: 44px;
     height: 44px;
+    opacity: 0.72;
   }
 
   .mw-product-gallery__control--previous {

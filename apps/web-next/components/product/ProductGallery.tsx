@@ -1,7 +1,14 @@
 "use client";
 
 import Image from "next/image";
-import { useState, type KeyboardEvent } from "react";
+import {
+  useEffect,
+  useRef,
+  useState,
+  type KeyboardEvent,
+  type MouseEvent,
+  type PointerEvent
+} from "react";
 import {
   getAdjacentProductImageSrc,
   type ProductGalleryDirection,
@@ -13,6 +20,15 @@ type ProductGalleryProps = {
   productName: string;
 };
 
+type PointerOrigin = {
+  pointerId: number;
+  x: number;
+  y: number;
+};
+
+const SWIPE_THRESHOLD_PX = 50;
+const POST_SWIPE_CLICK_DELAY_MS = 350;
+
 function isAvifUrl(src: string) {
   return src.split(/[?#]/)[0].toLowerCase().endsWith(".avif");
 }
@@ -20,9 +36,22 @@ function isAvifUrl(src: string) {
 export function ProductGallery({ images, productName }: ProductGalleryProps) {
   const [selectedSrc, setSelectedSrc] = useState(images[0]?.src ?? "");
   const [failedSources, setFailedSources] = useState<Set<string>>(() => new Set());
+  const pointerOriginRef = useRef<PointerOrigin | null>(null);
+  const suppressClickRef = useRef(false);
+  const suppressClickTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const availableImages = images.filter((image) => !failedSources.has(image.src));
   const selectedImage =
     availableImages.find((image) => image.src === selectedSrc) ?? availableImages[0] ?? null;
+  const hasNavigation = Boolean(selectedImage && availableImages.length > 1);
+
+  useEffect(
+    () => () => {
+      if (suppressClickTimerRef.current) {
+        clearTimeout(suppressClickTimerRef.current);
+      }
+    },
+    []
+  );
 
   function markImageAsFailed(src: string) {
     setFailedSources((current) => {
@@ -33,7 +62,7 @@ export function ProductGallery({ images, productName }: ProductGalleryProps) {
   }
 
   function selectAdjacentImage(direction: ProductGalleryDirection) {
-    if (!selectedImage || availableImages.length < 2) {
+    if (!selectedImage || !hasNavigation) {
       return;
     }
 
@@ -55,6 +84,76 @@ export function ProductGallery({ images, productName }: ProductGalleryProps) {
     }
   }
 
+  function suppressNextClick() {
+    suppressClickRef.current = true;
+    if (suppressClickTimerRef.current) {
+      clearTimeout(suppressClickTimerRef.current);
+    }
+    suppressClickTimerRef.current = setTimeout(() => {
+      suppressClickRef.current = false;
+      suppressClickTimerRef.current = null;
+    }, POST_SWIPE_CLICK_DELAY_MS);
+  }
+
+  function consumeSuppressedClick() {
+    if (!suppressClickRef.current) {
+      return false;
+    }
+
+    suppressClickRef.current = false;
+    if (suppressClickTimerRef.current) {
+      clearTimeout(suppressClickTimerRef.current);
+      suppressClickTimerRef.current = null;
+    }
+    return true;
+  }
+
+  function handleNavigationClick(
+    event: MouseEvent<HTMLElement>,
+    direction: ProductGalleryDirection
+  ) {
+    event.stopPropagation();
+    if (!consumeSuppressedClick()) {
+      selectAdjacentImage(direction);
+    }
+  }
+
+  function handlePointerDown(event: PointerEvent<HTMLDivElement>) {
+    if (!hasNavigation || !event.isPrimary || event.button !== 0) {
+      return;
+    }
+
+    pointerOriginRef.current = {
+      pointerId: event.pointerId,
+      x: event.clientX,
+      y: event.clientY
+    };
+  }
+
+  function resetPointerGesture() {
+    pointerOriginRef.current = null;
+  }
+
+  function handlePointerUp(event: PointerEvent<HTMLDivElement>) {
+    const origin = pointerOriginRef.current;
+    resetPointerGesture();
+    if (!hasNavigation || !origin || origin.pointerId !== event.pointerId) {
+      return;
+    }
+
+    const horizontalDistance = event.clientX - origin.x;
+    const verticalDistance = event.clientY - origin.y;
+    if (
+      Math.abs(horizontalDistance) < SWIPE_THRESHOLD_PX ||
+      Math.abs(horizontalDistance) <= Math.abs(verticalDistance)
+    ) {
+      return;
+    }
+
+    selectAdjacentImage(horizontalDistance < 0 ? 1 : -1);
+    suppressNextClick();
+  }
+
   return (
     <section
       className="mw-product-gallery"
@@ -62,7 +161,13 @@ export function ProductGallery({ images, productName }: ProductGalleryProps) {
       onKeyDown={handleGalleryKeyDown}
       tabIndex={0}
     >
-      <div className="mw-product-gallery__stage">
+      <div
+        className="mw-product-gallery__stage"
+        onClick={consumeSuppressedClick}
+        onPointerCancel={resetPointerGesture}
+        onPointerDown={handlePointerDown}
+        onPointerUp={handlePointerUp}
+      >
         {selectedImage ? (
           <Image
             key={selectedImage.src}
@@ -72,6 +177,7 @@ export function ProductGallery({ images, productName }: ProductGalleryProps) {
             sizes="(max-width: 900px) calc(100vw - 2rem), 55vw"
             priority={selectedImage.src === images[0]?.src}
             unoptimized={isAvifUrl(selectedImage.src)}
+            draggable={false}
             onError={() => markImageAsFailed(selectedImage.src)}
           />
         ) : (
@@ -80,13 +186,23 @@ export function ProductGallery({ images, productName }: ProductGalleryProps) {
           </div>
         )}
 
-        {selectedImage && availableImages.length > 1 ? (
+        {hasNavigation ? (
           <>
+            <span
+              className="mw-product-gallery__hit-zone mw-product-gallery__hit-zone--previous"
+              aria-hidden="true"
+              onClick={(event) => handleNavigationClick(event, -1)}
+            />
+            <span
+              className="mw-product-gallery__hit-zone mw-product-gallery__hit-zone--next"
+              aria-hidden="true"
+              onClick={(event) => handleNavigationClick(event, 1)}
+            />
             <button
               className="mw-product-gallery__control mw-product-gallery__control--previous"
               type="button"
               aria-label={`Mostrar imagen anterior de ${productName}`}
-              onClick={() => selectAdjacentImage(-1)}
+              onClick={(event) => handleNavigationClick(event, -1)}
             >
               <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
                 <path d="m15 5-7 7 7 7" />
@@ -96,7 +212,7 @@ export function ProductGallery({ images, productName }: ProductGalleryProps) {
               className="mw-product-gallery__control mw-product-gallery__control--next"
               type="button"
               aria-label={`Mostrar imagen siguiente de ${productName}`}
-              onClick={() => selectAdjacentImage(1)}
+              onClick={(event) => handleNavigationClick(event, 1)}
             >
               <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
                 <path d="m9 5 7 7-7 7" />
