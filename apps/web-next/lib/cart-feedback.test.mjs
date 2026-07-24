@@ -9,6 +9,7 @@ import {
   subscribeToCartSnapshotChanges,
   updateCartItemQuantity
 } from "./cart-client.ts";
+import { getCheckoutQuote } from "./checkout-client.ts";
 
 const line = (id, overrides = {}) => ({
   id,
@@ -47,6 +48,25 @@ const changes = [];
 const unsubscribe = subscribeToCartSnapshotChanges((change) => changes.push(change));
 
 try {
+  let quoteRequest;
+  globalThis.fetch = async (url, init) => {
+    quoteRequest = { url: String(url), method: init?.method };
+    return Response.json({
+      lines: [],
+      subtotal: 200,
+      shipping_cost: 39.95,
+      discount_code: null,
+      discount_code_valid: false,
+      discount_percent: 0,
+      discount_amount: 0,
+      total_amount: 239.95
+    });
+  };
+  const authoritativeQuote = await getCheckoutQuote("token");
+  assert.equal(authoritativeQuote.shipping_cost, 39.95);
+  assert.match(quoteRequest.url, /\/api\/checkout\/quote$/);
+  assert.equal(quoteRequest.method, "POST");
+
   globalThis.fetch = async () => Response.json(twoConfigurations);
   assert.deepEqual(await getCart("token"), twoConfigurations);
   assert.deepEqual(changes.at(-1), { items: twoConfigurations, reason: "sync" });
@@ -110,6 +130,7 @@ const sources = Object.fromEntries(
     [
       ["header", "../components/layout/HeaderCartLink.tsx"],
       ["provider", "../components/cart/CartProvider.tsx"],
+      ["cartView", "../components/cart/CartView.tsx"],
       ["notification", "../components/notifications/NotificationProvider.tsx"],
       ["configurator", "../components/product/ProductConfigurator.tsx"]
     ].map(async ([name, path]) => [name, await readFile(new URL(path, import.meta.url), "utf8")])
@@ -127,10 +148,18 @@ assert.match(sources.provider, /isActive &&/);
 assert.match(sources.provider, /pendingInitialHydration\?\.token === token/);
 assert.match(sources.provider, /promise\.then\(resetInitialHydration, resetInitialHydration\)/);
 assert.match(sources.provider, /\.catch\(\(\) =>/);
+assert.match(sources.cartView, /getCheckoutQuote\(token\)/);
+assert.match(sources.cartView, /quote\.shipping_cost/);
+assert.match(sources.cartView, /shippingCost === 0 \? "GRATIS" : formatCurrency\(shippingCost\)/);
+assert.match(sources.cartView, /shippingCost !== null/);
+assert.match(sources.cartView, /Envío calculado en el checkout\./);
+assert.match(sources.cartView, /shippingRequestVersion\.current === requestVersion/);
+assert.match(sources.cartView, /updatedCart\.length > 0/);
+assert.doesNotMatch(sources.cartView, /shippingCost\s*[+*\/]/);
 assert.match(sources.notification, /aria-live="polite"/);
 assert.match(sources.notification, /notification\.dismissLabel/);
 assert.match(sources.configurator, /title: "Añadido al carrito"/);
 assert.match(sources.configurator, /dismissLabel: "Seguir comprando"/);
 assert.match(sources.configurator, /cartStatus === "success"[\s\S]*?"Añadido"/);
 
-console.log("34 cart feedback and hydration assertions passed");
+console.log("45 cart feedback, hydration, and shipping assertions passed");

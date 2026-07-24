@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { clearSession, getToken } from "@/lib/auth-client";
 import {
@@ -13,6 +13,7 @@ import {
   isSessionError,
   updateCartItemQuantity
 } from "@/lib/cart-client";
+import { getCheckoutQuote } from "@/lib/checkout-client";
 import {
   PRODUCT_UNAVAILABLE_MESSAGE,
   isAvailableForSale
@@ -67,9 +68,11 @@ export function CartView({ deliveryEstimate }: { deliveryEstimate?: ReactNode })
     "loading"
   );
   const [pendingAction, setPendingAction] = useState<string | null>(null);
+  const [shippingCost, setShippingCost] = useState<number | null>(null);
   const [feedback, setFeedback] = useState<{ type: "success" | "error"; message: string } | null>(
     null
   );
+  const shippingRequestVersion = useRef(0);
   const isBusy = pendingAction !== null;
   const hasUnavailableItems = items.some((item) => !isAvailableForSale(item));
 
@@ -82,9 +85,37 @@ export function CartView({ deliveryEstimate }: { deliveryEstimate?: ReactNode })
     [items]
   );
 
+  function clearShippingCost() {
+    shippingRequestVersion.current += 1;
+    setShippingCost(null);
+  }
+
+  function refreshShippingCost(token: string) {
+    const requestVersion = shippingRequestVersion.current + 1;
+    shippingRequestVersion.current = requestVersion;
+    setShippingCost(null);
+
+    void getCheckoutQuote(token)
+      .then((quote) => {
+        if (shippingRequestVersion.current === requestVersion) {
+          setShippingCost(
+            Number.isFinite(quote.shipping_cost) && quote.shipping_cost >= 0
+              ? quote.shipping_cost
+              : null
+          );
+        }
+      })
+      .catch(() => {
+        if (shippingRequestVersion.current === requestVersion) {
+          setShippingCost(null);
+        }
+      });
+  }
+
   function redirectToLogin(message = "Tu sesión ha caducado. Vuelve a iniciar sesión.") {
     clearSession();
     setItems([]);
+    clearShippingCost();
     setStatus("unauthenticated");
     setFeedback({ type: "error", message });
     window.setTimeout(() => {
@@ -125,6 +156,11 @@ export function CartView({ deliveryEstimate }: { deliveryEstimate?: ReactNode })
 
         setItems(cartItems);
         setStatus(cartItems.length > 0 ? "ready" : "empty");
+        if (cartItems.length > 0) {
+          refreshShippingCost(token);
+        } else {
+          clearShippingCost();
+        }
       })
       .catch((error) => {
         if (isActive) {
@@ -134,6 +170,7 @@ export function CartView({ deliveryEstimate }: { deliveryEstimate?: ReactNode })
 
     return () => {
       isActive = false;
+      shippingRequestVersion.current += 1;
     };
   }, []);
 
@@ -166,6 +203,7 @@ export function CartView({ deliveryEstimate }: { deliveryEstimate?: ReactNode })
       const updatedCart = await updateCartItemQuantity(token, item, quantity);
       setItems(updatedCart);
       setStatus(updatedCart.length > 0 ? "ready" : "empty");
+      refreshShippingCost(token);
       setFeedback({ type: "success", message: "Cantidad actualizada." });
     } catch (error) {
       handleCartError(error);
@@ -193,6 +231,11 @@ export function CartView({ deliveryEstimate }: { deliveryEstimate?: ReactNode })
       const updatedCart = await deleteCartItem(token, item);
       setItems(updatedCart);
       setStatus(updatedCart.length > 0 ? "ready" : "empty");
+      if (updatedCart.length > 0) {
+        refreshShippingCost(token);
+      } else {
+        clearShippingCost();
+      }
       setFeedback({ type: "success", message: "Producto eliminado del carrito." });
     } catch (error) {
       handleCartError(error);
@@ -222,6 +265,7 @@ export function CartView({ deliveryEstimate }: { deliveryEstimate?: ReactNode })
     try {
       await clearCart(token);
       setItems([]);
+      clearShippingCost();
       setStatus("empty");
       setFeedback({ type: "success", message: "Carrito vaciado correctamente." });
     } catch (error) {
@@ -399,11 +443,20 @@ export function CartView({ deliveryEstimate }: { deliveryEstimate?: ReactNode })
       <aside className="mw-cart-summary" aria-label="Resumen del carrito">
         <p className="mw-note">Resumen</p>
         <h2>Subtotal del carrito</h2>
-        <div className="mw-cart-summary__line">
-          <span>Subtotal</span>
-          <strong>{formatCurrency(subtotal)}</strong>
+        <div className="mw-checkout-totals" aria-live="polite">
+          <div className="mw-checkout-total-row">
+            <span>Subtotal</span>
+            <strong>{formatCurrency(subtotal)}</strong>
+          </div>
+          {shippingCost !== null ? (
+            <div className="mw-checkout-total-row">
+              <span>Envío</span>
+              <strong>{shippingCost === 0 ? "GRATIS" : formatCurrency(shippingCost)}</strong>
+            </div>
+          ) : (
+            <p>Envío calculado en el checkout.</p>
+          )}
         </div>
-        <p>Envío calculado en el checkout.</p>
         {deliveryEstimate}
         {hasUnavailableItems ? (
           <p className="mw-alert" role="alert">
