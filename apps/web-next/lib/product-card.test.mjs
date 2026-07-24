@@ -46,10 +46,14 @@ assert.match(
   sources.styles,
   /\.mw-product-grid\s*{[^}]*grid-template-columns:\s*repeat\(auto-fill, minmax\(min\(100%, 280px\), 1fr\)\)/s
 );
-assert.match(sources.styles, /\.mw-product-card__media\s*{[^}]*aspect-ratio:\s*5 \/ 4/s);
+assert.match(sources.styles, /\.mw-product-card__media\s*{[^}]*aspect-ratio:\s*9 \/ 10/s);
 assert.match(sources.styles, /\.mw-product-card__media img\s*{[^}]*object-fit:\s*contain/s);
-assert.match(sources.styles, /\.mw-product-card__title\s*{[^}]*-webkit-line-clamp:\s*2/s);
-assert.match(sources.styles, /\.mw-product-card__description\s*{[^}]*-webkit-line-clamp:\s*2/s);
+assert.match(sources.styles, /\.mw-product-card \.mw-product-card__title\s*{[^}]*margin:\s*0;[^}]*-webkit-line-clamp:\s*2/s);
+assert.match(sources.styles, /\.mw-product-card__description\s*{[^}]*-webkit-line-clamp:\s*1/s);
+assert.match(
+  sources.styles,
+  /@media \(max-width: 640px\)[\s\S]*?\.mw-product-card__description\s*{[^}]*-webkit-line-clamp:\s*2/s
+);
 assert.match(sources.styles, /\.mw-product-card__cta\s*{[^}]*white-space:\s*nowrap/s);
 assert.match(sources.styles, /\.mw-product-card__link:focus-visible/);
 assert.match(sources.styles, /@media \(prefers-reduced-motion: reduce\)[\s\S]*?\.mw-product-card/);
