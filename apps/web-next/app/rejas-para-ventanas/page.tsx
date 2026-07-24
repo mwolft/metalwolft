@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { PageContainer } from "@/components/layout/PageContainer";
 import { DeliveryEstimate } from "@/components/product/DeliveryEstimate";
+import { ProductCard } from "@/components/product/ProductCard";
 import { BreadcrumbJsonLd } from "@/components/seo/BreadcrumbJsonLd";
 import { JsonLd } from "@/components/seo/JsonLd";
 import {
@@ -119,15 +120,6 @@ function buildCollectionJsonLd(description: string) {
     url: absoluteUrl(`/${CATEGORY_SLUG}`),
     description
   };
-}
-
-function buildProductExcerpt(product: ApiProduct) {
-  const raw =
-    product.descripcion_seo?.trim() ||
-    product.descripcion?.trim() ||
-    "Modelo de reja metálica fabricado a medida por MetalWolft.";
-
-  return trimTextAtWord(raw, 180);
 }
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -258,25 +250,11 @@ export default async function RejasParaVentanasPage() {
               visibles para esta landing.
             </p>
           ) : (
-            <div className="mw-grid">
+            <div className="mw-product-grid">
               {data.products.map((product) => {
                 const productHref = `/${CATEGORY_SLUG}/${product.slug}`;
 
-                return (
-                  <article className="mw-card" key={product.id}>
-                    {product.imagen ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img src={product.imagen} alt={product.h1_seo || product.nombre} />
-                    ) : null}
-                    <h3>{product.h1_seo || product.nombre}</h3>
-                    <p>{buildProductExcerpt(product)}</p>
-                    <div className="mw-actions">
-                      <Link className="mw-button mw-button--primary" href={productHref}>
-                        Ver ficha de {product.h1_seo || product.nombre}
-                      </Link>
-                    </div>
-                  </article>
-                );
+                return <ProductCard href={productHref} key={product.id} product={product} />;
               })}
             </div>
           )}

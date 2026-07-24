@@ -959,6 +959,108 @@ textarea:focus-visible {
   line-height: 1.7;
 }
 
+.mw-product-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 280px), 1fr));
+  gap: 1.15rem;
+  margin-top: 1.5rem;
+}
+
+.mw-product-card {
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid rgba(209, 213, 219, 0.92);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.94);
+  transition: border-color 0.18s ease, transform 0.18s ease;
+}
+
+.mw-product-card:hover {
+  border-color: rgba(255, 50, 77, 0.38);
+  transform: translateY(-2px);
+}
+
+.mw-product-card:focus-within {
+  border-color: var(--mw-accent);
+}
+
+.mw-product-card__link {
+  display: flex;
+  height: 100%;
+  min-width: 0;
+  flex-direction: column;
+  border-radius: inherit;
+}
+
+.mw-product-card__link:focus-visible {
+  outline: 3px solid rgba(255, 50, 77, 0.34);
+  outline-offset: -3px;
+}
+
+.mw-product-card__media {
+  position: relative;
+  display: grid;
+  aspect-ratio: 9 / 10;
+  place-items: center;
+  overflow: hidden;
+  border-bottom: 1px solid rgba(229, 231, 235, 0.92);
+  background: #f4f3f1;
+}
+
+.mw-product-card__media img {
+  object-fit: contain;
+  object-position: center;
+}
+
+.mw-product-card__image-fallback {
+  padding: 1rem;
+  color: var(--mw-muted);
+  text-align: center;
+}
+
+.mw-product-card__body {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  flex-direction: column;
+  padding: 1rem;
+}
+
+.mw-product-card__title {
+  display: -webkit-box;
+  min-height: 2.8em;
+  margin: 0;
+  overflow: hidden;
+  font-size: 1.08rem;
+  line-height: 1.4;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.mw-product-card__description {
+  display: -webkit-box;
+  min-height: 3.2em;
+  margin: 0.65rem 0 0;
+  overflow: hidden;
+  color: #4b5563;
+  line-height: 1.6;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.mw-product-card__cta {
+  align-self: flex-start;
+  margin-top: auto;
+  padding-top: 1rem;
+  color: var(--mw-accent);
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.mw-product-card__cta::after {
+  content: " \2192";
+}
+
 .mw-section {
   margin-top: 2rem;
   padding: 1.8rem;
@@ -1664,6 +1766,14 @@ textarea:focus-visible {
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .mw-product-card {
+    transition: none;
+  }
+
+  .mw-product-card:hover {
+    transform: none;
+  }
+
   .mw-header-cart.is-updated .mw-header-cart__icon,
   .mw-header-cart.is-updated .mw-header-cart__badge,
   .mw-notification,
