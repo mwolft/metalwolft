@@ -1089,27 +1089,24 @@ textarea:focus-visible {
   width: 48px;
   height: 48px;
   padding: 0;
-  border: 1px solid rgba(255, 255, 255, 0.62);
-  border-radius: 50%;
+  border: 0;
   place-items: center;
   color: #fff;
-  background: rgba(17, 24, 39, 0.38);
-  box-shadow: 0 2px 8px rgba(17, 24, 39, 0.12);
-  backdrop-filter: blur(4px);
+  background: transparent;
+  box-shadow: none;
   cursor: pointer;
-  opacity: 0.62;
+  opacity: 0.46;
   transform: translateY(-50%);
   transition:
-    opacity 140ms ease,
-    background-color 140ms ease,
-    transform 140ms ease;
+    opacity 180ms ease,
+    transform 180ms ease;
 }
 
 .mw-product-gallery__control:hover,
 .mw-product-gallery__control:focus-visible,
 .mw-product-gallery__control:active {
-  background: rgba(17, 24, 39, 0.62);
-  opacity: 1;
+  background: transparent;
+  opacity: 0.94;
 }
 
 .mw-product-gallery__control:active {
@@ -1117,14 +1114,18 @@ textarea:focus-visible {
 }
 
 .mw-product-gallery__control:focus-visible {
-  outline: 3px solid var(--mw-accent);
-  outline-offset: 3px;
+  border-radius: 8px;
+  outline: 2px solid rgba(255, 255, 255, 0.92);
+  outline-offset: -3px;
 }
 
 .mw-product-gallery__control svg {
-  width: 20px;
-  height: 20px;
+  width: 24px;
+  height: 24px;
   fill: none;
+  filter:
+    drop-shadow(0 1px 1px rgba(0, 0, 0, 0.72))
+    drop-shadow(0 0 1px rgba(0, 0, 0, 0.42));
   stroke: currentColor;
   stroke-linecap: round;
   stroke-linejoin: round;
@@ -1159,13 +1160,13 @@ textarea:focus-visible {
 @media (hover: hover) {
   .mw-product-gallery:hover .mw-product-gallery__control,
   .mw-product-gallery:focus-within .mw-product-gallery__control {
-    opacity: 0.82;
+    opacity: 0.66;
   }
 
   .mw-product-gallery .mw-product-gallery__control:hover,
   .mw-product-gallery .mw-product-gallery__control:focus-visible,
   .mw-product-gallery .mw-product-gallery__control:active {
-    opacity: 1;
+    opacity: 0.94;
   }
 }
 
@@ -2976,7 +2977,7 @@ textarea:focus-visible {
   .mw-product-gallery__control {
     width: 44px;
     height: 44px;
-    opacity: 0.72;
+    opacity: 0.56;
   }
 
   .mw-product-gallery__control--previous {

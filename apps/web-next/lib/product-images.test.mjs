@@ -74,9 +74,12 @@ assert.match(gallerySource, /aria-hidden="true"/);
 assert.match(gallerySource, /\{hasNavigation \? \(/);
 assert.doesNotMatch(gallerySource, /\bfetch\s*\(/);
 assert.match(galleryStyles, /\.mw-product-gallery__control\s*{[^}]*width:\s*48px;[^}]*height:\s*48px;/s);
+assert.match(galleryStyles, /\.mw-product-gallery__control\s*{[^}]*border:\s*0;[^}]*background:\s*transparent;[^}]*box-shadow:\s*none;/s);
+assert.match(galleryStyles, /\.mw-product-gallery__control svg\s*{[^}]*width:\s*24px;[^}]*height:\s*24px;/s);
+assert.match(galleryStyles, /drop-shadow\(/);
 assert.match(galleryStyles, /@media \(max-width: 640px\)[\s\S]*?\.mw-product-gallery__control\s*{[^}]*width:\s*44px;[^}]*height:\s*44px;/);
 assert.match(galleryStyles, /\.mw-product-gallery__hit-zone\s*{[^}]*width:\s*30%;/s);
 assert.match(galleryStyles, /touch-action:\s*pan-y/);
 assert.doesNotMatch(galleryStyles, /\.mw-product-gallery__control[^}]*overflow-x/s);
 
-console.log("39 product gallery assertions passed");
+console.log("42 product gallery assertions passed");
