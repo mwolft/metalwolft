@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { PageContainer } from "@/components/layout/PageContainer";
 import { DeliveryEstimate } from "@/components/product/DeliveryEstimate";
 import { ProductConfigurator } from "@/components/product/ProductConfigurator";
+import { ProductGallery } from "@/components/product/ProductGallery";
 import { BreadcrumbJsonLd } from "@/components/seo/BreadcrumbJsonLd";
 import { JsonLd } from "@/components/seo/JsonLd";
 import {
@@ -18,6 +19,7 @@ import {
   type ApiProduct
 } from "@/lib/api";
 import { fetchDeliveryEstimate } from "@/lib/delivery-estimate";
+import { buildProductGalleryImages } from "@/lib/product-images";
 
 type ProductPageParams = {
   category_slug: string;
@@ -146,7 +148,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
   const h1 = product.h1_seo || product.nombre;
   const canonicalPath = `/${product.category_slug}/${product.slug}`;
   const categoryPath = `/${product.category_slug}`;
-  const productImages = product.images ?? [];
+  const productImages = buildProductGalleryImages(product);
   const visibleDescription =
     product.descripcion?.trim() || "Descripción técnica no disponible en este momento.";
 
@@ -170,21 +172,26 @@ export default async function ProductPage({ params }: ProductPageProps) {
           <span aria-current="page">{h1}</span>
         </nav>
 
-        <section className="mw-hero">
-          <div className="mw-hero__copy">
-            <p className="mw-eyebrow">Modelo a medida</p>
-            <h1 className="mw-title mw-title--compact">{h1}</h1>
-            <p className="mw-lead">{visibleDescription}</p>
-            <div className="mw-actions">
-              <Link className="mw-button mw-button--primary" href={categoryPath}>
-                Ver más modelos de la categoría
-              </Link>
-              <Link className="mw-button mw-button--secondary" href="/rejas-para-ventanas-sin-obra">
-                Rejas para ventanas sin obra
-              </Link>
-            </div>
+        <header className="mw-product-heading">
+          <p className="mw-eyebrow">Modelo a medida</p>
+          <h1 className="mw-title mw-title--compact">{h1}</h1>
+          <p className="mw-lead">{visibleDescription}</p>
+          <div className="mw-actions">
+            <Link className="mw-button mw-button--primary" href={categoryPath}>
+              Ver más modelos de la categoría
+            </Link>
+            <Link className="mw-button mw-button--secondary" href="/rejas-para-ventanas-sin-obra">
+              Rejas para ventanas sin obra
+            </Link>
           </div>
+        </header>
 
+        <section className="mw-product-purchase-layout">
+          <ProductGallery
+            key={product.id}
+            images={productImages}
+            productName={product.nombre}
+          />
           <aside className="mw-panel mw-product-panel" aria-label="Configurar producto">
             <ProductConfigurator
               productId={product.id}
@@ -227,20 +234,6 @@ export default async function ProductPage({ params }: ProductPageProps) {
             ventana y con el nivel de seguridad que buscas para tu vivienda.
           </p>
         </section>
-
-        {productImages.length > 0 ? (
-          <section className="mw-section">
-            <h2>Imágenes del producto</h2>
-            <div className="mw-grid">
-              {productImages.slice(0, 4).map((image) => (
-                <article className="mw-card" key={image.id}>
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={image.image_url} alt={h1} />
-                </article>
-              ))}
-            </div>
-          </section>
-        ) : null}
 
         <section className="mw-section">
           <h2>Instalación y medición</h2>

@@ -1021,6 +1021,84 @@ textarea:focus-visible {
   align-self: start;
 }
 
+.mw-product-heading {
+  margin-top: 1rem;
+  padding: 2rem;
+  border: 1px solid rgba(229, 231, 235, 0.92);
+  border-radius: var(--mw-radius);
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: var(--mw-shadow);
+}
+
+.mw-product-purchase-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.08fr) minmax(360px, 0.92fr);
+  gap: 2rem;
+  align-items: start;
+  margin-top: 2rem;
+}
+
+.mw-product-gallery {
+  min-width: 0;
+}
+
+.mw-product-gallery__stage {
+  position: relative;
+  overflow: hidden;
+  aspect-ratio: 9 / 10;
+  border: 1px solid rgba(229, 231, 235, 0.92);
+  border-radius: var(--mw-radius);
+  background: linear-gradient(145deg, #f8fafc, #fff);
+  box-shadow: var(--mw-shadow);
+}
+
+.mw-product-gallery__stage img,
+.mw-product-gallery__thumbnail img {
+  object-fit: contain;
+  object-position: center;
+}
+
+.mw-product-gallery__placeholder {
+  display: grid;
+  width: 100%;
+  height: 100%;
+  place-items: center;
+  padding: 2rem;
+  color: var(--mw-muted);
+  font-weight: 700;
+  text-align: center;
+}
+
+.mw-product-gallery__thumbnails {
+  display: flex;
+  gap: 0.75rem;
+  overflow-x: auto;
+  margin-top: 0.9rem;
+  padding: 0.15rem 0.15rem 0.55rem;
+  scrollbar-width: thin;
+}
+
+.mw-product-gallery__thumbnail {
+  position: relative;
+  flex: 0 0 72px;
+  overflow: hidden;
+  aspect-ratio: 9 / 10;
+  padding: 0;
+  border: 2px solid transparent;
+  border-radius: 10px;
+  background: #fff;
+  cursor: pointer;
+}
+
+.mw-product-gallery__thumbnail[data-active="true"] {
+  border-color: var(--mw-accent);
+}
+
+.mw-product-gallery__thumbnail:focus-visible {
+  outline: 3px solid rgba(255, 50, 77, 0.28);
+  outline-offset: 2px;
+}
+
 .mw-product-summary {
   margin-top: 1.4rem;
   padding-top: 1.35rem;
@@ -2734,6 +2812,15 @@ textarea:focus-visible {
     grid-template-columns: 1fr;
   }
 
+  .mw-product-purchase-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .mw-product-gallery {
+    width: min(100%, 640px);
+    margin: 0 auto;
+  }
+
   .mw-home-hero,
   .mw-home-trust,
   .mw-home-product-grid,
@@ -2817,6 +2904,10 @@ textarea:focus-visible {
   .mw-hero__copy,
   .mw-panel,
   .mw-section {
+    padding: 1.35rem;
+  }
+
+  .mw-product-heading {
     padding: 1.35rem;
   }
 
