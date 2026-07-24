@@ -1,5 +1,9 @@
 import assert from "node:assert/strict";
-import { buildProductGalleryImages } from "./product-images.ts";
+import { readFileSync } from "node:fs";
+import {
+  buildProductGalleryImages,
+  getAdjacentProductImageSrc
+} from "./product-images.ts";
 
 const product = {
   nombre: "Reja Albany",
@@ -37,4 +41,28 @@ assert.deepEqual(
   []
 );
 
-console.log("8 product image assertions passed");
+assert.equal(getAdjacentProductImageSrc(images, images[0].src, 1), images[1].src);
+assert.equal(getAdjacentProductImageSrc(images, images[0].src, -1), images[2].src);
+assert.equal(getAdjacentProductImageSrc(images, images[2].src, 1), images[0].src);
+assert.equal(getAdjacentProductImageSrc(images, images[1].src, -1), images[0].src);
+assert.equal(getAdjacentProductImageSrc(images, "missing", 1), images[1].src);
+assert.equal(getAdjacentProductImageSrc([], "missing", 1), "");
+
+const gallerySource = readFileSync(
+  new URL("../components/product/ProductGallery.tsx", import.meta.url),
+  "utf8"
+);
+const galleryStyles = readFileSync(new URL("../app/globals.css", import.meta.url), "utf8");
+assert.match(gallerySource, /availableImages\.length > 1/);
+assert.match(gallerySource, /Mostrar imagen anterior/);
+assert.match(gallerySource, /Mostrar imagen siguiente/);
+assert.match(gallerySource, /event\.key === "ArrowLeft"/);
+assert.match(gallerySource, /event\.key === "ArrowRight"/);
+assert.match(gallerySource, /aria-pressed=/);
+assert.match(gallerySource, /Imagen no disponible/);
+assert.doesNotMatch(gallerySource, /\bfetch\s*\(/);
+assert.match(galleryStyles, /\.mw-product-gallery__control\s*{[^}]*width:\s*48px;[^}]*height:\s*48px;/s);
+assert.match(galleryStyles, /@media \(max-width: 640px\)[\s\S]*?\.mw-product-gallery__control\s*{[^}]*width:\s*44px;[^}]*height:\s*44px;/);
+assert.doesNotMatch(galleryStyles, /\.mw-product-gallery__control[^}]*overflow-x/s);
+
+console.log("25 product gallery assertions passed");

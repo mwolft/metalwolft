@@ -6,6 +6,22 @@ export type ProductGalleryImage = {
   isPrimary: boolean;
 };
 
+export type ProductGalleryDirection = -1 | 1;
+
+export function getAdjacentProductImageSrc(
+  images: readonly ProductGalleryImage[],
+  selectedSrc: string,
+  direction: ProductGalleryDirection
+) {
+  if (images.length === 0) {
+    return "";
+  }
+
+  const selectedIndex = images.findIndex((image) => image.src === selectedSrc);
+  const currentIndex = selectedIndex >= 0 ? selectedIndex : 0;
+  return images[(currentIndex + direction + images.length) % images.length].src;
+}
+
 export function buildProductGalleryImages(
   product: Pick<ApiProduct, "imagen" | "images" | "nombre">
 ): ProductGalleryImage[] {

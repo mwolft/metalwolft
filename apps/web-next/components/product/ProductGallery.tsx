@@ -1,8 +1,12 @@
 "use client";
 
 import Image from "next/image";
-import { useState } from "react";
-import type { ProductGalleryImage } from "@/lib/product-images";
+import { useState, type KeyboardEvent } from "react";
+import {
+  getAdjacentProductImageSrc,
+  type ProductGalleryDirection,
+  type ProductGalleryImage
+} from "@/lib/product-images";
 
 type ProductGalleryProps = {
   images: ProductGalleryImage[];
@@ -28,8 +32,36 @@ export function ProductGallery({ images, productName }: ProductGalleryProps) {
     });
   }
 
+  function selectAdjacentImage(direction: ProductGalleryDirection) {
+    if (!selectedImage || availableImages.length < 2) {
+      return;
+    }
+
+    setSelectedSrc(getAdjacentProductImageSrc(availableImages, selectedImage.src, direction));
+  }
+
+  function handleGalleryKeyDown(event: KeyboardEvent<HTMLElement>) {
+    const target = event.target;
+    if (
+      target instanceof HTMLElement &&
+      target.closest("input, textarea, select, [contenteditable='true']")
+    ) {
+      return;
+    }
+
+    if (event.key === "ArrowLeft" || event.key === "ArrowRight") {
+      event.preventDefault();
+      selectAdjacentImage(event.key === "ArrowLeft" ? -1 : 1);
+    }
+  }
+
   return (
-    <section className="mw-product-gallery" aria-label={`Imágenes de ${productName}`}>
+    <section
+      className="mw-product-gallery"
+      aria-label={`Imágenes de ${productName}`}
+      onKeyDown={handleGalleryKeyDown}
+      tabIndex={0}
+    >
       <div className="mw-product-gallery__stage">
         {selectedImage ? (
           <Image
@@ -47,6 +79,31 @@ export function ProductGallery({ images, productName }: ProductGalleryProps) {
             <span>Imagen no disponible</span>
           </div>
         )}
+
+        {selectedImage && availableImages.length > 1 ? (
+          <>
+            <button
+              className="mw-product-gallery__control mw-product-gallery__control--previous"
+              type="button"
+              aria-label={`Mostrar imagen anterior de ${productName}`}
+              onClick={() => selectAdjacentImage(-1)}
+            >
+              <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                <path d="m15 5-7 7 7 7" />
+              </svg>
+            </button>
+            <button
+              className="mw-product-gallery__control mw-product-gallery__control--next"
+              type="button"
+              aria-label={`Mostrar imagen siguiente de ${productName}`}
+              onClick={() => selectAdjacentImage(1)}
+            >
+              <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                <path d="m9 5 7 7-7 7" />
+              </svg>
+            </button>
+          </>
+        ) : null}
       </div>
 
       {availableImages.length > 1 ? (
