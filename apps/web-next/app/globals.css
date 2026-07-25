@@ -103,9 +103,23 @@ textarea:focus-visible {
 
 .mw-brand {
   display: inline-flex;
+  align-items: center;
+  gap: 0.7rem;
+  flex-shrink: 0;
+}
+
+.mw-brand__icon {
+  width: 48px;
+  height: 48px;
+  flex: 0 0 auto;
+  object-fit: contain;
+}
+
+.mw-brand__text {
+  display: inline-flex;
+  min-width: 0;
   flex-direction: column;
   gap: 0.2rem;
-  flex-shrink: 0;
 }
 
 .mw-brand__name {
@@ -2956,6 +2970,11 @@ textarea:focus-visible {
 
   .mw-brand__tagline {
     font-size: 0.76rem;
+  }
+
+  .mw-brand__icon {
+    width: 40px;
+    height: 40px;
   }
 
   .mw-header__nav-desktop {

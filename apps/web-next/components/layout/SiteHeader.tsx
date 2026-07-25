@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import { PageContainer } from "@/components/layout/PageContainer";
 import { SiteHeaderNavigation } from "@/components/layout/SiteHeaderNavigation";
@@ -8,10 +9,19 @@ export function SiteHeader() {
       <PageContainer>
         <div className="mw-header__inner">
           <Link className="mw-brand" href="/" aria-label="MetalWolft, inicio">
-            <span className="mw-brand__name">
-              Metal<span>Wolft</span>
+            <Image
+              className="mw-brand__icon"
+              src="/icon.svg"
+              alt=""
+              width={48}
+              height={48}
+            />
+            <span className="mw-brand__text">
+              <span className="mw-brand__name">
+                Metal<span>Wolft</span>
+              </span>
+              <span className="mw-brand__tagline">Rejas para ventanas a medida</span>
             </span>
-            <span className="mw-brand__tagline">Rejas para ventanas a medida</span>
           </Link>
           <SiteHeaderNavigation />
         </div>
