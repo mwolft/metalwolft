@@ -11,7 +11,7 @@ export function SiteHeader() {
           <Link className="mw-brand" href="/" aria-label="MetalWolft, inicio">
             <Image
               className="mw-brand__icon"
-              src="/icon.svg"
+              src="/metalwolft-isotipo.png"
               alt=""
               width={48}
               height={48}

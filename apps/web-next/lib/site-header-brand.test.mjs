@@ -10,7 +10,7 @@ assert.match(header, /import Image from "next\/image"/);
 assert.match(header, /<Link className="mw-brand" href="\/" aria-label="MetalWolft, inicio">/);
 assert.match(
   header,
-  /<Image\s+className="mw-brand__icon"\s+src="\/icon\.svg"\s+alt=""\s+width=\{48\}\s+height=\{48\}\s+\/>/s
+  /<Image\s+className="mw-brand__icon"\s+src="\/metalwolft-isotipo\.png"\s+alt=""\s+width=\{48\}\s+height=\{48\}\s+\/>/s
 );
 assert.match(header, /className="mw-brand__text"/);
 assert.equal((header.match(/<Link className="mw-brand"/g) || []).length, 1);
