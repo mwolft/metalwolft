@@ -710,7 +710,22 @@ textarea:focus-visible {
 }
 
 .mw-home-trust__item {
+  display: flex;
+  align-items: flex-start;
+  flex-direction: column;
   padding: 1rem 1.05rem;
+}
+
+.mw-home-trust__icon {
+  width: 28px;
+  height: 28px;
+  flex: 0 0 auto;
+  margin-bottom: 0.65rem;
+  color: #374151;
+}
+
+.mw-home-trust__icon--accent {
+  color: var(--mw-accent-dark);
 }
 
 .mw-home-trust__item strong {
@@ -722,6 +737,24 @@ textarea:focus-visible {
 .mw-home-trust__item span {
   color: #4b5563;
   line-height: 1.6;
+}
+
+.mw-home-trust__link {
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
+  margin-top: auto;
+  padding-top: 0.55rem;
+  color: var(--mw-accent-dark);
+  font-size: 0.9rem;
+  font-weight: 700;
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.2em;
+}
+
+.mw-home-trust__link:hover {
+  color: var(--mw-accent);
 }
 
 .mw-home-product-grid,

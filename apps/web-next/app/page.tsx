@@ -27,11 +27,73 @@ type HomeData = {
   catalogUnavailable: boolean;
 };
 
+type HomeTrustIconName = "measure" | "shipping" | "message" | "home";
+
 const CATEGORY_SLUG = "rejas-para-ventanas";
 const HERO_IMAGE_PATH =
   "https://res.cloudinary.com/dewanllxn/image/upload/v1784571378/rejas-para-ventanas_cy7ecp.webp";
 const CATALOG_LOG_DEDUPLICATION_MS = 60_000;
 const lastCatalogLogAt: Partial<Record<"products" | "categories", number>> = {};
+
+function HomeTrustIcon({ name }: { name: HomeTrustIconName }) {
+  let icon;
+
+  switch (name) {
+    case "measure":
+      icon = (
+        <>
+          <path d="m3 17 14-14 4 4L7 21H3v-4Z" />
+          <path d="m14 6 4 4M11.5 8.5l2 2M9 11l2 2M6.5 13.5l2 2" />
+        </>
+      );
+      break;
+    case "shipping":
+      icon = (
+        <>
+          <path d="M3 6h11v11H3V6Zm11 4h4l3 3v4h-7v-7Z" />
+          <circle cx="7" cy="18" r="2" />
+          <circle cx="18" cy="18" r="2" />
+        </>
+      );
+      break;
+    case "message":
+      icon = (
+        <>
+          <path d="M4 4h16v12H8l-4 4V4Z" />
+          <circle cx="9" cy="10" r="0.75" fill="currentColor" stroke="none" />
+          <circle cx="12" cy="10" r="0.75" fill="currentColor" stroke="none" />
+          <circle cx="15" cy="10" r="0.75" fill="currentColor" stroke="none" />
+        </>
+      );
+      break;
+    case "home":
+      icon = (
+        <>
+          <path d="m3 11 9-7 9 7v9H3v-9Z" />
+          <path d="M8 12h8v8H8v-8Zm4 0v8M8 16h8" />
+        </>
+      );
+      break;
+  }
+
+  return (
+    <svg
+      className={`mw-home-trust__icon${name === "message" ? " mw-home-trust__icon--accent" : ""}`}
+      width="28"
+      height="28"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.75"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+      focusable="false"
+    >
+      {icon}
+    </svg>
+  );
+}
 
 const FAQ_ITEMS = [
   {
@@ -331,18 +393,30 @@ export default async function HomePage() {
 
         <section className="mw-home-trust" aria-label="Puntos de confianza">
           <article className="mw-home-trust__item">
+            <HomeTrustIcon name="measure" />
             <strong>Fabricación a medida</strong>
             <span>Cada reja se fabrica según el hueco real de tu ventana.</span>
           </article>
           <article className="mw-home-trust__item">
+            <HomeTrustIcon name="shipping" />
             <strong>Envío peninsular</strong>
             <span>Entregamos los pedidos online en España peninsular.</span>
           </article>
           <article className="mw-home-trust__item">
+            <HomeTrustIcon name="message" />
             <strong>Ayuda por WhatsApp</strong>
             <span>Resolvemos dudas antes de elegir modelo, medidas o anclaje.</span>
+            <a
+              className="mw-home-trust__link"
+              href={contactLinks.whatsapp}
+              rel="noopener noreferrer"
+              target="_blank"
+            >
+              Hablar por WhatsApp
+            </a>
           </article>
           <article className="mw-home-trust__item">
+            <HomeTrustIcon name="home" />
             <strong>Sin instalación incluida</strong>
             <span>Fabricamos y enviamos la reja; tú organizas su instalación.</span>
           </article>
