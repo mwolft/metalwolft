@@ -17,10 +17,18 @@ for (const title of [
   assert.match(home, new RegExp(title));
 }
 
-assert.equal((home.match(/<HomeTrustIcon name=/g) || []).length, 4);
-assert.match(home, /aria-hidden="true"/);
-assert.match(home, /width="28"/);
-assert.match(home, /height="28"/);
+for (const imagePath of [
+  "/icons/rejas-a-medida.png",
+  "/icons/envios-peninsula.png",
+  "/icons/soporte- whatsApp.png",
+  "/icons/sin-obra.png"
+]) {
+  assert.match(home, new RegExp(`src="${imagePath.replace(".", "\\.")}"`));
+}
+assert.equal((home.match(/className="mw-home-trust__icon"/g) || []).length, 4);
+assert.equal((home.match(/alt=""/g) || []).length >= 4, true);
+assert.equal((home.match(/width=\{64\}/g) || []).length, 4);
+assert.equal((home.match(/height=\{43\}/g) || []).length, 4);
 assert.match(home, /href=\{contactLinks\.whatsapp\}/);
 assert.match(home, /rel="noopener noreferrer"/);
 assert.match(home, /target="_blank"/);
@@ -28,7 +36,7 @@ assert.match(home, />\s*Hablar por WhatsApp\s*</);
 assert.doesNotMatch(home, /^"use client";/);
 
 assert.match(contact, /whatsapp:\s*`https:\/\/wa\.me\/\$\{contactDetails\.phoneRaw\}/);
-assert.match(styles, /\.mw-home-trust__icon\s*{[^}]*width:\s*28px;[^}]*height:\s*28px/s);
+assert.match(styles, /\.mw-home-trust__icon\s*{[^}]*width:\s*64px;[^}]*height:\s*43px;[^}]*object-fit:\s*contain/s);
 assert.match(styles, /\.mw-home-trust__link\s*{[^}]*min-height:\s*44px/s);
 
 const dependencies = {
