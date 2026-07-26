@@ -222,9 +222,10 @@ textarea:focus-visible {
   background: rgba(255, 50, 77, 0.12);
 }
 
-.mw-header__cta {
+.mw-button.mw-header__cta {
   min-height: 44px;
   padding-inline: 1rem;
+  box-shadow: none;
 }
 
 .mw-account-link,
@@ -1227,6 +1228,21 @@ textarea:focus-visible {
 .mw-list {
   margin: 0.75rem 0 0;
   padding-left: 1.2rem;
+}
+
+.mw-category-guide-links a {
+  color: var(--mw-accent-dark);
+  font-weight: 650;
+  text-decoration: underline;
+  text-decoration-color: var(--mw-accent);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.18em;
+}
+
+.mw-category-guide-links a:hover,
+.mw-category-guide-links a:focus-visible {
+  color: var(--mw-accent);
+  text-decoration-thickness: 2px;
 }
 
 .mw-steps {

@@ -295,7 +295,7 @@ export default async function RejasParaVentanasPage() {
             instalación, estilo y montaje sin obra antes de elegir el modelo
             definitivo.
           </p>
-          <ul className="mw-list">
+          <ul className="mw-list mw-category-guide-links">
             <li>
               <Link href="/medir-hueco-rejas-para-ventanas">
                 Medir hueco para rejas para ventanas
