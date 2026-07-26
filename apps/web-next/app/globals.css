@@ -657,6 +657,7 @@ textarea:focus-visible {
 
 .mw-home-hero__copy {
   padding: 2.4rem;
+  box-shadow: none;
 }
 
 .mw-home-hero__points {
@@ -674,6 +675,7 @@ textarea:focus-visible {
   display: grid;
   gap: 1rem;
   padding: 1rem;
+  box-shadow: none;
 }
 
 .mw-home-hero__image {
