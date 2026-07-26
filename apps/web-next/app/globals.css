@@ -1928,7 +1928,7 @@ textarea:focus-visible {
 
 .mw-footer__grid {
   display: grid;
-  grid-template-columns: minmax(400px, 1.35fr) repeat(4, minmax(0, 1fr));
+  grid-template-columns: minmax(340px, 1.35fr) repeat(4, minmax(0, 1fr));
   gap: 1.5rem;
   padding: 2rem 0;
 }
@@ -2022,11 +2022,24 @@ textarea:focus-visible {
 
 .mw-footer__map-preview {
   grid-column: 1 / -1;
-  width: min(400px, 100%);
+  width: min(340px, 100%);
   aspect-ratio: 16 / 9;
   overflow: hidden;
   border: 1px solid rgba(209, 213, 219, 0.88);
   transition: box-shadow 200ms ease;
+}
+
+.mw-footer__copyright {
+  width: 100%;
+  border-top: 1px solid rgba(229, 231, 235, 0.92);
+  color: var(--mw-muted);
+  text-align: center;
+}
+
+.mw-footer__copyright p {
+  margin: 0;
+  padding: 1rem 0;
+  font-size: 0.88rem;
 }
 
 .mw-footer__map-preview img {

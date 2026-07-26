@@ -44,9 +44,9 @@ export function SiteFooter() {
                 <Image
                   src="/metalwolft-location-map.jpg"
                   alt=""
-                  width={800}
-                  height={450}
-                  sizes="(max-width: 640px) 100vw, 400px"
+                  width={680}
+                  height={383}
+                  sizes="(max-width: 640px) 100vw, 340px"
                 />
               </a>
             </div>
@@ -98,6 +98,11 @@ export function SiteFooter() {
           </nav>
         </div>
       </PageContainer>
+      <div className="mw-footer__copyright">
+        <PageContainer>
+          <p>© 2026 MetalWolft. Todos los derechos reservados.</p>
+        </PageContainer>
+      </div>
     </footer>
   );
 }
