@@ -82,7 +82,7 @@ function buildIntroText(productCount: number, categoryDescription?: string | nul
     "Fabricamos rejas para ventanas a medida con enfoque en seguridad, montaje limpio y soluciones pensadas para viviendas que necesitan una protección metálica duradera.";
 
   if (productCount > 0) {
-    return `${baseText} Mostramos ${productCount} modelos reales del catálogo para que puedas comparar acabados, tipos de apertura y opciones de instalación sin obra desde la misma landing.`;
+    return `${baseText} Mostramos ${productCount} modelos del catálogo para que puedas comparar acabados, tipos de apertura y opciones de instalación sin obra desde la misma landing.`;
   }
 
   return baseText;
@@ -91,7 +91,7 @@ function buildIntroText(productCount: number, categoryDescription?: string | nul
 function buildMetaDescription(productCount: number) {
   const baseDescription =
     productCount > 0
-      ? `Catálogo de rejas para ventanas a medida, rejas sin obra y rejas metálicas con ${productCount} modelos reales enlazados a sus fichas.`
+      ? `Catálogo de rejas para ventanas a medida, rejas sin obra y rejas metálicas con ${productCount} modelos enlazados a sus fichas.`
       : "Catálogo de rejas para ventanas a medida, rejas sin obra y rejas metálicas fabricadas por MetalWolft.";
 
   return trimTextAtWord(baseDescription, 155);
@@ -190,11 +190,11 @@ export default async function RejasParaVentanasPage() {
         <section className="mw-hero">
           <div className="mw-hero__copy">
             <p className="mw-eyebrow">Catálogo principal</p>
-            <h1 className="mw-title mw-title--compact">Rejas para ventanas a medida</h1>
+            <h1 className="mw-title mw-title--compact">Rejas para ventanas a medida: modelos y precios</h1>
             <p className="mw-lead">{introText}</p>
             <div className="mw-actions">
               <Link className="mw-button mw-button--primary" href="#modelos-reales">
-                Ver modelos reales
+                Ver modelos
               </Link>
               <Link className="mw-button mw-button--secondary" href="/medir-hueco-rejas-para-ventanas">
                 Cómo medir el hueco
@@ -216,9 +216,9 @@ export default async function RejasParaVentanasPage() {
         <DeliveryEstimate estimate={deliveryEstimate} variant="category" />
 
         <section className="mw-section" id="modelos-reales">
-          <h2>Modelos reales de rejas metálicas</h2>
+          <h2>Modelos de rejas metálicas</h2>
           <p>
-            Este listado muestra productos reales del catálogo y te permite pasar
+            Este listado muestra productos del catálogo y te permite pasar
             de la visión general a cada ficha individual con un solo clic.
           </p>
 
