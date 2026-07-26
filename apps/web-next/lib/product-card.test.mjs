@@ -18,7 +18,16 @@ assert.match(sources.card, /<ProductCardImage alt={productName} src={product\.im
 assert.match(sources.card, /product\.h1_seo \|\| product\.nombre/);
 assert.match(sources.card, /product\.descripcion_seo\?\.trim\(\)/);
 assert.match(sources.card, />\s*Ver modelo\s*</);
-assert.match(sources.card, /aria-label={`Ver modelo \$\{productName\}`}/);
+assert.match(sources.card, /isBestSeller\?: boolean/);
+assert.match(sources.card, /isNewDesign\?: boolean/);
+assert.match(sources.card, /isBestSeller = false/);
+assert.match(sources.card, /isNewDesign = false/);
+assert.match(sources.card, /isBestSeller \? "Más vendido" : null/);
+assert.match(sources.card, /isNewDesign \? "Nuevo diseño" : null/);
+assert.match(sources.card, /aria-label={accessibleLabel}/);
+assert.match(sources.card, /badges\.length > 0 \?/);
+assert.match(sources.card, /className="mw-product-card__badges"/);
+assert.match(sources.card, /className="mw-product-card__badge"/);
 assert.equal((sources.card.match(/<Link\b/g) || []).length, 1);
 assert.doesNotMatch(sources.card, /\bprecio(?:_rebajado)?\b/);
 assert.doesNotMatch(sources.card, /"use client"/);
@@ -38,9 +47,14 @@ assert.doesNotMatch(sources.image, /\bfetch\s*\(|\buseEffect\s*\(/);
 for (const page of [sources.explicitCategory, sources.dynamicCategory]) {
   assert.match(page, /import { ProductCard } from "@\/components\/product\/ProductCard"/);
   assert.match(page, /className="mw-product-grid"/);
-  assert.match(page, /<ProductCard href={productHref} key={product\.id} product={product} \/>/);
   assert.doesNotMatch(page, /<article className="mw-card"/);
 }
+
+assert.match(sources.dynamicCategory, /<ProductCard href={productHref} key={product\.id} product={product} \/>/);
+assert.match(sources.explicitCategory, /isBestSeller={product\.es_mas_vendido}/);
+assert.match(sources.explicitCategory, /isNewDesign={product\.es_nuevo_diseno}/);
+assert.equal((sources.explicitCategory.match(/data\.products\.map/g) || []).length, 1);
+assert.doesNotMatch(sources.explicitCategory, /featuredProducts|Productos destacados/);
 
 assert.match(
   sources.styles,
@@ -55,6 +69,8 @@ assert.match(
   /@media \(max-width: 640px\)[\s\S]*?\.mw-product-card__description\s*{[^}]*-webkit-line-clamp:\s*2/s
 );
 assert.match(sources.styles, /\.mw-product-card__cta\s*{[^}]*white-space:\s*nowrap/s);
+assert.match(sources.styles, /\.mw-product-card__badges\s*{[^}]*position:\s*absolute[^}]*flex-wrap:\s*wrap/s);
+assert.match(sources.styles, /\.mw-product-card__badge\s*{[^}]*background:\s*rgba\(31, 41, 55, 0\.92\)[^}]*color:\s*#fff/s);
 assert.match(sources.styles, /\.mw-product-card__link:focus-visible/);
 assert.match(sources.styles, /@media \(prefers-reduced-motion: reduce\)[\s\S]*?\.mw-product-card/);
 

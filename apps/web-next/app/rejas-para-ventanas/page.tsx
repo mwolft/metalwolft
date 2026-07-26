@@ -1,5 +1,9 @@
 import Link from "next/link";
 import type { Metadata } from "next";
+import {
+  CategoryFeatureGrid,
+  type CategoryFeatureItem
+} from "@/components/catalog/CategoryFeatureGrid";
 import { PageContainer } from "@/components/layout/PageContainer";
 import { DeliveryEstimate } from "@/components/product/DeliveryEstimate";
 import { ProductCard } from "@/components/product/ProductCard";
@@ -26,6 +30,28 @@ type RejasCategoryData = {
 };
 
 const CATEGORY_SLUG = "rejas-para-ventanas";
+const CATEGORY_FEATURES = [
+  {
+    title: "Medidas personalizadas",
+    description:
+      "Indica el alto y el ancho necesarios para adaptar la fabricación al hueco de tu ventana."
+  },
+  {
+    title: "Colores y acabados",
+    description:
+      "Selecciona entre las opciones habilitadas para el modelo durante la configuración."
+  },
+  {
+    title: "Opciones de anclaje",
+    description:
+      "Elige el sistema de fijación adecuado entre las alternativas disponibles al configurar la reja."
+  },
+  {
+    title: "Presupuesto calculado",
+    description:
+      "El precio se calcula según el modelo, las medidas, el anclaje y la cantidad seleccionada."
+  }
+] satisfies readonly CategoryFeatureItem[];
 
 function shouldAllowLocalApiFallback() {
   const apiBaseUrl = getApiBaseUrl().toLowerCase();
@@ -142,7 +168,6 @@ export default async function RejasParaVentanasPage() {
   ]);
   const introText = buildIntroText(data.products.length, data.categoryDescription);
   const description = buildMetaDescription(data.products.length);
-  const featuredProducts = data.products.filter((product) => product.es_mas_vendido);
 
   return (
     <div className="mw-page">
@@ -190,59 +215,12 @@ export default async function RejasParaVentanasPage() {
 
         <DeliveryEstimate estimate={deliveryEstimate} variant="category" />
 
-        <section className="mw-section">
-          <h2>Rejas para ventanas a medida</h2>
-          <p>
-            Esta landing concentra la intención comercial principal del proyecto:
-            ayudar a quien busca rejas para ventanas, rejas para ventanas a medida
-            y soluciones metálicas fabricadas según el hueco real de cada vivienda.
-          </p>
-          <p>
-            Aquí mostramos contenido legible desde servidor, un listado real de
-            productos y enlaces directos a cada ficha para que puedas comparar
-            diseño, apertura y acabado sin perder tiempo.
-          </p>
-        </section>
-
-        <section className="mw-section">
-          <h2>Rejas para ventanas sin obra</h2>
-          <p>
-            Muchos clientes buscan una instalación limpia y rápida. Por eso esta
-            página enlaza directamente a la guía de medición, la guía de
-            instalación sin obra y los contenidos de apoyo que explican acabados,
-            montaje y tiempos de fabricación.
-          </p>
-          <div className="mw-actions">
-            <Link className="mw-button mw-button--secondary" href="/instalation-rejas-para-ventanas">
-              Guía de instalación sin obra
-            </Link>
-            <Link className="mw-button mw-button--secondary" href="/rejas-para-ventanas-sin-obra">
-              Rejas sin obra
-            </Link>
-          </div>
-        </section>
-
         <section className="mw-section" id="modelos-reales">
           <h2>Modelos reales de rejas metálicas</h2>
           <p>
             Este listado muestra productos reales del catálogo y te permite pasar
             de la visión general a cada ficha individual con un solo clic.
           </p>
-
-          {featuredProducts.length > 0 ? (
-            <>
-              <h3>Productos destacados</h3>
-              <ul className="mw-list">
-                {featuredProducts.map((product) => (
-                  <li key={`featured-${product.id}`}>
-                    <Link href={`/${CATEGORY_SLUG}/${product.slug}`}>
-                      {product.h1_seo || product.nombre}
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            </>
-          ) : null}
 
           {data.products.length === 0 ? (
             <p>
@@ -254,10 +232,56 @@ export default async function RejasParaVentanasPage() {
               {data.products.map((product) => {
                 const productHref = `/${CATEGORY_SLUG}/${product.slug}`;
 
-                return <ProductCard href={productHref} key={product.id} product={product} />;
+                return (
+                  <ProductCard
+                    href={productHref}
+                    isBestSeller={product.es_mas_vendido}
+                    isNewDesign={product.es_nuevo_diseno}
+                    key={product.id}
+                    product={product}
+                  />
+                );
               })}
             </div>
           )}
+        </section>
+
+        <CategoryFeatureGrid
+          introduction="Cada modelo se adapta a las medidas y opciones elegidas al realizar el pedido."
+          items={CATEGORY_FEATURES}
+          title="Configura tu reja a medida"
+        />
+
+        <section className="mw-section">
+          <h2>Cómo elegir una reja para tu ventana</h2>
+          <p>
+            Al comparar los modelos, fíjate en la distribución de los barrotes, la
+            presencia de elementos horizontales y el nivel decorativo del diseño.
+          </p>
+          <p>
+            El modelo que elijas se fabricará adaptado a las medidas que indiques al
+            configurar el pedido.
+          </p>
+        </section>
+
+        <section className="mw-section">
+          <h2>Qué debes comprobar antes de hacer el pedido</h2>
+          <p>
+            Antes de hacer el pedido, mide correctamente el hueco y comprueba el
+            soporte donde se fijará la reja.
+          </p>
+          <p>
+            MetalWolft fabrica y envía la reja, pero no realiza la instalación.
+            Consulta las guías de medición e instalación antes de comprar.
+          </p>
+          <div className="mw-actions">
+            <Link className="mw-button mw-button--secondary" href="/medir-hueco-rejas-para-ventanas">
+              Cómo medir el hueco
+            </Link>
+            <Link className="mw-button mw-button--secondary" href="/instalation-rejas-para-ventanas">
+              Cómo instalar una reja
+            </Link>
+          </div>
         </section>
 
         <section className="mw-section">
@@ -292,11 +316,14 @@ export default async function RejasParaVentanasPage() {
         </section>
 
         <section className="mw-section">
-          <h2>Fabricación y envío desde taller</h2>
+          <h2>Fabricación y entrega de tu reja</h2>
           <p>
-            Trabajamos con fabricación a medida, procesos claros y envío desde
-            taller para que puedas elegir la reja adecuada con una base técnica
-            sencilla y sin mezclar información comercial innecesaria.
+            La fabricación comienza después de recibir el pedido y se realiza según
+            las medidas y la configuración elegidas.
+          </p>
+          <p>
+            Una vez terminada, la reja se prepara para el transporte y se envía a
+            domicilio en España peninsular.
           </p>
         </section>
       </PageContainer>
