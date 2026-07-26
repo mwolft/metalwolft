@@ -12,10 +12,15 @@ for (const title of [
   "Fabricación a medida",
   "Envío peninsular",
   "Ayuda por WhatsApp",
-  "Sin instalación incluida"
+  "Instalación sencilla"
 ]) {
   assert.match(home, new RegExp(title));
 }
+assert.match(
+  home,
+  /Se instala fácilmente con un taladro y la tornillería especial incluida, sin\s+necesidad de realizar obra\./
+);
+assert.doesNotMatch(home, /Sin instalación incluida/);
 
 for (const imagePath of [
   "/icons/rejas-a-medida.webp",

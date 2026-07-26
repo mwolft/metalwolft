@@ -26,5 +26,7 @@ assert.match(
   styles,
   /\.mw-home-benefit-card__icon\s*{[^}]*width:\s*80px;[^}]*height:\s*72px;[^}]*object-fit:\s*contain/s
 );
+const iconStyles = styles.match(/\.mw-home-benefit-card__icon\s*{([^}]*)}/)?.[1] ?? "";
+assert.doesNotMatch(iconStyles, /margin-bottom/);
 
 console.log("Home benefits assertions passed");

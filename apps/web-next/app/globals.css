@@ -846,7 +846,6 @@ textarea:focus-visible {
 .mw-home-benefit-card__icon {
   width: 80px;
   height: 72px;
-  margin-bottom: 0.75rem;
   object-fit: contain;
 }
 

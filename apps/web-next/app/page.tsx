@@ -379,8 +379,11 @@ export default async function HomePage() {
               width={84}
               height={56}
             />
-            <strong>Sin instalación incluida</strong>
-            <span>Fabricamos y enviamos la reja; tú organizas su instalación.</span>
+            <strong>Instalación sencilla</strong>
+            <span>
+              Se instala fácilmente con un taladro y la tornillería especial incluida, sin
+              necesidad de realizar obra.
+            </span>
           </article>
         </section>
 
