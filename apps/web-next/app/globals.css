@@ -927,6 +927,7 @@ textarea:focus-visible {
   background:
     linear-gradient(145deg, rgba(255, 50, 77, 0.08), rgba(255, 255, 255, 0.96)),
     #fff;
+  box-shadow: none;
 }
 
 .mw-eyebrow {
@@ -961,6 +962,10 @@ textarea:focus-visible {
   flex-wrap: wrap;
   gap: 0.85rem;
   margin-top: 1.5rem;
+}
+
+.mw-actions .mw-button {
+  box-shadow: none;
 }
 
 .mw-button {
