@@ -23,8 +23,8 @@ html {
 body {
   margin: 0;
   background:
-    radial-gradient(circle at top left, rgba(255, 50, 77, 0.08), transparent 28%),
-    linear-gradient(180deg, #ffffff 0%, var(--mw-bg) 100%);
+    radial-gradient(circle at 20% 0%, rgba(255, 50, 77, 0.06), transparent 35%),
+    linear-gradient(180deg, #ffffff 0%, #fcfbfb 100%);
   color: var(--mw-text);
   font-family: Georgia, "Times New Roman", serif;
 }
@@ -2161,8 +2161,8 @@ textarea:focus-visible {
 }
 
 .mw-footer {
-  border-top: 1px solid rgba(229, 231, 235, 0.92);
-  background: rgba(255, 255, 255, 0.92);
+  border-top: 1px solid rgba(255, 50, 77, 0.1);
+  background: #faf8f7;
 }
 
 .mw-footer__grid {
