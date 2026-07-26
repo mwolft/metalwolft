@@ -1,7 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import type { Metadata } from "next";
-import { Drill, MessageCircleQuestionMark, RulerDimensionLine, Truck } from "lucide-react";
+import { Drill, MessageCircleQuestion, RulerDimensionLine, Truck } from "lucide-react";
 import { PageContainer } from "@/components/layout/PageContainer";
 import { JsonLd } from "@/components/seo/JsonLd";
 import { contactDetails, contactLinks } from "@/lib/contact";
@@ -352,7 +352,7 @@ export default async function HomePage() {
             <span>Entregamos los pedidos online en España peninsular.</span>
           </article>
           <article className="mw-home-trust__item">
-            <MessageCircleQuestionMark
+            <MessageCircleQuestion
               aria-hidden="true"
               className="mw-home-trust__icon"
               size={30}

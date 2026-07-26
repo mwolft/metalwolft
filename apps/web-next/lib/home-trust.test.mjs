@@ -20,7 +20,7 @@ for (const title of [
 for (const icon of [
   "RulerDimensionLine",
   "Truck",
-  "MessageCircleQuestionMark",
+  "MessageCircleQuestion",
   "Drill"
 ]) {
   assert.match(
