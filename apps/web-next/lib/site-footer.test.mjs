@@ -34,7 +34,7 @@ assert.match(brandBlock, /aria-label="Ver ubicación de MetalWolft en Google Map
 assert.match(brandBlock, /className="mw-footer__map-preview"/);
 assert.match(
   brandBlock,
-  /<Image\s+src="\/metalwolft-location-map\.jpg"\s+alt=""\s+width=\{440\}\s+height=\{248\}\s+sizes="220px"/
+  /<Image\s+src="\/metalwolft-location-map\.jpg"\s+alt=""\s+width=\{880\}\s+height=\{495\}\s+sizes="\(max-width: 640px\) 100vw, 440px"/
 );
 assert.doesNotMatch(brandBlock, />\s*Ver ubicación en Google Maps\s*</);
 assert.doesNotMatch(footer, /<iframe|maps\.googleapis\.com|maps\/api/);
@@ -44,17 +44,21 @@ assert.doesNotMatch(footer, /legacyAdminUrl|showDevelopmentAdminLink|React Admin
 
 assert.match(
   styles,
-  /\.mw-footer__grid\s*{[^}]*grid-template-columns:\s*minmax\(0, 1\.35fr\) repeat\(4, minmax\(0, 1fr\)\)/s
+  /\.mw-footer__grid\s*{[^}]*grid-template-columns:\s*minmax\(440px, 1\.35fr\) repeat\(4, minmax\(0, 1fr\)\)/s
 );
 assert.doesNotMatch(styles, /\.mw-footer__copy|\.mw-footer__location(?:\s|\{|-)/);
-assert.match(styles, /@media \(max-width:\s*900px\)[\s\S]*?\.mw-footer__grid\s*{[^}]*repeat\(2,/);
+assert.match(styles, /@media \(max-width:\s*1100px\)[\s\S]*?\.mw-footer__grid\s*{[^}]*repeat\(2,/);
 assert.match(styles, /@media \(max-width:\s*640px\)[\s\S]*?\.mw-footer__grid\s*{[^}]*grid-template-columns:\s*1fr/);
 assert.match(
   styles,
-  /\.mw-footer__map-preview\s*{[^}]*width:\s*min\(220px, 100%\);[^}]*aspect-ratio:\s*16 \/ 9;[^}]*border-radius:\s*12px;/s
+  /\.mw-footer__map-preview\s*{[^}]*width:\s*min\(440px, 100%\);[^}]*aspect-ratio:\s*16 \/ 9;/s
 );
 assert.match(styles, /\.mw-footer__map-preview img\s*{[^}]*object-fit:\s*cover/s);
-assert.match(styles, /\.mw-footer__map-preview:hover,[\s\S]*?scale\(1\.02\)/);
+assert.doesNotMatch(styles, /\.mw-footer__map-preview[^}]*border-radius/s);
+assert.doesNotMatch(
+  styles,
+  /\.mw-footer__map-preview:hover,\s*\.mw-footer__map-preview:focus-visible\s*{[^}]*transform:/s
+);
 
 assert.deepEqual([...mapThumbnail.subarray(0, 3)], [255, 216, 255]);
 
