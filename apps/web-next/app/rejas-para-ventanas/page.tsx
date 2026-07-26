@@ -34,22 +34,26 @@ const CATEGORY_FEATURES = [
   {
     title: "Medidas personalizadas",
     description:
-      "Indica el alto y el ancho necesarios para adaptar la fabricación al hueco de tu ventana."
+      "Indica el alto y el ancho necesarios para adaptar la fabricación al hueco de tu ventana.",
+    iconSrc: "/icons/rejas-a-medida-sin-obra.webp"
   },
   {
     title: "Colores y acabados",
     description:
-      "Selecciona entre las opciones habilitadas para el modelo durante la configuración."
+      "Selecciona entre las opciones habilitadas para el modelo durante la configuración.",
+    iconSrc: "/icons/acabados-en-rejas-para-ventanas.webp"
   },
   {
     title: "Opciones de anclaje",
     description:
-      "Elige el sistema de fijación adecuado entre las alternativas disponibles al configurar la reja."
+      "Elige el sistema de fijación adecuado entre las alternativas disponibles al configurar la reja.",
+    iconSrc: "/icons/rejas-sin-obra.webp"
   },
   {
     title: "Presupuesto calculado",
     description:
-      "El precio se calcula según el modelo, las medidas, el anclaje y la cantidad seleccionada."
+      "El precio se calcula según el modelo, las medidas, el anclaje y la cantidad seleccionada.",
+    iconSrc: "/icons/precio-de-rejas-para-ventanas.webp"
   }
 ] satisfies readonly CategoryFeatureItem[];
 

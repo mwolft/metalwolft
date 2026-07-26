@@ -1198,6 +1198,21 @@ textarea:focus-visible {
   background: rgba(248, 250, 252, 0.82);
 }
 
+.mw-category-feature-grid__icon {
+  display: flex;
+  width: 72px;
+  height: 72px;
+  margin-bottom: 0.75rem;
+  align-items: center;
+  justify-content: center;
+}
+
+.mw-category-feature-grid__icon img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
 .mw-category-feature-grid__item h3 {
   margin: 0 0 0.35rem;
   color: var(--mw-text);
@@ -3420,6 +3435,11 @@ textarea:focus-visible {
 }
 
 @media (max-width: 640px) {
+  .mw-category-feature-grid__icon {
+    width: 56px;
+    height: 56px;
+  }
+
   .mw-category-feature-grid {
     grid-template-columns: 1fr;
   }

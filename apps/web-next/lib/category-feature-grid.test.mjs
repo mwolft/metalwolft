@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { readFile } from "node:fs/promises";
+import { access, readFile } from "node:fs/promises";
 
 const sources = Object.fromEntries(
   await Promise.all(
@@ -30,11 +30,23 @@ const expectedContent = [
   ]
 ];
 
+const expectedIcons = [
+  ["Medidas personalizadas", "/icons/rejas-a-medida-sin-obra.webp"],
+  ["Colores y acabados", "/icons/acabados-en-rejas-para-ventanas.webp"],
+  ["Opciones de anclaje", "/icons/rejas-sin-obra.webp"],
+  ["Presupuesto calculado", "/icons/precio-de-rejas-para-ventanas.webp"]
+];
+
 assert.match(sources.component, /export type CategoryFeatureItem/);
 assert.match(sources.component, /items: readonly CategoryFeatureItem\[\]/);
+assert.match(sources.component, /iconSrc: string/);
 assert.match(sources.component, /if \(items\.length === 0\)/);
+assert.match(sources.component, /<Image alt="" height=\{80\} src=\{item\.iconSrc\} width=\{80\} \/>/);
 assert.match(sources.component, /<h3>{item\.title}<\/h3>/);
-assert.doesNotMatch(sources.component, /"use client"|<Link\b|<a\b|<button\b|\bfetch\s*\(/);
+assert.doesNotMatch(
+  sources.component,
+  /"use client"|<Link\b|<a\b|<button\b|\bfetch\s*\(|lucide|placeholder/i
+);
 
 assert.match(sources.category, /title="Configura tu reja a medida"/);
 assert.match(
@@ -44,6 +56,10 @@ assert.match(
 for (const [title, description] of expectedContent) {
   assert.ok(sources.category.includes(title));
   assert.ok(sources.category.includes(description));
+}
+for (const [title, iconSrc] of expectedIcons) {
+  assert.ok(sources.category.indexOf(title) < sources.category.indexOf(iconSrc));
+  await access(new URL(`../public${iconSrc}`, import.meta.url));
 }
 
 assert.equal((sources.category.match(/<CategoryFeatureGrid\b/g) || []).length, 1);
@@ -61,7 +77,15 @@ assert.match(
 );
 assert.match(
   sources.styles,
-  /@media \(max-width: 640px\)[\s\S]*?\.mw-category-feature-grid\s*{[^}]*grid-template-columns:\s*1fr/s
+  /\.mw-category-feature-grid__icon\s*{[^}]*width:\s*72px;[^}]*height:\s*72px;/s
+);
+assert.match(
+  sources.styles,
+  /\.mw-category-feature-grid__icon img\s*{[^}]*object-fit:\s*contain;/s
+);
+assert.match(
+  sources.styles,
+  /@media \(max-width: 640px\)[\s\S]*?\.mw-category-feature-grid__icon\s*{[^}]*width:\s*56px;[^}]*height:\s*56px;[\s\S]*?\.mw-category-feature-grid\s*{[^}]*grid-template-columns:\s*1fr/s
 );
 
 console.log("CategoryFeatureGrid assertions passed");
