@@ -717,11 +717,11 @@ textarea:focus-visible {
 }
 
 .mw-home-trust__icon {
-  width: 30px;
-  height: 30px;
+  width: 84px;
+  height: 56px;
   flex: 0 0 auto;
-  margin-bottom: 0.65rem;
-  color: var(--mw-text);
+  margin-bottom: 0.55rem;
+  object-fit: contain;
 }
 
 .mw-home-trust__item strong {
