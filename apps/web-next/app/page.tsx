@@ -19,6 +19,7 @@ type HomeFeaturedProduct = {
   description: string;
   image: string | null;
   badge: string;
+  orientation: string;
 };
 
 type HomeData = {
@@ -32,6 +33,29 @@ const HERO_IMAGE_PATH =
   "https://res.cloudinary.com/dewanllxn/image/upload/v1784571378/rejas-para-ventanas_cy7ecp.webp";
 const CATALOG_LOG_DEDUPLICATION_MS = 60_000;
 const lastCatalogLogAt: Partial<Record<"products" | "categories", number>> = {};
+const HOME_FEATURED_MODELS = [
+  {
+    slug: "reja-fija-albany",
+    badge: "Minimalista",
+    description:
+      "Diseño limpio y moderno, ideal para ventanas anchas y viviendas de líneas actuales.",
+    orientation: "Ideal para estilos modernos"
+  },
+  {
+    slug: "reja-fija-clasica-charleston",
+    badge: "Clásica",
+    description:
+      "Estilo clásico con barrotes decorados para una presencia más tradicional.",
+    orientation: "Ideal para viviendas tradicionales"
+  },
+  {
+    slug: "reja-fija-orleans-clasica",
+    badge: "Decorativa",
+    description:
+      "Diseño ornamental con pletina central para una estética clásica y reforzada.",
+    orientation: "Ideal para un acabado ornamental"
+  }
+] as const;
 
 const FAQ_ITEMS = [
   {
@@ -102,37 +126,26 @@ function getProductImage(product: Pick<ApiProduct, "imagen">) {
   return product.imagen?.trim() || null;
 }
 
-function buildProductExcerpt(product: Pick<ApiProduct, "descripcion" | "descripcion_seo" | "nombre">) {
-  const rawDescription =
-    product.descripcion_seo?.trim() ||
-    product.descripcion?.trim() ||
-    `${product.nombre} fabricada a medida por MetalWolft.`;
-
-  return trimTextAtWord(rawDescription, 150);
-}
-
-function mapProductToCard(product: ApiProduct): HomeFeaturedProduct {
+function mapProductToCard(
+  product: ApiProduct,
+  editorial: (typeof HOME_FEATURED_MODELS)[number]
+): HomeFeaturedProduct {
   return {
     id: String(product.id),
     href: `/${product.category_slug || CATEGORY_SLUG}/${product.slug}`,
     title: product.h1_seo?.trim() || product.nombre,
-    description: buildProductExcerpt(product),
+    description: editorial.description,
     image: getProductImage(product),
-    badge: product.es_mas_vendido ? "Más vendido" : "Modelo a medida"
+    badge: editorial.badge,
+    orientation: editorial.orientation
   };
 }
 
 function selectFeaturedProducts(products: ApiProduct[]) {
-  return [...products]
-    .sort((left, right) => {
-      const leftScore = Number(Boolean(left.es_mas_vendido)) * 4 + Number(Boolean(left.es_nuevo_diseno)) * 2;
-      const rightScore =
-        Number(Boolean(right.es_mas_vendido)) * 4 + Number(Boolean(right.es_nuevo_diseno)) * 2;
-
-      return rightScore - leftScore;
-    })
-    .slice(0, 6)
-    .map(mapProductToCard);
+  return HOME_FEATURED_MODELS.flatMap((editorial) => {
+    const product = products.find((candidate) => candidate.slug === editorial.slug);
+    return product ? [mapProductToCard(product, editorial)] : [];
+  });
 }
 
 async function getHomeData(): Promise<HomeData> {
@@ -265,9 +278,6 @@ export async function generateMetadata(): Promise<Metadata> {
 export default async function HomePage() {
   const data = await getHomeData();
   const description = buildMetaDescription(data.featuredProducts.length);
-  const categoryIntro =
-    data.categoryDescription ||
-    "Especialistas en rejas para ventanas a medida, pensadas para proteger la vivienda con una instalación clara, acabados cuidados y atención directa antes de comprar.";
 
   return (
     <div className="mw-page mw-home-page">
@@ -389,10 +399,10 @@ export default async function HomePage() {
 
         <section className="mw-section" id="modelos-destacados">
           <p className="mw-eyebrow">Modelos destacados</p>
-          <h2>Modelos reales de rejas para ventanas</h2>
+          <h2>Encuentra el modelo que mejor encaja con tu vivienda</h2>
           <p>
-            {categoryIntro} Hemos seleccionado varios modelos reales para que puedas pasar del
-            vistazo general a la ficha del producto con un solo clic.
+            Compara algunos de nuestros modelos más destacados y elige el diseño que mejor encaja
+            con el estilo de tu vivienda.
           </p>
           {data.featuredProducts.length === 0 ? (
             <div className="mw-home-empty">
@@ -433,9 +443,14 @@ export default async function HomePage() {
                     <span className="mw-home-product-card__badge">{product.badge}</span>
                     <h3>{product.title}</h3>
                     <p>{product.description}</p>
+                    <p className="mw-home-product-card__orientation">{product.orientation}</p>
                     <div className="mw-actions">
-                      <Link className="mw-button mw-button--primary" href={product.href}>
-                        {`Ver modelo ${product.title}`}
+                      <Link
+                        aria-label={`Ver modelo ${product.title}`}
+                        className="mw-button mw-button--primary"
+                        href={product.href}
+                      >
+                        Ver modelo
                       </Link>
                     </div>
                   </div>

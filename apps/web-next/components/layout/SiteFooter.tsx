@@ -44,9 +44,9 @@ export function SiteFooter() {
                 <Image
                   src="/metalwolft-location-map.jpg"
                   alt=""
-                  width={680}
-                  height={383}
-                  sizes="(max-width: 640px) 100vw, 340px"
+                  width={612}
+                  height={344}
+                  sizes="(max-width: 640px) 100vw, 306px"
                 />
               </a>
             </div>
