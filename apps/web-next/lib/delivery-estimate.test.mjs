@@ -3,6 +3,7 @@ import { readFile } from "node:fs/promises";
 import {
   fetchDeliveryEstimate,
   formatCivilDateEs,
+  formatCivilDateRangeEs,
   parseDeliveryEstimate
 } from "./delivery-estimate.ts";
 
@@ -97,6 +98,14 @@ assert.equal(
 assert.equal(formatCivilDateEs("2026-12-29"), "29 de diciembre de 2026");
 assert.equal(formatCivilDateEs("2027-01-05"), "5 de enero de 2027");
 assert.equal(formatCivilDateEs("2026-02-30"), null);
+assert.equal(
+  formatCivilDateRangeEs("2026-08-17", "2026-08-21"),
+  "Del 17 al 21 de agosto de 2026"
+);
+assert.equal(
+  formatCivilDateRangeEs("2026-12-29", "2027-01-05"),
+  "Del 29 de diciembre de 2026 al 5 de enero de 2027"
+);
 
 const sources = Object.fromEntries(
   await Promise.all(
@@ -115,7 +124,7 @@ const sources = Object.fromEntries(
   )
 );
 
-for (const variant of ["default", "banner", "compact"]) {
+for (const variant of ["default", "banner", "category", "compact"]) {
   assert.match(sources.component, new RegExp(`"${variant}"`));
 }
 assert.match(sources.component, /if \(!estimate\) \{\s*return null;/);
@@ -125,8 +134,19 @@ assert.match(sources.component, /Puede variar según la configuración y el dest
 
 for (const categorySource of [sources.mainCategory, sources.dynamicCategory]) {
   assert.equal((categorySource.match(/fetchDeliveryEstimate\(\)/g) || []).length, 1);
-  assert.equal((categorySource.match(/variant="banner"/g) || []).length, 1);
 }
+assert.equal((sources.mainCategory.match(/variant="category"/g) || []).length, 1);
+assert.equal((sources.dynamicCategory.match(/variant="banner"/g) || []).length, 1);
+assert.match(sources.component, /src="\/icons\/plazos-de-entrega\.webp"/);
+assert.match(sources.component, /PLAZO ESTIMADO ACTUALIZADO/);
+assert.match(sources.component, /Entrega prevista para pedidos realizados hoy/);
+assert.match(sources.component, /\{dateRange\}/);
+assert.match(sources.component, /Calculamos esta previsión automáticamente según la carga actual de producción\./);
+assert.match(sources.component, /Incluye la fabricación de tu reja a medida y la entrega prevista en domicilio\./);
+assert.match(sources.component, /El plazo puede variar según el modelo, la configuración y el destino\./);
+assert.match(sources.component, /href="\/plazos-entrega-rejas-a-medida"/);
+assert.match(sources.component, /Cómo calculamos los plazos de entrega/);
+assert.doesNotMatch(sources.component, /entrega garantizada|fecha garantizada/i);
 assert.equal((sources.cartPage.match(/fetchDeliveryEstimate\(\)/g) || []).length, 1);
 assert.equal((sources.cartPage.match(/variant="compact"/g) || []).length, 1);
 assert.match(sources.cartFlow, /<CartView deliveryEstimate=\{deliveryEstimate\} \/>/);
@@ -146,4 +166,4 @@ for (const clientSource of [
 assert.doesNotMatch(sources.thankYou, /DeliveryEstimate/);
 assert.doesNotMatch(sources.account, /DeliveryEstimate/);
 
-console.log("41 delivery estimate assertions passed");
+console.log("Delivery estimate assertions passed");

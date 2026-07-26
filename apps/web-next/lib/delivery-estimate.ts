@@ -108,6 +108,25 @@ export function formatCivilDateEs(value: string) {
   return `${date.day} de ${MONTHS_ES[date.month - 1]} de ${date.year}`;
 }
 
+export function formatCivilDateRangeEs(startValue: string, endValue: string) {
+  const startDate = parseCivilDate(startValue);
+  const endDate = parseCivilDate(endValue);
+
+  if (!startDate || !endDate || civilDateKey(startDate) > civilDateKey(endDate)) {
+    return null;
+  }
+
+  if (startDate.year === endDate.year && startDate.month === endDate.month) {
+    return `Del ${startDate.day} al ${endDate.day} de ${MONTHS_ES[endDate.month - 1]} de ${endDate.year}`;
+  }
+
+  if (startDate.year === endDate.year) {
+    return `Del ${startDate.day} de ${MONTHS_ES[startDate.month - 1]} al ${endDate.day} de ${MONTHS_ES[endDate.month - 1]} de ${endDate.year}`;
+  }
+
+  return `Del ${formatCivilDateEs(startValue)} al ${formatCivilDateEs(endValue)}`;
+}
+
 export async function fetchDeliveryEstimate(
   options: FetchDeliveryEstimateOptions = {}
 ): Promise<DeliveryEstimate | null> {

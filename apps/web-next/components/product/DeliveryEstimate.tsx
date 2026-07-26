@@ -1,11 +1,14 @@
+import Image from "next/image";
+import Link from "next/link";
 import {
   formatCivilDateEs,
+  formatCivilDateRangeEs,
   type DeliveryEstimate as DeliveryEstimateData
 } from "@/lib/delivery-estimate";
 
 type DeliveryEstimateProps = {
   estimate: DeliveryEstimateData | null;
-  variant?: "default" | "banner" | "compact";
+  variant?: "default" | "banner" | "category" | "compact";
 };
 
 export function DeliveryEstimate({
@@ -18,8 +21,9 @@ export function DeliveryEstimate({
 
   const startDate = formatCivilDateEs(estimate.start_date);
   const endDate = formatCivilDateEs(estimate.end_date);
+  const dateRange = formatCivilDateRangeEs(estimate.start_date, estimate.end_date);
 
-  if (!startDate || !endDate) {
+  if (!startDate || !endDate || !dateRange) {
     return null;
   }
 
@@ -35,7 +39,39 @@ export function DeliveryEstimate({
       className={`mw-delivery-estimate mw-delivery-estimate--${variant}`}
       aria-label="Previsión orientativa de entrega"
     >
-      {variant === "banner" ? (
+      {variant === "category" ? (
+        <div className="mw-delivery-estimate__category-layout">
+          <Image
+            src="/icons/plazos-de-entrega.webp"
+            alt=""
+            width={48}
+            height={48}
+            className="mw-delivery-estimate__icon"
+          />
+          <div>
+            <p className="mw-delivery-estimate__eyebrow">PLAZO ESTIMADO ACTUALIZADO</p>
+            <h2 className="mw-delivery-estimate__title">
+              Entrega prevista para pedidos realizados hoy
+            </h2>
+            <p className="mw-delivery-estimate__range">
+              <strong>{dateRange}</strong>
+            </p>
+            <p className="mw-delivery-estimate__description">
+              Calculamos esta previsión automáticamente según la carga actual de producción.
+              Incluye la fabricación de tu reja a medida y la entrega prevista en domicilio.
+            </p>
+            <p className="mw-delivery-estimate__detail">
+              El plazo puede variar según el modelo, la configuración y el destino.
+            </p>
+            <Link
+              href="/plazos-entrega-rejas-a-medida"
+              className="mw-delivery-estimate__link"
+            >
+              Cómo calculamos los plazos de entrega
+            </Link>
+          </div>
+        </div>
+      ) : variant === "banner" ? (
         <>
           <p>
             <strong>Previsión orientativa para pedidos realizados hoy:</strong> entrega entre el{" "}

@@ -188,7 +188,7 @@ export default async function RejasParaVentanasPage() {
           </aside>
         </section>
 
-        <DeliveryEstimate estimate={deliveryEstimate} variant="banner" />
+        <DeliveryEstimate estimate={deliveryEstimate} variant="category" />
 
         <section className="mw-section">
           <h2>Rejas para ventanas a medida</h2>
