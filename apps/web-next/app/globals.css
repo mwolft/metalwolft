@@ -843,6 +843,13 @@ textarea:focus-visible {
   padding: 1.25rem;
 }
 
+.mw-home-benefit-card__icon {
+  width: 80px;
+  height: 72px;
+  margin-bottom: 0.75rem;
+  object-fit: contain;
+}
+
 .mw-home-feature-card__number {
   display: inline-flex;
   min-width: 2rem;

@@ -474,20 +474,54 @@ export default async function HomePage() {
           <h2>Por qué elegir rejas para ventanas a medida</h2>
           <div className="mw-home-feature-grid">
             <article className="mw-home-benefit-card">
+              <Image
+                className="mw-home-benefit-card__icon"
+                src="/icons/rejas-para-ventanas-de-seguridad.webp"
+                alt=""
+                width={80}
+                height={72}
+              />
               <h3>Seguridad</h3>
               <p>Una reja bien fabricada aporta protección adicional y tranquilidad en el día a día.</p>
             </article>
             <article className="mw-home-benefit-card">
+              <Image
+                className="mw-home-benefit-card__icon"
+                src="/icons/estetica-rejas-para-ventanas.webp"
+                alt=""
+                width={80}
+                height={72}
+              />
               <h3>Estética</h3>
               <p>El modelo, el acabado y las proporciones importan para que la ventana siga viéndose cuidada.</p>
             </article>
             <article className="mw-home-benefit-card">
-              <h3>Fabricación a medida</h3>
-              <p>No trabajamos con medidas genéricas: el pedido se ajusta al hueco real de tu vivienda.</p>
+              <Image
+                className="mw-home-benefit-card__icon"
+                src="/icons/fecha-entrega.webp"
+                alt=""
+                width={80}
+                height={72}
+              />
+              <h3>Producción optimizada</h3>
+              <p>
+                El plazo de fabricación se adapta automáticamente a la capacidad real del taller
+                para ofrecer una previsión fiable.
+              </p>
             </article>
             <article className="mw-home-benefit-card">
-              <h3>Opciones de anclaje</h3>
-              <p>Elige el tipo de fijación según el hueco y el soporte donde vas a instalar la reja.</p>
+              <Image
+                className="mw-home-benefit-card__icon"
+                src="/icons/tornilleria-incluida.webp"
+                alt=""
+                width={80}
+                height={72}
+              />
+              <h3>Tornillería adaptada</h3>
+              <p>
+                Incluimos la tornillería adecuada y, si tu fachada lo requiere, puedes solicitar
+                tornillos de mayor longitud.
+              </p>
             </article>
           </div>
         </section>
