@@ -2014,11 +2014,46 @@ textarea:focus-visible {
   color: var(--mw-accent-dark);
 }
 
+.mw-footer__map-preview {
+  width: min(220px, 100%);
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+  border: 1px solid rgba(209, 213, 219, 0.88);
+  border-radius: 12px;
+  transition:
+    transform 200ms ease,
+    box-shadow 200ms ease;
+}
+
+.mw-footer__map-preview img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.mw-footer__map-preview:hover,
+.mw-footer__map-preview:focus-visible {
+  transform: translateY(-2px) scale(1.02);
+  box-shadow: 0 4px 10px rgba(31, 41, 55, 0.1);
+}
+
 .mw-footer__brand-location-icon {
   width: 18px;
   height: 18px;
   flex: 0 0 auto;
   margin-top: 0.2rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mw-footer__map-preview {
+    transition: none;
+  }
+
+  .mw-footer__map-preview:hover,
+  .mw-footer__map-preview:focus-visible {
+    transform: none;
+  }
 }
 
 .mw-contact-grid {

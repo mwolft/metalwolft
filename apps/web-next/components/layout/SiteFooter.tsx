@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import { PageContainer } from "@/components/layout/PageContainer";
 import { contactDetails, contactLinks } from "@/lib/contact";
@@ -33,11 +34,19 @@ export function SiteFooter() {
                   <span>13005 Ciudad Real · España</span>
                 </address>
                 <a
+                  aria-label="Ver ubicación de MetalWolft en Google Maps"
+                  className="mw-footer__map-preview"
                   href="https://maps.app.goo.gl/jG5SvHQvDozB4puc7"
                   rel="noopener noreferrer"
                   target="_blank"
                 >
-                  Ver ubicación en Google Maps
+                  <Image
+                    src="/metalwolft-location-map.jpg"
+                    alt=""
+                    width={440}
+                    height={248}
+                    sizes="220px"
+                  />
                 </a>
               </div>
             </div>

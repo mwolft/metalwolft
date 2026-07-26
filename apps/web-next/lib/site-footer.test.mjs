@@ -1,18 +1,18 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 
-const [footer, styles, packageJson, legal, changesPolicy] = await Promise.all([
+const [footer, styles, packageJson, legal, changesPolicy, mapThumbnail] = await Promise.all([
   readFile(new URL("../components/layout/SiteFooter.tsx", import.meta.url), "utf8"),
   readFile(new URL("../app/globals.css", import.meta.url), "utf8"),
   readFile(new URL("../package.json", import.meta.url), "utf8"),
   readFile(new URL("./legal.ts", import.meta.url), "utf8"),
-  readFile(new URL("../app/cambios-politica-cookies/page.tsx", import.meta.url), "utf8")
+  readFile(new URL("../app/cambios-politica-cookies/page.tsx", import.meta.url), "utf8"),
+  readFile(new URL("../public/metalwolft-location-map.jpg", import.meta.url))
 ]);
 
 for (const content of [
   "Carretera de Porzuna, km 1,8",
-  "13005 Ciudad Real · España",
-  "Ver ubicación en Google Maps"
+  "13005 Ciudad Real · España"
 ]) {
   assert.match(footer, new RegExp(content.replace(".", "\\.")));
 }
@@ -30,7 +30,14 @@ const brandStart = footer.indexOf('className="mw-footer__brand"');
 const catalogStart = footer.indexOf('aria-label="Catálogo de rejas"');
 const brandBlock = footer.slice(brandStart, catalogStart);
 assert.match(brandBlock, /className="mw-footer__brand-location"/);
-assert.match(brandBlock, /Ver ubicación en Google Maps/);
+assert.match(brandBlock, /aria-label="Ver ubicación de MetalWolft en Google Maps"/);
+assert.match(brandBlock, /className="mw-footer__map-preview"/);
+assert.match(
+  brandBlock,
+  /<Image\s+src="\/metalwolft-location-map\.jpg"\s+alt=""\s+width=\{440\}\s+height=\{248\}\s+sizes="220px"/
+);
+assert.doesNotMatch(brandBlock, />\s*Ver ubicación en Google Maps\s*</);
+assert.doesNotMatch(footer, /<iframe|maps\.googleapis\.com|maps\/api/);
 assert.doesNotMatch(footer, /<p className="mw-footer__section-title">Ubicación<\/p>/);
 assert.doesNotMatch(footer, /mw-footer__copy|Castilla-La Mancha/);
 assert.doesNotMatch(footer, /legacyAdminUrl|showDevelopmentAdminLink|React Admin desarrollo/);
@@ -42,6 +49,14 @@ assert.match(
 assert.doesNotMatch(styles, /\.mw-footer__copy|\.mw-footer__location(?:\s|\{|-)/);
 assert.match(styles, /@media \(max-width:\s*900px\)[\s\S]*?\.mw-footer__grid\s*{[^}]*repeat\(2,/);
 assert.match(styles, /@media \(max-width:\s*640px\)[\s\S]*?\.mw-footer__grid\s*{[^}]*grid-template-columns:\s*1fr/);
+assert.match(
+  styles,
+  /\.mw-footer__map-preview\s*{[^}]*width:\s*min\(220px, 100%\);[^}]*aspect-ratio:\s*16 \/ 9;[^}]*border-radius:\s*12px;/s
+);
+assert.match(styles, /\.mw-footer__map-preview img\s*{[^}]*object-fit:\s*cover/s);
+assert.match(styles, /\.mw-footer__map-preview:hover,[\s\S]*?scale\(1\.02\)/);
+
+assert.deepEqual([...mapThumbnail.subarray(0, 3)], [255, 216, 255]);
 
 assert.match(legal, /href:\s*"\/cambios-politica-cookies"/);
 assert.match(changesPolicy, /const PATH = "\/cambios-politica-cookies"/);
