@@ -22,9 +22,6 @@ html {
 
 body {
   margin: 0;
-  background:
-    radial-gradient(circle at 20% 0%, rgba(255, 50, 77, 0.06), transparent 35%),
-    linear-gradient(180deg, #ffffff 0%, #fcfbfb 100%);
   color: var(--mw-text);
   font-family: Georgia, "Times New Roman", serif;
 }
@@ -677,9 +674,6 @@ textarea:focus-visible {
   display: grid;
   gap: 1rem;
   padding: 1rem;
-  background:
-    radial-gradient(circle at top right, rgba(255, 50, 77, 0.1), transparent 34%),
-    rgba(255, 255, 255, 0.96);
 }
 
 .mw-home-hero__image {
