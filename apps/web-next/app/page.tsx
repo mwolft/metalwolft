@@ -360,16 +360,17 @@ export default async function HomePage() {
               width={84}
               height={56}
             />
-            <strong>Ayuda por WhatsApp</strong>
+            <strong>
+              <a
+                className="mw-home-trust__link"
+                href={contactLinks.whatsapp}
+                rel="noopener noreferrer"
+                target="_blank"
+              >
+                Ayuda por WhatsApp
+              </a>
+            </strong>
             <span>Resolvemos dudas antes de elegir modelo, medidas o anclaje.</span>
-            <a
-              className="mw-home-trust__link"
-              href={contactLinks.whatsapp}
-              rel="noopener noreferrer"
-              target="_blank"
-            >
-              Hablar por WhatsApp
-            </a>
           </article>
           <article className="mw-home-trust__item">
             <Image
@@ -381,8 +382,7 @@ export default async function HomePage() {
             />
             <strong>Instalación sencilla</strong>
             <span>
-              Se instala fácilmente con un taladro y la tornillería especial incluida, sin
-              necesidad de realizar obra.
+              Con un taladro y la tornillería especial incluida, sin necesidad de realizar obra.
             </span>
           </article>
         </section>
