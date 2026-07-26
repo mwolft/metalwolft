@@ -42,18 +42,18 @@ const HOME_FEATURED_MODELS = [
     orientation: "Ideal para estilos modernos"
   },
   {
-    slug: "reja-fija-clasica-charleston",
-    badge: "Clásica",
+    slug: "reja-fija-idaho",
+    badge: "Robusta",
     description:
-      "Estilo clásico con barrotes decorados para una presencia más tradicional.",
-    orientation: "Ideal para viviendas tradicionales"
+      "Diseño moderno con tubos cuadrados horizontales para una estética limpia y sólida.",
+    orientation: "Ideal para líneas rectas y robustas"
   },
   {
-    slug: "reja-fija-orleans-clasica",
-    badge: "Decorativa",
+    slug: "reja-abatible-essex",
+    badge: "Abatible",
     description:
-      "Diseño ornamental con pletina central para una estética clásica y reforzada.",
-    orientation: "Ideal para un acabado ornamental"
+      "Diseño vertical con apertura para facilitar la limpieza y ventilación de la ventana.",
+    orientation: "Ideal si necesitas acceso a la ventana"
   }
 ] as const;
 

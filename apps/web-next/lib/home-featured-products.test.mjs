@@ -11,8 +11,8 @@ const editorialEnd = home.indexOf("] as const;", editorialStart);
 const editorialBlock = home.slice(editorialStart, editorialEnd);
 const slugs = [
   "reja-fija-albany",
-  "reja-fija-clasica-charleston",
-  "reja-fija-orleans-clasica"
+  "reja-fija-idaho",
+  "reja-abatible-essex"
 ];
 
 assert.ok(editorialStart >= 0 && editorialEnd > editorialStart);
@@ -23,11 +23,11 @@ assert.deepEqual(
 
 for (const content of [
   "Minimalista",
-  "Clásica",
-  "Decorativa",
+  "Robusta",
+  "Abatible",
   "Ideal para estilos modernos",
-  "Ideal para viviendas tradicionales",
-  "Ideal para un acabado ornamental"
+  "Ideal para líneas rectas y robustas",
+  "Ideal si necesitas acceso a la ventana"
 ]) {
   assert.match(editorialBlock, new RegExp(content));
 }
