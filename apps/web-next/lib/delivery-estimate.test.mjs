@@ -138,12 +138,12 @@ for (const categorySource of [sources.mainCategory, sources.dynamicCategory]) {
 assert.equal((sources.mainCategory.match(/variant="category"/g) || []).length, 1);
 assert.equal((sources.dynamicCategory.match(/variant="banner"/g) || []).length, 1);
 assert.match(sources.component, /src="\/icons\/plazos-de-entrega\.webp"/);
-assert.match(sources.component, /PLAZO ESTIMADO ACTUALIZADO/);
-assert.match(sources.component, /Entrega prevista para pedidos realizados hoy/);
+assert.doesNotMatch(sources.component, /PLAZO ESTIMADO ACTUALIZADO/);
+assert.match(sources.component, /Entrega estimada para pedidos realizados hoy/);
 assert.match(sources.component, /\{dateRange\}/);
-assert.match(sources.component, /Calculamos esta previsión automáticamente según la carga actual de producción\./);
-assert.match(sources.component, /Incluye la fabricación de tu reja a medida y la entrega prevista en domicilio\./);
-assert.match(sources.component, /El plazo puede variar según el modelo, la configuración y el destino\./);
+assert.match(sources.component, /Previsión calculada según la carga actual del taller\./);
+assert.match(sources.component, /Incluye la fabricación a medida/);
+assert.match(sources.component, /y la entrega en domicilio, y puede variar según la configuración y el destino\./);
 assert.match(sources.component, /href="\/plazos-entrega-rejas-a-medida"/);
 assert.match(sources.component, /Cómo calculamos los plazos de entrega/);
 assert.doesNotMatch(sources.component, /entrega garantizada|fecha garantizada/i);

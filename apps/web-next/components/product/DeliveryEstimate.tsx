@@ -44,32 +44,26 @@ export function DeliveryEstimate({
           <Image
             src="/icons/plazos-de-entrega.webp"
             alt=""
-            width={48}
-            height={48}
+            width={42}
+            height={42}
             className="mw-delivery-estimate__icon"
           />
-          <div>
-            <p className="mw-delivery-estimate__eyebrow">PLAZO ESTIMADO ACTUALIZADO</p>
-            <h2 className="mw-delivery-estimate__title">
-              Entrega prevista para pedidos realizados hoy
-            </h2>
-            <p className="mw-delivery-estimate__range">
-              <strong>{dateRange}</strong>
-            </p>
-            <p className="mw-delivery-estimate__description">
-              Calculamos esta previsión automáticamente según la carga actual de producción.
-              Incluye la fabricación de tu reja a medida y la entrega prevista en domicilio.
-            </p>
-            <p className="mw-delivery-estimate__detail">
-              El plazo puede variar según el modelo, la configuración y el destino.
-            </p>
-            <Link
-              href="/plazos-entrega-rejas-a-medida"
-              className="mw-delivery-estimate__link"
-            >
-              Cómo calculamos los plazos de entrega
-            </Link>
-          </div>
+          <h2 className="mw-delivery-estimate__title">
+            Entrega estimada para pedidos realizados hoy
+          </h2>
+          <p className="mw-delivery-estimate__range">
+            <strong>{dateRange}</strong>
+          </p>
+          <p className="mw-delivery-estimate__description">
+            Previsión calculada según la carga actual del taller. Incluye la fabricación a medida
+            y la entrega en domicilio, y puede variar según la configuración y el destino.
+          </p>
+          <Link
+            href="/plazos-entrega-rejas-a-medida"
+            className="mw-delivery-estimate__link"
+          >
+            Cómo calculamos los plazos de entrega
+          </Link>
         </div>
       ) : variant === "banner" ? (
         <>
