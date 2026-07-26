@@ -1,13 +1,10 @@
 import Link from "next/link";
 import { PageContainer } from "@/components/layout/PageContainer";
 import { contactDetails, contactLinks } from "@/lib/contact";
-import { legacyAdminUrl } from "@/lib/legacy-app";
 import { legalFooterLinks } from "@/lib/legal";
 import { footerCatalogLinks, footerGuideLinks } from "@/lib/navigation";
 
 export function SiteFooter() {
-  const showDevelopmentAdminLink = process.env.NODE_ENV !== "production";
-
   return (
     <footer className="mw-footer">
       <PageContainer>
@@ -15,11 +12,35 @@ export function SiteFooter() {
           <div className="mw-footer__brand">
             <p className="mw-footer__eyebrow">MetalWolft</p>
             <p className="mw-footer__title">Rejas para ventanas a medida</p>
-            <p className="mw-footer__copy">
-              Fabricamos rejas para ventanas a medida con atención directa desde taller,
-              guías claras para medir bien y una compra más enfocada en lo que realmente
-              necesita la vivienda.
-            </p>
+            <div className="mw-footer__brand-location">
+              <svg
+                aria-hidden="true"
+                className="mw-footer__brand-location-icon"
+                fill="none"
+                focusable="false"
+                stroke="currentColor"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth="2"
+                viewBox="0 0 24 24"
+              >
+                <path d="M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0" />
+                <circle cx="12" cy="10" r="3" />
+              </svg>
+              <div>
+                <address>
+                  <span>Carretera de Porzuna, km 1,8</span>
+                  <span>13005 Ciudad Real · España</span>
+                </address>
+                <a
+                  href="https://maps.app.goo.gl/jG5SvHQvDozB4puc7"
+                  rel="noopener noreferrer"
+                  target="_blank"
+                >
+                  Ver ubicación en Google Maps
+                </a>
+              </div>
+            </div>
           </div>
 
           <nav className="mw-footer__section" aria-label="Catálogo de rejas">
@@ -56,41 +77,6 @@ export function SiteFooter() {
             </div>
           </div>
 
-          <div className="mw-footer__section">
-            <p className="mw-footer__section-title">Ubicación</p>
-            <div className="mw-footer__links mw-footer__location">
-              <div className="mw-footer__location-address">
-                <svg
-                  aria-hidden="true"
-                  className="mw-footer__location-icon"
-                  fill="none"
-                  focusable="false"
-                  stroke="currentColor"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth="2"
-                  viewBox="0 0 24 24"
-                >
-                  <path d="M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0" />
-                  <circle cx="12" cy="10" r="3" />
-                </svg>
-                <address>
-                  <span>Carretera de Porzuna, km 1,8</span>
-                  <span>13005 · Ciudad Real</span>
-                  <span>Castilla-La Mancha · España</span>
-                </address>
-              </div>
-              <p>Fabricamos y enviamos pedidos a toda España desde nuestro taller de Ciudad Real.</p>
-              <a
-                href="https://maps.app.goo.gl/jG5SvHQvDozB4puc7"
-                rel="noopener noreferrer"
-                target="_blank"
-              >
-                Ver ubicación en Google Maps
-              </a>
-            </div>
-          </div>
-
           <nav className="mw-footer__section" aria-label="Enlaces legales">
             <p className="mw-footer__section-title">Legales</p>
             <div className="mw-footer__links">
@@ -99,11 +85,6 @@ export function SiteFooter() {
                   {link.label}
                 </Link>
               ))}
-              {showDevelopmentAdminLink ? (
-                <a href={legacyAdminUrl} rel="nofollow noreferrer" target="_blank">
-                  React Admin desarrollo
-                </a>
-              ) : null}
             </div>
           </nav>
         </div>
