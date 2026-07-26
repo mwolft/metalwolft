@@ -1928,7 +1928,7 @@ textarea:focus-visible {
 
 .mw-footer__grid {
   display: grid;
-  grid-template-columns: minmax(0, 1.35fr) repeat(4, minmax(0, 1fr));
+  grid-template-columns: minmax(0, 1.35fr) repeat(5, minmax(0, 1fr));
   gap: 1.5rem;
   padding: 2rem 0;
 }
@@ -1988,6 +1988,34 @@ textarea:focus-visible {
 .mw-footer__links a:hover,
 .mw-footer__links a:focus-visible {
   color: var(--mw-accent-dark);
+}
+
+.mw-footer__location {
+  color: var(--mw-muted);
+  line-height: 1.6;
+}
+
+.mw-footer__location-address {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+}
+
+.mw-footer__location-address address,
+.mw-footer__location p {
+  margin: 0;
+  font-style: normal;
+}
+
+.mw-footer__location-address span {
+  display: block;
+}
+
+.mw-footer__location-icon {
+  width: 18px;
+  height: 18px;
+  flex: 0 0 auto;
+  margin-top: 0.2rem;
 }
 
 .mw-contact-grid {

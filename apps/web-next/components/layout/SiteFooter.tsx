@@ -56,6 +56,41 @@ export function SiteFooter() {
             </div>
           </div>
 
+          <div className="mw-footer__section">
+            <p className="mw-footer__section-title">Ubicación</p>
+            <div className="mw-footer__links mw-footer__location">
+              <div className="mw-footer__location-address">
+                <svg
+                  aria-hidden="true"
+                  className="mw-footer__location-icon"
+                  fill="none"
+                  focusable="false"
+                  stroke="currentColor"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2"
+                  viewBox="0 0 24 24"
+                >
+                  <path d="M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0" />
+                  <circle cx="12" cy="10" r="3" />
+                </svg>
+                <address>
+                  <span>Carretera de Porzuna, km 1,8</span>
+                  <span>13005 · Ciudad Real</span>
+                  <span>Castilla-La Mancha · España</span>
+                </address>
+              </div>
+              <p>Fabricamos y enviamos pedidos a toda España desde nuestro taller de Ciudad Real.</p>
+              <a
+                href="https://maps.app.goo.gl/jG5SvHQvDozB4puc7"
+                rel="noopener noreferrer"
+                target="_blank"
+              >
+                Ver ubicación en Google Maps
+              </a>
+            </div>
+          </div>
+
           <nav className="mw-footer__section" aria-label="Enlaces legales">
             <p className="mw-footer__section-title">Legales</p>
             <div className="mw-footer__links">
