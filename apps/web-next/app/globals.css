@@ -2155,8 +2155,8 @@ textarea:focus-visible {
 }
 
 .mw-footer {
-  border-top: 1px solid rgba(255, 50, 77, 0.1);
-  background: #faf8f7;
+  border-top: 1px solid rgba(31, 41, 55, 0.1);
+  background: #f3f4f6;
 }
 
 .mw-footer__grid {
