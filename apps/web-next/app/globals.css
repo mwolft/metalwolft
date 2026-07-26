@@ -1928,7 +1928,7 @@ textarea:focus-visible {
 
 .mw-footer__grid {
   display: grid;
-  grid-template-columns: minmax(440px, 1.35fr) repeat(4, minmax(0, 1fr));
+  grid-template-columns: minmax(400px, 1.35fr) repeat(4, minmax(0, 1fr));
   gap: 1.5rem;
   padding: 2rem 0;
 }
@@ -1978,6 +1978,7 @@ textarea:focus-visible {
 .mw-footer__links a {
   color: var(--mw-muted);
   line-height: 1.6;
+  overflow-wrap: anywhere;
 }
 
 .mw-footer__links a:hover,
@@ -1986,7 +1987,8 @@ textarea:focus-visible {
 }
 
 .mw-footer__brand-location {
-  display: flex;
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr);
   align-items: flex-start;
   gap: 0.5rem;
   margin-top: 1rem;
@@ -1997,6 +1999,10 @@ textarea:focus-visible {
 .mw-footer__brand-location address {
   margin: 0;
   font-style: normal;
+}
+
+.mw-footer__brand-location-details {
+  grid-column: 2;
 }
 
 .mw-footer__brand-location span {
@@ -2015,7 +2021,8 @@ textarea:focus-visible {
 }
 
 .mw-footer__map-preview {
-  width: min(440px, 100%);
+  grid-column: 1 / -1;
+  width: min(400px, 100%);
   aspect-ratio: 16 / 9;
   overflow: hidden;
   border: 1px solid rgba(209, 213, 219, 0.88);

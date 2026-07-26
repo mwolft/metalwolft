@@ -28,27 +28,27 @@ export function SiteFooter() {
                 <path d="M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0" />
                 <circle cx="12" cy="10" r="3" />
               </svg>
-              <div>
+              <div className="mw-footer__brand-location-details">
                 <address>
                   <span>Carretera de Porzuna, km 1,8</span>
                   <span>13005 Ciudad Real · España</span>
                 </address>
-                <a
-                  aria-label="Ver ubicación de MetalWolft en Google Maps"
-                  className="mw-footer__map-preview"
-                  href="https://maps.app.goo.gl/jG5SvHQvDozB4puc7"
-                  rel="noopener noreferrer"
-                  target="_blank"
-                >
-                  <Image
-                    src="/metalwolft-location-map.jpg"
-                    alt=""
-                    width={880}
-                    height={495}
-                    sizes="(max-width: 640px) 100vw, 440px"
-                  />
-                </a>
               </div>
+              <a
+                aria-label="Ver ubicación de MetalWolft en Google Maps"
+                className="mw-footer__map-preview"
+                href="https://maps.app.goo.gl/jG5SvHQvDozB4puc7"
+                rel="noopener noreferrer"
+                target="_blank"
+              >
+                <Image
+                  src="/metalwolft-location-map.jpg"
+                  alt=""
+                  width={800}
+                  height={450}
+                  sizes="(max-width: 640px) 100vw, 400px"
+                />
+              </a>
             </div>
           </div>
 
