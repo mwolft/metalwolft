@@ -660,6 +660,11 @@ textarea:focus-visible {
   box-shadow: none;
 }
 
+.mw-home-product-card,
+.mw-home-feature-card {
+  box-shadow: none;
+}
+
 .mw-home-hero__copy {
   padding: 2.4rem;
   box-shadow: none;
@@ -849,7 +854,6 @@ textarea:focus-visible {
   .mw-home-product-card:hover,
   .mw-home-product-card:focus-within {
     transform: translateY(-4px);
-    box-shadow: 0 22px 56px rgba(31, 41, 55, 0.13);
   }
 
   .mw-home-product-card:hover .mw-home-product-card__media img,
