@@ -655,6 +655,11 @@ textarea:focus-visible {
   box-shadow: var(--mw-shadow);
 }
 
+.mw-home-hero__route,
+.mw-home-trust__item {
+  box-shadow: none;
+}
+
 .mw-home-hero__copy {
   padding: 2.4rem;
   box-shadow: none;
