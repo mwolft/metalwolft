@@ -44,8 +44,8 @@ export function DeliveryEstimate({
           <Image
             src="/icons/plazos-de-entrega.webp"
             alt=""
-            width={42}
-            height={42}
+            width={80}
+            height={80}
             className="mw-delivery-estimate__icon"
           />
           <h2 className="mw-delivery-estimate__title">
@@ -55,14 +55,15 @@ export function DeliveryEstimate({
             <strong>{dateRange}</strong>
           </p>
           <p className="mw-delivery-estimate__description">
-            Previsión calculada según la carga actual del taller. Incluye la fabricación a medida
-            y la entrega en domicilio, y puede variar según la configuración y el destino.
+            Previsión calculada según la carga actual del taller. Puede ampliarse en pedidos de
+            grandes dimensiones o para determinados destinos.
           </p>
           <Link
             href="/plazos-entrega-rejas-a-medida"
             className="mw-delivery-estimate__link"
+            aria-label="Leer más sobre cómo calculamos los plazos de entrega"
           >
-            Cómo calculamos los plazos de entrega
+            Leer más
           </Link>
         </div>
       ) : variant === "banner" ? (
