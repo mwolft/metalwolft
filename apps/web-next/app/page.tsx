@@ -29,8 +29,7 @@ type HomeData = {
 };
 
 const CATEGORY_SLUG = "rejas-para-ventanas";
-const HERO_IMAGE_PATH =
-  "https://res.cloudinary.com/dewanllxn/image/upload/v1784571378/rejas-para-ventanas_cy7ecp.webp";
+const HERO_IMAGE_PATH = "/images/home/rejas-para-ventanas.webp";
 const CATALOG_LOG_DEDUPLICATION_MS = 60_000;
 const lastCatalogLogAt: Partial<Record<"products" | "categories", number>> = {};
 const HOME_FEATURED_MODELS = [
