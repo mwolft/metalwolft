@@ -17,18 +17,19 @@ for (const title of [
   assert.match(home, new RegExp(title));
 }
 
-for (const imagePath of [
-  "/icons/rejas-a-medida.png",
-  "/icons/envios-peninsula.png",
-  "/icons/soporte- whatsApp.png",
-  "/icons/sin-obra.png"
+for (const icon of [
+  "RulerDimensionLine",
+  "Truck",
+  "MessageCircleQuestionMark",
+  "Drill"
 ]) {
-  assert.match(home, new RegExp(`src="${imagePath.replace(".", "\\.")}"`));
+  assert.match(
+    home,
+    new RegExp(`<${icon}[\\s\\S]*?aria-hidden="true"[\\s\\S]*?className="mw-home-trust__icon"[\\s\\S]*?size=\\{30\\}[\\s\\S]*?strokeWidth=\\{1\\.75\\}`)
+  );
 }
 assert.equal((home.match(/className="mw-home-trust__icon"/g) || []).length, 4);
-assert.equal((home.match(/alt=""/g) || []).length >= 4, true);
-assert.equal((home.match(/width=\{64\}/g) || []).length, 4);
-assert.equal((home.match(/height=\{43\}/g) || []).length, 4);
+assert.doesNotMatch(home, /src="\/icons\/(?:rejas-a-medida|envios-peninsula|soporte- whatsApp|sin-obra)\.png"/);
 assert.match(home, /href=\{contactLinks\.whatsapp\}/);
 assert.match(home, /rel="noopener noreferrer"/);
 assert.match(home, /target="_blank"/);
@@ -36,13 +37,14 @@ assert.match(home, />\s*Hablar por WhatsApp\s*</);
 assert.doesNotMatch(home, /^"use client";/);
 
 assert.match(contact, /whatsapp:\s*`https:\/\/wa\.me\/\$\{contactDetails\.phoneRaw\}/);
-assert.match(styles, /\.mw-home-trust__icon\s*{[^}]*width:\s*64px;[^}]*height:\s*43px;[^}]*object-fit:\s*contain/s);
+assert.match(styles, /\.mw-home-trust__icon\s*{[^}]*width:\s*30px;[^}]*height:\s*30px;[^}]*color:\s*var\(--mw-text\)/s);
 assert.match(styles, /\.mw-home-trust__link\s*{[^}]*min-height:\s*44px/s);
 
 const dependencies = {
   ...JSON.parse(packageJson).dependencies,
   ...JSON.parse(packageJson).devDependencies
 };
-assert.equal(Object.keys(dependencies).some((name) => /lucide|heroicons|tabler/i.test(name)), false);
+assert.equal(dependencies["lucide-react"], "1.26.0");
+assert.equal(Object.keys(dependencies).some((name) => /heroicons|tabler/i.test(name)), false);
 
 console.log("Home trust assertions passed");

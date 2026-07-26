@@ -1,6 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import type { Metadata } from "next";
+import { Drill, MessageCircleQuestionMark, RulerDimensionLine, Truck } from "lucide-react";
 import { PageContainer } from "@/components/layout/PageContainer";
 import { JsonLd } from "@/components/seo/JsonLd";
 import { contactDetails, contactLinks } from "@/lib/contact";
@@ -331,34 +332,31 @@ export default async function HomePage() {
 
         <section className="mw-home-trust" aria-label="Puntos de confianza">
           <article className="mw-home-trust__item">
-            <Image
+            <RulerDimensionLine
+              aria-hidden="true"
               className="mw-home-trust__icon"
-              src="/icons/rejas-a-medida.png"
-              alt=""
-              width={64}
-              height={43}
+              size={30}
+              strokeWidth={1.75}
             />
             <strong>Fabricación a medida</strong>
             <span>Cada reja se fabrica según el hueco real de tu ventana.</span>
           </article>
           <article className="mw-home-trust__item">
-            <Image
+            <Truck
+              aria-hidden="true"
               className="mw-home-trust__icon"
-              src="/icons/envios-peninsula.png"
-              alt=""
-              width={64}
-              height={43}
+              size={30}
+              strokeWidth={1.75}
             />
             <strong>Envío peninsular</strong>
             <span>Entregamos los pedidos online en España peninsular.</span>
           </article>
           <article className="mw-home-trust__item">
-            <Image
+            <MessageCircleQuestionMark
+              aria-hidden="true"
               className="mw-home-trust__icon"
-              src="/icons/soporte- whatsApp.png"
-              alt=""
-              width={64}
-              height={43}
+              size={30}
+              strokeWidth={1.75}
             />
             <strong>Ayuda por WhatsApp</strong>
             <span>Resolvemos dudas antes de elegir modelo, medidas o anclaje.</span>
@@ -372,12 +370,11 @@ export default async function HomePage() {
             </a>
           </article>
           <article className="mw-home-trust__item">
-            <Image
+            <Drill
+              aria-hidden="true"
               className="mw-home-trust__icon"
-              src="/icons/sin-obra.png"
-              alt=""
-              width={64}
-              height={43}
+              size={30}
+              strokeWidth={1.75}
             />
             <strong>Sin instalación incluida</strong>
             <span>Fabricamos y enviamos la reja; tú organizas su instalación.</span>
