@@ -47,6 +47,10 @@ assert.match(
 );
 assert.match(
   styles,
+  /\.mw-cart-steps li::after\s*{[^}]*border-top:\s*1px solid var\(--mw-cart-step-border\);[^}]*border-right:\s*1px solid var\(--mw-cart-step-border\);[^}]*transform:\s*translateY\(-50%\) rotate\(45deg\);/s
+);
+assert.match(
+  styles,
   /\.mw-cart-config__color-swatch\s*{[^}]*border:\s*1px solid[^}]*border-radius:\s*999px;[^}]*background-color:\s*var\(--mw-cart-config-color\);/s
 );
 assert.match(
@@ -54,4 +58,4 @@ assert.match(
   /\.mw-configurator-swatch--forja \.mw-configurator-swatch__dot,\s*\.mw-cart-config__color-swatch--forja\s*{[^}]*background-image:/s
 );
 
-console.log("23 cart item visual assertions passed");
+console.log("24 cart item visual assertions passed");
