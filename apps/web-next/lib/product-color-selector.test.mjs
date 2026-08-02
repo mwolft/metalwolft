@@ -54,7 +54,7 @@ assert.match(styles, /\.mw-configurator-swatches\s*{[^}]*display:\s*flex;[^}]*fl
 assert.match(styles, /\.mw-configurator-swatch\s*{[^}]*width:\s*44px;[^}]*height:\s*44px;/s);
 assert.match(styles, /\.mw-configurator-swatch__dot\s*{[^}]*width:\s*36px;[^}]*height:\s*36px;/s);
 assert.match(styles, /\.mw-configurator-swatch\.is-selected \.mw-configurator-swatch__dot\s*{[^}]*box-shadow:/s);
-assert.match(styles, /\.mw-configurator-color-preview\s*{[^}]*width:\s*72px;[^}]*height:\s*52px;/s);
-assert.match(styles, /\.mw-configurator-selected-color\s*{[^}]*display:\s*flex;[^}]*align-items:\s*center;/s);
+assert.match(styles, /\.mw-configurator-color-preview\s*{[^}]*width:\s*100%;[^}]*height:\s*72px;/s);
+assert.match(styles, /\.mw-configurator-selected-color\s*{[^}]*display:\s*grid;[^}]*gap:\s*0\.4rem;/s);
 
 console.log("25 product color selector assertions passed");

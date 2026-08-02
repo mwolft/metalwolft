@@ -1638,9 +1638,8 @@ textarea:focus-visible {
 }
 
 .mw-configurator-selected-color {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
+  display: grid;
+  gap: 0.4rem;
 }
 
 .mw-configurator-selected-color strong {
@@ -1649,9 +1648,8 @@ textarea:focus-visible {
 }
 
 .mw-configurator-color-preview {
-  width: 72px;
-  height: 52px;
-  flex: 0 0 72px;
+  width: 100%;
+  height: 72px;
   border: 1px solid rgba(209, 213, 219, 0.95);
   border-radius: 12px;
   background-color: var(--mw-configurator-color);

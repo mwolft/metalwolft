@@ -873,6 +873,7 @@ export function ProductConfigurator({
         </fieldset>
 
         <div className="mw-configurator-selected-color">
+          <strong>{selectedColor?.label ?? "Cargando..."}</strong>
           <div
             className={`mw-configurator-color-preview${
               activeColorVisual.swatchClass === "forja"
@@ -882,7 +883,6 @@ export function ProductConfigurator({
             style={previewStyle}
             aria-hidden="true"
           />
-          <strong>{selectedColor?.label ?? "Cargando..."}</strong>
         </div>
 
         <div className="mw-configurator-calculate">
