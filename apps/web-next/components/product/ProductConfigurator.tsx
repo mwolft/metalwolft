@@ -310,7 +310,6 @@ export function ProductConfigurator({
   const controlsDisabled = !configurationReady;
   const activeColorValue = previewColor ?? color;
   const activeColorVisual = getColorVisual(activeColorValue);
-  const selectedColor = configuredColors.find((option) => option.value === color);
   const dimensionError = productConfiguration
     ? getDimensionValidationError(height, width, productConfiguration.dimensions)
     : "";
@@ -850,6 +849,11 @@ export function ProductConfigurator({
                     }${color === option.value ? " is-selected" : ""}`}
                     style={{ "--mw-configurator-color": option.hex } as ColorStyle}
                     aria-pressed={color === option.value}
+                    aria-label={
+                      option.value === "forja_negro"
+                        ? `${option.label}, recomendado por MetalWolft`
+                        : option.label
+                    }
                     onMouseEnter={() => setPreviewColor(option.value)}
                     onMouseLeave={() => setPreviewColor(null)}
                     onFocus={() => setPreviewColor(option.value)}
@@ -864,7 +868,20 @@ export function ProductConfigurator({
                     }}
                   >
                     <span className="mw-configurator-swatch__dot" aria-hidden="true" />
-                    <span className="mw-visually-hidden">{option.label}</span>
+                    {option.value === "forja_negro" ? (
+                      <>
+                        <span
+                          className="mw-configurator-swatch__recommendation-marker"
+                          aria-hidden="true"
+                        />
+                        <span
+                          className="mw-configurator-swatch__recommendation-hint"
+                          aria-hidden="true"
+                        >
+                          Negro forja · Recomendado
+                        </span>
+                      </>
+                    ) : null}
                   </button>
                 ))}
               </div>
@@ -873,7 +890,6 @@ export function ProductConfigurator({
         </fieldset>
 
         <div className="mw-configurator-selected-color">
-          <strong>{selectedColor?.label ?? "Cargando..."}</strong>
           <div
             className={`mw-configurator-color-preview${
               activeColorVisual.swatchClass === "forja"
@@ -883,6 +899,11 @@ export function ProductConfigurator({
             style={previewStyle}
             aria-hidden="true"
           />
+          {color === "forja_negro" ? (
+            <p className="mw-configurator-color-recommendation">
+              Recomendado por MetalWolft
+            </p>
+          ) : null}
         </div>
 
         <div className="mw-configurator-calculate">

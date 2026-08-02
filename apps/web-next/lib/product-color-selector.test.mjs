@@ -16,6 +16,8 @@ const colorsByFinish = Object.groupBy(enabledColors, (option) => option.finish);
 assert.equal(enabledColors.length, 10);
 assert.equal(colorsByFinish.liso.length, 4);
 assert.equal(colorsByFinish.forja.length, 6);
+assert.equal(configuration.defaults.color, "satinado_blanco");
+assert.equal(enabledColors.find((option) => option.value === "forja_negro")?.label, "Negro forja");
 assert.deepEqual(
   enabledColors.map((option) => option.value),
   [
@@ -38,7 +40,9 @@ assert.match(source, /<fieldset className="mw-configurator-colors">/);
 assert.match(source, /<legend>Color<\/legend>/);
 assert.match(source, /type="button"/);
 assert.match(source, /aria-pressed={color === option\.value}/);
-assert.match(source, /className="mw-visually-hidden">{option\.label}/);
+assert.match(source, /option\.label}, recomendado por MetalWolft/);
+assert.match(source, /Negro forja · Recomendado/);
+assert.match(source, /className="mw-configurator-swatch__recommendation-marker"/);
 assert.match(source, /setColor\(option\.value\)/);
 assert.match(source, /invalidateCalculatedPrice\(\)/);
 assert.match(source, /color,/);
@@ -47,8 +51,11 @@ assert.match(source, /onFocus=\{\(\) => setPreviewColor\(option\.value\)\}/);
 assert.match(source, /onMouseLeave=\{\(\) => setPreviewColor\(null\)\}/);
 assert.match(source, /onBlur=\{\(\) => setPreviewColor\(null\)\}/);
 assert.match(source, /className={`mw-configurator-color-preview/);
-assert.match(source, /selectedColor\?\.label \?\? "Cargando\.\.\."/);
+assert.doesNotMatch(source, /selectedColor\?\.label \?\? "Cargando\.\.\."/);
+assert.match(source, /color === "forja_negro"/);
+assert.match(source, /Recomendado por MetalWolft/);
 assert.doesNotMatch(source, /Seleccionado:/);
+assert.doesNotMatch(source, /setColor\("forja_negro"\)/);
 
 assert.match(styles, /\.mw-configurator-swatches\s*{[^}]*display:\s*flex;[^}]*flex-wrap:\s*wrap;/s);
 assert.match(styles, /\.mw-configurator-swatch\s*{[^}]*width:\s*44px;[^}]*height:\s*44px;/s);
@@ -56,5 +63,8 @@ assert.match(styles, /\.mw-configurator-swatch__dot\s*{[^}]*width:\s*36px;[^}]*h
 assert.match(styles, /\.mw-configurator-swatch\.is-selected \.mw-configurator-swatch__dot\s*{[^}]*box-shadow:/s);
 assert.match(styles, /\.mw-configurator-color-preview\s*{[^}]*width:\s*100%;[^}]*height:\s*72px;/s);
 assert.match(styles, /\.mw-configurator-selected-color\s*{[^}]*display:\s*grid;[^}]*gap:\s*0\.4rem;/s);
+assert.match(styles, /\.mw-configurator-swatch__recommendation-marker\s*{[^}]*background:\s*var\(--mw-accent\);/s);
+assert.match(styles, /\.mw-configurator-swatch:focus-visible \.mw-configurator-swatch__recommendation-hint/);
+assert.match(styles, /\.mw-configurator-color-recommendation\s*{[^}]*font-size:\s*0\.78rem;[^}]*font-weight:\s*600;/s);
 
-console.log("25 product color selector assertions passed");
+console.log("34 product color selector assertions passed");
