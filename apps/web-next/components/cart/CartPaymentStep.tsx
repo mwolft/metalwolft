@@ -250,9 +250,6 @@ export function CartPaymentStep({ deliveryEstimate }: { deliveryEstimate?: React
 
           <CheckoutPaymentSummary quote={quote} />
           {deliveryEstimate}
-          <p className="mw-checkout-next-step">
-            Este importe procede del cálculo autoritativo de Flask.
-          </p>
         </div>
       </aside>
     </section>
