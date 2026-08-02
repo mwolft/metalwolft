@@ -618,7 +618,6 @@ textarea:focus-visible {
   border: 1px solid rgba(229, 231, 235, 0.92);
   border-radius: var(--mw-radius);
   background: rgba(255, 255, 255, 0.92);
-  box-shadow: var(--mw-shadow);
 }
 
 .mw-hero__copy {
@@ -1303,7 +1302,6 @@ textarea:focus-visible {
   border: 1px solid rgba(229, 231, 235, 0.92);
   border-radius: var(--mw-radius);
   background: rgba(255, 255, 255, 0.92);
-  box-shadow: var(--mw-shadow);
 }
 
 .mw-product-purchase-layout {
@@ -1335,7 +1333,6 @@ textarea:focus-visible {
   border: 1px solid rgba(229, 231, 235, 0.92);
   border-radius: var(--mw-radius);
   background: linear-gradient(145deg, #f8fafc, #fff);
-  box-shadow: var(--mw-shadow);
   touch-action: pan-y;
   user-select: none;
 }
