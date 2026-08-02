@@ -832,20 +832,6 @@ export function ProductConfigurator({
               ))}
             </select>
           </label>
-
-          <div className="mw-configurator-selected-color">
-            <span>Seleccionado:</span>
-            <strong>{selectedColor?.label ?? "Cargando..."}</strong>
-            <div
-              className={`mw-configurator-color-preview${
-                activeColorVisual.swatchClass === "forja"
-                  ? " mw-configurator-color-preview--forja"
-                  : ""
-              }`}
-              style={previewStyle}
-              aria-hidden="true"
-            />
-          </div>
         </div>
 
         <fieldset className="mw-configurator-colors">
@@ -878,13 +864,26 @@ export function ProductConfigurator({
                     }}
                   >
                     <span className="mw-configurator-swatch__dot" aria-hidden="true" />
-                    <span>{option.label}</span>
+                    <span className="mw-visually-hidden">{option.label}</span>
                   </button>
                 ))}
               </div>
             </div>
           ))}
         </fieldset>
+
+        <div className="mw-configurator-selected-color">
+          <div
+            className={`mw-configurator-color-preview${
+              activeColorVisual.swatchClass === "forja"
+                ? " mw-configurator-color-preview--forja"
+                : ""
+            }`}
+            style={previewStyle}
+            aria-hidden="true"
+          />
+          <strong>{selectedColor?.label ?? "Cargando..."}</strong>
+        </div>
 
         <div className="mw-configurator-calculate">
           <button
