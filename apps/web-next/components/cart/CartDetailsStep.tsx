@@ -526,7 +526,6 @@ export function CartDetailsStep({
           />
           <CheckoutTotals quote={quote} />
           {deliveryEstimate}
-          <p className="mw-checkout-next-step">El importe final se recalculará antes del pago.</p>
         </div>
       </aside>
     </section>
