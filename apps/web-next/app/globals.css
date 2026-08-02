@@ -1852,6 +1852,32 @@ textarea:focus-visible {
   line-height: inherit;
 }
 
+.mw-delivery-estimate--default,
+.mw-delivery-estimate--compact {
+  display: grid;
+  gap: 0.25rem;
+  margin: 0.9rem 0 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  font-size: 0.88rem;
+  line-height: 1.35;
+}
+
+.mw-delivery-estimate__primary {
+  color: var(--mw-text);
+  font-weight: 600;
+}
+
+.mw-delivery-estimate--default .mw-delivery-estimate__detail,
+.mw-delivery-estimate--compact .mw-delivery-estimate__detail {
+  margin-top: 0 !important;
+  color: var(--mw-muted);
+  font-size: 0.84rem;
+  line-height: 1.35;
+}
+
 .mw-delivery-estimate--banner {
   margin: 1.1rem 0 0;
   padding: 1rem 1.2rem;
@@ -1971,12 +1997,6 @@ textarea:focus-visible {
   .mw-delivery-estimate__range {
     white-space: nowrap;
   }
-}
-
-.mw-delivery-estimate--compact {
-  margin: 0.9rem 0 0;
-  padding: 0.75rem 0.85rem;
-  font-size: 0.86rem;
 }
 
 .mw-configurator-cart-actions {

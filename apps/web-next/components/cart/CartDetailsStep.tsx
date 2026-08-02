@@ -35,6 +35,7 @@ type CheckoutStatus = "loading" | "empty" | "ready" | "error";
 type CartDetailsStepProps = {
   loginNextPath?: string;
   backHref?: string;
+  deliveryEstimate?: ReactNode;
 };
 
 const colorLabels: Record<string, string> = {
@@ -96,7 +97,8 @@ function buildLoginHref(nextPath: string) {
 
 export function CartDetailsStep({
   loginNextPath = "/cart?step=details",
-  backHref = "/cart"
+  backHref = "/cart",
+  deliveryEstimate
 }: CartDetailsStepProps) {
   const router = useRouter();
   const [status, setStatus] = useState<CheckoutStatus>("loading");
@@ -523,6 +525,7 @@ export function CartDetailsStep({
             onRemove={handleRemoveDiscount}
           />
           <CheckoutTotals quote={quote} />
+          {deliveryEstimate}
           <p className="mw-checkout-next-step">El importe final se recalculará antes del pago.</p>
         </div>
       </aside>

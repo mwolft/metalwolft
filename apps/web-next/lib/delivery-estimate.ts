@@ -76,6 +76,17 @@ function civilDateKey(value: CivilDate) {
   return value.year * 10_000 + value.month * 100 + value.day;
 }
 
+function parseCivilDateRange(startValue: string, endValue: string) {
+  const startDate = parseCivilDate(startValue);
+  const endDate = parseCivilDate(endValue);
+
+  if (!startDate || !endDate || civilDateKey(startDate) > civilDateKey(endDate)) {
+    return null;
+  }
+
+  return { startDate, endDate };
+}
+
 export function parseDeliveryEstimate(payload: unknown): DeliveryEstimate | null {
   if (typeof payload !== "object" || payload === null) {
     return null;
@@ -109,12 +120,11 @@ export function formatCivilDateEs(value: string) {
 }
 
 export function formatCivilDateRangeEs(startValue: string, endValue: string) {
-  const startDate = parseCivilDate(startValue);
-  const endDate = parseCivilDate(endValue);
-
-  if (!startDate || !endDate || civilDateKey(startDate) > civilDateKey(endDate)) {
+  const range = parseCivilDateRange(startValue, endValue);
+  if (!range) {
     return null;
   }
+  const { startDate, endDate } = range;
 
   if (startDate.year === endDate.year && startDate.month === endDate.month) {
     return `Del ${startDate.day} al ${endDate.day} de ${MONTHS_ES[endDate.month - 1]} de ${endDate.year}`;
@@ -125,6 +135,28 @@ export function formatCivilDateRangeEs(startValue: string, endValue: string) {
   }
 
   return `Del ${formatCivilDateEs(startValue)} al ${formatCivilDateEs(endValue)}`;
+}
+
+export function formatCivilDateRangeCompactEs(startValue: string, endValue: string) {
+  const range = parseCivilDateRange(startValue, endValue);
+  if (!range) {
+    return null;
+  }
+  const { startDate, endDate } = range;
+
+  if (civilDateKey(startDate) === civilDateKey(endDate)) {
+    return formatCivilDateEs(startValue);
+  }
+
+  if (startDate.year === endDate.year && startDate.month === endDate.month) {
+    return `${startDate.day}–${endDate.day} de ${MONTHS_ES[endDate.month - 1]} de ${endDate.year}`;
+  }
+
+  if (startDate.year === endDate.year) {
+    return `${startDate.day} de ${MONTHS_ES[startDate.month - 1]}–${endDate.day} de ${MONTHS_ES[endDate.month - 1]} de ${endDate.year}`;
+  }
+
+  return `${formatCivilDateEs(startValue)}–${formatCivilDateEs(endValue)}`;
 }
 
 export async function fetchDeliveryEstimate(

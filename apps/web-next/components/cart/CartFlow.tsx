@@ -44,7 +44,7 @@ export function CartFlow({ deliveryEstimate }: { deliveryEstimate?: ReactNode })
       </nav>
 
       {currentStep === "details" ? (
-        <CartDetailsStep />
+        <CartDetailsStep deliveryEstimate={deliveryEstimate} />
       ) : currentStep === "payment" ? (
         <CartPaymentStep deliveryEstimate={deliveryEstimate} />
       ) : (

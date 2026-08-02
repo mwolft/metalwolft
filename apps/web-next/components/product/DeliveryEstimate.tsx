@@ -2,6 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import {
   formatCivilDateEs,
+  formatCivilDateRangeCompactEs,
   formatCivilDateRangeEs,
   type DeliveryEstimate as DeliveryEstimateData
 } from "@/lib/delivery-estimate";
@@ -17,6 +18,27 @@ export function DeliveryEstimate({
 }: DeliveryEstimateProps) {
   if (!estimate) {
     return null;
+  }
+
+  if (variant === "default" || variant === "compact") {
+    const compactDateRange = formatCivilDateRangeCompactEs(
+      estimate.start_date,
+      estimate.end_date
+    );
+    if (!compactDateRange) {
+      return null;
+    }
+
+    return (
+      <div className={`mw-delivery-estimate mw-delivery-estimate--${variant}`}>
+        <p className="mw-delivery-estimate__primary">
+          <strong>Entrega estimada:</strong> {compactDateRange}
+        </p>
+        <p className="mw-delivery-estimate__detail">
+          Puede variar según la configuración y el destino.
+        </p>
+      </div>
+    );
   }
 
   const startDate = formatCivilDateEs(estimate.start_date);
@@ -66,7 +88,7 @@ export function DeliveryEstimate({
             Leer más
           </Link>
         </div>
-      ) : variant === "banner" ? (
+      ) : (
         <>
           <p>
             <strong>Previsión orientativa para pedidos realizados hoy:</strong> entrega entre el{" "}
@@ -76,20 +98,6 @@ export function DeliveryEstimate({
             Los plazos pueden variar según el modelo, la configuración y el destino.
           </p>
         </>
-      ) : variant === "compact" ? (
-        <>
-          <p>
-            <strong>Entrega orientativa entre el {dates}.</strong>
-          </p>
-          <p className="mw-delivery-estimate__detail">
-            Puede variar según la configuración y el destino.
-          </p>
-        </>
-      ) : (
-        <p>
-          <strong>Previsión orientativa para pedidos realizados hoy:</strong> entrega entre el{" "}
-          {dates}. El plazo puede variar según la configuración y el destino.
-        </p>
       )}
     </aside>
   );
