@@ -17,20 +17,25 @@ assert.match(configuratorVisuals, /export function getColorVisual/);
 
 assert.match(cartView, /import Image from "next\/image"/);
 assert.equal((cartView.match(/<Image/g) || []).length, 3);
-assert.match(cartView, /src="\/icons\/alto\.webp"[\s\S]*?<span>Alto<\/span>/);
-assert.match(cartView, /src="\/icons\/ancho\.webp"[\s\S]*?<span>Ancho<\/span>/);
-assert.match(cartView, /src="\/icons\/anclaje\.webp"[\s\S]*?<span>Instalación<\/span>/);
+assert.match(cartView, /<span>Alto<\/span>[\s\S]*?src="\/icons\/alto\.webp"/);
+assert.match(cartView, /<span>Ancho<\/span>[\s\S]*?src="\/icons\/ancho\.webp"/);
+assert.match(cartView, /<span>Instalación<\/span>[\s\S]*?src="\/icons\/anclaje\.webp"/);
+assert.equal((cartView.match(/height=\{35\}/g) || []).length, 3);
+assert.equal((cartView.match(/width=\{35\}/g) || []).length, 3);
 assert.equal((cartView.match(/alt=""/g) || []).length, 3);
 assert.match(cartView, /getColorVisual\(item\.color \?\? ""\)/);
 assert.match(cartView, /colorVisual\.swatchClass === "forja"/);
 assert.match(cartView, /"--mw-cart-config-color": colorVisual\.hex/);
 assert.match(cartView, /aria-hidden="true"[\s\S]*?mw-cart-config__color-swatch/);
-assert.match(cartView, /<span>Color<\/span>[\s\S]*?<dd>\{formatColor\(item\.color\)\}<\/dd>/);
+assert.match(
+  cartView,
+  /<dt>Color<\/dt>\s*<dd>\{formatColor\(item\.color\)\}<\/dd>[\s\S]*?mw-cart-config__color-swatch/
+);
 assert.doesNotMatch(cartView, /src="\/icons\/[^\"]*color/i);
 
 assert.match(
   styles,
-  /\.mw-cart-config__icon,\s*\.mw-cart-config__color-swatch\s*{[^}]*width:\s*20px;[^}]*height:\s*20px;[^}]*flex:\s*0 0 20px;/s
+  /\.mw-cart-config__icon,\s*\.mw-cart-config__color-swatch\s*{[^}]*width:\s*35px;[^}]*height:\s*35px;[^}]*flex:\s*0 0 35px;/s
 );
 assert.match(
   styles,
@@ -41,4 +46,4 @@ assert.match(
   /\.mw-configurator-swatch--forja \.mw-configurator-swatch__dot,\s*\.mw-cart-config__color-swatch--forja\s*{[^}]*background-image:/s
 );
 
-console.log("19 cart item visual assertions passed");
+console.log("21 cart item visual assertions passed");

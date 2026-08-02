@@ -404,59 +404,57 @@ export function CartView({ deliveryEstimate }: { deliveryEstimate?: ReactNode })
                 <dl className="mw-cart-config">
                   <div>
                     <dt>
+                      <span>Alto</span>
                       <Image
                         alt=""
                         className="mw-cart-config__icon"
-                        height={20}
+                        height={35}
                         src="/icons/alto.webp"
-                        width={20}
+                        width={35}
                       />
-                      <span>Alto</span>
                     </dt>
                     <dd>{formatDimension(item.alto)}</dd>
                   </div>
                   <div>
                     <dt>
+                      <span>Ancho</span>
                       <Image
                         alt=""
                         className="mw-cart-config__icon"
-                        height={20}
+                        height={35}
                         src="/icons/ancho.webp"
-                        width={20}
+                        width={35}
                       />
-                      <span>Ancho</span>
                     </dt>
                     <dd>{formatDimension(item.ancho)}</dd>
                   </div>
                   <div>
                     <dt>
+                      <span>Instalación</span>
                       <Image
                         alt=""
                         className="mw-cart-config__icon"
-                        height={20}
+                        height={35}
                         src="/icons/anclaje.webp"
-                        width={20}
+                        width={35}
                       />
-                      <span>Instalación</span>
                     </dt>
                     <dd>{item.anclaje || "-"}</dd>
                   </div>
                   <div>
-                    <dt>
-                      <span
-                        aria-hidden="true"
-                        className={`mw-cart-config__color-swatch${
-                          colorVisual.swatchClass === "forja"
-                            ? " mw-cart-config__color-swatch--forja"
-                            : ""
-                        }`}
-                        style={
-                          { "--mw-cart-config-color": colorVisual.hex } as CartColorStyle
-                        }
-                      />
-                      <span>Color</span>
-                    </dt>
+                    <dt>Color</dt>
                     <dd>{formatColor(item.color)}</dd>
+                    <span
+                      aria-hidden="true"
+                      className={`mw-cart-config__color-swatch${
+                        colorVisual.swatchClass === "forja"
+                          ? " mw-cart-config__color-swatch--forja"
+                          : ""
+                      }`}
+                      style={
+                        { "--mw-cart-config-color": colorVisual.hex } as CartColorStyle
+                      }
+                    />
                   </div>
                 </dl>
 

@@ -2736,9 +2736,9 @@ textarea:focus-visible {
 
 .mw-cart-config__icon,
 .mw-cart-config__color-swatch {
-  width: 20px;
-  height: 20px;
-  flex: 0 0 20px;
+  width: 35px;
+  height: 35px;
+  flex: 0 0 35px;
 }
 
 .mw-cart-config__icon {
@@ -2746,6 +2746,8 @@ textarea:focus-visible {
 }
 
 .mw-cart-config__color-swatch {
+  display: block;
+  margin-top: 0.4rem;
   border: 1px solid rgba(17, 24, 39, 0.28);
   border-radius: 999px;
   background-color: var(--mw-cart-config-color);
