@@ -1,7 +1,15 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+  type ReactNode
+} from "react";
 import { useRouter } from "next/navigation";
 import { clearSession, getToken } from "@/lib/auth-client";
 import {
@@ -18,6 +26,11 @@ import {
   PRODUCT_UNAVAILABLE_MESSAGE,
   isAvailableForSale
 } from "@/lib/product-lifecycle";
+import { getColorVisual } from "@/lib/configurator-options";
+
+type CartColorStyle = CSSProperties & {
+  "--mw-cart-config-color": string;
+};
 
 const colorLabels: Record<string, string> = {
   satinado_blanco: "Blanco liso",
@@ -357,6 +370,7 @@ export function CartView({ deliveryEstimate }: { deliveryEstimate?: ReactNode })
           const quantity = Number(item.quantity || 1);
           const lineTotal = Number(item.precio_total || 0) * quantity;
           const availableForSale = isAvailableForSale(item);
+          const colorVisual = getColorVisual(item.color ?? "");
 
           return (
             <article className="mw-cart-line" key={key}>
@@ -389,19 +403,59 @@ export function CartView({ deliveryEstimate }: { deliveryEstimate?: ReactNode })
 
                 <dl className="mw-cart-config">
                   <div>
-                    <dt>Alto</dt>
+                    <dt>
+                      <Image
+                        alt=""
+                        className="mw-cart-config__icon"
+                        height={20}
+                        src="/icons/alto.webp"
+                        width={20}
+                      />
+                      <span>Alto</span>
+                    </dt>
                     <dd>{formatDimension(item.alto)}</dd>
                   </div>
                   <div>
-                    <dt>Ancho</dt>
+                    <dt>
+                      <Image
+                        alt=""
+                        className="mw-cart-config__icon"
+                        height={20}
+                        src="/icons/ancho.webp"
+                        width={20}
+                      />
+                      <span>Ancho</span>
+                    </dt>
                     <dd>{formatDimension(item.ancho)}</dd>
                   </div>
                   <div>
-                    <dt>Instalación</dt>
+                    <dt>
+                      <Image
+                        alt=""
+                        className="mw-cart-config__icon"
+                        height={20}
+                        src="/icons/anclaje.webp"
+                        width={20}
+                      />
+                      <span>Instalación</span>
+                    </dt>
                     <dd>{item.anclaje || "-"}</dd>
                   </div>
                   <div>
-                    <dt>Color</dt>
+                    <dt>
+                      <span
+                        aria-hidden="true"
+                        className={`mw-cart-config__color-swatch${
+                          colorVisual.swatchClass === "forja"
+                            ? " mw-cart-config__color-swatch--forja"
+                            : ""
+                        }`}
+                        style={
+                          { "--mw-cart-config-color": colorVisual.hex } as CartColorStyle
+                        }
+                      />
+                      <span>Color</span>
+                    </dt>
                     <dd>{formatColor(item.color)}</dd>
                   </div>
                 </dl>
