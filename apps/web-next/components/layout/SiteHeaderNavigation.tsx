@@ -12,9 +12,8 @@ import {
 } from "@/lib/navigation";
 
 const NAVIGATION_ID = "mw-primary-navigation";
-const BODY_OPEN_CLASS = "mw-nav-open";
 const FOCUSABLE_SELECTOR =
-  'summary, a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"])';
+  'a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
 function isVisibleFocusableElement(element: HTMLElement) {
   return !element.hasAttribute("disabled") && element.getClientRects().length > 0;
@@ -22,8 +21,8 @@ function isVisibleFocusableElement(element: HTMLElement) {
 
 export function SiteHeaderNavigation() {
   const pathname = usePathname();
-  const navDisclosureRef = useRef<HTMLDetailsElement>(null);
-  const toggleRef = useRef<HTMLElement>(null);
+  const navDisclosureRef = useRef<HTMLDivElement>(null);
+  const toggleRef = useRef<HTMLButtonElement>(null);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   const renderNavigationLinks = (onNavigate?: () => void) =>
@@ -46,12 +45,6 @@ export function SiteHeaderNavigation() {
     });
 
   const closeMenu = (shouldRestoreFocus = false) => {
-    const disclosureElement = navDisclosureRef.current;
-
-    if (disclosureElement) {
-      disclosureElement.open = false;
-    }
-
     setIsMenuOpen(false);
 
     if (shouldRestoreFocus) {
@@ -62,10 +55,6 @@ export function SiteHeaderNavigation() {
   };
 
   useEffect(() => {
-    setIsMenuOpen(Boolean(navDisclosureRef.current?.open));
-  }, []);
-
-  useEffect(() => {
     closeMenu(false);
   }, [pathname]);
 
@@ -73,7 +62,6 @@ export function SiteHeaderNavigation() {
     const disclosureElement = navDisclosureRef.current;
 
     if (!isMenuOpen || !disclosureElement) {
-      document.body.classList.remove(BODY_OPEN_CLASS);
       return undefined;
     }
 
@@ -118,12 +106,30 @@ export function SiteHeaderNavigation() {
       }
     };
 
-    document.body.classList.add(BODY_OPEN_CLASS);
+    const handlePointerDown = (event: PointerEvent) => {
+      if (
+        event.target instanceof Node &&
+        !disclosureElement.contains(event.target)
+      ) {
+        closeMenu(false);
+      }
+    };
+
+    const handleScroll = () => {
+      closeMenu(false);
+    };
+
+    document.addEventListener("pointerdown", handlePointerDown);
     document.addEventListener("keydown", handleKeyDown);
+    window.addEventListener("scroll", handleScroll, {
+      capture: true,
+      passive: true,
+    });
 
     return () => {
-      document.body.classList.remove(BODY_OPEN_CLASS);
+      document.removeEventListener("pointerdown", handlePointerDown);
       document.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener("scroll", handleScroll, { capture: true });
     };
   }, [isMenuOpen]);
 
@@ -144,40 +150,42 @@ export function SiteHeaderNavigation() {
 
       <div className="mw-header__mobile-actions">
         <HeaderCartLink />
-      <details
-        className="mw-header__nav-group mw-nav-disclosure"
-        onToggle={(event) => setIsMenuOpen(event.currentTarget.open)}
-        ref={navDisclosureRef}
-      >
-        <summary
-          className="mw-nav-toggle"
-          aria-controls={NAVIGATION_ID}
-          aria-expanded={isMenuOpen}
-          aria-label={isMenuOpen ? "Cerrar navegación principal" : "Abrir navegación principal"}
-          ref={toggleRef}
+        <div
+          className="mw-header__nav-group mw-nav-disclosure"
+          data-open={isMenuOpen}
+          ref={navDisclosureRef}
         >
-          <span aria-hidden="true" />
-          <span aria-hidden="true" />
-          <span aria-hidden="true" />
-          <span className="mw-visually-hidden">{isMenuOpen ? "Cerrar menú" : "Abrir menú"}</span>
-        </summary>
-
-        <div className="mw-nav-shell mw-nav-shell--mobile">
-          <nav className="mw-nav" id={NAVIGATION_ID} aria-label="Navegación principal">
-            <ul className="mw-nav-list">{renderNavigationLinks(() => closeMenu(false))}</ul>
-          </nav>
-
-          <HeaderAccountMenu variant="mobile" onNavigate={() => closeMenu(false)} />
-
-          <Link
-            className="mw-button mw-button--primary mw-header__cta"
-            href={headerPrimaryCta.href}
-            onClick={() => closeMenu(false)}
+          <button
+            className="mw-nav-toggle"
+            aria-controls={NAVIGATION_ID}
+            aria-expanded={isMenuOpen}
+            aria-label={isMenuOpen ? "Cerrar navegación principal" : "Abrir navegación principal"}
+            onClick={() => setIsMenuOpen((current) => !current)}
+            ref={toggleRef}
+            type="button"
           >
-            {headerPrimaryCta.label}
-          </Link>
+            <span aria-hidden="true" />
+            <span aria-hidden="true" />
+            <span aria-hidden="true" />
+            <span className="mw-visually-hidden">{isMenuOpen ? "Cerrar menú" : "Abrir menú"}</span>
+          </button>
+
+          <div className="mw-nav-shell mw-nav-shell--mobile">
+            <nav className="mw-nav" id={NAVIGATION_ID} aria-label="Navegación principal">
+              <ul className="mw-nav-list">{renderNavigationLinks(() => closeMenu(false))}</ul>
+            </nav>
+
+            <HeaderAccountMenu variant="mobile" onNavigate={() => closeMenu(false)} />
+
+            <Link
+              className="mw-button mw-button--primary mw-header__cta"
+              href={headerPrimaryCta.href}
+              onClick={() => closeMenu(false)}
+            >
+              {headerPrimaryCta.label}
+            </Link>
+          </div>
         </div>
-      </details>
       </div>
     </>
   );

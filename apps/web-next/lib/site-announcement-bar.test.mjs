@@ -12,17 +12,40 @@ const [announcement, header, styles, packageJson, checkoutService] = await Promi
   readFile(new URL("../../../src/api/checkout_service.py", import.meta.url), "utf8")
 ]);
 
+assert.match(announcement, /^"use client";/);
+assert.match(announcement, /useEffect, useId, useRef, useState/);
 assert.match(announcement, /Envío gratis a partir de 150 €/);
 assert.match(
   announcement,
   /Envío gratuito en pedidos estándar a partir de 150 €\. Los pedidos de\s+grandes dimensiones o que requieran transporte especial pueden tener un\s+coste adicional\./s
 );
-assert.match(announcement, /<details className="mw-announcement__details">/);
-assert.match(announcement, /<summary className="mw-announcement__summary">/);
-assert.match(announcement, /Consultar condiciones del envío gratuito/);
+
+assert.match(announcement, /const \[isOpen, setIsOpen\] = useState\(false\)/);
+assert.match(announcement, /if \(!isOpen\) \{\s+return;\s+\}/s);
+assert.match(announcement, /onClick=\{\(\) => setIsOpen\(\(current\) => !current\)\}/);
+assert.match(announcement, /!popoverRef\.current\?\.contains\(event\.target\)/);
+assert.match(announcement, /event\.key !== "Escape"/);
+assert.match(announcement, /triggerRef\.current\?\.focus\(\)/);
+assert.match(announcement, /const handleScroll = \(\) => \{\s+setIsOpen\(false\);\s+\}/s);
+
+for (const eventName of ["pointerdown", "keydown"]) {
+  assert.match(announcement, new RegExp(`document\\.addEventListener\\("${eventName}"`));
+  assert.match(announcement, new RegExp(`document\\.removeEventListener\\("${eventName}"`));
+}
+assert.match(announcement, /window\.addEventListener\("scroll", handleScroll/);
+assert.match(announcement, /window\.removeEventListener\("scroll", handleScroll/);
+
+assert.match(announcement, /<button/);
+assert.match(announcement, /type="button"/);
+assert.match(announcement, /aria-expanded=\{isOpen\}/);
+assert.match(announcement, /aria-controls=\{popoverId\}/);
+assert.match(announcement, /aria-label="Información sobre condiciones de envío"/);
+assert.match(announcement, /aria-hidden=\{!isOpen\}/);
+assert.match(announcement, /data-open=\{isOpen\}/);
 assert.match(announcement, /aria-hidden="true"/);
 assert.match(announcement, /focusable="false"/);
-assert.doesNotMatch(announcement, /"use client"|alert\s*\(|useState|onClick/);
+assert.doesNotMatch(announcement, /<details|<summary|role="dialog"/);
+assert.doesNotMatch(announcement, /alert\s*\(|>\s*(Cerrar|Aceptar)\s*</i);
 assert.doesNotMatch(announcement, /<h[1-6]/);
 
 assert.match(
@@ -44,9 +67,20 @@ assert.match(
 assert.match(styles, /\.mw-announcement\s*{[^}]*background:\s*#cf1c35;[^}]*color:\s*#ffffff;/s);
 assert.match(
   styles,
-  /\.mw-announcement__summary\s*{[^}]*width:\s*30px;[^}]*height:\s*30px;[^}]*cursor:\s*pointer;/s
+  /\.mw-announcement__trigger\s*{[^}]*width:\s*30px;[^}]*height:\s*30px;[^}]*cursor:\s*pointer;/s
 );
-assert.match(styles, /\.mw-announcement__summary:focus-visible\s*{[^}]*outline:\s*2px solid #ffffff;/s);
+assert.match(styles, /\.mw-announcement__trigger:focus-visible\s*{[^}]*outline:\s*2px solid #ffffff;/s);
+assert.match(styles, /\.mw-announcement__panel\s*{[^}]*width:\s*min\(24rem, 90vw\);/s);
+assert.match(styles, /opacity:\s*0;[^}]*transform:\s*translate\(-50%, -4px\);[^}]*visibility:\s*hidden;/s);
+assert.match(
+  styles,
+  /\.mw-announcement__panel\[data-open="true"\]\s*{[^}]*opacity:\s*1;[^}]*transform:\s*translate\(-50%, 0\);[^}]*visibility:\s*visible;/s
+);
+assert.match(styles, /opacity 160ms ease/);
+assert.match(
+  styles,
+  /@media \(prefers-reduced-motion: reduce\)[\s\S]*?\.mw-announcement__trigger,[\s\S]*?\.mw-announcement__panel\s*{\s*transition:\s*none;/s
+);
 assert.match(styles, /\.mw-header\s*{[^}]*position:\s*sticky;[^}]*top:\s*0;/s);
 assert.match(
   styles,
@@ -58,16 +92,19 @@ assert.match(
   styles,
   /@media \(max-width: 900px\)\s*{\s*:root\s*{\s*--mw-header-nav-height:\s*78px;/s
 );
-assert.match(styles, /@media \(max-width: 380px\)[\s\S]*?\.mw-announcement__copy\s*{[^}]*font-size:\s*0\.76rem/s);
+assert.match(
+  styles,
+  /@media \(max-width: 380px\)[\s\S]*?\.mw-announcement__copy\s*{[^}]*font-size:\s*0\.76rem/s
+);
 
 assert.match(checkoutService, /SHIPPING_THRESHOLD = 150\.0/);
 assert.ok(
-  checkoutService.indexOf('if has_type_b:') <
-    checkoutService.indexOf('if subtotal >= SHIPPING_THRESHOLD:')
+  checkoutService.indexOf("if has_type_b:") <
+    checkoutService.indexOf("if subtotal >= SHIPPING_THRESHOLD:")
 );
 assert.ok(
-  checkoutService.indexOf('if has_type_a:') <
-    checkoutService.indexOf('if subtotal >= SHIPPING_THRESHOLD:')
+  checkoutService.indexOf("if has_type_a:") <
+    checkoutService.indexOf("if subtotal >= SHIPPING_THRESHOLD:")
 );
 
 const dependencies = {
@@ -76,4 +113,4 @@ const dependencies = {
 };
 assert.equal(dependencies["lucide-react"], undefined);
 
-console.log("Site announcement bar assertions passed");
+console.log("Site announcement popover assertions passed");
