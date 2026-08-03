@@ -335,15 +335,26 @@ textarea:focus-visible {
   justify-content: center;
   min-height: 44px;
   padding: 0.6rem 0.9rem;
-  border: 1px solid rgba(255, 50, 77, 0.16);
+  border: 1px solid rgba(107, 114, 128, 0.18);
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.96);
+  background: rgba(255, 255, 255, 0.94);
   color: var(--mw-muted);
   cursor: pointer;
   font: inherit;
   font-size: 0.96rem;
-  font-weight: 700;
-  transition: background 0.18s ease, border-color 0.18s ease, color 0.18s ease;
+  font-weight: 600;
+  transition: background 150ms ease, border-color 150ms ease, color 150ms ease;
+}
+
+.mw-account-menu__summary {
+  max-width: clamp(7.5rem, 12vw, 10.5rem);
+}
+
+.mw-account-menu__summary-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .mw-account-link:hover,
@@ -376,13 +387,21 @@ textarea:focus-visible {
   top: calc(100% + 0.55rem);
   right: 0;
   z-index: 35;
-  width: max-content;
-  min-width: 180px;
-  padding: 0.45rem;
+  width: min(260px, calc(100vw - 2rem));
+  padding: 0.5rem;
   border: 1px solid rgba(229, 231, 235, 0.96);
   border-radius: 16px;
   background: rgba(255, 255, 255, 0.98);
-  box-shadow: var(--mw-shadow);
+  box-shadow: 0 12px 30px rgba(31, 41, 55, 0.1);
+}
+
+.mw-account-menu__heading {
+  margin: 0;
+  padding: 0.45rem 0.85rem 0.35rem;
+  color: var(--mw-muted);
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
 }
 
 .mw-account-menu__action,
@@ -403,6 +422,19 @@ textarea:focus-visible {
   font-weight: 700;
   text-align: left;
   transition: background 0.18s ease, color 0.18s ease;
+}
+
+.mw-account-menu__action {
+  color: var(--mw-muted);
+  font-weight: 600;
+  transition-duration: 150ms;
+}
+
+.mw-account-menu__action--logout {
+  margin-top: 0.3rem;
+  padding-top: 0.85rem;
+  border-top: 1px solid rgba(229, 231, 235, 0.9);
+  color: #7b8190;
 }
 
 .mw-account-menu__action:hover,

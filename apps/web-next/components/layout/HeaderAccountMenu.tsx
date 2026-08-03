@@ -10,6 +10,16 @@ type HeaderAccountMenuProps = {
   onNavigate?: () => void;
 };
 
+function getAccountLabel(firstname: unknown) {
+  if (typeof firstname !== "string") {
+    return "Mi cuenta";
+  }
+
+  const normalizedFirstname = firstname.trim().replace(/\s+/g, " ");
+
+  return normalizedFirstname ? `Hola, ${normalizedFirstname}` : "Mi cuenta";
+}
+
 function isProtectedAfterLogout() {
   const pathname = window.location.pathname;
 
@@ -31,10 +41,11 @@ function isProtectedAfterLogout() {
 
 export function HeaderAccountMenu({ variant = "desktop", onNavigate }: HeaderAccountMenuProps) {
   const router = useRouter();
-  const { isAuthenticated, isReady, logout } = useAuthSession();
+  const { user, isAuthenticated, isReady, logout } = useAuthSession();
   const menuRef = useRef<HTMLDetailsElement>(null);
   const summaryRef = useRef<HTMLElement>(null);
   const [isOpen, setIsOpen] = useState(false);
+  const accountLabel = getAccountLabel(user?.firstname);
 
   const closeMenu = (shouldRestoreFocus = false) => {
     if (menuRef.current) {
@@ -130,9 +141,10 @@ export function HeaderAccountMenu({ variant = "desktop", onNavigate }: HeaderAcc
         aria-label={isOpen ? "Cerrar menú de cuenta" : "Abrir menú de cuenta"}
         ref={summaryRef}
       >
-        Mi cuenta
+        <span className="mw-account-menu__summary-label">{accountLabel}</span>
       </summary>
       <div className="mw-account-menu__panel">
+        <p className="mw-account-menu__heading">Tu cuenta</p>
         <Link className="mw-account-menu__action" href="/mi-cuenta" onClick={() => closeMenu(false)}>
           Resumen
         </Link>
@@ -143,7 +155,11 @@ export function HeaderAccountMenu({ variant = "desktop", onNavigate }: HeaderAcc
         >
           Mis pedidos
         </Link>
-        <button className="mw-account-menu__action" type="button" onClick={handleLogout}>
+        <button
+          className="mw-account-menu__action mw-account-menu__action--logout"
+          type="button"
+          onClick={handleLogout}
+        >
           Cerrar sesión
         </button>
       </div>
