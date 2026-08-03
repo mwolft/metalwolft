@@ -1,11 +1,13 @@
 import Image from "next/image";
 import Link from "next/link";
 import { PageContainer } from "@/components/layout/PageContainer";
+import { SiteAnnouncementBar } from "@/components/layout/SiteAnnouncementBar";
 import { SiteHeaderNavigation } from "@/components/layout/SiteHeaderNavigation";
 
 export function SiteHeader() {
   return (
     <header className="mw-header">
+      <SiteAnnouncementBar />
       <PageContainer>
         <div className="mw-header__inner">
           <Link className="mw-brand" href="/" aria-label="MetalWolft, inicio">

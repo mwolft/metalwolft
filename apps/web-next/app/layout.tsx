@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import type { ReactNode } from "react";
 import { SiteHeader } from "@/components/layout/SiteHeader";
 import { SiteFooter } from "@/components/layout/SiteFooter";
@@ -19,6 +19,10 @@ export const metadata: Metadata = {
     locale: "es_ES",
     type: "website"
   }
+};
+
+export const viewport: Viewport = {
+  themeColor: "#cf1c35"
 };
 
 export default function RootLayout({

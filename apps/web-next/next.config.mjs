@@ -12,6 +12,11 @@ const nextConfig = {
   async redirects() {
     return [
       {
+        source: "/favicon.ico",
+        destination: "/icon.png",
+        permanent: false
+      },
+      {
         source: "/politica-devoluciones",
         destination: "/politica-devolucion",
         permanent: true
