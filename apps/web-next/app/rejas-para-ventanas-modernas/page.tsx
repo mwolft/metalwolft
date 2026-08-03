@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { BlogArticleShell } from "@/components/blog/BlogArticleShell";
+import { ModernGrilleViewerLoader } from "@/components/visualization/ModernGrilleViewerLoader";
 import type { BlogArticle } from "@/lib/blog";
 import { buildBlogArticleMetadata, getBlogArticle } from "@/lib/blog";
 
@@ -63,6 +64,12 @@ export default function ModernWindowBarsPage() {
           Una reja moderna destaca cuando se ve proporcionada al hueco y coherente
           con la carpintería, no cuando intenta llamar la atención a toda costa.
         </blockquote>
+      </section>
+
+      <section className="mw-section mw-modern-grille-section">
+        <h2>Vista 3D de una reja Albany</h2>
+        <p>Gira el modelo para ver su estructura desde distintos ángulos.</p>
+        <ModernGrilleViewerLoader />
       </section>
 
       <section className="mw-section">

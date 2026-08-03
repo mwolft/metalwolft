@@ -2169,6 +2169,54 @@ textarea:focus-visible {
   padding: 1rem;
 }
 
+.mw-modern-grille-section > p {
+  max-width: 62ch;
+}
+
+.mw-modern-grille-viewer {
+  position: relative;
+  height: clamp(22.5rem, 32vw, 26.25rem);
+  margin-top: 1.1rem;
+  overflow: hidden;
+  border: 1px solid rgba(209, 213, 219, 0.9);
+  border-radius: 16px;
+  background: #f4f5f6;
+  isolation: isolate;
+}
+
+.mw-modern-grille-viewer > [role="img"],
+.mw-modern-grille-viewer canvas {
+  touch-action: pan-y !important;
+}
+
+.mw-modern-grille-viewer canvas {
+  display: block;
+  width: 100% !important;
+  height: 100% !important;
+  cursor: grab;
+}
+
+.mw-modern-grille-viewer canvas:active {
+  cursor: grabbing;
+}
+
+.mw-modern-grille-viewer__fallback,
+.mw-modern-grille-viewer__loading {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+  color: var(--mw-muted);
+  text-align: center;
+}
+
+.mw-modern-grille-viewer__loading {
+  z-index: 1;
+  pointer-events: none;
+  background: #f4f5f6;
+}
+
 .mw-media-frame {
   margin: 0;
   overflow: hidden;
@@ -2564,6 +2612,19 @@ textarea:focus-visible {
   color: var(--mw-muted);
   font-size: 0.92rem;
   font-weight: 800;
+}
+
+@media (max-width: 900px) {
+  .mw-modern-grille-viewer {
+    height: clamp(20rem, 44vw, 22.5rem);
+  }
+}
+
+@media (max-width: 640px) {
+  .mw-modern-grille-viewer {
+    height: clamp(16.25rem, 72vw, 18.75rem);
+    border-radius: 14px;
+  }
 }
 
 .mw-cart-steps li::after {

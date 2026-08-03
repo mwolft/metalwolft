@@ -9,7 +9,9 @@ import {
 export type BlogArticle = {
   slug: string;
   title: string;
+  metadataTitle?: string;
   description: string;
+  metadataDescription?: string;
   excerpt: string;
   image: string;
   imageAlt: string;
@@ -45,6 +47,54 @@ export const blogArticles: BlogArticle[] = [
     topic: "Instalación"
   },
   {
+    slug: "plazos-entrega-rejas-a-medida",
+    title: "¿Cuánto tardan las rejas a medida?",
+    metadataTitle: "¿Cuánto tardan las rejas a medida? | Plazos de fabricación y entrega",
+    description:
+      "Consulta cómo funciona nuestra previsión de entrega para rejas a medida y qué debes tener en cuenta antes de realizar tu pedido.",
+    metadataDescription:
+      "Consulta la previsión actual de entrega de nuestras rejas a medida y descubre cómo interpretarla antes de realizar tu pedido.",
+    excerpt:
+      "Entiende qué representa el intervalo orientativo de entrega y qué conviene revisar antes de confirmar tu pedido.",
+    image:
+      "https://res.cloudinary.com/dewanllxn/image/upload/v1753776840/plazos-de-entrega-rejas-para-ventanas_v48rm7.avif",
+    imageAlt: "Plazos de entrega de rejas para ventanas a medida",
+    readingTime: "4 min",
+    topic: "Entrega"
+  },
+  {
+    slug: "recepcion-pedidos-revisar-antes-firmar",
+    title: "Recepción de pedidos: qué revisar antes de firmar",
+    metadataTitle: "Recepción de pedidos: qué revisar antes de firmar | MetalWolft",
+    description:
+      "Al recibir una reja a medida conviene revisar el estado exterior del envío antes de dar la entrega por correcta. Una comprobación rápida puede facilitar mucho la gestión si el paquete ha sufrido algún daño durante el transporte.",
+    metadataDescription:
+      "Qué revisar al recibir una reja a medida y cómo actuar si detectas daños en el transporte. Fotografías, embalaje y pasos para comunicar una incidencia.",
+    excerpt:
+      "Una guía práctica para comprobar el embalaje, documentar posibles daños y comunicar una incidencia dentro del plazo vigente.",
+    image:
+      "https://res.cloudinary.com/dewanllxn/image/upload/v1757832270/recepcion-pedidos-revisar-antes-firmar-open_yu5oqv.avif",
+    imageAlt: "Recepción de pedidos y revisión de daños",
+    readingTime: "4 min",
+    topic: "Entrega"
+  },
+  {
+    slug: "donde-comprar-rejas-leroy-ikea",
+    title: "¿Dónde comprar rejas para ventanas? Soluciones estándar y a medida",
+    metadataTitle: "¿Dónde comprar rejas para ventanas? | MetalWolft",
+    description:
+      "Cuando buscas dónde comprar rejas para ventanas es habitual consultar grandes superficies, tiendas especializadas y fabricantes a medida. No existe una opción adecuada para todos los casos: la elección depende principalmente de las medidas del hueco, el tipo de instalación, el acabado que buscas y el grado de personalización que necesitas.",
+    metadataDescription:
+      "Qué debes comparar al comprar rejas para ventanas: medidas, anclaje, acabado y diferencias entre soluciones estándar y fabricación a medida.",
+    excerpt:
+      "Compara medidas, anclajes, acabados y alcance de cada solución antes de elegir entre una reja estándar o fabricada a medida.",
+    image:
+      "https://res.cloudinary.com/dewanllxn/image/upload/v1760079525/donde-comprar-rejas-leroy-ikea_rsquhp.avif",
+    imageAlt: "¿Dónde comprar rejas para ventanas? Ikea, Leroy Merlin o a medida",
+    readingTime: "6 min",
+    topic: "Compra"
+  },
+  {
     slug: "rejas-para-ventanas-sin-obra",
     title: "Rejas para ventanas sin obra",
     description:
@@ -78,8 +128,8 @@ export function getBlogArticle(slug: string) {
 
 export function buildBlogArticleMetadata(article: BlogArticle): Metadata {
   return buildMetadata({
-    title: article.title,
-    description: trimTextAtWord(article.description, 155),
+    title: article.metadataTitle || article.title,
+    description: trimTextAtWord(article.metadataDescription || article.description, 155),
     path: `/${article.slug}`,
     image: article.image
   });
