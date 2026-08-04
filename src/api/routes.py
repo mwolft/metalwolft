@@ -49,6 +49,11 @@ from api.customer_order_serializers import (
     serialize_customer_order_detail,
     serialize_customer_order_summary,
 )
+from api.customer_snapshot import (
+    CustomerSnapshotValidationError,
+    extract_customer_snapshot as _extract_customer_snapshot,
+    merge_customer_snapshots as _merge_customer_snapshot,
+)
 from api.payment_amounts import PaymentAmountValidationError, validate_payment_amount
 from api.order_confirmation_email_service import send_order_confirmation_email
 from api.post_order_invoice_hook import handle_post_order_invoice_workflow
@@ -111,6 +116,10 @@ PAYMENT_AMOUNT_NOT_SUPPORTED_RESPONSE = {
 ALLOWED_ACCOUNTING_EXPORT_QUERY_PARAMS = {"date_from", "date_to"}
 
 load_dotenv()
+
+
+def _customer_snapshot_validation_response(error):
+    return jsonify(error.to_dict()), 400
 
 
 def _split_invoice_client_name(client_name):
@@ -772,39 +781,6 @@ def _build_order_details_from_checkout_quote(checkout_quote):
     ]
 
 
-def _extract_customer_snapshot(data):
-    source = data.get("customer_data")
-    if not isinstance(source, dict):
-        source = data
-
-    fields = [
-        "firstname",
-        "lastname",
-        "phone",
-        "shipping_address",
-        "shipping_city",
-        "shipping_postal_code",
-        "billing_address",
-        "billing_city",
-        "billing_postal_code",
-        "CIF"
-    ]
-    snapshot = {}
-    for field in fields:
-        value = source.get(field) if isinstance(source, dict) else None
-        if value is not None and value != "":
-            snapshot[field] = value
-    return snapshot
-
-
-def _merge_customer_snapshot(existing_snapshot, new_snapshot):
-    merged_snapshot = dict(existing_snapshot or {})
-    for field, value in (new_snapshot or {}).items():
-        if value is not None and value != "":
-            merged_snapshot[field] = value
-    return merged_snapshot
-
-
 def _get_customer_value(request_data, customer_snapshot, field_name):
     request_value = request_data.get(field_name)
     if request_value is not None and request_value != "":
@@ -867,7 +843,7 @@ def _upsert_checkout_session(current_user, intent, existing_intent_id, idempoten
         )
         db.session.add(checkout_session)
 
-    if checkout_session.status == "order_created" and checkout_session.order_id:
+    if checkout_session.order_id:
         return checkout_session
 
     if payment_provider == "stripe":
@@ -889,7 +865,10 @@ def _upsert_checkout_session(current_user, intent, existing_intent_id, idempoten
     checkout_session.total_amount = float(checkout_quote["total_amount"])
     checkout_session.quote_snapshot = checkout_quote
     if customer_snapshot:
-        checkout_session.customer_snapshot = customer_snapshot
+        checkout_session.customer_snapshot = _merge_customer_snapshot(
+            checkout_session.customer_snapshot,
+            customer_snapshot,
+        )
 
     return checkout_session
 
@@ -1204,7 +1183,10 @@ def _upsert_paypal_checkout_session(current_user, checkout_quote, customer_snaps
     checkout_session.total_amount = float(checkout_quote["total_amount"])
     checkout_session.quote_snapshot = checkout_quote
     if customer_snapshot:
-        checkout_session.customer_snapshot = customer_snapshot
+        checkout_session.customer_snapshot = _merge_customer_snapshot(
+            checkout_session.customer_snapshot,
+            customer_snapshot,
+        )
 
     return checkout_session
 
@@ -1372,10 +1354,10 @@ def _finalize_order_from_checkout_quote(user, checkout_quote, customer_snapshot,
     )
 
     if checkout_session:
-        checkout_session.order_id = new_order.id
-        checkout_session.status = "order_created"
         if customer_snapshot:
             checkout_session.customer_snapshot = customer_snapshot
+        checkout_session.order_id = new_order.id
+        checkout_session.status = "order_created"
 
     if checkout_session and checkout_session.payment_provider == "stripe":
         cleanup_cart_lines_from_checkout_quote(
@@ -1466,7 +1448,6 @@ def create_payment_intent():
         requested_existing_intent_id = data.get("payment_intent_id")
         existing_intent_id = None
         idempotency_key = data.get("idempotency_key") or str(uuid.uuid4())
-        receipt_email = data.get("email") or current_user.get("email")
         metadata = data.get("metadata") or {}
         frontend_amount = data.get("amount")
 
@@ -1545,7 +1526,12 @@ def create_payment_intent():
             "discount_code": checkout_quote["discount_code"] or "",
             "discount_percent": f"{checkout_quote['discount_percent']:.2f}"
         }
-        customer_snapshot = _extract_customer_snapshot(data)
+        customer_snapshot = _extract_customer_snapshot(
+            data,
+            require_checkout_fields=True,
+            fallback_snapshot={"email": current_user.get("email")},
+        )
+        receipt_email = customer_snapshot["email"]
 
         # --- 2) Si existe PaymentIntent previo, lo modificamos ---
         if existing_intent_id:
@@ -1606,6 +1592,9 @@ def create_payment_intent():
             "public_checkout_token": checkout_session.public_checkout_token
         }), 200
 
+    except CustomerSnapshotValidationError as e:
+        db.session.rollback()
+        return _customer_snapshot_validation_response(e)
     except ValueError as e:
         db.session.rollback()
         return jsonify({"error": str(e)}), 400
@@ -1623,7 +1612,11 @@ def create_paypal_order():
 
     try:
         checkout_token = data.get("checkout_token") or data.get("public_checkout_token")
-        customer_snapshot = _extract_customer_snapshot(data)
+        customer_snapshot = _extract_customer_snapshot(
+            data,
+            require_checkout_fields=True,
+            fallback_snapshot={"email": current_user.get("email")},
+        )
         existing_checkout_session = None
 
         logger.info(
@@ -1769,6 +1762,9 @@ def create_paypal_order():
         }
         return jsonify(response_payload), 200
 
+    except CustomerSnapshotValidationError as e:
+        db.session.rollback()
+        return _customer_snapshot_validation_response(e)
     except ValueError as e:
         db.session.rollback()
         return jsonify({"error": str(e)}), 400
@@ -1794,8 +1790,6 @@ def capture_paypal_order():
     try:
         checkout_token = data.get("checkout_token") or data.get("public_checkout_token")
         provider_order_id = data.get("provider_order_id") or data.get("order_id")
-        customer_snapshot = _extract_customer_snapshot(data)
-
         logger.info(
             "PayPal capture-order solicitado por user_id=%s checkout_token=%s provider_order_id=%s",
             current_user.get("user_id"),
@@ -1838,13 +1832,13 @@ def capture_paypal_order():
             )
             return jsonify({"error": "Checkout session does not belong to PayPal."}), 409
 
-        if customer_snapshot:
-            checkout_session.customer_snapshot = _merge_customer_snapshot(
-                checkout_session.customer_snapshot,
-                customer_snapshot
-            )
-
         if checkout_session.order_id:
+            if data.get("customer_data"):
+                logger.warning(
+                    "PayPal capture-order ignora customer_data para checkout_session=%s ya finalizada con order_id=%s",
+                    checkout_session.id,
+                    checkout_session.order_id,
+                )
             logger.info(
                 "PayPal capture-order idempotente: checkout_session=%s ya finalizada con order_id=%s",
                 checkout_session.id,
@@ -1857,6 +1851,13 @@ def capture_paypal_order():
             }
             db.session.commit()
             return jsonify(response_payload), 200
+
+        customer_snapshot = _extract_customer_snapshot(data)
+        if customer_snapshot:
+            checkout_session.customer_snapshot = _merge_customer_snapshot(
+                checkout_session.customer_snapshot,
+                customer_snapshot,
+            )
 
         if not checkout_session.provider_order_id:
             logger.warning(
@@ -1923,6 +1924,9 @@ def capture_paypal_order():
         }
         return jsonify(response_payload), 200
 
+    except CustomerSnapshotValidationError as e:
+        db.session.rollback()
+        return _customer_snapshot_validation_response(e)
     except ValueError as e:
         db.session.rollback()
         return jsonify({"error": str(e)}), 400
@@ -3552,7 +3556,7 @@ def handle_orders():
                     "message": "payment_intent_id is required to finalize an order."
                 }), 400
 
-            customer_snapshot = _extract_customer_snapshot(data)
+            customer_snapshot = {}
             checkout_session = None
 
             checkout_session = _get_checkout_session_by_payment_intent(
@@ -3586,16 +3590,18 @@ def handle_orders():
                 )
                 checkout_session.order_id = None
 
+            customer_snapshot = _extract_customer_snapshot(data)
+
             import stripe
             stripe.api_key = os.getenv('STRIPE_SECRET_KEY')
             intent = stripe.PaymentIntent.retrieve(payment_intent_id)
             checkout_session.status = _normalize_checkout_session_status(intent.get("status"))
 
             if customer_snapshot:
-                checkout_session.customer_snapshot = {
-                    **(checkout_session.customer_snapshot or {}),
-                    **customer_snapshot
-                }
+                checkout_session.customer_snapshot = _merge_customer_snapshot(
+                    checkout_session.customer_snapshot,
+                    customer_snapshot,
+                )
                 customer_snapshot = checkout_session.customer_snapshot
 
             if checkout_session.status != "paid":
@@ -3830,10 +3836,10 @@ def handle_orders():
             )
 
             if checkout_session:
-                checkout_session.order_id = new_order.id
-                checkout_session.status = "order_created"
                 if customer_snapshot:
                     checkout_session.customer_snapshot = customer_snapshot
+                checkout_session.order_id = new_order.id
+                checkout_session.status = "order_created"
 
             db.session.commit()
 
@@ -4135,6 +4141,14 @@ def handle_orders():
                 db.session.rollback()
                 logger.error(f"Error al generar la factura: {str(e)}")
                 return jsonify({"message": "An error occurred while generating the invoice.", "error": str(e)}), 500
+
+        except CustomerSnapshotValidationError as e:
+            db.session.rollback()
+            logger.warning(
+                "Datos de cliente invalidos al cerrar checkout en /orders: field=%s",
+                e.field,
+            )
+            return jsonify(e.to_dict()), 400
 
         except ValueError as e:
             db.session.rollback()

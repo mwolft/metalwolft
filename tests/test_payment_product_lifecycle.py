@@ -60,6 +60,29 @@ def checkout_quote():
     }
 
 
+def customer_data(**overrides):
+    values = {
+        "firstname": "Sergio",
+        "lastname": "Arias",
+        "email": "cliente@example.com",
+        "phone": "600000000",
+        "legal_name": "Sergio Arias",
+        "billing_address": "Calle Factura 3",
+        "billing_postal_code": "13001",
+        "billing_city": "Ciudad Real",
+        "shipping_address": "",
+        "shipping_postal_code": "",
+        "shipping_city": "",
+        "tax_id": "00000000T",
+    }
+    values.update(overrides)
+    return values
+
+
+def customer_payload(**overrides):
+    return {"customer_data": customer_data(**overrides)}
+
+
 def checkout_session(**overrides):
     values = {
         "id": 10,
@@ -112,7 +135,10 @@ class PaymentProductLifecycleEndpointTest(unittest.TestCase):
                 ):
                     response, status = self.call_endpoint(
                         routes.create_payment_intent,
-                        {"payment_method_id": "pm_test"},
+                        {
+                            "payment_method_id": "pm_test",
+                            **customer_payload(),
+                        },
                     )
 
         self.assertEqual(status, 400)
@@ -132,7 +158,7 @@ class PaymentProductLifecycleEndpointTest(unittest.TestCase):
                 with patch.object(routes, "_paypal_request", provider_request):
                     response, status = self.call_endpoint(
                         routes.create_paypal_order,
-                        {},
+                        customer_payload(),
                     )
 
         self.assertEqual(status, 400)
@@ -154,6 +180,12 @@ class PaymentProductLifecycleEndpointTest(unittest.TestCase):
             payment_provider="stripe",
             payment_intent_id="pi_test",
         )
+        upsert_checkout_session = MagicMock(return_value=session)
+        payload = {
+            "payment_method_id": "pm_test",
+            "email": "legacy-stripe@example.com",
+            **customer_payload(email="", tax_id="  b12345678  "),
+        }
 
         with patch.dict(sys.modules, {"stripe": stripe_module}):
             with patch.object(routes, "db", self.fake_db):
@@ -165,15 +197,27 @@ class PaymentProductLifecycleEndpointTest(unittest.TestCase):
                     with patch.object(
                         routes,
                         "_upsert_checkout_session",
-                        return_value=session,
+                        upsert_checkout_session,
                     ):
                         response, status = self.call_endpoint(
                             routes.create_payment_intent,
-                            {"payment_method_id": "pm_test"},
+                            payload,
                         )
 
         self.assertEqual(status, 200)
         self.assertEqual(response.get_json()["amount_used_cents"], 12100)
+        self.assertEqual(
+            upsert_checkout_session.call_args.kwargs["customer_snapshot"]["email"],
+            "legacy-stripe@example.com",
+        )
+        self.assertEqual(
+            upsert_checkout_session.call_args.kwargs["customer_snapshot"]["tax_id"],
+            "B12345678",
+        )
+        self.assertEqual(
+            payment_intent.create.call_args.kwargs["receipt_email"],
+            "legacy-stripe@example.com",
+        )
         payment_intent.create.assert_called_once()
         payment_intent.modify.assert_not_called()
 
@@ -191,6 +235,7 @@ class PaymentProductLifecycleEndpointTest(unittest.TestCase):
 
     def test_available_product_allows_paypal_order_creation(self):
         session = checkout_session()
+        upsert_checkout_session = MagicMock(return_value=session)
         provider_request = MagicMock(
             return_value={"id": "PAYPAL-ORDER", "status": "CREATED", "links": []}
         )
@@ -204,16 +249,24 @@ class PaymentProductLifecycleEndpointTest(unittest.TestCase):
                 with patch.object(
                     routes,
                     "_upsert_paypal_checkout_session",
-                    return_value=session,
+                    upsert_checkout_session,
                 ):
                     with patch.object(routes, "_paypal_request", provider_request):
                         response, status = self.call_endpoint(
                             routes.create_paypal_order,
-                            {},
+                            customer_payload(email="", tax_id="  x1234567l  "),
                         )
 
         self.assertEqual(status, 200)
         self.assertEqual(response.get_json()["provider_order_id"], "PAYPAL-ORDER")
+        self.assertEqual(
+            upsert_checkout_session.call_args.kwargs["customer_snapshot"]["email"],
+            "buyer@example.test",
+        )
+        self.assertEqual(
+            upsert_checkout_session.call_args.kwargs["customer_snapshot"]["tax_id"],
+            "X1234567L",
+        )
         provider_request.assert_called_once()
 
     def test_unavailable_product_prevents_paypal_provider_call(self):
@@ -250,13 +303,191 @@ class PaymentProductLifecycleEndpointTest(unittest.TestCase):
                     with patch.object(routes, "_paypal_request", provider_request):
                         response, status = self.call_endpoint(
                             routes.create_paypal_order,
-                            {"checkout_token": "checkout-token"},
+                            {
+                                "checkout_token": "checkout-token",
+                                **customer_payload(),
+                            },
                         )
 
         self.assertEqual(status, 200)
         self.assertEqual(response.get_json()["provider_order_id"], "PAYPAL-EXISTING")
         self.assertEqual(response.get_json()["created_via"], "existing_checkout_session")
         quote_builder.assert_not_called()
+        provider_request.assert_not_called()
+
+    def test_invalid_customer_snapshot_is_rejected_before_stripe_provider_call(self):
+        payment_intent = SimpleNamespace(create=MagicMock(), modify=MagicMock())
+        stripe_module = SimpleNamespace(PaymentIntent=payment_intent, api_key=None)
+
+        with patch.dict(sys.modules, {"stripe": stripe_module}):
+            with patch.object(routes, "db", self.fake_db):
+                with patch.object(
+                    routes,
+                    "_build_checkout_quote_from_request",
+                    return_value=checkout_quote(),
+                ):
+                    response, status = self.call_endpoint(
+                        routes.create_payment_intent,
+                        {
+                            "payment_method_id": "pm_test",
+                            **customer_payload(phone=["600000000"]),
+                        },
+                    )
+
+        self.assertEqual(status, 400)
+        self.assertEqual(response.get_json()["code"], "INVALID_CUSTOMER_DATA")
+        self.assertEqual(response.get_json()["field"], "phone")
+        payment_intent.create.assert_not_called()
+        payment_intent.modify.assert_not_called()
+
+    def test_missing_tax_id_is_rejected_before_stripe_provider_call(self):
+        payment_intent = SimpleNamespace(create=MagicMock(), modify=MagicMock())
+        stripe_module = SimpleNamespace(PaymentIntent=payment_intent, api_key=None)
+
+        with patch.dict(sys.modules, {"stripe": stripe_module}):
+            with patch.object(routes, "db", self.fake_db):
+                with patch.object(
+                    routes,
+                    "_build_checkout_quote_from_request",
+                    return_value=checkout_quote(),
+                ):
+                    response, status = self.call_endpoint(
+                        routes.create_payment_intent,
+                        {
+                            "payment_method_id": "pm_test",
+                            **customer_payload(tax_id=""),
+                        },
+                    )
+
+        self.assertEqual(status, 400)
+        self.assertEqual(response.get_json()["code"], "INVALID_CUSTOMER_DATA")
+        self.assertEqual(response.get_json()["field"], "tax_id")
+        payment_intent.create.assert_not_called()
+        payment_intent.modify.assert_not_called()
+
+    def test_missing_legal_name_is_rejected_before_stripe_provider_call(self):
+        payment_intent = SimpleNamespace(create=MagicMock(), modify=MagicMock())
+        stripe_module = SimpleNamespace(PaymentIntent=payment_intent, api_key=None)
+
+        with patch.dict(sys.modules, {"stripe": stripe_module}):
+            with patch.object(routes, "db", self.fake_db):
+                with patch.object(
+                    routes,
+                    "_build_checkout_quote_from_request",
+                    return_value=checkout_quote(),
+                ):
+                    response, status = self.call_endpoint(
+                        routes.create_payment_intent,
+                        {
+                            "payment_method_id": "pm_test",
+                            **customer_payload(legal_name=""),
+                        },
+                    )
+
+        self.assertEqual(status, 400)
+        self.assertEqual(response.get_json()["code"], "INVALID_CUSTOMER_DATA")
+        self.assertEqual(response.get_json()["field"], "legal_name")
+        payment_intent.create.assert_not_called()
+        payment_intent.modify.assert_not_called()
+
+    def test_missing_tax_id_is_rejected_before_paypal_provider_call(self):
+        provider_request = MagicMock()
+
+        with patch.object(routes, "db", self.fake_db):
+            with patch.object(routes, "_paypal_request", provider_request):
+                response, status = self.call_endpoint(
+                    routes.create_paypal_order,
+                    customer_payload(tax_id=""),
+                )
+
+        self.assertEqual(status, 400)
+        self.assertEqual(response.get_json()["code"], "INVALID_CUSTOMER_DATA")
+        self.assertEqual(response.get_json()["field"], "tax_id")
+        provider_request.assert_not_called()
+
+    def test_missing_legal_name_is_rejected_before_paypal_provider_call(self):
+        provider_request = MagicMock()
+
+        with patch.object(routes, "db", self.fake_db):
+            with patch.object(routes, "_paypal_request", provider_request):
+                response, status = self.call_endpoint(
+                    routes.create_paypal_order,
+                    customer_payload(legal_name=""),
+                )
+
+        self.assertEqual(status, 400)
+        self.assertEqual(response.get_json()["code"], "INVALID_CUSTOMER_DATA")
+        self.assertEqual(response.get_json()["field"], "legal_name")
+        provider_request.assert_not_called()
+
+    def test_paypal_can_complete_customer_snapshot_before_order_exists(self):
+        existing_snapshot = routes._extract_customer_snapshot(
+            customer_payload(),
+            require_checkout_fields=True,
+        )
+        captured = checkout_session(
+            provider_order_id="PAYPAL-ORDER",
+            provider_capture_id="PAYPAL-CAPTURE",
+            provider_status="COMPLETED",
+            status="paid",
+            customer_snapshot=existing_snapshot,
+        )
+
+        with patch.object(routes, "db", self.fake_db):
+            with patch.object(
+                routes,
+                "_get_checkout_session_by_public_token",
+                return_value=captured,
+            ):
+                response, status = self.call_endpoint(
+                    routes.capture_paypal_order,
+                    {
+                        "checkout_token": "checkout-token",
+                        "customer_data": {"phone": "611111111"},
+                    },
+                )
+
+        self.assertEqual(status, 200)
+        self.assertEqual(captured.customer_snapshot["phone"], "611111111")
+        self.assertEqual(captured.customer_snapshot["email"], "cliente@example.com")
+        self.assertEqual(response.get_json()["provider_capture_id"], "PAYPAL-CAPTURE")
+
+    def test_paypal_finalized_order_cannot_mutate_customer_snapshot(self):
+        original_snapshot = routes._extract_customer_snapshot(
+            customer_payload(),
+            require_checkout_fields=True,
+        )
+        finalized = checkout_session(
+            provider_order_id="PAYPAL-ORDER",
+            provider_capture_id="PAYPAL-CAPTURE",
+            provider_status="COMPLETED",
+            status="order_created",
+            order_id=321,
+            customer_snapshot=dict(original_snapshot),
+        )
+        provider_request = MagicMock()
+
+        with patch.object(routes, "db", self.fake_db):
+            with patch.object(
+                routes,
+                "_get_checkout_session_by_public_token",
+                return_value=finalized,
+            ):
+                with patch.object(routes, "_paypal_request", provider_request):
+                    response, status = self.call_endpoint(
+                        routes.capture_paypal_order,
+                        {
+                            "checkout_token": "checkout-token",
+                            "customer_data": {
+                                "phone": ["invalid-type"],
+                                "legal_name": "ALTERED COMPANY SL",
+                            },
+                        },
+                    )
+
+        self.assertEqual(status, 200)
+        self.assertEqual(finalized.customer_snapshot, original_snapshot)
+        self.assertEqual(response.get_json()["message"], "Checkout session already finalized.")
         provider_request.assert_not_called()
 
     def test_confirmed_paypal_capture_is_not_revalidated_against_live_products(self):

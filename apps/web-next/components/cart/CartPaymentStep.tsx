@@ -248,7 +248,7 @@ export function CartPaymentStep({ deliveryEstimate }: { deliveryEstimate?: React
             <Link href="/cart?step=details">Editar datos</Link>
           </div>
 
-          <CheckoutPaymentSummary quote={quote} />
+          <CheckoutPaymentSummary customerDetails={customerDetails} quote={quote} />
           {deliveryEstimate}
         </div>
       </aside>

@@ -228,10 +228,12 @@ Fuente prevista:
 Debe incluir:
 
 - Nombre o razón social.
-- NIF/CIF cuando proceda.
+- NIF/NIE/CIF en toda nueva factura ordinaria F1 procedente del checkout.
 - Dirección fiscal.
 - Email.
 - Teléfono solo si se decide conservarlo como dato auxiliar.
+
+Los snapshots históricos pueden conservar `tax_id = null` y deben seguir siendo legibles. Esta compatibilidad no permite construir una nueva factura ordinaria F1 sin identificación fiscal.
 
 Fuentes posibles:
 
@@ -807,7 +809,6 @@ No deben resolverse arbitrariamente:
 
 - Datos fiscales exactos del emisor.
 - Cuándo emitir automáticamente.
-- Política de factura para clientes particulares.
 - Fecha de operación frente a fecha de emisión.
 - Facturas rectificativas.
 - Pedidos con total cero.

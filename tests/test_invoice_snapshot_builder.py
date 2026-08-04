@@ -259,6 +259,27 @@ class InvoiceSnapshotBuilderTest(unittest.TestCase):
         )
         assert_fiscal_totals(self, snapshot)
 
+    def test_builds_customer_from_canonical_checkout_fields(self):
+        canonical_customer = customer_snapshot(
+            {
+                "legal_name": "CONSTRUCCIONES EJEMPLO SL",
+                "tax_id": "B12345678",
+                "CIF": "B12345678",
+                "email": "facturacion@example.com",
+                "billing_province": "Ciudad Real",
+                "billing_country_code": "ES",
+            }
+        )
+        session = checkout_session({"customer_snapshot": canonical_customer})
+
+        snapshot = build(checkout_session=session)
+
+        self.assertEqual(snapshot["customer"]["legal_name"], "CONSTRUCCIONES EJEMPLO SL")
+        self.assertEqual(snapshot["customer"]["tax_id"], "B12345678")
+        self.assertEqual(snapshot["customer"]["email"], "facturacion@example.com")
+        self.assertEqual(snapshot["customer"]["province"], "Ciudad Real")
+        self.assertEqual(snapshot["customer"]["country_code"], "ES")
+
     def test_builds_valid_paypal_snapshot(self):
         paypal_session = checkout_session(
             {
@@ -463,14 +484,21 @@ class InvoiceSnapshotBuilderTest(unittest.TestCase):
         self.assertEqual(snapshot["lines"][1]["line_total"], "90.00")
         assert_fiscal_totals(self, snapshot)
 
-    def test_customer_without_tax_id_is_allowed(self):
-        snapshot = build(
-            checkout_session=checkout_session(
-                {"customer_snapshot": customer_snapshot({"CIF": ""})}
-            )
+    def test_new_f1_snapshot_without_tax_id_is_rejected(self):
+        session = checkout_session(
+            {"customer_snapshot": customer_snapshot({"CIF": "", "tax_id": ""})}
         )
 
-        self.assertIsNone(snapshot["customer"]["tax_id"])
+        self.assert_validation_error("customer.tax_id", checkout_session=session)
+
+    def test_customer_tax_id_is_trimmed_and_uppercased(self):
+        session = checkout_session(
+            {"customer_snapshot": customer_snapshot({"CIF": "  b12345678  "})}
+        )
+
+        snapshot = build(checkout_session=session)
+
+        self.assertEqual(snapshot["customer"]["tax_id"], "B12345678")
 
     def test_incomplete_issuer_is_rejected(self):
         self.assert_validation_error("issuer.tax_id", issuer=issuer({"tax_id": ""}))

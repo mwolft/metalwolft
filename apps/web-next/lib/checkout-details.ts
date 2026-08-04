@@ -2,12 +2,16 @@ import type { AuthUser } from "@/lib/auth-client";
 
 export const CHECKOUT_DETAILS_STORAGE_KEY = "mw_checkout_customer_details";
 
+export type CheckoutBillingType = "individual" | "company";
+
 export type CheckoutCustomerDetails = {
   firstname: string;
   lastname: string;
   email: string;
   phone: string;
-  CIF: string;
+  billing_type: CheckoutBillingType;
+  legal_name: string;
+  tax_id: string;
   billing_address: string;
   billing_city: string;
   billing_postal_code: string;
@@ -20,12 +24,16 @@ export type CheckoutCustomerDetails = {
 
 export type CheckoutDetailsErrors = Partial<Record<keyof CheckoutCustomerDetails, string>>;
 
+export type CheckoutDraftField = Exclude<keyof CheckoutCustomerDetails, "billing_type">;
+
 export const EMPTY_CHECKOUT_CUSTOMER_DETAILS: CheckoutCustomerDetails = {
   firstname: "",
   lastname: "",
   email: "",
   phone: "",
-  CIF: "",
+  billing_type: "individual",
+  legal_name: "",
+  tax_id: "",
   billing_address: "",
   billing_city: "",
   billing_postal_code: "",
@@ -38,12 +46,25 @@ export const EMPTY_CHECKOUT_CUSTOMER_DETAILS: CheckoutCustomerDetails = {
 
 const VALID_SPANISH_POSTAL_CODE_REGEX = /^\d{5}$/;
 const RESTRICTED_SHIPPING_POSTAL_PREFIXES = ["07", "35", "38", "51", "52"];
+const TAX_ID_MAX_LENGTH = 20;
 const INVALID_POSTAL_CODE_MESSAGE = "Introduce un código postal válido.";
 const PENINSULA_ONLY_SHIPPING_MESSAGE =
   "Actualmente solo realizamos envíos a la península. Para Baleares, Canarias, Ceuta o Melilla, consúltanos antes de comprar.";
 
 function normalizeText(value: unknown) {
   return typeof value === "string" ? value.trim() : "";
+}
+
+function normalizeTaxId(value: unknown) {
+  return normalizeText(value).toUpperCase();
+}
+
+export function buildIndividualLegalName(firstname: unknown, lastname: unknown) {
+  return [normalizeText(firstname), normalizeText(lastname)].filter(Boolean).join(" ");
+}
+
+function normalizeBillingType(value: unknown): CheckoutBillingType {
+  return value === "company" ? "company" : "individual";
 }
 
 function normalizeSameAsBillingValue(value: unknown) {
@@ -85,16 +106,22 @@ function postalCodeError(value: string, checkShippingRestriction: boolean) {
 }
 
 export function sanitizeCheckoutDetails(
-  input: Partial<CheckoutCustomerDetails> = {}
+  input: (Partial<CheckoutCustomerDetails> & { CIF?: unknown }) = {}
 ): CheckoutCustomerDetails {
   const useDifferentShipping = Boolean(input.useDifferentShipping);
+  const billingType = normalizeBillingType(input.billing_type);
+  const contactLegalName = buildIndividualLegalName(input.firstname, input.lastname);
+  const suppliedLegalName = normalizeText(input.legal_name);
 
   return {
     firstname: normalizeText(input.firstname),
     lastname: normalizeText(input.lastname),
     email: normalizeText(input.email),
     phone: normalizeText(input.phone),
-    CIF: normalizeText(input.CIF),
+    billing_type: billingType,
+    legal_name:
+      suppliedLegalName || (billingType === "individual" ? contactLegalName : ""),
+    tax_id: normalizeTaxId(input.tax_id) || normalizeTaxId(input.CIF),
     billing_address: normalizeText(input.billing_address),
     billing_city: normalizeText(input.billing_city),
     billing_postal_code: normalizeText(input.billing_postal_code),
@@ -116,7 +143,9 @@ export function buildCheckoutDetailsFromUser(user: AuthUser | null): CheckoutCus
     lastname: user.lastname || "",
     email: user.email || "",
     phone: "",
-    CIF: user.CIF || "",
+    billing_type: "individual",
+    legal_name: buildIndividualLegalName(user.firstname, user.lastname),
+    tax_id: user.CIF || "",
     billing_address: user.billing_address || "",
     billing_city: user.billing_city || "",
     billing_postal_code: user.billing_postal_code || "",
@@ -149,7 +178,9 @@ export function loadStoredCheckoutDetails() {
   }
 
   try {
-    const parsed = JSON.parse(rawValue) as Partial<CheckoutCustomerDetails>;
+    const parsed = JSON.parse(rawValue) as Partial<CheckoutCustomerDetails> & {
+      CIF?: unknown;
+    };
     return sanitizeCheckoutDetails(parsed);
   } catch {
     window.sessionStorage.removeItem(CHECKOUT_DETAILS_STORAGE_KEY);
@@ -168,6 +199,40 @@ export function saveCheckoutDetails(details: CheckoutCustomerDetails) {
   );
 }
 
+export function updateCheckoutDraftField(
+  details: CheckoutCustomerDetails,
+  field: CheckoutDraftField,
+  value: string | boolean
+): CheckoutCustomerDetails {
+  const previousContactLegalName = buildIndividualLegalName(
+    details.firstname,
+    details.lastname
+  );
+  const nextDetails = {
+    ...details,
+    [field]: value
+  } as CheckoutCustomerDetails;
+
+  if (
+    details.billing_type === "individual" &&
+    (field === "firstname" || field === "lastname") &&
+    (!details.legal_name || details.legal_name === previousContactLegalName)
+  ) {
+    nextDetails.legal_name = buildIndividualLegalName(
+      nextDetails.firstname,
+      nextDetails.lastname
+    );
+  }
+
+  if (field === "useDifferentShipping" && value === false) {
+    nextDetails.shipping_address = "";
+    nextDetails.shipping_city = "";
+    nextDetails.shipping_postal_code = "";
+  }
+
+  return nextDetails;
+}
+
 export function validateCheckoutDetails(details: CheckoutCustomerDetails) {
   const sanitizedDetails = sanitizeCheckoutDetails(details);
   const errors: CheckoutDetailsErrors = {};
@@ -179,6 +244,20 @@ export function validateCheckoutDetails(details: CheckoutCustomerDetails) {
     errors.email = "Campo obligatorio.";
   } else if (!isValidEmail(sanitizedDetails.email)) {
     errors.email = "Introduce un correo electrónico válido.";
+  }
+  if (!sanitizedDetails.legal_name) {
+    errors.legal_name =
+      sanitizedDetails.billing_type === "company"
+        ? "Introduce la razón social."
+        : "Campo obligatorio.";
+  }
+  if (!sanitizedDetails.tax_id) {
+    errors.tax_id =
+      sanitizedDetails.billing_type === "company"
+        ? "Introduce el NIF / CIF."
+        : "Introduce el NIF / NIE.";
+  } else if (sanitizedDetails.tax_id.length > TAX_ID_MAX_LENGTH) {
+    errors.tax_id = `El identificador fiscal no puede superar ${TAX_ID_MAX_LENGTH} caracteres.`;
   }
   if (!sanitizedDetails.billing_address) errors.billing_address = "Campo obligatorio.";
   if (!sanitizedDetails.billing_city) errors.billing_city = "Campo obligatorio.";
@@ -216,7 +295,8 @@ export function buildCustomerData(details: CheckoutCustomerDetails) {
     lastname: sanitizedDetails.lastname,
     email: sanitizedDetails.email,
     phone: sanitizedDetails.phone,
-    CIF: sanitizedDetails.CIF,
+    legal_name: sanitizedDetails.legal_name,
+    tax_id: sanitizedDetails.tax_id,
     billing_address: sanitizedDetails.billing_address,
     billing_city: sanitizedDetails.billing_city,
     billing_postal_code: sanitizedDetails.billing_postal_code,
@@ -227,5 +307,29 @@ export function buildCustomerData(details: CheckoutCustomerDetails) {
     shipping_postal_code: sanitizedDetails.useDifferentShipping
       ? sanitizedDetails.shipping_postal_code
       : ""
+  };
+}
+
+export function changeCheckoutBillingType(
+  details: CheckoutCustomerDetails,
+  billingType: CheckoutBillingType
+) {
+  if (billingType === "company") {
+    return {
+      ...details,
+      billing_type: billingType,
+      legal_name: "",
+      tax_id: ""
+    };
+  }
+
+  return {
+    ...details,
+    billing_type: billingType,
+    legal_name: buildIndividualLegalName(
+      details.firstname,
+      details.lastname
+    ),
+    tax_id: ""
   };
 }

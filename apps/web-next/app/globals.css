@@ -3418,6 +3418,69 @@ textarea:focus-visible {
   gap: 1rem;
 }
 
+.mw-checkout-form-section {
+  display: grid;
+  gap: 0.9rem;
+}
+
+.mw-checkout-form-section h3 {
+  margin: 0;
+  color: var(--mw-text);
+  font-size: 1.05rem;
+  line-height: 1.3;
+}
+
+.mw-checkout-billing-type {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.mw-checkout-billing-type legend {
+  margin-bottom: 0.65rem;
+  padding: 0;
+  color: var(--mw-text);
+  font-weight: 700;
+}
+
+.mw-checkout-billing-type__options {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.65rem;
+}
+
+.mw-checkout-billing-type__options label {
+  display: flex;
+  min-width: 0;
+  min-height: 48px;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.7rem 0.8rem;
+  border: 1px solid rgba(209, 213, 219, 0.95);
+  border-radius: 12px;
+  color: var(--mw-text);
+  cursor: pointer;
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+.mw-checkout-billing-type__options label:has(input:checked) {
+  border-color: rgba(207, 28, 53, 0.55);
+  background: rgba(207, 28, 53, 0.05);
+}
+
+.mw-checkout-billing-type__options label:focus-within {
+  outline: 2px solid rgba(207, 28, 53, 0.25);
+  outline-offset: 2px;
+}
+
+.mw-checkout-billing-type__options input {
+  flex: 0 0 auto;
+  margin: 0;
+  accent-color: var(--mw-accent-dark);
+}
+
 .mw-checkout-form-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -3639,6 +3702,34 @@ textarea:focus-visible {
   .mw-cart-config {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+}
+
+.mw-field-helper {
+  color: var(--mw-muted);
+  font-size: 0.82rem;
+  font-weight: 500;
+  line-height: 1.4;
+}
+
+.mw-checkout-fiscal-summary {
+  display: grid;
+  gap: 0.2rem;
+  margin-bottom: 1rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid rgba(209, 213, 219, 0.8);
+  color: var(--mw-muted);
+  line-height: 1.4;
+}
+
+.mw-checkout-fiscal-summary > span:first-child {
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.mw-checkout-fiscal-summary strong {
+  color: var(--mw-text);
 }
 
 @media (max-width: 1100px) {

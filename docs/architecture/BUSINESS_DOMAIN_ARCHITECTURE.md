@@ -646,7 +646,7 @@ Contexto:
 
 - El flujo actual validado separa checkout, pedido y email de confirmacion de la emision fiscal.
 - La facturacion automatica puede ser util en el futuro, pero tiene riesgos comerciales y fiscales si se acopla al pago.
-- Hay excepciones abiertas: particulares, anticipos, pagos parciales, devoluciones, total cero y facturas simplificadas.
+- Hay excepciones abiertas: anticipos, pagos parciales, devoluciones, total cero y facturas simplificadas.
 
 Decision:
 
@@ -806,6 +806,37 @@ Elementos todavia pendientes:
 - Definir retirada o encapsulado de generadores legacy.
 - Definir observabilidad minima para automatizaciones documentales.
 
+## BA-011 — Factura completa para pedidos nuevos del checkout
+
+Estado: Aprobada.
+
+Contexto:
+
+- MetalWolft emitira factura completa para todos los pedidos nuevos creados por checkout.
+- El contrato moderno ya separa la persona de contacto de la identidad y direccion fiscales.
+- Los historicos pueden contener `tax_id` nulo o el alias legacy `CIF` y deben seguir siendo legibles.
+
+Decision:
+
+- Todo checkout nuevo debe aportar `legal_name`, `tax_id` y direccion de facturacion completa.
+- La regla se aplica por igual a particular/autonomo y empresa.
+- `billing_type` es una ayuda de interfaz y no se persiste como verdad fiscal.
+- El contrato canonico normaliza el alias legacy `CIF` a `tax_id`.
+- Toda nueva factura ordinaria F1 debe rechazar la construccion de un snapshot sin identidad fiscal completa.
+
+Consecuencias:
+
+- Next ofrece validacion inmediata, pero Flask conserva la autoridad del contrato.
+- Stripe y PayPal comparten la misma validacion previa al proveedor.
+- Los snapshots historicos no se migran ni se modifican retroactivamente.
+- Esta decision no cambia el momento de emision, la automatizacion fiscal ni implementa factura simplificada F2.
+
+Elementos todavia pendientes:
+
+- Validacion estructural avanzada de identificadores fiscales.
+- Tratamiento de identificacion fiscal extranjera.
+- Soporte futuro de factura simplificada F2, si se aprueba como politica separada.
+
 # Decisiones pendientes
 
 ## Momento fiscal de emision cuando existe pago anticipado
@@ -824,23 +855,6 @@ No debe asumirse mientras siga abierta:
 
 - No debe asumirse que todo pago anticipado obliga a emitir factura inmediatamente.
 - No debe asumirse que el checkout puede decidir esta politica por si solo.
-
-## Politica de factura para particulares
-
-Estado: pendiente.
-
-Por que todavia no se decide:
-
-- Falta cerrar cuando se emite factura completa, simplificada o bajo peticion del cliente particular.
-
-Dominios afectados:
-
-- Checkout, pedidos, facturacion, datos de cliente, PDF y email.
-
-No debe asumirse mientras siga abierta:
-
-- No debe asumirse que todos los particulares reciben automaticamente la misma factura que una empresa.
-- No debe asumirse que el formulario actual de checkout contiene todos los datos fiscales necesarios.
 
 ## Factura ordinaria y factura simplificada
 

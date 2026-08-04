@@ -206,26 +206,44 @@ def _normalize_customer(customer_snapshot, order, checkout_session):
         customer_snapshot.get("billing_postal_code")
         or customer_snapshot.get("shipping_postal_code")
     )
+    if customer_snapshot.get("billing_address"):
+        province = customer_snapshot.get("billing_province") or customer_snapshot.get("province")
+        country_code = (
+            customer_snapshot.get("billing_country_code")
+            or customer_snapshot.get("country_code")
+            or "ES"
+        )
+    else:
+        province = customer_snapshot.get("shipping_province") or customer_snapshot.get("province")
+        country_code = (
+            customer_snapshot.get("shipping_country_code")
+            or customer_snapshot.get("country_code")
+            or "ES"
+        )
     email = (
         customer_snapshot.get("email")
         or _nested_attr(order, "user", "email")
         or _nested_attr(checkout_session, "user", "email")
     )
+    tax_id = customer_snapshot.get("tax_id") or customer_snapshot.get("CIF")
+    if isinstance(tax_id, str):
+        tax_id = tax_id.strip().upper() or None
 
     customer = {
         "legal_name": legal_name or None,
-        "tax_id": customer_snapshot.get("CIF") or customer_snapshot.get("tax_id"),
+        "tax_id": tax_id,
         "address": address,
         "postal_code": postal_code,
         "city": city,
-        "province": customer_snapshot.get("province"),
-        "country_code": customer_snapshot.get("country_code") or "ES",
+        "province": province,
+        "country_code": country_code,
         "email": email,
         "phone": customer_snapshot.get("phone"),
     }
 
     required = {
         "legal_name": "customer.legal_name",
+        "tax_id": "customer.tax_id",
         "address": "customer.address",
         "postal_code": "customer.postal_code",
         "city": "customer.city",

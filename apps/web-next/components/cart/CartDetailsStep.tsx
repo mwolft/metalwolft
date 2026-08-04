@@ -7,12 +7,15 @@ import { clearSession, getStoredUser, getToken } from "@/lib/auth-client";
 import { CartClientError, getCart, isSessionError } from "@/lib/cart-client";
 import {
   buildCheckoutDetailsFromUser,
+  changeCheckoutBillingType,
   EMPTY_CHECKOUT_CUSTOMER_DETAILS,
   loadStoredCheckoutDetails,
   saveCheckoutDetails,
-  sanitizeCheckoutDetails,
   type CheckoutCustomerDetails,
+  type CheckoutBillingType,
+  type CheckoutDraftField,
   type CheckoutDetailsErrors,
+  updateCheckoutDraftField,
   validateCheckoutDetails
 } from "@/lib/checkout-details";
 import {
@@ -176,23 +179,21 @@ export function CartDetailsStep({
     const { name, value, type, checked } = event.target;
 
     setDetails((currentDetails) => {
-      const nextDetails = sanitizeCheckoutDetails({
-        ...currentDetails,
-        [name]: type === "checkbox" ? checked : value
-      });
-
-      if (name === "useDifferentShipping" && !checked) {
-        nextDetails.shipping_address = "";
-        nextDetails.shipping_city = "";
-        nextDetails.shipping_postal_code = "";
+      if (name === "billing_type") {
+        return changeCheckoutBillingType(currentDetails, value as CheckoutBillingType);
       }
 
-      return nextDetails;
+      return updateCheckoutDraftField(
+        currentDetails,
+        name as CheckoutDraftField,
+        type === "checkbox" ? checked : value
+      );
     });
 
     setDetailsErrors((currentErrors) => ({
       ...currentErrors,
-      [name]: undefined
+      [name]: undefined,
+      ...(name === "billing_type" ? { legal_name: undefined, tax_id: undefined } : {})
     }));
   }
 
@@ -368,7 +369,7 @@ export function CartDetailsStep({
       <div className="mw-checkout-panel">
         <div className="mw-checkout-heading">
           <p className="mw-note">Datos</p>
-          <h2>Datos de contacto y entrega</h2>
+          <h2>Datos de contacto, facturación y entrega</h2>
           <p>
             Completa los datos necesarios para preparar la factura, el envío y el
             pago seguro. No guardaremos datos de tarjeta en MetalWolft.
@@ -376,104 +377,168 @@ export function CartDetailsStep({
         </div>
 
         <form className="mw-checkout-form" onSubmit={handleContinueToPayment}>
-          <div className="mw-checkout-form-grid">
-            <CheckoutTextField
-              error={detailsErrors.firstname}
-              label="Nombre"
-              name="firstname"
-              onChange={handleDetailChange}
-              value={details.firstname}
-            />
-            <CheckoutTextField
-              error={detailsErrors.lastname}
-              label="Apellidos"
-              name="lastname"
-              onChange={handleDetailChange}
-              value={details.lastname}
-            />
-            <CheckoutTextField
-              error={detailsErrors.email}
-              label="Correo electrónico"
-              name="email"
-              onChange={handleDetailChange}
-              type="email"
-              value={details.email}
-            />
-            <CheckoutTextField
-              error={detailsErrors.phone}
-              label="Teléfono"
-              name="phone"
-              onChange={handleDetailChange}
-              type="tel"
-              value={details.phone}
-            />
-            <CheckoutTextField
-              error={detailsErrors.billing_address}
-              label="Dirección de facturación"
-              name="billing_address"
-              onChange={handleDetailChange}
-              value={details.billing_address}
-              wide
-            />
-            <CheckoutTextField
-              error={detailsErrors.billing_postal_code}
-              label="Código postal"
-              name="billing_postal_code"
-              onChange={handleDetailChange}
-              value={details.billing_postal_code}
-            />
-            <CheckoutTextField
-              error={detailsErrors.billing_city}
-              label="Ciudad"
-              name="billing_city"
-              onChange={handleDetailChange}
-              value={details.billing_city}
-            />
-            <CheckoutTextField
-              error={detailsErrors.CIF}
-              label="DNI / CIF"
-              name="CIF"
-              onChange={handleDetailChange}
-              value={details.CIF}
-            />
-          </div>
-
-          <label className="mw-checkout-option">
-            <input
-              checked={details.useDifferentShipping}
-              name="useDifferentShipping"
-              onChange={handleDetailChange}
-              type="checkbox"
-            />
-            <span>La dirección de envío es diferente a la de facturación</span>
-          </label>
-
-          {details.useDifferentShipping ? (
+          <section className="mw-checkout-form-section" aria-labelledby="checkout-contact-title">
+            <h3 id="checkout-contact-title">Datos de contacto</h3>
             <div className="mw-checkout-form-grid">
               <CheckoutTextField
-                error={detailsErrors.shipping_address}
-                label="Dirección de envío"
-                name="shipping_address"
+                autoComplete="given-name"
+                error={detailsErrors.firstname}
+                label="Nombre"
+                name="firstname"
                 onChange={handleDetailChange}
-                value={details.shipping_address}
+                value={details.firstname}
+              />
+              <CheckoutTextField
+                autoComplete="family-name"
+                error={detailsErrors.lastname}
+                label="Apellidos"
+                name="lastname"
+                onChange={handleDetailChange}
+                value={details.lastname}
+              />
+              <CheckoutTextField
+                autoComplete="email"
+                error={detailsErrors.email}
+                label="Correo electrónico"
+                name="email"
+                onChange={handleDetailChange}
+                type="email"
+                value={details.email}
+              />
+              <CheckoutTextField
+                autoComplete="tel"
+                error={detailsErrors.phone}
+                label="Teléfono"
+                name="phone"
+                onChange={handleDetailChange}
+                type="tel"
+                value={details.phone}
+              />
+            </div>
+          </section>
+
+          <section className="mw-checkout-form-section" aria-labelledby="checkout-billing-title">
+            <h3 id="checkout-billing-title">Datos de facturación</h3>
+            <fieldset className="mw-checkout-billing-type">
+              <legend>¿A nombre de quién se emitirá la factura?</legend>
+              <div className="mw-checkout-billing-type__options">
+                <label>
+                  <input
+                    checked={details.billing_type === "individual"}
+                    name="billing_type"
+                    onChange={handleDetailChange}
+                    type="radio"
+                    value="individual"
+                  />
+                  <span>Particular / autónomo</span>
+                </label>
+                <label>
+                  <input
+                    checked={details.billing_type === "company"}
+                    name="billing_type"
+                    onChange={handleDetailChange}
+                    type="radio"
+                    value="company"
+                  />
+                  <span>Empresa</span>
+                </label>
+              </div>
+            </fieldset>
+
+            <div className="mw-checkout-form-grid">
+              <CheckoutTextField
+                autoComplete={details.billing_type === "company" ? "organization" : "name"}
+                error={detailsErrors.legal_name}
+                helper={
+                  details.billing_type === "company"
+                    ? "El nombre legal que debe aparecer en la factura."
+                    : undefined
+                }
+                label={details.billing_type === "company" ? "Razón social" : "Nombre fiscal"}
+                maxLength={255}
+                name="legal_name"
+                onChange={handleDetailChange}
+                value={details.legal_name}
                 wide
               />
               <CheckoutTextField
-                error={detailsErrors.shipping_postal_code}
-                label="Código postal de envío"
-                name="shipping_postal_code"
+                error={detailsErrors.tax_id}
+                label={details.billing_type === "company" ? "NIF / CIF" : "NIF / NIE"}
+                maxLength={20}
+                name="tax_id"
                 onChange={handleDetailChange}
-                value={details.shipping_postal_code}
+                value={details.tax_id}
               />
               <CheckoutTextField
-                error={detailsErrors.shipping_city}
-                label="Ciudad de envío"
-                name="shipping_city"
+                autoComplete="billing street-address"
+                error={detailsErrors.billing_address}
+                label="Dirección de facturación"
+                name="billing_address"
                 onChange={handleDetailChange}
-                value={details.shipping_city}
+                value={details.billing_address}
+                wide
+              />
+              <CheckoutTextField
+                autoComplete="billing postal-code"
+                error={detailsErrors.billing_postal_code}
+                label="Código postal"
+                name="billing_postal_code"
+                onChange={handleDetailChange}
+                value={details.billing_postal_code}
+              />
+              <CheckoutTextField
+                autoComplete="billing address-level2"
+                error={detailsErrors.billing_city}
+                label="Ciudad"
+                name="billing_city"
+                onChange={handleDetailChange}
+                value={details.billing_city}
               />
             </div>
-          ) : null}
+          </section>
+
+          <section className="mw-checkout-form-section" aria-labelledby="checkout-shipping-title">
+            <h3 id="checkout-shipping-title">Dirección de entrega</h3>
+            <label className="mw-checkout-option">
+              <input
+                checked={details.useDifferentShipping}
+                name="useDifferentShipping"
+                onChange={handleDetailChange}
+                type="checkbox"
+              />
+              <span>La dirección de envío es diferente a la de facturación</span>
+            </label>
+
+            {details.useDifferentShipping ? (
+              <div className="mw-checkout-form-grid">
+                <CheckoutTextField
+                  autoComplete="shipping street-address"
+                  error={detailsErrors.shipping_address}
+                  label="Dirección de envío"
+                  name="shipping_address"
+                  onChange={handleDetailChange}
+                  value={details.shipping_address}
+                  wide
+                />
+                <CheckoutTextField
+                  autoComplete="shipping postal-code"
+                  error={detailsErrors.shipping_postal_code}
+                  label="Código postal de envío"
+                  name="shipping_postal_code"
+                  onChange={handleDetailChange}
+                  value={details.shipping_postal_code}
+                />
+                <CheckoutTextField
+                  autoComplete="shipping address-level2"
+                  error={detailsErrors.shipping_city}
+                  label="Ciudad de envío"
+                  name="shipping_city"
+                  onChange={handleDetailChange}
+                  value={details.shipping_city}
+                />
+              </div>
+            ) : null}
+          </section>
 
           <label className="mw-checkout-option mw-checkout-option--policy">
             <input
@@ -533,16 +598,22 @@ export function CartDetailsStep({
 }
 
 function CheckoutTextField({
+  autoComplete,
   error,
+  helper,
   label,
+  maxLength,
   name,
   onChange,
   type = "text",
   value,
   wide = false
 }: {
+  autoComplete?: string;
   error?: string;
+  helper?: string;
   label: string;
+  maxLength?: number;
   name: keyof CheckoutCustomerDetails;
   onChange: (event: ChangeEvent<HTMLInputElement>) => void;
   type?: string;
@@ -550,19 +621,27 @@ function CheckoutTextField({
   wide?: boolean;
 }) {
   const errorId = error ? `${name}-error` : undefined;
+  const helperId = helper ? `${name}-helper` : undefined;
+  const describedBy = [helperId, errorId].filter(Boolean).join(" ") || undefined;
 
   return (
     <label className={`mw-field${wide ? " mw-field--wide" : ""}`}>
       <span>{label}</span>
       <input
-        aria-describedby={errorId}
+        aria-describedby={describedBy}
         aria-invalid={Boolean(error)}
-        autoComplete={name === "email" ? "email" : undefined}
+        autoComplete={autoComplete}
+        maxLength={maxLength}
         name={name}
         onChange={onChange}
         type={type}
         value={value}
       />
+      {helper ? (
+        <small className="mw-field-helper" id={helperId}>
+          {helper}
+        </small>
+      ) : null}
       {error ? (
         <span className="mw-field-error" id={errorId}>
           {error}

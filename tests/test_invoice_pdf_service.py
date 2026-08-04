@@ -243,6 +243,23 @@ class InvoicePdfServiceTest(unittest.TestCase):
         with temp_invoice_dir() as tmpdir:
             generate_invoice_pdf(invoice, output_dir=tmpdir)
 
+    def test_historical_snapshot_with_null_tax_id_remains_readable(self):
+        historical_snapshot = snapshot()
+        historical_snapshot["customer"] = {
+            **historical_snapshot["customer"],
+            "tax_id": None,
+        }
+        invoice = SnapshotOnlyInvoice(
+            invoice_snapshot=historical_snapshot,
+            stored_hash=calculate_invoice_snapshot_hash(historical_snapshot),
+        )
+
+        with temp_invoice_dir() as tmpdir:
+            result = generate_invoice_pdf(invoice, output_dir=tmpdir)
+            text = normalized_pdf_text(Path(tmpdir) / result.filename)
+
+        self.assertIn("Sergio Arias", text)
+
     def test_missing_invoice_or_snapshot_fails(self):
         with temp_invoice_dir() as tmpdir:
             with self.assertRaises(InvoicePdfSnapshotMissing):
