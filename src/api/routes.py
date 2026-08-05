@@ -57,6 +57,10 @@ from api.customer_snapshot import (
     extract_customer_snapshot as _extract_customer_snapshot,
     merge_customer_snapshots as _merge_customer_snapshot,
 )
+from api.customer_profile import (
+    normalize_customer_profile_update,
+    serialize_customer_profile,
+)
 from api.payment_amounts import PaymentAmountValidationError, validate_payment_amount
 from api.order_confirmation_email_service import send_order_confirmation_email
 from api.post_order_invoice_hook import handle_post_order_invoice_workflow
@@ -5747,22 +5751,10 @@ def get_me():
     if not user:
         return jsonify({"message": "User not found"}), 404
 
-    return jsonify({
-        "id": user.id,
-        "email": user.email,  # solo lectura
-        "firstname": user.firstname,
-        "lastname": user.lastname,
-        "shipping_address": user.shipping_address,
-        "shipping_city": user.shipping_city,
-        "shipping_postal_code": user.shipping_postal_code,
-        "billing_address": user.billing_address,
-        "billing_city": user.billing_city,
-        "billing_postal_code": user.billing_postal_code,
-        "CIF": user.CIF,
-    }), 200
+    return jsonify(serialize_customer_profile(user)), 200
 
 
-@api.route('/me', methods=["PUT"])
+@api.route('/me', methods=["PUT", "PATCH"])
 @jwt_required()
 def update_me():
     identity = get_jwt_identity()
@@ -5772,32 +5764,41 @@ def update_me():
     if not user:
         return jsonify({"message": "User not found"}), 404
 
-    data = request.json or {}
+    data = request.get_json(silent=True)
+    if data is None:
+        data = {}
+    if not isinstance(data, dict):
+        return jsonify({
+            "message": "Los datos del perfil deben ser un objeto.",
+            "field": "profile",
+        }), 400
+
+    try:
+        profile_update = normalize_customer_profile_update(data)
+    except CustomerSnapshotValidationError as error:
+        return _customer_snapshot_validation_response(error)
 
     # 1. Cambio de contraseña usando BCRYPT
-    if "password" in data and data["password"].strip() != "":
+    password = data.get("password")
+    if password is not None and not isinstance(password, str):
+        return jsonify({
+            "message": "La contraseña debe ser texto.",
+            "field": "password",
+        }), 400
+    if isinstance(password, str) and password.strip() != "":
         # Generamos el salt y el hash con bcrypt
         salt = bcrypt.gensalt()
         # IMPORTANTE: bcrypt necesita bytes, por eso usamos .encode('utf-8')
-        hashed_password = bcrypt.hashpw(data["password"].encode('utf-8'), salt)
+        hashed_password = bcrypt.hashpw(password.encode('utf-8'), salt)
         # Guardamos el hash decodificado como string en la base de datos
         user.password = hashed_password.decode('utf-8')
 
-    # 2. Whitelist de campos (lo que ya tenías)
-    editable_fields = [
-        "firstname", "lastname", "shipping_address", 
-        "shipping_city", "shipping_postal_code", 
-        "billing_address", "billing_city", 
-        "billing_postal_code", "CIF"
-    ]
-
-    for field in editable_fields:
-        if field in data:
-            setattr(user, field, data[field])
+    for field, value in profile_update.items():
+        setattr(user, field, value)
 
     try:
         db.session.commit()
-        return jsonify({"message": "Profile updated"}), 200
+        return jsonify(serialize_customer_profile(user)), 200
     except Exception:
         db.session.rollback()
         logger.exception("Error updating profile for user %s", user_id)

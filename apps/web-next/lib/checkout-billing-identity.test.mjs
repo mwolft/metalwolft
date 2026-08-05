@@ -88,11 +88,44 @@ const individualFromUser = checkoutDetails.buildCheckoutDetailsFromUser({
   firstname: "Ana",
   lastname: "Martín",
   email: "ana@example.com",
+  phone: "600123123",
   CIF: "12345678Z"
 });
 assert.equal(individualFromUser.billing_type, "individual");
 assert.equal(individualFromUser.legal_name, "Ana Martín");
 assert.equal(individualFromUser.tax_id, "12345678Z");
+assert.equal(individualFromUser.phone, "600123123");
+
+const draftWithPhone = {
+  ...individualFromUser,
+  phone: "699999999"
+};
+const profileWithNewPhone = {
+  id: 1,
+  firstname: "Ana",
+  lastname: "Martín",
+  email: "ana@example.com",
+  phone: "611111111"
+};
+assert.equal(
+  checkoutDetails.mergeCheckoutDetailsWithUser(draftWithPhone, profileWithNewPhone).phone,
+  "699999999"
+);
+assert.equal(
+  checkoutDetails.mergeCheckoutDetailsWithUser(
+    { ...draftWithPhone, phone: "" },
+    profileWithNewPhone
+  ).phone,
+  "611111111"
+);
+assert.equal(
+  checkoutDetails.mergeCheckoutDetailsWithUser(
+    { ...draftWithPhone, phone: "" },
+    profileWithNewPhone,
+    ["phone"]
+  ).phone,
+  ""
+);
 
 const company = checkoutDetails.sanitizeCheckoutDetails({
   ...validDetails,

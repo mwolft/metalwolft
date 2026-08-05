@@ -1,15 +1,16 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState, type ChangeEvent, type FormEvent, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ChangeEvent, type FormEvent, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
-import { clearSession, getStoredUser, getToken } from "@/lib/auth-client";
+import { clearSession, getStoredUser, getToken, saveSession } from "@/lib/auth-client";
 import { CartClientError, getCart, isSessionError } from "@/lib/cart-client";
 import {
   buildCheckoutDetailsFromUser,
   changeCheckoutBillingType,
   EMPTY_CHECKOUT_CUSTOMER_DETAILS,
   loadStoredCheckoutDetails,
+  mergeCheckoutDetailsWithUser,
   saveCheckoutDetails,
   type CheckoutCustomerDetails,
   type CheckoutBillingType,
@@ -18,6 +19,7 @@ import {
   updateCheckoutDraftField,
   validateCheckoutDetails
 } from "@/lib/checkout-details";
+import { fetchCustomerProfile } from "@/lib/customer-profile-client";
 import {
   CheckoutClientError,
   type CheckoutQuote,
@@ -123,6 +125,7 @@ export function CartDetailsStep({
     message: string;
   } | null>(null);
   const [isApplyingDiscount, setIsApplyingDiscount] = useState(false);
+  const dirtyDetailFieldsRef = useRef<Set<CheckoutDraftField>>(new Set());
   const loginHref = buildLoginHref(loginNextPath);
 
   function redirectToLogin() {
@@ -179,12 +182,46 @@ export function CartDetailsStep({
 
   useEffect(() => {
     const storedDetails = loadStoredCheckoutDetails();
-    setDetails(storedDetails || buildCheckoutDetailsFromUser(getStoredUser()));
+    const storedUser = getStoredUser();
+    setDetails(
+      storedDetails
+        ? mergeCheckoutDetailsWithUser(storedDetails, storedUser)
+        : buildCheckoutDetailsFromUser(storedUser)
+    );
+
+    const token = getToken();
+    const profileRequest = new AbortController();
+    if (token) {
+      void fetchCustomerProfile(token, profileRequest.signal)
+        .then((profile) => {
+          saveSession(token, profile);
+          setDetails((currentDetails) =>
+            mergeCheckoutDetailsWithUser(
+              currentDetails,
+              profile,
+              Array.from(dirtyDetailFieldsRef.current)
+            )
+          );
+        })
+        .catch(() => {
+          // The cached profile remains a safe, non-blocking fallback for checkout.
+        });
+    }
+
     void loadCheckout();
+
+    return () => profileRequest.abort();
   }, []);
 
   function handleDetailChange(event: ChangeEvent<HTMLInputElement>) {
     const { name, value, type, checked } = event.target;
+
+    if (name === "billing_type") {
+      dirtyDetailFieldsRef.current.add("legal_name");
+      dirtyDetailFieldsRef.current.add("tax_id");
+    } else {
+      dirtyDetailFieldsRef.current.add(name as CheckoutDraftField);
+    }
 
     setDetails((currentDetails) => {
       if (name === "billing_type") {

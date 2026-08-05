@@ -142,7 +142,7 @@ export function buildCheckoutDetailsFromUser(user: AuthUser | null): CheckoutCus
     firstname: user.firstname || "",
     lastname: user.lastname || "",
     email: user.email || "",
-    phone: "",
+    phone: user.phone || "",
     billing_type: "individual",
     legal_name: buildIndividualLegalName(user.firstname, user.lastname),
     tax_id: user.CIF || "",
@@ -165,6 +165,62 @@ export function buildCheckoutDetailsFromUser(user: AuthUser | null): CheckoutCus
     ...details,
     useDifferentShipping: hasDifferentShipping
   });
+}
+
+const PROFILE_PREFILL_FIELDS = [
+  "firstname",
+  "lastname",
+  "email",
+  "phone",
+  "billing_address",
+  "billing_city",
+  "billing_postal_code"
+] as const;
+
+export function mergeCheckoutDetailsWithUser(
+  draft: CheckoutCustomerDetails,
+  user: AuthUser | null,
+  protectedFields: readonly CheckoutDraftField[] = []
+): CheckoutCustomerDetails {
+  if (!user) {
+    return draft;
+  }
+
+  const profileDetails = buildCheckoutDetailsFromUser(user);
+  const protectedFieldSet = new Set<CheckoutDraftField>(protectedFields);
+  const mergedDetails = { ...draft };
+
+  for (const field of PROFILE_PREFILL_FIELDS) {
+    if (!protectedFieldSet.has(field) && !normalizeText(draft[field])) {
+      mergedDetails[field] = profileDetails[field];
+    }
+  }
+
+  if (draft.billing_type === "individual") {
+    if (!protectedFieldSet.has("legal_name") && !normalizeText(draft.legal_name)) {
+      mergedDetails.legal_name = buildIndividualLegalName(
+        mergedDetails.firstname,
+        mergedDetails.lastname
+      );
+    }
+    if (!protectedFieldSet.has("tax_id") && !normalizeText(draft.tax_id)) {
+      mergedDetails.tax_id = profileDetails.tax_id;
+    }
+  }
+
+  if (draft.useDifferentShipping) {
+    for (const field of [
+      "shipping_address",
+      "shipping_city",
+      "shipping_postal_code"
+    ] as const) {
+      if (!protectedFieldSet.has(field) && !normalizeText(draft[field])) {
+        mergedDetails[field] = profileDetails[field];
+      }
+    }
+  }
+
+  return mergedDetails;
 }
 
 export function loadStoredCheckoutDetails() {
