@@ -194,17 +194,62 @@ class InvoiceEmailServiceTest(unittest.TestCase):
         message = mailer.sent[0]
         self.assertEqual(message.subject, "Factura F2026000001 - MetalWolft")
         self.assertEqual(message.recipients, ("cliente@example.com",))
-        self.assertIn("Buenos dias", message.body)
+        self.assertIn("Hola Sergio Arias,", message.body)
         self.assertIn("Factura F2026000001", message.subject)
-        self.assertIn("Adjuntamos la factura F2026000001 correspondiente a su pedido.", message.body)
-        self.assertIn("Referencia del pedido: AB1234", message.body)
+        self.assertIn("Tu factura F2026000001", message.body)
+        self.assertIn("Adjuntamos la factura correspondiente a tu pedido AB1234.", message.body)
+        self.assertIn("Pedido: AB1234", message.body)
+        self.assertIn("Documento: PDF adjunto", message.body)
         self.assertIn("MetalWolft", message.body)
+        self.assertIn("<!doctype html>", message.html)
+        self.assertIn("Tu factura F2026000001", message.html)
+        self.assertIn("PDF adjunto", message.html)
         self.assertNotIn("stripe", message.body.lower())
         self.assertNotIn("provider_reference", message.body)
         self.assertNotIn("invoice_snapshot", message.body)
+        self.assertNotIn("00000000T", message.html)
+        self.assertNotIn("Calle Factura", message.html)
         self.assertEqual(len(message.attachments), 1)
         self.assertEqual(attachment_filename(attachment(message)), "invoice_F2026000001.pdf")
         self.assertEqual(attachment_content_type(attachment(message)), PDF_MIME_TYPE)
+
+    def test_html_escapes_customer_and_reference_from_snapshot(self):
+        unsafe_snapshot = snapshot({
+            "customer": {
+                "legal_name": '<img src=x onerror="alert(1)">',
+                "tax_id": "00000000T",
+                "address": "Calle Factura 3",
+                "postal_code": "13001",
+                "city": "Ciudad Real",
+                "country_code": "ES",
+                "email": "cliente@example.com",
+            },
+            "operation": {
+                "invoice_type": "ordinary",
+                "issue_date": "2026-07-16",
+                "operation_date": "2026-07-15",
+                "currency": "EUR",
+                "order_id": 123,
+                "order_locator": '<script>alert("order")</script>',
+                "order_date": "2026-07-15",
+            },
+        })
+        invoice = SnapshotInvoice(
+            invoice_snapshot=unsafe_snapshot,
+            stored_hash=calculate_invoice_snapshot_hash(unsafe_snapshot),
+        )
+        mailer = FakeMailer()
+
+        with temp_invoice_dir() as tmpdir:
+            write_pdf(tmpdir)
+            send_invoice_email(invoice, mailer=mailer, invoice_folder=tmpdir)
+
+        message = mailer.sent[0]
+        self.assertNotIn("<img", message.html)
+        self.assertNotIn("<script>", message.html)
+        self.assertIn("&lt;img src=x onerror=&quot;alert(1)&quot;&gt;", message.html)
+        self.assertIn("&lt;script&gt;alert(&quot;order&quot;)&lt;/script&gt;", message.html)
+        self.assertIn('<img src=x onerror="alert(1)">', message.body)
 
     def test_snapshot_absent_or_invoice_absent_is_blocked(self):
         with self.assertRaises(InvoiceEmailSnapshotMissing):

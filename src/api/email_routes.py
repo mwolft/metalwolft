@@ -206,8 +206,11 @@ def send_email(subject, recipients, body, attachment_path=None, html=None):
                            data=f.read())
         mail.send(msg)
         return True
-    except Exception as e:
-        current_app.logger.error(f"❌ Error enviando correo: {str(e)}")
+    except Exception as exc:
+        current_app.logger.error(
+            "Error enviando correo (tipo=%s).",
+            type(exc).__name__,
+        )
         return False
 
 

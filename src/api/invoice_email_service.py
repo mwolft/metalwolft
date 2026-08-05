@@ -5,6 +5,7 @@ from pathlib import Path
 
 from api.invoice_pdf_download_service import InvoicePdfDownloadError, resolve_invoice_pdf_download
 from api.invoice_snapshot_integrity import calculate_invoice_snapshot_hash
+from api.transactional_email_renderer import render_invoice_delivery_email
 
 
 SUPPORTED_SCHEMA_VERSION = 1
@@ -64,6 +65,7 @@ class InvoiceEmailMessage:
     recipients: tuple[str, ...]
     body: str
     attachments: tuple[InvoiceEmailAttachment, ...]
+    html: str | None = None
 
 
 def send_invoice_email(invoice, *, mailer=None, invoice_folder=None, allow_resend=False):
@@ -98,7 +100,7 @@ def send_invoice_email(invoice, *, mailer=None, invoice_folder=None, allow_resen
     customer_name = _text(customer.get("legal_name") or "cliente")
     order_reference = _text(operation.get("order_locator") or operation.get("order_id") or "")
     subject = f"Factura {invoice_number} - {trade_name}"
-    body = _email_body(
+    rendered_email = render_invoice_delivery_email(
         customer_name=customer_name,
         invoice_number=invoice_number,
         order_reference=order_reference,
@@ -108,7 +110,8 @@ def send_invoice_email(invoice, *, mailer=None, invoice_folder=None, allow_resen
     message = _build_message(
         subject=subject,
         recipient=recipient,
-        body=body,
+        body=rendered_email.text,
+        html=rendered_email.html,
         attachment_path=attachment_path,
         attachment_filename=attachment_filename,
     )
@@ -204,7 +207,7 @@ def _invoice_pdf_filename(invoice_number):
     return f"invoice_{safe_number}.pdf"
 
 
-def _build_message(*, subject, recipient, body, attachment_path, attachment_filename):
+def _build_message(*, subject, recipient, body, html, attachment_path, attachment_filename):
     attachment = InvoiceEmailAttachment(
         filename=attachment_filename,
         content_type=PDF_MIME_TYPE,
@@ -215,6 +218,7 @@ def _build_message(*, subject, recipient, body, attachment_path, attachment_file
         recipients=(recipient,),
         body=body,
         attachments=(attachment,),
+        html=html,
     )
 
 
@@ -223,18 +227,6 @@ def _resolved_mailer(mailer):
         return mailer
 
     raise InvoiceEmailSendError("No hay adaptador de email configurado.")
-
-
-def _email_body(*, customer_name, invoice_number, order_reference, trade_name):
-    order_line = f"Referencia del pedido: {order_reference}\n" if order_reference else ""
-    return (
-        "Buenos dias,\n\n"
-        f"Adjuntamos la factura {invoice_number} correspondiente a su pedido.\n"
-        f"{order_line}"
-        f"Gracias por confiar en {trade_name}.\n\n"
-        "Un saludo,\n"
-        "MetalWolft"
-    )
 
 
 def _text(value):

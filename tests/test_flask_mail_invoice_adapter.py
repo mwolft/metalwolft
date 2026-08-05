@@ -28,6 +28,11 @@ if not HAS_FLASK_MAIL:
     fake_flask_mail.Message = ImportOnlyFakeMessage
     sys.modules["flask_mail"] = fake_flask_mail
 
+from flask_mail import Message as RealFlaskMailMessage  # noqa: E402
+if HAS_FLASK_MAIL:
+    from flask import Flask  # noqa: E402
+    from flask_mail import Mail as RealFlaskMail  # noqa: E402
+
 from api.flask_mail_invoice_adapter import (  # noqa: E402
     FlaskMailInvoiceAdapter,
     FlaskMailInvoiceAdapterError,
@@ -38,10 +43,11 @@ from api.invoice_email_service import InvoiceEmailAttachment, InvoiceEmailMessag
 class CapturedFlaskMessage:
     created = []
 
-    def __init__(self, subject=None, recipients=None, body=None, **kwargs):
+    def __init__(self, subject=None, recipients=None, body=None, html=None, **kwargs):
         self.subject = subject
         self.recipients = recipients or []
         self.body = body
+        self.html = html
         self.attachments = []
         CapturedFlaskMessage.created.append(self)
 
@@ -69,6 +75,7 @@ def invoice_message(**overrides):
         "subject": "Factura F2026000001 - MetalWolft",
         "recipients": ("cliente@example.com",),
         "body": "Adjuntamos tu factura.",
+        "html": "<p>Adjuntamos tu factura.</p>",
         "attachments": (
             InvoiceEmailAttachment(
                 filename="invoice_F2026000001.pdf",
@@ -93,7 +100,7 @@ class FlaskMailInvoiceAdapterTest(unittest.TestCase):
     def tearDown(self):
         self.message_patch.stop()
 
-    def test_converts_subject_recipients_and_body(self):
+    def test_converts_subject_recipients_text_and_html(self):
         mail = FakeMail()
         message = invoice_message()
 
@@ -103,6 +110,7 @@ class FlaskMailInvoiceAdapterTest(unittest.TestCase):
         self.assertEqual(sent.subject, "Factura F2026000001 - MetalWolft")
         self.assertEqual(sent.recipients, ["cliente@example.com"])
         self.assertEqual(sent.body, "Adjuntamos tu factura.")
+        self.assertEqual(sent.html, "<p>Adjuntamos tu factura.</p>")
 
     def test_attaches_pdf_with_mime_and_bytes(self):
         mail = FakeMail()
@@ -153,13 +161,52 @@ class FlaskMailInvoiceAdapterTest(unittest.TestCase):
             (InvoiceEmailAttachment("folder/invoice.pdf", "application/pdf", b"x"),),
             (InvoiceEmailAttachment("invoice.txt", "application/pdf", b"x"),),
             (InvoiceEmailAttachment("invoice.pdf", "", b"x"),),
+            (InvoiceEmailAttachment("invoice.pdf", "text/plain", b"x"),),
             (InvoiceEmailAttachment("invoice.pdf", "application/pdf", b""),),
             (InvoiceEmailAttachment("invoice.pdf", "application/pdf", "not-bytes"),),
+            (
+                InvoiceEmailAttachment("invoice-1.pdf", "application/pdf", b"x"),
+                InvoiceEmailAttachment("invoice-2.pdf", "application/pdf", b"x"),
+            ),
         )
         for attachments in invalid_attachments:
             with self.subTest(attachments=attachments):
                 with self.assertRaises(FlaskMailInvoiceAdapterError):
                     adapter.send(invoice_message(attachments=attachments))
+
+    def test_plain_text_and_html_are_both_required(self):
+        adapter = FlaskMailInvoiceAdapter(FakeMail())
+
+        for overrides in ({"body": ""}, {"html": ""}, {"html": None}):
+            with self.subTest(overrides=overrides):
+                with self.assertRaises(FlaskMailInvoiceAdapterError):
+                    adapter.send(invoice_message(**overrides))
+
+    @unittest.skipUnless(HAS_FLASK_MAIL, "Flask-Mail no está instalado")
+    def test_real_flask_mail_mime_contains_alternative_and_one_pdf(self):
+        mail = FakeMail()
+        app = Flask(__name__)
+        app.config.update(
+            MAIL_DEFAULT_SENDER="no-reply@metalwolft.com",
+            MAIL_SUPPRESS_SEND=True,
+        )
+        RealFlaskMail(app)
+
+        with app.app_context():
+            with patch(
+                "api.flask_mail_invoice_adapter.Message",
+                RealFlaskMailMessage,
+            ):
+                FlaskMailInvoiceAdapter(mail).send(invoice_message())
+            flask_message = mail.sent[0]
+            mime_message = flask_message._message()
+        content_types = [part.get_content_type() for part in mime_message.walk()]
+
+        self.assertEqual(mime_message.get_content_type(), "multipart/mixed")
+        self.assertIn("multipart/alternative", content_types)
+        self.assertIn("text/plain", content_types)
+        self.assertIn("text/html", content_types)
+        self.assertEqual(content_types.count("application/pdf"), 1)
 
     def test_smtp_error_is_wrapped_and_cause_is_preserved(self):
         adapter = FlaskMailInvoiceAdapter(FakeMail(fail=True))

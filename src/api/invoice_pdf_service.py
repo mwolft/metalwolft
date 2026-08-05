@@ -7,12 +7,20 @@ from html import escape
 from pathlib import Path
 
 from api.invoice_snapshot_integrity import calculate_invoice_snapshot_hash
+from api.utils import CONFIGURATOR_ANCHORAGES, CONFIGURATOR_COLORS
 
 
 SUPPORTED_SCHEMA_VERSION = 1
 PDF_ROUTE_PREFIX = "/api/download-invoice"
 FILENAME_PREFIX = "invoice_"
 FILENAME_SUFFIX = ".pdf"
+BRAND_RED = "#cf1c35"
+BRAND_TEXT = "#1f2937"
+BRAND_MUTED = "#6b7280"
+BRAND_BORDER = "#e5e7eb"
+BRAND_SURFACE = "#f8f7f7"
+BRAND_SURFACE_ACCENT = "#fff6f7"
+BRAND_ICON_PATH = Path(__file__).resolve().parents[2] / "apps" / "web-next" / "app" / "icon.png"
 
 
 class InvoicePdfError(Exception):
@@ -171,255 +179,462 @@ def _render_invoice_snapshot_pdf(*, invoice_number, issued_at, snapshot, snapsho
     from io import BytesIO
 
     from reportlab.lib import colors
+    from reportlab.lib.enums import TA_CENTER, TA_RIGHT
     from reportlab.lib.pagesizes import A4
     from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
     from reportlab.lib.units import cm
-    from reportlab.pdfgen import canvas
-    from reportlab.platypus import Paragraph, Table, TableStyle
+    from reportlab.platypus import (
+        HRFlowable,
+        KeepTogether,
+        Paragraph,
+        SimpleDocTemplate,
+        Spacer,
+        Table,
+        TableStyle,
+    )
 
     buffer = BytesIO()
-    pdf = canvas.Canvas(buffer, pagesize=A4)
-    pdf.setTitle(f"Factura {invoice_number}")
-    pdf.setAuthor("MetalWolft")
-    pdf.setSubject(f"InvoiceSnapshot v1 {snapshot_hash}")
-    pdf.setKeywords(f"invoice_snapshot_hash:{snapshot_hash}")
-
-    width, height = A4
     margin_left = 1.8 * cm
     margin_right = 1.8 * cm
-    y = height - 1.8 * cm
+    document = SimpleDocTemplate(
+        buffer,
+        pagesize=A4,
+        leftMargin=margin_left,
+        rightMargin=margin_right,
+        topMargin=1.55 * cm,
+        bottomMargin=1.8 * cm,
+    )
 
     styles = getSampleStyleSheet()
     body_style = ParagraphStyle(
-        "invoice-v2-body",
+        "invoice-body",
         parent=styles["BodyText"],
         fontName="Helvetica",
-        fontSize=8,
-        leading=9.5,
+        fontSize=8.2,
+        leading=10.5,
+        textColor=colors.HexColor(BRAND_TEXT),
     )
-    header_style = ParagraphStyle(
-        "invoice-v2-header",
+    small_style = ParagraphStyle(
+        "invoice-small",
+        parent=body_style,
+        fontSize=7.2,
+        leading=9,
+        textColor=colors.HexColor(BRAND_MUTED),
+    )
+    centered_small_style = ParagraphStyle(
+        "invoice-small-centered",
+        parent=small_style,
+        alignment=TA_CENTER,
+    )
+    table_header_style = ParagraphStyle(
+        "invoice-table-header",
+        parent=small_style,
+        fontName="Helvetica-Bold",
+        textColor=colors.HexColor(BRAND_TEXT),
+        alignment=TA_CENTER,
+    )
+    money_style = ParagraphStyle(
+        "invoice-money",
+        parent=small_style,
+        textColor=colors.HexColor(BRAND_TEXT),
+        alignment=TA_RIGHT,
+    )
+    strong_money_style = ParagraphStyle(
+        "invoice-money-strong",
+        parent=money_style,
+        fontName="Helvetica-Bold",
+    )
+    section_style = ParagraphStyle(
+        "invoice-section",
         parent=body_style,
         fontName="Helvetica-Bold",
-        textColor=colors.whitesmoke,
+        fontSize=9.5,
+        leading=11,
+        spaceAfter=6,
+        textColor=colors.HexColor(BRAND_TEXT),
     )
+    total_label_style = ParagraphStyle(
+        "invoice-total-label",
+        parent=body_style,
+        fontSize=8.4,
+    )
+    total_value_style = ParagraphStyle(
+        "invoice-total-value",
+        parent=total_label_style,
+        alignment=TA_RIGHT,
+    )
+    total_strong_style = ParagraphStyle(
+        "invoice-total-strong",
+        parent=total_value_style,
+        fontName="Helvetica-Bold",
+        fontSize=10,
+        textColor=colors.HexColor(BRAND_RED),
+    )
+    style_map = {
+        "body": body_style,
+        "small": small_style,
+        "small_center": centered_small_style,
+        "table_header": table_header_style,
+        "money": money_style,
+        "money_strong": strong_money_style,
+        "section": section_style,
+        "total_label": total_label_style,
+        "total_value": total_value_style,
+        "total_strong": total_strong_style,
+    }
 
     operation = snapshot["operation"]
     issuer = snapshot["issuer"]
     customer = snapshot["customer"]
-
-    pdf.setFont("Helvetica-Bold", 18)
-    pdf.setFillColor(colors.Color(1, 0.196, 0.302))
-    pdf.drawString(margin_left, y, "MetalWolft")
-    pdf.setFont("Helvetica-Bold", 13)
-    pdf.setFillColor(colors.black)
-    pdf.drawRightString(width - margin_right, y, "Factura")
-
-    y -= 20
-    pdf.setFont("Helvetica", 9)
-    pdf.drawString(margin_left, y, "Rejas para ventanas a medida")
-    pdf.drawRightString(width - margin_right, y, f"Numero: {invoice_number}")
-
-    y -= 14
-    pdf.drawRightString(
-        width - margin_right,
-        y,
-        f"Fecha emision: {_display_date(issued_at or operation.get('issue_date'))}",
-    )
-
-    y -= 28
+    available_width = A4[0] - margin_left - margin_right
     box_gap = 0.8 * cm
-    box_width = (width - margin_left - margin_right - box_gap) / 2
-    issuer_rows = _party_rows("Emisor", issuer)
-    customer_rows = _party_rows("Cliente", customer)
-    issuer_height = _draw_info_table(pdf, margin_left, y, box_width, issuer_rows, body_style, header_style)
-    customer_height = _draw_info_table(
-        pdf,
-        margin_left + box_width + box_gap,
-        y,
-        box_width,
-        customer_rows,
-        body_style,
-        header_style,
-    )
+    box_width = (available_width - box_gap) / 2
 
-    y -= max(issuer_height, customer_height) + 24
-    operation_rows = [
-        ["Referencia pedido", _text(operation.get("order_locator") or operation.get("order_id"))],
-        ["Fecha pedido", _display_date(operation.get("order_date") or operation.get("operation_date"))],
-        ["Moneda", _text(operation.get("currency") or "EUR")],
+    story = [
+        _build_invoice_header(
+            invoice_number=invoice_number,
+            issued_at=issued_at,
+            operation=operation,
+            available_width=available_width,
+            styles=style_map,
+        ),
+        HRFlowable(
+            width="100%",
+            thickness=1.1,
+            color=colors.HexColor(BRAND_RED),
+            spaceBefore=8,
+            spaceAfter=14,
+        ),
+        Table(
+            [[
+                _build_party_card("Emisor", issuer, box_width, style_map),
+                "",
+                _build_party_card("Cliente", customer, box_width, style_map),
+            ]],
+            colWidths=[box_width, box_gap, box_width],
+            style=TableStyle([
+                ("VALIGN", (0, 0), (-1, -1), "TOP"),
+                ("LEFTPADDING", (0, 0), (-1, -1), 0),
+                ("RIGHTPADDING", (0, 0), (-1, -1), 0),
+                ("TOPPADDING", (0, 0), (-1, -1), 0),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 0),
+            ]),
+        ),
+        Spacer(1, 13),
+        _build_order_panel(operation, available_width, style_map),
+        Spacer(1, 16),
+        Paragraph("Líneas de factura", section_style),
+        _build_line_table(snapshot["lines"], style_map),
+        Spacer(1, 15),
+        KeepTogether(_build_totals_block(snapshot["totals"], snapshot["lines"], style_map)),
     ]
-    if operation.get("discount_code"):
-        operation_rows.append(["Codigo descuento", _text(operation.get("discount_code"))])
-    operation_height = _draw_info_table(
-        pdf,
-        margin_left,
-        y,
-        width - margin_left - margin_right,
-        [["Pedido", ""]] + operation_rows,
-        body_style,
-        header_style,
-    )
 
-    y -= operation_height + 24
-    pdf.setFont("Helvetica-Bold", 11)
-    pdf.drawString(margin_left, y, "Lineas de factura")
-    y -= 8
+    def draw_page(pdf, doc):
+        _draw_page_footer(
+            pdf,
+            doc,
+            invoice_number=invoice_number,
+            issuer_email=issuer.get("email"),
+        )
 
-    line_rows = _line_table_rows(snapshot["lines"], body_style, header_style)
-    line_table = Table(
-        line_rows,
-        colWidths=[1.0 * cm, 5.0 * cm, 1.2 * cm, 2.0 * cm, 2.0 * cm, 2.0 * cm, 2.0 * cm],
-        repeatRows=1,
-    )
-    line_table.setStyle(_table_style())
-    line_table.wrapOn(pdf, margin_left, y)
-    line_height = line_table._height
-    if y - line_height < 4.0 * cm:
-        pdf.showPage()
-        y = height - 1.8 * cm
-    line_table.drawOn(pdf, margin_left, y - line_height)
-
-    y -= line_height + 22
-    if y < 5.0 * cm:
-        pdf.showPage()
-        y = height - 1.8 * cm
-
-    totals_height = _draw_totals_table(
-        pdf,
-        width - margin_right - 7.0 * cm,
-        y,
-        7.0 * cm,
-        snapshot["totals"],
-        body_style,
-        header_style,
-    )
-
-    y -= totals_height + 22
-    pdf.setFont("Helvetica", 7)
-    pdf.setFillColor(colors.HexColor("#5b6472"))
-    pdf.drawString(margin_left, max(y, 1.5 * cm), f"Integridad fiscal: {snapshot_hash}")
-
-    pdf.save()
+    document.build(story, onFirstPage=draw_page, onLaterPages=draw_page)
     buffer.seek(0)
     return buffer.getvalue()
 
 
-def _party_rows(title, party):
-    rows = [[title, ""]]
-    rows.append(["Nombre", _text(party.get("legal_name") or party.get("trade_name"))])
-    rows.append(["NIF/CIF", _text(party.get("tax_id"))])
-    rows.append(["Direccion", _text(party.get("address"))])
-    rows.append(["CP / Ciudad", " ".join(filter(None, [_text(party.get("postal_code")), _text(party.get("city"))])).strip()])
-    if party.get("province"):
-        rows.append(["Provincia", _text(party.get("province"))])
-    rows.append(["Pais", _text(party.get("country_code") or "ES")])
-    if party.get("email"):
-        rows.append(["Email", _text(party.get("email"))])
-    if party.get("phone"):
-        rows.append(["Telefono", _text(party.get("phone"))])
-    return rows
+def _build_invoice_header(*, invoice_number, issued_at, operation, available_width, styles):
+    from reportlab.lib import colors
+    from reportlab.lib.units import cm
+    from reportlab.platypus import Image, Paragraph, Table, TableStyle
+
+    brand_copy = Paragraph(
+        f"<font size='15'><b>METAL</b></font><font size='15' color='{BRAND_RED}'><b>WOLFT</b></font>"
+        "<br/><font size='8' color='#6b7280'>Rejas para ventanas a medida</font>",
+        styles["body"],
+    )
+    if BRAND_ICON_PATH.is_file():
+        logo = Image(str(BRAND_ICON_PATH), width=1.02 * cm, height=0.99 * cm, mask="auto")
+        brand = Table(
+            [[logo, brand_copy]],
+            colWidths=[1.18 * cm, 6.15 * cm],
+            style=TableStyle([
+                ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+                ("LEFTPADDING", (0, 0), (-1, -1), 0),
+                ("RIGHTPADDING", (0, 0), (-1, -1), 0),
+                ("TOPPADDING", (0, 0), (-1, -1), 0),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 0),
+            ]),
+        )
+    else:
+        brand = brand_copy
+
+    issue_value = issued_at or operation.get("issue_date")
+    metadata = [
+        "<font size='12'><b>FACTURA</b></font>",
+        f"<font size='7' color='{BRAND_MUTED}'>NÚMERO</font><br/><b>{_pdf_text(invoice_number)}</b>",
+        f"<font size='7' color='{BRAND_MUTED}'>FECHA DE EXPEDICIÓN</font><br/>{_pdf_text(_display_date(issue_value))}",
+    ]
+    operation_date = operation.get("operation_date")
+    if operation_date and _date_key(operation_date) != _date_key(issue_value):
+        metadata.append(
+            f"<font size='7' color='{BRAND_MUTED}'>FECHA DE OPERACIÓN</font> "
+            f"{_pdf_text(_display_date(operation_date))}"
+        )
+    invoice_info = Paragraph("<br/>".join(metadata), styles["body"])
+
+    table = Table(
+        [[brand, invoice_info]],
+        colWidths=[available_width * 0.62, available_width * 0.38],
+    )
+    table.setStyle(TableStyle([
+        ("VALIGN", (0, 0), (-1, -1), "TOP"),
+        ("ALIGN", (1, 0), (1, 0), "RIGHT"),
+        ("LEFTPADDING", (0, 0), (-1, -1), 0),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 0),
+        ("TOPPADDING", (0, 0), (-1, -1), 0),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 0),
+        ("TEXTCOLOR", (0, 0), (-1, -1), colors.HexColor(BRAND_TEXT)),
+    ]))
+    return table
 
 
-def _draw_info_table(pdf, x, y, width, rows, body_style, header_style):
-    from reportlab.platypus import Paragraph, Table
+def _build_party_card(title, party, width, styles):
+    from reportlab.lib import colors
+    from reportlab.platypus import Paragraph, Table, TableStyle
 
-    table_data = []
-    for index, row in enumerate(rows):
-        style = header_style if index == 0 else body_style
-        table_data.append([Paragraph(_pdf_text(row[0]), style), Paragraph(_pdf_text(row[1]), style)])
+    name = party.get("legal_name") or party.get("trade_name") or "-"
+    details = []
+    if party.get("tax_id"):
+        details.append(f"<font color='{BRAND_MUTED}'>NIF/CIF</font> {_pdf_text(party.get('tax_id'))}")
+    if party.get("address"):
+        details.append(_pdf_text(party.get("address")))
+    city_line = " ".join(
+        filter(None, [_text(party.get("postal_code")), _text(party.get("city"))])
+    ).strip()
+    if city_line:
+        details.append(_pdf_text(city_line))
+    region_line = " · ".join(
+        filter(None, [_text(party.get("province")), _text(party.get("country_code") or "ES")])
+    ).strip()
+    if region_line:
+        details.append(_pdf_text(region_line))
 
-    table = Table(table_data, colWidths=[width * 0.34, width * 0.66])
-    table.setStyle(_table_style(span_header=True))
-    table.wrapOn(pdf, x, y)
-    table_height = table._height
-    table.drawOn(pdf, x, y - table_height)
-    return table_height
+    table = Table(
+        [
+            [Paragraph(_pdf_text(title.upper()), styles["section"])],
+            [Paragraph(
+                f"<b>{_pdf_text(name)}</b>" + (f"<br/>{'<br/>'.join(details)}" if details else ""),
+                styles["body"],
+            )],
+        ],
+        colWidths=[width],
+    )
+    table.setStyle(TableStyle([
+        ("BOX", (0, 0), (-1, -1), 0.6, colors.HexColor(BRAND_BORDER)),
+        ("LINEABOVE", (0, 0), (-1, 0), 1.6, colors.HexColor(BRAND_RED)),
+        ("LINEBELOW", (0, 0), (-1, 0), 0.4, colors.HexColor(BRAND_BORDER)),
+        ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor(BRAND_SURFACE)),
+        ("LEFTPADDING", (0, 0), (-1, -1), 8),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 8),
+        ("TOPPADDING", (0, 0), (-1, 0), 6),
+        ("BOTTOMPADDING", (0, 0), (-1, 0), 3),
+        ("TOPPADDING", (0, 1), (-1, -1), 7),
+        ("BOTTOMPADDING", (0, 1), (-1, -1), 8),
+        ("VALIGN", (0, 0), (-1, -1), "TOP"),
+    ]))
+    return table
 
 
-def _line_table_rows(lines, body_style, header_style):
+def _build_order_panel(operation, width, styles):
+    from reportlab.lib import colors
+    from reportlab.platypus import Paragraph, Table, TableStyle
+
+    reference = operation.get("order_locator") or operation.get("order_id") or "-"
+    metadata = [
+        f"Fecha del pedido: {_pdf_text(_display_date(operation.get('order_date') or operation.get('operation_date')))}",
+        f"Moneda: {_pdf_text(operation.get('currency') or 'EUR')}",
+    ]
+    if operation.get("discount_code"):
+        metadata.append(f"Código de descuento: {_pdf_text(operation.get('discount_code'))}")
+    content = Paragraph(
+        f"<font color='{BRAND_RED}'><b>PEDIDO {_pdf_text(reference)}</b></font>"
+        f"<br/><font size='7.4' color='{BRAND_MUTED}'>{' · '.join(metadata)}</font>",
+        styles["body"],
+    )
+    table = Table([[content]], colWidths=[width])
+    table.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor(BRAND_SURFACE)),
+        ("BOX", (0, 0), (-1, -1), 0.5, colors.HexColor(BRAND_BORDER)),
+        ("LINEBEFORE", (0, 0), (0, -1), 2.2, colors.HexColor(BRAND_RED)),
+        ("LEFTPADDING", (0, 0), (-1, -1), 9),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 9),
+        ("TOPPADDING", (0, 0), (-1, -1), 7),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 7),
+    ]))
+    return table
+
+
+def _build_line_table(lines, styles):
+    from reportlab.lib import colors
+    from reportlab.lib.units import cm
+    from reportlab.platypus import Table, TableStyle
+
+    table = Table(
+        _line_table_rows(lines, styles),
+        colWidths=[0.75 * cm, 6.55 * cm, 1.05 * cm, 2.35 * cm, 2.05 * cm, 2.35 * cm, 2.30 * cm],
+        repeatRows=1,
+        splitByRow=1,
+    )
+    table.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor(BRAND_SURFACE)),
+        ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, colors.HexColor("#fcfcfc")]),
+        ("LINEABOVE", (0, 0), (-1, 0), 1.2, colors.HexColor(BRAND_RED)),
+        ("LINEBELOW", (0, 0), (-1, 0), 0.55, colors.HexColor(BRAND_BORDER)),
+        ("LINEBELOW", (0, 1), (-1, -1), 0.35, colors.HexColor(BRAND_BORDER)),
+        ("VALIGN", (0, 0), (-1, -1), "TOP"),
+        ("ALIGN", (0, 0), (0, -1), "CENTER"),
+        ("ALIGN", (2, 0), (2, -1), "CENTER"),
+        ("ALIGN", (3, 1), (-1, -1), "RIGHT"),
+        ("LEFTPADDING", (0, 0), (-1, -1), 4),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 4),
+        ("TOPPADDING", (0, 0), (-1, 0), 6),
+        ("BOTTOMPADDING", (0, 0), (-1, 0), 6),
+        ("TOPPADDING", (0, 1), (-1, -1), 6),
+        ("BOTTOMPADDING", (0, 1), (-1, -1), 6),
+    ]))
+    return table
+
+
+def _line_table_rows(lines, styles):
     from reportlab.platypus import Paragraph
 
     rows = [[
-        Paragraph("Linea", header_style),
-        Paragraph("Descripcion / configuracion", header_style),
-        Paragraph("Ud.", header_style),
-        Paragraph("Antes dto.", header_style),
-        Paragraph("Descuento", header_style),
-        Paragraph("Base imp.", header_style),
-        Paragraph("Total", header_style),
+        Paragraph("N.º", styles["table_header"]),
+        Paragraph("Producto / configuración", styles["table_header"]),
+        Paragraph("Cant.", styles["table_header"]),
+        Paragraph("Importe original", styles["table_header"]),
+        Paragraph("Descuento", styles["table_header"]),
+        Paragraph("Base imponible", styles["table_header"]),
+        Paragraph("Total", styles["table_header"]),
     ]]
 
     for line in lines:
         rows.append([
-            Paragraph(_pdf_text(line.get("line_number")), body_style),
-            Paragraph(_line_description(line), body_style),
-            Paragraph(_pdf_text(line.get("quantity")), body_style),
-            Paragraph(_pdf_text(_money(line.get("line_amount_before_discount"))), body_style),
-            Paragraph(_pdf_text(_money(line.get("discount_amount"))), body_style),
-            Paragraph(_pdf_text(_money(line.get("tax_base"))), body_style),
-            Paragraph(_pdf_text(_money(line.get("line_total"))), body_style),
+            Paragraph(_pdf_text(line.get("line_number")), styles["small_center"]),
+            Paragraph(_line_description(line), styles["body"]),
+            Paragraph(_pdf_text(line.get("quantity")), styles["small_center"]),
+            Paragraph(_pdf_text(_money(line.get("line_amount_before_discount"))), styles["money"]),
+            Paragraph(_pdf_text(_money(line.get("discount_amount"), as_discount=True)), styles["money"]),
+            Paragraph(_pdf_text(_money(line.get("tax_base"))), styles["money"]),
+            Paragraph(_pdf_text(_money(line.get("line_total"))), styles["money_strong"]),
         ])
     return rows
 
 
 def _line_description(line):
-    description = _pdf_text(line.get("description") or line.get("model") or "Linea")
-    configuration = line.get("configuration") or {}
-    details = []
-    if configuration.get("height_cm"):
-        details.append(f"Alto {_pdf_text(configuration.get('height_cm'))} cm")
-    if configuration.get("width_cm"):
-        details.append(f"Ancho {_pdf_text(configuration.get('width_cm'))} cm")
-    if configuration.get("anchoring"):
-        details.append(f"Anclaje: {_pdf_text(configuration.get('anchoring'))}")
-    if configuration.get("color"):
-        details.append(f"Color: {_pdf_text(_format_color(configuration.get('color')))}")
-    if configuration.get("screw_length_mm"):
-        details.append(f"Tornillos: {_pdf_text(configuration.get('screw_length_mm'))} mm")
-    if details:
-        return f"{description}<br/><font size='7'>{' | '.join(details)}</font>"
-    return description
+    description = _pdf_text(line.get("description") or line.get("model") or "Línea")
+    configuration = line.get("configuration")
+    if not isinstance(configuration, dict):
+        return f"<b>{description}</b>"
+
+    primary_details = []
+    height = _format_measurement(configuration.get("height_cm"))
+    width = _format_measurement(configuration.get("width_cm"))
+    if height and width:
+        primary_details.append(f"{_pdf_text(height)} × {_pdf_text(width)} cm")
+    elif height:
+        primary_details.append(f"Alto {_pdf_text(height)} cm")
+    elif width:
+        primary_details.append(f"Ancho {_pdf_text(width)} cm")
+
+    anchoring = _humanize_anchoring(configuration.get("anchoring"))
+    if anchoring:
+        primary_details.append(_pdf_text(anchoring))
+
+    secondary_details = []
+    color = _humanize_color(configuration.get("color"))
+    if color:
+        secondary_details.append(_pdf_text(color))
+    screw_length = _format_measurement(configuration.get("screw_length_mm"))
+    if screw_length:
+        secondary_details.append(f"Tornillos {_pdf_text(screw_length)} mm")
+
+    detail_lines = []
+    if primary_details:
+        detail_lines.append(" · ".join(primary_details))
+    if secondary_details:
+        detail_lines.append(" · ".join(secondary_details))
+    if not detail_lines:
+        return f"<b>{description}</b>"
+    return (
+        f"<b>{description}</b><br/>"
+        f"<font size='7.2' color='{BRAND_MUTED}'>{'<br/>'.join(detail_lines)}</font>"
+    )
 
 
-def _draw_totals_table(pdf, x, y, width, totals, body_style, header_style):
-    from reportlab.platypus import Paragraph, Table
+def _build_totals_block(totals, lines, styles):
+    from reportlab.lib import colors
+    from reportlab.lib.units import cm
+    from reportlab.platypus import Paragraph, Table, TableStyle
 
     rows = [
-        [Paragraph("Totales", header_style), ""],
-        [Paragraph("Importe antes descuento", body_style), Paragraph(_pdf_text(_money(totals.get("total_amount_before_discount"))), body_style)],
-        [Paragraph("Descuento", body_style), Paragraph(_pdf_text(_money(totals.get("discount_amount"))), body_style)],
-        [Paragraph("Base imponible", body_style), Paragraph(_pdf_text(_money(totals.get("tax_base"))), body_style)],
-        [Paragraph("IVA 21 %", body_style), Paragraph(_pdf_text(_money(totals.get("tax_amount"))), body_style)],
-        [Paragraph("Total EUR", body_style), Paragraph(_pdf_text(_money(totals.get("total_amount"))), body_style)],
+        [
+            Paragraph("Importe antes del descuento", styles["total_label"]),
+            Paragraph(_pdf_text(_money(totals.get("total_amount_before_discount"))), styles["total_value"]),
+        ],
+        [
+            Paragraph("Descuento", styles["total_label"]),
+            Paragraph(_pdf_text(_money(totals.get("discount_amount"), as_discount=True)), styles["total_value"]),
+        ],
+        [
+            Paragraph("Base imponible", styles["total_label"]),
+            Paragraph(_pdf_text(_money(totals.get("tax_base"))), styles["total_value"]),
+        ],
+        [
+            Paragraph(_pdf_text(_tax_label(lines)), styles["total_label"]),
+            Paragraph(_pdf_text(_money(totals.get("tax_amount"))), styles["total_value"]),
+        ],
+        [
+            Paragraph("TOTAL", styles["section"]),
+            Paragraph(_pdf_text(_money(totals.get("total_amount"))), styles["total_strong"]),
+        ],
     ]
-    table = Table(rows, colWidths=[width * 0.58, width * 0.42])
-    table.setStyle(_table_style(span_header=True))
-    table.wrapOn(pdf, x, y)
-    table_height = table._height
-    table.drawOn(pdf, x, y - table_height)
-    return table_height
+    table = Table(rows, colWidths=[4.45 * cm, 2.55 * cm], hAlign="RIGHT")
+    table.setStyle(TableStyle([
+        ("LINEABOVE", (0, 0), (-1, 0), 0.55, colors.HexColor(BRAND_BORDER)),
+        ("LINEABOVE", (0, 2), (-1, 2), 0.35, colors.HexColor(BRAND_BORDER)),
+        ("LINEABOVE", (0, 4), (-1, 4), 1.2, colors.HexColor(BRAND_RED)),
+        ("BACKGROUND", (0, 4), (-1, 4), colors.HexColor(BRAND_SURFACE_ACCENT)),
+        ("LEFTPADDING", (0, 0), (-1, -1), 7),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 7),
+        ("TOPPADDING", (0, 0), (-1, -1), 5),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
+        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+    ]))
+    return [Paragraph("Resumen", styles["section"]), table]
 
 
-def _table_style(*, span_header=False):
+def _draw_page_footer(pdf, doc, *, invoice_number, issuer_email):
     from reportlab.lib import colors
-    from reportlab.platypus import TableStyle
+    from reportlab.lib.pagesizes import A4
+    from reportlab.lib.units import cm
 
-    commands = [
-        ("BACKGROUND", (0, 0), (-1, 0), colors.Color(1, 0.196, 0.302)),
-        ("TEXTCOLOR", (0, 0), (-1, 0), colors.whitesmoke),
-        ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
-        ("BOX", (0, 0), (-1, -1), 0.7, colors.HexColor("#d9dee5")),
-        ("INNERGRID", (0, 0), (-1, -1), 0.35, colors.HexColor("#d9dee5")),
-        ("VALIGN", (0, 0), (-1, -1), "TOP"),
-        ("LEFTPADDING", (0, 0), (-1, -1), 5),
-        ("RIGHTPADDING", (0, 0), (-1, -1), 5),
-        ("TOPPADDING", (0, 0), (-1, -1), 4),
-        ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
-    ]
-    if span_header:
-        commands.append(("SPAN", (0, 0), (1, 0)))
-    return TableStyle(commands)
+    pdf.saveState()
+    pdf.setTitle(f"Factura {invoice_number}")
+    pdf.setAuthor("MetalWolft")
+    pdf.setSubject("Factura emitida por MetalWolft")
+    pdf.setKeywords("factura, MetalWolft")
+    pdf.setStrokeColor(colors.HexColor(BRAND_BORDER))
+    pdf.setLineWidth(0.45)
+    pdf.line(1.8 * cm, 1.35 * cm, A4[0] - 1.8 * cm, 1.35 * cm)
+    pdf.setFillColor(colors.HexColor(BRAND_MUTED))
+    pdf.setFont("Helvetica", 7)
+    footer_text = "MetalWolft"
+    if issuer_email:
+        footer_text += f" · {_text(issuer_email)}"
+    pdf.drawString(1.8 * cm, 0.92 * cm, footer_text)
+    pdf.drawRightString(A4[0] - 1.8 * cm, 0.92 * cm, f"Página {doc.page}")
+    pdf.restoreState()
 
 
 def _display_date(value):
@@ -433,16 +648,76 @@ def _display_date(value):
     return "-"
 
 
-def _format_color(value):
-    return _text(value).replace("_", " ")
+def _date_key(value):
+    if hasattr(value, "date"):
+        return value.date().isoformat()
+    if hasattr(value, "isoformat"):
+        return value.isoformat()
+    if isinstance(value, str) and value:
+        try:
+            return datetime.fromisoformat(value).date().isoformat()
+        except ValueError:
+            return value.strip()
+    return ""
 
 
-def _money(value):
+def _format_measurement(value):
+    if value is None or value == "":
+        return ""
+    try:
+        measurement = Decimal(str(value))
+    except (InvalidOperation, TypeError, ValueError):
+        return _text(value).strip()
+    if not measurement.is_finite():
+        return _text(value).strip()
+    return format(measurement.normalize(), "f")
+
+
+def _humanize_anchoring(value):
+    normalized = _text(value).strip()
+    if not normalized:
+        return ""
+    rule = CONFIGURATOR_ANCHORAGES.get(normalized)
+    if not rule:
+        return normalized
+    return _text(rule.get("name") or rule.get("label") or normalized).strip()
+
+
+def _humanize_color(value):
+    normalized = _text(value).strip()
+    if not normalized:
+        return ""
+    rule = CONFIGURATOR_COLORS.get(normalized)
+    if not rule:
+        return normalized
+    return _text(rule.get("label") or rule.get("name") or normalized).strip()
+
+
+def _tax_label(lines):
+    rates = []
+    for line in lines:
+        rate = _format_measurement(line.get("tax_rate"))
+        if rate and rate not in rates:
+            rates.append(rate)
+    if len(rates) == 1:
+        return f"IVA {rates[0]} %"
+    return "Cuota de IVA"
+
+
+def _money(value, *, as_discount=False):
     try:
         amount = Decimal(str(value or "0.00"))
-    except (InvalidOperation, ValueError):
+    except (InvalidOperation, TypeError, ValueError):
         amount = Decimal("0.00")
-    return f"{amount.quantize(Decimal('0.01')):.2f} EUR"
+    amount = amount.quantize(Decimal("0.01"))
+    prefix = ""
+    if amount < 0:
+        prefix = "-"
+        amount = abs(amount)
+    elif as_discount and amount > 0:
+        prefix = "-"
+    formatted = f"{amount:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+    return f"{prefix}{formatted} €"
 
 
 def _text(value):

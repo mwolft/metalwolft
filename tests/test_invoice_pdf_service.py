@@ -173,6 +173,29 @@ def normalized_pdf_text(path):
     return re.sub(r"\s+", " ", pdf_text(path))
 
 
+def pdf_metadata(path):
+    return PdfReader(str(path)).metadata
+
+
+def pdf_page_count(path):
+    return len(PdfReader(str(path)).pages)
+
+
+def first_page_contains_image(path):
+    page = PdfReader(str(path)).pages[0]
+    resources = page.get("/Resources")
+    if not resources:
+        return False
+    resources = resources.get_object()
+    xobjects = resources.get("/XObject")
+    if not xobjects:
+        return False
+    return any(
+        image.get_object().get("/Subtype") == "/Image"
+        for image in xobjects.get_object().values()
+    )
+
+
 @contextmanager
 def temp_invoice_dir():
     TEST_TMP_ROOT.mkdir(exist_ok=True)
@@ -219,17 +242,131 @@ class InvoicePdfServiceTest(unittest.TestCase):
             "00000000T",
             "AB1234",
             "Reja fija Pittsburgh",
-            "Sin obra: con agujeros interiores",
-            "satinado blanco",
-            "Tornillos: 150 mm",
+            "30 × 30 cm",
+            "Agujeros interiores",
+            "Blanco liso",
+            "Tornillos 150 mm",
             "Gastos de",
             "Descuento",
             "Base imponible",
             "IVA 21",
-            "104.40 EUR",
+            "104,40 €",
             "EUR",
         ):
             self.assertIn(expected, text)
+
+    def test_pdf_uses_brand_asset_and_current_document_color(self):
+        invoice = SnapshotOnlyInvoice()
+
+        with temp_invoice_dir() as tmpdir:
+            result = generate_invoice_pdf(invoice, output_dir=tmpdir)
+            output_path = Path(tmpdir) / result.filename
+
+            self.assertTrue(first_page_contains_image(output_path))
+            self.assertIn("METALWOLFT", normalized_pdf_text(output_path))
+
+        source = (SRC_DIR / "api/invoice_pdf_service.py").read_text(encoding="utf-8")
+        self.assertIn('BRAND_RED = "#cf1c35"', source)
+
+    def test_pdf_hides_internal_hash_and_customer_contact_but_keeps_integrity_validation(self):
+        invoice = SnapshotOnlyInvoice()
+        original_hash = invoice.invoice_snapshot_hash
+
+        with temp_invoice_dir() as tmpdir:
+            result = generate_invoice_pdf(invoice, output_dir=tmpdir)
+            output_path = Path(tmpdir) / result.filename
+            text = normalized_pdf_text(output_path)
+            metadata = pdf_metadata(output_path)
+
+        self.assertNotIn("Integridad fiscal", text)
+        self.assertNotIn(original_hash, text)
+        self.assertNotIn(original_hash, str(metadata))
+        self.assertNotIn("cliente@example.com", text)
+        self.assertNotIn("600000000", text)
+        self.assertNotIn("600111222", text)
+        self.assertIn("admin@metalwolft.com", text)
+        self.assertEqual(invoice.invoice_snapshot_hash, original_hash)
+
+    def test_pdf_shows_operation_date_only_when_it_differs_from_issue_date(self):
+        invoice = SnapshotOnlyInvoice()
+
+        with temp_invoice_dir() as tmpdir:
+            result = generate_invoice_pdf(invoice, output_dir=tmpdir)
+            text = normalized_pdf_text(Path(tmpdir) / result.filename)
+
+        self.assertIn("FECHA DE EXPEDICIÓN 16/07/2026", text)
+        self.assertIn("FECHA DE OPERACIÓN 15/07/2026", text)
+
+        same_date_snapshot = snapshot()
+        same_date_snapshot["operation"] = {
+            **same_date_snapshot["operation"],
+            "operation_date": "2026-07-16",
+        }
+        same_date_invoice = SnapshotOnlyInvoice(
+            invoice_snapshot=same_date_snapshot,
+            stored_hash=calculate_invoice_snapshot_hash(same_date_snapshot),
+        )
+        with temp_invoice_dir() as tmpdir:
+            result = generate_invoice_pdf(same_date_invoice, output_dir=tmpdir)
+            text = normalized_pdf_text(Path(tmpdir) / result.filename)
+
+        self.assertNotIn("FECHA DE OPERACIÓN", text)
+
+    def test_company_and_individual_legal_names_are_rendered_from_snapshot(self):
+        company_snapshot = snapshot()
+        company_snapshot["customer"] = {
+            **company_snapshot["customer"],
+            "legal_name": "CONSTRUCCIONES EJEMPLO SL",
+            "tax_id": "B12345678",
+        }
+        company_invoice = SnapshotOnlyInvoice(
+            invoice_snapshot=company_snapshot,
+            stored_hash=calculate_invoice_snapshot_hash(company_snapshot),
+        )
+
+        with temp_invoice_dir() as tmpdir:
+            result = generate_invoice_pdf(company_invoice, output_dir=tmpdir)
+            company_text = normalized_pdf_text(Path(tmpdir) / result.filename)
+
+        self.assertIn("CONSTRUCCIONES EJEMPLO SL", company_text)
+        self.assertIn("B12345678", company_text)
+
+        individual_invoice = SnapshotOnlyInvoice()
+        with temp_invoice_dir() as tmpdir:
+            result = generate_invoice_pdf(individual_invoice, output_dir=tmpdir)
+            individual_text = normalized_pdf_text(Path(tmpdir) / result.filename)
+
+        self.assertIn("Sergio Arias", individual_text)
+        self.assertIn("00000000T", individual_text)
+
+    def test_multiple_long_lines_paginate_and_repeat_the_table_header(self):
+        multipage_snapshot = snapshot()
+        source_line = multipage_snapshot["lines"][0]
+        multipage_snapshot["lines"] = []
+        for index in range(1, 46):
+            line = copy.deepcopy(source_line)
+            line["line_number"] = index
+            line["description"] = (
+                f"Reja a medida de prueba {index} con una descripción suficientemente larga "
+                "para comprobar el ajuste de texto dentro de la columna MARKER"
+            )
+            multipage_snapshot["lines"].append(line)
+        invoice = SnapshotOnlyInvoice(
+            invoice_snapshot=multipage_snapshot,
+            stored_hash=calculate_invoice_snapshot_hash(multipage_snapshot),
+        )
+
+        with temp_invoice_dir() as tmpdir:
+            result = generate_invoice_pdf(invoice, output_dir=tmpdir)
+            output_path = Path(tmpdir) / result.filename
+            text = normalized_pdf_text(output_path)
+            page_count = pdf_page_count(output_path)
+
+        self.assertGreater(page_count, 1)
+        self.assertGreaterEqual(text.count("Producto / configuración"), 2)
+        self.assertIn("Reja a medida de prueba 45", text)
+        self.assertIn("MARKER", text)
+        self.assertIn("104,40 €", text)
 
     def test_pdf_does_not_include_full_payment_reference(self):
         invoice = SnapshotOnlyInvoice()

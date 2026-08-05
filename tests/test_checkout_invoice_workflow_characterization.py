@@ -30,6 +30,10 @@ def order_confirmation_source():
     return (ROOT_DIR / "src/api/order_confirmation_email_service.py").read_text(encoding="utf-8")
 
 
+def transactional_renderer_source():
+    return (ROOT_DIR / "src/api/transactional_email_renderer.py").read_text(encoding="utf-8")
+
+
 def function_source(function_name):
     source = routes_source()
     start = source.index(f"def {function_name}")
@@ -221,11 +225,14 @@ class CheckoutStatusInvoiceWorkflowCharacterizationTest(unittest.TestCase):
 class CheckoutOrderConfirmationEmailCharacterizationTest(unittest.TestCase):
     def test_checkout_email_is_order_confirmation_not_invoice_email(self):
         source = order_confirmation_source()
+        renderer_source = transactional_renderer_source()
 
         self.assertIn("def send_order_confirmation_email(", source)
         self.assertIn('subject=f"Hemos recibido tu pedido {order.locator}"', source)
         self.assertIn("recipients=[user.email, mail_username]", source)
-        self.assertIn("Estado del pago: confirmado", source)
+        self.assertIn("body=rendered_email.text", source)
+        self.assertIn("html=rendered_email.html", source)
+        self.assertIn("Estado del pago: confirmado", renderer_source)
         self.assertNotIn("InvoiceEmailMessage", source)
         self.assertNotIn("send_invoice_email", source)
         self.assertNotIn(".attach(", source)

@@ -17,6 +17,7 @@ class FlaskMailInvoiceAdapter:
             subject=message.subject,
             recipients=list(message.recipients),
             body=message.body,
+            html=message.html,
         )
 
         for attachment in message.attachments:
@@ -44,9 +45,18 @@ def _validated_message(message):
     if not recipients or any(not str(recipient or "").strip() for recipient in recipients):
         raise FlaskMailInvoiceAdapterError("El email de factura debe tener destinatarios.")
 
+    body = str(getattr(message, "body", "") or "").strip()
+    html = str(getattr(message, "html", "") or "").strip()
+    if not body or not html:
+        raise FlaskMailInvoiceAdapterError(
+            "El email de factura debe incluir texto y HTML."
+        )
+
     attachments = tuple(getattr(message, "attachments", None) or ())
-    if not attachments:
-        raise FlaskMailInvoiceAdapterError("El email de factura debe tener adjuntos.")
+    if len(attachments) != 1:
+        raise FlaskMailInvoiceAdapterError(
+            "El email de factura debe tener un único adjunto PDF."
+        )
 
     for attachment in attachments:
         _validate_attachment(attachment)
@@ -63,8 +73,8 @@ def _validate_attachment(attachment):
         raise FlaskMailInvoiceAdapterError("Nombre de adjunto de factura no valido.")
 
     content_type = str(getattr(attachment, "content_type", "") or "").strip()
-    if not content_type:
-        raise FlaskMailInvoiceAdapterError("El adjunto de factura no tiene MIME.")
+    if content_type.lower() != "application/pdf":
+        raise FlaskMailInvoiceAdapterError("El adjunto de factura no tiene MIME PDF.")
 
     data = getattr(attachment, "data", None)
     if not isinstance(data, bytes) or not data:
