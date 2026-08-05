@@ -126,6 +126,9 @@ class CustomerOrderSerializerTest(unittest.TestCase):
                             "ancho": "80",
                             "color": "satinado_blanco",
                             "anclaje": "Sin obra: con pletinas",
+                            "screw_option": "standard",
+                            "screw_length_mm": 70,
+                            "screw_supplement": "0.00",
                         },
                     }
                 ],
@@ -602,7 +605,15 @@ class CustomerOrdersEndpointTest(unittest.TestCase):
         )
         self.assertEqual(
             set(order["lines"][0]["configuration"].keys()),
-            {"alto", "ancho", "color", "anclaje"},
+            {
+                "alto",
+                "ancho",
+                "color",
+                "anclaje",
+                "screw_option",
+                "screw_length_mm",
+                "screw_supplement",
+            },
         )
         self.assertEqual(
             set(order["invoice"].keys()),
@@ -637,6 +648,9 @@ class CustomerOrdersEndpointTest(unittest.TestCase):
                         "ancho": "80",
                         "color": "satinado_blanco",
                         "anclaje": "Sin obra: con pletinas",
+                        "screw_option": "standard",
+                        "screw_length_mm": 70,
+                        "screw_supplement": "0.00",
                     },
                 }
             ],

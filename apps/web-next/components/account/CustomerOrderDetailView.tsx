@@ -15,6 +15,7 @@ import {
   type CustomerOrderLineConfiguration
 } from "@/lib/customer-orders-client";
 import { formatCivilDateEs } from "@/lib/delivery-estimate";
+import { formatScrewConfiguration } from "@/lib/screw-option";
 
 type OrderDetailStatus = "loading" | "ready" | "not-found" | "unauthenticated" | "error";
 
@@ -67,11 +68,13 @@ function formatDimension(value: string | null) {
 }
 
 function configurationRows(configuration: CustomerOrderLineConfiguration) {
+  const screwConfiguration = formatScrewConfiguration(configuration);
   return [
     { label: "Alto", value: formatDimension(configuration.alto) },
     { label: "Ancho", value: formatDimension(configuration.ancho) },
     { label: "Color", value: hasText(configuration.color) ? configuration.color : null },
-    { label: "Anclaje", value: hasText(configuration.anclaje) ? configuration.anclaje : null }
+    { label: "Anclaje", value: hasText(configuration.anclaje) ? configuration.anclaje : null },
+    { label: "Tornillos", value: screwConfiguration }
   ].filter((row): row is { label: string; value: string } => Boolean(row.value));
 }
 

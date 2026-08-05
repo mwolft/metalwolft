@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 
+from api.utils import DEFAULT_CONFIGURATOR_SCREW_OPTION, resolve_screw_configuration
+
 
 PUBLIC_ORDER_STATUS = {
     "pendiente": {"code": "pendiente", "label": "Pendiente"},
@@ -69,6 +71,15 @@ def _serialize_shipping_address(order_details):
 
 
 def _serialize_customer_order_line(detail):
+    screw_option = getattr(detail, "screw_option", None) or DEFAULT_CONFIGURATOR_SCREW_OPTION
+    screw_length_mm = getattr(detail, "screw_length_mm", None)
+    screw_supplement = getattr(detail, "screw_supplement", 0.0)
+    if screw_length_mm is None:
+        resolved_screws = resolve_screw_configuration(detail.anclaje, screw_option)
+        if resolved_screws:
+            screw_length_mm = resolved_screws["screw_length_mm"]
+            screw_supplement = resolved_screws["screw_supplement"]
+
     return {
         "id": detail.id,
         "product_name": detail.product.nombre if detail.product else None,
@@ -78,6 +89,9 @@ def _serialize_customer_order_line(detail):
             "ancho": _format_optional_number(detail.ancho),
             "color": detail.color,
             "anclaje": detail.anclaje,
+            "screw_option": screw_option,
+            "screw_length_mm": screw_length_mm,
+            "screw_supplement": _format_decimal_amount(screw_supplement),
         },
     }
 

@@ -86,6 +86,9 @@ def snapshot(overrides=None):
                     "width_cm": "30",
                     "anchoring": "Sin obra: con agujeros interiores",
                     "color": "satinado_blanco",
+                    "screw_option": "long_150",
+                    "screw_length_mm": 150,
+                    "screw_supplement": "8.95",
                 },
             },
             {
@@ -218,6 +221,7 @@ class InvoicePdfServiceTest(unittest.TestCase):
             "Reja fija Pittsburgh",
             "Sin obra: con agujeros interiores",
             "satinado blanco",
+            "Tornillos: 150 mm",
             "Gastos de",
             "Descuento",
             "Base imponible",

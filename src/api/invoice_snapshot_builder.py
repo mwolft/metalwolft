@@ -357,6 +357,19 @@ def _build_product_line(line_number, source_line):
             "El total de linea no coincide con cantidad por precio unitario.",
         )
 
+    configuration = {
+        "height_cm": _measurement_string(source_line.get("alto"), f"lines.{line_number}.configuration.height_cm"),
+        "width_cm": _measurement_string(source_line.get("ancho"), f"lines.{line_number}.configuration.width_cm"),
+        "anchoring": source_line.get("anclaje"),
+        "color": source_line.get("color"),
+    }
+    if source_line.get("screw_option") is not None:
+        configuration.update({
+            "screw_option": source_line.get("screw_option"),
+            "screw_length_mm": source_line.get("screw_length_mm"),
+            "screw_supplement": f"{_quantize_money(_to_decimal(source_line.get('screw_supplement', 0), f'lines.{line_number}.configuration.screw_supplement')):.2f}",
+        })
+
     model = source_line.get("product_name")
     return {
         "line_number": line_number,
@@ -367,12 +380,7 @@ def _build_product_line(line_number, source_line):
         "quantity": quantity,
         "unit_amount_before_discount": _quantize_money(unit_total),
         "line_amount_before_discount": _quantize_money(line_total),
-        "configuration": {
-            "height_cm": _measurement_string(source_line.get("alto"), f"lines.{line_number}.configuration.height_cm"),
-            "width_cm": _measurement_string(source_line.get("ancho"), f"lines.{line_number}.configuration.width_cm"),
-            "anchoring": source_line.get("anclaje"),
-            "color": source_line.get("color"),
-        },
+        "configuration": configuration,
     }
 
 

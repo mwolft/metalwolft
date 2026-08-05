@@ -9,6 +9,26 @@ from slugify import slugify
 
 db = SQLAlchemy()
 
+
+def _serialize_screw_configuration(anclaje, screw_option, screw_length_mm, screw_supplement):
+    from api.utils import DEFAULT_CONFIGURATOR_SCREW_OPTION, resolve_screw_configuration
+
+    normalized_option = screw_option or DEFAULT_CONFIGURATOR_SCREW_OPTION
+    normalized_length = screw_length_mm
+    normalized_supplement = screw_supplement
+    if normalized_length is None:
+        legacy_configuration = resolve_screw_configuration(anclaje, normalized_option)
+        if legacy_configuration:
+            normalized_length = legacy_configuration["screw_length_mm"]
+            if normalized_supplement is None:
+                normalized_supplement = legacy_configuration["screw_supplement"]
+
+    return {
+        "screw_option": normalized_option,
+        "screw_length_mm": normalized_length,
+        "screw_supplement": float(normalized_supplement or 0.0),
+    }
+
 class DeliveryEstimateConfig(db.Model):
     __tablename__ = 'delivery_estimate_config'
     id = db.Column(db.Integer, primary_key=True)
@@ -450,6 +470,9 @@ class OrderDetails(db.Model):
     ancho = db.Column(db.Float, nullable=True)  
     anclaje = db.Column(db.String(50), nullable=True)  
     color = db.Column(db.String(50), nullable=True) 
+    screw_option = db.Column(db.String(20), nullable=False, default="standard")
+    screw_length_mm = db.Column(db.Integer, nullable=True)
+    screw_supplement = db.Column(db.Float, nullable=False, default=0.0)
     precio_total = db.Column(db.Float, nullable=False)  
     firstname = db.Column(db.String(100), nullable=True)
     lastname = db.Column(db.String(100), nullable=True)
@@ -466,6 +489,12 @@ class OrderDetails(db.Model):
     def __repr__(self):
         return f'<OrderDetail {self.id}: Order {self.order_id} - Product {self.product_id}>'
     def serialize(self):
+        screw_configuration = _serialize_screw_configuration(
+            self.anclaje,
+            self.screw_option,
+            self.screw_length_mm,
+            self.screw_supplement,
+        )
         return {
             "id": self.id,
             "order_id": self.order_id,
@@ -475,6 +504,7 @@ class OrderDetails(db.Model):
             "ancho": self.ancho,
             "anclaje": self.anclaje,
             "color": self.color,
+            **screw_configuration,
             "precio_total": self.precio_total,
             "locator": self.order.locator if self.order else None,
             "invoice_number": self.order.invoice_number if self.order else None,
@@ -949,6 +979,9 @@ class Cart(db.Model):
     ancho = db.Column(db.Float, nullable=True)
     anclaje = db.Column(db.String(50), nullable=True)
     color = db.Column(db.String(50), nullable=True)
+    screw_option = db.Column(db.String(20), nullable=False, default="standard")
+    screw_length_mm = db.Column(db.Integer, nullable=True)
+    screw_supplement = db.Column(db.Float, nullable=False, default=0.0)
     precio_total = db.Column(db.Float, nullable=False)
     quantity = db.Column(db.Integer, nullable=False, default=1)  
     added_at = db.Column(db.DateTime, nullable=False)
@@ -956,6 +989,12 @@ class Cart(db.Model):
     product = db.relationship('Products', backref='cart_items', lazy=True)
 
     def serialize(self):
+        screw_configuration = _serialize_screw_configuration(
+            self.anclaje,
+            self.screw_option,
+            self.screw_length_mm,
+            self.screw_supplement,
+        )
         return {
             "id": self.id,
             "usuario_id": self.usuario_id,
@@ -969,6 +1008,7 @@ class Cart(db.Model):
             "ancho": self.ancho,
             "anclaje": self.anclaje,
             "color": self.color,
+            **screw_configuration,
             "precio_total": self.precio_total,
             "quantity": self.quantity,
             "added_at": self.added_at,

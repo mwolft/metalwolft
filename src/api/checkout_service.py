@@ -76,6 +76,7 @@ def build_product_configuration_quote(
     ancho,
     anclaje,
     color,
+    screw_option=None,
     quantity=1,
 ):
     normalized_quantity = _normalize_quantity({"quantity": quantity})
@@ -88,6 +89,7 @@ def build_product_configuration_quote(
         precio_m2=product.precio_rebajado or product.precio,
         anclaje=anclaje,
         color=color,
+        screw_option=screw_option,
     )
 
     return {
@@ -97,9 +99,12 @@ def build_product_configuration_quote(
         "ancho": normalized_ancho,
         "anclaje": price_quote["anclaje"],
         "color": price_quote["color"],
+        "screw_option": price_quote["screw_option"],
+        "screw_length_mm": price_quote["screw_length_mm"],
         "currency": QUOTE_CURRENCY,
         "base_unit_price": price_quote["base_unit_price"],
         "anchorage_supplement": price_quote["anchorage_supplement"],
+        "screw_supplement": price_quote["screw_supplement"],
         "unit_price": price_quote["unit_price"],
         "subtotal": round(price_quote["unit_price"] * normalized_quantity, 2),
     }
@@ -118,6 +123,7 @@ def _build_line(item):
         ancho=item.get("ancho"),
         anclaje=item.get("anclaje"),
         color=item.get("color"),
+        screw_option=item.get("screw_option"),
         quantity=item.get("quantity", 1),
     )
     quantity = configuration_quote["quantity"]
@@ -136,6 +142,9 @@ def _build_line(item):
         "ancho": ancho,
         "anclaje": configuration_quote["anclaje"],
         "color": configuration_quote["color"],
+        "screw_option": configuration_quote["screw_option"],
+        "screw_length_mm": configuration_quote["screw_length_mm"],
+        "screw_supplement": configuration_quote["screw_supplement"],
         "unit_price": round(unit_price, 2),
         "line_total": configuration_quote["subtotal"],
         "shipping_type": shipping_type,

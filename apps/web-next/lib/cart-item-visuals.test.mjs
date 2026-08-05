@@ -32,6 +32,9 @@ assert.match(
   /<dt>Color<\/dt>\s*<dd>\{formatColor\(item\.color\)\}<\/dd>[\s\S]*?mw-cart-config__color-swatch/
 );
 assert.doesNotMatch(cartView, /src="\/icons\/[^\"]*color/i);
+assert.match(cartView, /formatScrewConfiguration\(item\)/);
+assert.match(cartView, /className="mw-cart-config__screws"/);
+assert.match(cartView, /<dt>Tornillos<\/dt>/);
 
 assert.match(
   styles,
@@ -58,4 +61,4 @@ assert.match(
   /\.mw-configurator-swatch--forja \.mw-configurator-swatch__dot,\s*\.mw-cart-config__color-swatch--forja\s*{[^}]*background-image:/s
 );
 
-console.log("24 cart item visual assertions passed");
+console.log("27 cart item visual assertions passed");

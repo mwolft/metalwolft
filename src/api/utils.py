@@ -115,11 +115,48 @@ CONFIGURATOR_MAX_DIMENSION_CM = 250.0
 CONFIGURATOR_MAX_DIMENSION_SUM_CM = 400.0
 DEFAULT_CONFIGURATOR_ANCHORAGE = ANCHORAGE_INTERIOR_HOLES
 DEFAULT_CONFIGURATOR_COLOR = "satinado_blanco"
+DEFAULT_CONFIGURATOR_SCREW_OPTION = "standard"
+SCREW_OPTION_LONG_150 = "long_150"
+
+CONFIGURATOR_SCREW_OPTIONS = {
+    ANCHORAGE_INTERIOR_HOLES: {
+        DEFAULT_CONFIGURATOR_SCREW_OPTION: {
+            "label": "Estándar incluida",
+            "description": "Incluida en el pedido",
+            "length_mm": 80,
+            "supplement": 0.0,
+            "enabled": True,
+        },
+        SCREW_OPTION_LONG_150: {
+            "label": "Tornillos largos",
+            "description": "Para huecos que necesitan mayor profundidad de fijación",
+            "length_mm": 150,
+            "supplement": 8.95,
+            "enabled": True,
+        },
+    },
+    ANCHORAGE_FRONT_PLATES: {
+        DEFAULT_CONFIGURATOR_SCREW_OPTION: {
+            "label": "Estándar incluida",
+            "description": "Incluida en el pedido",
+            "length_mm": 70,
+            "supplement": 0.0,
+            "enabled": True,
+        },
+        SCREW_OPTION_LONG_150: {
+            "label": "Tornillos largos",
+            "description": "Para huecos que necesitan mayor profundidad de fijación",
+            "length_mm": 150,
+            "supplement": 8.95,
+            "enabled": True,
+        },
+    },
+}
 
 
 def serialize_configurator_configuration(product_id):
     return {
-        "schema_version": 1,
+        "schema_version": 2,
         "product_id": int(product_id),
         "dimensions": {
             "alto": {
@@ -154,9 +191,24 @@ def serialize_configurator_configuration(product_id):
             }
             for value, rule in CONFIGURATOR_COLORS.items()
         ],
+        "screw_options": {
+            anchorage: [
+                {
+                    "value": value,
+                    "label": rule["label"],
+                    "description": rule["description"],
+                    "length_mm": rule["length_mm"],
+                    "supplement": rule["supplement"],
+                    "enabled": rule["enabled"],
+                }
+                for value, rule in options.items()
+            ]
+            for anchorage, options in CONFIGURATOR_SCREW_OPTIONS.items()
+        },
         "defaults": {
             "anchorage": DEFAULT_CONFIGURATOR_ANCHORAGE,
             "color": DEFAULT_CONFIGURATOR_COLOR,
+            "screw_option": DEFAULT_CONFIGURATOR_SCREW_OPTION,
         },
     }
 
@@ -177,9 +229,18 @@ def _normalize_color_value(value):
     return str(value).strip()
 
 
-def validate_configurator_options(anclaje, color):
+def _normalize_screw_option_value(value):
+    if value is None:
+        return DEFAULT_CONFIGURATOR_SCREW_OPTION
+    if not isinstance(value, str):
+        raise ValueError("Selecciona una opción de tornillería válida")
+    return value.strip()
+
+
+def validate_configurator_options(anclaje, color, screw_option=None):
     normalized_anclaje = _normalize_anchorage_value(anclaje)
     normalized_color = _normalize_color_value(color)
+    normalized_screw_option = _normalize_screw_option_value(screw_option)
 
     if normalized_anclaje == ANCHORAGE_LEGACY_FRONT_HOLES:
         raise ValueError(LEGACY_ANCHORAGE_RECONFIGURE_MESSAGE)
@@ -198,7 +259,46 @@ def validate_configurator_options(anclaje, color):
     if not color_rule["enabled"]:
         raise ValueError("Este color no está disponible actualmente")
 
-    return normalized_anclaje, normalized_color
+    screw_options = CONFIGURATOR_SCREW_OPTIONS.get(normalized_anclaje)
+    screw_rule = screw_options.get(normalized_screw_option) if screw_options else None
+    if not screw_rule:
+        raise ValueError("Selecciona una opción de tornillería válida para esta instalación")
+
+    if not screw_rule["enabled"]:
+        raise ValueError("Esta opción de tornillería no está disponible actualmente")
+
+    return normalized_anclaje, normalized_color, normalized_screw_option, screw_rule
+
+
+def resolve_screw_configuration(anclaje, screw_option=None):
+    normalized_anclaje = _normalize_anchorage_value(anclaje)
+    normalized_screw_option = _normalize_screw_option_value(screw_option)
+    screw_options = CONFIGURATOR_SCREW_OPTIONS.get(normalized_anclaje)
+    screw_rule = screw_options.get(normalized_screw_option) if screw_options else None
+    if not screw_rule or not screw_rule["enabled"]:
+        return None
+    return {
+        "screw_option": normalized_screw_option,
+        "screw_length_mm": screw_rule["length_mm"],
+        "screw_supplement": screw_rule["supplement"],
+    }
+
+
+def format_screw_configuration(screw_length_mm, screw_supplement=0.0):
+    if screw_length_mm is None:
+        return None
+
+    try:
+        normalized_length = int(screw_length_mm)
+        normalized_supplement = float(screw_supplement or 0.0)
+    except (TypeError, ValueError):
+        return None
+
+    if normalized_supplement > 0:
+        supplement = f"{normalized_supplement:.2f}".replace(".", ",")
+        return f"{normalized_length} mm (+{supplement} €)"
+    return f"{normalized_length} mm incluidos"
+
 
 class APIException(Exception):
     status_code = 400
@@ -291,25 +391,49 @@ def calcular_precio_reja(alto_cm, ancho_cm, precio_m2):
     return round(max(precio, base_price), 2)
 
 
-def build_configured_reja_quote(alto_cm, ancho_cm, precio_m2, anclaje, color):
+def build_configured_reja_quote(
+    alto_cm,
+    ancho_cm,
+    precio_m2,
+    anclaje,
+    color,
+    screw_option=None,
+):
     base_unit_price = calcular_precio_reja(alto_cm, ancho_cm, precio_m2)
-    normalized_anclaje, normalized_color = validate_configurator_options(anclaje, color)
+    (
+        normalized_anclaje,
+        normalized_color,
+        normalized_screw_option,
+        screw_rule,
+    ) = validate_configurator_options(anclaje, color, screw_option)
     anchorage_supplement = CONFIGURATOR_ANCHORAGES[normalized_anclaje]["supplement"]
+    screw_supplement = screw_rule["supplement"]
 
     return {
-        "unit_price": round(base_unit_price + anchorage_supplement, 2),
+        "unit_price": round(base_unit_price + anchorage_supplement + screw_supplement, 2),
         "base_unit_price": base_unit_price,
         "anchorage_supplement": anchorage_supplement,
+        "screw_supplement": screw_supplement,
         "anclaje": normalized_anclaje,
         "color": normalized_color,
+        "screw_option": normalized_screw_option,
+        "screw_length_mm": screw_rule["length_mm"],
     }
 
 
-def calcular_precio_reja_configurada(alto_cm, ancho_cm, precio_m2, anclaje, color):
+def calcular_precio_reja_configurada(
+    alto_cm,
+    ancho_cm,
+    precio_m2,
+    anclaje,
+    color,
+    screw_option=None,
+):
     return build_configured_reja_quote(
         alto_cm=alto_cm,
         ancho_cm=ancho_cm,
         precio_m2=precio_m2,
         anclaje=anclaje,
         color=color,
+        screw_option=screw_option,
     )["unit_price"]

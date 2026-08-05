@@ -33,9 +33,14 @@ if HAS_ENDPOINT_DEPS:
     from flask import Flask
     from flask_jwt_extended import JWTManager
 
-    from api.models import Cart, Categories, Orders, Products, db
-    from api.routes import api
-    from api.utils import ANCHORAGE_FRONT_PLATES, ANCHORAGE_INTERIOR_HOLES
+    from api.models import Cart, Categories, OrderDetails, Orders, Products, db
+    from api.routes import _build_order_details_from_checkout_quote, api
+    from api.utils import (
+        ANCHORAGE_FRONT_PLATES,
+        ANCHORAGE_INTERIOR_HOLES,
+        DEFAULT_CONFIGURATOR_SCREW_OPTION,
+        SCREW_OPTION_LONG_150,
+    )
 
 
 @unittest.skipUnless(
@@ -137,10 +142,11 @@ class ProductQuoteEndpointTest(unittest.TestCase):
                 "dimensions",
                 "anchorages",
                 "colors",
+                "screw_options",
                 "defaults",
             },
         )
-        self.assertEqual(configuration["schema_version"], 1)
+        self.assertEqual(configuration["schema_version"], 2)
         self.assertEqual(configuration["product_id"], self.available_product_id)
         self.assertEqual(
             configuration["dimensions"],
@@ -155,6 +161,7 @@ class ProductQuoteEndpointTest(unittest.TestCase):
             {
                 "anchorage": ANCHORAGE_INTERIOR_HOLES,
                 "color": "satinado_blanco",
+                "screw_option": DEFAULT_CONFIGURATOR_SCREW_OPTION,
             },
         )
         self.assertEqual(
@@ -174,6 +181,13 @@ class ProductQuoteEndpointTest(unittest.TestCase):
             "Instalación sin obra mediante pletinas.",
         )
         self.assertEqual(len(configuration["colors"]), 10)
+        self.assertEqual(
+            [
+                option["length_mm"]
+                for option in configuration["screw_options"][ANCHORAGE_FRONT_PLATES]
+            ],
+            [70, 150],
+        )
         self.assertTrue(all(option["enabled"] for option in configuration["colors"]))
         self.assertEqual(
             configuration["colors"][0],
@@ -221,9 +235,12 @@ class ProductQuoteEndpointTest(unittest.TestCase):
                 "ancho": 30.0,
                 "anclaje": ANCHORAGE_FRONT_PLATES,
                 "color": "satinado_blanco",
+                "screw_option": DEFAULT_CONFIGURATOR_SCREW_OPTION,
+                "screw_length_mm": 70,
                 "currency": "EUR",
                 "base_unit_price": 95.0,
                 "anchorage_supplement": 24.95,
+                "screw_supplement": 0.0,
                 "unit_price": 119.95,
                 "subtotal": 239.9,
             },
@@ -256,9 +273,60 @@ class ProductQuoteEndpointTest(unittest.TestCase):
             self.available_product_id,
             self.quote_payload(anclaje="Anclaje inventado"),
         )
+        invalid_screw_option = self.post_quote(
+            self.available_product_id,
+            self.quote_payload(screw_option="invented"),
+        )
 
         self.assertEqual(invalid_dimensions.status_code, 400)
         self.assertEqual(invalid_anchorage.status_code, 400)
+        self.assertEqual(invalid_screw_option.status_code, 400)
+
+    def test_long_screws_are_priced_by_backend(self):
+        response = self.post_quote(
+            self.available_product_id,
+            self.quote_payload(screw_option=SCREW_OPTION_LONG_150, quantity=1),
+        )
+
+        self.assertEqual(response.status_code, 200)
+        quote = response.get_json()
+        self.assertEqual(quote["screw_option"], SCREW_OPTION_LONG_150)
+        self.assertEqual(quote["screw_length_mm"], 150)
+        self.assertEqual(quote["screw_supplement"], 8.95)
+        self.assertEqual(quote["unit_price"], 128.9)
+
+    def test_order_line_freezes_resolved_screw_configuration(self):
+        response = self.post_quote(
+            self.available_product_id,
+            self.quote_payload(screw_option=SCREW_OPTION_LONG_150, quantity=1),
+        )
+        quote_line = {
+            **response.get_json(),
+            "product_name": "Reja disponible",
+            "line_total": 128.9,
+            "shipping_type": "normal",
+            "shipping_cost": 0.0,
+        }
+
+        detail_data = _build_order_details_from_checkout_quote({"lines": [quote_line]})[0]
+        detail = OrderDetails(
+            order_id=1,
+            product_id=detail_data["producto_id"],
+            quantity=detail_data["quantity"],
+            alto=detail_data["alto"],
+            ancho=detail_data["ancho"],
+            anclaje=detail_data["anclaje"],
+            color=detail_data["color"],
+            screw_option=detail_data["screw_option"],
+            screw_length_mm=detail_data["screw_length_mm"],
+            screw_supplement=detail_data["screw_supplement"],
+            precio_total=detail_data["precio_total"],
+        )
+
+        serialized = detail.serialize()
+        self.assertEqual(serialized["screw_option"], SCREW_OPTION_LONG_150)
+        self.assertEqual(serialized["screw_length_mm"], 150)
+        self.assertEqual(serialized["screw_supplement"], 8.95)
 
     def test_rejects_unavailable_product(self):
         response = self.post_quote(self.unavailable_product_id)

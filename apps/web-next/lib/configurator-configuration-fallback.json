@@ -1,5 +1,5 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "product_id": 0,
   "dimensions": {
     "alto": { "min_cm": 30, "max_cm": 250 },
@@ -44,8 +44,10 @@
     { "value": "forja_verde", "name": "Verde bronce", "label": "Verde bronce forja", "finish": "forja", "finish_label": "Efecto forja", "enabled": true },
     { "value": "forja_dorado", "name": "Dorado", "label": "Dorado forja", "finish": "forja", "finish_label": "Efecto forja", "enabled": true }
   ],
+  "screw_options": {},
   "defaults": {
     "anchorage": "Sin obra: con agujeros interiores",
-    "color": "satinado_blanco"
+    "color": "satinado_blanco",
+    "screw_option": "standard"
   }
 }

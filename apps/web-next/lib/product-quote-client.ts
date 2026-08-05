@@ -6,6 +6,7 @@ export type ProductQuoteRequest = {
   ancho: number;
   anclaje: string;
   color: string;
+  screw_option: string;
   quantity?: number;
 };
 
@@ -16,9 +17,12 @@ export type ProductQuoteResponse = {
   ancho: number;
   anclaje: string;
   color: string;
+  screw_option: string;
+  screw_length_mm: number;
   currency: string;
   base_unit_price: number;
   anchorage_supplement: number;
+  screw_supplement: number;
   unit_price: number;
   subtotal: number;
 };
@@ -81,9 +85,12 @@ function isProductQuoteResponse(
     isFiniteNumber(value.ancho) &&
     typeof value.anclaje === "string" &&
     typeof value.color === "string" &&
+    typeof value.screw_option === "string" &&
+    isFiniteNumber(value.screw_length_mm) &&
     typeof value.currency === "string" &&
     isFiniteNumber(value.base_unit_price) &&
     isFiniteNumber(value.anchorage_supplement) &&
+    isFiniteNumber(value.screw_supplement) &&
     isFiniteNumber(value.unit_price) &&
     isFiniteNumber(value.subtotal)
   );
@@ -118,6 +125,7 @@ export async function requestProductQuote(
         ancho: request.ancho,
         anclaje: request.anclaje,
         color: request.color,
+        screw_option: request.screw_option,
         quantity: request.quantity ?? 1
       }),
       signal: options.signal

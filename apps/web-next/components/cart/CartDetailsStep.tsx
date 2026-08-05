@@ -32,6 +32,7 @@ import {
   saveStoredCheckoutDiscountCode
 } from "@/lib/checkout-discount";
 import { CheckoutDiscountForm } from "@/components/cart/CheckoutDiscountForm";
+import { formatScrewConfiguration } from "@/lib/screw-option";
 
 type CheckoutStatus = "loading" | "empty" | "ready" | "error";
 
@@ -90,7 +91,14 @@ function apiErrorMessage(error: unknown) {
 }
 
 function lineKey(line: CheckoutQuoteLine) {
-  return [line.product_id, line.alto, line.ancho, line.anclaje, line.color].join("|");
+  return [
+    line.product_id,
+    line.alto,
+    line.ancho,
+    line.anclaje,
+    line.color,
+    line.screw_option
+  ].join("|");
 }
 
 function buildLoginHref(nextPath: string) {
@@ -417,7 +425,10 @@ export function CartDetailsStep({
             </div>
           </section>
 
-          <section className="mw-checkout-form-section" aria-labelledby="checkout-billing-title">
+          <section
+            className="mw-checkout-form-section mw-checkout-form-section--divided"
+            aria-labelledby="checkout-billing-title"
+          >
             <h3 id="checkout-billing-title">Datos de facturación</h3>
             <fieldset className="mw-checkout-billing-type">
               <legend>¿A nombre de quién se emitirá la factura?</legend>
@@ -497,7 +508,10 @@ export function CartDetailsStep({
             </div>
           </section>
 
-          <section className="mw-checkout-form-section" aria-labelledby="checkout-shipping-title">
+          <section
+            className="mw-checkout-form-section mw-checkout-form-section--divided"
+            aria-labelledby="checkout-shipping-title"
+          >
             <h3 id="checkout-shipping-title">Dirección de entrega</h3>
             <label className="mw-checkout-option">
               <input
@@ -558,16 +572,15 @@ export function CartDetailsStep({
             </p>
           ) : null}
 
+          <section className="mw-checkout-order" aria-labelledby="checkout-order-title">
+            <h2 id="checkout-order-title">Tu pedido</h2>
+            <CheckoutLines lines={quote.lines} />
+          </section>
+
           <button className="mw-button mw-button--primary mw-checkout-submit" type="submit">
             Continuar al pago
           </button>
         </form>
-
-        <div className="mw-checkout-heading mw-checkout-heading--compact">
-          <p className="mw-note">Pedido</p>
-          <h2>Líneas verificadas</h2>
-        </div>
-        <CheckoutLines lines={quote.lines} />
       </div>
 
       <aside className="mw-checkout-summary" aria-label="Resumen economico">
@@ -654,23 +667,27 @@ function CheckoutTextField({
 function CheckoutLines({ lines }: { lines: CheckoutQuoteLine[] }) {
   return (
     <div className="mw-checkout-lines">
-      {lines.map((line) => (
-        <article className="mw-checkout-line" key={lineKey(line)}>
-          <div>
-            <h3>{line.product_name}</h3>
-            <p>
-              {formatDimension(line.alto)} x {formatDimension(line.ancho)}
-            </p>
-            <p>
-              {line.anclaje || "-"} - {formatColor(line.color)}
-            </p>
-          </div>
-          <div className="mw-checkout-line__price">
-            <span>{line.quantity} ud.</span>
-            <strong>{formatCurrency(line.line_total)}</strong>
-          </div>
-        </article>
-      ))}
+      {lines.map((line) => {
+        const screwConfiguration = formatScrewConfiguration(line);
+        return (
+          <article className="mw-checkout-line" key={lineKey(line)}>
+            <div>
+              <h3>{line.product_name}</h3>
+              <p>
+                {formatDimension(line.alto)} x {formatDimension(line.ancho)}
+              </p>
+              <p>
+                {line.anclaje || "-"} - {formatColor(line.color)}
+              </p>
+              {screwConfiguration ? <p>Tornillos: {screwConfiguration}</p> : null}
+            </div>
+            <div className="mw-checkout-line__price">
+              <span>{line.quantity} ud.</span>
+              <strong>{formatCurrency(line.line_total)}</strong>
+            </div>
+          </article>
+        );
+      })}
     </div>
   );
 }

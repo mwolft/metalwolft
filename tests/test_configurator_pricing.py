@@ -3,6 +3,7 @@ import importlib.util
 import sys
 import types
 import unittest
+from decimal import Decimal
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import patch
@@ -50,22 +51,32 @@ from api.utils import (
     ANCHORAGE_INTERIOR_HOLES,
     ANCHORAGE_LEGACY_FRONT_HOLES,
     ANCHORAGE_METAL_CLAWS,
+    DEFAULT_CONFIGURATOR_SCREW_OPTION,
     LEGACY_ANCHORAGE_RECONFIGURE_MESSAGE,
+    SCREW_OPTION_LONG_150,
     build_configured_reja_quote,
     serialize_configurator_configuration,
 )
+from api.payment_amounts import validate_payment_amount
 
 DEFAULT_COLOR = "satinado_blanco"
 PRICE_M2 = 100.0
 
 
-def quote(alto, ancho, anclaje=ANCHORAGE_INTERIOR_HOLES, color=DEFAULT_COLOR):
+def quote(
+    alto,
+    ancho,
+    anclaje=ANCHORAGE_INTERIOR_HOLES,
+    color=DEFAULT_COLOR,
+    screw_option=None,
+):
     return build_configured_reja_quote(
         alto_cm=alto,
         ancho_cm=ancho,
         precio_m2=PRICE_M2,
         anclaje=anclaje,
         color=color,
+        screw_option=screw_option,
     )
 
 
@@ -114,7 +125,7 @@ class ConfiguratorPricingTest(unittest.TestCase):
     def test_serialized_configuration_uses_the_authoritative_rules(self):
         configuration = serialize_configurator_configuration(7)
 
-        self.assertEqual(configuration["schema_version"], 1)
+        self.assertEqual(configuration["schema_version"], 2)
         self.assertEqual(configuration["product_id"], 7)
         self.assertEqual(
             configuration["dimensions"],
@@ -143,6 +154,24 @@ class ConfiguratorPricingTest(unittest.TestCase):
         )
         self.assertTrue(
             all(option["description"] for option in configuration["anchorages"])
+        )
+        self.assertEqual(
+            configuration["defaults"]["screw_option"],
+            DEFAULT_CONFIGURATOR_SCREW_OPTION,
+        )
+        self.assertEqual(
+            [
+                option["length_mm"]
+                for option in configuration["screw_options"][ANCHORAGE_INTERIOR_HOLES]
+            ],
+            [80, 150],
+        )
+        self.assertEqual(
+            [
+                option["length_mm"]
+                for option in configuration["screw_options"][ANCHORAGE_FRONT_PLATES]
+            ],
+            [70, 150],
         )
         self.assertEqual(quote(30, 250)["base_unit_price"], 95.0)
         with self.assertRaisesRegex(ValueError, "Dimensiones"):
@@ -175,9 +204,12 @@ class ConfiguratorPricingTest(unittest.TestCase):
                 "ancho": 30.0,
                 "anclaje": ANCHORAGE_FRONT_PLATES,
                 "color": DEFAULT_COLOR,
+                "screw_option": DEFAULT_CONFIGURATOR_SCREW_OPTION,
+                "screw_length_mm": 70,
                 "currency": "EUR",
                 "base_unit_price": 95.0,
                 "anchorage_supplement": 24.95,
+                "screw_supplement": 0.0,
                 "unit_price": 119.95,
                 "subtotal": 239.9,
             },
@@ -219,6 +251,51 @@ class ConfiguratorPricingTest(unittest.TestCase):
 
     def test_100x100_plates_adds_supplement_once(self):
         self.assertEqual(quote(100, 100, ANCHORAGE_FRONT_PLATES)["unit_price"], 124.95)
+
+    def test_interior_standard_uses_80_mm_without_supplement(self):
+        result = quote(100, 100, screw_option=DEFAULT_CONFIGURATOR_SCREW_OPTION)
+
+        self.assertEqual(result["screw_option"], DEFAULT_CONFIGURATOR_SCREW_OPTION)
+        self.assertEqual(result["screw_length_mm"], 80)
+        self.assertEqual(result["screw_supplement"], 0.0)
+        self.assertEqual(result["unit_price"], 100.0)
+
+    def test_interior_long_screws_add_authoritative_supplement(self):
+        result = quote(100, 100, screw_option=SCREW_OPTION_LONG_150)
+
+        self.assertEqual(result["screw_length_mm"], 150)
+        self.assertEqual(result["screw_supplement"], 8.95)
+        self.assertEqual(result["unit_price"], 108.95)
+
+    def test_plates_standard_uses_70_mm_without_supplement(self):
+        result = quote(100, 100, ANCHORAGE_FRONT_PLATES)
+
+        self.assertEqual(result["screw_length_mm"], 70)
+        self.assertEqual(result["screw_supplement"], 0.0)
+
+    def test_plates_long_screws_add_authoritative_supplement(self):
+        result = quote(
+            100,
+            100,
+            ANCHORAGE_FRONT_PLATES,
+            screw_option=SCREW_OPTION_LONG_150,
+        )
+
+        self.assertEqual(result["screw_length_mm"], 150)
+        self.assertEqual(result["screw_supplement"], 8.95)
+        self.assertEqual(result["unit_price"], 133.9)
+
+    def test_legacy_payload_without_screw_option_defaults_to_standard(self):
+        result = quote(100, 100, ANCHORAGE_INTERIOR_HOLES)
+
+        self.assertEqual(result["screw_option"], DEFAULT_CONFIGURATOR_SCREW_OPTION)
+        self.assertEqual(result["screw_length_mm"], 80)
+
+    def test_unknown_or_non_string_screw_option_is_rejected(self):
+        with self.assertRaisesRegex(ValueError, "torniller"):
+            quote(100, 100, screw_option="invented")
+        with self.assertRaisesRegex(ValueError, "torniller"):
+            quote(100, 100, screw_option=150)
 
     def test_disabled_metal_claws_are_rejected(self):
         with self.assertRaisesRegex(ValueError, "disponible"):
@@ -353,6 +430,34 @@ class ConfiguratorPricingTest(unittest.TestCase):
 
         expected = quote(100, 100, ANCHORAGE_FRONT_PLATES)["unit_price"]
         self.assertEqual(checkout_quote["lines"][0]["unit_price"], expected)
+
+    def test_long_screw_total_is_shared_by_stripe_and_paypal(self):
+        checkout_service = load_checkout_service_with_fake_models()
+        with patch.object(checkout_service.Products, "query", FakeProductQuery(), create=True):
+            checkout_quote = checkout_service.build_checkout_quote(
+                raw_products=[
+                    {
+                        "product_id": 1,
+                        "quantity": 1,
+                        "alto": 30,
+                        "ancho": 30,
+                        "anclaje": ANCHORAGE_INTERIOR_HOLES,
+                        "color": DEFAULT_COLOR,
+                        "screw_option": SCREW_OPTION_LONG_150,
+                    }
+                ]
+            )
+
+        self.assertEqual(checkout_quote["subtotal"], 103.95)
+        self.assertEqual(checkout_quote["total_amount"], 124.95)
+        self.assertEqual(
+            validate_payment_amount("stripe", checkout_quote["total_amount"]),
+            Decimal("124.95"),
+        )
+        self.assertEqual(
+            validate_payment_amount("paypal", checkout_quote["total_amount"]),
+            Decimal("124.95"),
+        )
 
     def test_checkout_rejects_legacy_front_holes_with_clear_message(self):
         checkout_service = load_checkout_service_with_fake_models()

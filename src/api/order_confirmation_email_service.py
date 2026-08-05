@@ -1,3 +1,6 @@
+from api.utils import format_screw_configuration
+
+
 def _format_money(value):
     try:
         return f"{float(value or 0):.2f} €"
@@ -19,12 +22,17 @@ def _build_line_summary(line):
     line_total = line.get("line_total")
     if line_total is None:
         line_total = float(line.get("unit_price") or line.get("precio_total") or 0) * int(quantity or 1)
+    screw_configuration = format_screw_configuration(
+        line.get("screw_length_mm"),
+        line.get("screw_supplement"),
+    ) or "-"
 
     return (
         f"- {product_name} | "
         f"Medidas: {_format_measurements(line)} | "
         f"Anclaje: {line.get('anclaje') or '-'} | "
         f"Color: {line.get('color') or '-'} | "
+        f"Tornillos: {screw_configuration} | "
         f"Cantidad: {quantity} | "
         f"Importe: {_format_money(line_total)}"
     )

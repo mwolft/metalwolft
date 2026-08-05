@@ -19,6 +19,7 @@ DEFAULT_LINE = {
     "ancho": 30,
     "anclaje": "Sin obra: con agujeros interiores",
     "color": "satinado_blanco",
+    "screw_option": "standard",
 }
 
 
@@ -60,6 +61,7 @@ def cart_item(**overrides):
         "ancho": 30.0,
         "anclaje": "Sin obra: con agujeros interiores",
         "color": "satinado_blanco",
+        "screw_option": "standard",
         "quantity": 1,
     }
     values.update(overrides)
@@ -129,6 +131,14 @@ class CheckoutCartCleanupTest(unittest.TestCase):
         self.cleanup(items, DEFAULT_LINE)
 
         self.assertEqual(items, [different_anchor])
+
+    def test_different_screw_option_of_same_product_is_preserved(self):
+        long_screws = cart_item(id=2, screw_option="long_150", quantity=1)
+        items = [cart_item(quantity=1), long_screws]
+
+        self.cleanup(items, DEFAULT_LINE)
+
+        self.assertEqual(items, [long_screws])
 
     def test_duplicate_matching_lines_are_consumed_once_when_total_covers_purchase(self):
         items = [cart_item(id=1, quantity=1), cart_item(id=2, quantity=1)]

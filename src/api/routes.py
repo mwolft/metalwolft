@@ -2,7 +2,10 @@ from flask import request, jsonify, Blueprint, send_file, send_from_directory, c
 from flask_jwt_extended import jwt_required
 from api.models import db, Users, Products, ProductImages, Categories, Subcategories, Orders, CheckoutSessions, OrderDetails, Favorites, Cart, Posts, Comments, Invoices, DeliveryEstimateConfig, AccountingEntry
 from api.utils import (
+    DEFAULT_CONFIGURATOR_SCREW_OPTION,
     build_configured_reja_quote,
+    format_screw_configuration,
+    resolve_screw_configuration,
     send_email,
     serialize_configurator_configuration,
 )
@@ -404,6 +407,7 @@ def _build_cart_reminder_product_sections(cart_items, frontend_base_url):
         measures = f"{_format_cart_dimension(item.alto)} x {_format_cart_dimension(item.ancho)} cm"
         mounting = _format_cart_mounting_label(item.anclaje)
         color = _format_cart_color_label(item.color)
+        screws = format_screw_configuration(item.screw_length_mm, item.screw_supplement) or "Sin definir"
         quantity = int(item.quantity or 1)
         line_total = float(item.precio_total or 0.0) * quantity
         product_image_url = _resolve_cart_product_image_url(item, frontend_base_url)
@@ -411,10 +415,11 @@ def _build_cart_reminder_product_sections(cart_items, frontend_base_url):
         safe_measures = escape(measures)
         safe_mounting = escape(mounting)
         safe_color = escape(color)
+        safe_screws = escape(screws)
 
         product_lines_text.append(
             f"- {product_name} | Medidas: {measures} | Anclaje: {mounting} | "
-            f"Color: {color} | Cantidad: {quantity} | Precio: {line_total:.2f} €"
+            f"Color: {color} | Tornillos: {screws} | Cantidad: {quantity} | Precio: {line_total:.2f} €"
         )
 
         image_cell_html = ""
@@ -439,6 +444,7 @@ def _build_cart_reminder_product_sections(cart_items, frontend_base_url):
                                     <div><strong>Medidas:</strong> {safe_measures}</div>
                                     <div><strong>Anclaje:</strong> {safe_mounting}</div>
                                     <div><strong>Color:</strong> {safe_color}</div>
+                                    <div><strong>Tornillos:</strong> {safe_screws}</div>
                                     <div><strong>Cantidad:</strong> {quantity}</div>
                                     <div><strong>Precio:</strong> {line_total:.2f} €</div>
                                 </div>
@@ -465,6 +471,7 @@ def _build_cart_reminder_email_payload(user, cart_items, cart_url):
         measures = f"{_format_cart_dimension(item.alto)} x {_format_cart_dimension(item.ancho)} cm"
         mounting = _format_cart_mounting_label(item.anclaje)
         color = _format_cart_color_label(item.color)
+        screws = format_screw_configuration(item.screw_length_mm, item.screw_supplement) or "Sin definir"
         quantity = int(item.quantity or 1)
         line_total = float(item.precio_total or 0.0) * quantity
         product_image_url = _resolve_cart_product_image_url(item, frontend_base_url)
@@ -475,7 +482,7 @@ def _build_cart_reminder_email_payload(user, cart_items, cart_url):
 
         product_lines_text.append(
             f"- {product_name} | Medidas: {measures} | Anclaje: {mounting} | "
-            f"Color: {color} | Cantidad: {quantity} | Precio: {line_total:.2f} €"
+            f"Color: {color} | Tornillos: {screws} | Cantidad: {quantity} | Precio: {line_total:.2f} €"
         )
 
         product_lines_html.append(
@@ -484,6 +491,7 @@ def _build_cart_reminder_email_payload(user, cart_items, cart_url):
             f"Medidas: {escape(measures)}<br>"
             f"Anclaje: {escape(mounting)}<br>"
             f"Color: {escape(color)}<br>"
+            f"Tornillos: {escape(screws)}<br>"
             f"Cantidad: {quantity}<br>"
             f"Precio: {line_total:.2f} €"
             "</li>"
@@ -692,7 +700,8 @@ def _checkout_line_key(item):
         _to_optional_float(item.get("alto")),
         _to_optional_float(item.get("ancho")),
         item.get("anclaje"),
-        item.get("color")
+        item.get("color"),
+        item.get("screw_option") or DEFAULT_CONFIGURATOR_SCREW_OPTION,
     )
 
 
@@ -765,20 +774,25 @@ def _build_checkout_comparison_from_request(checkout_quote, data):
 
 
 def _build_order_details_from_checkout_quote(checkout_quote):
-    return [
-        {
+    order_details = []
+    for line in (checkout_quote.get("lines") or []):
+        screw_option = line.get("screw_option") or DEFAULT_CONFIGURATOR_SCREW_OPTION
+        resolved_screws = resolve_screw_configuration(line.get("anclaje"), screw_option) or {}
+        order_details.append({
             "producto_id": line["product_id"],
             "quantity": line["quantity"],
             "alto": line["alto"],
             "ancho": line["ancho"],
             "anclaje": line.get("anclaje"),
             "color": line.get("color"),
+            "screw_option": screw_option,
+            "screw_length_mm": line.get("screw_length_mm") or resolved_screws.get("screw_length_mm"),
+            "screw_supplement": line.get("screw_supplement", resolved_screws.get("screw_supplement", 0.0)),
             "precio_total": line["unit_price"],
             "shipping_type": line.get("shipping_type"),
             "shipping_cost": line.get("shipping_cost")
-        }
-        for line in (checkout_quote.get("lines") or [])
-    ]
+        })
+    return order_details
 
 
 def _get_customer_value(request_data, customer_snapshot, field_name):
@@ -1302,7 +1316,8 @@ def _finalize_order_from_checkout_quote(user, checkout_quote, customer_snapshot,
             alto=detail.get('alto'),
             ancho=detail.get('ancho'),
             anclaje=detail.get('anclaje'),
-            color=detail.get('color')
+            color=detail.get('color'),
+            screw_option=detail.get('screw_option') or DEFAULT_CONFIGURATOR_SCREW_OPTION,
         ).first()
 
         if existing_detail:
@@ -1320,6 +1335,9 @@ def _finalize_order_from_checkout_quote(user, checkout_quote, customer_snapshot,
             ancho=detail.get('ancho'),
             anclaje=detail.get('anclaje'),
             color=detail.get('color'),
+            screw_option=detail.get('screw_option') or DEFAULT_CONFIGURATOR_SCREW_OPTION,
+            screw_length_mm=detail.get('screw_length_mm'),
+            screw_supplement=detail.get('screw_supplement', 0.0),
             precio_total=precio_recalculado,
             firstname=customer_firstname,
             lastname=customer_lastname,
@@ -3207,7 +3225,7 @@ def get_product_quote(product_id):
     if not isinstance(data, dict):
         return jsonify({"message": "La configuración no es válida"}), 400
 
-    allowed_fields = {"alto", "ancho", "anclaje", "color", "quantity"}
+    allowed_fields = {"alto", "ancho", "anclaje", "color", "screw_option", "quantity"}
     if set(data) - allowed_fields:
         return jsonify({"message": "La configuración contiene campos no permitidos"}), 400
 
@@ -3224,6 +3242,7 @@ def get_product_quote(product_id):
             ancho=data.get("ancho"),
             anclaje=data.get("anclaje"),
             color=data.get("color"),
+            screw_option=data.get("screw_option"),
             quantity=data.get("quantity", 1),
         )
         return jsonify(quote), 200
@@ -3772,7 +3791,8 @@ def handle_orders():
                     alto=detail.get('alto'),
                     ancho=detail.get('ancho'),
                     anclaje=detail.get('anclaje'),
-                    color=detail.get('color')
+                    color=detail.get('color'),
+                    screw_option=detail.get('screw_option') or DEFAULT_CONFIGURATOR_SCREW_OPTION,
                 ).first()
 
                 if existing_detail:
@@ -3792,6 +3812,9 @@ def handle_orders():
                     ancho=detail.get('ancho'),
                     anclaje=detail.get('anclaje'),
                     color=detail.get('color'),
+                    screw_option=detail.get('screw_option') or DEFAULT_CONFIGURATOR_SCREW_OPTION,
+                    screw_length_mm=detail.get('screw_length_mm'),
+                    screw_supplement=detail.get('screw_supplement', 0.0),
                     precio_total=precio_recalculado,
                     firstname=customer_firstname,
                     lastname=customer_lastname,
@@ -4501,7 +4524,8 @@ def add_order_details():
                 alto=detail.get('alto'),
                 ancho=detail.get('ancho'),
                 anclaje=detail.get('anclaje'),
-                color=detail.get('color')
+                color=detail.get('color'),
+                screw_option=detail.get('screw_option') or DEFAULT_CONFIGURATOR_SCREW_OPTION,
             ).first()
             if existing_detail:
                 continue  # Saltar si ya existe
@@ -4513,7 +4537,8 @@ def add_order_details():
                 ancho_cm=detail.get('ancho'),
                 precio_m2=prod.precio_rebajado or prod.precio,
                 anclaje=detail.get('anclaje'),
-                color=detail.get('color')
+                color=detail.get('color'),
+                screw_option=detail.get('screw_option'),
             )
             precio_recalculado = price_quote["unit_price"]
 
@@ -4534,6 +4559,9 @@ def add_order_details():
                 ancho=detail.get('ancho'),
                 anclaje=price_quote["anclaje"],
                 color=price_quote["color"],
+                screw_option=price_quote["screw_option"],
+                screw_length_mm=price_quote["screw_length_mm"],
+                screw_supplement=price_quote["screw_supplement"],
                 precio_total=precio_recalculado,
                 firstname=detail.get('firstname'),
                 lastname=detail.get('lastname'),
@@ -5445,6 +5473,7 @@ def handle_cart():
                 ancho=ancho,
                 anclaje=data.get('anclaje'),
                 color=data.get('color'),
+                screw_option=data.get('screw_option'),
                 quantity=quantity,
             )
             recalculated_total = price_quote["unit_price"]
@@ -5456,6 +5485,9 @@ def handle_cart():
                 ancho=ancho,
                 anclaje=price_quote["anclaje"],
                 color=price_quote["color"],
+                screw_option=price_quote["screw_option"],
+                screw_length_mm=price_quote["screw_length_mm"],
+                screw_supplement=price_quote["screw_supplement"],
                 precio_total=recalculated_total,
                 quantity=quantity,
                 added_at=datetime.now(timezone.utc)
@@ -5495,7 +5527,8 @@ def update_cart_item(product_id):
             alto=data.get('alto'),
             ancho=data.get('ancho'),
             anclaje=data.get('anclaje'),
-            color=data.get('color')
+            color=data.get('color'),
+            screw_option=data.get('screw_option') or DEFAULT_CONFIGURATOR_SCREW_OPTION,
         ).first()
 
         if not cart_item:
@@ -5531,6 +5564,7 @@ def update_cart_item(product_id):
             ancho=cart_item.ancho,
             anclaje=cart_item.anclaje,
             color=cart_item.color,
+            screw_option=cart_item.screw_option,
             quantity=quantity,
         )
 
@@ -5538,6 +5572,9 @@ def update_cart_item(product_id):
         cart_item.precio_total = price_quote["unit_price"]
         cart_item.anclaje = price_quote["anclaje"]
         cart_item.color = price_quote["color"]
+        cart_item.screw_option = price_quote["screw_option"]
+        cart_item.screw_length_mm = price_quote["screw_length_mm"]
+        cart_item.screw_supplement = price_quote["screw_supplement"]
         db.session.commit()
 
         updated_cart_items = Cart.query.filter_by(usuario_id=current_user['user_id']).all()
@@ -5575,7 +5612,8 @@ def remove_from_cart(product_id):
             alto=data.get('alto'),
             ancho=data.get('ancho'),
             anclaje=data.get('anclaje'),
-            color=data.get('color')
+            color=data.get('color'),
+            screw_option=data.get('screw_option') or DEFAULT_CONFIGURATOR_SCREW_OPTION,
         ).first()
         if not cart_item:
             return jsonify({"message": "Producto no encontrado en el carrito con esas especificaciones"}), 404

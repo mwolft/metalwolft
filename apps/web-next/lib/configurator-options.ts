@@ -3,6 +3,7 @@ import type { ProductConfigurationResponse } from "./product-configuration-clien
 
 export type AnchorageValue = string;
 export type ConfiguratorColorValue = string;
+export type ScrewOptionValue = string;
 
 type ColorVisual = {
   hex: string;

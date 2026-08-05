@@ -9,6 +9,9 @@ export type CheckoutQuoteLine = {
   ancho: number;
   anclaje: string | null;
   color: string | null;
+  screw_option?: string | null;
+  screw_length_mm?: number | null;
+  screw_supplement?: number | null;
   unit_price: number;
   line_total: number;
   shipping_type: "normal" | "A" | "B" | string;

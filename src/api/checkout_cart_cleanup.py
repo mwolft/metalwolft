@@ -1,3 +1,6 @@
+from api.utils import DEFAULT_CONFIGURATOR_SCREW_OPTION
+
+
 def _to_int_quantity(value):
     try:
         quantity = int(value)
@@ -52,6 +55,8 @@ def _cart_item_matches_line(cart_item, line):
         _same_float(cart_item.ancho, line.get("ancho")),
         _normalize_text(cart_item.anclaje) == _normalize_text(line.get("anclaje")),
         _normalize_text(cart_item.color) == _normalize_text(line.get("color")),
+        (getattr(cart_item, "screw_option", None) or DEFAULT_CONFIGURATOR_SCREW_OPTION)
+        == (line.get("screw_option") or DEFAULT_CONFIGURATOR_SCREW_OPTION),
     ])
 
 

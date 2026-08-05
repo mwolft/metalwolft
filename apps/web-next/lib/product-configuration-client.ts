@@ -5,6 +5,15 @@ export type ProductConfigurationDimension = {
   max_cm: number;
 };
 
+export type ProductScrewOption = {
+  value: string;
+  label: string;
+  description: string;
+  length_mm: number;
+  supplement: number;
+  enabled: boolean;
+};
+
 export type ProductConfigurationResponse = {
   schema_version: number;
   product_id: number;
@@ -29,9 +38,11 @@ export type ProductConfigurationResponse = {
     finish_label: string;
     enabled: boolean;
   }>;
+  screw_options: Record<string, ProductScrewOption[]>;
   defaults: {
     anchorage: string;
     color: string;
+    screw_option: string;
   };
 };
 
@@ -96,7 +107,7 @@ function isProductConfigurationResponse(
 ): value is ProductConfigurationResponse {
   if (
     !isRecord(value) ||
-    value.schema_version !== 1 ||
+    value.schema_version !== 2 ||
     value.product_id !== expectedProductId ||
     !isRecord(value.dimensions) ||
     !isDimension(value.dimensions.alto) ||
@@ -104,9 +115,11 @@ function isProductConfigurationResponse(
     !isFiniteNumber(value.dimensions.max_sum_cm) ||
     !Array.isArray(value.anchorages) ||
     !Array.isArray(value.colors) ||
+    !isRecord(value.screw_options) ||
     !isRecord(value.defaults) ||
     typeof value.defaults.anchorage !== "string" ||
-    typeof value.defaults.color !== "string"
+    typeof value.defaults.color !== "string" ||
+    typeof value.defaults.screw_option !== "string"
   ) {
     return false;
   }
@@ -131,17 +144,42 @@ function isProductConfigurationResponse(
       typeof option.finish_label === "string" &&
       typeof option.enabled === "boolean"
   );
-  if (!anchoragesValid || !colorsValid) {
+  const screwOptionsValid = Object.values(value.screw_options).every(
+    (options) =>
+      Array.isArray(options) &&
+      options.every(
+        (option) =>
+          isRecord(option) &&
+          typeof option.value === "string" &&
+          typeof option.label === "string" &&
+          typeof option.description === "string" &&
+          isFiniteNumber(option.length_mm) &&
+          option.length_mm > 0 &&
+          isFiniteNumber(option.supplement) &&
+          option.supplement >= 0 &&
+          typeof option.enabled === "boolean"
+      )
+  );
+  if (!anchoragesValid || !colorsValid || !screwOptionsValid) {
     return false;
   }
 
   const enabledAnchorages = value.anchorages.filter((option) => option.enabled);
   const enabledColors = value.colors.filter((option) => option.enabled);
   const defaults = value.defaults as ProductConfigurationResponse["defaults"];
+  const screwOptions = value.screw_options as ProductConfigurationResponse["screw_options"];
+  const enabledAnchoragesHaveScrews = enabledAnchorages.every((anchorage) =>
+    (screwOptions[anchorage.value] ?? []).some((option) => option.enabled)
+  );
+  const defaultScrewOptionExists = (screwOptions[defaults.anchorage] ?? []).some(
+    (option) => option.enabled && option.value === defaults.screw_option
+  );
 
   return (
     enabledAnchorages.some((option) => option.value === defaults.anchorage) &&
-    enabledColors.some((option) => option.value === defaults.color)
+    enabledColors.some((option) => option.value === defaults.color) &&
+    enabledAnchoragesHaveScrews &&
+    defaultScrewOptionExists
   );
 }
 

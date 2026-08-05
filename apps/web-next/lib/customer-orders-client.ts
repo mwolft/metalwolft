@@ -36,6 +36,9 @@ export type CustomerOrderLineConfiguration = {
   ancho: string | null;
   color: string | null;
   anclaje: string | null;
+  screw_option: string | null;
+  screw_length_mm: number | null;
+  screw_supplement: string | null;
 };
 
 export type CustomerOrderLine = {
@@ -133,7 +136,11 @@ function isCustomerOrderLineConfiguration(
     isNullableString(value.alto) &&
     isNullableString(value.ancho) &&
     isNullableString(value.color) &&
-    isNullableString(value.anclaje)
+    isNullableString(value.anclaje) &&
+    isNullableString(value.screw_option) &&
+    (value.screw_length_mm === null ||
+      (typeof value.screw_length_mm === "number" && Number.isFinite(value.screw_length_mm))) &&
+    isNullableString(value.screw_supplement)
   );
 }
 

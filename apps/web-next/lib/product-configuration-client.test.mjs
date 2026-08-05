@@ -6,7 +6,7 @@ import {
 } from "./product-configuration-client.ts";
 
 const validConfiguration = {
-  schema_version: 1,
+  schema_version: 2,
   product_id: 7,
   dimensions: {
     alto: { min_cm: 30, max_cm: 250 },
@@ -41,9 +41,40 @@ const validConfiguration = {
       enabled: true
     }
   ],
+  screw_options: {
+    "Sin obra: con agujeros interiores": [
+      {
+        value: "standard",
+        label: "Estándar incluida",
+        description: "Incluida en el pedido",
+        length_mm: 80,
+        supplement: 0,
+        enabled: true
+      },
+      {
+        value: "long_150",
+        label: "Tornillos largos",
+        description: "Para huecos que necesitan mayor profundidad de fijación",
+        length_mm: 150,
+        supplement: 8.95,
+        enabled: true
+      }
+    ],
+    "Sin obra: con pletinas": [
+      {
+        value: "standard",
+        label: "Estándar incluida",
+        description: "Incluida en el pedido",
+        length_mm: 70,
+        supplement: 0,
+        enabled: true
+      }
+    ]
+  },
   defaults: {
     anchorage: "Sin obra: con agujeros interiores",
-    color: "satinado_blanco"
+    color: "satinado_blanco",
+    screw_option: "standard"
   }
 };
 
@@ -62,6 +93,23 @@ const validConfiguration = {
 
   assert.deepEqual(configuration, validConfiguration);
   assert.equal(capturedUrl, "https://api.example.test/api/products/7/configuration");
+}
+
+{
+  await assert.rejects(
+    requestProductConfiguration(7, {
+      apiBaseUrl: "https://api.example.test",
+      fetcher: async () =>
+        Response.json({
+          ...validConfiguration,
+          screw_options: {
+            ...validConfiguration.screw_options,
+            "Sin obra: con agujeros interiores": []
+          }
+        })
+    }),
+    (error) => error instanceof ProductConfigurationClientError && error.kind === "contract"
+  );
 }
 
 {
@@ -141,4 +189,4 @@ for (const status of [400, 404, 429, 500, 503]) {
   );
 }
 
-console.log("11 product configuration client tests passed");
+console.log("12 product configuration client tests passed");

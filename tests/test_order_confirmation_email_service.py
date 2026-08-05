@@ -22,6 +22,9 @@ def checkout_quote():
                 "ancho": 30,
                 "anclaje": "Sin obra: con agujeros interiores",
                 "color": "satinado_blanco",
+                "screw_option": "long_150",
+                "screw_length_mm": 150,
+                "screw_supplement": 8.95,
                 "unit_price": 95.0,
                 "line_total": 190.0,
             }
@@ -59,6 +62,7 @@ class OrderConfirmationEmailServiceTest(unittest.TestCase):
         self.assertIn("Estado del pago: confirmado", sent[0]["body"])
         self.assertIn("Reja fija Pittsburgh", sent[0]["body"])
         self.assertIn("Cantidad: 2", sent[0]["body"])
+        self.assertIn("Tornillos: 150 mm (+8,95 €)", sent[0]["body"])
         self.assertIn("Total: 180.50 €", sent[0]["body"])
 
     def test_email_error_does_not_escape_service(self):

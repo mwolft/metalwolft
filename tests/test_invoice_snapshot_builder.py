@@ -259,6 +259,37 @@ class InvoiceSnapshotBuilderTest(unittest.TestCase):
         )
         assert_fiscal_totals(self, snapshot)
 
+    def test_new_snapshot_preserves_screw_configuration_and_authoritative_total(self):
+        checkout_quote = quote(
+            {
+                "lines": [
+                    {
+                        **quote()["lines"][0],
+                        "screw_option": "long_150",
+                        "screw_length_mm": 150,
+                        "screw_supplement": 8.95,
+                        "unit_price": 103.95,
+                        "line_total": 103.95,
+                    }
+                ],
+                "subtotal": 103.95,
+                "shipping_cost": 21.0,
+                "total_amount": 124.95,
+            }
+        )
+        session = checkout_session({"quote_snapshot": checkout_quote})
+
+        snapshot = build(checkout_session=session)
+
+        product_line = snapshot["lines"][0]
+        self.assertEqual(product_line["configuration"]["screw_option"], "long_150")
+        self.assertEqual(product_line["configuration"]["screw_length_mm"], 150)
+        self.assertEqual(product_line["configuration"]["screw_supplement"], "8.95")
+        self.assertEqual(product_line["unit_amount_before_discount"], "103.95")
+        self.assertEqual(snapshot["totals"]["products_amount_before_discount"], "103.95")
+        self.assertEqual(snapshot["totals"]["total_amount"], "124.95")
+        assert_fiscal_totals(self, snapshot)
+
     def test_builds_customer_from_canonical_checkout_fields(self):
         canonical_customer = customer_snapshot(
             {

@@ -11,6 +11,9 @@ export type CartItem = {
   ancho: number | null;
   anclaje: string | null;
   color: string | null;
+  screw_option?: string | null;
+  screw_length_mm?: number | null;
+  screw_supplement?: number | null;
   precio_total: number;
   quantity: number;
   added_at: string;
@@ -23,6 +26,7 @@ export type AddCartItemInput = {
   ancho: number;
   anclaje: string;
   color: string;
+  screw_option: string;
   quantity: number;
 };
 
@@ -103,6 +107,7 @@ function cartLineBody(item: CartItem, quantity?: number) {
     ancho: item.ancho,
     anclaje: item.anclaje,
     color: item.color,
+    screw_option: item.screw_option ?? "standard",
     ...(quantity !== undefined ? { quantity } : {})
   });
 }

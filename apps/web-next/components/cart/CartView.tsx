@@ -27,6 +27,7 @@ import {
   isAvailableForSale
 } from "@/lib/product-lifecycle";
 import { getColorVisual } from "@/lib/configurator-options";
+import { formatScrewConfiguration } from "@/lib/screw-option";
 
 type CartColorStyle = CSSProperties & {
   "--mw-cart-config-color": string;
@@ -67,7 +68,15 @@ function formatColor(value: string | null) {
 }
 
 function cartLineKey(item: CartItem) {
-  return [item.id, item.producto_id, item.alto, item.ancho, item.anclaje, item.color].join("|");
+  return [
+    item.id,
+    item.producto_id,
+    item.alto,
+    item.ancho,
+    item.anclaje,
+    item.color,
+    item.screw_option
+  ].join("|");
 }
 
 function productHref(item: CartItem) {
@@ -371,6 +380,7 @@ export function CartView({ deliveryEstimate }: { deliveryEstimate?: ReactNode })
           const lineTotal = Number(item.precio_total || 0) * quantity;
           const availableForSale = isAvailableForSale(item);
           const colorVisual = getColorVisual(item.color ?? "");
+          const screwConfiguration = formatScrewConfiguration(item);
 
           return (
             <article className="mw-cart-line" key={key}>
@@ -456,6 +466,12 @@ export function CartView({ deliveryEstimate }: { deliveryEstimate?: ReactNode })
                       }
                     />
                   </div>
+                  {screwConfiguration ? (
+                    <div className="mw-cart-config__screws">
+                      <dt>Tornillos</dt>
+                      <dd>{screwConfiguration}</dd>
+                    </div>
+                  ) : null}
                 </dl>
 
                 <div className="mw-cart-line__actions">

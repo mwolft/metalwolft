@@ -24,9 +24,14 @@ import { useNotification } from "@/components/notifications/NotificationProvider
 import {
   type AnchorageValue,
   type ConfiguratorColorValue,
+  type ScrewOptionValue,
   buildLocalProductConfiguration,
   getColorVisual
 } from "@/lib/configurator-options";
+import {
+  DEFAULT_SCREW_OPTION,
+  selectCompatibleScrewOption
+} from "@/lib/screw-option";
 import {
   ProductConfigurationClientError,
   type ProductConfigurationResponse,
@@ -75,6 +80,7 @@ type PendingProductConfig = {
   ancho: number;
   anclaje: AnchorageValue;
   color: ConfiguratorColorValue;
+  screwOption: ScrewOptionValue;
 };
 
 type LegacyPendingProductConfig = {
@@ -91,6 +97,8 @@ type LegacyPendingProductConfig = {
   anclaje?: unknown;
   mounting?: unknown;
   color?: unknown;
+  screwOption?: unknown;
+  screw_option?: unknown;
 };
 
 type LocalValidQuote = Extract<ConfiguratorPriceQuote, { ok: true }>;
@@ -187,6 +195,7 @@ function readPendingProductConfig(
     const ancho = normalizePendingNumber(parsed.ancho ?? parsed.width);
     const anclaje = parsed.anclaje ?? parsed.mounting;
     const pendingColor = parsed.color;
+    const pendingScrewOption = parsed.screwOption ?? parsed.screw_option ?? DEFAULT_SCREW_OPTION;
 
     if (
       pendingProductId !== productId ||
@@ -207,7 +216,10 @@ function readPendingProductConfig(
       alto,
       ancho,
       anclaje,
-      color: pendingColor
+      color: pendingColor,
+      screwOption: isNonEmptyString(pendingScrewOption)
+        ? pendingScrewOption
+        : DEFAULT_SCREW_OPTION
     };
   } catch {
     window.sessionStorage.removeItem(PENDING_PRODUCT_CONFIG_STORAGE_KEY);
@@ -239,6 +251,7 @@ export function ProductConfigurator({
   const [width, setWidth] = useState("");
   const [anchorage, setAnchorage] = useState<AnchorageValue>("");
   const [color, setColor] = useState<ConfiguratorColorValue>("");
+  const [screwOption, setScrewOption] = useState<ScrewOptionValue>(DEFAULT_SCREW_OPTION);
   const [previewColor, setPreviewColor] = useState<ConfiguratorColorValue | null>(null);
   const [productConfiguration, setProductConfiguration] =
     useState<ProductConfigurationResponse | null>(null);
@@ -258,6 +271,7 @@ export function ProductConfigurator({
   const dimensionHelpId = useId();
   const dimensionErrorId = useId();
   const cartFeedbackId = useId();
+  const screwOptionsName = useId();
 
   const configuredAnchorageOptions = useMemo(() => {
     if (!productConfiguration) {
@@ -304,6 +318,13 @@ export function ProductConfigurator({
   const configuredColors = useMemo(
     () => configuredColorGroups.flatMap((group) => group.options),
     [configuredColorGroups]
+  );
+  const configuredScrewOptions = useMemo(
+    () =>
+      (productConfiguration?.screw_options[anchorage] ?? []).filter(
+        (option) => option.enabled
+      ),
+    [anchorage, productConfiguration]
   );
   const configurationReady =
     configurationStatus === "ready" || configurationStatus === "fallback";
@@ -442,6 +463,20 @@ export function ProductConfigurator({
   ]);
 
   useEffect(() => {
+    if (!configurationReady || !productConfiguration) {
+      return;
+    }
+
+    setScrewOption((current) =>
+      selectCompatibleScrewOption(
+        current,
+        configuredScrewOptions,
+        productConfiguration.defaults.screw_option
+      )
+    );
+  }, [configurationReady, configuredScrewOptions, productConfiguration]);
+
+  useEffect(() => {
     const pendingConfig = readPendingProductConfig(productId, categorySlug, productSlug);
     if (!pendingConfig) {
       return;
@@ -454,6 +489,7 @@ export function ProductConfigurator({
     setWidth(restoredWidth);
     setAnchorage(pendingConfig.anclaje);
     setColor(pendingConfig.color);
+    setScrewOption(pendingConfig.screwOption);
     setCalculatedQuote(null);
     setCalculationError("");
     setQuoteNotice("");
@@ -498,6 +534,7 @@ export function ProductConfigurator({
             ancho: parsedWidth,
             anclaje: anchorage,
             color,
+            screw_option: screwOption,
             quantity: 1
           },
           { signal: controller.signal }
@@ -515,6 +552,15 @@ export function ProductConfigurator({
         }
 
         if (isTemporaryQuoteNetworkError(error)) {
+          if (screwOption !== DEFAULT_SCREW_OPTION) {
+            setCalculatedQuote(null);
+            setCalculationError(
+              "No se pudo verificar el suplemento de tornillería. Inténtalo de nuevo."
+            );
+            setNeedsRecalculation(false);
+            return;
+          }
+
           const fallbackQuote = calculateConfiguratorPrice({
             rawHeight: height,
             rawWidth: width,
@@ -571,6 +617,7 @@ export function ProductConfigurator({
     productId,
     productConfiguration,
     quoteRequestVersion,
+    screwOption,
     width
   ]);
 
@@ -601,7 +648,8 @@ export function ProductConfigurator({
     alto: quote.height,
     ancho: quote.width,
     anclaje: anchorage,
-    color
+    color,
+    screwOption
   });
 
   const saveCurrentConfigAndLogin = (quote: DisplayedQuote) => {
@@ -619,7 +667,8 @@ export function ProductConfigurator({
         sameDimension(item.alto, quote.height) &&
         sameDimension(item.ancho, quote.width) &&
         item.anclaje === anchorage &&
-        item.color === color
+        item.color === color &&
+        (item.screw_option ?? DEFAULT_SCREW_OPTION) === screwOption
     );
 
   const handleAddToCart = async () => {
@@ -660,6 +709,7 @@ export function ProductConfigurator({
           ancho: quote.width,
           anclaje: anchorage,
           color,
+          screw_option: screwOption,
           quantity: 1
         });
       }
@@ -832,6 +882,50 @@ export function ProductConfigurator({
             </select>
           </label>
         </div>
+
+        {configuredScrewOptions.length ? (
+          <fieldset className="mw-configurator-screws">
+            <legend>Tornillería</legend>
+            <div className="mw-configurator-screws__options">
+              {configuredScrewOptions.map((option) => (
+                <label
+                  className={`mw-configurator-screw-option${
+                    screwOption === option.value ? " is-selected" : ""
+                  }`}
+                  key={option.value}
+                >
+                  <input
+                    checked={screwOption === option.value}
+                    disabled={controlsDisabled}
+                    name={screwOptionsName}
+                    type="radio"
+                    value={option.value}
+                    onChange={() => {
+                      if (screwOption === option.value) {
+                        return;
+                      }
+                      invalidateCalculatedPrice();
+                      setCalculationError("");
+                      setScrewOption(option.value);
+                    }}
+                  />
+                  <span>
+                    <strong>
+                      {option.label} · {option.length_mm} mm
+                    </strong>
+                    <small>
+                      {option.description}
+                      {option.supplement > 0
+                        ? ` · +${formatCurrency(option.supplement)} €`
+                        : ""}
+                    </small>
+                  </span>
+                </label>
+              ))}
+            </div>
+            <p>Elige la longitud según el espesor de la zona donde vas a fijar la reja.</p>
+          </fieldset>
+        ) : null}
 
         <fieldset className="mw-configurator-colors">
           <legend>Color</legend>

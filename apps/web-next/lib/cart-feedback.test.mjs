@@ -24,6 +24,9 @@ const line = (id, overrides = {}) => ({
   ancho: 80,
   anclaje: "pletinas",
   color: "negro",
+  screw_option: "standard",
+  screw_length_mm: 70,
+  screw_supplement: 0,
   precio_total: 100,
   quantity: 1,
   added_at: "2026-07-23T10:00:00",
@@ -131,6 +134,7 @@ try {
       ancho: 80,
       anclaje: "pletinas",
       color: "negro",
+      screw_option: "standard",
       quantity: 1
     }),
     twoConfigurations

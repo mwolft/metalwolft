@@ -13,11 +13,14 @@ const validQuote = {
   ancho: 120,
   anclaje: "Sin obra: con pletinas",
   color: "satinado_blanco",
+  screw_option: "long_150",
+  screw_length_mm: 150,
   currency: "EUR",
   base_unit_price: 120,
   anchorage_supplement: 24.95,
-  unit_price: 144.95,
-  subtotal: 144.95
+  screw_supplement: 8.95,
+  unit_price: 153.9,
+  subtotal: 153.9
 };
 
 const request = {
@@ -25,7 +28,8 @@ const request = {
   alto: 100,
   ancho: 120,
   anclaje: "Sin obra: con pletinas",
-  color: "satinado_blanco"
+  color: "satinado_blanco",
+  screw_option: "long_150"
 };
 
 {
@@ -51,6 +55,7 @@ const request = {
     ancho: 120,
     anclaje: "Sin obra: con pletinas",
     color: "satinado_blanco",
+    screw_option: "long_150",
     quantity: 1
   });
 }

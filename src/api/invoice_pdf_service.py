@@ -375,6 +375,8 @@ def _line_description(line):
         details.append(f"Anclaje: {_pdf_text(configuration.get('anchoring'))}")
     if configuration.get("color"):
         details.append(f"Color: {_pdf_text(_format_color(configuration.get('color')))}")
+    if configuration.get("screw_length_mm"):
+        details.append(f"Tornillos: {_pdf_text(configuration.get('screw_length_mm'))} mm")
     if details:
         return f"{description}<br/><font size='7'>{' | '.join(details)}</font>"
     return description

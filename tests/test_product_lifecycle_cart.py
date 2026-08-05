@@ -56,6 +56,7 @@ if HAS_ENDPOINT_DEPS:
     from api.routes import api  # noqa: E402
     from api.utils import (  # noqa: E402
         ANCHORAGE_INTERIOR_HOLES,
+        SCREW_OPTION_LONG_150,
     )
 
 
@@ -193,6 +194,28 @@ class ProductLifecycleCartEndpointTest(unittest.TestCase):
         self.assertIn("no esta disponible", response.get_json()["message"])
         with self.app.app_context():
             self.assertEqual(Cart.query.count(), 0)
+
+    def test_adds_and_persists_long_screw_configuration(self):
+        response = self.client.post(
+            "/api/cart",
+            json={
+                "product_id": self.available_product_id,
+                **self.cart_payload(),
+                "screw_option": SCREW_OPTION_LONG_150,
+            },
+            headers=self.auth(),
+        )
+
+        self.assertEqual(response.status_code, 201)
+        line = response.get_json()[0]
+        self.assertEqual(line["screw_option"], SCREW_OPTION_LONG_150)
+        self.assertEqual(line["screw_length_mm"], 150)
+        self.assertEqual(line["screw_supplement"], 8.95)
+        self.assertEqual(line["precio_total"], 103.95)
+        with self.app.app_context():
+            item = Cart.query.one()
+            self.assertEqual(item.screw_option, SCREW_OPTION_LONG_150)
+            self.assertEqual(item.screw_length_mm, 150)
 
     def test_reads_existing_line_after_product_is_withdrawn(self):
         self.create_cart_item(self.available_product_id)
