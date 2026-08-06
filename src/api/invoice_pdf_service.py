@@ -10,7 +10,7 @@ from api.invoice_snapshot_integrity import calculate_invoice_snapshot_hash
 from api.utils import CONFIGURATOR_ANCHORAGES, CONFIGURATOR_COLORS
 
 
-SUPPORTED_SCHEMA_VERSION = 1
+SUPPORTED_SCHEMA_VERSIONS = {1, 2}
 PDF_ROUTE_PREFIX = "/api/download-invoice"
 FILENAME_PREFIX = "invoice_"
 FILENAME_SUFFIX = ".pdf"
@@ -52,7 +52,7 @@ class InvoicePdfResult:
 
 
 def generate_invoice_pdf(invoice, *, output_dir=None, regenerate=False):
-    """Generate a PDF document from the immutable InvoiceSnapshot v1 only.
+    """Generate a PDF document from an immutable supported InvoiceSnapshot.
 
     The function deliberately does not commit. It only assigns `invoice.pdf_path`
     after a successful write (or when returning a previously generated file).
@@ -111,7 +111,7 @@ def _validated_snapshot(invoice):
         raise InvoicePdfSnapshotMissing("La factura no tiene snapshot fiscal.")
 
     schema_version = snapshot.get("schema_version")
-    if schema_version != SUPPORTED_SCHEMA_VERSION:
+    if schema_version not in SUPPORTED_SCHEMA_VERSIONS:
         raise InvoicePdfUnsupportedSchema("Version de snapshot no soportada.")
     return snapshot
 
@@ -138,6 +138,24 @@ def _validate_snapshot_contract(snapshot):
     lines = snapshot.get("lines")
     if not isinstance(lines, list) or not lines:
         raise InvoicePdfSnapshotMissing("El snapshot no contiene lineas facturables.")
+
+    if snapshot.get("schema_version") == 2:
+        required_line_fields = (
+            "unit_price_net",
+            "line_tax_base_before_discount",
+            "discount_tax_base",
+            "tax_base",
+            "tax_amount",
+            "line_total",
+        )
+        for index, line in enumerate(lines, start=1):
+            if not isinstance(line, dict):
+                raise InvoicePdfSnapshotMissing(f"La linea {index} del snapshot no es valida.")
+            for field in required_line_fields:
+                if line.get(field) in (None, ""):
+                    raise InvoicePdfSnapshotMissing(
+                        f"La linea {index} del snapshot v2 no contiene {field}."
+                    )
 
 
 def _invoice_pdf_filename(invoice_number):
@@ -324,7 +342,7 @@ def _render_invoice_snapshot_pdf(*, invoice_number, issued_at, snapshot, snapsho
         _build_order_panel(operation, available_width, style_map),
         Spacer(1, 16),
         Paragraph("Líneas de factura", section_style),
-        _build_line_table(snapshot["lines"], style_map),
+        _build_line_table(snapshot["lines"], style_map, snapshot["schema_version"]),
         Spacer(1, 15),
         KeepTogether(_build_totals_block(snapshot["totals"], snapshot["lines"], style_map)),
     ]
@@ -474,14 +492,16 @@ def _build_order_panel(operation, width, styles):
     return table
 
 
-def _build_line_table(lines, styles):
+def _build_line_table(lines, styles, schema_version):
     from reportlab.lib import colors
     from reportlab.lib.units import cm
     from reportlab.platypus import Table, TableStyle
 
     table = Table(
-        _line_table_rows(lines, styles),
-        colWidths=[0.75 * cm, 6.55 * cm, 1.05 * cm, 2.35 * cm, 2.05 * cm, 2.35 * cm, 2.30 * cm],
+        _line_table_rows(lines, styles, schema_version),
+        colWidths=[0.70 * cm, 5.25 * cm, 0.95 * cm, 3.00 * cm, 2.25 * cm, 2.55 * cm, 2.70 * cm]
+        if schema_version == 2
+        else [0.75 * cm, 6.55 * cm, 1.05 * cm, 2.35 * cm, 2.05 * cm, 2.35 * cm, 2.30 * cm],
         repeatRows=1,
         splitByRow=1,
     )
@@ -505,8 +525,11 @@ def _build_line_table(lines, styles):
     return table
 
 
-def _line_table_rows(lines, styles):
+def _line_table_rows(lines, styles, schema_version):
     from reportlab.platypus import Paragraph
+
+    if schema_version == 2:
+        return _line_table_rows_v2(lines, styles)
 
     rows = [[
         Paragraph("N.º", styles["table_header"]),
@@ -525,6 +548,32 @@ def _line_table_rows(lines, styles):
             Paragraph(_pdf_text(line.get("quantity")), styles["small_center"]),
             Paragraph(_pdf_text(_money(line.get("line_amount_before_discount"))), styles["money"]),
             Paragraph(_pdf_text(_money(line.get("discount_amount"), as_discount=True)), styles["money"]),
+            Paragraph(_pdf_text(_money(line.get("tax_base"))), styles["money"]),
+            Paragraph(_pdf_text(_money(line.get("line_total"))), styles["money_strong"]),
+        ])
+    return rows
+
+
+def _line_table_rows_v2(lines, styles):
+    from reportlab.platypus import Paragraph
+
+    rows = [[
+        Paragraph("N.º", styles["table_header"]),
+        Paragraph("Producto / configuración", styles["table_header"]),
+        Paragraph("Cant.", styles["table_header"]),
+        Paragraph("Precio unitario sin IVA", styles["table_header"]),
+        Paragraph("Descuento s/base", styles["table_header"]),
+        Paragraph("Base imponible", styles["table_header"]),
+        Paragraph("Total", styles["table_header"]),
+    ]]
+
+    for line in lines:
+        rows.append([
+            Paragraph(_pdf_text(line.get("line_number")), styles["small_center"]),
+            Paragraph(_line_description(line), styles["body"]),
+            Paragraph(_pdf_text(line.get("quantity")), styles["small_center"]),
+            Paragraph(_pdf_text(_money_precise(line.get("unit_price_net"))), styles["money"]),
+            Paragraph(_pdf_text(_money(line.get("discount_tax_base"), as_discount=True)), styles["money"]),
             Paragraph(_pdf_text(_money(line.get("tax_base"))), styles["money"]),
             Paragraph(_pdf_text(_money(line.get("line_total"))), styles["money_strong"]),
         ])
@@ -718,6 +767,22 @@ def _money(value, *, as_discount=False):
         prefix = "-"
     formatted = f"{amount:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
     return f"{prefix}{formatted} €"
+
+
+def _money_precise(value):
+    """Format an already-frozen precise amount without deriving fiscal data."""
+    try:
+        amount = Decimal(str(value))
+    except (InvalidOperation, TypeError, ValueError):
+        raise InvoicePdfSnapshotMissing("El precio unitario sin IVA no es valido.")
+    if not amount.is_finite():
+        raise InvoicePdfSnapshotMissing("El precio unitario sin IVA no es valido.")
+
+    sign = "-" if amount < 0 else ""
+    integer, _, decimals = format(abs(amount), "f").partition(".")
+    decimals = decimals.rstrip("0").ljust(2, "0")
+    grouped_integer = f"{int(integer):,}".replace(",", ".")
+    return f"{sign}{grouped_integer},{decimals} €"
 
 
 def _text(value):

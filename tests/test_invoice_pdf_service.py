@@ -135,6 +135,28 @@ def snapshot(overrides=None):
     return data
 
 
+def snapshot_v2(overrides=None):
+    data = snapshot()
+    data["schema_version"] = 2
+    data["metadata"]["generator"] = "invoice_snapshot_builder_v2"
+    data["lines"][0].update(
+        {
+            "unit_price_net": "78.512397",
+            "line_tax_base_before_discount": "78.51",
+            "discount_tax_base": "7.85",
+        }
+    )
+    data["lines"][1].update(
+        {
+            "unit_price_net": "17.355372",
+            "line_tax_base_before_discount": "17.36",
+            "discount_tax_base": "1.74",
+        }
+    )
+    data.update(overrides or {})
+    return data
+
+
 class SnapshotOnlyInvoice:
     def __init__(self, invoice_number="F2026000001", invoice_snapshot=None, stored_hash=None):
         self.invoice_number = invoice_number
@@ -254,6 +276,29 @@ class InvoicePdfServiceTest(unittest.TestCase):
             "EUR",
         ):
             self.assertIn(expected, text)
+
+    def test_pdf_v2_shows_frozen_net_unit_price_and_net_discount(self):
+        invoice = SnapshotOnlyInvoice(invoice_snapshot=snapshot_v2())
+
+        with temp_invoice_dir() as tmpdir:
+            result = generate_invoice_pdf(invoice, output_dir=tmpdir)
+            text = normalized_pdf_text(Path(tmpdir) / result.filename)
+
+        self.assertIn("Precio unitario sin IVA", text)
+        self.assertIn("Descuento s/base", text)
+        self.assertIn("78,512397 €", text)
+        self.assertIn("-7,85 €", text)
+        self.assertNotIn("Importe original", text)
+
+    def test_pdf_v1_remains_renderable_without_v2_line_fields(self):
+        invoice = SnapshotOnlyInvoice(invoice_snapshot=snapshot())
+
+        with temp_invoice_dir() as tmpdir:
+            result = generate_invoice_pdf(invoice, output_dir=tmpdir)
+            text = normalized_pdf_text(Path(tmpdir) / result.filename)
+
+        self.assertIn("Importe original", text)
+        self.assertNotIn("Precio unitario sin IVA", text)
 
     def test_pdf_uses_brand_asset_and_current_document_color(self):
         invoice = SnapshotOnlyInvoice()

@@ -38,12 +38,12 @@ function unitPrice(input: {
   return quote.unitPrice;
 }
 
-test("30x30 interiores = 95,00", () => {
-  assert.equal(unitPrice({ height: 30, width: 30 }), 95);
+test("30x30 interiores aplica el precio por m2 como minimo", () => {
+  assert.equal(unitPrice({ height: 30, width: 30 }), 100);
 });
 
-test("30x30 pletinas = 119,95", () => {
-  assert.equal(unitPrice({ height: 30, width: 30, anchorage: ANCHORAGE_FRONT_PLATES }), 119.95);
+test("30x30 pletinas suma el suplemento despues del minimo", () => {
+  assert.equal(unitPrice({ height: 30, width: 30, anchorage: ANCHORAGE_FRONT_PLATES }), 124.95);
 });
 
 test("100x100 interiores con precio 100 = 100,00", () => {
@@ -98,15 +98,22 @@ test("medida 251 inválida", () => {
 });
 
 test("usa precio rebajado si existe", () => {
-  assert.equal(unitPrice({ height: 100, width: 100, pricePerM2: 100, discountedPricePerM2: 80 }), 95);
+  assert.equal(unitPrice({ height: 100, width: 100, pricePerM2: 100, discountedPricePerM2: 80 }), 80);
 });
 
 test("área menor de 0,2 aplica multiplicador 3 y mínimo", () => {
-  assert.equal(unitPrice({ height: 30, width: 30, pricePerM2: 300 }), 95);
+  assert.equal(unitPrice({ height: 30, width: 30, pricePerM2: 300 }), 300);
 });
 
 test("redondeo a dos decimales", () => {
   assert.equal(unitPrice({ height: 100, width: 100, pricePerM2: 100.129 }), 100.13);
+});
+
+test("previsualizacion temporal conserva el minimo propio de 139 y 160 por m2", () => {
+  assert.equal(unitPrice({ height: 60, width: 60, pricePerM2: 139 }), 139);
+  assert.equal(unitPrice({ height: 100, width: 150, pricePerM2: 139 }), 208.5);
+  assert.equal(unitPrice({ height: 60, width: 60, pricePerM2: 160 }), 160);
+  assert.equal(unitPrice({ height: 100, width: 150, pricePerM2: 160 }), 240);
 });
 
 for (const { name, assertion } of tests) {

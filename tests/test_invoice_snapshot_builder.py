@@ -183,6 +183,10 @@ def assert_fiscal_totals(testcase, snapshot):
             money(line["tax_base"]) + money(line["tax_amount"]),
             money(line["line_total"]),
         )
+        testcase.assertEqual(
+            money(line["line_tax_base_before_discount"]) - money(line["discount_tax_base"]),
+            money(line["tax_base"]),
+        )
 
 
 class InvoiceSnapshotBuilderTest(unittest.TestCase):
@@ -194,8 +198,8 @@ class InvoiceSnapshotBuilderTest(unittest.TestCase):
     def test_builds_valid_stripe_snapshot_without_discount(self):
         snapshot = build()
 
-        self.assertEqual(snapshot["schema_version"], 1)
-        self.assertEqual(snapshot["metadata"]["generator"], "invoice_snapshot_builder_v1")
+        self.assertEqual(snapshot["schema_version"], 2)
+        self.assertEqual(snapshot["metadata"]["generator"], "invoice_snapshot_builder_v2")
         self.assertEqual(snapshot["issuer"]["trade_name"], "MetalWolft")
         self.assertEqual(snapshot["customer"]["legal_name"], "Sergio Arias")
         self.assertEqual(snapshot["customer"]["email"], "cliente@example.com")
@@ -218,9 +222,12 @@ class InvoiceSnapshotBuilderTest(unittest.TestCase):
         self.assertEqual(product_line["product_id"], 7)
         self.assertEqual(product_line["model"], "Reja fija Pittsburgh")
         self.assertEqual(product_line["quantity"], "1")
+        self.assertEqual(product_line["unit_price_net"], "78.512397")
         self.assertEqual(product_line["unit_amount_before_discount"], "95.00")
         self.assertEqual(product_line["line_amount_before_discount"], "95.00")
         self.assertEqual(product_line["discount_amount"], "0.00")
+        self.assertEqual(product_line["line_tax_base_before_discount"], "78.51")
+        self.assertEqual(product_line["discount_tax_base"], "0.00")
         self.assertEqual(product_line["line_total"], "95.00")
         self.assertEqual(product_line["tax_base"], "78.51")
         self.assertEqual(product_line["tax_amount"], "16.49")
@@ -236,10 +243,13 @@ class InvoiceSnapshotBuilderTest(unittest.TestCase):
 
         shipping_line = snapshot["lines"][1]
         self.assertEqual(shipping_line["line_type"], "shipping")
+        self.assertEqual(shipping_line["unit_price_net"], "17.355372")
         self.assertEqual(shipping_line["description"], "Gastos de envío")
         self.assertEqual(shipping_line["unit_amount_before_discount"], "21.00")
         self.assertEqual(shipping_line["line_amount_before_discount"], "21.00")
         self.assertEqual(shipping_line["discount_amount"], "0.00")
+        self.assertEqual(shipping_line["line_tax_base_before_discount"], "17.36")
+        self.assertEqual(shipping_line["discount_tax_base"], "0.00")
         self.assertEqual(shipping_line["line_total"], "21.00")
         self.assertEqual(shipping_line["tax_base"], "17.36")
         self.assertEqual(shipping_line["tax_amount"], "3.64")
@@ -355,11 +365,15 @@ class InvoiceSnapshotBuilderTest(unittest.TestCase):
         snapshot = build(checkout_session=session)
 
         product_line, shipping_line = snapshot["lines"]
+        self.assertEqual(product_line["line_tax_base_before_discount"], "78.51")
+        self.assertEqual(product_line["discount_tax_base"], "7.85")
         self.assertEqual(product_line["discount_amount"], "9.50")
         self.assertEqual(product_line["line_total"], "85.50")
         self.assertEqual(product_line["tax_base"], "70.66")
         self.assertEqual(product_line["tax_amount"], "14.84")
         self.assertEqual(shipping_line["discount_amount"], "2.10")
+        self.assertEqual(shipping_line["line_tax_base_before_discount"], "17.36")
+        self.assertEqual(shipping_line["discount_tax_base"], "1.74")
         self.assertEqual(shipping_line["line_total"], "18.90")
         self.assertEqual(shipping_line["tax_base"], "15.62")
         self.assertEqual(shipping_line["tax_amount"], "3.28")
@@ -367,6 +381,30 @@ class InvoiceSnapshotBuilderTest(unittest.TestCase):
         self.assertEqual(snapshot["totals"]["tax_base"], "86.28")
         self.assertEqual(snapshot["totals"]["tax_amount"], "18.12")
         self.assertEqual(snapshot["totals"]["total_amount"], "104.40")
+        assert_fiscal_totals(self, snapshot)
+
+    def test_unit_price_net_keeps_six_decimal_precision_for_multiple_units(self):
+        line = {**quote()["lines"][0], "quantity": 3, "line_total": "285.00"}
+        multi_unit_quote = quote(
+            {
+                "lines": [line],
+                "subtotal": "285.00",
+                "shipping_cost": "0.00",
+                "discount_amount": "28.50",
+                "total_amount": "256.50",
+            }
+        )
+
+        snapshot = build(checkout_session=checkout_session({"quote_snapshot": multi_unit_quote}))
+
+        product_line = snapshot["lines"][0]
+        self.assertEqual(product_line["quantity"], "3")
+        self.assertEqual(product_line["unit_price_net"], "78.512397")
+        self.assertEqual(product_line["line_tax_base_before_discount"], "235.54")
+        self.assertEqual(product_line["discount_tax_base"], "23.56")
+        self.assertEqual(product_line["tax_base"], "211.98")
+        self.assertEqual(product_line["tax_amount"], "44.52")
+        self.assertEqual(product_line["line_total"], "256.50")
         assert_fiscal_totals(self, snapshot)
 
     def test_sergio99_discount_is_allocated_without_negative_lines(self):

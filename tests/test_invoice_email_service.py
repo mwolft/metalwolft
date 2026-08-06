@@ -183,6 +183,18 @@ class InvoiceEmailServiceTest(unittest.TestCase):
         self.assertEqual(invoice.email_attempts, 1)
         self.assertEqual(len(mailer.sent), 1)
 
+    def test_sends_invoice_email_from_v2_snapshot(self):
+        fiscal_snapshot = snapshot({"schema_version": 2, "metadata": {"generator": "invoice_snapshot_builder_v2"}})
+        invoice = SnapshotInvoice(invoice_snapshot=fiscal_snapshot)
+        mailer = FakeMailer()
+
+        with temp_invoice_dir() as tmpdir:
+            write_pdf(tmpdir)
+            result = send_invoice_email(invoice, mailer=mailer, invoice_folder=tmpdir)
+
+        self.assertEqual(result.recipient, "cliente@example.com")
+        self.assertEqual(invoice.email_status, EMAIL_STATUS_SENT)
+
     def test_subject_body_and_attachment_contract(self):
         invoice = SnapshotInvoice()
         mailer = FakeMailer()

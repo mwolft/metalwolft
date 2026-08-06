@@ -238,11 +238,11 @@ class ProductQuoteEndpointTest(unittest.TestCase):
                 "screw_option": DEFAULT_CONFIGURATOR_SCREW_OPTION,
                 "screw_length_mm": 70,
                 "currency": "EUR",
-                "base_unit_price": 95.0,
+                "base_unit_price": 100.0,
                 "anchorage_supplement": 24.95,
                 "screw_supplement": 0.0,
-                "unit_price": 119.95,
-                "subtotal": 239.9,
+                "unit_price": 124.95,
+                "subtotal": 249.9,
             },
         )
 
@@ -293,7 +293,7 @@ class ProductQuoteEndpointTest(unittest.TestCase):
         self.assertEqual(quote["screw_option"], SCREW_OPTION_LONG_150)
         self.assertEqual(quote["screw_length_mm"], 150)
         self.assertEqual(quote["screw_supplement"], 8.95)
-        self.assertEqual(quote["unit_price"], 128.9)
+        self.assertEqual(quote["unit_price"], 133.9)
 
     def test_order_line_freezes_resolved_screw_configuration(self):
         response = self.post_quote(
@@ -303,7 +303,7 @@ class ProductQuoteEndpointTest(unittest.TestCase):
         quote_line = {
             **response.get_json(),
             "product_name": "Reja disponible",
-            "line_total": 128.9,
+            "line_total": 133.9,
             "shipping_type": "normal",
             "shipping_cost": 0.0,
         }
@@ -350,7 +350,7 @@ class ProductQuoteEndpointTest(unittest.TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.get_json()["quantity"], 1)
-        self.assertEqual(response.get_json()["subtotal"], 119.95)
+        self.assertEqual(response.get_json()["subtotal"], 124.95)
 
 
 if __name__ == "__main__":

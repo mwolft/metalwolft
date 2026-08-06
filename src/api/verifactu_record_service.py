@@ -30,7 +30,7 @@ MODE_VERIFACTU = VeriFactuRecord.MODE_VERIFACTU
 STATUS_BUILT = VeriFactuRecord.STATUS_BUILT
 STATUS_READY = VeriFactuRecord.STATUS_READY
 FINGERPRINT_STATUS_NOT_CALCULATED = "NOT_CALCULATED"
-SUPPORTED_INVOICE_SCHEMA_VERSION = 1
+SUPPORTED_INVOICE_SCHEMA_VERSIONS = {1, 2}
 SUPPORTED_CURRENCY = "EUR"
 SUPPORTED_INVOICE_TYPE = "ordinary"
 
@@ -364,7 +364,7 @@ def _validated_snapshot(invoice):
     snapshot = getattr(invoice, "invoice_snapshot", None)
     if not isinstance(snapshot, dict):
         raise VeriFactuRecordValidationError("La factura debe tener snapshot fiscal.")
-    if snapshot.get("schema_version") != SUPPORTED_INVOICE_SCHEMA_VERSION:
+    if snapshot.get("schema_version") not in SUPPORTED_INVOICE_SCHEMA_VERSIONS:
         raise VeriFactuRecordUnsupportedSchema("Version de snapshot fiscal no soportada.")
     return snapshot
 

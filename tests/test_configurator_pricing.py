@@ -69,11 +69,12 @@ def quote(
     anclaje=ANCHORAGE_INTERIOR_HOLES,
     color=DEFAULT_COLOR,
     screw_option=None,
+    precio_m2=PRICE_M2,
 ):
     return build_configured_reja_quote(
         alto_cm=alto,
         ancho_cm=ancho,
-        precio_m2=PRICE_M2,
+        precio_m2=precio_m2,
         anclaje=anclaje,
         color=color,
         screw_option=screw_option,
@@ -173,7 +174,7 @@ class ConfiguratorPricingTest(unittest.TestCase):
             ],
             [70, 150],
         )
-        self.assertEqual(quote(30, 250)["base_unit_price"], 95.0)
+        self.assertEqual(quote(30, 250)["base_unit_price"], PRICE_M2)
         with self.assertRaisesRegex(ValueError, "Dimensiones"):
             quote(151, 250)
 
@@ -207,11 +208,11 @@ class ConfiguratorPricingTest(unittest.TestCase):
                 "screw_option": DEFAULT_CONFIGURATOR_SCREW_OPTION,
                 "screw_length_mm": 70,
                 "currency": "EUR",
-                "base_unit_price": 95.0,
+                "base_unit_price": 100.0,
                 "anchorage_supplement": 24.95,
                 "screw_supplement": 0.0,
-                "unit_price": 119.95,
-                "subtotal": 239.9,
+                "unit_price": 124.95,
+                "subtotal": 249.9,
             },
         )
 
@@ -236,15 +237,23 @@ class ConfiguratorPricingTest(unittest.TestCase):
 
         self.assertEqual(first, second)
 
-    def test_30x30_interior_uses_minimum_price(self):
-        self.assertEqual(quote(30, 30)["unit_price"], 95.0)
+    def test_sub_square_metre_uses_one_square_metre_at_product_price(self):
+        self.assertEqual(quote(30, 30)["unit_price"], PRICE_M2)
 
-    def test_30x30_plates_adds_supplement_after_minimum(self):
+    def test_30x30_plates_adds_supplement_after_product_minimum(self):
         result = quote(30, 30, ANCHORAGE_FRONT_PLATES)
 
-        self.assertEqual(result["base_unit_price"], 95.0)
+        self.assertEqual(result["base_unit_price"], PRICE_M2)
         self.assertEqual(result["anchorage_supplement"], 24.95)
-        self.assertEqual(result["unit_price"], 119.95)
+        self.assertEqual(result["unit_price"], 124.95)
+
+    def test_product_rate_is_the_minimum_and_area_price_starts_above_one_square_metre(self):
+        self.assertEqual(quote(60, 60, precio_m2=139)["base_unit_price"], 139.0)
+        self.assertEqual(quote(100, 50, precio_m2=139)["base_unit_price"], 139.0)
+        self.assertEqual(quote(100, 100, precio_m2=139)["base_unit_price"], 139.0)
+        self.assertEqual(quote(100, 150, precio_m2=139)["base_unit_price"], 208.5)
+        self.assertEqual(quote(60, 60, precio_m2=160)["base_unit_price"], 160.0)
+        self.assertEqual(quote(100, 150, precio_m2=160)["base_unit_price"], 240.0)
 
     def test_100x100_interior_uses_area_price(self):
         self.assertEqual(quote(100, 100)["unit_price"], 100.0)
@@ -338,11 +347,11 @@ class ConfiguratorPricingTest(unittest.TestCase):
             )
 
         line = checkout_quote["lines"][0]
-        self.assertEqual(line["unit_price"], 119.95)
-        self.assertEqual(line["line_total"], 239.9)
+        self.assertEqual(line["unit_price"], 124.95)
+        self.assertEqual(line["line_total"], 249.9)
         self.assertEqual(line["frontend_unit_price"], 0.01)
-        self.assertEqual(line["price_difference"], -119.94)
-        self.assertEqual(checkout_quote["subtotal"], 239.9)
+        self.assertEqual(line["price_difference"], -124.94)
+        self.assertEqual(checkout_quote["subtotal"], 249.9)
 
     def test_30x30_interior_cart_quote_matches_checkout_unit_price(self):
         checkout_service = load_checkout_service_with_fake_models()
@@ -363,9 +372,9 @@ class ConfiguratorPricingTest(unittest.TestCase):
                 ]
             )
 
-        self.assertEqual(cart_quote["unit_price"], 95.0)
-        self.assertEqual(checkout_quote["lines"][0]["unit_price"], 95.0)
-        self.assertEqual(checkout_quote["lines"][0]["line_total"], 95.0)
+        self.assertEqual(cart_quote["unit_price"], 100.0)
+        self.assertEqual(checkout_quote["lines"][0]["unit_price"], 100.0)
+        self.assertEqual(checkout_quote["lines"][0]["line_total"], 100.0)
 
     def test_30x30_plates_cart_quote_matches_checkout_unit_price(self):
         checkout_service = load_checkout_service_with_fake_models()
@@ -386,9 +395,9 @@ class ConfiguratorPricingTest(unittest.TestCase):
                 ]
             )
 
-        self.assertEqual(cart_quote["unit_price"], 119.95)
-        self.assertEqual(checkout_quote["lines"][0]["unit_price"], 119.95)
-        self.assertEqual(checkout_quote["lines"][0]["line_total"], 119.95)
+        self.assertEqual(cart_quote["unit_price"], 124.95)
+        self.assertEqual(checkout_quote["lines"][0]["unit_price"], 124.95)
+        self.assertEqual(checkout_quote["lines"][0]["line_total"], 124.95)
 
     def test_quantity_two_plates_keeps_unit_price_and_multiplies_line_total(self):
         checkout_service = load_checkout_service_with_fake_models()
@@ -408,8 +417,8 @@ class ConfiguratorPricingTest(unittest.TestCase):
                 ]
             )
 
-        self.assertEqual(checkout_quote["lines"][0]["unit_price"], 119.95)
-        self.assertEqual(checkout_quote["lines"][0]["line_total"], 239.9)
+        self.assertEqual(checkout_quote["lines"][0]["unit_price"], 124.95)
+        self.assertEqual(checkout_quote["lines"][0]["line_total"], 249.9)
 
     def test_checkout_uses_same_configured_price_as_cart_quote(self):
         checkout_service = load_checkout_service_with_fake_models()
@@ -448,15 +457,15 @@ class ConfiguratorPricingTest(unittest.TestCase):
                 ]
             )
 
-        self.assertEqual(checkout_quote["subtotal"], 103.95)
-        self.assertEqual(checkout_quote["total_amount"], 124.95)
+        self.assertEqual(checkout_quote["subtotal"], 108.95)
+        self.assertEqual(checkout_quote["total_amount"], 129.95)
         self.assertEqual(
             validate_payment_amount("stripe", checkout_quote["total_amount"]),
-            Decimal("124.95"),
+            Decimal("129.95"),
         )
         self.assertEqual(
             validate_payment_amount("paypal", checkout_quote["total_amount"]),
-            Decimal("124.95"),
+            Decimal("129.95"),
         )
 
     def test_checkout_rejects_legacy_front_holes_with_clear_message(self):

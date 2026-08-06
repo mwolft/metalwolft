@@ -11,7 +11,7 @@ STATUS_PENDING = AccountingEntry.STATUS_PENDING
 STATUS_RECORDED = AccountingEntry.STATUS_RECORDED
 STATUS_FAILED = AccountingEntry.STATUS_FAILED
 
-SUPPORTED_SNAPSHOT_SCHEMA_VERSION = 1
+SUPPORTED_SNAPSHOT_SCHEMA_VERSIONS = {1, 2}
 
 
 class AccountingEntryError(Exception):
@@ -94,7 +94,7 @@ def _validated_snapshot(invoice):
         raise AccountingEntryValidationError("Invoice snapshot is required.")
 
     schema_version = snapshot.get("schema_version")
-    if schema_version != SUPPORTED_SNAPSHOT_SCHEMA_VERSION:
+    if schema_version not in SUPPORTED_SNAPSHOT_SCHEMA_VERSIONS:
         raise AccountingEntryUnsupportedSchema("Unsupported invoice snapshot schema.")
 
     for block in ("customer", "operation", "payment", "totals"):

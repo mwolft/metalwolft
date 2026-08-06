@@ -325,6 +325,14 @@ class AccountingEntryServiceSQLiteTest(unittest.TestCase):
         self.assertEqual(entry.order_id, 321)
         self.assert_invoice_fiscal_state_unchanged(invoice, before)
 
+    def test_create_accounting_entry_from_v2_snapshot(self):
+        invoice = self.make_invoice(snapshot=self.snapshot(schema_version=2))
+
+        entry = create_accounting_entry(invoice, db_session=db.session)
+
+        self.assertEqual(entry.taxable_base, Decimal("100.00"))
+        self.assertEqual(entry.total_amount, Decimal("121.00"))
+
     def test_idempotency_returns_existing_entry(self):
         invoice = self.make_invoice()
 

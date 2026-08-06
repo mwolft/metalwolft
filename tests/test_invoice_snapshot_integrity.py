@@ -111,6 +111,32 @@ class InvoiceSnapshotIntegrityTest(unittest.TestCase):
 
         self.assertNotEqual(base_hash, calculate_invoice_snapshot_hash(changed_total))
 
+    def test_v2_net_unit_price_fields_are_part_of_the_hash(self):
+        v2 = snapshot(
+            {
+                "schema_version": 2,
+                "metadata": {
+                    "generator": "invoice_snapshot_builder_v2",
+                    "generated_at": "2026-07-15T10:00:00+00:00",
+                },
+                "lines": [
+                    {
+                        **snapshot()["lines"][0],
+                        "unit_price_net": "78.512397",
+                        "line_tax_base_before_discount": "78.51",
+                        "discount_tax_base": "0.00",
+                    }
+                ],
+            }
+        )
+        changed = copy.deepcopy(v2)
+        changed["lines"][0]["unit_price_net"] = "78.512398"
+
+        self.assertNotEqual(
+            calculate_invoice_snapshot_hash(v2),
+            calculate_invoice_snapshot_hash(changed),
+        )
+
     def test_hash_is_sha256_hex(self):
         digest = calculate_invoice_snapshot_hash(snapshot())
 

@@ -108,26 +108,7 @@ export function calculateConfiguratorPrice(input: ConfiguratorPriceInput): Confi
       ? input.discountedPricePerM2
       : input.pricePerM2;
   const area = (height * width) / 10000;
-  const multiplier =
-    area >= 0.9
-      ? 1
-      : area >= 0.8
-        ? 1.1
-        : area >= 0.7
-          ? 1.15
-          : area >= 0.6
-            ? 1.2
-            : area >= 0.5
-              ? 1.3
-              : area >= 0.4
-                ? 1.55
-                : area >= 0.3
-                  ? 1.9
-                  : area >= 0.2
-                    ? 2.5
-                    : 3;
-
-  const baseUnitPrice = roundCurrency(Math.max(area * pricePerM2Used * multiplier, 95));
+  const baseUnitPrice = roundCurrency(Math.max(area * pricePerM2Used, pricePerM2Used));
   const unitPrice = roundCurrency(baseUnitPrice + anchorageOption.supplement);
 
   return {

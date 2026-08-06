@@ -462,6 +462,14 @@ class VeriFactuRecordServiceSQLiteTest(unittest.TestCase):
         )
         self.assert_invoice_unchanged(invoice, before)
 
+    def test_create_verifactu_registration_record_from_v2_snapshot(self):
+        invoice = self.make_invoice(invoice_snapshot=snapshot(schema_version=2))
+
+        result = self.create_record(invoice)
+
+        self.assertTrue(result.created)
+        self.assertEqual(result.record.total_amount, Decimal("121.00"))
+
     def test_idempotency_returns_existing_record_without_rebuilding(self):
         invoice = self.make_invoice()
         first = self.create_record(invoice)

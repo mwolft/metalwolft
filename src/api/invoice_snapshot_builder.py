@@ -3,10 +3,11 @@ from datetime import date, datetime, timezone
 from decimal import Decimal, InvalidOperation, ROUND_DOWN, ROUND_HALF_UP
 
 
-SNAPSHOT_SCHEMA_VERSION = 1
-SNAPSHOT_GENERATOR = "invoice_snapshot_builder_v1"
+SNAPSHOT_SCHEMA_VERSION = 2
+SNAPSHOT_GENERATOR = "invoice_snapshot_builder_v2"
 SUPPORTED_CURRENCY = "EUR"
 SUPPORTED_TAX_RATE = Decimal("21.00")
+NET_UNIT_PRICE_QUANTUM = Decimal("0.000001")
 FINAL_CHECKOUT_STATUSES = {"paid", "order_created"}
 
 
@@ -134,6 +135,10 @@ def _money(value, field):
     return f"{_quantize_money(_to_decimal(value, field)):.2f}"
 
 
+def _net_unit_price(value, field):
+    return f"{_to_decimal(value, field).quantize(NET_UNIT_PRICE_QUANTUM, rounding=ROUND_HALF_UP):.6f}"
+
+
 def _quantity_string(value, field):
     quantity = _to_decimal(value, field)
     if quantity <= 0:
@@ -144,11 +149,16 @@ def _quantity_string(value, field):
     return format(normalized, "f")
 
 
-def _tax_from_gross(gross_amount):
+def _tax_from_gross(gross_amount, tax_rate=SUPPORTED_TAX_RATE):
     gross = _quantize_money(gross_amount)
-    tax_base = _quantize_money(gross / Decimal("1.21"))
+    tax_base = _quantize_money(gross / (Decimal("1") + (tax_rate / Decimal("100"))))
     tax_amount = _quantize_money(gross - tax_base)
     return tax_base, tax_amount
+
+
+def _unit_price_net_from_gross(gross_unit_price, tax_rate=SUPPORTED_TAX_RATE):
+    gross = _to_decimal(gross_unit_price, "unit_price_net")
+    return gross / (Decimal("1") + (tax_rate / Decimal("100")))
 
 
 def _date_string(value, field):
@@ -543,8 +553,22 @@ def _finalize_line(line_before_discount, discount_amount):
             "El descuento de linea supera su importe.",
         )
 
+    tax_rate = SUPPORTED_TAX_RATE
     line_total = _quantize_money(line_amount_before_discount - discount_amount)
-    tax_base, tax_amount = _tax_from_gross(line_total)
+    line_tax_base_before_discount, _ = _tax_from_gross(line_amount_before_discount, tax_rate)
+    tax_base, tax_amount = _tax_from_gross(line_total, tax_rate)
+    discount_tax_base = _quantize_money(line_tax_base_before_discount - tax_base)
+
+    if _quantize_money(line_tax_base_before_discount - discount_tax_base) != tax_base:
+        raise InvoiceSnapshotValidationError(
+            f"lines.{line_before_discount['line_number']}.tax_base",
+            "La base imponible no reconcilia con el descuento fiscal.",
+        )
+    if _quantize_money(tax_base + tax_amount) != line_total:
+        raise InvoiceSnapshotValidationError(
+            f"lines.{line_before_discount['line_number']}.line_total",
+            "El total de linea no reconcilia con IVA.",
+        )
 
     return {
         "line_number": line_before_discount["line_number"],
@@ -553,6 +577,10 @@ def _finalize_line(line_before_discount, discount_amount):
         "model": line_before_discount["model"],
         "description": line_before_discount["description"],
         "quantity": line_before_discount["quantity"],
+        "unit_price_net": _net_unit_price(
+            _unit_price_net_from_gross(line_before_discount["unit_amount_before_discount"], tax_rate),
+            f"lines.{line_before_discount['line_number']}.unit_price_net",
+        ),
         "unit_amount_before_discount": _money(
             line_before_discount["unit_amount_before_discount"],
             f"lines.{line_before_discount['line_number']}.unit_amount_before_discount",
@@ -565,8 +593,16 @@ def _finalize_line(line_before_discount, discount_amount):
             discount_amount,
             f"lines.{line_before_discount['line_number']}.discount_amount",
         ),
+        "line_tax_base_before_discount": _money(
+            line_tax_base_before_discount,
+            f"lines.{line_before_discount['line_number']}.line_tax_base_before_discount",
+        ),
+        "discount_tax_base": _money(
+            discount_tax_base,
+            f"lines.{line_before_discount['line_number']}.discount_tax_base",
+        ),
         "line_total": _money(line_total, f"lines.{line_before_discount['line_number']}.line_total"),
-        "tax_rate": _money(SUPPORTED_TAX_RATE, f"lines.{line_before_discount['line_number']}.tax_rate"),
+        "tax_rate": _money(tax_rate, f"lines.{line_before_discount['line_number']}.tax_rate"),
         "tax_base": _money(tax_base, f"lines.{line_before_discount['line_number']}.tax_base"),
         "tax_amount": _money(tax_amount, f"lines.{line_before_discount['line_number']}.tax_amount"),
         "configuration": line_before_discount["configuration"],

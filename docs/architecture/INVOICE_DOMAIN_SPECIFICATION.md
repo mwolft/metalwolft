@@ -198,7 +198,7 @@ Estructura lógica inicial:
 
 ```json
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "issuer": {},
   "customer": {},
   "operation": {},
@@ -208,6 +208,42 @@ Estructura lógica inicial:
   "references": {}
 }
 ```
+
+### Versionado y semántica fiscal de líneas
+
+Los snapshots v1 históricos son inmutables y siguen siendo legibles. Las nuevas facturas se construyen como `schema_version: 2`; no se recalculan ni se reescriben datos u hashes v1.
+
+En v2, cada línea incorpora, además de sus importes comerciales brutos:
+
+- `unit_price_net`: precio unitario sin IVA antes de descuentos, string Decimal con seis decimales.
+- `line_tax_base_before_discount`: base imponible de la línea antes del descuento, con dos decimales.
+- `discount_tax_base`: impacto del descuento sobre la base imponible, con dos decimales.
+- `tax_base`, `tax_amount` y `line_total`: autoridades fiscales finales, con dos decimales.
+
+La fuente de `unit_price_net` es exclusivamente el importe unitario comercial bruto congelado en `unit_amount_before_discount` y el `tax_rate` de la propia línea:
+
+```text
+unit_price_net = unit_amount_before_discount / (1 + tax_rate / 100)
+```
+
+El builder usa `Decimal`, conserva seis decimales y nunca usa `float`. La presentación puede ocultar ceros finales, pero no debe sustituir este valor por un cálculo posterior.
+
+`discount_amount` mantiene su semántica bruta histórica. No debe presentarse como descuento sin IVA junto a `unit_price_net`; para documentación fiscal v2 se usa `discount_tax_base`.
+
+Las invariantes de reconciliación son por línea y con redondeo Decimal a dos decimales:
+
+```text
+line_tax_base_before_discount - discount_tax_base = tax_base
+tax_base + tax_amount = line_total
+```
+
+No se exige que `round(unit_price_net, 2) * quantity` sea igual a `tax_base`, porque los descuentos proporcionales y el redondeo por línea pueden dejar residuos de céntimo. La cantidad y el unitario siguen siendo informativos; las bases y totales congelados son la autoridad de reconciliación.
+
+El envío se representa como una línea v2 con cantidad `1` y aplica la misma semántica. Su unitario neto describe el concepto único de transporte congelado, sin inventar unidades comerciales adicionales.
+
+Los campos v2 forman parte natural del JSON canónico y, por tanto, del hash de integridad ya existente. El algoritmo de hash no cambia; los hashes de snapshots v1 permanecen intactos.
+
+El renderer PDF no calcula impuestos ni precios. Para v1 conserva su presentación histórica; para v2 muestra `Precio unitario sin IVA` y `Descuento s/base` a partir de los campos ya congelados.
 
 ### Emisor
 

@@ -8,7 +8,7 @@ from api.invoice_snapshot_integrity import calculate_invoice_snapshot_hash
 from api.transactional_email_renderer import render_invoice_delivery_email
 
 
-SUPPORTED_SCHEMA_VERSION = 1
+SUPPORTED_SCHEMA_VERSIONS = {1, 2}
 EMAIL_STATUS_PENDING = "pending"
 EMAIL_STATUS_SENT = "sent"
 EMAIL_STATUS_FAILED = "failed"
@@ -158,7 +158,7 @@ def _validated_snapshot(invoice):
     if not isinstance(snapshot, dict):
         raise InvoiceEmailSnapshotMissing("La factura no tiene snapshot fiscal.")
 
-    if snapshot.get("schema_version") != SUPPORTED_SCHEMA_VERSION:
+    if snapshot.get("schema_version") not in SUPPORTED_SCHEMA_VERSIONS:
         raise InvoiceEmailUnsupportedSchema("Version de snapshot no soportada.")
     return snapshot
 

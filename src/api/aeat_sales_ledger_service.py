@@ -9,7 +9,7 @@ from api.invoice_snapshot_integrity import calculate_invoice_snapshot_hash
 AEAT_SALES_LEDGER_SHEET_NAME = "EXPEDIDAS_INGRESOS"
 SALE_ENTRY_TYPE = "sale"
 ORDINARY_INVOICE_TYPE = "ordinary"
-SUPPORTED_SCHEMA_VERSION = 1
+SUPPORTED_SCHEMA_VERSIONS = {1, 2}
 SUPPORTED_CURRENCY = "EUR"
 SUPPORTED_COUNTRY_CODE = "ES"
 SUPPORTED_TAX_ID_TYPE = "4"
@@ -273,7 +273,7 @@ def _validated_snapshot(invoice):
     snapshot = getattr(invoice, "invoice_snapshot", None)
     if not isinstance(snapshot, dict):
         raise AeatSalesLedgerValidationError("La factura no tiene snapshot fiscal.")
-    if snapshot.get("schema_version") != SUPPORTED_SCHEMA_VERSION:
+    if snapshot.get("schema_version") not in SUPPORTED_SCHEMA_VERSIONS:
         raise AeatSalesLedgerValidationError("Version de snapshot fiscal no soportada.")
 
     for block in ("customer", "operation", "totals"):

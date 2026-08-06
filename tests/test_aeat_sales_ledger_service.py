@@ -193,6 +193,15 @@ class AeatSalesLedgerServiceTest(unittest.TestCase):
             self.assertEqual([cell.value for cell in sheet[1]], normalized_header(AEAT_HEADER_ROW_1))
             self.assertEqual([cell.value for cell in sheet[2]], normalized_header(AEAT_HEADER_ROW_2))
 
+    def test_valid_export_accepts_v2_snapshot(self):
+        fiscal_snapshot = snapshot(schema_version=2, metadata={"generator": "invoice_snapshot_builder_v2"})
+
+        with temp_export_dir() as tmpdir:
+            result, workbook = export_and_open([entry(invoice=invoice(invoice_snapshot=fiscal_snapshot))], tmpdir / "aeat.xlsx")
+
+        self.assertEqual(result.row_count, 1)
+        self.assertEqual(workbook[AEAT_SALES_LEDGER_SHEET_NAME]["L3"].value, "F2026000001")
+
     def test_row_mapping_matches_aeat_sales_ledger_v1(self):
         with temp_export_dir() as tmpdir:
             _, workbook = export_and_open([entry()], tmpdir / "aeat.xlsx")

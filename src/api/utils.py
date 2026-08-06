@@ -367,28 +367,10 @@ def calcular_precio_reja(alto_cm, ancho_cm, precio_m2):
     ):
         raise ValueError("Dimensiones fuera de rango permitido")
 
-    base_price = 95
-    if area >= 0.9:
-        multiplier = 1
-    elif area >= 0.8:
-        multiplier = 1.1
-    elif area >= 0.7:
-        multiplier = 1.15
-    elif area >= 0.6:
-        multiplier = 1.2
-    elif area >= 0.5:
-        multiplier = 1.3
-    elif area >= 0.4:
-        multiplier = 1.55
-    elif area >= 0.3:
-        multiplier = 1.9
-    elif area >= 0.2:
-        multiplier = 2.5
-    else:
-        multiplier = 3.0
-
-    precio = area * precio_m2 * multiplier
-    return round(max(precio, base_price), 2)
+    price_per_m2 = float(precio_m2)
+    price_by_area = area * price_per_m2
+    # Every grille is charged as at least one square metre at its own current rate.
+    return round(max(price_by_area, price_per_m2), 2)
 
 
 def build_configured_reja_quote(
