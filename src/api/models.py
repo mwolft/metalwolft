@@ -534,12 +534,51 @@ class Invoices(db.Model):
             unique=True,
             postgresql_where=text("invoice_type = 'ordinary' AND order_id IS NOT NULL"),
         ),
+        db.Index(
+            "ix_invoices_original_invoice_id",
+            "original_invoice_id",
+            unique=False,
+        ),
+        db.CheckConstraint(
+            "("
+            "invoice_type IS NULL AND original_invoice_id IS NULL AND "
+            "rectification_type IS NULL AND rectification_reason IS NULL"
+            ") OR ("
+            "invoice_type = 'ordinary' AND original_invoice_id IS NULL AND "
+            "rectification_type IS NULL AND rectification_reason IS NULL"
+            ") OR ("
+            "invoice_type = 'corrective' AND original_invoice_id IS NOT NULL AND "
+            "original_invoice_id != id AND rectification_type IS NOT NULL AND "
+            "rectification_reason IS NOT NULL"
+            ")",
+            name="ck_invoices_rectification_consistency",
+        ),
+        db.CheckConstraint(
+            "invoice_type IS NULL OR invoice_type IN ('ordinary', 'corrective')",
+            name="ck_invoices_invoice_type_valid",
+        ),
+        db.CheckConstraint(
+            "rectification_type IS NULL OR rectification_type IN ('differences', 'substitution')",
+            name="ck_invoices_rectification_type_valid",
+        ),
+        db.CheckConstraint(
+            "rectification_reason IS NULL OR rectification_reason IN ("
+            "'invoice_error', 'return', 'price_error', 'shipping_error', 'other')",
+            name="ck_invoices_rectification_reason_valid",
+        ),
+        db.CheckConstraint(
+            "original_invoice_id IS NULL OR original_invoice_id != id",
+            name="ck_invoices_original_invoice_not_self",
+        ),
     )
 
     id = db.Column(db.Integer, primary_key=True)
     invoice_number = db.Column(db.String(50), nullable=False, unique=True)
     order_id = db.Column(db.Integer, db.ForeignKey('orders.id'), nullable=True)
     invoice_type = db.Column(db.String(20), nullable=True)
+    original_invoice_id = db.Column(db.Integer, db.ForeignKey('invoices.id'), nullable=True)
+    rectification_type = db.Column(db.String(30), nullable=True)
+    rectification_reason = db.Column(db.String(50), nullable=True)
     created_at = db.Column(db.DateTime, default=db.func.current_timestamp())
     pdf_path = db.Column(db.String(255), nullable=True)
     amount = db.Column(db.Float, nullable=False)
@@ -560,6 +599,13 @@ class Invoices(db.Model):
     email_last_error = db.Column(db.Text, nullable=True)
     email_attempts = db.Column(db.Integer, nullable=False, default=0, server_default="0")
     order = db.relationship('Orders', backref='invoice', lazy=True)
+    original_invoice = db.relationship(
+        'Invoices',
+        remote_side=[id],
+        foreign_keys=[original_invoice_id],
+        backref=db.backref('corrective_invoices', lazy=True),
+        lazy=True,
+    )
 
     def __repr__(self):
         return f'<Invoice {self.invoice_number}>'
