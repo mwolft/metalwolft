@@ -42,6 +42,6 @@ module.exports = {
       template: 'template.html',
       filename: 'index.html'
     }),
-    new Dotenv({ safe: true, systemvars: true })
+    new Dotenv({ systemvars: true })
   ]
 };
