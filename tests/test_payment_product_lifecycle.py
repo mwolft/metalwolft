@@ -536,6 +536,18 @@ class ConfirmedPaymentSnapshotRegressionTest(unittest.TestCase):
         self.assertNotIn("ensure_product_available_for_sale", finalizer)
         self.assertNotIn("build_checkout_quote", finalizer)
 
+    def test_legacy_checkout_exposes_legal_name_in_form_and_payload(self):
+        source = (ROOT_DIR / "src/front/js/component/CheckoutForm.jsx").read_text(encoding="utf-8")
+
+        self.assertIn('"legal_name"', source)
+        self.assertIn('Nombre fiscal / Razón social', source)
+        self.assertIn('name="legal_name"', source)
+        self.assertIn('value={formData.legal_name}', source)
+        self.assertIn('customer_data: formData', source)
+        self.assertIn('customerData={formData}', source)
+        self.assertIn('buildLegalName(', source)
+        self.assertIn('hasUserEditedLegalNameRef', source)
+
 
 if __name__ == "__main__":
     unittest.main()
