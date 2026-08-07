@@ -1,5 +1,5 @@
 from flask_sqlalchemy import SQLAlchemy
-from sqlalchemy import Enum, event
+from sqlalchemy import Enum, event, text
 import random
 import string
 import uuid
@@ -8,6 +8,26 @@ from flask import current_app
 from slugify import slugify
 
 db = SQLAlchemy()
+
+
+def _serialize_screw_configuration(anclaje, screw_option, screw_length_mm, screw_supplement):
+    from api.utils import DEFAULT_CONFIGURATOR_SCREW_OPTION, resolve_screw_configuration
+
+    normalized_option = screw_option or DEFAULT_CONFIGURATOR_SCREW_OPTION
+    normalized_length = screw_length_mm
+    normalized_supplement = screw_supplement
+    if normalized_length is None:
+        legacy_configuration = resolve_screw_configuration(anclaje, normalized_option)
+        if legacy_configuration:
+            normalized_length = legacy_configuration["screw_length_mm"]
+            if normalized_supplement is None:
+                normalized_supplement = legacy_configuration["screw_supplement"]
+
+    return {
+        "screw_option": normalized_option,
+        "screw_length_mm": normalized_length,
+        "screw_supplement": float(normalized_supplement or 0.0),
+    }
 
 class DeliveryEstimateConfig(db.Model):
     __tablename__ = 'delivery_estimate_config'
@@ -36,6 +56,7 @@ class Users(db.Model):
     password = db.Column(db.String(120), nullable=False)
     firstname = db.Column(db.String(100), nullable=True)
     lastname = db.Column(db.String(100), nullable=True)
+    phone = db.Column(db.String(50), nullable=True)
     is_active = db.Column(db.Boolean, default=True)
     is_admin = db.Column(db.Boolean, default=False) 
     shipping_address = db.Column(db.String(200), nullable=True)
@@ -54,6 +75,7 @@ class Users(db.Model):
             "id": self.id,
             "firstname": self.firstname,
             "lastname": self.lastname,
+            "phone": self.phone,
             "is_active": self.is_active,
             "email": self.email,
             "is_admin": self.is_admin,  
@@ -127,6 +149,13 @@ class Comments(db.Model):
 
 class Products(db.Model):
     __tablename__ = "products"
+    __table_args__ = (
+        db.CheckConstraint(
+            "published OR NOT available_for_sale",
+            name="ck_products_published_available_for_sale",
+        ),
+    )
+
     id = db.Column(db.Integer, primary_key=True)
     sort_order = db.Column(db.Integer, default=0)   
     slug = db.Column(db.String(120), unique=True, nullable=False)
@@ -137,6 +166,18 @@ class Products(db.Model):
     h1_seo = db.Column(db.String(180), nullable=True)
     es_mas_vendido = db.Column(db.Boolean, default=False)
     es_nuevo_diseno = db.Column(db.Boolean, default=False)
+    published = db.Column(
+        db.Boolean,
+        nullable=False,
+        default=True,
+        server_default=db.true(),
+    )
+    available_for_sale = db.Column(
+        db.Boolean,
+        nullable=False,
+        default=True,
+        server_default=db.true(),
+    )
     precio = db.Column(db.Float, nullable=False)
     precio_rebajado = db.Column(db.Float, nullable=True)
     porcentaje_rebaja = db.Column(db.Integer, nullable=True)
@@ -184,6 +225,7 @@ class Products(db.Model):
             "has_door_model": self.has_door_model,
             "es_mas_vendido": self.es_mas_vendido,
             "es_nuevo_diseno": self.es_nuevo_diseno,
+            "available_for_sale": self.available_for_sale,
         }
 
     def serialize_with_images(self):
@@ -430,6 +472,9 @@ class OrderDetails(db.Model):
     ancho = db.Column(db.Float, nullable=True)  
     anclaje = db.Column(db.String(50), nullable=True)  
     color = db.Column(db.String(50), nullable=True) 
+    screw_option = db.Column(db.String(20), nullable=False, default="standard")
+    screw_length_mm = db.Column(db.Integer, nullable=True)
+    screw_supplement = db.Column(db.Float, nullable=False, default=0.0)
     precio_total = db.Column(db.Float, nullable=False)  
     firstname = db.Column(db.String(100), nullable=True)
     lastname = db.Column(db.String(100), nullable=True)
@@ -446,6 +491,12 @@ class OrderDetails(db.Model):
     def __repr__(self):
         return f'<OrderDetail {self.id}: Order {self.order_id} - Product {self.product_id}>'
     def serialize(self):
+        screw_configuration = _serialize_screw_configuration(
+            self.anclaje,
+            self.screw_option,
+            self.screw_length_mm,
+            self.screw_supplement,
+        )
         return {
             "id": self.id,
             "order_id": self.order_id,
@@ -455,6 +506,7 @@ class OrderDetails(db.Model):
             "ancho": self.ancho,
             "anclaje": self.anclaje,
             "color": self.color,
+            **screw_configuration,
             "precio_total": self.precio_total,
             "locator": self.order.locator if self.order else None,
             "invoice_number": self.order.invoice_number if self.order else None,
@@ -475,12 +527,21 @@ class OrderDetails(db.Model):
 
 class Invoices(db.Model):
     __tablename__ = "invoices"
+    __table_args__ = (
+        db.Index(
+            "uq_invoices_one_ordinary_per_order",
+            "order_id",
+            unique=True,
+            postgresql_where=text("invoice_type = 'ordinary' AND order_id IS NOT NULL"),
+        ),
+    )
 
     id = db.Column(db.Integer, primary_key=True)
     invoice_number = db.Column(db.String(50), nullable=False, unique=True)
     order_id = db.Column(db.Integer, db.ForeignKey('orders.id'), nullable=True)
+    invoice_type = db.Column(db.String(20), nullable=True)
     created_at = db.Column(db.DateTime, default=db.func.current_timestamp())
-    pdf_path = db.Column(db.String(255), nullable=False)
+    pdf_path = db.Column(db.String(255), nullable=True)
     amount = db.Column(db.Float, nullable=False)
 
     client_name = db.Column(db.String(255), nullable=False)
@@ -488,6 +549,16 @@ class Invoices(db.Model):
     client_cif = db.Column(db.String(50), nullable=True)
     client_phone = db.Column(db.String(50), nullable=True)
     order_details = db.Column(db.JSON, nullable=False)
+    invoice_snapshot = db.Column(db.JSON, nullable=True)
+    invoice_snapshot_schema_version = db.Column(db.Integer, nullable=True)
+    invoice_snapshot_hash = db.Column(db.String(64), nullable=True)
+    issued_at = db.Column(db.DateTime, nullable=True)
+    issuance_source = db.Column(db.String(50), nullable=True)
+    issued_by = db.Column(db.String(255), nullable=True)
+    email_status = db.Column(db.String(20), nullable=True)
+    email_sent_at = db.Column(db.DateTime, nullable=True)
+    email_last_error = db.Column(db.Text, nullable=True)
+    email_attempts = db.Column(db.Integer, nullable=False, default=0, server_default="0")
     order = db.relationship('Orders', backref='invoice', lazy=True)
 
     def __repr__(self):
@@ -521,22 +592,363 @@ class Invoices(db.Model):
         }
 
     def serialize_admin(self):
+        sale_accounting_entry = next(
+            (
+                entry for entry in (self.accounting_entries or [])
+                if entry.entry_type == "sale"
+            ),
+            None,
+        )
+
         return {
             "id": self.id,
             "invoice_number": self.invoice_number,
             "order_id": self.order_id,
+            "invoice_type": self.invoice_type,
             "created_at": self.created_at.strftime("%Y-%m-%d %H:%M:%S"),
             "pdf_path": self.pdf_path,
+            "pdf_available": bool(self.pdf_path),
             "amount": self.amount,
             "client_name": self.client_name,
             "client_address": self.client_address,
             "client_cif": self.client_cif,
             "client_phone": self.client_phone,
             "order_details": self.order_details,
+            "invoice_snapshot_schema_version": self.invoice_snapshot_schema_version,
+            "email_status": self.email_status,
+            "email_sent_at": self.email_sent_at.isoformat() if self.email_sent_at else None,
+            "email_attempts": self.email_attempts,
+            "accounting_entry_id": sale_accounting_entry.id if sale_accounting_entry else None,
+            "accounting_entry_status": sale_accounting_entry.status if sale_accounting_entry else None,
         }
 
     def serialize(self):
         return self.serialize_admin()
+
+
+class InvoiceFiscalSubmission(db.Model):
+    __tablename__ = "invoice_fiscal_submissions"
+    __table_args__ = (
+        db.UniqueConstraint(
+            "invoice_id",
+            "provider",
+            "attempt_number",
+            name="uq_invoice_fiscal_submissions_invoice_provider_attempt",
+        ),
+        db.Index(
+            "ix_invoice_fiscal_submissions_invoice_id",
+            "invoice_id",
+            unique=False,
+        ),
+    )
+
+    PROVIDER_VERIFACTU = "verifactu"
+
+    STATUS_PENDING = "PENDING"
+    STATUS_SENT = "SENT"
+    STATUS_ACCEPTED = "ACCEPTED"
+    STATUS_REJECTED = "REJECTED"
+    STATUS_FAILED = "FAILED"
+
+    id = db.Column(db.Integer, primary_key=True)
+    invoice_id = db.Column(db.Integer, db.ForeignKey('invoices.id'), nullable=False)
+    provider = db.Column(db.String(30), nullable=False, default=PROVIDER_VERIFACTU)
+    status = db.Column(db.String(30), nullable=False, default=STATUS_PENDING)
+    attempt_number = db.Column(db.Integer, nullable=False)
+    created_at = db.Column(db.DateTime, nullable=False, server_default=db.func.now())
+    updated_at = db.Column(
+        db.DateTime,
+        nullable=False,
+        server_default=db.func.now(),
+        onupdate=db.func.now()
+    )
+    submitted_at = db.Column(db.DateTime, nullable=True)
+    response_at = db.Column(db.DateTime, nullable=True)
+    request_payload = db.Column(db.JSON, nullable=True)
+    response_payload = db.Column(db.JSON, nullable=True)
+    response_code = db.Column(db.String(100), nullable=True)
+    response_message = db.Column(db.Text, nullable=True)
+    verification_csv = db.Column(db.String(255), nullable=True)
+    verification_url = db.Column(db.String(500), nullable=True)
+    external_reference = db.Column(db.String(255), nullable=True)
+    error_type = db.Column(db.String(100), nullable=True)
+    error_detail = db.Column(db.Text, nullable=True)
+
+    invoice = db.relationship(
+        'Invoices',
+        backref=db.backref('fiscal_submissions', lazy=True),
+        lazy=True,
+    )
+
+    def __repr__(self):
+        return (
+            f'<InvoiceFiscalSubmission invoice={self.invoice_id} '
+            f'provider={self.provider} attempt={self.attempt_number} '
+            f'status={self.status}>'
+        )
+
+
+class VeriFactuRecord(db.Model):
+    __tablename__ = "verifactu_records"
+    __table_args__ = (
+        db.UniqueConstraint(
+            "invoice_id",
+            "record_type",
+            name="uq_verifactu_records_invoice_record_type",
+        ),
+        db.UniqueConstraint(
+            "fingerprint",
+            name="uq_verifactu_records_fingerprint",
+        ),
+        db.UniqueConstraint(
+            "chain_key",
+            "chain_sequence",
+            name="uq_verifactu_records_chain_sequence",
+        ),
+        db.Index(
+            "ix_verifactu_records_invoice_id",
+            "invoice_id",
+            unique=False,
+        ),
+        db.Index(
+            "ix_verifactu_records_chain_key_sequence",
+            "chain_key",
+            "chain_sequence",
+            unique=False,
+        ),
+        db.Index(
+            "ix_verifactu_records_previous_record_id",
+            "previous_record_id",
+            unique=True,
+        ),
+        db.CheckConstraint(
+            "previous_record_id IS NULL OR previous_record_id != id",
+            name="ck_verifactu_records_previous_not_self",
+        ),
+        db.CheckConstraint(
+            "chain_sequence IS NULL OR chain_sequence >= 1",
+            name="ck_verifactu_records_chain_sequence_positive",
+        ),
+        db.CheckConstraint(
+            "status != 'READY' OR (chain_key IS NOT NULL AND chain_sequence IS NOT NULL AND fingerprint IS NOT NULL)",
+            name="ck_verifactu_records_ready_chain_complete",
+        ),
+        db.CheckConstraint(
+            "is_first_record IS NULL OR "
+            "(is_first_record = true AND previous_record_id IS NULL AND chain_sequence = 1) OR "
+            "(is_first_record = false AND previous_record_id IS NOT NULL AND chain_sequence > 1)",
+            name="ck_verifactu_records_first_previous_coherent",
+        ),
+    )
+
+    PROVIDER_VERIFACTU = "verifactu"
+    MODE_VERIFACTU = "VERI*FACTU"
+
+    RECORD_TYPE_ALTA = "alta"
+    RECORD_TYPE_ANULACION = "anulacion"
+
+    STATUS_BUILT = "BUILT"
+    STATUS_READY = "READY"
+
+    id = db.Column(db.Integer, primary_key=True)
+    invoice_id = db.Column(db.Integer, db.ForeignKey('invoices.id'), nullable=False)
+    provider = db.Column(db.String(30), nullable=False, default=PROVIDER_VERIFACTU)
+    mode = db.Column(db.String(30), nullable=False, default=MODE_VERIFACTU)
+    record_type = db.Column(db.String(30), nullable=False)
+    status = db.Column(db.String(30), nullable=False, default=STATUS_BUILT)
+    schema_version = db.Column(db.Integer, nullable=False)
+    invoice_number = db.Column(db.String(50), nullable=False)
+    invoice_issued_at = db.Column(db.DateTime, nullable=False)
+    invoice_snapshot_hash = db.Column(db.String(64), nullable=False)
+    record_payload = db.Column(db.JSON, nullable=False)
+    record_payload_hash = db.Column(db.String(64), nullable=False)
+    official_payload = db.Column(db.JSON, nullable=True)
+    official_payload_schema_version = db.Column(db.Integer, nullable=True)
+    chain_key = db.Column(db.String(300), nullable=True)
+    chain_sequence = db.Column(db.Integer, nullable=True)
+    fingerprint = db.Column(db.String(128), nullable=True)
+    fingerprint_algorithm = db.Column(db.String(100), nullable=True)
+    fingerprint_status = db.Column(db.String(30), nullable=False, default="NOT_CALCULATED")
+    fingerprint_input = db.Column(db.Text, nullable=True)
+    fingerprint_calculated_at = db.Column(db.DateTime, nullable=True)
+    previous_record_id = db.Column(db.Integer, db.ForeignKey('verifactu_records.id'), nullable=True)
+    previous_fingerprint = db.Column(db.String(128), nullable=True)
+    is_first_record = db.Column(db.Boolean, nullable=True)
+    system_id = db.Column(db.String(100), nullable=False)
+    software_name = db.Column(db.String(120), nullable=False)
+    software_version = db.Column(db.String(50), nullable=False)
+    installation_id = db.Column(db.String(100), nullable=True)
+    producer_name = db.Column(db.String(120), nullable=True)
+    producer_tax_id = db.Column(db.String(50), nullable=True)
+    generation_timestamp = db.Column(db.DateTime, nullable=True)
+    generation_timezone = db.Column(db.String(50), nullable=True)
+    ready_at = db.Column(db.DateTime, nullable=True)
+    issuer_tax_id = db.Column(db.String(50), nullable=False)
+    recipient_tax_id = db.Column(db.String(50), nullable=True)
+    total_amount = db.Column(db.Numeric(12, 2), nullable=False)
+    currency = db.Column(db.String(3), nullable=False)
+    created_at = db.Column(db.DateTime, nullable=False, server_default=db.func.now())
+    updated_at = db.Column(
+        db.DateTime,
+        nullable=False,
+        server_default=db.func.now(),
+        onupdate=db.func.now()
+    )
+
+    invoice = db.relationship(
+        'Invoices',
+        backref=db.backref('verifactu_records', lazy=True),
+        lazy=True,
+    )
+    previous_record = db.relationship(
+        'VeriFactuRecord',
+        remote_side=[id],
+        lazy=True,
+    )
+
+    def __repr__(self):
+        return (
+            f'<VeriFactuRecord invoice={self.invoice_id} '
+            f'type={self.record_type} status={self.status}>'
+        )
+
+
+class VeriFactuChainState(db.Model):
+    __tablename__ = "verifactu_chain_states"
+    __table_args__ = (
+        db.UniqueConstraint(
+            "chain_key",
+            name="uq_verifactu_chain_states_chain_key",
+        ),
+        db.Index(
+            "ix_verifactu_chain_states_chain_key",
+            "chain_key",
+            unique=False,
+        ),
+    )
+
+    id = db.Column(db.Integer, primary_key=True)
+    chain_key = db.Column(db.String(300), nullable=False)
+    issuer_tax_id = db.Column(db.String(50), nullable=False)
+    provider = db.Column(db.String(30), nullable=False, default=VeriFactuRecord.PROVIDER_VERIFACTU)
+    mode = db.Column(db.String(30), nullable=False, default=VeriFactuRecord.MODE_VERIFACTU)
+    system_id = db.Column(db.String(100), nullable=False)
+    installation_id = db.Column(db.String(100), nullable=False)
+    producer_tax_id = db.Column(db.String(50), nullable=False)
+    last_record_id = db.Column(db.Integer, db.ForeignKey('verifactu_records.id'), nullable=True)
+    last_fingerprint = db.Column(db.String(128), nullable=True)
+    next_sequence = db.Column(db.Integer, nullable=False, default=1, server_default="1")
+    created_at = db.Column(db.DateTime, nullable=False, server_default=db.func.now())
+    updated_at = db.Column(
+        db.DateTime,
+        nullable=False,
+        server_default=db.func.now(),
+        onupdate=db.func.now()
+    )
+
+    last_record = db.relationship(
+        'VeriFactuRecord',
+        foreign_keys=[last_record_id],
+        lazy=True,
+    )
+
+    def __repr__(self):
+        return (
+            f'<VeriFactuChainState chain={self.chain_key} '
+            f'next={self.next_sequence}>'
+        )
+
+
+class AccountingEntry(db.Model):
+    __tablename__ = "accounting_entries"
+    __table_args__ = (
+        db.UniqueConstraint(
+            "invoice_id",
+            "entry_type",
+            name="uq_accounting_entries_invoice_entry_type",
+        ),
+        db.Index(
+            "ix_accounting_entries_invoice_id",
+            "invoice_id",
+            unique=False,
+        ),
+    )
+
+    ENTRY_TYPE_SALE = "sale"
+
+    STATUS_PENDING = "pending"
+    STATUS_RECORDED = "recorded"
+    STATUS_FAILED = "failed"
+
+    id = db.Column(db.Integer, primary_key=True)
+    invoice_id = db.Column(db.Integer, db.ForeignKey('invoices.id'), nullable=False)
+    entry_type = db.Column(db.String(30), nullable=False, default=ENTRY_TYPE_SALE)
+    status = db.Column(db.String(30), nullable=False, default=STATUS_PENDING)
+    invoice_number = db.Column(db.String(50), nullable=False)
+    invoice_date = db.Column(db.Date, nullable=False)
+    customer_name = db.Column(db.String(255), nullable=False)
+    customer_tax_id = db.Column(db.String(50), nullable=True)
+    taxable_base = db.Column(db.Numeric(12, 2), nullable=False)
+    vat_amount = db.Column(db.Numeric(12, 2), nullable=False)
+    total_amount = db.Column(db.Numeric(12, 2), nullable=False)
+    currency = db.Column(db.String(3), nullable=False)
+    payment_provider = db.Column(db.String(30), nullable=True)
+    order_id = db.Column(db.Integer, nullable=True)
+    created_at = db.Column(db.DateTime, nullable=False, server_default=db.func.now())
+    updated_at = db.Column(
+        db.DateTime,
+        nullable=False,
+        server_default=db.func.now(),
+        onupdate=db.func.now()
+    )
+    recorded_at = db.Column(db.DateTime, nullable=True)
+    error_message = db.Column(db.Text, nullable=True)
+
+    invoice = db.relationship(
+        'Invoices',
+        backref=db.backref('accounting_entries', lazy=True),
+        lazy=True,
+    )
+
+    def __repr__(self):
+        return (
+            f'<AccountingEntry invoice={self.invoice_id} '
+            f'type={self.entry_type} status={self.status}>'
+        )
+
+
+class InvoiceSequence(db.Model):
+    __tablename__ = "invoice_sequences"
+    __table_args__ = (
+        db.UniqueConstraint(
+            "series",
+            "fiscal_year",
+            name="uq_invoice_sequences_series_fiscal_year",
+        ),
+    )
+
+    id = db.Column(db.Integer, primary_key=True)
+    series = db.Column(db.String(10), nullable=False)
+    fiscal_year = db.Column(db.Integer, nullable=False)
+    # last_number = ultimo numero fiscal confirmado dentro de una transaccion.
+    # El siguiente numero fiscal sera last_number + 1.
+    last_number = db.Column(
+        db.Integer,
+        nullable=False,
+        default=0,
+        server_default="0",
+    )
+    created_at = db.Column(db.DateTime, nullable=False, server_default=db.func.now())
+    updated_at = db.Column(
+        db.DateTime,
+        nullable=False,
+        server_default=db.func.now(),
+        onupdate=db.func.now()
+    )
+
+    def __repr__(self):
+        return f'<InvoiceSequence {self.series}-{self.fiscal_year}: {self.last_number}>'
+
 
 class Favorites(db.Model):
     __tablename__ = "favorites"
@@ -569,6 +981,9 @@ class Cart(db.Model):
     ancho = db.Column(db.Float, nullable=True)
     anclaje = db.Column(db.String(50), nullable=True)
     color = db.Column(db.String(50), nullable=True)
+    screw_option = db.Column(db.String(20), nullable=False, default="standard")
+    screw_length_mm = db.Column(db.Integer, nullable=True)
+    screw_supplement = db.Column(db.Float, nullable=False, default=0.0)
     precio_total = db.Column(db.Float, nullable=False)
     quantity = db.Column(db.Integer, nullable=False, default=1)  
     added_at = db.Column(db.DateTime, nullable=False)
@@ -576,6 +991,12 @@ class Cart(db.Model):
     product = db.relationship('Products', backref='cart_items', lazy=True)
 
     def serialize(self):
+        screw_configuration = _serialize_screw_configuration(
+            self.anclaje,
+            self.screw_option,
+            self.screw_length_mm,
+            self.screw_supplement,
+        )
         return {
             "id": self.id,
             "usuario_id": self.usuario_id,
@@ -589,10 +1010,25 @@ class Cart(db.Model):
             "ancho": self.ancho,
             "anclaje": self.anclaje,
             "color": self.color,
+            **screw_configuration,
             "precio_total": self.precio_total,
             "quantity": self.quantity,
-            "added_at": self.added_at
+            "added_at": self.added_at,
+            "available_for_sale": self.product.available_for_sale,
         }
+
+
+@event.listens_for(Products, 'before_insert')
+@event.listens_for(Products, 'before_update')
+def validate_product_lifecycle(mapper, connection, target):
+    published = True if target.published is None else target.published
+    available_for_sale = (
+        True if target.available_for_sale is None else target.available_for_sale
+    )
+    if not published and available_for_sale:
+        raise ValueError(
+            "A product cannot be available for sale when it is not published."
+        )
 
 
 @event.listens_for(Products, 'before_insert')

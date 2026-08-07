@@ -23,7 +23,7 @@ export const FormularioIncidencias = () => {
             ? process.env.REACT_APP_BACKEND_URL
             : process.env.NODE_ENV === "production"
                 ? "https://api.metalwolft.com"
-                : "https://fuzzy-space-eureka-7v7jw6jv7v5jhp945-3001.app.github.dev/";
+                : "https://solid-happiness-r475wq5477g9cpvjp-3001.app.github.dev/";
 
         fetch(`${apiBaseUrl}/api/seo/formulario-incidencias`)
             .then(res => res.json())
@@ -53,7 +53,7 @@ export const FormularioIncidencias = () => {
                 ? process.env.REACT_APP_BACKEND_URL
                 : process.env.NODE_ENV === "production"
                     ? "https://api.metalwolft.com"
-                    : "https://fuzzy-space-eureka-7v7jw6jv7v5jhp945-3001.app.github.dev/";
+                    : "https://solid-happiness-r475wq5477g9cpvjp-3001.app.github.dev/";
 
             const data = new FormData();
             Object.entries(formData).forEach(([key, value]) => {

@@ -22,11 +22,28 @@ import '../../styles/cards-carrusel.css';
 import { WhatsAppWidget } from "../component/WhatsAppWidget.jsx";
 import DeliveryEstimate from "../component/DeliveryEstimate.jsx"
 import { Breadcrumb } from "../component/Breadcrumb.jsx";
+import { Error404 } from "./Error404.jsx";
+import {
+    PRODUCT_UNAVAILABLE_MESSAGE,
+    isAvailableForSale
+} from "../utils/productLifecycle";
 
 const PENDING_PRODUCT_CONFIG_STORAGE_KEY = "mw_pending_product_config";
 const PENDING_PRODUCT_CONFIG_MAX_AGE_MS = 30 * 60 * 1000;
-const DEFAULT_MOUNTING = 'Sin obra: con agujeros interiores';
+const MOUNTING_INTERIOR_HOLES = 'Sin obra: con agujeros interiores';
+const MOUNTING_FRONT_PLATES = 'Sin obra: con pletinas';
+const MOUNTING_METAL_CLAWS = 'Con obra: con garras metálicas';
+const DEFAULT_MOUNTING = MOUNTING_INTERIOR_HOLES;
 const DEFAULT_COLOR = 'satinado_blanco';
+const MOUNTING_SUPPLEMENTS = {
+    [MOUNTING_INTERIOR_HOLES]: 0,
+    [MOUNTING_FRONT_PLATES]: 24.95
+};
+
+const normalizeMounting = (value) =>
+    Object.prototype.hasOwnProperty.call(MOUNTING_SUPPLEMENTS, value)
+        ? value
+        : DEFAULT_MOUNTING;
 
 const readPendingProductConfig = () => {
     if (typeof window === "undefined") return null;
@@ -62,10 +79,19 @@ const getDimensionValidationError = (rawHeight, rawWidth) => {
     return '';
 };
 
-const buildPriceQuote = ({ rawHeight, rawWidth, product }) => {
+const buildPriceQuote = ({ rawHeight, rawWidth, product, mounting }) => {
     const dimensionError = getDimensionValidationError(rawHeight, rawWidth);
     if (dimensionError) {
         return { error: dimensionError };
+    }
+
+    if (mounting === MOUNTING_METAL_CLAWS || (mounting || '').includes('garras')) {
+        return { error: 'Esta opción no está disponible temporalmente' };
+    }
+
+    const mountingSupplement = MOUNTING_SUPPLEMENTS[mounting];
+    if (mountingSupplement === undefined) {
+        return { error: 'Selecciona un tipo de instalación válido' };
     }
 
     const h = parseFloat(rawHeight);
@@ -94,7 +120,7 @@ const buildPriceQuote = ({ rawHeight, rawWidth, product }) => {
                                         ? 2.5
                                         : 3.0;
 
-    price = Math.max(price * multiplier, basePrice);
+    price = Math.max(price * multiplier, basePrice) + mountingSupplement;
 
     return {
         h,
@@ -113,6 +139,9 @@ export const ProductDetail = () => {
     const [notification, setNotification] = useState(null);
     // --- NUEVO ESTADO PARA LOS METADATOS SEO ---
     const [seoData, setSeoData] = useState(null);
+    const [loadError, setLoadError] = useState(null);
+    const [retryRequest, setRetryRequest] = useState(0);
+    const [loadedProductRoute, setLoadedProductRoute] = useState(null);
 
     // Estados “modal-like”
     const [currentIndex, setCurrentIndex] = useState(0);
@@ -208,28 +237,41 @@ export const ProductDetail = () => {
 
 
     useEffect(() => {
+        const abortController = new AbortController();
+        let isCurrentRequest = true;
+
         const fetchProductAndSeoData = async () => {
             setLoading(true);
             setNotification(null);
+            setProduct(null);
+            setSeoData(null);
+            setLoadError(null);
+            setLoadedProductRoute(null);
             try {
                 // Fetch de los datos del producto
                 const productRes = await fetch(
-                    `${process.env.REACT_APP_BACKEND_URL}/api/${category_slug}/${product_slug}`
+                    `${process.env.REACT_APP_BACKEND_URL}/api/${category_slug}/${product_slug}`,
+                    { signal: abortController.signal }
                 );
                 if (!productRes.ok) {
-                    const errorData = await productRes.json();
-                    throw new Error(errorData.message || 'Producto no encontrado');
+                    if (isCurrentRequest) {
+                        setLoadError(productRes.status === 404 ? 'not_found' : 'temporary_error');
+                    }
+                    return;
                 }
                 const productData = await productRes.json();
+                if (!isCurrentRequest) return;
                 setProduct(productData);
+                setLoadedProductRoute(`${category_slug}/${product_slug}`);
 
                 // --- NUEVO FETCH PARA LOS METADATOS SEO ---
                 const seoRes = await fetch(
-                    `${process.env.REACT_APP_BACKEND_URL}/api/seo/${category_slug}/${product_slug}`
+                    `${process.env.REACT_APP_BACKEND_URL}/api/seo/${category_slug}/${product_slug}`,
+                    { signal: abortController.signal }
                 );
                 if (seoRes.ok) {
                     const seoJson = await seoRes.json();
-                    setSeoData(seoJson);
+                    if (isCurrentRequest) setSeoData(seoJson);
                 } else {
                     console.warn("No se pudieron cargar los metadatos SEO. Usando valores por defecto o los del producto.");
                     // Opcional: Generar un SEOData básico si el fetch falla
@@ -255,18 +297,24 @@ export const ProductDetail = () => {
                 }
 
             } catch (err) {
+                if (err.name === 'AbortError' || !isCurrentRequest) return;
                 console.error("Error al cargar el producto o SEO data:", err);
-                setNotification(err.message || 'Error al cargar los detalles del producto.');
-                navigate('/');
+                setProduct(null);
+                setSeoData(null);
+                setLoadError('temporary_error');
             } finally {
-                setLoading(false);
+                if (isCurrentRequest) setLoading(false);
             }
         };
 
         if (category_slug && product_slug) {
             fetchProductAndSeoData();
         }
-    }, [category_slug, product_slug, navigate, actions.apiFetch]);
+        return () => {
+            isCurrentRequest = false;
+            abortController.abort();
+        };
+    }, [category_slug, product_slug, retryRequest]);
 
     const handleSelect = (selectedIndex) => setCurrentIndex(selectedIndex);
 
@@ -286,13 +334,19 @@ export const ProductDetail = () => {
     };
 
     const handleCalculatePrice = () => {
+        if (!isAvailableForSale(product)) {
+            setNotification(PRODUCT_UNAVAILABLE_MESSAGE);
+            return;
+        }
+
         setShowRestoredPriceReady(false);
         setPriceNeedsRecalculation(false);
         const quote = applyPriceQuote(
             buildPriceQuote({
                 rawHeight: height,
                 rawWidth: width,
-                product
+                product,
+                mounting
             })
         );
 
@@ -314,6 +368,11 @@ export const ProductDetail = () => {
     };
 
     const handleAddToCart = async () => {
+        if (!isAvailableForSale(product)) {
+            setNotification(PRODUCT_UNAVAILABLE_MESSAGE);
+            return;
+        }
+
         if (!calculatedPrice) {
             setNotification('Primero calcula el precio con tus medidas.');
             return;
@@ -336,7 +395,8 @@ export const ProductDetail = () => {
             ancho: parseFloat(width),
             anclaje: mounting,
             color,
-            precio_total: calculatedPrice
+            precio_total: calculatedPrice,
+            available_for_sale: product.available_for_sale
         });
 
         setNotification('Producto añadido al carrito');
@@ -390,7 +450,7 @@ export const ProductDetail = () => {
 
         const restoredHeight = pendingConfig.height ?? '';
         const restoredWidth = pendingConfig.width ?? '';
-        const restoredMounting = pendingConfig.mounting || DEFAULT_MOUNTING;
+        const restoredMounting = normalizeMounting(pendingConfig.mounting || DEFAULT_MOUNTING);
         const restoredColor = COLOR_MAP[pendingConfig.color] ? pendingConfig.color : DEFAULT_COLOR;
 
         setHeight(restoredHeight);
@@ -403,7 +463,8 @@ export const ProductDetail = () => {
                 buildPriceQuote({
                     rawHeight: restoredHeight,
                     rawWidth: restoredWidth,
-                    product
+                    product,
+                    mounting: restoredMounting
                 })
             );
             setPriceNeedsRecalculation(false);
@@ -416,7 +477,10 @@ export const ProductDetail = () => {
 
 
 
-    if (loading) {
+    if (
+        loading ||
+        (product && loadedProductRoute !== `${category_slug}/${product_slug}`)
+    ) {
         return (
             <Container style={{ marginTop: '100px', marginBottom: '100px' }}>
                 <Row>
@@ -443,6 +507,28 @@ export const ProductDetail = () => {
                     </Col>
                 </Row>
             </Container>
+        );
+    }
+
+    if (loadError === 'not_found') {
+        return <Error404 />;
+    }
+
+    if (loadError === 'temporary_error' || !product) {
+        return (
+            <>
+                <Helmet>
+                    <title>No se pudo cargar el producto | Metal Wolft</title>
+                    <meta name="robots" content="noindex, nofollow" />
+                </Helmet>
+                <Container className="text-center" style={{ marginTop: '120px', marginBottom: '160px' }}>
+                    <h1>No hemos podido cargar este producto</h1>
+                    <p>Se ha producido un problema temporal. Inténtalo de nuevo en unos instantes.</p>
+                    <Button onClick={() => setRetryRequest((current) => current + 1)}>
+                        Reintentar
+                    </Button>
+                </Container>
+            </>
         );
     }
 
@@ -658,6 +744,8 @@ export const ProductDetail = () => {
                                 </p>
                             )}
 
+                            {isAvailableForSale(product) ? (
+                            <>
                             <div className="product-purchase-guide" aria-label="Cómo comprar esta reja">
                                 <p className="product-purchase-guide-label">Cómo comprar</p>
                                 <div className="product-purchase-steps">
@@ -818,14 +906,6 @@ export const ProductDetail = () => {
                                                                 height="536"
                                                                 className="installation-popover-image"
                                                             />
-                                                            <p><b>Sin obra:</b> con agujeros frontales.</p>
-                                                            <img
-                                                                src="https://res.cloudinary.com/dewanllxn/image/upload/v1738176286/agujeros-frontales_low9pi.png"
-                                                                alt="frontales"
-                                                                width="1140"
-                                                                height="536"
-                                                                className="installation-popover-image"
-                                                            />
                                                             <p><b>Con obra:</b> con garras metálicas.</p>
                                                             <img
                                                                 src="https://res.cloudinary.com/dewanllxn/image/upload/v1734888241/rejas-para-ventanas-sin-obra_wukdzi.png"
@@ -849,10 +929,9 @@ export const ProductDetail = () => {
                                                     setMounting(e.target.value);
                                                 }}
                                             >
-                                                <option>Sin obra: con agujeros interiores</option>
-                                                <option>Sin obra: con agujeros frontales</option>
-                                                <option>Sin obra: con pletinas</option>
-                                                <option disabled>
+                                                <option value={MOUNTING_INTERIOR_HOLES}>Sin obra: con agujeros interiores</option>
+                                                <option value={MOUNTING_FRONT_PLATES}>Sin obra: con pletinas (+24,95 €)</option>
+                                                <option value={MOUNTING_METAL_CLAWS} disabled>
                                                     Con obra: con garras metálicas (no disponible)
                                                 </option>
                                             </Form.Select>
@@ -1043,6 +1122,12 @@ export const ProductDetail = () => {
                                     </div>
                                 </div>
                             </Form>
+                            </>
+                            ) : (
+                                <div className="alert alert-warning" role="status">
+                                    {PRODUCT_UNAVAILABLE_MESSAGE}
+                                </div>
+                            )}
                         </div>
                     </Col>
                     <div className="custom-accordion product-detail-accordion my-5">
@@ -1244,12 +1329,6 @@ export const ProductDetail = () => {
                                                 alt: "Rejas con agujeros interiores",
                                                 title: "Con agujeros interiores",
                                                 description: "Ideal para marcos con profundidad reducida."
-                                            },
-                                            {
-                                                src: "https://res.cloudinary.com/dewanllxn/image/upload/v1738176286/agujeros-frontales_low9pi.png",
-                                                alt: "Rejas con agujeros frontales",
-                                                title: "Con agujeros frontales",
-                                                description: "Fijación directamente en la parte frontal de la pared."
                                             }
                                         ].map((item, index) => (
                                             <div key={index} className="col-12 col-lg-12 mb-4 text-center">

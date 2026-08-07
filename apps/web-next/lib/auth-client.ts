@@ -1,0 +1,103 @@
+export const CUSTOMER_TOKEN_STORAGE_KEY = "mw_customer_token";
+export const CUSTOMER_USER_STORAGE_KEY = "mw_customer_user";
+export const AUTH_SESSION_CHANGED_EVENT = "mw_auth_session_changed";
+
+export type AuthUser = {
+  id: number;
+  email: string;
+  firstname?: string | null;
+  lastname?: string | null;
+  phone?: string | null;
+  is_active?: boolean;
+  is_admin?: boolean;
+  shipping_address?: string | null;
+  shipping_city?: string | null;
+  shipping_postal_code?: string | null;
+  billing_address?: string | null;
+  billing_city?: string | null;
+  billing_postal_code?: string | null;
+  CIF?: string | null;
+};
+
+function emitAuthSessionChanged() {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  window.dispatchEvent(new Event(AUTH_SESSION_CHANGED_EVENT));
+}
+
+export function saveSession(accessToken: string, user: AuthUser) {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  window.localStorage.setItem(CUSTOMER_TOKEN_STORAGE_KEY, accessToken);
+  window.localStorage.setItem(CUSTOMER_USER_STORAGE_KEY, JSON.stringify(user));
+  emitAuthSessionChanged();
+}
+
+export function getToken() {
+  if (typeof window === "undefined") {
+    return null;
+  }
+
+  return window.localStorage.getItem(CUSTOMER_TOKEN_STORAGE_KEY);
+}
+
+export function getStoredUser(): AuthUser | null {
+  if (typeof window === "undefined") {
+    return null;
+  }
+
+  const rawUser = window.localStorage.getItem(CUSTOMER_USER_STORAGE_KEY);
+  if (!rawUser || rawUser === "undefined") {
+    return null;
+  }
+
+  try {
+    const parsed = JSON.parse(rawUser) as unknown;
+    return parsed && typeof parsed === "object" ? (parsed as AuthUser) : null;
+  } catch {
+    clearSession();
+    return null;
+  }
+}
+
+export function clearSession() {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  window.localStorage.removeItem(CUSTOMER_TOKEN_STORAGE_KEY);
+  window.localStorage.removeItem(CUSTOMER_USER_STORAGE_KEY);
+  emitAuthSessionChanged();
+}
+
+export function subscribeToAuthSessionChanges(listener: () => void) {
+  if (typeof window === "undefined") {
+    return () => {};
+  }
+
+  window.addEventListener(AUTH_SESSION_CHANGED_EVENT, listener);
+
+  return () => {
+    window.removeEventListener(AUTH_SESSION_CHANGED_EVENT, listener);
+  };
+}
+
+export function getSafeInternalPath(value: string | null | undefined) {
+  const trimmed = value?.trim();
+  if (!trimmed || !trimmed.startsWith("/") || trimmed.startsWith("//") || trimmed.includes("\\")) {
+    return "/";
+  }
+
+  try {
+    const parsed = new URL(trimmed, window.location.origin);
+    return parsed.origin === window.location.origin
+      ? `${parsed.pathname}${parsed.search}${parsed.hash}`
+      : "/";
+  } catch {
+    return "/";
+  }
+}

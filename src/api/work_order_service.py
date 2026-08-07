@@ -7,6 +7,8 @@ from reportlab.lib.units import cm
 from reportlab.pdfgen import canvas
 from reportlab.platypus import Paragraph, Table, TableStyle
 
+from api.utils import format_screw_configuration
+
 
 COLOR_PRIMARY = colors.Color(1, 0.196, 0.302)
 COLOR_BORDER = colors.HexColor("#d9dee5")
@@ -90,7 +92,16 @@ def _build_line_rows(order, paragraph_style):
     for detail in order.order_details:
         product = detail.product
         product_name = product.nombre if product and product.nombre else f"Producto #{detail.product_id}"
-        technical_description = _truncate_text(product.descripcion if product else None)
+        screw_configuration = format_screw_configuration(
+            getattr(detail, "screw_length_mm", None),
+            getattr(detail, "screw_supplement", 0.0),
+        )
+        technical_parts = []
+        if screw_configuration:
+            technical_parts.append(f"Tornillos: {screw_configuration}.")
+        if product and product.descripcion:
+            technical_parts.append(product.descripcion)
+        technical_description = _truncate_text(" ".join(technical_parts))
 
         rows.append([
             Paragraph(product_name, paragraph_style),

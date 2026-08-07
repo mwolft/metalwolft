@@ -1,5 +1,6 @@
 from api.models import Products
-from api.utils import calcular_precio_reja
+from api.product_lifecycle import ensure_product_available_for_sale
+from api.utils import build_configured_reja_quote
 
 
 DISCOUNT_CODES = {
@@ -13,6 +14,7 @@ SHIPPING_THRESHOLD = 150.0
 STANDARD_SHIPPING_COST = 21.0
 SPECIAL_SHIPPING_A_COST = 59.0
 SPECIAL_SHIPPING_B_COST = 99.0
+QUOTE_CURRENCY = "EUR"
 
 
 def _to_float(value, field_name):
@@ -68,21 +70,66 @@ def _calculate_shipping_type(alto, ancho):
     return "normal", 0.0
 
 
+def build_product_configuration_quote(
+    product,
+    alto,
+    ancho,
+    anclaje,
+    color,
+    screw_option=None,
+    quantity=1,
+):
+    normalized_quantity = _normalize_quantity({"quantity": quantity})
+    ensure_product_available_for_sale(product)
+    normalized_alto = _to_float(alto, "alto")
+    normalized_ancho = _to_float(ancho, "ancho")
+    price_quote = build_configured_reja_quote(
+        alto_cm=normalized_alto,
+        ancho_cm=normalized_ancho,
+        precio_m2=product.precio_rebajado or product.precio,
+        anclaje=anclaje,
+        color=color,
+        screw_option=screw_option,
+    )
+
+    return {
+        "product_id": int(product.id),
+        "quantity": normalized_quantity,
+        "alto": normalized_alto,
+        "ancho": normalized_ancho,
+        "anclaje": price_quote["anclaje"],
+        "color": price_quote["color"],
+        "screw_option": price_quote["screw_option"],
+        "screw_length_mm": price_quote["screw_length_mm"],
+        "currency": QUOTE_CURRENCY,
+        "base_unit_price": price_quote["base_unit_price"],
+        "anchorage_supplement": price_quote["anchorage_supplement"],
+        "screw_supplement": price_quote["screw_supplement"],
+        "unit_price": price_quote["unit_price"],
+        "subtotal": round(price_quote["unit_price"] * normalized_quantity, 2),
+    }
+
+
 def _build_line(item):
     product_id = _normalize_product_id(item)
-    quantity = _normalize_quantity(item)
-    alto = _to_float(item.get("alto"), "alto")
-    ancho = _to_float(item.get("ancho"), "ancho")
 
     product = Products.query.get(product_id)
     if not product:
         raise ValueError(f"Producto con ID {product_id} no encontrado")
 
-    unit_price = calcular_precio_reja(
-        alto_cm=alto,
-        ancho_cm=ancho,
-        precio_m2=product.precio_rebajado or product.precio
+    configuration_quote = build_product_configuration_quote(
+        product=product,
+        alto=item.get("alto"),
+        ancho=item.get("ancho"),
+        anclaje=item.get("anclaje"),
+        color=item.get("color"),
+        screw_option=item.get("screw_option"),
+        quantity=item.get("quantity", 1),
     )
+    quantity = configuration_quote["quantity"]
+    alto = configuration_quote["alto"]
+    ancho = configuration_quote["ancho"]
+    unit_price = configuration_quote["unit_price"]
     shipping_type, shipping_cost = _calculate_shipping_type(alto, ancho)
     frontend_unit_price = _to_optional_float(item.get("precio_total"))
 
@@ -93,10 +140,13 @@ def _build_line(item):
         "quantity": quantity,
         "alto": alto,
         "ancho": ancho,
-        "anclaje": item.get("anclaje"),
-        "color": item.get("color"),
+        "anclaje": configuration_quote["anclaje"],
+        "color": configuration_quote["color"],
+        "screw_option": configuration_quote["screw_option"],
+        "screw_length_mm": configuration_quote["screw_length_mm"],
+        "screw_supplement": configuration_quote["screw_supplement"],
         "unit_price": round(unit_price, 2),
-        "line_total": round(unit_price * quantity, 2),
+        "line_total": configuration_quote["subtotal"],
         "shipping_type": shipping_type,
         "shipping_cost": float(shipping_cost),
         "frontend_unit_price": frontend_unit_price,

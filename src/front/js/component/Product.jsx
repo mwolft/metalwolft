@@ -13,6 +13,10 @@ import OverlayTrigger from 'react-bootstrap/OverlayTrigger';
 import Popover from 'react-bootstrap/Popover';
 import AlbanyImg from '../../img/rejas-para-ventanas-sin-obra.png';
 import { Helmet } from "react-helmet-async";
+import {
+    PRODUCT_UNAVAILABLE_MESSAGE,
+    isAvailableForSale
+} from "../utils/productLifecycle";
 
 export const Product = ({ product }) => {
     const navigate = useNavigate();
@@ -52,6 +56,11 @@ export const Product = ({ product }) => {
     };
 
     const handleAddToCart = async () => {
+        if (!isAvailableForSale(product)) {
+            setNotification(PRODUCT_UNAVAILABLE_MESSAGE);
+            return;
+        }
+
         if (!store.isLoged) {
             setNotification("Debe registrarse para añadir productos al carrito");
             return;
@@ -70,7 +79,8 @@ export const Product = ({ product }) => {
             ancho: parseFloat(width),
             anclaje: mounting,
             color: color,
-            precio_total: calculatedPrice
+            precio_total: calculatedPrice,
+            available_for_sale: product.available_for_sale
         };
         await actions.addToCart(productDetails);
         setNotification("Producto añadido al carrito");

@@ -140,7 +140,7 @@ export const ThankYou = () => {
                     </p>
                     {customerEmail && (
                         <p>
-                            Tu factura se ha enviado al correo: <strong>{customerEmail}</strong>
+                            Te hemos enviado un correo con el resumen de la compra a: <strong>{customerEmail}</strong>
                         </p>
                     )}
                 </>

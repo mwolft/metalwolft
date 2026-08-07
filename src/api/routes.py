@@ -1,12 +1,20 @@
-from flask import request, jsonify, Blueprint, send_file, send_from_directory, current_app, redirect, abort, Response
+from flask import request, jsonify, Blueprint, send_file, send_from_directory, current_app, abort, Response
 from flask_jwt_extended import jwt_required
-from api.models import db, Users, Products, ProductImages, Categories, Subcategories, Orders, CheckoutSessions, OrderDetails, Favorites, Cart, Posts, Comments, Invoices, DeliveryEstimateConfig
-from api.utils import send_email, calcular_precio_reja
+from api.models import db, Users, Products, ProductImages, Categories, Subcategories, Orders, CheckoutSessions, OrderDetails, Favorites, Cart, Posts, Comments, Invoices, DeliveryEstimateConfig, AccountingEntry
+from api.utils import (
+    DEFAULT_CONFIGURATOR_SCREW_OPTION,
+    build_configured_reja_quote,
+    format_screw_configuration,
+    resolve_screw_configuration,
+    send_email,
+    serialize_configurator_configuration,
+)
 from api.jwt_utils import create_user_access_token, get_current_user_context as get_jwt_identity
 from sqlalchemy.exc import SQLAlchemyError
 import bcrypt
 from datetime import datetime, timezone, date
 import os
+import tempfile
 from io import BytesIO
 from reportlab.pdfgen import canvas
 from reportlab.platypus import Table, TableStyle, Paragraph, Frame
@@ -14,7 +22,7 @@ from reportlab.lib.pagesizes import A4
 from reportlab.lib import colors
 from reportlab.lib.units import cm
 from reportlab.lib.styles import getSampleStyleSheet
-from sqlalchemy import func
+from sqlalchemy import case, func, or_
 from sqlalchemy.orm import joinedload
 from flask_mail import Message
 from dotenv import load_dotenv
@@ -28,16 +36,97 @@ import requests
 import uuid
 from urllib.parse import urljoin
 from api.email_routes import send_email, get_admin_recipients
-from api.checkout_service import build_checkout_quote
+from api.checkout_service import (
+    build_checkout_quote,
+    build_product_configuration_quote,
+)
+from api.product_lifecycle import (
+    ensure_product_available_for_sale,
+    publicly_accessible_products_query,
+    publicly_discoverable_products_query,
+    resolve_publicly_accessible_product_by_slugs,
+)
+from api.checkout_cart_cleanup import cleanup_cart_lines_from_checkout_quote
+from api.checkout_payment_security import is_modifiable_stripe_checkout_session
+from api.customer_order_serializers import (
+    serialize_customer_order_detail,
+    serialize_customer_order_summary,
+)
+from api.customer_snapshot import (
+    CustomerSnapshotValidationError,
+    extract_customer_snapshot as _extract_customer_snapshot,
+    merge_customer_snapshots as _merge_customer_snapshot,
+)
+from api.customer_profile import (
+    normalize_customer_profile_update,
+    serialize_customer_profile,
+)
+from api.payment_amounts import PaymentAmountValidationError, validate_payment_amount
+from api.order_confirmation_email_service import send_order_confirmation_email
+from api.post_order_invoice_hook import handle_post_order_invoice_workflow
 from api.original_invoice_renderer import render_original_order_invoice_pdf
+from api.invoice_admin_helpers import (
+    build_invoice_issuer_from_config as _build_invoice_issuer_from_config,
+    invoice_admin_actor_from_jwt as _invoice_admin_actor,
+    select_checkout_session_for_invoice as _select_checkout_session_for_invoice,
+)
+from api.invoice_pdf_download_service import (
+    InvoicePdfDownloadFileMissing,
+    InvoicePdfDownloadInvalidPath,
+    InvoicePdfDownloadUnavailable,
+    resolve_invoice_pdf_download,
+)
 from api.work_order_service import generate_work_order_pdf
+from api.invoice_issue_service import InvoiceIssueError, InvoiceNumberError, issue_invoice_for_order
+from api.invoice_pdf_service import (
+    InvoicePdfIntegrityError,
+    InvoicePdfSnapshotMissing,
+    InvoicePdfUnsupportedSchema,
+    InvoicePdfWriteError,
+    generate_invoice_pdf,
+)
+from api.invoice_accounting_service import (
+    ENTRY_TYPE_SALE,
+    AccountingEntryIntegrityError,
+    AccountingEntryUnsupportedSchema,
+    AccountingEntryValidationError,
+    create_accounting_entry,
+)
+from api.accounting_excel_service import AccountingExcelExportError, export_sales_accounting_entries
+from api.flask_mail_invoice_adapter import FlaskMailInvoiceAdapter, FlaskMailInvoiceAdapterError
+from api.invoice_email_service import (
+    EMAIL_STATUS_FAILED,
+    InvoiceEmailIntegrityError,
+    InvoiceEmailPdfMissing,
+    InvoiceEmailRecipientMissing,
+    InvoiceEmailSendError,
+    InvoiceEmailSnapshotMissing,
+    InvoiceEmailUnsupportedSchema,
+    send_invoice_email as send_invoice_email_v2,
+)
+from api.invoice_snapshot_builder import InvoiceSnapshotValidationError
+from api.invoice_workflow_service import (
+    InvoiceWorkflowConfigurationError,
+    run_invoice_workflow_for_order,
+)
 
 
 logger = logging.getLogger(__name__)
 
 api = Blueprint('api', __name__)
 
+PAYMENT_AMOUNT_NOT_SUPPORTED_RESPONSE = {
+    "error": "El importe final no puede procesarse con este método de pago. Revisa el carrito o el código de descuento.",
+    "code": "PAYMENT_AMOUNT_NOT_SUPPORTED"
+}
+
+ALLOWED_ACCOUNTING_EXPORT_QUERY_PARAMS = {"date_from", "date_to"}
+
 load_dotenv()
+
+
+def _customer_snapshot_validation_response(error):
+    return jsonify(error.to_dict()), 400
 
 
 def _split_invoice_client_name(client_name):
@@ -153,6 +242,119 @@ def _regenerate_invoice_pdf_to_storage(invoice):
     }
 
 
+def _serialize_admin_issued_invoice(invoice, *, already_existed):
+    issued_at = invoice.issued_at.isoformat() if invoice.issued_at else None
+
+    return {
+        "id": invoice.id,
+        "order_id": invoice.order_id,
+        "invoice_number": invoice.invoice_number,
+        "invoice_type": invoice.invoice_type,
+        "issued_at": issued_at,
+        "issuance_source": invoice.issuance_source,
+        "invoice_snapshot_schema_version": invoice.invoice_snapshot_schema_version,
+        "invoice_snapshot_hash": invoice.invoice_snapshot_hash,
+        "pdf_available": bool(invoice.pdf_path),
+        "already_existed": already_existed,
+    }
+
+
+def _invoice_pdf_file_exists(output_dir, pdf_path):
+    filename = os.path.basename(pdf_path or "")
+    if not filename:
+        return False
+    return os.path.exists(os.path.join(output_dir, filename))
+
+
+def _serialize_admin_generated_invoice_pdf(invoice, result, *, generated, regenerated):
+    return {
+        "id": invoice.id,
+        "invoice_number": invoice.invoice_number,
+        "pdf_available": bool(invoice.pdf_path),
+        "pdf_path": result.filename,
+        "generated": generated,
+        "regenerated": regenerated,
+        "file_size": result.file_size,
+    }
+
+
+def _serialize_admin_invoice_email(invoice, result):
+    sent_at = invoice.email_sent_at.isoformat() if invoice.email_sent_at else None
+
+    return {
+        "id": invoice.id,
+        "invoice_number": invoice.invoice_number,
+        "recipient": result.recipient,
+        "email_status": invoice.email_status,
+        "email_sent_at": sent_at,
+        "email_attempts": invoice.email_attempts,
+        "already_sent": result.already_sent,
+    }
+
+
+def _persist_invoice_email_failure(invoice_id, attempts_before):
+    failed_invoice = Invoices.query.get(invoice_id)
+    if not failed_invoice:
+        return
+
+    failed_invoice.email_status = EMAIL_STATUS_FAILED
+    failed_invoice.email_attempts = int(attempts_before or 0) + 1
+    failed_invoice.email_last_error = "No se pudo enviar el email de factura."
+    db.session.commit()
+
+
+def _accounting_amount_string(value):
+    return f"{value:.2f}" if value is not None else None
+
+
+def _serialize_admin_accounting_entry(entry, *, already_existed):
+    invoice_date = entry.invoice_date.isoformat() if entry.invoice_date else None
+
+    return {
+        "id": entry.id,
+        "invoice_id": entry.invoice_id,
+        "invoice_number": entry.invoice_number,
+        "entry_type": entry.entry_type,
+        "status": entry.status,
+        "invoice_date": invoice_date,
+        "taxable_base": _accounting_amount_string(entry.taxable_base),
+        "vat_amount": _accounting_amount_string(entry.vat_amount),
+        "total_amount": _accounting_amount_string(entry.total_amount),
+        "currency": entry.currency,
+        "already_existed": already_existed,
+    }
+
+
+def _parse_accounting_export_date(value, field_name):
+    if not value:
+        return None
+    try:
+        return datetime.strptime(value, "%Y-%m-%d").date()
+    except ValueError as exc:
+        raise ValueError(f"{field_name} must use YYYY-MM-DD format") from exc
+
+
+def _accounting_sales_export_filename(date_from, date_to):
+    if date_from is None and date_to is None:
+        return "ingresos_completo.xlsx"
+
+    from_label = date_from.isoformat() if date_from else "inicio"
+    to_label = date_to.isoformat() if date_to else "fin"
+    return f"ingresos_{from_label}_{to_label}.xlsx"
+
+
+def _accounting_export_folder():
+    configured_folder = current_app.config.get("ACCOUNTING_EXPORT_FOLDER") or os.getenv("ACCOUNTING_EXPORT_FOLDER")
+    if configured_folder:
+        return configured_folder
+
+    instance_path = getattr(current_app, "instance_path", None)
+    if instance_path:
+        return os.path.join(instance_path, "accounting_exports")
+
+    return os.path.join(tempfile.gettempdir(), "metalwolft-accounting-exports")
+
+
 def _format_cart_dimension(value):
     if value is None:
         return "?"
@@ -209,6 +411,7 @@ def _build_cart_reminder_product_sections(cart_items, frontend_base_url):
         measures = f"{_format_cart_dimension(item.alto)} x {_format_cart_dimension(item.ancho)} cm"
         mounting = _format_cart_mounting_label(item.anclaje)
         color = _format_cart_color_label(item.color)
+        screws = format_screw_configuration(item.screw_length_mm, item.screw_supplement) or "Sin definir"
         quantity = int(item.quantity or 1)
         line_total = float(item.precio_total or 0.0) * quantity
         product_image_url = _resolve_cart_product_image_url(item, frontend_base_url)
@@ -216,10 +419,11 @@ def _build_cart_reminder_product_sections(cart_items, frontend_base_url):
         safe_measures = escape(measures)
         safe_mounting = escape(mounting)
         safe_color = escape(color)
+        safe_screws = escape(screws)
 
         product_lines_text.append(
             f"- {product_name} | Medidas: {measures} | Anclaje: {mounting} | "
-            f"Color: {color} | Cantidad: {quantity} | Precio: {line_total:.2f} €"
+            f"Color: {color} | Tornillos: {screws} | Cantidad: {quantity} | Precio: {line_total:.2f} €"
         )
 
         image_cell_html = ""
@@ -244,6 +448,7 @@ def _build_cart_reminder_product_sections(cart_items, frontend_base_url):
                                     <div><strong>Medidas:</strong> {safe_measures}</div>
                                     <div><strong>Anclaje:</strong> {safe_mounting}</div>
                                     <div><strong>Color:</strong> {safe_color}</div>
+                                    <div><strong>Tornillos:</strong> {safe_screws}</div>
                                     <div><strong>Cantidad:</strong> {quantity}</div>
                                     <div><strong>Precio:</strong> {line_total:.2f} €</div>
                                 </div>
@@ -270,6 +475,7 @@ def _build_cart_reminder_email_payload(user, cart_items, cart_url):
         measures = f"{_format_cart_dimension(item.alto)} x {_format_cart_dimension(item.ancho)} cm"
         mounting = _format_cart_mounting_label(item.anclaje)
         color = _format_cart_color_label(item.color)
+        screws = format_screw_configuration(item.screw_length_mm, item.screw_supplement) or "Sin definir"
         quantity = int(item.quantity or 1)
         line_total = float(item.precio_total or 0.0) * quantity
         product_image_url = _resolve_cart_product_image_url(item, frontend_base_url)
@@ -280,7 +486,7 @@ def _build_cart_reminder_email_payload(user, cart_items, cart_url):
 
         product_lines_text.append(
             f"- {product_name} | Medidas: {measures} | Anclaje: {mounting} | "
-            f"Color: {color} | Cantidad: {quantity} | Precio: {line_total:.2f} €"
+            f"Color: {color} | Tornillos: {screws} | Cantidad: {quantity} | Precio: {line_total:.2f} €"
         )
 
         product_lines_html.append(
@@ -289,6 +495,7 @@ def _build_cart_reminder_email_payload(user, cart_items, cart_url):
             f"Medidas: {escape(measures)}<br>"
             f"Anclaje: {escape(mounting)}<br>"
             f"Color: {escape(color)}<br>"
+            f"Tornillos: {escape(screws)}<br>"
             f"Cantidad: {quantity}<br>"
             f"Precio: {line_total:.2f} €"
             "</li>"
@@ -408,7 +615,7 @@ def _serialize_user_for_admin(user):
 
 
 
-redirect_map = {
+_UNUSED_LEGACY_REDIRECT_MAP = {
     "/rejas/rejas-para-ventanas-pittsburgh": "/rejas-para-ventanas",
     "/rejas/rejas-para-ventanas-livingston": "/rejas-para-ventanas",
     "/rejas/rejas-para-ventanas-delhi": "/rejas-para-ventanas",
@@ -425,7 +632,7 @@ redirect_map = {
     "/preguntas-frecuentes": "/faq",
 }
 
-gone_list = [
+_UNUSED_LEGACY_GONE_LIST = [
     "/blog/instalation-rejas-para-ventanas",
     "/index.php",
     "/blog/medir_hueco_rejas_para_ventanas.php",
@@ -445,10 +652,9 @@ gone_list = [
 ]
 
 
-@api.before_request
-def handle_legacy_urls():
-    if request.path in redirect_map:
-        return redirect(redirect_map[request.path], code=301)
+# legacy public routing now lives in src/legacy_public_routes.py
+def _unused_legacy_public_routing_definition():
+    return None
     if request.path in gone_list:
         return "Página obsoleta", 410
 
@@ -498,7 +704,8 @@ def _checkout_line_key(item):
         _to_optional_float(item.get("alto")),
         _to_optional_float(item.get("ancho")),
         item.get("anclaje"),
-        item.get("color")
+        item.get("color"),
+        item.get("screw_option") or DEFAULT_CONFIGURATOR_SCREW_OPTION,
     )
 
 
@@ -571,53 +778,25 @@ def _build_checkout_comparison_from_request(checkout_quote, data):
 
 
 def _build_order_details_from_checkout_quote(checkout_quote):
-    return [
-        {
+    order_details = []
+    for line in (checkout_quote.get("lines") or []):
+        screw_option = line.get("screw_option") or DEFAULT_CONFIGURATOR_SCREW_OPTION
+        resolved_screws = resolve_screw_configuration(line.get("anclaje"), screw_option) or {}
+        order_details.append({
             "producto_id": line["product_id"],
             "quantity": line["quantity"],
             "alto": line["alto"],
             "ancho": line["ancho"],
             "anclaje": line.get("anclaje"),
             "color": line.get("color"),
+            "screw_option": screw_option,
+            "screw_length_mm": line.get("screw_length_mm") or resolved_screws.get("screw_length_mm"),
+            "screw_supplement": line.get("screw_supplement", resolved_screws.get("screw_supplement", 0.0)),
             "precio_total": line["unit_price"],
             "shipping_type": line.get("shipping_type"),
             "shipping_cost": line.get("shipping_cost")
-        }
-        for line in (checkout_quote.get("lines") or [])
-    ]
-
-
-def _extract_customer_snapshot(data):
-    source = data.get("customer_data")
-    if not isinstance(source, dict):
-        source = data
-
-    fields = [
-        "firstname",
-        "lastname",
-        "phone",
-        "shipping_address",
-        "shipping_city",
-        "shipping_postal_code",
-        "billing_address",
-        "billing_city",
-        "billing_postal_code",
-        "CIF"
-    ]
-    snapshot = {}
-    for field in fields:
-        value = source.get(field) if isinstance(source, dict) else None
-        if value is not None and value != "":
-            snapshot[field] = value
-    return snapshot
-
-
-def _merge_customer_snapshot(existing_snapshot, new_snapshot):
-    merged_snapshot = dict(existing_snapshot or {})
-    for field, value in (new_snapshot or {}).items():
-        if value is not None and value != "":
-            merged_snapshot[field] = value
-    return merged_snapshot
+        })
+    return order_details
 
 
 def _get_customer_value(request_data, customer_snapshot, field_name):
@@ -682,7 +861,7 @@ def _upsert_checkout_session(current_user, intent, existing_intent_id, idempoten
         )
         db.session.add(checkout_session)
 
-    if checkout_session.status == "order_created" and checkout_session.order_id:
+    if checkout_session.order_id:
         return checkout_session
 
     if payment_provider == "stripe":
@@ -704,7 +883,10 @@ def _upsert_checkout_session(current_user, intent, existing_intent_id, idempoten
     checkout_session.total_amount = float(checkout_quote["total_amount"])
     checkout_session.quote_snapshot = checkout_quote
     if customer_snapshot:
-        checkout_session.customer_snapshot = customer_snapshot
+        checkout_session.customer_snapshot = _merge_customer_snapshot(
+            checkout_session.customer_snapshot,
+            customer_snapshot,
+        )
 
     return checkout_session
 
@@ -1019,7 +1201,10 @@ def _upsert_paypal_checkout_session(current_user, checkout_quote, customer_snaps
     checkout_session.total_amount = float(checkout_quote["total_amount"])
     checkout_session.quote_snapshot = checkout_quote
     if customer_snapshot:
-        checkout_session.customer_snapshot = customer_snapshot
+        checkout_session.customer_snapshot = _merge_customer_snapshot(
+            checkout_session.customer_snapshot,
+            customer_snapshot,
+        )
 
     return checkout_session
 
@@ -1135,7 +1320,8 @@ def _finalize_order_from_checkout_quote(user, checkout_quote, customer_snapshot,
             alto=detail.get('alto'),
             ancho=detail.get('ancho'),
             anclaje=detail.get('anclaje'),
-            color=detail.get('color')
+            color=detail.get('color'),
+            screw_option=detail.get('screw_option') or DEFAULT_CONFIGURATOR_SCREW_OPTION,
         ).first()
 
         if existing_detail:
@@ -1153,6 +1339,9 @@ def _finalize_order_from_checkout_quote(user, checkout_quote, customer_snapshot,
             ancho=detail.get('ancho'),
             anclaje=detail.get('anclaje'),
             color=detail.get('color'),
+            screw_option=detail.get('screw_option') or DEFAULT_CONFIGURATOR_SCREW_OPTION,
+            screw_length_mm=detail.get('screw_length_mm'),
+            screw_supplement=detail.get('screw_supplement', 0.0),
             precio_total=precio_recalculado,
             firstname=customer_firstname,
             lastname=customer_lastname,
@@ -1186,205 +1375,39 @@ def _finalize_order_from_checkout_quote(user, checkout_quote, customer_snapshot,
         f"Envío: {shipping_cost:.2f} € | Total guardado: {backend_total:.2f} €"
     )
 
-    invoice_number = Invoices.generate_next_invoice_number()
-    pdf_filename = f"invoice_{invoice_number}.pdf"
-    file_path = os.path.join(current_app.config['INVOICE_FOLDER'], pdf_filename)
-    pdf_path = f"/api/download-invoice/{pdf_filename}"
-    os.makedirs(current_app.config['INVOICE_FOLDER'], exist_ok=True)
-
-    pdf_buffer = BytesIO()
-    pdf = canvas.Canvas(pdf_buffer, pagesize=A4)
-
-    image_url = "https://res.cloudinary.com/dewanllxn/image/upload/v1740167674/logo_uxlqof.png"
-    pdf.drawImage(image_url, 300, 750, width=250, height=64)
-
-    pdf.setTitle(f"Factura_{invoice_number}")
-    pdf.setFont("Helvetica-Bold", 12)
-    pdf.drawString(50, 800, f"Factura No: {invoice_number}")
-
-    pdf.setFont("Helvetica", 10)
-    fecha_emision = datetime.now().strftime("%d/%m/%Y")
-    pdf.drawString(50, 780, f"Fecha: {fecha_emision}")
-
-    pdf.setFont("Helvetica-Bold", 12)
-    pdf.drawString(400, 700, "PROVEEDOR")
-    pdf.setFont("Helvetica", 10)
-    pdf.drawString(400, 680, "Sergio Arias Fernández")
-    pdf.drawString(400, 665, "05703874N")
-    pdf.drawString(400, 650, "Francisco Fernández Ordoñez 32")
-    pdf.drawString(400, 635, "13170 Miguelturra")
-    pdf.drawString(400, 620, "634112604")
-
-    pdf.setFont("Helvetica-Bold", 12)
-    pdf.drawString(50, 700, "CLIENTE")
-    pdf.setFont("Helvetica", 10)
-    pdf.drawString(50, 680, f"{customer_firstname or ''} {customer_lastname or ''}".strip())
-    pdf.drawString(50, 665, f"{customer_billing_address or ''}, {customer_billing_city or ''} ({customer_billing_postal_code or ''})")
-    pdf.drawString(50, 650, f"{customer_cif or ''}")
-    pdf.drawString(50, 635, f"{customer_phone or 'No proporcionado'}")
-
-    pdf.setFont("Helvetica-Bold", 12)
-    pdf.drawString(50, 580, "Dirección de Envío")
-    pdf.setFont("Helvetica", 10)
-
-    if not customer_shipping_address or customer_shipping_address == customer_billing_address:
-        pdf.drawString(50, 560, "La misma que la de facturación")
-    else:
-        pdf.drawString(50, 560, f"{customer_shipping_address or ''}, {customer_shipping_city or ''} ({customer_shipping_postal_code or ''})")
-
-    pdf.setFont("Helvetica-Bold", 12)
-    pdf.drawString(50, 510, "Detalles del Pedido")
-    pdf.setFont("Helvetica", 10)
-
-    from collections import defaultdict
-
-    color_labels = {
-        "satinado_blanco": "Blanco liso",
-        "satinado_negro": "Negro liso",
-        "satinado_gris": "Gris medio liso",
-        "satinado_verde": "Verde carruajes liso",
-        "forja_negro": "Negro forja",
-        "forja_gris": "Gris acero forja",
-        "forja_marron": "Marrón castaño forja",
-        "forja_azul": "Azul forja",
-        "forja_verde": "Verde bronce forja",
-        "forja_dorado": "Dorado forja",
-        "blanco": "Blanco",
-        "negro": "Negro",
-        "gris": "Gris",
-        "marrón": "Marrón",
-        "verde": "Verde"
-    }
-
-    data_table = [["Prod.", "Alto", "Ancho", "Anc.", "Col.", "Ud.", "Importe (€)"]]
-    grouped_details = defaultdict(lambda: {"quantity": 0, "precio_unitario": 0.0})
-
-    for detail in order_details:
-        key = (
-            detail['producto_id'],
-            detail.get('alto'),
-            detail.get('ancho'),
-            detail.get('anclaje'),
-            detail.get('color')
-        )
-        grouped_details[key]["quantity"] += detail.get("quantity", 1)
-        grouped_details[key]["precio_unitario"] = float(detail["precio_total"])
-
-    for (producto_id, alto, ancho, anclaje, color), values in grouped_details.items():
-        prod = Products.query.get(producto_id)
-        cantidad = values["quantity"]
-        precio_unitario = values["precio_unitario"]
-        importe_total = precio_unitario * cantidad
-
-        row = [
-            prod.nombre[:24] if prod else "Desconocido",
-            f"{alto} cm",
-            f"{ancho} cm",
-            (anclaje[:20] if anclaje else ''),
-            color_labels.get(color, color)[:18] if color else '',
-            str(cantidad),
-            f"{importe_total:.2f}"
-        ]
-        data_table.append(row)
-
-    table = Table(data_table, colWidths=[4*cm, 1.5*cm, 1.5*cm, 4.2*cm, 3.2*cm, 1*cm, 2.3*cm])
-    table.setStyle(TableStyle([
-        ('BACKGROUND', (0, 0), (-1, 0), colors.Color(1, 0.196, 0.302)),
-        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
-        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-        ('GRID', (0, 0), (-1, -1), 1, colors.black),
-    ]))
-    y_position = 480
-    table.wrapOn(pdf, 50, y_position)
-    table_height = table._height
-    table.drawOn(pdf, 50, y_position - table_height)
-
-    totals_y_position = y_position - table_height - 30
-    if totals_y_position < 50:
-        pdf.showPage()
-        totals_y_position = 750
-
-    total = new_order.total_amount
-    base_total = total / 1.21
-    iva_calculado = total - base_total
-    base_envio = new_order.shipping_cost / 1.21
-    base_productos = base_total - base_envio
-
-    pdf.setFont("Helvetica-Bold", 11)
-    pdf.drawString(50, totals_y_position, "DETALLE FISCAL")
-    pdf.setFont("Helvetica", 10)
-
-    pdf.drawString(50, totals_y_position - 15, f"Base imponible productos: {base_productos:.2f} €")
-    pdf.drawString(50, totals_y_position - 30, f"Base imponible envío: {base_envio:.2f} €")
-
-    pdf.setStrokeColor(colors.black)
-    pdf.line(50, totals_y_position - 35, 200, totals_y_position - 35)
-
-    pdf.drawString(50, totals_y_position - 50, f"Base imponible total: {base_total:.2f} €")
-    pdf.drawString(50, totals_y_position - 65, f"IVA (21%): {iva_calculado:.2f} €")
-
-    pdf.line(50, totals_y_position - 70, 200, totals_y_position - 70)
-
-    subtotal_con_iva = base_total + iva_calculado
-    pdf.setFont("Helvetica-Bold", 10)
-    pdf.drawString(50, totals_y_position - 85, f"Subtotal (IVA incl.): {subtotal_con_iva:.2f} €")
-
-    if new_order.discount_value and new_order.discount_value > 0:
-        pdf.setFont("Helvetica-Bold", 11)
-        pdf.setFillColor(colors.green)
-        pdf.drawString(
-            50,
-            totals_y_position - 100,
-            f"Descuento comercial ({discount_code or ''} {discount_percent:.0f}%): -{new_order.discount_value:.2f} €"
-        )
-        pdf.setFillColor(colors.black)
-
-    pdf.line(50, totals_y_position - 105, 200, totals_y_position - 105)
-
-    pdf.setFont("Helvetica-Bold", 12)
-    pdf.drawString(50, totals_y_position - 120, f"TOTAL A PAGAR: {total:.2f} €")
-
-    pdf.setFont("Helvetica", 10)
-    if new_order.shipping_cost == 59:
-        envio_text = "Tarifa A (59 €)"
-    elif shipping_cost == 99:
-        envio_text = "Tarifa B (99 €)"
-    elif shipping_cost == 21:
-        envio_text = "Estándar (21 €)"
-    else:
-        envio_text = "Gratuito"
-
-    pdf.drawString(50, totals_y_position - 140, f"Tipo de envío: {envio_text}")
-    if discount_code:
-        pdf.drawString(50, totals_y_position - 155, f"Código descuento: {discount_code}")
-
-    pdf.save()
-    pdf_buffer.seek(0)
-    with open(file_path, "wb") as f:
-        f.write(pdf_buffer.getvalue())
-
-    new_invoice = Invoices(
-        invoice_number=invoice_number,
-        order_id=new_order.id,
-        pdf_path=pdf_path,
-        client_name=f"{customer_firstname or ''} {customer_lastname or ''}".strip(),
-        client_address=customer_billing_address or "",
-        client_cif=customer_cif or "",
-        client_phone=customer_phone or "",
-        amount=new_order.total_amount,
-        order_details=[detail.serialize() for detail in new_order.order_details]
-    )
-    db.session.add(new_invoice)
-    new_order.invoice_number = invoice_number
-
     if checkout_session:
-        checkout_session.order_id = new_order.id
-        checkout_session.status = "order_created"
         if customer_snapshot:
             checkout_session.customer_snapshot = customer_snapshot
+        checkout_session.order_id = new_order.id
+        checkout_session.status = "order_created"
+
+    if checkout_session and checkout_session.payment_provider == "stripe":
+        cleanup_cart_lines_from_checkout_quote(
+            db_session=db.session,
+            cart_model=Cart,
+            user_id=user.id,
+            checkout_quote=checkout_quote,
+            logger=logger
+        )
 
     db.session.commit()
+
+    try:
+        handle_post_order_invoice_workflow(
+            order=new_order,
+            checkout_session=checkout_session,
+            db_session=db.session,
+            enabled=current_app.config.get("ENABLE_INVOICE_WORKFLOW_AFTER_CHECKOUT", False),
+            issuer_factory=_build_invoice_issuer_from_config,
+            invoice_output_dir=current_app.config.get("INVOICE_FOLDER") or os.getenv("INVOICE_FOLDER"),
+            mailer_factory=lambda: FlaskMailInvoiceAdapter(mail),
+            logger=logger,
+        )
+    except Exception:
+        logger.exception(
+            "Unexpected error running post-order invoice hook for order_id=%s",
+            new_order.id,
+        )
 
     try:
         persisted_user = Users.query.get(user.id)
@@ -1395,19 +1418,14 @@ def _finalize_order_from_checkout_quote(user, checkout_quote, customer_snapshot,
         db.session.rollback()
         logger.error(f"Error al actualizar datos del usuario: {str(e)}")
 
-    try:
-        email_sent = send_email(
-            subject=f"Factura de tu pedido #{invoice_number}",
-            recipients=[user.email, current_app.config['MAIL_USERNAME']],
-            body=f"Hola {(customer_firstname or '').strip()} {(customer_lastname or '').strip()},\n\nAdjuntamos la factura {invoice_number} de tu compra.\n\nGracias por tu confianza.",
-            attachment_path=file_path
-        )
-        if not email_sent:
-            logger.error(f"Error al enviar el correo con la factura {invoice_number}.")
-        else:
-            logger.info(f"Correo enviado correctamente con la factura {invoice_number}.")
-    except Exception as e:
-        logger.error(f"Error al enviar el correo con la factura {invoice_number}: {str(e)}")
+    send_order_confirmation_email(
+        user=user,
+        order=new_order,
+        checkout_quote=checkout_quote,
+        customer_firstname=customer_firstname,
+        mail_username=current_app.config['MAIL_USERNAME'],
+        logger=logger,
+    )
 
     return new_order, True
 
@@ -1426,8 +1444,12 @@ def get_delivery_estimate():
         response.headers['Access-Control-Allow-Origin'] = '*'
         response.headers['Access-Control-Expose-Headers'] = 'Authorization'
         return response, 200
-    except Exception as e:
-        response = jsonify({"message": "Error al obtener la estimación", "error": str(e)})
+    except Exception as error:
+        current_app.logger.error(
+            "delivery_estimate_lookup_failed error_type=%s",
+            type(error).__name__,
+        )
+        response = jsonify({"message": "Error al obtener la estimación"})
         response.headers['Access-Control-Allow-Origin'] = '*'
         response.headers['Access-Control-Expose-Headers'] = 'Authorization'
         return response, 500
@@ -1445,14 +1467,31 @@ def create_payment_intent():
 
         # --- 1) Valores recibidos ---
         payment_method_id = data.get("payment_method_id")
-        existing_intent_id = data.get("payment_intent_id")
+        requested_existing_intent_id = data.get("payment_intent_id")
+        existing_intent_id = None
         idempotency_key = data.get("idempotency_key") or str(uuid.uuid4())
-        receipt_email = data.get("email") or current_user.get("email")
         metadata = data.get("metadata") or {}
         frontend_amount = data.get("amount")
 
         if not payment_method_id:
             return jsonify({"error": "Missing required data"}), 400
+
+        if requested_existing_intent_id:
+            reusable_checkout_session = _get_checkout_session_by_payment_intent(
+                requested_existing_intent_id,
+                user_id=current_user['user_id']
+            )
+            if is_modifiable_stripe_checkout_session(
+                reusable_checkout_session,
+                requested_existing_intent_id
+            ):
+                existing_intent_id = requested_existing_intent_id
+            else:
+                logger.warning(
+                    "PaymentIntent reuse rejected for user_id=%s payment_intent_id=%s",
+                    current_user.get("user_id"),
+                    requested_existing_intent_id
+                )
 
         quote_request_data = {
             **data,
@@ -1461,6 +1500,15 @@ def create_payment_intent():
         checkout_quote = _build_checkout_quote_from_request(current_user, quote_request_data)
         if not checkout_quote["lines"]:
             return jsonify({"error": "Cart is empty"}), 400
+
+        try:
+            validate_payment_amount("stripe", checkout_quote["total_amount"], currency="eur")
+        except PaymentAmountValidationError as e:
+            logger.warning(
+                "Stripe PaymentIntent rejected due to unsupported amount: %s",
+                str(e)
+            )
+            return jsonify(PAYMENT_AMOUNT_NOT_SUPPORTED_RESPONSE), 400
 
         amount = int(round(checkout_quote["total_amount"] * 100))
 
@@ -1500,7 +1548,12 @@ def create_payment_intent():
             "discount_code": checkout_quote["discount_code"] or "",
             "discount_percent": f"{checkout_quote['discount_percent']:.2f}"
         }
-        customer_snapshot = _extract_customer_snapshot(data)
+        customer_snapshot = _extract_customer_snapshot(
+            data,
+            require_checkout_fields=True,
+            fallback_snapshot={"email": current_user.get("email")},
+        )
+        receipt_email = customer_snapshot["email"]
 
         # --- 2) Si existe PaymentIntent previo, lo modificamos ---
         if existing_intent_id:
@@ -1561,12 +1614,16 @@ def create_payment_intent():
             "public_checkout_token": checkout_session.public_checkout_token
         }), 200
 
+    except CustomerSnapshotValidationError as e:
+        db.session.rollback()
+        return _customer_snapshot_validation_response(e)
     except ValueError as e:
         db.session.rollback()
         return jsonify({"error": str(e)}), 400
     except Exception as e:
         db.session.rollback()
-        return jsonify({"error": str(e)}), 400
+        logger.exception("Unexpected error creating Stripe PaymentIntent: %s", str(e))
+        return jsonify({"error": "No hemos podido preparar el pago. Inténtalo de nuevo."}), 500
 
 
 @api.route('/paypal/create-order', methods=['POST'])
@@ -1577,7 +1634,11 @@ def create_paypal_order():
 
     try:
         checkout_token = data.get("checkout_token") or data.get("public_checkout_token")
-        customer_snapshot = _extract_customer_snapshot(data)
+        customer_snapshot = _extract_customer_snapshot(
+            data,
+            require_checkout_fields=True,
+            fallback_snapshot={"email": current_user.get("email")},
+        )
         existing_checkout_session = None
 
         logger.info(
@@ -1674,6 +1735,15 @@ def create_paypal_order():
             )
             return jsonify({"error": "Cart is empty"}), 400
 
+        try:
+            validate_payment_amount("paypal", checkout_quote["total_amount"], currency="eur")
+        except PaymentAmountValidationError as e:
+            logger.warning(
+                "PayPal create-order rejected due to unsupported amount: %s",
+                str(e)
+            )
+            return jsonify(PAYMENT_AMOUNT_NOT_SUPPORTED_RESPONSE), 400
+
         checkout_session = _upsert_paypal_checkout_session(
             current_user=current_user,
             checkout_quote=checkout_quote,
@@ -1714,12 +1784,19 @@ def create_paypal_order():
         }
         return jsonify(response_payload), 200
 
+    except CustomerSnapshotValidationError as e:
+        db.session.rollback()
+        return _customer_snapshot_validation_response(e)
     except ValueError as e:
         db.session.rollback()
         return jsonify({"error": str(e)}), 400
     except RuntimeError as e:
         db.session.rollback()
-        return jsonify({"error": str(e)}), 502
+        logger.exception("PayPal provider error creating order: %s", str(e))
+        return jsonify({
+            "error": "No se ha podido iniciar el pago con PayPal.",
+            "code": "PAYPAL_ORDER_CREATION_FAILED"
+        }), 502
     except Exception as e:
         db.session.rollback()
         logger.error("Error creando orden PayPal: %s", str(e))
@@ -1735,8 +1812,6 @@ def capture_paypal_order():
     try:
         checkout_token = data.get("checkout_token") or data.get("public_checkout_token")
         provider_order_id = data.get("provider_order_id") or data.get("order_id")
-        customer_snapshot = _extract_customer_snapshot(data)
-
         logger.info(
             "PayPal capture-order solicitado por user_id=%s checkout_token=%s provider_order_id=%s",
             current_user.get("user_id"),
@@ -1779,13 +1854,13 @@ def capture_paypal_order():
             )
             return jsonify({"error": "Checkout session does not belong to PayPal."}), 409
 
-        if customer_snapshot:
-            checkout_session.customer_snapshot = _merge_customer_snapshot(
-                checkout_session.customer_snapshot,
-                customer_snapshot
-            )
-
         if checkout_session.order_id:
+            if data.get("customer_data"):
+                logger.warning(
+                    "PayPal capture-order ignora customer_data para checkout_session=%s ya finalizada con order_id=%s",
+                    checkout_session.id,
+                    checkout_session.order_id,
+                )
             logger.info(
                 "PayPal capture-order idempotente: checkout_session=%s ya finalizada con order_id=%s",
                 checkout_session.id,
@@ -1798,6 +1873,13 @@ def capture_paypal_order():
             }
             db.session.commit()
             return jsonify(response_payload), 200
+
+        customer_snapshot = _extract_customer_snapshot(data)
+        if customer_snapshot:
+            checkout_session.customer_snapshot = _merge_customer_snapshot(
+                checkout_session.customer_snapshot,
+                customer_snapshot,
+            )
 
         if not checkout_session.provider_order_id:
             logger.warning(
@@ -1864,6 +1946,9 @@ def capture_paypal_order():
         }
         return jsonify(response_payload), 200
 
+    except CustomerSnapshotValidationError as e:
+        db.session.rollback()
+        return _customer_snapshot_validation_response(e)
     except ValueError as e:
         db.session.rollback()
         return jsonify({"error": str(e)}), 400
@@ -2124,7 +2209,7 @@ def stripe_webhook():
         logger.info("Webhook Stripe recibido: %s", event['type'])
     except Exception as e:
         logger.error("Error validando webhook Stripe: %s", str(e))
-        return jsonify({'error': str(e)}), 400
+        return jsonify({'error': 'Invalid webhook signature'}), 400
 
     try:
         event_type = event['type']
@@ -2256,8 +2341,8 @@ def checkout_quote():
     except ValueError as e:
         return jsonify({"message": str(e)}), 400
     except Exception as e:
-        logger.error(f"Error calculando checkout quote: {str(e)}")
-        return jsonify({"message": "Error calculating checkout quote", "error": str(e)}), 500
+        logger.exception("Unexpected error calculating checkout quote: %s", str(e))
+        return jsonify({"message": "No hemos podido calcular el resumen del checkout."}), 500
 
 
 @api.route('/checkout/status', methods=['GET'])
@@ -2886,11 +2971,15 @@ def get_all_categories():
         categories = Categories.query.all()
         response_data = []
         for category in categories:
-            product_count = Products.query.filter(Products.categoria_id == category.id).count()
+            product_count = publicly_discoverable_products_query().filter(
+                Products.categoria_id == category.id
+            ).count()
             subcategories = Subcategories.query.filter_by(categoria_id=category.id).all()
             subcategories_data = []
             for subcat in subcategories:
-                subcat_product_count = Products.query.filter(Products.subcategoria_id == subcat.id).count()
+                subcat_product_count = publicly_discoverable_products_query().filter(
+                    Products.subcategoria_id == subcat.id
+                ).count()
                 subcategories_data.append({
                     **subcat.serialize(),
                     "product_count": subcat_product_count
@@ -2995,7 +3084,7 @@ def get_products_by_category(slug):
         return jsonify({"message": "Categoría no encontrada"}), 404
 
     products = (
-        Products.query
+        publicly_discoverable_products_query()
         .filter_by(categoria_id=category.id)
         .order_by(Products.sort_order.asc(), Products.id.asc())    
         .all()
@@ -3003,12 +3092,36 @@ def get_products_by_category(slug):
     return jsonify([p.serialize() for p in products]), 200
 
 
+@api.route("/sitemap/products", methods=["GET"])
+def get_sitemap_products():
+    products = (
+        publicly_accessible_products_query()
+        .join(Categories, Products.categoria_id == Categories.id)
+        .with_entities(
+            Categories.slug.label("category_slug"),
+            Products.slug.label("product_slug"),
+        )
+        .order_by(Categories.slug.asc(), Products.slug.asc())
+        .all()
+    )
+
+    return jsonify(
+        [
+            {
+                "category_slug": product.category_slug,
+                "slug": product.product_slug,
+            }
+            for product in products
+        ]
+    ), 200
+
+
 @api.route('/products', methods=['GET'])
 def get_products():
     category_id = request.args.get('category_id', type=int)
     subcategory_id = request.args.get('subcategory_id', type=int)
     try:
-        query = Products.query
+        query = publicly_discoverable_products_query()
         if subcategory_id:
             query = query.filter(Products.subcategoria_id == subcategory_id)
         elif category_id:
@@ -3079,10 +3192,12 @@ def create_product():
 @api.route('/<string:category_slug>/<string:product_slug>', methods=['GET'])
 def get_product_by_category_and_slug(category_slug, product_slug):
     try:
-        category = Categories.query.filter_by(slug=category_slug).first()
+        category, product = resolve_publicly_accessible_product_by_slugs(
+            category_slug,
+            product_slug,
+        )
         if not category:
             return jsonify({"message": "Category not found"}), 404
-        product = Products.query.filter_by(slug=product_slug, categoria_id=category.id).first()
 
         if not product:
             return jsonify({"message": "Product not found in this category"}), 404
@@ -3097,13 +3212,75 @@ def get_product_by_category_and_slug(category_slug, product_slug):
 
 @api.route('/products/<int:product_id>', methods=['GET'])
 def get_product(product_id):
-    product = Products.query.get(product_id)
+    product = publicly_accessible_products_query().filter(
+        Products.id == product_id
+    ).first()
     if not product:
         return jsonify({"message": "Product not found"}), 404
     response = jsonify(product.serialize_with_images())
     response.headers['Access-Control-Allow-Origin'] = '*'
     response.headers['Access-Control-Expose-Headers'] = 'Authorization'
     return response, 200
+
+
+@api.route('/products/<int:product_id>/quote', methods=['POST'])
+def get_product_quote(product_id):
+    data = request.get_json(silent=True)
+    if not isinstance(data, dict):
+        return jsonify({"message": "La configuración no es válida"}), 400
+
+    allowed_fields = {"alto", "ancho", "anclaje", "color", "screw_option", "quantity"}
+    if set(data) - allowed_fields:
+        return jsonify({"message": "La configuración contiene campos no permitidos"}), 400
+
+    try:
+        product = publicly_accessible_products_query().filter(
+            Products.id == product_id
+        ).first()
+        if not product:
+            return jsonify({"message": "Product not found"}), 404
+
+        quote = build_product_configuration_quote(
+            product=product,
+            alto=data.get("alto"),
+            ancho=data.get("ancho"),
+            anclaje=data.get("anclaje"),
+            color=data.get("color"),
+            screw_option=data.get("screw_option"),
+            quantity=data.get("quantity", 1),
+        )
+        return jsonify(quote), 200
+    except ValueError as error:
+        return jsonify({"message": str(error)}), 400
+    except SQLAlchemyError:
+        db.session.rollback()
+        logger.exception("Error building product quote for product %s", product_id)
+        return jsonify({"message": "Quote service unavailable"}), 503
+    except Exception:
+        logger.exception("Unexpected error building product quote for product %s", product_id)
+        return jsonify({"message": "Internal server error"}), 500
+
+
+@api.route('/products/<int:product_id>/configuration', methods=['GET'])
+def get_product_configuration(product_id):
+    try:
+        product = publicly_accessible_products_query().filter(
+            Products.id == product_id
+        ).first()
+        if not product:
+            return jsonify({"message": "Product not found"}), 404
+
+        ensure_product_available_for_sale(product)
+        return jsonify(serialize_configurator_configuration(product.id)), 200
+    except ValueError as error:
+        return jsonify({"message": str(error)}), 400
+    except SQLAlchemyError:
+        db.session.rollback()
+        logger.exception("Error loading product configuration for product %s", product_id)
+        return jsonify({"message": "Configuration service unavailable"}), 503
+    except Exception:
+        logger.exception("Unexpected error loading product configuration for product %s", product_id)
+        return jsonify({"message": "Internal server error"}), 500
 
 
 @api.route('/products/<int:product_id>', methods=['PUT', 'DELETE'])
@@ -3197,6 +3374,149 @@ def get_product_images():
     response.headers['Access-Control-Allow-Origin'] = '*'
     return response, 200
 
+
+@api.route('/customer/orders', methods=['GET'])
+@jwt_required()
+def get_customer_orders():
+    customer_id = _get_authenticated_customer_id()
+    if customer_id is None:
+        return jsonify({"message": "Invalid customer session"}), 401
+
+    orders = (
+        Orders.query
+        .filter(Orders.user_id == customer_id)
+        .order_by(Orders.order_date.desc(), Orders.id.desc())
+        .all()
+    )
+
+    return jsonify({
+        "orders": [serialize_customer_order_summary(order) for order in orders]
+    }), 200
+
+
+@api.route('/customer/orders/<int:order_id>', methods=['GET'])
+@jwt_required()
+def get_customer_order_detail(order_id):
+    customer_id = _get_authenticated_customer_id()
+    if customer_id is None:
+        return jsonify({"message": "Invalid customer session"}), 401
+
+    order = (
+        Orders.query
+        .options(joinedload(Orders.order_details).joinedload(OrderDetails.product))
+        .filter(Orders.id == order_id, Orders.user_id == customer_id)
+        .first()
+    )
+
+    if not order:
+        return jsonify({"message": "Order not found"}), 404
+
+    invoice = _get_customer_order_invoice(order.id)
+    invoice_pdf_available = _customer_order_invoice_pdf_available(invoice)
+
+    return jsonify({
+        "order": serialize_customer_order_detail(
+            order,
+            invoice,
+            invoice_pdf_available=invoice_pdf_available,
+        )
+    }), 200
+
+
+@api.route('/customer/orders/<int:order_id>/invoice', methods=['GET'])
+@jwt_required()
+def download_customer_order_invoice(order_id):
+    customer_id = _get_authenticated_customer_id()
+    if customer_id is None:
+        return jsonify({"message": "Invalid customer session"}), 401
+
+    try:
+        order = (
+            Orders.query
+            .filter(Orders.id == order_id, Orders.user_id == customer_id)
+            .first()
+        )
+        if not order:
+            return jsonify({"message": "Invoice not found"}), 404
+
+        invoice = _get_customer_order_invoice(order.id)
+        if not invoice:
+            return jsonify({"message": "Invoice not found"}), 404
+
+        try:
+            resolved_pdf = resolve_invoice_pdf_download(
+                invoice,
+                current_app.config.get('INVOICE_FOLDER'),
+            )
+        except (
+            InvoicePdfDownloadUnavailable,
+            InvoicePdfDownloadFileMissing,
+            InvoicePdfDownloadInvalidPath,
+        ):
+            return jsonify({"message": "Invoice not found"}), 404
+
+        return send_file(
+            resolved_pdf.file_path,
+            as_attachment=True,
+            download_name=resolved_pdf.download_name,
+            mimetype='application/pdf',
+        )
+    except Exception:
+        current_app.logger.exception(
+            "Unexpected customer invoice download error for order_id=%s",
+            order_id,
+        )
+        return jsonify({"message": "No se ha podido descargar la factura."}), 500
+
+
+def _get_customer_order_invoice(order_id):
+    return (
+        Invoices.query
+        .filter(
+            Invoices.order_id == order_id,
+            Invoices.invoice_number.isnot(None),
+            Invoices.invoice_number != "",
+            or_(Invoices.invoice_type == "ordinary", Invoices.invoice_type.is_(None)),
+        )
+        .order_by(
+            case((Invoices.invoice_type == "ordinary", 0), else_=1),
+            Invoices.id.desc(),
+        )
+        .first()
+    )
+
+
+def _customer_order_invoice_pdf_available(invoice):
+    if not invoice:
+        return False
+
+    try:
+        resolve_invoice_pdf_download(
+            invoice,
+            current_app.config.get('INVOICE_FOLDER'),
+        )
+        return True
+    except (
+        InvoicePdfDownloadUnavailable,
+        InvoicePdfDownloadFileMissing,
+        InvoicePdfDownloadInvalidPath,
+    ):
+        return False
+
+
+def _get_authenticated_customer_id():
+    current_user = get_jwt_identity()
+    customer_id = current_user.get("user_id") if current_user else None
+
+    if not isinstance(customer_id, int):
+        return None
+
+    if db.session.get(Users, customer_id) is None:
+        return None
+
+    return customer_id
+
+
 @api.route('/orders', methods=['GET', 'POST'])
 @jwt_required()
 def handle_orders():
@@ -3259,7 +3579,7 @@ def handle_orders():
                     "message": "payment_intent_id is required to finalize an order."
                 }), 400
 
-            customer_snapshot = _extract_customer_snapshot(data)
+            customer_snapshot = {}
             checkout_session = None
 
             checkout_session = _get_checkout_session_by_payment_intent(
@@ -3293,16 +3613,18 @@ def handle_orders():
                 )
                 checkout_session.order_id = None
 
+            customer_snapshot = _extract_customer_snapshot(data)
+
             import stripe
             stripe.api_key = os.getenv('STRIPE_SECRET_KEY')
             intent = stripe.PaymentIntent.retrieve(payment_intent_id)
             checkout_session.status = _normalize_checkout_session_status(intent.get("status"))
 
             if customer_snapshot:
-                checkout_session.customer_snapshot = {
-                    **(checkout_session.customer_snapshot or {}),
-                    **customer_snapshot
-                }
+                checkout_session.customer_snapshot = _merge_customer_snapshot(
+                    checkout_session.customer_snapshot,
+                    customer_snapshot,
+                )
                 customer_snapshot = checkout_session.customer_snapshot
 
             if checkout_session.status != "paid":
@@ -3357,7 +3679,7 @@ def handle_orders():
 
             response = jsonify({
                 "data": new_order.serialize(),
-                "message": "Order, details, and invoice created successfully." if created else "Order already created for this payment intent."
+                "message": "Order created successfully." if created else "Order already created for this payment intent."
             })
             response.headers['Access-Control-Allow-Origin'] = '*'
             response.headers['Access-Control-Expose-Headers'] = 'X-Total-Count'
@@ -3473,7 +3795,8 @@ def handle_orders():
                     alto=detail.get('alto'),
                     ancho=detail.get('ancho'),
                     anclaje=detail.get('anclaje'),
-                    color=detail.get('color')
+                    color=detail.get('color'),
+                    screw_option=detail.get('screw_option') or DEFAULT_CONFIGURATOR_SCREW_OPTION,
                 ).first()
 
                 if existing_detail:
@@ -3493,6 +3816,9 @@ def handle_orders():
                     ancho=detail.get('ancho'),
                     anclaje=detail.get('anclaje'),
                     color=detail.get('color'),
+                    screw_option=detail.get('screw_option') or DEFAULT_CONFIGURATOR_SCREW_OPTION,
+                    screw_length_mm=detail.get('screw_length_mm'),
+                    screw_supplement=detail.get('screw_supplement', 0.0),
                     precio_total=precio_recalculado,
                     firstname=customer_firstname,
                     lastname=customer_lastname,
@@ -3537,10 +3863,10 @@ def handle_orders():
             )
 
             if checkout_session:
-                checkout_session.order_id = new_order.id
-                checkout_session.status = "order_created"
                 if customer_snapshot:
                     checkout_session.customer_snapshot = customer_snapshot
+                checkout_session.order_id = new_order.id
+                checkout_session.status = "order_created"
 
             db.session.commit()
 
@@ -3832,7 +4158,7 @@ def handle_orders():
                 # Crear la respuesta con encabezados CORS
                 response = jsonify({
                     "data": new_order.serialize(),
-                    "message": "Order, details, and invoice created successfully."
+                    "message": "Order created successfully."
                 })
                 response.headers['Access-Control-Allow-Origin'] = '*'
                 response.headers['Access-Control-Expose-Headers'] = 'X-Total-Count'
@@ -3843,6 +4169,14 @@ def handle_orders():
                 logger.error(f"Error al generar la factura: {str(e)}")
                 return jsonify({"message": "An error occurred while generating the invoice.", "error": str(e)}), 500
 
+        except CustomerSnapshotValidationError as e:
+            db.session.rollback()
+            logger.warning(
+                "Datos de cliente invalidos al cerrar checkout en /orders: field=%s",
+                e.field,
+            )
+            return jsonify(e.to_dict()), 400
+
         except ValueError as e:
             db.session.rollback()
             logger.error(f"Error validando checkout en /orders: {str(e)}")
@@ -3851,12 +4185,12 @@ def handle_orders():
         except SQLAlchemyError as e:
             db.session.rollback()
             logger.error(f"Error al crear la orden: {str(e)}")
-            return jsonify({"message": "An error occurred while creating the order.", "error": str(e)}), 500
+            return jsonify({"message": "No hemos podido crear el pedido en este momento."}), 500
 
         except Exception as e:
             db.session.rollback()
-            logger.error(f"Error inesperado al cerrar la orden: {str(e)}")
-            return jsonify({"message": "An unexpected error occurred while creating the order.", "error": str(e)}), 500
+            logger.exception("Error inesperado al cerrar la orden: %s", str(e))
+            return jsonify({"message": "No hemos podido crear el pedido en este momento."}), 500
 
 
 @api.route('/orders/<int:order_id>', methods=['GET', 'PUT', 'DELETE'])
@@ -3926,6 +4260,154 @@ def handle_order(order_id):
         except SQLAlchemyError as e:
             db.session.rollback()
             return jsonify({"message": "An error occurred while deleting the order.", "error": str(e)}), 500
+
+
+@api.route('/admin/orders/<int:order_id>/issue-invoice', methods=['POST'])
+@jwt_required()
+def admin_issue_invoice_for_order(order_id):
+    current_user = get_jwt_identity()
+
+    if not current_user.get("is_admin"):
+        return jsonify({"message": "Access forbidden: Admins only"}), 403
+
+    request_data = request.get_json(silent=True) or {}
+    if not isinstance(request_data, dict):
+        return jsonify({
+            "message": "El cuerpo de la peticion debe ser un objeto JSON.",
+            "code": "INVALID_REQUEST_BODY",
+        }), 400
+    if request_data:
+        return jsonify({
+            "message": "No se aceptan datos fiscales en esta ruta.",
+            "code": "INVOICE_BODY_NOT_ALLOWED",
+        }), 400
+
+    order = Orders.query.get(order_id)
+    if not order:
+        return jsonify({
+            "message": "Order not found",
+            "code": "ORDER_NOT_FOUND",
+        }), 404
+
+    checkout_session, invoiceability_error = _select_checkout_session_for_invoice(order)
+    if invoiceability_error:
+        return jsonify({
+            "message": invoiceability_error,
+            "code": "ORDER_NOT_INVOICEABLE",
+        }), 409
+
+    try:
+        result = issue_invoice_for_order(
+            db_session=db.session,
+            order_id=order.id,
+            checkout_session=checkout_session,
+            issuer=_build_invoice_issuer_from_config(),
+            actor=_invoice_admin_actor(current_user),
+            source="manual",
+        )
+        return jsonify(_serialize_admin_issued_invoice(
+            result.invoice,
+            already_existed=not result.created,
+        )), 200
+    except InvoiceIssueError:
+        logger.warning("Invoice issue requested for missing order_id=%s", order_id)
+        return jsonify({
+            "message": "Order not found",
+            "code": "ORDER_NOT_FOUND",
+        }), 404
+    except InvoiceSnapshotValidationError:
+        logger.exception("Invalid invoice snapshot for order_id=%s", order_id)
+        return jsonify({
+            "message": "No se puede emitir la factura para este pedido.",
+            "code": "INVOICE_SNAPSHOT_INVALID",
+        }), 422
+    except InvoiceNumberError:
+        logger.exception("Invoice number allocation failed for order_id=%s", order_id)
+        return jsonify({
+            "message": "No se ha podido reservar un numero de factura.",
+            "code": "INVOICE_NUMBER_UNAVAILABLE",
+        }), 409
+    except Exception:
+        logger.exception("Unexpected error issuing invoice for order_id=%s", order_id)
+        return jsonify({
+            "message": "No se ha podido emitir la factura.",
+            "code": "INVOICE_ISSUE_FAILED",
+        }), 500
+
+
+@api.route('/admin/orders/<int:order_id>/run-invoice-workflow', methods=['POST'])
+@jwt_required()
+def admin_run_invoice_workflow_for_order(order_id):
+    current_user = get_jwt_identity()
+
+    if not current_user.get("is_admin"):
+        return jsonify({"message": "Access forbidden: Admins only"}), 403
+
+    request_data = request.get_json(silent=True) or {}
+    if not isinstance(request_data, dict):
+        return jsonify({
+            "message": "El cuerpo de la peticion debe ser un objeto JSON.",
+            "code": "INVALID_REQUEST_BODY",
+        }), 400
+    if request_data:
+        return jsonify({
+            "message": "No se aceptan datos documentales en esta ruta.",
+            "code": "INVOICE_WORKFLOW_BODY_NOT_ALLOWED",
+        }), 400
+
+    order = Orders.query.get(order_id)
+    if not order:
+        return jsonify({
+            "message": "Order not found",
+            "code": "ORDER_NOT_FOUND",
+        }), 404
+
+    checkout_session, invoiceability_error = _select_checkout_session_for_invoice(order)
+    if invoiceability_error:
+        return jsonify({
+            "message": invoiceability_error,
+            "code": "ORDER_NOT_INVOICEABLE",
+        }), 409
+
+    try:
+        invoice_folder = current_app.config.get("INVOICE_FOLDER") or os.getenv("INVOICE_FOLDER")
+        if not invoice_folder:
+            raise InvoiceWorkflowConfigurationError("Missing INVOICE_FOLDER configuration.")
+
+        result = run_invoice_workflow_for_order(
+            order.id,
+            issuer=_build_invoice_issuer_from_config(),
+            checkout_session=checkout_session,
+            actor=_invoice_admin_actor(current_user),
+            invoice_output_dir=invoice_folder,
+            mailer=FlaskMailInvoiceAdapter(mail),
+            db_session=db.session,
+            logger=logger,
+        )
+
+        status_code = 200 if result.completed else 409
+        return jsonify(result.to_dict()), status_code
+    except InvoiceSnapshotValidationError:
+        db.session.rollback()
+        logger.exception("Invalid invoice workflow configuration for order_id=%s", order_id)
+        return jsonify({
+            "message": "La configuracion fiscal de facturacion no es valida.",
+            "code": "INVOICE_WORKFLOW_CONFIGURATION_INVALID",
+        }), 422
+    except InvoiceWorkflowConfigurationError:
+        db.session.rollback()
+        logger.exception("Missing invoice workflow configuration for order_id=%s", order_id)
+        return jsonify({
+            "message": "La configuracion documental no esta completa.",
+            "code": "INVOICE_WORKFLOW_CONFIGURATION_MISSING",
+        }), 422
+    except Exception:
+        db.session.rollback()
+        logger.exception("Unexpected invoice workflow error for order_id=%s", order_id)
+        return jsonify({
+            "message": "No se ha podido ejecutar el flujo documental de factura.",
+            "code": "INVOICE_WORKFLOW_FAILED",
+        }), 500
 
 
 @api.route('/admin/work-order/<int:order_id>', methods=['GET'])
@@ -4046,18 +4528,23 @@ def add_order_details():
                 alto=detail.get('alto'),
                 ancho=detail.get('ancho'),
                 anclaje=detail.get('anclaje'),
-                color=detail.get('color')
+                color=detail.get('color'),
+                screw_option=detail.get('screw_option') or DEFAULT_CONFIGURATOR_SCREW_OPTION,
             ).first()
             if existing_detail:
                 continue  # Saltar si ya existe
 
             prod = Products.query.get(detail['producto_id'])
 
-            precio_recalculado = calcular_precio_reja(
+            price_quote = build_configured_reja_quote(
                 alto_cm=detail.get('alto'),
                 ancho_cm=detail.get('ancho'),
-                precio_m2=prod.precio_rebajado or prod.precio
+                precio_m2=prod.precio_rebajado or prod.precio,
+                anclaje=detail.get('anclaje'),
+                color=detail.get('color'),
+                screw_option=detail.get('screw_option'),
             )
+            precio_recalculado = price_quote["unit_price"]
 
             # Recoger el coste de envío enviado desde el frontend
             shipping_cost = float(detail.get('shipping_cost') or 0)
@@ -4074,8 +4561,11 @@ def add_order_details():
                 quantity=detail['quantity'],
                 alto=detail.get('alto'),
                 ancho=detail.get('ancho'),
-                anclaje=detail.get('anclaje'),
-                color=detail.get('color'),
+                anclaje=price_quote["anclaje"],
+                color=price_quote["color"],
+                screw_option=price_quote["screw_option"],
+                screw_length_mm=price_quote["screw_length_mm"],
+                screw_supplement=price_quote["screw_supplement"],
                 precio_total=precio_recalculado,
                 firstname=detail.get('firstname'),
                 lastname=detail.get('lastname'),
@@ -4096,6 +4586,9 @@ def add_order_details():
         db.session.commit()
         return jsonify([detail.serialize() for detail in added_details]), 201
 
+    except ValueError as e:
+        db.session.rollback()
+        return jsonify({"message": str(e)}), 400
     except SQLAlchemyError as e:
         db.session.rollback()
         return jsonify({
@@ -4315,6 +4808,380 @@ def create_manual_invoice():
         current_app.logger.error(f"Error al crear la factura manual: {str(e)}")
         return jsonify({"message": "An error occurred while creating the manual invoice.", "error": str(e)}), 500
 
+
+@api.route('/admin/invoices/<int:invoice_id>/generate-pdf', methods=['POST'])
+@jwt_required()
+def admin_generate_invoice_pdf_v2(invoice_id):
+    current_user = get_jwt_identity()
+
+    if not current_user.get("is_admin"):
+        return jsonify({"message": "Access forbidden: Admins only"}), 403
+
+    request_data = request.get_json(silent=True) or {}
+    if not isinstance(request_data, dict):
+        return jsonify({
+            "message": "El cuerpo de la peticion debe ser un objeto JSON.",
+            "code": "INVALID_REQUEST_BODY",
+        }), 400
+
+    unexpected_fields = set(request_data) - {"regenerate"}
+    if unexpected_fields:
+        return jsonify({
+            "message": "Solo se permite indicar si se desea regenerar el PDF.",
+            "code": "INVOICE_PDF_BODY_NOT_ALLOWED",
+        }), 400
+
+    regenerate = request_data.get("regenerate", False)
+    if not isinstance(regenerate, bool):
+        return jsonify({
+            "message": "El campo regenerate debe ser booleano.",
+            "code": "INVALID_REGENERATE_VALUE",
+        }), 400
+
+    invoice = Invoices.query.get(invoice_id)
+    if not invoice:
+        return jsonify({
+            "message": "Invoice not found",
+            "code": "INVOICE_NOT_FOUND",
+        }), 404
+
+    try:
+        invoice_folder = current_app.config["INVOICE_FOLDER"]
+        previous_pdf_path = invoice.pdf_path
+        previous_file_existed = _invoice_pdf_file_exists(invoice_folder, previous_pdf_path)
+
+        result = generate_invoice_pdf(
+            invoice,
+            output_dir=invoice_folder,
+            regenerate=regenerate,
+        )
+        reused_existing = (
+            not regenerate
+            and previous_file_existed
+            and previous_pdf_path == result.pdf_path
+        )
+        db.session.commit()
+
+        return jsonify(_serialize_admin_generated_invoice_pdf(
+            invoice,
+            result,
+            generated=not reused_existing,
+            regenerated=bool(regenerate),
+        )), 200
+    except InvoicePdfSnapshotMissing as exc:
+        db.session.rollback()
+        logger.warning(
+            "Invoice PDF v2 cannot be generated for invoice_id=%s: snapshot or number missing",
+            invoice_id,
+        )
+        message = "La factura emitida no tiene los datos necesarios para generar el PDF."
+        code = "INVOICE_PDF_SNAPSHOT_MISSING"
+        status_code = 422
+        if "numero fiscal" in str(exc):
+            message = "La factura no tiene numero fiscal emitido."
+            code = "INVOICE_PDF_NOT_ISSUED"
+            status_code = 409
+        return jsonify({"message": message, "code": code}), status_code
+    except InvoicePdfUnsupportedSchema:
+        db.session.rollback()
+        logger.warning("Invoice PDF v2 unsupported schema for invoice_id=%s", invoice_id)
+        return jsonify({
+            "message": "La version del snapshot de factura no es compatible con este PDF.",
+            "code": "INVOICE_PDF_SCHEMA_UNSUPPORTED",
+        }), 422
+    except InvoicePdfIntegrityError:
+        db.session.rollback()
+        logger.warning("Invoice PDF v2 hash mismatch for invoice_id=%s", invoice_id)
+        return jsonify({
+            "message": "No se puede generar el PDF porque la integridad fiscal no coincide.",
+            "code": "INVOICE_PDF_INTEGRITY_ERROR",
+        }), 409
+    except InvoicePdfWriteError as exc:
+        db.session.rollback()
+        logger.exception("Invoice PDF v2 write failed for invoice_id=%s", invoice_id)
+        if "sobrescribir" in str(exc):
+            return jsonify({
+                "message": "Ya existe un PDF para esta factura y no se puede sobrescribir sin regeneracion explicita.",
+                "code": "INVOICE_PDF_FILE_CONFLICT",
+            }), 409
+        return jsonify({
+            "message": "No se ha podido escribir el PDF de la factura.",
+            "code": "INVOICE_PDF_WRITE_FAILED",
+        }), 500
+    except Exception:
+        db.session.rollback()
+        logger.exception("Unexpected error generating Invoice PDF v2 for invoice_id=%s", invoice_id)
+        return jsonify({
+            "message": "No se ha podido generar el PDF de la factura.",
+            "code": "INVOICE_PDF_GENERATION_FAILED",
+        }), 500
+
+
+@api.route('/admin/invoices/<int:invoice_id>/send-email', methods=['POST'])
+@jwt_required()
+def admin_send_invoice_email_v2(invoice_id):
+    current_user = get_jwt_identity()
+
+    if not current_user.get("is_admin"):
+        return jsonify({"message": "Access forbidden: Admins only"}), 403
+
+    request_data = request.get_json(silent=True) or {}
+    if not isinstance(request_data, dict):
+        return jsonify({
+            "message": "El cuerpo de la peticion debe ser un objeto JSON.",
+            "code": "INVALID_REQUEST_BODY",
+        }), 400
+    if request_data:
+        return jsonify({
+            "message": "No se aceptan datos de email en esta ruta.",
+            "code": "INVOICE_EMAIL_BODY_NOT_ALLOWED",
+        }), 400
+
+    invoice = Invoices.query.get(invoice_id)
+    if not invoice:
+        return jsonify({
+            "message": "Invoice not found",
+            "code": "INVOICE_NOT_FOUND",
+        }), 404
+
+    if not invoice.invoice_number or not invoice.issued_at:
+        return jsonify({
+            "message": "La factura debe estar emitida antes de enviarse por email.",
+            "code": "INVOICE_EMAIL_NOT_ISSUED",
+        }), 409
+
+    if not invoice.pdf_path:
+        return jsonify({
+            "message": "La factura debe tener PDF generado antes de enviarse por email.",
+            "code": "INVOICE_EMAIL_PDF_MISSING",
+        }), 409
+
+    attempts_before = int(invoice.email_attempts or 0)
+
+    try:
+        invoice_folder = current_app.config["INVOICE_FOLDER"]
+        adapter = FlaskMailInvoiceAdapter(mail)
+        result = send_invoice_email_v2(invoice, mailer=adapter, invoice_folder=invoice_folder)
+        db.session.commit()
+
+        return jsonify(_serialize_admin_invoice_email(invoice, result)), 200
+    except InvoiceEmailSnapshotMissing:
+        db.session.rollback()
+        logger.warning("Invoice email v2 snapshot missing for invoice_id=%s", invoice_id)
+        return jsonify({
+            "message": "La factura no contiene los datos necesarios para enviar el email.",
+            "code": "INVOICE_EMAIL_SNAPSHOT_MISSING",
+        }), 422
+    except InvoiceEmailUnsupportedSchema:
+        db.session.rollback()
+        logger.warning("Invoice email v2 unsupported schema for invoice_id=%s", invoice_id)
+        return jsonify({
+            "message": "La version del snapshot de factura no es compatible con el envio por email.",
+            "code": "INVOICE_EMAIL_SCHEMA_UNSUPPORTED",
+        }), 422
+    except InvoiceEmailIntegrityError:
+        db.session.rollback()
+        logger.warning("Invoice email v2 hash mismatch for invoice_id=%s", invoice_id)
+        return jsonify({
+            "message": "No se puede enviar el email porque la integridad fiscal no coincide.",
+            "code": "INVOICE_EMAIL_INTEGRITY_ERROR",
+        }), 409
+    except InvoiceEmailRecipientMissing:
+        db.session.rollback()
+        logger.warning("Invoice email v2 missing recipient for invoice_id=%s", invoice_id)
+        return jsonify({
+            "message": "La factura no contiene email de cliente.",
+            "code": "INVOICE_EMAIL_RECIPIENT_MISSING",
+        }), 422
+    except InvoiceEmailPdfMissing:
+        db.session.rollback()
+        logger.warning("Invoice email v2 missing PDF for invoice_id=%s", invoice_id)
+        return jsonify({
+            "message": "El PDF de la factura no esta disponible para enviarse por email.",
+            "code": "INVOICE_EMAIL_PDF_MISSING",
+        }), 409
+    except (InvoiceEmailSendError, FlaskMailInvoiceAdapterError) as exc:
+        db.session.rollback()
+        logger.exception(
+            "Invoice email v2 delivery failed phase=invoice_email invoice_id=%s error_type=%s message=%s",
+            invoice_id,
+            exc.__class__.__name__,
+            "El adaptador de email no ha confirmado el envio.",
+            exc_info=False,
+        )
+        try:
+            _persist_invoice_email_failure(invoice_id, attempts_before)
+        except Exception:
+            db.session.rollback()
+            logger.exception("Could not persist invoice email failure for invoice_id=%s", invoice_id)
+        return jsonify({
+            "message": "No se ha podido enviar el email de la factura.",
+            "code": "INVOICE_EMAIL_SEND_FAILED",
+        }), 502
+    except Exception:
+        db.session.rollback()
+        logger.exception("Unexpected invoice email v2 error for invoice_id=%s", invoice_id)
+        return jsonify({
+            "message": "No se ha podido enviar el email de la factura.",
+            "code": "INVOICE_EMAIL_FAILED",
+        }), 500
+
+
+@api.route('/admin/invoices/<int:invoice_id>/record-accounting', methods=['POST'])
+@jwt_required()
+def admin_record_invoice_accounting(invoice_id):
+    current_user = get_jwt_identity()
+
+    if not current_user.get("is_admin"):
+        return jsonify({"message": "Access forbidden: Admins only"}), 403
+
+    request_data = request.get_json(silent=True) or {}
+    if not isinstance(request_data, dict):
+        return jsonify({
+            "message": "El cuerpo de la peticion debe ser un objeto JSON.",
+            "code": "INVALID_REQUEST_BODY",
+        }), 400
+    if request_data:
+        return jsonify({
+            "message": "No se aceptan datos contables en esta ruta.",
+            "code": "ACCOUNTING_BODY_NOT_ALLOWED",
+        }), 400
+
+    invoice = Invoices.query.get(invoice_id)
+    if not invoice:
+        return jsonify({
+            "message": "Invoice not found",
+            "code": "INVOICE_NOT_FOUND",
+        }), 404
+
+    if not invoice.invoice_number or not invoice.issued_at:
+        return jsonify({
+            "message": "La factura debe estar emitida antes de registrar el asiento contable.",
+            "code": "INVOICE_NOT_ISSUED",
+        }), 409
+
+    try:
+        existing_entry = AccountingEntry.query.filter_by(
+            invoice_id=invoice.id,
+            entry_type=ENTRY_TYPE_SALE,
+        ).first()
+        entry = create_accounting_entry(invoice, db_session=db.session)
+        db.session.commit()
+
+        return jsonify(_serialize_admin_accounting_entry(
+            entry,
+            already_existed=existing_entry is not None,
+        )), 200
+    except AccountingEntryValidationError:
+        db.session.rollback()
+        logger.exception("Invalid accounting entry snapshot for invoice_id=%s", invoice_id)
+        return jsonify({
+            "message": "La factura no contiene los datos necesarios para registrar el asiento contable.",
+            "code": "ACCOUNTING_ENTRY_SNAPSHOT_INVALID",
+        }), 422
+    except AccountingEntryUnsupportedSchema:
+        db.session.rollback()
+        logger.warning("Unsupported accounting snapshot schema for invoice_id=%s", invoice_id)
+        return jsonify({
+            "message": "La version del snapshot de factura no es compatible con contabilidad.",
+            "code": "ACCOUNTING_ENTRY_SCHEMA_UNSUPPORTED",
+        }), 422
+    except AccountingEntryIntegrityError:
+        db.session.rollback()
+        logger.warning("Accounting entry hash mismatch for invoice_id=%s", invoice_id)
+        return jsonify({
+            "message": "No se puede registrar el asiento porque la integridad fiscal no coincide.",
+            "code": "ACCOUNTING_ENTRY_INTEGRITY_ERROR",
+        }), 409
+    except IntegrityError:
+        db.session.rollback()
+        logger.exception("Accounting entry integrity conflict for invoice_id=%s", invoice_id)
+        return jsonify({
+            "message": "Ya existe un registro contable para esta factura.",
+            "code": "ACCOUNTING_ENTRY_CONFLICT",
+        }), 409
+    except Exception:
+        db.session.rollback()
+        logger.exception("Unexpected error recording accounting entry for invoice_id=%s", invoice_id)
+        return jsonify({
+            "message": "No se ha podido registrar el asiento contable.",
+            "code": "ACCOUNTING_ENTRY_FAILED",
+        }), 500
+
+
+@api.route('/admin/accounting/sales/export', methods=['GET'])
+@jwt_required()
+def admin_export_sales_accounting_entries():
+    current_user = get_jwt_identity()
+
+    if not current_user.get("is_admin"):
+        return jsonify({"message": "Access forbidden: Admins only"}), 403
+
+    unexpected_params = set(request.args.keys()) - ALLOWED_ACCOUNTING_EXPORT_QUERY_PARAMS
+    if unexpected_params:
+        return jsonify({
+            "message": "Solo se aceptan los filtros date_from y date_to.",
+            "code": "ACCOUNTING_EXPORT_QUERY_NOT_ALLOWED",
+        }), 400
+
+    try:
+        date_from = _parse_accounting_export_date(request.args.get("date_from"), "date_from")
+        date_to = _parse_accounting_export_date(request.args.get("date_to"), "date_to")
+    except ValueError:
+        return jsonify({
+            "message": "Las fechas deben tener formato YYYY-MM-DD.",
+            "code": "ACCOUNTING_EXPORT_INVALID_DATE",
+        }), 400
+
+    if date_from and date_to and date_from > date_to:
+        return jsonify({
+            "message": "date_from no puede ser posterior a date_to.",
+            "code": "ACCOUNTING_EXPORT_INVALID_RANGE",
+        }), 400
+
+    query = AccountingEntry.query.filter_by(entry_type=ENTRY_TYPE_SALE)
+    if date_from:
+        query = query.filter(AccountingEntry.invoice_date >= date_from)
+    if date_to:
+        query = query.filter(AccountingEntry.invoice_date <= date_to)
+
+    entries = query.order_by(
+        AccountingEntry.invoice_date.asc(),
+        AccountingEntry.invoice_number.asc(),
+        AccountingEntry.id.asc(),
+    ).all()
+
+    if not entries:
+        return jsonify({
+            "message": "No hay registros contables de ingresos para exportar.",
+            "code": "ACCOUNTING_EXPORT_NO_RECORDS",
+        }), 404
+
+    filename = _accounting_sales_export_filename(date_from, date_to)
+    output_path = os.path.join(_accounting_export_folder(), filename)
+
+    try:
+        result = export_sales_accounting_entries(entries, output_path=output_path, overwrite=True)
+        return send_file(
+            result.output_path,
+            as_attachment=True,
+            download_name=result.filename,
+            mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        )
+    except AccountingExcelExportError:
+        logger.exception("Accounting sales export failed")
+        return jsonify({
+            "message": "No se ha podido generar la exportacion de ingresos.",
+            "code": "ACCOUNTING_EXPORT_FAILED",
+        }), 500
+    except Exception:
+        logger.exception("Unexpected accounting sales export error")
+        return jsonify({
+            "message": "No se ha podido generar la exportacion de ingresos.",
+            "code": "ACCOUNTING_EXPORT_FAILED",
+        }), 500
+
+
 # Descarga un archivo PDF de factura generado previamente
 @api.route('/download-invoice/<filename>', methods=['GET'])
 @jwt_required()
@@ -4335,14 +5202,16 @@ def download_invoice(filename):
             if not invoice.order or invoice.order.user_id != current_user['user_id']:
                 return jsonify({"message": "Invoice not found"}), 404
 
-        file_path = os.path.join(current_app.config['INVOICE_FOLDER'], safe_filename)
-        current_app.logger.info(f"Buscando archivo en: {file_path}")
-
-        if not os.path.exists(file_path):
+        try:
+            resolved_pdf = resolve_invoice_pdf_download(
+                invoice,
+                current_app.config['INVOICE_FOLDER'],
+            )
+        except InvoicePdfDownloadFileMissing:
             current_app.logger.warning(
                 "No se encontró el PDF físico para la factura %s en %s.",
                 invoice.invoice_number,
-                file_path
+                safe_filename
             )
             if current_user.get("is_admin"):
                 current_app.logger.info(
@@ -4359,11 +5228,18 @@ def download_invoice(filename):
                     mimetype='application/pdf'
                 )
             return jsonify({"message": "No se encontró el archivo PDF para esta factura."}), 404
+        except InvoicePdfDownloadInvalidPath:
+            return jsonify({"message": "Invoice not found"}), 404
 
-        return send_file(file_path, as_attachment=True, download_name=safe_filename, mimetype='application/pdf')
-    except Exception as e:
-        current_app.logger.error(f"Error al descargar la factura: {str(e)}")
-        return jsonify({"message": "An error occurred while downloading the invoice.", "error": str(e)}), 500
+        return send_file(
+            resolved_pdf.file_path,
+            as_attachment=True,
+            download_name=safe_filename,
+            mimetype='application/pdf'
+        )
+    except Exception:
+        current_app.logger.exception("Error inesperado al descargar la factura.")
+        return jsonify({"message": "An error occurred while downloading the invoice."}), 500
 
 # Recupera todas las facturas con paginación
 @api.route('/invoices/<int:invoice_id>/regenerate-pdf', methods=['POST'])
@@ -4595,16 +5471,27 @@ def handle_cart():
 
             alto = data.get('alto')
             ancho = data.get('ancho')
-            precio_m2 = product.precio_rebajado if product.precio_rebajado else product.precio
-            recalculated_total = calcular_precio_reja(alto, ancho, precio_m2)
+            price_quote = build_product_configuration_quote(
+                product=product,
+                alto=alto,
+                ancho=ancho,
+                anclaje=data.get('anclaje'),
+                color=data.get('color'),
+                screw_option=data.get('screw_option'),
+                quantity=quantity,
+            )
+            recalculated_total = price_quote["unit_price"]
 
             new_cart_item = Cart(
                 usuario_id=current_user['user_id'],
                 producto_id=product_id,
                 alto=alto,
                 ancho=ancho,
-                anclaje=data.get('anclaje'),
-                color=data.get('color'),
+                anclaje=price_quote["anclaje"],
+                color=price_quote["color"],
+                screw_option=price_quote["screw_option"],
+                screw_length_mm=price_quote["screw_length_mm"],
+                screw_supplement=price_quote["screw_supplement"],
                 precio_total=recalculated_total,
                 quantity=quantity,
                 added_at=datetime.now(timezone.utc)
@@ -4644,7 +5531,8 @@ def update_cart_item(product_id):
             alto=data.get('alto'),
             ancho=data.get('ancho'),
             anclaje=data.get('anclaje'),
-            color=data.get('color')
+            color=data.get('color'),
+            screw_option=data.get('screw_option') or DEFAULT_CONFIGURATOR_SCREW_OPTION,
         ).first()
 
         if not cart_item:
@@ -4667,7 +5555,30 @@ def update_cart_item(product_id):
             response.headers['Access-Control-Expose-Headers'] = 'Authorization'
             return response, 400
 
+        product = Products.query.get(product_id)
+        if not product:
+            response = jsonify({"message": "Producto no encontrado"})
+            response.headers['Access-Control-Allow-Origin'] = '*'
+            response.headers['Access-Control-Expose-Headers'] = 'Authorization'
+            return response, 404
+
+        price_quote = build_product_configuration_quote(
+            product=product,
+            alto=cart_item.alto,
+            ancho=cart_item.ancho,
+            anclaje=cart_item.anclaje,
+            color=cart_item.color,
+            screw_option=cart_item.screw_option,
+            quantity=quantity,
+        )
+
         cart_item.quantity = quantity
+        cart_item.precio_total = price_quote["unit_price"]
+        cart_item.anclaje = price_quote["anclaje"]
+        cart_item.color = price_quote["color"]
+        cart_item.screw_option = price_quote["screw_option"]
+        cart_item.screw_length_mm = price_quote["screw_length_mm"]
+        cart_item.screw_supplement = price_quote["screw_supplement"]
         db.session.commit()
 
         updated_cart_items = Cart.query.filter_by(usuario_id=current_user['user_id']).all()
@@ -4678,6 +5589,12 @@ def update_cart_item(product_id):
         response.headers['Access-Control-Expose-Headers'] = 'Authorization'
         return response, 200
 
+    except ValueError as e:
+        db.session.rollback()
+        response = jsonify({"message": str(e)})
+        response.headers['Access-Control-Allow-Origin'] = '*'
+        response.headers['Access-Control-Expose-Headers'] = 'Authorization'
+        return response, 400
     except Exception:
         db.session.rollback()
         logger.exception("Error updating cart item %s for user %s", product_id, current_user.get('user_id'))
@@ -4699,7 +5616,8 @@ def remove_from_cart(product_id):
             alto=data.get('alto'),
             ancho=data.get('ancho'),
             anclaje=data.get('anclaje'),
-            color=data.get('color')
+            color=data.get('color'),
+            screw_option=data.get('screw_option') or DEFAULT_CONFIGURATOR_SCREW_OPTION,
         ).first()
         if not cart_item:
             return jsonify({"message": "Producto no encontrado en el carrito con esas especificaciones"}), 404
@@ -4833,22 +5751,10 @@ def get_me():
     if not user:
         return jsonify({"message": "User not found"}), 404
 
-    return jsonify({
-        "id": user.id,
-        "email": user.email,  # solo lectura
-        "firstname": user.firstname,
-        "lastname": user.lastname,
-        "shipping_address": user.shipping_address,
-        "shipping_city": user.shipping_city,
-        "shipping_postal_code": user.shipping_postal_code,
-        "billing_address": user.billing_address,
-        "billing_city": user.billing_city,
-        "billing_postal_code": user.billing_postal_code,
-        "CIF": user.CIF,
-    }), 200
+    return jsonify(serialize_customer_profile(user)), 200
 
 
-@api.route('/me', methods=["PUT"])
+@api.route('/me', methods=["PUT", "PATCH"])
 @jwt_required()
 def update_me():
     identity = get_jwt_identity()
@@ -4858,32 +5764,41 @@ def update_me():
     if not user:
         return jsonify({"message": "User not found"}), 404
 
-    data = request.json or {}
+    data = request.get_json(silent=True)
+    if data is None:
+        data = {}
+    if not isinstance(data, dict):
+        return jsonify({
+            "message": "Los datos del perfil deben ser un objeto.",
+            "field": "profile",
+        }), 400
+
+    try:
+        profile_update = normalize_customer_profile_update(data)
+    except CustomerSnapshotValidationError as error:
+        return _customer_snapshot_validation_response(error)
 
     # 1. Cambio de contraseña usando BCRYPT
-    if "password" in data and data["password"].strip() != "":
+    password = data.get("password")
+    if password is not None and not isinstance(password, str):
+        return jsonify({
+            "message": "La contraseña debe ser texto.",
+            "field": "password",
+        }), 400
+    if isinstance(password, str) and password.strip() != "":
         # Generamos el salt y el hash con bcrypt
         salt = bcrypt.gensalt()
         # IMPORTANTE: bcrypt necesita bytes, por eso usamos .encode('utf-8')
-        hashed_password = bcrypt.hashpw(data["password"].encode('utf-8'), salt)
+        hashed_password = bcrypt.hashpw(password.encode('utf-8'), salt)
         # Guardamos el hash decodificado como string en la base de datos
         user.password = hashed_password.decode('utf-8')
 
-    # 2. Whitelist de campos (lo que ya tenías)
-    editable_fields = [
-        "firstname", "lastname", "shipping_address", 
-        "shipping_city", "shipping_postal_code", 
-        "billing_address", "billing_city", 
-        "billing_postal_code", "CIF"
-    ]
-
-    for field in editable_fields:
-        if field in data:
-            setattr(user, field, data[field])
+    for field, value in profile_update.items():
+        setattr(user, field, value)
 
     try:
         db.session.commit()
-        return jsonify({"message": "Profile updated"}), 200
+        return jsonify(serialize_customer_profile(user)), 200
     except Exception:
         db.session.rollback()
         logger.exception("Error updating profile for user %s", user_id)

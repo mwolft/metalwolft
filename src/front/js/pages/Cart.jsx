@@ -8,6 +8,10 @@ import { Link, useNavigate } from "react-router-dom";
 import { calcularEnvio } from "../../utils/shippingCalculator.js";
 import DeliveryEstimate from "../component/DeliveryEstimate.jsx";
 import { Helmet } from "react-helmet-async";
+import {
+    PRODUCT_UNAVAILABLE_MESSAGE,
+    isAvailableForSale
+} from "../utils/productLifecycle";
 
 // Funcion auxiliar para determinar tipo de envio segun SEUR
 const getShippingType = (product) => {
@@ -42,7 +46,7 @@ export const Cart = () => {
             ? process.env.REACT_APP_BACKEND_URL
             : process.env.NODE_ENV === "production"
                 ? "https://api.metalwolft.com"
-                : "https://fuzzy-space-eureka-7v7jw6jv7v5jhp945-3001.app.github.dev/";
+                : "https://solid-happiness-r475wq5477g9cpvjp-3001.app.github.dev/";
 
         fetch(`${apiBaseUrl}/api/seo/cart`)
             .then((response) => {
@@ -94,8 +98,14 @@ export const Cart = () => {
     };
 
     const { totalShipping: shippingCost, subtotal, finalTotal } = calcularEnvio(store.cart);
+    const hasUnavailableItems = store.cart.some((product) => !isAvailableForSale(product));
 
     const handleCheckout = () => {
+        if (hasUnavailableItems) {
+            setNotification("Elimina los productos no disponibles antes de continuar.");
+            return;
+        }
+
         navigate("/checkout-form");
     };
 
@@ -147,7 +157,7 @@ export const Cart = () => {
                 ? process.env.REACT_APP_BACKEND_URL
                 : process.env.NODE_ENV === "production"
                     ? "https://api.metalwolft.com"
-                    : "https://fuzzy-space-eureka-7v7jw6jv7v5jhp945-3001.app.github.dev/";
+                    : "https://solid-happiness-r475wq5477g9cpvjp-3001.app.github.dev/";
 
             const payload = {
                 cart: store.cart.map(item => ({
@@ -348,6 +358,12 @@ export const Cart = () => {
                                                             {product.nombre}
                                                         </Link>
 
+                                                        {!isAvailableForSale(product) && (
+                                                            <p className="alert alert-warning mt-2 mb-0" role="status">
+                                                                {PRODUCT_UNAVAILABLE_MESSAGE}
+                                                            </p>
+                                                        )}
+
                                                         {shippingInfo.tipo !== "normal" && (
                                                             <>
                                                                 <p className="d-none d-md-block text-warning mt-1" style={{ fontSize: "0.85rem" }}>
@@ -517,6 +533,7 @@ export const Cart = () => {
                                     <Button
                                         className="btn-style-background-color w-100 mt-4"
                                         onClick={handleCheckout}
+                                        disabled={hasUnavailableItems}
                                         style={{ minHeight: "52px", fontWeight: 600, fontSize: "1rem" }}
                                     >
                                         Continuar al pago seguro

@@ -1,0 +1,53 @@
+{
+  "schema_version": 2,
+  "product_id": 0,
+  "dimensions": {
+    "alto": { "min_cm": 30, "max_cm": 250 },
+    "ancho": { "min_cm": 30, "max_cm": 250 },
+    "max_sum_cm": 400
+  },
+  "anchorages": [
+    {
+      "value": "Sin obra: con agujeros interiores",
+      "name": "Agujeros interiores",
+      "label": "Sin obra: con agujeros interiores",
+      "description": "Instalación sin obra mediante agujeros interiores.",
+      "supplement": 0,
+      "enabled": true
+    },
+    {
+      "value": "Sin obra: con pletinas",
+      "name": "Pletinas",
+      "label": "Sin obra: con pletinas",
+      "description": "Instalación sin obra mediante pletinas.",
+      "supplement": 24.95,
+      "enabled": true
+    },
+    {
+      "value": "Con obra: con garras metálicas",
+      "name": "Garras metálicas",
+      "label": "Con obra: con garras metálicas",
+      "description": "Instalación con obra mediante garras metálicas.",
+      "supplement": 39.95,
+      "enabled": false
+    }
+  ],
+  "colors": [
+    { "value": "satinado_blanco", "name": "Blanco", "label": "Blanco liso", "finish": "liso", "finish_label": "Satinado liso", "enabled": true },
+    { "value": "satinado_negro", "name": "Negro", "label": "Negro liso", "finish": "liso", "finish_label": "Satinado liso", "enabled": true },
+    { "value": "satinado_gris", "name": "Gris medio", "label": "Gris medio liso", "finish": "liso", "finish_label": "Satinado liso", "enabled": true },
+    { "value": "satinado_verde", "name": "Verde carruajes", "label": "Verde carruajes liso", "finish": "liso", "finish_label": "Satinado liso", "enabled": true },
+    { "value": "forja_negro", "name": "Negro", "label": "Negro forja", "finish": "forja", "finish_label": "Efecto forja", "enabled": true },
+    { "value": "forja_gris", "name": "Gris acero", "label": "Gris acero forja", "finish": "forja", "finish_label": "Efecto forja", "enabled": true },
+    { "value": "forja_marron", "name": "Marrón castaño", "label": "Marrón castaño forja", "finish": "forja", "finish_label": "Efecto forja", "enabled": true },
+    { "value": "forja_azul", "name": "Azul", "label": "Azul forja", "finish": "forja", "finish_label": "Efecto forja", "enabled": true },
+    { "value": "forja_verde", "name": "Verde bronce", "label": "Verde bronce forja", "finish": "forja", "finish_label": "Efecto forja", "enabled": true },
+    { "value": "forja_dorado", "name": "Dorado", "label": "Dorado forja", "finish": "forja", "finish_label": "Efecto forja", "enabled": true }
+  ],
+  "screw_options": {},
+  "defaults": {
+    "anchorage": "Sin obra: con agujeros interiores",
+    "color": "satinado_blanco",
+    "screw_option": "standard"
+  }
+}

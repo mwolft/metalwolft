@@ -1,4 +1,4 @@
-import React, { useContext, useEffect, useRef, useState } from 'react';
+﻿import React, { useContext, useEffect, useRef, useState } from 'react';
 import { loadStripe } from '@stripe/stripe-js';
 import { Elements, CardElement, useStripe, useElements } from '@stripe/react-stripe-js';
 import { Context } from "../store/appContext";
@@ -13,6 +13,7 @@ const stripePromise = loadStripe('pk_live_51I1FgUDyMBNofWjFzagO0jTrkfQBvlt5Pshx3
 const CHECKOUT_PROFILE_FIELDS = [
     "firstname",
     "lastname",
+    "legal_name",
     "phone",
     "shipping_address",
     "shipping_city",
@@ -26,6 +27,7 @@ const CHECKOUT_PROFILE_FIELDS = [
 const EMPTY_CHECKOUT_FORM = {
     firstname: "",
     lastname: "",
+    legal_name: "",
     phone: "",
     shipping_address: "",
     shipping_city: "",
@@ -59,6 +61,7 @@ const CheckoutForm = () => {
     });
     const hasAutofilledSavedDataRef = useRef(false);
     const hasUserEditedCheckoutRef = useRef(false);
+    const hasUserEditedLegalNameRef = useRef(false);
     const navigate = useNavigate();
     const backendUrl = process.env.REACT_APP_BACKEND_URL || "";
     const paypalClientId = process.env.REACT_APP_PAYPAL_CLIENT_ID || "";
@@ -246,6 +249,11 @@ const CheckoutForm = () => {
     };
 
     const normalizePostalCodeValue = (value) => String(value || "").trim();
+    const buildLegalName = (firstname, lastname) => [firstname, lastname]
+        .map((value) => String(value || "").trim())
+        .filter(Boolean)
+        .join(" ")
+        .trim();
 
     const getPostalCodeValidationMessage = (postalCode, { checkShippingRestriction = false } = {}) => {
         const normalizedPostalCode = normalizePostalCodeValue(postalCode);
@@ -312,6 +320,7 @@ const CheckoutForm = () => {
     const buildCheckoutPrefillData = (userData = {}) => ({
         firstname: userData.firstname || "",
         lastname: userData.lastname || "",
+        legal_name: userData.legal_name || buildLegalName(userData.firstname || "", userData.lastname || ""),
         phone: userData.phone || "",
         shipping_address: normalizeSameAsBillingValue(userData.shipping_address),
         shipping_city: normalizeSameAsBillingValue(userData.shipping_city),
@@ -380,6 +389,8 @@ const CheckoutForm = () => {
             return nextData;
         });
 
+        hasUserEditedLegalNameRef.current = Boolean(sourceUser.legal_name);
+
         setDifferentBilling(useDifferentShipping);
         setShowSavedDataNotice(true);
         hasAutofilledSavedDataRef.current = true;
@@ -388,9 +399,27 @@ const CheckoutForm = () => {
     const handleInputChange = (e) => {
         const { name, value } = e.target;
         hasUserEditedCheckoutRef.current = true;
-        setFormData({
-            ...formData,
-            [name]: value
+        if (name === "legal_name") {
+            hasUserEditedLegalNameRef.current = true;
+        }
+
+        setFormData((prevData) => {
+            const nextData = {
+                ...prevData,
+                [name]: value
+            };
+
+            if (
+                (name === "firstname" || name === "lastname") &&
+                !hasUserEditedLegalNameRef.current
+            ) {
+                nextData.legal_name = buildLegalName(
+                    name === "firstname" ? value : nextData.firstname,
+                    name === "lastname" ? value : nextData.lastname
+                );
+            }
+
+            return nextData;
         });
 
         if (
@@ -414,6 +443,7 @@ const CheckoutForm = () => {
         const requiredFields = [
             "firstname",
             "lastname",
+            "legal_name",
             "phone",
             "billing_address",
             "billing_city",
@@ -482,7 +512,6 @@ const CheckoutForm = () => {
             }
         }
 
-        await actions.clearCart();
         navigate(buildThankYouUrl(paymentIntentId, checkoutToken));
     };
 
@@ -565,7 +594,8 @@ const CheckoutForm = () => {
 
             if (!response.ok) {
                 console.error("Error en la respuesta del backend al crear el PaymentIntent.", response.statusText, data);
-                alert("Error al crear el PaymentIntent. Por favor, intentalo nuevamente.");
+                const backendErrorMessage = data?.message || data?.error;
+                alert(backendErrorMessage || "Error al crear el PaymentIntent. Por favor, intentalo nuevamente.");
                 return;
             }
 
@@ -838,6 +868,21 @@ const CheckoutForm = () => {
                                             />
                                             {errors.lastname && (
                                                 <p className="text-danger" style={checkoutErrorStyle}>{errors.lastname}</p>
+                                            )}
+                                        </Form.Group>
+                                    </Col>
+                                    <Col md={12}>
+                                        <Form.Group className="mb-0">
+                                            <Form.Label style={checkoutLabelStyle}>Nombre fiscal / Razón social</Form.Label>
+                                            <Form.Control
+                                                name="legal_name"
+                                                placeholder="Nombre fiscal / Razón social"
+                                                onChange={handleInputChange}
+                                                value={formData.legal_name}
+                                                style={checkoutInputStyle}
+                                            />
+                                            {errors.legal_name && (
+                                                <p className="text-danger" style={checkoutErrorStyle}>{errors.legal_name}</p>
                                             )}
                                         </Form.Group>
                                     </Col>

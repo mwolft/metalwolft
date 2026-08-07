@@ -1,4 +1,5 @@
 import { authenticatedFetch } from '../../utils/authenticatedFetch';
+import { isAvailableForSale } from '../utils/productLifecycle';
 
 const getStoredUserSnapshot = () => {
     try {
@@ -422,6 +423,10 @@ const getState = ({ getStore, getActions, setStore }) => {
             addToCart: async (product) => {
                 const store = getStore();
                 const actions = getActions();
+
+                if (!isAvailableForSale(product)) {
+                    return;
+                }
 
                 if (!store.isLoged) {
                     alert("Debe estar logueado para añadir productos al carrito");

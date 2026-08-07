@@ -1,5 +1,6 @@
 from flask import Blueprint, jsonify
 from api.models import Products, Categories 
+from api.product_lifecycle import publicly_accessible_products_query
 from datetime import datetime, timezone
 import logging 
 
@@ -129,7 +130,10 @@ def seo_product_new(category_slug, product_slug):
             return jsonify({"message": "Category not found for SEO"}), 404
 
         # 2. Obtener producto
-        product = Products.query.filter_by(slug=product_slug, categoria_id=category.id).first()
+        product = publicly_accessible_products_query().filter_by(
+            slug=product_slug,
+            categoria_id=category.id,
+        ).first()
         if not product:
             logger.warning(f"SEO: Product not found for slug: {product_slug} in category: {category_slug}")
             return jsonify({"message": "Product not found for SEO"}), 404
@@ -226,82 +230,10 @@ def seo_product_new(category_slug, product_slug):
                     ]
                 ),
                 "sku": product.slug,
-                "mpn": str(product.id),
                 "brand": {
                     "@type": "Brand",
                     "name": "Metal Wolft"
-                },
-                "offers": {
-                    "@type": "Offer",
-                    "priceCurrency": "EUR",
-                    "price": product.precio_rebajado or product.precio,
-                    "availability": "https://schema.org/InStock",
-                    "url": product_full_url,
-                    "itemCondition": "https://schema.org/NewCondition",
-                    "priceValidUntil": "2025-12-31",
-                    "seller": {
-                        "@type": "Organization",
-                        "name": "Metal Wolft"
-                    },
-                    "hasMerchantReturnPolicy": {
-                        "@type": "MerchantReturnPolicy",
-                        "applicableCountry": "ES",
-                        "returnPolicyCategory": "https://schema.org/MerchantReturnFiniteReturnWindow",
-                        "merchantReturnDays": 7,
-                        "returnMethod": "https://schema.org/ReturnByMail",
-                        "returnFees": "https://schema.org/FreeReturn",
-                        "refundType": "https://schema.org/FullRefund"
-                    },
-                    "shippingDetails": {
-                        "@type": "OfferShippingDetails",
-                        "shippingRate": {
-                            "@type": "MonetaryAmount",
-                            "value": "0.00",
-                            "currency": "EUR"
-                        },
-                        "shippingDestination": {
-                            "@type": "DefinedRegion",
-                            "addressCountry": "ES"
-                        },
-                        "deliveryTime": {
-                            "@type": "ShippingDeliveryTime",
-                            "handlingTime": {
-                                "@type": "QuantitativeValue",
-                                "minValue": 30,
-                                "maxValue": 30,
-                                "unitCode": "d"
-                            },
-                            "transitTime": {
-                                "@type": "QuantitativeValue",
-                                "minValue": 1,
-                                "maxValue": 2,
-                                "unitCode": "d"
-                            }
-                        }
-                    }
-                },
-                "aggregateRating": {
-                    "@type": "AggregateRating",
-                    "ratingValue": "4.7",
-                    "reviewCount": 12
-                },
-                "review": [
-                    {
-                        "@type": "Review",
-                        "author": {
-                            "@type": "Person",
-                            "name": "Cliente verificado"
-                        },
-                        "datePublished": "2024-12-01",
-                        "reviewBody": "Reja muy resistente y fácil de instalar. Llegó en buen estado.",
-                        "name": "Muy satisfecho con la compra",
-                        "reviewRating": {
-                            "@type": "Rating",
-                            "ratingValue": "5",
-                            "bestRating": "5"
-                        }
-                    }
-                ]
+                }
             }
         }
 

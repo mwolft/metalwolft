@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import {
   List,
   TextField,
@@ -16,8 +16,10 @@ import {
   useListContext,
   RecordContextProvider,
   useRecordContext,
+  useNotify,
+  useRefresh,
 } from "react-admin";
-import { FaFileAlt } from "react-icons/fa";
+import { FaFileAlt, FaFileInvoice } from "react-icons/fa";
 
 const ORDER_STATUS_CHOICES = [
   { id: "pendiente", name: "Pendiente" },
@@ -40,6 +42,12 @@ const getOrderRecords = (data, ids) => {
   return Object.values(data || {});
 };
 
+const getBackendUrl = () => process.env.REACT_APP_BACKEND_URL || "http://localhost:3001";
+
+const ADMIN_TOKEN_STORAGE_KEY = "mw_admin_token";
+
+const getAdminToken = () => localStorage.getItem(ADMIN_TOKEN_STORAGE_KEY);
+
 const WorkOrderButton = () => {
   const record = useRecordContext();
 
@@ -49,7 +57,7 @@ const WorkOrderButton = () => {
       return;
     }
 
-    const token = localStorage.getItem("token");
+    const token = getAdminToken();
     if (!token) {
       alert("Debes iniciar sesion para descargar el parte de trabajo.");
       return;
@@ -74,7 +82,7 @@ const WorkOrderButton = () => {
         }
 
         const data = await response.json().catch(() => null);
-        throw new Error(data?.message || "No se pudo descargar el parte de trabajo.");
+        throw new Error(data?.message || data?.error || "No se pudo descargar el parte de trabajo.");
       }
 
       const blob = await response.blob();
@@ -105,6 +113,84 @@ const WorkOrderButton = () => {
       className="admin-action-button admin-action-button--primary"
     >
       <FaFileAlt /> Parte de trabajo
+    </button>
+  );
+};
+
+const IssueInvoiceButton = () => {
+  const record = useRecordContext();
+  const notify = useNotify();
+  const refresh = useRefresh();
+  const [isIssuing, setIsIssuing] = useState(false);
+
+  const handleIssueInvoice = async () => {
+    if (isIssuing) {
+      return;
+    }
+
+    if (!record?.id) {
+      notify("No se encontro informacion para este pedido.", { type: "warning" });
+      return;
+    }
+
+    if (record.invoice_number) {
+      notify(`Este pedido ya tiene factura ${record.invoice_number}.`, { type: "info" });
+      return;
+    }
+
+    const confirmed = window.confirm(
+      `Emitir una factura ordinaria para el pedido ${record.locator || record.id}?`
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    const token = getAdminToken();
+    if (!token) {
+      notify("Debes iniciar sesion para emitir facturas.", { type: "warning" });
+      return;
+    }
+
+    setIsIssuing(true);
+
+    try {
+      const response = await fetch(`${getBackendUrl()}/api/admin/orders/${record.id}/issue-invoice`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      const data = await response.json().catch(() => null);
+
+      if (!response.ok) {
+        throw new Error(data?.message || data?.error || "No se pudo emitir la factura.");
+      }
+
+      notify(`Factura ${data?.invoice_number || ""} emitida correctamente.`, { type: "success" });
+      refresh();
+    } catch (error) {
+      notify(error.message || "No se pudo emitir la factura.", { type: "error" });
+    } finally {
+      setIsIssuing(false);
+    }
+  };
+
+  if (record?.invoice_number) {
+    return null;
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={(event) => {
+        event.stopPropagation();
+        handleIssueInvoice();
+      }}
+      disabled={isIssuing}
+      className="admin-action-button admin-action-button--success"
+    >
+      <FaFileInvoice /> {isIssuing ? "Emitiendo..." : "Emitir factura"}
     </button>
   );
 };
@@ -164,6 +250,7 @@ const OrderListTable = () => {
                 <td>
                   <div className="admin-action-group">
                     <WorkOrderButton />
+                    <IssueInvoiceButton />
                     <EditButton className="admin-ra-button admin-ra-button--secondary" />
                     <DeleteButton className="admin-ra-button admin-ra-button--danger" />
                   </div>
@@ -191,6 +278,9 @@ export const OrderEdit = (props) => (
       <TextInput disabled source="order_date" label="Fecha de pedido" fullWidth />
       <TextInput disabled source="invoice_number" label="Numero de factura" fullWidth />
       <TextInput disabled source="locator" label="Localizador" fullWidth />
+      <div className="admin-action-group admin-action-group--form">
+        <IssueInvoiceButton />
+      </div>
 
       <h4 className="admin-form-section-title">Gestion operativa</h4>
 

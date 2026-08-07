@@ -10,7 +10,7 @@ export const ReturnsPolicy = () => {
             ? process.env.REACT_APP_BACKEND_URL
             : process.env.NODE_ENV === "production"
                 ? "https://api.metalwolft.com"
-                : "https://fuzzy-space-eureka-7v7jw6jv7v5jhp945-3001.app.github.dev/";
+                : "https://solid-happiness-r475wq5477g9cpvjp-3001.app.github.dev/";
 
         fetch(`${apiBaseUrl}/api/seo/politica-devolucion`)
             .then(res => {
@@ -161,7 +161,7 @@ export const ReturnsPolicy = () => {
                     Una vez en proceso, no será posible su anulación debido al carácter personalizado del producto.
                 </p>
                 <hr className="my-4" />
-                
+
                 <div className="mt-4 mb-5">
                     <h2 className="h2-categories mb-3">Enlaces relacionados</h2>
                     <ul>

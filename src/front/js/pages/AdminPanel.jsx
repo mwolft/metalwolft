@@ -29,6 +29,9 @@ const adminNavItems = [
   { to: "/admin/invoices", label: "Facturas", icon: <FaFileInvoice size={16} /> },
 ];
 
+const ADMIN_TOKEN_STORAGE_KEY = "mw_admin_token";
+const ADMIN_USER_STORAGE_KEY = "mw_admin_user";
+
 const AdminResourceNav = () => (
   <nav className="admin-resource-nav" aria-label="Secciones del panel de administracion">
     {adminNavItems.map((item) => (
@@ -52,9 +55,9 @@ const AdminPanel = () => {
   const [hasAccess, setHasAccess] = useState(false);
 
   useEffect(() => {
-    const token = localStorage.getItem("token");
-    const user = localStorage.getItem("user")
-      ? JSON.parse(localStorage.getItem("user"))
+    const token = localStorage.getItem(ADMIN_TOKEN_STORAGE_KEY);
+    const user = localStorage.getItem(ADMIN_USER_STORAGE_KEY)
+      ? JSON.parse(localStorage.getItem(ADMIN_USER_STORAGE_KEY))
       : null;
 
     if (!token || !user || !user.is_admin) {

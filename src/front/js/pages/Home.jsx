@@ -22,7 +22,7 @@ export const Home = () => {
                     }
                 });
             },
-            { threshold: 0.2}
+            { threshold: 0.2 }
         );
         const sections = document.querySelectorAll(".section");
         sections.forEach(section => observer.observe(section));
@@ -34,7 +34,7 @@ export const Home = () => {
             ? process.env.REACT_APP_BACKEND_URL
             : process.env.NODE_ENV === "production"
                 ? "https://api.metalwolft.com"
-                : "https://fuzzy-space-eureka-7v7jw6jv7v5jhp945-3001.app.github.dev/";
+                : "https://solid-happiness-r475wq5477g9cpvjp-3001.app.github.dev/";
 
         fetch(`${apiBaseUrl}/api/seo/home`)
             .then((response) => {

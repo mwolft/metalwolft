@@ -6,6 +6,10 @@ import { Helmet } from "react-helmet-async";
 
 const PENDING_PRODUCT_CONFIG_STORAGE_KEY = "mw_pending_product_config";
 const PENDING_PRODUCT_CONFIG_MAX_AGE_MS = 30 * 60 * 1000;
+const CUSTOMER_TOKEN_STORAGE_KEY = "mw_customer_token";
+const CUSTOMER_USER_STORAGE_KEY = "mw_customer_user";
+const ADMIN_TOKEN_STORAGE_KEY = "mw_admin_token";
+const ADMIN_USER_STORAGE_KEY = "mw_admin_user";
 
 const getPendingProductReturnTo = () => {
   if (typeof window === "undefined") return null;
@@ -111,17 +115,34 @@ export const Login = () => {
       }
 
       if (data.access_token && data.results) {
-        localStorage.setItem("token", data.access_token);
-        localStorage.setItem("user", JSON.stringify(data.results));
-        actions.setCurrentUser(data.results);
-        actions.setIsLoged(true);
+        const serializedUser = JSON.stringify(data.results);
+        const isAdmin = data.results.is_admin === true;
         const pendingProductReturnTo = getPendingProductReturnTo();
 
-        if (data.results.is_admin) {
-          navigate("/admin");
+        if (isAdmin) {
+          localStorage.setItem(ADMIN_TOKEN_STORAGE_KEY, data.access_token);
+          localStorage.setItem(ADMIN_USER_STORAGE_KEY, serializedUser);
+          localStorage.removeItem(CUSTOMER_TOKEN_STORAGE_KEY);
+          localStorage.removeItem(CUSTOMER_USER_STORAGE_KEY);
+          localStorage.removeItem("token");
+          localStorage.removeItem("user");
+          actions.setCurrentUser(null);
+          navigate("/admin/users");
         } else if (pendingProductReturnTo) {
+          localStorage.setItem(CUSTOMER_TOKEN_STORAGE_KEY, data.access_token);
+          localStorage.setItem(CUSTOMER_USER_STORAGE_KEY, serializedUser);
+          localStorage.setItem("token", data.access_token);
+          localStorage.setItem("user", serializedUser);
+          actions.setCurrentUser(data.results);
+          actions.setIsLoged(true);
           navigate(pendingProductReturnTo);
         } else {
+          localStorage.setItem(CUSTOMER_TOKEN_STORAGE_KEY, data.access_token);
+          localStorage.setItem(CUSTOMER_USER_STORAGE_KEY, serializedUser);
+          localStorage.setItem("token", data.access_token);
+          localStorage.setItem("user", serializedUser);
+          actions.setCurrentUser(data.results);
+          actions.setIsLoged(true);
           navigate("/");
         }
       } else {

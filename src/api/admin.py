@@ -1,6 +1,7 @@
 import os
-from flask import request, Response, current_app
+from flask import request, Response, current_app, send_file, flash, redirect
 from flask_admin import Admin, AdminIndexView, expose
+from flask_admin.actions import action
 from markupsafe import Markup
 from flask_admin.contrib.sqla import ModelView
 from wtforms.fields import SelectField, StringField, DateField, TextAreaField
@@ -8,11 +9,74 @@ from .models import (
     db, Users, Products, ProductImages,
     Categories, Subcategories, Cart,
     Orders, OrderDetails, Favorites,
-    Posts, Comments, Invoices, DeliveryEstimateConfig
+    Posts, Comments, Invoices, VeriFactuRecord, DeliveryEstimateConfig,
+    AccountingEntry
 )
+from api.accounting_excel_service import (
+    AccountingExcelExportError,
+    export_sales_accounting_entries,
+)
+from api.aeat_sales_ledger_service import (
+    AeatSalesLedgerError,
+    export_aeat_sales_ledger,
+)
+from api.flask_mail_invoice_adapter import FlaskMailInvoiceAdapter, FlaskMailInvoiceAdapterError
 from api.email_routes import send_order_status_email
+from api.invoice_accounting_service import (
+    AccountingEntryIntegrityError,
+    AccountingEntryUnsupportedSchema,
+    AccountingEntryValidationError,
+    create_accounting_entry,
+)
+from api.invoice_pdf_download_service import (
+    InvoicePdfDownloadFileMissing,
+    InvoicePdfDownloadInvalidPath,
+    InvoicePdfDownloadUnavailable,
+    resolve_invoice_pdf_download,
+)
+from api.invoice_pdf_service import (
+    InvoicePdfIntegrityError,
+    InvoicePdfSnapshotMissing,
+    InvoicePdfUnsupportedSchema,
+    InvoicePdfWriteError,
+    generate_invoice_pdf,
+)
+from api.invoice_email_service import (
+    EMAIL_STATUS_FAILED,
+    EMAIL_STATUS_SENT,
+    InvoiceEmailIntegrityError,
+    InvoiceEmailPdfMissing,
+    InvoiceEmailRecipientMissing,
+    InvoiceEmailSendError,
+    InvoiceEmailSnapshotMissing,
+    InvoiceEmailUnsupportedSchema,
+    send_invoice_email as send_invoice_email_v2,
+)
+from api.utils import mail
+from api.invoice_admin_helpers import (
+    build_invoice_issuer_from_config,
+    invoice_admin_actor_from_basic_auth,
+    select_checkout_session_for_invoice,
+)
+from api.invoice_issue_service import (
+    ORDINARY_INVOICE_TYPE,
+    InvoiceIssueError,
+    InvoiceNumberError,
+    issue_invoice_for_order,
+)
+from api.invoice_snapshot_builder import InvoiceSnapshotValidationError
+from api.verifactu_record_service import (
+    VeriFactuRecordConcurrencyError,
+    VeriFactuRecordIntegrityError,
+    VeriFactuRecordUnsupportedSchema,
+    VeriFactuRecordValidationError,
+    create_verifactu_registration_record,
+    prepare_verifactu_record_for_submission,
+    verifactu_system_identity_from_config,
+)
 from datetime import timedelta
 from sqlalchemy import inspect 
+from sqlalchemy.exc import IntegrityError
 
 
 # Credenciales desde ENV
@@ -278,7 +342,23 @@ class ProductAdminView(SafeModelView):
     column_sortable_list = ('id', 'sort_order', 'nombre', 'precio', 'precio_rebajado', 'categoria_id')  # 👈 AÑADIDO
 
     column_searchable_list = ('nombre',)
-    column_filters = ('categoria_id',)
+    column_filters = ('categoria_id', 'published', 'available_for_sale')
+    column_labels = {
+        'published': 'Publicado',
+        'available_for_sale': 'Disponible para venta',
+    }
+    form_args = {
+        'published': {
+            'label': 'Publicado',
+            'description': 'Determina si la ficha pública existe y puede aparecer en el sitemap.',
+            'default': True,
+        },
+        'available_for_sale': {
+            'label': 'Disponible para venta',
+            'description': 'Determina si puede aparecer en catálogos y aceptar nuevos pedidos.',
+            'default': True,
+        },
+    }
     page_size = 50
     can_set_page_size = True
 
@@ -299,6 +379,8 @@ class ProductAdminView(SafeModelView):
         'has_door_model',
         'es_mas_vendido',
         'es_nuevo_diseno',
+        'published',
+        'available_for_sale',
         'imagen'
     ]
 
@@ -357,6 +439,33 @@ class ProductAdminView(SafeModelView):
         form.categoria_id.choices = [(c.id, c.nombre) for c in Categories.query.all()]
         return form
 
+    def on_model_change(self, form, model, is_created):
+        if not model.published and model.available_for_sale:
+            model.available_for_sale = False
+            flash(
+                'Al despublicar el producto también se ha desactivado su disponibilidad para venta.',
+                'warning',
+            )
+
+        return super().on_model_change(form, model, is_created)
+
+    def handle_view_exception(self, exc):
+        if isinstance(exc, IntegrityError) and (
+            'ck_products_published_available_for_sale'
+            in str(getattr(exc, 'orig', ''))
+        ):
+            current_app.logger.warning(
+                'Product lifecycle constraint rejected an administrative update.',
+                exc_info=True,
+            )
+            flash(
+                'Un producto no publicado no puede estar disponible para la venta.',
+                'error',
+            )
+            return True
+
+        return super().handle_view_exception(exc)
+
     column_formatters = {
         'descripcion': lambda v, c, m, p: (m.descripcion[:30] + '…') if m.descripcion and len(m.descripcion) > 30 else (m.descripcion or ''),
         'descripcion_seo': lambda v, c, m, p: (m.descripcion_seo[:30] + '…') if m.descripcion_seo and len(m.descripcion_seo) > 30 else (m.descripcion_seo or ''),
@@ -365,14 +474,62 @@ class ProductAdminView(SafeModelView):
     }
 
 
+def _find_order_ordinary_invoice(view, order):
+    return (
+        view.session.query(Invoices)
+        .filter(
+            Invoices.order_id == order.id,
+            Invoices.invoice_type == ORDINARY_INVOICE_TYPE,
+        )
+        .order_by(Invoices.id.asc())
+        .first()
+    )
+
+
+def _format_order_invoice_detail(view, context, model, name):
+    invoice = _find_order_ordinary_invoice(view, model)
+    if invoice:
+        return Markup("<span>Factura emitida: {}</span>").format(invoice.invoice_number)
+
+    legacy_invoice_number = getattr(model, name, None)
+    legacy_notice = (
+        Markup('<div class="text-muted">Número legacy en pedido: {}</div>').format(legacy_invoice_number)
+        if legacy_invoice_number
+        else Markup('<div class="text-muted">Sin factura fiscal emitida.</div>')
+    )
+    action_url = view.get_url(".issue_invoice", order_id=model.id)
+    confirmation = "Se asignará un número fiscal y la factura emitida será inmutable. ¿Continuar?"
+
+    return Markup(
+        '<div class="order-invoice-admin-action">'
+        "{legacy_notice}"
+        '<form method="post" action="{action_url}" style="margin-top: 8px;" '
+        'onsubmit="return confirm(\'{confirmation}\');">'
+        '<button type="submit" class="btn btn-success btn-sm">Emitir factura</button>'
+        "</form>"
+        "</div>"
+    ).format(
+        legacy_notice=legacy_notice,
+        action_url=action_url,
+        confirmation=confirmation,
+    )
+
+
+def _admin_issue_invoice_success_message(result):
+    if result.created:
+        return f"Factura {result.invoice_number} emitida correctamente."
+    return f"El pedido ya tenía emitida la factura {result.invoice_number}."
+
+
 class OrderAdminView(SafeModelView):
+    can_view_details = True
+
     form_columns = [
         'user_id',
         'total_amount',
         'discount_code',
         'discount_value',
         'order_date',
-        'invoice_number',
         'locator',
         'order_status',
         'estimated_delivery_at',
@@ -393,6 +550,7 @@ class OrderAdminView(SafeModelView):
         'estimated_delivery_at',
         'estimated_delivery_note',
     ]
+    column_details_list = column_list
 
     column_editable_list = ['total_amount', 'order_status']
     column_searchable_list = ['invoice_number', 'locator', 'discount_code']
@@ -426,9 +584,12 @@ class OrderAdminView(SafeModelView):
             m.estimated_delivery_at.strftime("%d/%m/%Y") if m.estimated_delivery_at else '—'
         ),
     }
+    column_formatters_detail = {
+        **column_formatters,
+        'invoice_number': _format_order_invoice_detail,
+    }
 
     form_extra_fields = {
-        'invoice_number': StringField('Número de Factura', render_kw={'readonly': True}),
         'locator': StringField('Localizador', render_kw={'readonly': True}),
         'order_status': SelectField(
             'Estado del Pedido',
@@ -455,11 +616,75 @@ class OrderAdminView(SafeModelView):
 
     def create_form(self, obj=None):
         form = super().create_form(obj)
-        if not form.invoice_number.data:
-            form.invoice_number.data = Orders.generate_next_invoice_number()
         if not form.locator.data:
             form.locator.data = Orders.generate_locator()
         return form
+
+    @expose('/issue-invoice/<int:order_id>', methods=['POST'])
+    def issue_invoice(self, order_id):
+        order = self.session.get(Orders, order_id)
+        if not order:
+            flash('Pedido no encontrado.', 'error')
+            return redirect(self.get_url(".index_view"))
+
+        redirect_url = self.get_url(".details_view", id=order.id)
+        request_data = request.get_json(silent=True) if request.is_json else None
+        if request.args or request.form or (
+            request_data is not None and (not isinstance(request_data, dict) or request_data)
+        ):
+            flash('Esta acción no acepta datos fiscales desde el navegador.', 'error')
+            return redirect(redirect_url)
+
+        checkout_session, invoiceability_error = select_checkout_session_for_invoice(order)
+        if invoiceability_error:
+            flash(invoiceability_error, 'error')
+            return redirect(redirect_url)
+
+        try:
+            result = issue_invoice_for_order(
+                db_session=self.session,
+                checkout_session=checkout_session,
+                issuer=build_invoice_issuer_from_config(),
+                order=order,
+                source="manual",
+                actor=invoice_admin_actor_from_basic_auth(request.authorization),
+            )
+            flash(_admin_issue_invoice_success_message(result), 'success' if result.created else 'info')
+        except InvoiceIssueError:
+            current_app.logger.warning(
+                "Flask Admin invoice issue requested for missing order_id=%s",
+                order_id,
+            )
+            flash('Pedido no encontrado.', 'error')
+        except InvoiceSnapshotValidationError as exc:
+            current_app.logger.exception(
+                "Invalid Flask Admin invoice issue request for order_id=%s",
+                order_id,
+            )
+            if getattr(exc, "field", "") == "issuer":
+                flash('La configuración fiscal del emisor no está completa.', 'error')
+            else:
+                flash('No se puede emitir la factura para este pedido.', 'error')
+        except InvoiceNumberError:
+            current_app.logger.exception(
+                "Flask Admin invoice number allocation failed for order_id=%s",
+                order_id,
+            )
+            flash('No se ha podido reservar un número de factura.', 'error')
+        except IntegrityError:
+            current_app.logger.exception(
+                "Flask Admin ordinary invoice conflict for order_id=%s",
+                order_id,
+            )
+            flash('Ya existe una factura ordinaria para este pedido.', 'error')
+        except Exception:
+            current_app.logger.exception(
+                "Unexpected Flask Admin invoice issue error for order_id=%s",
+                order_id,
+            )
+            flash('No se ha podido emitir la factura.', 'error')
+
+        return redirect(redirect_url)
 
 
     # Hook para evitar errores al borrar por FK: eliminar detalles primero
@@ -573,29 +798,952 @@ class FavoritesAdminView(SafeModelView):
     can_edit = False
 
 
-class InvoiceAdminView(SafeModelView):
-    form_columns = ['invoice_number','client_name','client_address','client_cif','amount','order_id','created_at']
-    column_list    = ['id','invoice_number','client_name','amount','created_at','order_id']
-    column_editable_list = ['client_name','client_address','client_cif','amount']
-    form_extra_fields = {
-        'invoice_number': StringField('Número de Factura', render_kw={'readonly': True})
-    }
+def _format_admin_invoice_nullable(value):
+    return value if value not in (None, "") else "—"
 
-    column_formatters = {
-        'amount': lambda v, c, m, p: f"{m.amount:.2f}€" if m.amount is not None else "0.00€",
-        'created_at': lambda v, c, m, p: (
-            (m.created_at + timedelta(hours=2)).strftime("%d/%m %H:%M") if m.created_at else ''
+
+def _format_admin_invoice_value(view, context, model, name):
+    return _format_admin_invoice_nullable(getattr(model, name, None))
+
+
+def _format_admin_invoice_amount(view, context, model, name):
+    value = getattr(model, name, None)
+    if value is None:
+        return "—"
+    try:
+        return f"{value:.2f}€"
+    except (TypeError, ValueError):
+        return str(value)
+
+
+def _format_admin_invoice_datetime(view, context, model, name):
+    value = getattr(model, name, None)
+    if not value:
+        return "—"
+    if hasattr(value, "strftime"):
+        return (value + timedelta(hours=2)).strftime("%d/%m/%Y %H:%M")
+    return str(value)
+
+
+def _format_admin_invoice_pdf_available(view, context, model, name):
+    if not getattr(model, name, None):
+        return "—"
+    download_url = view.get_url(".download_pdf", invoice_id=model.id)
+    return Markup('<a href="{}">Descargar PDF</a>').format(download_url)
+
+
+def _format_admin_invoice_pdf_detail(view, context, model, name):
+    has_pdf = bool(getattr(model, name, None))
+    status = _format_admin_invoice_pdf_available(view, context, model, name) if has_pdf else Markup("PDF pendiente")
+    action_url = view.get_url(".generate_pdf", invoice_id=model.id)
+    button_label = "Regenerar PDF" if has_pdf else "Generar PDF"
+    confirm_attr = (
+        Markup(' onsubmit="return confirm(\'¿Seguro que quieres regenerar el PDF existente?\');"')
+        if has_pdf
+        else Markup("")
+    )
+
+    return Markup(
+        '<div class="invoice-pdf-admin-action">'
+        '<div>{status}</div>'
+        '<form method="post" action="{action_url}" style="margin-top: 8px;"{confirm_attr}>'
+        '<button type="submit" class="btn btn-warning btn-sm">{button_label}</button>'
+        '</form>'
+        '</div>'
+    ).format(
+        status=status,
+        action_url=action_url,
+        confirm_attr=confirm_attr,
+        button_label=button_label,
+    )
+
+
+def _admin_invoice_pdf_success_message(*, regenerate, previous_pdf_path, result):
+    if not regenerate and previous_pdf_path == result.pdf_path:
+        return "El PDF ya estaba generado."
+    if regenerate:
+        return "PDF regenerado correctamente."
+    return "PDF generado correctamente."
+
+
+def _find_invoice_sale_accounting_entry(view, invoice):
+    for entry in (getattr(invoice, "accounting_entries", None) or []):
+        if entry.entry_type == AccountingEntry.ENTRY_TYPE_SALE:
+            return entry
+
+    invoice_id = getattr(invoice, "id", None)
+    if not invoice_id:
+        return None
+
+    return (
+        view.session.query(AccountingEntry)
+        .filter_by(invoice_id=invoice_id, entry_type=AccountingEntry.ENTRY_TYPE_SALE)
+        .one_or_none()
+    )
+
+
+def _format_admin_invoice_accounting_status(view, context, model, name):
+    entry = _find_invoice_sale_accounting_entry(view, model)
+    if not entry:
+        return "Sin registrar"
+    return _format_admin_accounting_status_label(entry.status)
+
+
+def _format_admin_accounting_status_label(status):
+    labels = {
+        AccountingEntry.STATUS_PENDING: "Registrada",
+        AccountingEntry.STATUS_RECORDED: "Contabilizada",
+        AccountingEntry.STATUS_FAILED: "Con error",
+    }
+    return labels.get(status, _format_admin_invoice_nullable(status))
+
+
+def _format_admin_invoice_accounting_detail(view, context, model, name):
+    entry = _find_invoice_sale_accounting_entry(view, model)
+    export_url = view.get_url(".export_accounting")
+    aeat_export_url = view.get_url(".export_aeat_accounting")
+
+    if entry:
+        return Markup(
+            '<div class="invoice-accounting-admin-action">'
+            '<div>{status}</div>'
+            '<div style="margin-top: 8px;">'
+            '<a class="btn btn-default btn-sm" href="{export_url}">Exportar Excel de ingresos</a>'
+            ' <a class="btn btn-default btn-sm" href="{aeat_export_url}">Exportar libro AEAT de ingresos</a>'
+            '</div>'
+            '</div>'
+        ).format(
+            status=_format_admin_accounting_status_label(entry.status),
+            export_url=export_url,
+            aeat_export_url=aeat_export_url,
         )
+
+    if not getattr(model, "invoice_number", None) or not getattr(model, "issued_at", None):
+        return Markup("Factura no emitida")
+
+    action_url = view.get_url(".record_accounting", invoice_id=model.id)
+    return Markup(
+        '<div class="invoice-accounting-admin-action">'
+        '<div>Sin registrar</div>'
+        '<form method="post" action="{action_url}" style="margin-top: 8px;">'
+        '<button type="submit" class="btn btn-primary btn-sm">Registrar contabilidad</button>'
+        '</form>'
+        '<div style="margin-top: 8px;">'
+        '<a class="btn btn-default btn-sm" href="{export_url}">Exportar Excel de ingresos</a>'
+        ' <a class="btn btn-default btn-sm" href="{aeat_export_url}">Exportar libro AEAT de ingresos</a>'
+        '</div>'
+        '</div>'
+    ).format(action_url=action_url, export_url=export_url, aeat_export_url=aeat_export_url)
+
+
+def _format_admin_invoice_email_detail(view, context, model, name):
+    status = getattr(model, name, None)
+    if not getattr(model, "invoice_number", None) or not getattr(model, "issued_at", None):
+        return Markup("Factura no emitida")
+
+    action_url = view.get_url(".send_invoice_email", invoice_id=model.id)
+    button_label = "Reenviar factura" if status == EMAIL_STATUS_SENT else "Enviar factura"
+    confirm_attr = (
+        ' onsubmit="return confirm(\'La factura ya consta como enviada. ¿Quieres reenviarla?\')"'
+        if status == EMAIL_STATUS_SENT
+        else ""
+    )
+
+    return Markup(
+        '<div class="invoice-email-admin-action">'
+        '<div>{status}</div>'
+        '<form method="post" action="{action_url}" style="margin-top: 8px;"{confirm_attr}>'
+        '<button type="submit" class="btn btn-primary btn-sm">{button_label}</button>'
+        '</form>'
+        '</div>'
+    ).format(
+        status=_format_admin_invoice_nullable(status),
+        action_url=action_url,
+        confirm_attr=Markup(confirm_attr),
+        button_label=button_label,
+    )
+
+
+def _persist_admin_invoice_email_failure(session, invoice_id, attempts_before):
+    failed_invoice = session.get(Invoices, invoice_id)
+    if not failed_invoice:
+        return
+
+    failed_invoice.email_status = EMAIL_STATUS_FAILED
+    failed_invoice.email_attempts = int(attempts_before or 0) + 1
+    failed_invoice.email_last_error = "No se pudo enviar el email de factura."
+    session.commit()
+
+
+def _find_invoice_verifactu_registration_record(view, invoice):
+    for record in (getattr(invoice, "verifactu_records", None) or []):
+        if record.record_type == VeriFactuRecord.RECORD_TYPE_ALTA:
+            return record
+
+    invoice_id = getattr(invoice, "id", None)
+    if not invoice_id:
+        return None
+
+    return (
+        view.session.query(VeriFactuRecord)
+        .filter_by(invoice_id=invoice_id, record_type=VeriFactuRecord.RECORD_TYPE_ALTA)
+        .one_or_none()
+    )
+
+
+def _format_admin_verifactu_record_link(view, record):
+    record_url = view.get_url("verifacturecord.details_view", id=record.id)
+    return Markup('<a href="{url}">Ver registro #{record_id}</a>').format(
+        url=record_url,
+        record_id=record.id,
+    )
+
+
+def _format_admin_invoice_verifactu_detail(view, context, model, name):
+    record = _find_invoice_verifactu_registration_record(view, model)
+
+    if record:
+        record_link = _format_admin_verifactu_record_link(view, record)
+        if record.status == VeriFactuRecord.STATUS_READY:
+            fingerprint = getattr(record, "fingerprint", None)
+            fingerprint_label = f"{fingerprint[:12]}..." if fingerprint else "—"
+            return Markup(
+                '<div class="invoice-verifactu-admin-action">'
+                '<div>Preparado</div>'
+                '<div>Secuencia: {sequence}</div>'
+                '<div>Huella: {fingerprint}</div>'
+                '<div style="margin-top: 8px;">{record_link}</div>'
+                '</div>'
+            ).format(
+                sequence=_format_admin_invoice_nullable(record.chain_sequence),
+                fingerprint=fingerprint_label,
+                record_link=record_link,
+            )
+
+        return Markup(
+            '<div class="invoice-verifactu-admin-action">'
+            '<div>Generado</div>'
+            '<div>ID registro: {record_id}</div>'
+            '<div style="margin-top: 8px;">{record_link}</div>'
+            '</div>'
+        ).format(record_id=record.id, record_link=record_link)
+
+    if not getattr(model, "invoice_number", None) or not getattr(model, "issued_at", None):
+        return Markup("Factura no emitida")
+
+    action_url = view.get_url(".generate_verifactu_record", invoice_id=model.id)
+    return Markup(
+        '<div class="invoice-verifactu-admin-action">'
+        '<div>No generado</div>'
+        '<form method="post" action="{action_url}" style="margin-top: 8px;">'
+        '<button type="submit" class="btn btn-primary btn-sm">GENERAR REGISTRO VERIFACTU</button>'
+        '</form>'
+        '</div>'
+    ).format(action_url=action_url)
+
+
+def _admin_invoice_accounting_success_message(*, already_existed):
+    if already_existed:
+        return "La factura ya tenía registro contable."
+    return "Registro contable creado correctamente."
+
+
+def _admin_accounting_export_folder():
+    configured_folder = current_app.config.get("ACCOUNTING_EXPORT_FOLDER") or os.getenv("ACCOUNTING_EXPORT_FOLDER")
+    if configured_folder:
+        return configured_folder
+
+    instance_path = getattr(current_app, "instance_path", None)
+    if instance_path:
+        return os.path.join(instance_path, "accounting_exports")
+
+    return os.path.join(os.getcwd(), ".tmp_accounting_exports")
+
+
+class InvoiceAdminView(SafeModelView):
+    can_create = False
+    can_edit = False
+    can_delete = False
+    can_view_details = True
+
+    column_list = [
+        'id',
+        'invoice_number',
+        'invoice_type',
+        'order_id',
+        'client_name',
+        'client_cif',
+        'amount',
+        'created_at',
+        'issued_at',
+        'pdf_path',
+        'accounting_entries',
+        'email_status',
+        'invoice_snapshot_schema_version',
+    ]
+    column_details_list = [
+        'id',
+        'invoice_number',
+        'invoice_type',
+        'order_id',
+        'client_name',
+        'client_address',
+        'client_cif',
+        'amount',
+        'created_at',
+        'issued_at',
+        'pdf_path',
+        'accounting_entries',
+        'email_status',
+        'verifactu_records',
+        'invoice_snapshot_schema_version',
+    ]
+    column_searchable_list = [
+        'invoice_number',
+        'client_name',
+        'client_cif',
+    ]
+    column_filters = [
+        'invoice_type',
+        'email_status',
+        'created_at',
+        'issued_at',
+        'invoice_snapshot_schema_version',
+    ]
+    column_sortable_list = [
+        'id',
+        'invoice_number',
+        'invoice_type',
+        'order_id',
+        'client_name',
+        'client_cif',
+        'amount',
+        'created_at',
+        'issued_at',
+        'email_status',
+        'invoice_snapshot_schema_version',
+    ]
+    column_labels = {
+        'id': 'ID',
+        'invoice_number': 'N.º factura',
+        'invoice_type': 'Tipo',
+        'order_id': 'Pedido',
+        'client_name': 'Cliente',
+        'client_cif': 'NIF/CIF',
+        'amount': 'Total',
+        'created_at': 'Creada',
+        'issued_at': 'Emitida',
+        'pdf_path': 'PDF',
+        'accounting_entries': 'Contabilidad',
+        'email_status': 'Email',
+        'verifactu_records': 'VeriFactu',
+        'invoice_snapshot_schema_version': 'Versión snapshot',
+    }
+    column_formatters = {
+        'invoice_number': _format_admin_invoice_value,
+        'order_id': _format_admin_invoice_value,
+        'client_name': _format_admin_invoice_value,
+        'client_cif': _format_admin_invoice_value,
+        'amount': _format_admin_invoice_amount,
+        'created_at': _format_admin_invoice_datetime,
+        'issued_at': _format_admin_invoice_datetime,
+        'invoice_type': _format_admin_invoice_value,
+        'pdf_path': _format_admin_invoice_pdf_available,
+        'accounting_entries': _format_admin_invoice_accounting_status,
+        'email_status': _format_admin_invoice_value,
+        'invoice_snapshot_schema_version': _format_admin_invoice_value,
+    }
+    column_formatters_detail = {
+        **column_formatters,
+        'pdf_path': _format_admin_invoice_pdf_detail,
+        'accounting_entries': _format_admin_invoice_accounting_detail,
+        'email_status': _format_admin_invoice_email_detail,
+        'verifactu_records': _format_admin_invoice_verifactu_detail,
     }
 
     column_default_sort = ('created_at', True)
 
-    def create_form(self, obj=None):
-        form = super().create_form(obj)
-        if not form.invoice_number.data:
-            form.invoice_number.data = Invoices.generate_next_invoice_number()
-        return form
+    @expose('/download-pdf/<int:invoice_id>')
+    def download_pdf(self, invoice_id):
+        invoice = self.session.get(Invoices, invoice_id)
+        if not invoice:
+            return Response('Factura no encontrada.', status=404)
 
+        try:
+            resolved_pdf = resolve_invoice_pdf_download(
+                invoice,
+                current_app.config.get("INVOICE_FOLDER"),
+            )
+            return send_file(
+                resolved_pdf.file_path,
+                as_attachment=True,
+                download_name=resolved_pdf.download_name,
+                mimetype='application/pdf',
+            )
+        except InvoicePdfDownloadUnavailable:
+            return Response('PDF no disponible.', status=404)
+        except InvoicePdfDownloadFileMissing:
+            return Response('Archivo PDF no encontrado.', status=404)
+        except InvoicePdfDownloadInvalidPath:
+            return Response('Ruta de PDF no válida.', status=400)
+        except Exception:
+            current_app.logger.exception(
+                "Unexpected Flask Admin invoice PDF download error for invoice %s",
+                invoice_id,
+            )
+            return Response('No se ha podido descargar la factura.', status=500)
+
+    @expose('/generate-pdf/<int:invoice_id>', methods=['POST'])
+    def generate_pdf(self, invoice_id):
+        invoice = self.session.get(Invoices, invoice_id)
+        if not invoice:
+            flash('Factura no encontrada.', 'error')
+            return redirect(self.get_url(".index_view"))
+
+        regenerate = bool(invoice.pdf_path)
+        previous_pdf_path = invoice.pdf_path
+
+        try:
+            result = generate_invoice_pdf(
+                invoice,
+                regenerate=regenerate,
+            )
+            self.session.commit()
+            flash(
+                _admin_invoice_pdf_success_message(
+                    regenerate=regenerate,
+                    previous_pdf_path=previous_pdf_path,
+                    result=result,
+                ),
+                'success',
+            )
+        except InvoicePdfSnapshotMissing:
+            self.session.rollback()
+            if not getattr(invoice, "invoice_number", None):
+                flash('La factura todavía no está emitida.', 'error')
+            else:
+                flash('La factura no dispone de un snapshot fiscal válido.', 'error')
+        except InvoicePdfIntegrityError:
+            self.session.rollback()
+            flash('No se puede generar el PDF porque la integridad fiscal no es válida.', 'error')
+        except InvoicePdfUnsupportedSchema:
+            self.session.rollback()
+            flash('La versión del snapshot fiscal no está soportada.', 'error')
+        except InvoicePdfWriteError as exc:
+            self.session.rollback()
+            if "sobrescribir" in str(exc).lower():
+                flash('No se puede sobrescribir un PDF que no está asociado a esta factura.', 'error')
+            else:
+                flash('No se pudo generar el PDF.', 'error')
+        except Exception:
+            self.session.rollback()
+            current_app.logger.exception(
+                "Unexpected Flask Admin invoice PDF generation error for invoice %s",
+                invoice_id,
+            )
+            flash('No se pudo generar el PDF.', 'error')
+
+        return redirect(self.get_url(".details_view", id=invoice.id))
+
+    @expose('/send-email/<int:invoice_id>', methods=['POST'])
+    def send_invoice_email(self, invoice_id):
+        invoice = self.session.get(Invoices, invoice_id)
+        if not invoice:
+            flash('Factura no encontrada.', 'error')
+            return redirect(self.get_url(".index_view"))
+
+        if request.args or request.form or (request.get_json(silent=True) or {}):
+            flash('Esta acción no acepta datos de email desde el navegador.', 'error')
+            return redirect(self.get_url(".details_view", id=invoice.id))
+
+        if not invoice.invoice_number or not invoice.issued_at:
+            flash('La factura debe estar emitida antes de enviarse por email.', 'error')
+            return redirect(self.get_url(".details_view", id=invoice.id))
+
+        if not invoice.pdf_path:
+            flash('No existe PDF.', 'error')
+            return redirect(self.get_url(".details_view", id=invoice.id))
+
+        attempts_before = int(invoice.email_attempts or 0)
+
+        try:
+            adapter = FlaskMailInvoiceAdapter(mail)
+            send_invoice_email_v2(
+                invoice,
+                mailer=adapter,
+                invoice_folder=current_app.config.get("INVOICE_FOLDER"),
+                allow_resend=True,
+            )
+            self.session.commit()
+            flash('Factura enviada correctamente.', 'success')
+        except InvoiceEmailRecipientMissing:
+            self.session.rollback()
+            flash('No existe email del cliente.', 'error')
+        except InvoiceEmailPdfMissing:
+            self.session.rollback()
+            flash('No existe PDF.', 'error')
+        except (InvoiceEmailSendError, FlaskMailInvoiceAdapterError):
+            self.session.rollback()
+            current_app.logger.exception(
+                "Flask Admin invoice email SMTP error for invoice %s",
+                invoice_id,
+            )
+            try:
+                _persist_admin_invoice_email_failure(self.session, invoice_id, attempts_before)
+            except Exception:
+                self.session.rollback()
+                current_app.logger.exception(
+                    "Could not persist Flask Admin invoice email failure for invoice %s",
+                    invoice_id,
+                )
+            flash('Error SMTP.', 'error')
+        except InvoiceEmailSnapshotMissing:
+            self.session.rollback()
+            flash('La factura no contiene los datos necesarios para enviar el email.', 'error')
+        except InvoiceEmailUnsupportedSchema:
+            self.session.rollback()
+            flash('La versión del snapshot fiscal no está soportada para email.', 'error')
+        except InvoiceEmailIntegrityError:
+            self.session.rollback()
+            flash('No se puede enviar el email porque la integridad fiscal no coincide.', 'error')
+        except Exception:
+            self.session.rollback()
+            current_app.logger.exception(
+                "Unexpected Flask Admin invoice email error for invoice %s",
+                invoice_id,
+            )
+            flash('No se ha podido enviar la factura por email.', 'error')
+
+        return redirect(self.get_url(".details_view", id=invoice.id))
+
+    @expose('/record-accounting/<int:invoice_id>', methods=['POST'])
+    def record_accounting(self, invoice_id):
+        invoice = self.session.get(Invoices, invoice_id)
+        if not invoice:
+            flash('Factura no encontrada.', 'error')
+            return redirect(self.get_url(".index_view"))
+
+        if request.args or request.form or (request.get_json(silent=True) or {}):
+            flash('Esta acción no acepta datos contables desde el navegador.', 'error')
+            return redirect(self.get_url(".details_view", id=invoice.id))
+
+        try:
+            existing_entry = _find_invoice_sale_accounting_entry(self, invoice)
+            create_accounting_entry(invoice, db_session=self.session)
+            self.session.commit()
+            flash(
+                _admin_invoice_accounting_success_message(
+                    already_existed=existing_entry is not None,
+                ),
+                'success',
+            )
+        except AccountingEntryValidationError:
+            self.session.rollback()
+            current_app.logger.warning(
+                "Invalid Flask Admin accounting entry request for invoice %s",
+                invoice_id,
+            )
+            flash('La factura no contiene los datos necesarios para registrar contabilidad.', 'error')
+        except AccountingEntryUnsupportedSchema:
+            self.session.rollback()
+            current_app.logger.warning(
+                "Unsupported Flask Admin accounting snapshot schema for invoice %s",
+                invoice_id,
+            )
+            flash('La versión del snapshot fiscal no es compatible con contabilidad.', 'error')
+        except AccountingEntryIntegrityError:
+            self.session.rollback()
+            current_app.logger.warning(
+                "Flask Admin accounting snapshot hash mismatch for invoice %s",
+                invoice_id,
+            )
+            flash('No se puede registrar contabilidad porque la integridad fiscal no coincide.', 'error')
+        except IntegrityError:
+            self.session.rollback()
+            current_app.logger.exception(
+                "Flask Admin accounting entry conflict for invoice %s",
+                invoice_id,
+            )
+            flash('Ya existe un registro contable para esta factura.', 'error')
+        except Exception:
+            self.session.rollback()
+            current_app.logger.exception(
+                "Unexpected Flask Admin accounting entry error for invoice %s",
+                invoice_id,
+            )
+            flash('No se ha podido registrar contabilidad.', 'error')
+
+        return redirect(self.get_url(".details_view", id=invoice.id))
+
+    @expose('/generate-verifactu-record/<int:invoice_id>', methods=['POST'])
+    def generate_verifactu_record(self, invoice_id):
+        invoice = self.session.get(Invoices, invoice_id)
+        if not invoice:
+            flash('Factura no encontrada.', 'error')
+            return redirect(self.get_url(".index_view"))
+
+        if request.args or request.form or (request.get_json(silent=True) or {}):
+            flash('Esta acción no acepta datos VeriFactu desde el navegador.', 'error')
+            return redirect(self.get_url(".details_view", id=invoice.id))
+
+        try:
+            result = create_verifactu_registration_record(
+                invoice,
+                db_session=self.session,
+                system_id=current_app.config.get("VERIFACTU_SYSTEM_ID"),
+                software_name=current_app.config.get("VERIFACTU_SYSTEM_NAME"),
+                software_version=current_app.config.get("VERIFACTU_SYSTEM_VERSION"),
+            )
+            self.session.commit()
+            if result.created:
+                flash('Registro VeriFactu generado correctamente.', 'success')
+            else:
+                flash('La factura ya tiene un registro VeriFactu generado.', 'success')
+        except VeriFactuRecordUnsupportedSchema:
+            self.session.rollback()
+            flash('La versión del snapshot fiscal no está soportada para VeriFactu.', 'error')
+        except VeriFactuRecordIntegrityError:
+            self.session.rollback()
+            flash('No se puede generar VeriFactu porque la integridad fiscal no coincide.', 'error')
+        except VeriFactuRecordValidationError as exc:
+            self.session.rollback()
+            current_app.logger.warning("Invalid Flask Admin VeriFactu record request for invoice %s: %s", invoice_id, exc)
+            flash(f'No se puede generar el registro VeriFactu: {exc}', 'error')
+        except IntegrityError:
+            self.session.rollback()
+            current_app.logger.exception("Flask Admin VeriFactu record conflict for invoice %s", invoice_id)
+            flash('La factura ya tiene un registro VeriFactu o se está creando en otra operación.', 'error')
+        except Exception:
+            self.session.rollback()
+            current_app.logger.exception("Unexpected Flask Admin VeriFactu record generation error for invoice %s", invoice_id)
+            flash('No se ha podido generar el registro VeriFactu.', 'error')
+
+        return redirect(self.get_url(".details_view", id=invoice.id))
+
+    @expose('/export-accounting')
+    def export_accounting(self):
+        entries = (
+            self.session.query(AccountingEntry)
+            .filter_by(entry_type=AccountingEntry.ENTRY_TYPE_SALE)
+            .order_by(
+                AccountingEntry.invoice_date.asc(),
+                AccountingEntry.invoice_number.asc(),
+                AccountingEntry.id.asc(),
+            )
+            .all()
+        )
+
+        if not entries:
+            flash('No hay registros contables de ingresos para exportar.', 'error')
+            return redirect(self.get_url(".index_view"))
+
+        output_path = os.path.join(_admin_accounting_export_folder(), "ingresos_completo.xlsx")
+
+        try:
+            result = export_sales_accounting_entries(entries, output_path=output_path, overwrite=True)
+            return send_file(
+                result.output_path,
+                as_attachment=True,
+                download_name=result.filename,
+                mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            )
+        except AccountingExcelExportError:
+            current_app.logger.exception("Flask Admin accounting sales export failed")
+            flash('No se ha podido generar la exportación de ingresos.', 'error')
+        except Exception:
+            current_app.logger.exception("Unexpected Flask Admin accounting sales export error")
+            flash('No se ha podido generar la exportación de ingresos.', 'error')
+
+        return redirect(self.get_url(".index_view"))
+
+    @expose('/export-aeat-accounting')
+    def export_aeat_accounting(self):
+        entries = (
+            self.session.query(AccountingEntry)
+            .filter_by(entry_type=AccountingEntry.ENTRY_TYPE_SALE)
+            .order_by(
+                AccountingEntry.invoice_date.asc(),
+                AccountingEntry.invoice_number.asc(),
+                AccountingEntry.id.asc(),
+            )
+            .all()
+        )
+
+        if not entries:
+            flash('No hay registros contables de ingresos para exportar al libro AEAT.', 'error')
+            return redirect(self.get_url(".index_view"))
+
+        output_path = os.path.join(_admin_accounting_export_folder(), "aeat_expedidas_ingresos.xlsx")
+
+        try:
+            result = export_aeat_sales_ledger(entries, output_path=output_path, overwrite=True)
+            return send_file(
+                result.output_path,
+                as_attachment=True,
+                download_name=result.filename,
+                mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            )
+        except AeatSalesLedgerError:
+            current_app.logger.exception("Flask Admin AEAT sales ledger export failed")
+            flash('No se ha podido generar el libro AEAT de ingresos.', 'error')
+        except Exception:
+            current_app.logger.exception("Unexpected Flask Admin AEAT sales ledger export error")
+            flash('No se ha podido generar el libro AEAT de ingresos.', 'error')
+
+        return redirect(self.get_url(".index_view"))
+
+
+class VeriFactuRecordAdminView(SafeModelView):
+    can_create = False
+    can_edit = False
+    can_delete = False
+    can_view_details = True
+
+    column_list = [
+        'id',
+        'invoice_id',
+        'record_type',
+        'status',
+        'invoice_number',
+        'invoice_snapshot_hash',
+        'record_payload_hash',
+        'fingerprint_status',
+        'fingerprint',
+        'chain_sequence',
+        'previous_record_id',
+        'system_id',
+        'software_name',
+        'software_version',
+        'ready_at',
+        'created_at',
+    ]
+    column_details_list = [
+        'id',
+        'invoice_id',
+        'provider',
+        'mode',
+        'record_type',
+        'status',
+        'schema_version',
+        'invoice_number',
+        'invoice_issued_at',
+        'invoice_snapshot_hash',
+        'record_payload_hash',
+        'official_payload_schema_version',
+        'chain_key',
+        'chain_sequence',
+        'fingerprint',
+        'fingerprint_algorithm',
+        'fingerprint_status',
+        'fingerprint_input',
+        'fingerprint_calculated_at',
+        'previous_record_id',
+        'previous_fingerprint',
+        'is_first_record',
+        'system_id',
+        'software_name',
+        'software_version',
+        'installation_id',
+        'producer_name',
+        'producer_tax_id',
+        'generation_timestamp',
+        'generation_timezone',
+        'ready_at',
+        'issuer_tax_id',
+        'recipient_tax_id',
+        'total_amount',
+        'currency',
+        'created_at',
+        'updated_at',
+    ]
+    column_searchable_list = [
+        'invoice_number',
+        'issuer_tax_id',
+        'recipient_tax_id',
+        'system_id',
+    ]
+    column_filters = [
+        'record_type',
+        'status',
+        'fingerprint_status',
+        'chain_key',
+        'software_name',
+        'ready_at',
+        'created_at',
+    ]
+    column_sortable_list = [
+        'id',
+        'invoice_id',
+        'record_type',
+        'status',
+        'invoice_number',
+        'chain_sequence',
+        'ready_at',
+        'created_at',
+    ]
+    column_labels = {
+        'id': 'ID',
+        'invoice_id': 'Factura',
+        'provider': 'Proveedor',
+        'mode': 'Modalidad',
+        'record_type': 'Tipo registro',
+        'status': 'Estado',
+        'schema_version': 'Versión esquema',
+        'invoice_number': 'N.º factura',
+        'invoice_issued_at': 'Emitida',
+        'invoice_snapshot_hash': 'Hash snapshot interno',
+        'record_payload_hash': 'Hash registro interno',
+        'fingerprint': 'Huella VeriFactu',
+        'fingerprint_algorithm': 'Algoritmo huella',
+        'fingerprint_status': 'Estado huella',
+        'chain_key': 'Clave de cadena',
+        'chain_sequence': 'Secuencia',
+        'official_payload_schema_version': 'Version payload oficial',
+        'fingerprint_input': 'Cadena de huella',
+        'fingerprint_calculated_at': 'Huella calculada',
+        'previous_record_id': 'Registro anterior',
+        'previous_fingerprint': 'Huella anterior',
+        'is_first_record': 'Primer registro',
+        'installation_id': 'N. instalacion',
+        'producer_name': 'Productor',
+        'producer_tax_id': 'NIF productor',
+        'generation_timestamp': 'Generado',
+        'generation_timezone': 'Huso horario',
+        'ready_at': 'Preparado',
+        'system_id': 'Instalación',
+        'software_name': 'Software',
+        'software_version': 'Versión software',
+        'issuer_tax_id': 'NIF emisor',
+        'recipient_tax_id': 'NIF destinatario',
+        'total_amount': 'Total',
+        'currency': 'Moneda',
+        'created_at': 'Creado',
+        'updated_at': 'Actualizado',
+    }
+    column_formatters = {
+        'invoice_issued_at': _format_admin_invoice_datetime,
+        'fingerprint_calculated_at': _format_admin_invoice_datetime,
+        'generation_timestamp': _format_admin_invoice_datetime,
+        'ready_at': _format_admin_invoice_datetime,
+        'created_at': _format_admin_invoice_datetime,
+        'updated_at': _format_admin_invoice_datetime,
+        'total_amount': _format_admin_invoice_amount,
+        'fingerprint': _format_admin_invoice_value,
+        'fingerprint_algorithm': _format_admin_invoice_value,
+        'previous_fingerprint': _format_admin_invoice_value,
+    }
+    column_formatters_detail = column_formatters
+    column_default_sort = ('created_at', True)
+
+    @action(
+        'prepare_verifactu_records',
+        'Preparar VeriFactu',
+        'Calcular huella y marcar READY para los registros seleccionados?',
+    )
+    def action_prepare_verifactu_records(self, ids):
+        current_app.logger.info(
+            "VeriFactu admin prepare action entered ids=%r ids_type=%s",
+            ids,
+            type(ids).__name__,
+        )
+        selected_ids = list(ids or [])
+        current_app.logger.info(
+            "VeriFactu admin prepare action normalized ids=%r",
+            selected_ids,
+        )
+        if not selected_ids:
+            flash('Selecciona al menos un registro VeriFactu.', 'warning')
+            return redirect(self.get_url(".index_view"))
+
+        prepared = 0
+        already_ready = 0
+        skipped = 0
+        missing = 0
+
+        try:
+            system_identity = verifactu_system_identity_from_config(current_app.config)
+            for record_id in selected_ids:
+                current_app.logger.info(
+                    "VeriFactu admin prepare action loading record_id=%r",
+                    record_id,
+                )
+                try:
+                    record_pk = int(record_id)
+                except (TypeError, ValueError):
+                    missing += 1
+                    continue
+
+                record = self.session.get(VeriFactuRecord, record_pk)
+                current_app.logger.info(
+                    "VeriFactu admin prepare action loaded record id=%s status=%s",
+                    getattr(record, "id", None),
+                    getattr(record, "status", None),
+                )
+                if record is None:
+                    missing += 1
+                    continue
+                if record.status == VeriFactuRecord.STATUS_READY:
+                    already_ready += 1
+                    continue
+                if record.status != VeriFactuRecord.STATUS_BUILT:
+                    skipped += 1
+                    continue
+                current_app.logger.info(
+                    "VeriFactu admin prepare action calling prepare service record_id=%s",
+                    record.id,
+                )
+                result = prepare_verifactu_record_for_submission(
+                    record,
+                    db_session=self.session,
+                    system_identity=system_identity,
+                )
+                current_app.logger.info(
+                    "VeriFactu admin prepare action prepare service returned record_id=%s prepared=%s",
+                    record.id,
+                    getattr(result, "prepared", None),
+                )
+                if result.prepared:
+                    prepared += 1
+                else:
+                    already_ready += 1
+            current_app.logger.info(
+                "VeriFactu admin prepare action committing prepared=%s already_ready=%s skipped=%s missing=%s",
+                prepared,
+                already_ready,
+                skipped,
+                missing,
+            )
+            self.session.commit()
+            current_app.logger.info(
+                "VeriFactu admin prepare action committed prepared=%s already_ready=%s skipped=%s missing=%s",
+                prepared,
+                already_ready,
+                skipped,
+                missing,
+            )
+
+            messages = [f'Registros VeriFactu preparados: {prepared}.']
+            if already_ready:
+                messages.append(f'Ya preparados: {already_ready}.')
+            if skipped:
+                messages.append(f'Omitidos por estado no preparable: {skipped}.')
+            if missing:
+                messages.append(f'No encontrados: {missing}.')
+            flash(' '.join(messages), 'success' if prepared else 'warning')
+        except (
+            VeriFactuRecordValidationError,
+            VeriFactuRecordIntegrityError,
+            VeriFactuRecordConcurrencyError,
+        ) as exc:
+            self.session.rollback()
+            current_app.logger.warning("VeriFactu admin preparation rejected: %s", exc, exc_info=True)
+            flash(str(exc), 'error')
+        except Exception:
+            self.session.rollback()
+            current_app.logger.exception("Unexpected VeriFactu admin preparation error")
+            flash('No se han podido preparar los registros VeriFactu.', 'error')
+
+        return redirect(self.get_url(".index_view"))
 
 # ========================== SETUP ADMIN ==========================
 def setup_admin(app):
@@ -625,4 +1773,5 @@ def setup_admin(app):
     admin.add_view(SafeModelView(Posts, db.session))
     admin.add_view(SafeModelView(Comments, db.session))
     admin.add_view(InvoiceAdminView(Invoices, db.session))
+    admin.add_view(VeriFactuRecordAdminView(VeriFactuRecord, db.session, name="VeriFactu"))
     admin.add_view(SafeModelView(DeliveryEstimateConfig, db.session))
