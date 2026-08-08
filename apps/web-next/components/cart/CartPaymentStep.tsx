@@ -1,8 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Elements } from "@stripe/react-stripe-js";
-import { loadStripe } from "@stripe/stripe-js";
+import dynamic from "next/dynamic";
 import { useEffect, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { clearSession, getToken } from "@/lib/auth-client";
@@ -24,10 +23,11 @@ import {
 } from "@/lib/checkout-discount";
 import { CheckoutPaymentSummary } from "@/components/cart/CheckoutPaymentSummary";
 import { PayPalPaymentForm } from "@/components/cart/PayPalPaymentForm";
-import { StripePaymentForm } from "@/components/cart/StripePaymentForm";
 
-const stripePublishableKey = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY?.trim();
-const stripePromise = stripePublishableKey ? loadStripe(stripePublishableKey) : null;
+const StripePaymentSection = dynamic(
+  () => import("@/components/cart/StripePaymentSection").then((module) => module.StripePaymentSection),
+  { ssr: false }
+);
 const paypalClientId = process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID?.trim();
 
 type PaymentStatus = "loading" | "empty" | "missing-details" | "ready" | "error";
@@ -196,28 +196,20 @@ export function CartPaymentStep({ deliveryEstimate }: { deliveryEstimate?: React
           </button>
         </div>
 
-        {paymentMethod === "card" && !stripePromise ? (
-          <p className="mw-alert mw-alert--error">
-            La clave pública de Stripe no está configurada en este entorno.
-          </p>
-        ) : null}
-
         {discountNotice ? (
           <p className="mw-alert mw-alert--error" aria-live="polite">
             {discountNotice}
           </p>
         ) : null}
 
-        {paymentMethod === "card" && stripePromise ? (
-          <Elements stripe={stripePromise}>
-            <StripePaymentForm
-              customerDetails={customerDetails}
-              discountCode={discountCode}
-              initialQuote={quote}
-              onQuoteUpdated={updateCheckoutQuote}
-              onSessionExpired={redirectToLogin}
-            />
-          </Elements>
+        {paymentMethod === "card" ? (
+          <StripePaymentSection
+            customerDetails={customerDetails}
+            discountCode={discountCode}
+            initialQuote={quote}
+            onQuoteUpdated={updateCheckoutQuote}
+            onSessionExpired={redirectToLogin}
+          />
         ) : null}
 
         {paymentMethod === "paypal" && !paypalClientId ? (

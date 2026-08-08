@@ -1,10 +1,15 @@
 "use client";
 
 import { useSearchParams } from "next/navigation";
+import dynamic from "next/dynamic";
 import type { ReactNode } from "react";
 import { CartDetailsStep } from "@/components/cart/CartDetailsStep";
-import { CartPaymentStep } from "@/components/cart/CartPaymentStep";
 import { CartView } from "@/components/cart/CartView";
+
+const CartPaymentStep = dynamic(
+  () => import("@/components/cart/CartPaymentStep").then((module) => module.CartPaymentStep),
+  { ssr: false }
+);
 
 type CartStep = "review" | "details" | "payment";
 
