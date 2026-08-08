@@ -1,0 +1,28 @@
+{% extends 'admin/master.html' %}
+
+{% block body %}
+  <div class="container-fluid">
+    <h3>Emitir rectificativa total</h3>
+    <p>
+      Vas a emitir una rectificativa total de la factura
+      <strong>{{ invoice.invoice_number }}</strong>.
+    </p>
+    <p class="text-warning">
+      La rectificativa invertirá completamente los importes de la factura original.
+      Esta operación no admite rectificaciones parciales.
+    </p>
+    <form method="post" action="{{ action_url }}">
+      <div class="form-group">
+        <label for="rectification_reason">Motivo</label>
+        <select id="rectification_reason" name="rectification_reason" class="form-control" required>
+          <option value="" selected disabled>Selecciona un motivo</option>
+          {% for value, label in reason_choices %}
+            <option value="{{ value }}">{{ label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <button type="submit" class="btn btn-danger">EMITIR RECTIFICATIVA TOTAL</button>
+      <a href="{{ cancel_url }}" class="btn btn-default">Cancelar</a>
+    </form>
+  </div>
+{% endblock %}

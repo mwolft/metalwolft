@@ -1,4 +1,5 @@
 import os
+from collections.abc import Mapping
 from flask import request, Response, current_app, send_file, flash, redirect
 from flask_admin import Admin, AdminIndexView, expose
 from flask_admin.actions import action
@@ -59,12 +60,17 @@ from api.invoice_admin_helpers import (
     select_checkout_session_for_invoice,
 )
 from api.invoice_issue_service import (
+    CORRECTIVE_INVOICE_TYPE,
     ORDINARY_INVOICE_TYPE,
     InvoiceIssueError,
     InvoiceNumberError,
     issue_invoice_for_order,
+    issue_total_rectification_for_invoice,
 )
-from api.invoice_snapshot_builder import InvoiceSnapshotValidationError
+from api.invoice_snapshot_builder import (
+    RECTIFICATION_REASON_TEXTS,
+    InvoiceSnapshotValidationError,
+)
 from api.verifactu_record_service import (
     VeriFactuRecordConcurrencyError,
     VeriFactuRecordIntegrityError,
@@ -1060,6 +1066,92 @@ def _admin_accounting_export_folder():
     return os.path.join(os.getcwd(), ".tmp_accounting_exports")
 
 
+def _find_invoice_corrective_invoice(view, invoice):
+    invoice_id = getattr(invoice, "id", None)
+    if not invoice_id:
+        return None
+
+    return (
+        view.session.query(Invoices)
+        .filter(
+            Invoices.original_invoice_id == invoice_id,
+            Invoices.invoice_type == CORRECTIVE_INVOICE_TYPE,
+        )
+        .order_by(Invoices.id.asc())
+        .first()
+    )
+
+
+def _invoice_supports_total_rectification(invoice):
+    snapshot = getattr(invoice, "invoice_snapshot", None)
+    return (
+        getattr(invoice, "invoice_type", None) == ORDINARY_INVOICE_TYPE
+        and bool(getattr(invoice, "invoice_number", None))
+        and getattr(invoice, "issued_at", None) is not None
+        and isinstance(snapshot, Mapping)
+        and snapshot.get("schema_version") == 2
+    )
+
+
+def _is_matching_admin_total_rectification(invoice, reason):
+    snapshot = getattr(invoice, "invoice_snapshot", None)
+    operation = snapshot.get("operation") if isinstance(snapshot, Mapping) else None
+    rectification = operation.get("rectification") if isinstance(operation, Mapping) else None
+    return (
+        getattr(invoice, "rectification_type", None) == 'differences'
+        and getattr(invoice, "rectification_reason", None) == reason
+        and isinstance(rectification, Mapping)
+        and rectification.get("rectification_scope") == 'total'
+    )
+
+
+def _format_admin_invoice_type_detail(view, context, model, name):
+    invoice_type = _format_admin_invoice_value(view, context, model, name)
+    if getattr(model, "invoice_type", None) == CORRECTIVE_INVOICE_TYPE:
+        original = getattr(model, "original_invoice", None)
+        if original and getattr(original, "id", None):
+            original_url = view.get_url(".details_view", id=original.id)
+            return Markup(
+                '<div>{invoice_type}</div><div style="margin-top: 8px;">'
+                '<a href="{original_url}">Ver factura original {original_number}</a>'
+                '</div>'
+            ).format(
+                invoice_type=invoice_type,
+                original_url=original_url,
+                original_number=_format_admin_invoice_nullable(original.invoice_number),
+            )
+        return invoice_type
+
+    corrective = _find_invoice_corrective_invoice(view, model)
+    if corrective:
+        corrective_url = view.get_url(".details_view", id=corrective.id)
+        return Markup(
+            '<div>{invoice_type}</div><div style="margin-top: 8px;">'
+            '<a href="{corrective_url}">Ver rectificativa {corrective_number}</a>'
+            '</div>'
+        ).format(
+            invoice_type=invoice_type,
+            corrective_url=corrective_url,
+            corrective_number=_format_admin_invoice_nullable(corrective.invoice_number),
+        )
+
+    if not _invoice_supports_total_rectification(model):
+        return invoice_type
+
+    confirmation_url = view.get_url(".issue_total_rectification", invoice_id=model.id)
+    return Markup(
+        '<div>{invoice_type}</div><div style="margin-top: 8px;">'
+        '<a class="btn btn-danger btn-sm" href="{confirmation_url}">'
+        'EMITIR RECTIFICATIVA TOTAL</a></div>'
+    ).format(invoice_type=invoice_type, confirmation_url=confirmation_url)
+
+
+def _admin_total_rectification_success_message(result):
+    if result.created:
+        return f"Factura rectificativa {result.invoice_number} emitida correctamente."
+    return f"Ya existe la factura rectificativa {result.invoice_number}."
+
+
 class InvoiceAdminView(SafeModelView):
     can_create = False
     can_edit = False
@@ -1155,6 +1247,7 @@ class InvoiceAdminView(SafeModelView):
     }
     column_formatters_detail = {
         **column_formatters,
+        'invoice_type': _format_admin_invoice_type_detail,
         'pdf_path': _format_admin_invoice_pdf_detail,
         'accounting_entries': _format_admin_invoice_accounting_detail,
         'email_status': _format_admin_invoice_email_detail,
@@ -1192,6 +1285,79 @@ class InvoiceAdminView(SafeModelView):
                 invoice_id,
             )
             return Response('No se ha podido descargar la factura.', status=500)
+
+    @expose('/issue-total-rectification/<int:invoice_id>', methods=['GET', 'POST'])
+    def issue_total_rectification(self, invoice_id):
+        invoice = self.session.get(Invoices, invoice_id)
+        if not invoice:
+            flash('Factura no encontrada.', 'error')
+            return redirect(self.get_url(".index_view"))
+
+        if not _invoice_supports_total_rectification(invoice):
+            flash('Esta factura no puede rectificarse desde administraci\u00f3n.', 'error')
+            return redirect(self.get_url(".details_view", id=invoice.id))
+
+        existing = _find_invoice_corrective_invoice(self, invoice)
+        if request.method == 'GET':
+            if existing is not None:
+                flash(f'La factura ya tiene la rectificativa {existing.invoice_number}.', 'info')
+                return redirect(self.get_url(".details_view", id=existing.id))
+            return self.render(
+                'admin/invoice_rectification_confirm.html',
+                invoice=invoice,
+                reason_choices=sorted(RECTIFICATION_REASON_TEXTS.items()),
+                action_url=self.get_url(".issue_total_rectification", invoice_id=invoice.id),
+                cancel_url=self.get_url(".details_view", id=invoice.id),
+            )
+
+        if request.form.get('rectification_scope') not in (None, '', 'total'):
+            flash('La rectificaci\u00f3n parcial todav\u00eda no est\u00e1 soportada.', 'error')
+            return redirect(self.get_url(".issue_total_rectification", invoice_id=invoice.id))
+
+        reason = (request.form.get('rectification_reason') or '').strip()
+        if reason not in RECTIFICATION_REASON_TEXTS:
+            flash('Selecciona un motivo v\u00e1lido para la rectificaci\u00f3n.', 'error')
+            return redirect(self.get_url(".issue_total_rectification", invoice_id=invoice.id))
+
+        if existing is not None:
+            if _is_matching_admin_total_rectification(existing, reason):
+                flash(f'La factura ya tiene la rectificativa {existing.invoice_number}.', 'info')
+                return redirect(self.get_url(".details_view", id=existing.id))
+            flash('La factura ya tiene una rectificativa incompatible.', 'error')
+            return redirect(self.get_url(".details_view", id=invoice.id))
+
+        try:
+            result = issue_total_rectification_for_invoice(
+                db_session=self.session,
+                original_invoice_id=invoice.id,
+                rectification_type='differences',
+                rectification_reason=reason,
+                rectification_scope='total',
+                source='manual',
+                actor=invoice_admin_actor_from_basic_auth(request.authorization),
+            )
+            flash(
+                _admin_total_rectification_success_message(result),
+                'success' if result.created else 'info',
+            )
+            return redirect(self.get_url(".details_view", id=result.invoice.id))
+        except (InvoiceIssueError, InvoiceSnapshotValidationError, InvoiceNumberError, IntegrityError):
+            self.session.rollback()
+            current_app.logger.warning(
+                "Invalid Flask Admin total rectification request for invoice %s",
+                invoice_id,
+                exc_info=True,
+            )
+            flash('No se ha podido emitir la rectificativa total para esta factura.', 'error')
+        except Exception:
+            self.session.rollback()
+            current_app.logger.exception(
+                "Unexpected Flask Admin total rectification error for invoice %s",
+                invoice_id,
+            )
+            flash('No se ha podido emitir la rectificativa total.', 'error')
+
+        return redirect(self.get_url(".details_view", id=invoice.id))
 
     @expose('/generate-pdf/<int:invoice_id>', methods=['POST'])
     def generate_pdf(self, invoice_id):
