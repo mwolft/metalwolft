@@ -15,6 +15,7 @@ if str(SRC_DIR) not in sys.path:
 from api.invoice_snapshot_builder import (  # noqa: E402
     InvoiceSnapshotValidationError,
     build_invoice_snapshot,
+    build_rectification_snapshot_from_invoice,
 )
 
 
@@ -134,6 +135,19 @@ def build(**overrides):
         source=overrides.get("source", "manual"),
         actor=overrides.get("actor"),
     )
+
+
+def corrective_invoice(overrides=None):
+    original_snapshot = build()
+    data = {
+        "id": 2001,
+        "invoice_number": "F2026000001",
+        "issued_at": datetime(2026, 7, 16, 10, 0),
+        "invoice_type": "ordinary",
+        "invoice_snapshot": original_snapshot,
+    }
+    data.update(overrides or {})
+    return SimpleNamespace(**data)
 
 
 def assert_no_floats(testcase, value):
@@ -673,6 +687,212 @@ class InvoiceSnapshotBuilderTest(unittest.TestCase):
         session = checkout_session({"customer_snapshot": None})
 
         self.assert_validation_error("customer_snapshot", checkout_session=session)
+
+
+class InvoiceRectificationSnapshotBuilderTest(unittest.TestCase):
+    def assert_rectification_validation_error(self, field, **overrides):
+        with self.assertRaises(InvoiceSnapshotValidationError) as error:
+            build_rectification_snapshot_from_invoice(
+                overrides.get("original_invoice", corrective_invoice()),
+                issue_date=overrides.get("issue_date", datetime(2026, 7, 17, 9, 0)),
+                rectification_type=overrides.get("rectification_type", "differences"),
+                rectification_reason=overrides.get("rectification_reason", "invoice_error"),
+                rectification_scope=overrides.get("rectification_scope", "total"),
+                affected_line_numbers=overrides.get("affected_line_numbers"),
+                source=overrides.get("source", "manual"),
+                actor=overrides.get("actor"),
+            )
+        self.assertEqual(error.exception.field, field)
+
+    def build_rectification(self, **overrides):
+        return build_rectification_snapshot_from_invoice(
+            overrides.get("original_invoice", corrective_invoice()),
+            issue_date=overrides.get("issue_date", datetime(2026, 7, 17, 9, 0)),
+            rectification_type=overrides.get("rectification_type", "differences"),
+            rectification_reason=overrides.get("rectification_reason", "invoice_error"),
+            rectification_scope=overrides.get("rectification_scope", "total"),
+            affected_line_numbers=overrides.get("affected_line_numbers"),
+            source=overrides.get("source", "manual"),
+            actor=overrides.get("actor"),
+        )
+
+    def test_builds_deterministic_total_rectification_snapshot(self):
+        original = corrective_invoice()
+        original_snapshot = copy.deepcopy(original.invoice_snapshot)
+
+        first = build_rectification_snapshot_from_invoice(
+            original,
+            issue_date=datetime(2026, 7, 17, 9, 0),
+            rectification_type="differences",
+            rectification_reason="invoice_error",
+            rectification_scope="total",
+            source="manual",
+        )
+        second = build_rectification_snapshot_from_invoice(
+            original,
+            issue_date=datetime(2026, 7, 17, 9, 0),
+            rectification_type="differences",
+            rectification_reason="invoice_error",
+            rectification_scope="total",
+            source="manual",
+        )
+
+        self.assertEqual(first, second)
+        self.assertEqual(original.invoice_snapshot, original_snapshot)
+        self.assertEqual(first["schema_version"], 3)
+        self.assertEqual(first["metadata"]["generator"], "invoice_snapshot_builder_v3")
+        self.assertEqual(first["operation"]["invoice_type"], "corrective")
+        self.assertEqual(first["operation"]["rectification"]["rectification_type"], "differences")
+        self.assertEqual(first["operation"]["rectification"]["rectification_scope"], "total")
+        self.assertEqual(first["operation"]["rectification"]["rectification_reason"], "invoice_error")
+        self.assertEqual(first["operation"]["rectification"]["rectification_reason_text"], "Factura emitida por error")
+        self.assertEqual(first["operation"]["rectification"]["original_invoice_id"], 2001)
+        self.assertEqual(first["operation"]["rectification"]["original_invoice_number"], "F2026000001")
+        self.assertEqual(first["operation"]["rectification"]["original_invoice_issued_at"], "2026-07-16T10:00:00")
+        self.assertEqual(first["operation"]["rectification"]["affected_line_numbers"], [1, 2])
+
+    def test_total_rectification_inverts_base_iva_total_and_lines(self):
+        original = corrective_invoice()
+        snapshot = self.build_rectification(original_invoice=original)
+
+        self.assertEqual(snapshot["schema_version"], 3)
+        self.assertEqual(snapshot["totals"]["products_amount_before_discount"], "-95.00")
+        self.assertEqual(snapshot["totals"]["shipping_amount_before_discount"], "-21.00")
+        self.assertEqual(snapshot["totals"]["total_amount_before_discount"], "-116.00")
+        self.assertEqual(snapshot["totals"]["discount_amount"], "0.00")
+        self.assertEqual(snapshot["totals"]["tax_base"], "-95.87")
+        self.assertEqual(snapshot["totals"]["tax_amount"], "-20.13")
+        self.assertEqual(snapshot["totals"]["total_amount"], "-116.00")
+        self.assertEqual(snapshot["references"]["original_invoice_id"], 2001)
+        self.assertEqual(snapshot["references"]["original_invoice_number"], "F2026000001")
+        self.assertEqual(snapshot["references"]["original_invoice_issued_at"], "2026-07-16T10:00:00")
+        self.assertEqual(snapshot["lines"][0]["unit_price_net"], "-78.512397")
+        self.assertEqual(snapshot["lines"][0]["unit_amount_before_discount"], "-95.00")
+        self.assertEqual(snapshot["lines"][0]["line_amount_before_discount"], "-95.00")
+        self.assertEqual(snapshot["lines"][0]["discount_amount"], "0.00")
+        self.assertEqual(snapshot["lines"][0]["line_tax_base_before_discount"], "-78.51")
+        self.assertEqual(snapshot["lines"][0]["discount_tax_base"], "0.00")
+        self.assertEqual(snapshot["lines"][0]["tax_base"], "-78.51")
+        self.assertEqual(snapshot["lines"][0]["tax_amount"], "-16.49")
+        self.assertEqual(snapshot["lines"][1]["line_type"], "shipping")
+        self.assertEqual(snapshot["lines"][1]["unit_price_net"], "-17.355372")
+        self.assertEqual(snapshot["lines"][1]["unit_amount_before_discount"], "-21.00")
+        self.assertEqual(snapshot["lines"][1]["line_amount_before_discount"], "-21.00")
+        self.assertEqual(snapshot["lines"][1]["discount_amount"], "0.00")
+        self.assertEqual(snapshot["lines"][1]["line_tax_base_before_discount"], "-17.36")
+        self.assertEqual(snapshot["lines"][1]["discount_tax_base"], "0.00")
+        self.assertEqual(snapshot["lines"][1]["tax_base"], "-17.36")
+        self.assertEqual(snapshot["lines"][1]["tax_amount"], "-3.64")
+        self.assertEqual(snapshot["payment"], original.invoice_snapshot["payment"])
+        self.assertEqual(snapshot["operation"]["rectification"]["rectification_reason_text"], "Factura emitida por error")
+        self.assertEqual(snapshot["operation"]["rectification"]["rectification_scope"], "total")
+        self.assertEqual(snapshot["operation"]["rectification"]["affected_line_numbers"], [1, 2])
+        assert_fiscal_totals(self, snapshot)
+
+    def test_total_rectification_with_discount_and_shipping_neutralizes_amounts(self):
+        discounted_snapshot = build(
+            checkout_session=checkout_session(
+                {
+                    "quote_snapshot": quote(
+                        {
+                            "discount_code": "REJAS10",
+                            "discount_code_valid": True,
+                            "discount_percent": 10.0,
+                            "discount_amount": 11.60,
+                            "total_amount": 104.40,
+                        }
+                    )
+                }
+            )
+        )
+        discounted_original = corrective_invoice({"invoice_snapshot": discounted_snapshot})
+
+        snapshot = self.build_rectification(original_invoice=discounted_original)
+
+        self.assertEqual(snapshot["totals"]["discount_amount"], "-11.60")
+        self.assertEqual(snapshot["totals"]["tax_base"], "-86.28")
+        self.assertEqual(snapshot["totals"]["tax_amount"], "-18.12")
+        self.assertEqual(snapshot["totals"]["total_amount"], "-104.40")
+        self.assertEqual(snapshot["lines"][0]["discount_amount"], "-9.50")
+        self.assertEqual(snapshot["lines"][0]["discount_tax_base"], "-7.85")
+        self.assertEqual(snapshot["lines"][0]["line_total"], "-85.50")
+        self.assertEqual(snapshot["lines"][1]["discount_amount"], "-2.10")
+        self.assertEqual(snapshot["lines"][1]["discount_tax_base"], "-1.74")
+        self.assertEqual(snapshot["lines"][1]["line_total"], "-18.90")
+        assert_fiscal_totals(self, snapshot)
+
+    def test_rejects_original_without_valid_snapshot(self):
+        original = corrective_invoice({"invoice_snapshot": None})
+        self.assert_rectification_validation_error(
+            "original_invoice.invoice_snapshot",
+            original_invoice=original,
+        )
+
+    def test_rejects_v1_original_to_avoid_emitting_a_non_renderable_v3_pdf(self):
+        original = corrective_invoice()
+        original.invoice_snapshot["schema_version"] = 1
+        original.invoice_snapshot["metadata"]["generator"] = "invoice_snapshot_builder_v1"
+        for line in original.invoice_snapshot["lines"]:
+            line.pop("unit_price_net")
+            line.pop("line_tax_base_before_discount")
+            line.pop("discount_tax_base")
+
+        self.assert_rectification_validation_error(
+            "original_invoice.invoice_snapshot.schema_version",
+            original_invoice=original,
+        )
+
+    def test_rejects_original_that_is_already_corrective(self):
+        original = corrective_invoice({"invoice_type": "corrective"})
+        self.assert_rectification_validation_error(
+            "original_invoice.invoice_type",
+            original_invoice=original,
+        )
+
+    def test_rejects_partial_rectification_explicitly(self):
+        self.assert_rectification_validation_error(
+            "operation.rectification.rectification_scope",
+            rectification_scope="partial",
+        )
+
+    def test_rejects_missing_rectification_reason(self):
+        self.assert_rectification_validation_error(
+            "operation.rectification.rectification_reason",
+            rectification_reason=None,
+        )
+
+    def test_rejects_missing_rectification_type(self):
+        self.assert_rectification_validation_error(
+            "operation.rectification.rectification_type",
+            rectification_type=None,
+        )
+
+    def test_rejects_invalid_rectification_values(self):
+        self.assert_rectification_validation_error(
+            "operation.rectification.rectification_type",
+            rectification_type="invalid",
+        )
+        self.assert_rectification_validation_error(
+            "operation.rectification.rectification_reason",
+            rectification_reason="invalid",
+        )
+
+    def test_rejects_invalid_affected_line_numbers(self):
+        self.assert_rectification_validation_error(
+            "operation.rectification.affected_line_numbers",
+            affected_line_numbers=[1],
+        )
+        self.assert_rectification_validation_error(
+            "operation.rectification.affected_line_numbers.2",
+            affected_line_numbers=[1, 1],
+        )
+
+    def test_same_input_produces_same_snapshot(self):
+        original = corrective_invoice()
+        first = self.build_rectification(original_invoice=original)
+        second = self.build_rectification(original_invoice=original)
+        self.assertEqual(first, second)
+
 
 
 if __name__ == "__main__":

@@ -79,6 +79,23 @@ def snapshot(overrides=None):
     return data
 
 
+def rectification_snapshot_v3(overrides=None):
+    data = copy.deepcopy(snapshot())
+    data["schema_version"] = 3
+    data["metadata"]["generator"] = "invoice_snapshot_builder_v3"
+    data["operation"]["invoice_type"] = "corrective"
+    data["operation"]["rectification"] = {
+        "rectification_type": "differences",
+        "rectification_scope": "total",
+        "rectification_reason": "invoice_error",
+        "original_invoice_id": 789,
+        "original_invoice_number": "F2026000001",
+        "original_invoice_issued_at": "2026-07-16T09:30:00",
+    }
+    data.update(overrides or {})
+    return data
+
+
 class SnapshotInvoice:
     def __init__(
         self,
@@ -194,6 +211,45 @@ class InvoiceEmailServiceTest(unittest.TestCase):
 
         self.assertEqual(result.recipient, "cliente@example.com")
         self.assertEqual(invoice.email_status, EMAIL_STATUS_SENT)
+
+    def test_sends_invoice_email_from_v3_rectification_snapshot(self):
+        fiscal_snapshot = rectification_snapshot_v3()
+        original_snapshot = copy.deepcopy(fiscal_snapshot)
+        invoice = SnapshotInvoice(
+            invoice_number="R2026000001",
+            invoice_snapshot=fiscal_snapshot,
+            pdf_path="/api/download-invoice/invoice_R2026000001.pdf",
+        )
+        mailer = FakeMailer()
+
+        with temp_invoice_dir() as tmpdir:
+            write_pdf(tmpdir, "invoice_R2026000001.pdf")
+            result = send_invoice_email(invoice, mailer=mailer, invoice_folder=tmpdir)
+
+        self.assertEqual(result.recipient, "cliente@example.com")
+        self.assertEqual(result.attachment_filename, "invoice_R2026000001.pdf")
+        self.assertEqual(invoice.email_status, EMAIL_STATUS_SENT)
+        self.assertEqual(fiscal_snapshot, original_snapshot)
+        message = mailer.sent[0]
+        self.assertEqual(message.subject, "Factura rectificativa R2026000001 - MetalWolft")
+        self.assertIn("Factura original rectificada: F2026000001", message.body)
+        self.assertIn("Factura original rectificada", message.html)
+        self.assertIn("F2026000001", message.html)
+        self.assertEqual(attachment_filename(attachment(message)), "invoice_R2026000001.pdf")
+
+    def test_v3_rectification_without_original_reference_fails_explicitly(self):
+        fiscal_snapshot = rectification_snapshot_v3()
+        del fiscal_snapshot["operation"]["rectification"]["original_invoice_number"]
+        invoice = SnapshotInvoice(
+            invoice_number="R2026000001",
+            invoice_snapshot=fiscal_snapshot,
+            pdf_path="/api/download-invoice/invoice_R2026000001.pdf",
+        )
+
+        with temp_invoice_dir() as tmpdir:
+            write_pdf(tmpdir, "invoice_R2026000001.pdf")
+            with self.assertRaisesRegex(InvoiceEmailSnapshotMissing, "original_invoice_number"):
+                send_invoice_email(invoice, mailer=FakeMailer(), invoice_folder=tmpdir)
 
     def test_subject_body_and_attachment_contract(self):
         invoice = SnapshotInvoice()

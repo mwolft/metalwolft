@@ -1,3 +1,4 @@
+import copy
 import sys
 import unittest
 from datetime import datetime
@@ -11,10 +12,13 @@ if str(SRC_DIR) not in sys.path:
     sys.path.insert(0, str(SRC_DIR))
 
 from api.invoice_issue_service import (
+    CORRECTIVE_INVOICE_TYPE,
+    DEFAULT_RECTIFICATION_SERIES,
     DEFAULT_INVOICE_SERIES,
     ORDINARY_INVOICE_TYPE,
     InvoiceIssueError,
     issue_invoice_for_order,
+    issue_total_rectification_for_invoice,
 )
 
 
@@ -102,6 +106,50 @@ def invoice_snapshot():
         "schema_version": 1,
         "operation": {"order_id": 123, "invoice_type": ORDINARY_INVOICE_TYPE},
         "totals": {"grand_total": "116.00"},
+    }
+
+
+def original_invoice(overrides=None):
+    data = {
+        "id": 789,
+        "invoice_number": "F2026000001",
+        "order_id": 123,
+        "invoice_type": ORDINARY_INVOICE_TYPE,
+        "issued_at": datetime(2026, 7, 16, 10, 30, 0),
+        "invoice_snapshot": invoice_snapshot(),
+    }
+    data.update(overrides or {})
+    return FakeInvoice(**data)
+
+
+def rectification_snapshot():
+    return {
+        "schema_version": 3,
+        "customer": {
+            "legal_name": "Sergio Arias",
+            "tax_id": "00000000T",
+            "address": "Calle factura",
+            "phone": "600000000",
+        },
+        "operation": {
+            "invoice_type": CORRECTIVE_INVOICE_TYPE,
+            "rectification": {
+                "rectification_type": "differences",
+                "rectification_scope": "total",
+                "rectification_reason": "invoice_error",
+                "original_invoice_id": 789,
+                "original_invoice_number": "F2026000001",
+            },
+        },
+        "lines": [
+            {
+                "line_number": 1,
+                "line_type": "product",
+                "description": "Reja fija Albany",
+                "line_total": "-116.00",
+            }
+        ],
+        "totals": {"total_amount": "-116.00"},
     }
 
 
@@ -302,6 +350,179 @@ class InvoiceIssueServiceTest(unittest.TestCase):
         source = (SRC_DIR / "api/invoice_issue_service.py").read_text(encoding="utf-8")
 
         self.assertIn(".with_for_update()", source)
+
+
+class InvoiceRectificationIssueServiceTest(unittest.TestCase):
+    def test_service_issues_total_rectification_from_builder_snapshot(self):
+        session = FakeDbSession()
+        original = original_invoice()
+        original_snapshot_before = copy.deepcopy(original.invoice_snapshot)
+        snapshot = rectification_snapshot()
+        issued_at = datetime(2026, 7, 17, 9, 0, 0)
+        allocation = SimpleNamespace(invoice_number="R2026000001")
+
+        with patch("api.invoice_issue_service._lock_invoice_for_update", return_value=original) as lock_invoice, patch(
+            "api.invoice_issue_service._find_existing_corrective_invoice", return_value=None
+        ) as find_existing, patch(
+            "api.invoice_issue_service._invoice_model", return_value=FakeInvoice
+        ), patch(
+            "api.invoice_issue_service.build_rectification_snapshot_from_invoice", return_value=snapshot
+        ) as build_snapshot, patch(
+            "api.invoice_issue_service.acquire_next_invoice_number", return_value=allocation
+        ) as acquire_number, patch(
+            "api.invoice_issue_service.calculate_invoice_snapshot_hash", return_value="rectification-hash"
+        ) as calculate_hash:
+            result = issue_total_rectification_for_invoice(
+                db_session=session,
+                original_invoice_id=789,
+                rectification_type="differences",
+                rectification_reason="invoice_error",
+                issue_date=issued_at,
+                source="admin_manual",
+                actor={"email": "admin@example.com"},
+            )
+
+        lock_invoice.assert_called_once_with(session, 789)
+        find_existing.assert_called_once_with(session, 789)
+        build_snapshot.assert_called_once_with(
+            original,
+            issue_date=issued_at,
+            rectification_type="differences",
+            rectification_reason="invoice_error",
+            rectification_scope="total",
+            source="admin_manual",
+            actor={"email": "admin@example.com"},
+        )
+        acquire_number.assert_called_once_with(
+            session,
+            series=DEFAULT_RECTIFICATION_SERIES,
+            fiscal_year=2026,
+        )
+        calculate_hash.assert_called_once_with(snapshot)
+
+        self.assertTrue(result.created)
+        self.assertEqual(result.invoice_number, "R2026000001")
+        self.assertEqual(result.invoice.invoice_type, CORRECTIVE_INVOICE_TYPE)
+        self.assertEqual(result.invoice.original_invoice_id, 789)
+        self.assertEqual(result.invoice.rectification_type, "differences")
+        self.assertEqual(result.invoice.rectification_reason, "invoice_error")
+        self.assertEqual(result.invoice.order_id, 123)
+        self.assertEqual(result.invoice.amount, -116.0)
+        self.assertIs(result.invoice.invoice_snapshot, snapshot)
+        self.assertEqual(result.invoice.invoice_snapshot_schema_version, 3)
+        self.assertEqual(result.invoice.invoice_snapshot_hash, "rectification-hash")
+        self.assertEqual(result.invoice.client_name, "Sergio Arias")
+        self.assertEqual(result.invoice.client_address, "Calle factura")
+        self.assertEqual(result.invoice.client_cif, "00000000T")
+        self.assertEqual(result.invoice.client_phone, "600000000")
+        self.assertEqual(result.invoice.order_details, snapshot["lines"])
+        self.assertEqual(original.invoice_snapshot, original_snapshot_before)
+        self.assertEqual(session.flush_count, 1)
+        self.assertEqual(session.commit_count, 1)
+        self.assertEqual(session.rollback_count, 0)
+
+    def test_repeat_returns_matching_total_rectification_without_allocating_number(self):
+        session = FakeDbSession()
+        original = original_invoice()
+        existing = FakeInvoice(
+            invoice_number="R2026000001",
+            rectification_type="differences",
+            rectification_reason="invoice_error",
+            invoice_snapshot=rectification_snapshot(),
+        )
+
+        with patch("api.invoice_issue_service._lock_invoice_for_update", return_value=original), patch(
+            "api.invoice_issue_service._find_existing_corrective_invoice", return_value=existing
+        ), patch("api.invoice_issue_service.acquire_next_invoice_number") as acquire_number, patch(
+            "api.invoice_issue_service.build_rectification_snapshot_from_invoice"
+        ) as build_snapshot:
+            result = issue_total_rectification_for_invoice(
+                db_session=session,
+                original_invoice_id=789,
+                rectification_type="differences",
+                rectification_reason="invoice_error",
+                issue_date=datetime(2026, 7, 17),
+            )
+
+        self.assertFalse(result.created)
+        self.assertIs(result.invoice, existing)
+        self.assertEqual(result.invoice_number, "R2026000001")
+        acquire_number.assert_not_called()
+        build_snapshot.assert_not_called()
+        self.assertEqual(session.commit_count, 1)
+        self.assertEqual(session.rollback_count, 0)
+
+    def test_rejects_a_second_total_rectification_with_different_request_data(self):
+        session = FakeDbSession()
+        original = original_invoice()
+        existing = FakeInvoice(
+            invoice_number="R2026000001",
+            rectification_type="differences",
+            rectification_reason="invoice_error",
+            invoice_snapshot=rectification_snapshot(),
+        )
+
+        with patch("api.invoice_issue_service._lock_invoice_for_update", return_value=original), patch(
+            "api.invoice_issue_service._find_existing_corrective_invoice", return_value=existing
+        ):
+            with self.assertRaisesRegex(InvoiceIssueError, "ya tiene una rectificacion"):
+                issue_total_rectification_for_invoice(
+                    db_session=session,
+                    original_invoice_id=789,
+                    rectification_type="differences",
+                    rectification_reason="return",
+                    issue_date=datetime(2026, 7, 17),
+                )
+
+        self.assertEqual(session.commit_count, 0)
+        self.assertEqual(session.rollback_count, 1)
+
+    def test_rejects_missing_unissued_or_invalid_original_invoice(self):
+        cases = (
+            (None, "No se ha encontrado"),
+            (original_invoice({"issued_at": None}), "debe estar emitida"),
+            (original_invoice({"invoice_snapshot": None}), "snapshot fiscal valido"),
+            (original_invoice({"invoice_type": CORRECTIVE_INVOICE_TYPE}), "No se puede rectificar"),
+        )
+
+        for original, message in cases:
+            with self.subTest(message=message):
+                session = FakeDbSession()
+                with patch("api.invoice_issue_service._lock_invoice_for_update", return_value=original):
+                    with self.assertRaisesRegex(InvoiceIssueError, message):
+                        issue_total_rectification_for_invoice(
+                            db_session=session,
+                            original_invoice_id=789,
+                            rectification_type="differences",
+                            rectification_reason="invoice_error",
+                            issue_date=datetime(2026, 7, 17),
+                        )
+                self.assertEqual(session.rollback_count, 1)
+
+    def test_partial_rectification_is_rejected_before_number_allocation(self):
+        session = FakeDbSession()
+        original = original_invoice()
+
+        with patch("api.invoice_issue_service._lock_invoice_for_update", return_value=original), patch(
+            "api.invoice_issue_service._find_existing_corrective_invoice", return_value=None
+        ), patch(
+            "api.invoice_issue_service.build_rectification_snapshot_from_invoice"
+        ) as build_snapshot, patch(
+            "api.invoice_issue_service.acquire_next_invoice_number"
+        ) as acquire_number:
+            with self.assertRaisesRegex(InvoiceIssueError, "parcial todavia no esta soportada"):
+                issue_total_rectification_for_invoice(
+                    db_session=session,
+                    original_invoice_id=789,
+                    rectification_type="differences",
+                    rectification_reason="invoice_error",
+                    rectification_scope="partial",
+                    issue_date=datetime(2026, 7, 17),
+                )
+
+        build_snapshot.assert_not_called()
+        acquire_number.assert_not_called()
+        self.assertEqual(session.rollback_count, 0)
 
 
 class InvoiceFinalizerSourceRegressionTest(unittest.TestCase):

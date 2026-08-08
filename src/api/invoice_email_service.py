@@ -8,7 +8,7 @@ from api.invoice_snapshot_integrity import calculate_invoice_snapshot_hash
 from api.transactional_email_renderer import render_invoice_delivery_email
 
 
-SUPPORTED_SCHEMA_VERSIONS = {1, 2}
+SUPPORTED_SCHEMA_VERSIONS = {1, 2, 3}
 EMAIL_STATUS_PENDING = "pending"
 EMAIL_STATUS_SENT = "sent"
 EMAIL_STATUS_FAILED = "failed"
@@ -83,6 +83,7 @@ def send_invoice_email(invoice, *, mailer=None, invoice_folder=None, allow_resen
     customer = _required_mapping(snapshot, "customer")
     issuer = _required_mapping(snapshot, "issuer")
     operation = _required_mapping(snapshot, "operation")
+    rectification = _rectification_reference(snapshot, operation)
     recipient = _required_email(customer)
     attachment_path, attachment_filename = _validated_pdf_path(invoice, invoice_number, invoice_folder)
 
@@ -99,12 +100,19 @@ def send_invoice_email(invoice, *, mailer=None, invoice_folder=None, allow_resen
     trade_name = _text(issuer.get("trade_name") or issuer.get("legal_name") or "MetalWolft")
     customer_name = _text(customer.get("legal_name") or "cliente")
     order_reference = _text(operation.get("order_locator") or operation.get("order_id") or "")
-    subject = f"Factura {invoice_number} - {trade_name}"
+    subject = (
+        f"Factura rectificativa {invoice_number} - {trade_name}"
+        if rectification
+        else f"Factura {invoice_number} - {trade_name}"
+    )
     rendered_email = render_invoice_delivery_email(
         customer_name=customer_name,
         invoice_number=invoice_number,
         order_reference=order_reference,
         trade_name=trade_name,
+        original_invoice_number=(
+            rectification["original_invoice_number"] if rectification else None
+        ),
     )
 
     message = _build_message(
@@ -161,6 +169,26 @@ def _validated_snapshot(invoice):
     if snapshot.get("schema_version") not in SUPPORTED_SCHEMA_VERSIONS:
         raise InvoiceEmailUnsupportedSchema("Version de snapshot no soportada.")
     return snapshot
+
+
+def _rectification_reference(snapshot, operation):
+    if snapshot.get("schema_version") != 3:
+        return None
+    if operation.get("invoice_type") != "corrective":
+        raise InvoiceEmailSnapshotMissing(
+            "El snapshot v3 debe identificar una factura rectificativa."
+        )
+    rectification = operation.get("rectification")
+    if not isinstance(rectification, dict):
+        raise InvoiceEmailSnapshotMissing(
+            "El snapshot v3 no contiene la rectificacion original."
+        )
+    for field in ("original_invoice_number", "original_invoice_issued_at"):
+        if not rectification.get(field):
+            raise InvoiceEmailSnapshotMissing(
+                f"El snapshot v3 no contiene {field} de la factura original."
+            )
+    return rectification
 
 
 def _validate_snapshot_hash(invoice, snapshot):

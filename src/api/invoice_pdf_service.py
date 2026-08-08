@@ -10,7 +10,7 @@ from api.invoice_snapshot_integrity import calculate_invoice_snapshot_hash
 from api.utils import CONFIGURATOR_ANCHORAGES, CONFIGURATOR_COLORS
 
 
-SUPPORTED_SCHEMA_VERSIONS = {1, 2}
+SUPPORTED_SCHEMA_VERSIONS = {1, 2, 3}
 PDF_ROUTE_PREFIX = "/api/download-invoice"
 FILENAME_PREFIX = "invoice_"
 FILENAME_SUFFIX = ".pdf"
@@ -139,7 +139,7 @@ def _validate_snapshot_contract(snapshot):
     if not isinstance(lines, list) or not lines:
         raise InvoicePdfSnapshotMissing("El snapshot no contiene lineas facturables.")
 
-    if snapshot.get("schema_version") == 2:
+    if snapshot.get("schema_version") in {2, 3}:
         required_line_fields = (
             "unit_price_net",
             "line_tax_base_before_discount",
@@ -156,6 +156,22 @@ def _validate_snapshot_contract(snapshot):
                     raise InvoicePdfSnapshotMissing(
                         f"La linea {index} del snapshot v2 no contiene {field}."
                     )
+
+    if snapshot.get("schema_version") == 3:
+        _validate_rectification_reference(snapshot["operation"])
+
+
+def _validate_rectification_reference(operation):
+    if operation.get("invoice_type") != "corrective":
+        raise InvoicePdfSnapshotMissing("El snapshot v3 debe identificar una factura rectificativa.")
+    rectification = operation.get("rectification")
+    if not isinstance(rectification, dict):
+        raise InvoicePdfSnapshotMissing("El snapshot v3 no contiene la rectificacion original.")
+    for field in ("original_invoice_number", "original_invoice_issued_at"):
+        if not rectification.get(field):
+            raise InvoicePdfSnapshotMissing(
+                f"El snapshot v3 no contiene {field} de la factura original."
+            )
 
 
 def _invoice_pdf_filename(invoice_number):
@@ -387,11 +403,20 @@ def _build_invoice_header(*, invoice_number, issued_at, operation, available_wid
         brand = brand_copy
 
     issue_value = issued_at or operation.get("issue_date")
+    rectification = operation.get("rectification") if operation.get("invoice_type") == "corrective" else None
     metadata = [
-        "<font size='12'><b>FACTURA</b></font>",
+        "<font size='12'><b>Factura rectificativa</b></font>"
+        if isinstance(rectification, dict)
+        else "<font size='12'><b>FACTURA</b></font>",
         f"<font size='7' color='{BRAND_MUTED}'>NÚMERO</font><br/><b>{_pdf_text(invoice_number)}</b>",
         f"<font size='7' color='{BRAND_MUTED}'>FECHA DE EXPEDICIÓN</font><br/>{_pdf_text(_display_date(issue_value))}",
     ]
+    if isinstance(rectification, dict):
+        metadata.append(
+            f"<font size='7' color='{BRAND_MUTED}'>RECTIFICA LA FACTURA</font><br/>"
+            f"<b>{_pdf_text(rectification['original_invoice_number'])}</b> emitida el "
+            f"{_pdf_text(_display_date(rectification['original_invoice_issued_at']))}"
+        )
     operation_date = operation.get("operation_date")
     if operation_date and _date_key(operation_date) != _date_key(issue_value):
         metadata.append(
@@ -500,7 +525,7 @@ def _build_line_table(lines, styles, schema_version):
     table = Table(
         _line_table_rows(lines, styles, schema_version),
         colWidths=[0.70 * cm, 5.25 * cm, 0.95 * cm, 3.00 * cm, 2.25 * cm, 2.55 * cm, 2.70 * cm]
-        if schema_version == 2
+        if schema_version in {2, 3}
         else [0.75 * cm, 6.55 * cm, 1.05 * cm, 2.35 * cm, 2.05 * cm, 2.35 * cm, 2.30 * cm],
         repeatRows=1,
         splitByRow=1,
@@ -528,7 +553,7 @@ def _build_line_table(lines, styles, schema_version):
 def _line_table_rows(lines, styles, schema_version):
     from reportlab.platypus import Paragraph
 
-    if schema_version == 2:
+    if schema_version in {2, 3}:
         return _line_table_rows_v2(lines, styles)
 
     rows = [[

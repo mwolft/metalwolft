@@ -5,10 +5,21 @@ from decimal import Decimal, InvalidOperation, ROUND_DOWN, ROUND_HALF_UP
 
 SNAPSHOT_SCHEMA_VERSION = 2
 SNAPSHOT_GENERATOR = "invoice_snapshot_builder_v2"
+RECTIFICATION_SNAPSHOT_SCHEMA_VERSION = 3
+RECTIFICATION_SNAPSHOT_GENERATOR = "invoice_snapshot_builder_v3"
 SUPPORTED_CURRENCY = "EUR"
 SUPPORTED_TAX_RATE = Decimal("21.00")
 NET_UNIT_PRICE_QUANTUM = Decimal("0.000001")
 FINAL_CHECKOUT_STATUSES = {"paid", "order_created"}
+RECTIFICATION_TYPES = {"differences", "substitution"}
+RECTIFICATION_SCOPES = {"total", "partial"}
+RECTIFICATION_REASON_TEXTS = {
+    "invoice_error": "Factura emitida por error",
+    "return": "Devolucion",
+    "price_error": "Correccion de precio",
+    "shipping_error": "Correccion de envio",
+    "other": "Otro motivo",
+}
 
 
 class InvoiceSnapshotValidationError(ValueError):
@@ -91,6 +102,151 @@ def build_invoice_snapshot(
             "actor": _serialize_actor(actor),
         },
     }
+
+
+def build_rectification_snapshot_from_invoice(
+    original_invoice,
+    *,
+    issue_date,
+    rectification_type,
+    rectification_reason,
+    rectification_scope="total",
+    affected_line_numbers=None,
+    source="manual",
+    actor=None,
+):
+    """Build a corrective v3 snapshot from an already-issued original invoice.
+
+    The original invoice snapshot is the only fiscal source. This builder never
+    queries orders, checkout sessions, or live product/customer data.
+    """
+    if original_invoice is None:
+        raise InvoiceSnapshotValidationError("original_invoice", "La factura original es obligatoria.")
+
+    if rectification_type not in RECTIFICATION_TYPES:
+        raise InvoiceSnapshotValidationError(
+            "operation.rectification.rectification_type",
+            "Tipo de rectificacion no soportado.",
+        )
+    if rectification_reason not in RECTIFICATION_REASON_TEXTS:
+        raise InvoiceSnapshotValidationError(
+            "operation.rectification.rectification_reason",
+            "Motivo de rectificacion no soportado.",
+        )
+    if rectification_scope not in RECTIFICATION_SCOPES:
+        raise InvoiceSnapshotValidationError(
+            "operation.rectification.rectification_scope",
+            "Alcance de rectificacion no soportado.",
+        )
+    if rectification_scope != "total":
+        raise InvoiceSnapshotValidationError(
+            "operation.rectification.rectification_scope",
+            "La rectificacion parcial todavia no esta soportada.",
+        )
+
+    original_snapshot = _copy_mapping(
+        _getattr(original_invoice, "invoice_snapshot"),
+        "original_invoice.invoice_snapshot",
+    )
+    original_schema_version = original_snapshot.get("schema_version")
+    if original_schema_version != 2:
+        raise InvoiceSnapshotValidationError(
+            "original_invoice.invoice_snapshot.schema_version",
+            "La rectificacion total requiere un snapshot original v2.",
+        )
+
+    original_invoice_type = _rectification_original_invoice_type(original_invoice, original_snapshot)
+    if original_invoice_type == "corrective":
+        raise InvoiceSnapshotValidationError(
+            "original_invoice.invoice_type",
+            "No se puede rectificar una factura rectificativa.",
+        )
+
+    original_lines = original_snapshot.get("lines")
+    if not isinstance(original_lines, list) or not original_lines:
+        raise InvoiceSnapshotValidationError(
+            "original_invoice.invoice_snapshot.lines",
+            "La factura original debe contener lineas facturables.",
+        )
+
+    original_totals = original_snapshot.get("totals")
+    if not isinstance(original_totals, dict):
+        raise InvoiceSnapshotValidationError(
+            "original_invoice.invoice_snapshot.totals",
+            "La factura original debe contener totales fiscales.",
+        )
+
+    inverted_lines = [
+        _invert_rectification_line(line, index)
+        for index, line in enumerate(original_lines, start=1)
+    ]
+    _validate_rectification_line_totals(original_lines, inverted_lines)
+
+    original_invoice_id = _get_required(
+        original_invoice,
+        "id",
+        "operation.rectification.original_invoice_id",
+    )
+    original_invoice_number = _get_required(
+        original_invoice,
+        "invoice_number",
+        "operation.rectification.original_invoice_number",
+    )
+    original_invoice_issued_at = _get_required(
+        original_invoice,
+        "issued_at",
+        "operation.rectification.original_invoice_issued_at",
+    )
+
+    rectification_snapshot = {
+        "schema_version": RECTIFICATION_SNAPSHOT_SCHEMA_VERSION,
+        "metadata": {
+            "generator": RECTIFICATION_SNAPSHOT_GENERATOR,
+            "generated_at": _timestamp_string(issue_date),
+        },
+        "issuer": deepcopy(original_snapshot["issuer"]),
+        "customer": deepcopy(original_snapshot["customer"]),
+        "operation": {
+            "invoice_type": "corrective",
+            "issue_date": _date_string(issue_date, "operation.issue_date"),
+            "operation_date": original_snapshot["operation"].get("operation_date")
+            or original_snapshot["operation"].get("issue_date"),
+            "currency": original_snapshot["operation"].get("currency", SUPPORTED_CURRENCY),
+            "order_id": original_snapshot["operation"].get("order_id"),
+            "order_locator": original_snapshot["operation"].get("order_locator"),
+            "order_date": original_snapshot["operation"].get("order_date"),
+            "discount_code": original_snapshot["operation"].get("discount_code"),
+            "rectification": {
+                "rectification_type": rectification_type,
+                "rectification_scope": rectification_scope,
+                "rectification_reason": rectification_reason,
+                "rectification_reason_text": RECTIFICATION_REASON_TEXTS[rectification_reason],
+                "original_invoice_id": original_invoice_id,
+                "original_invoice_number": original_invoice_number,
+                "original_invoice_issued_at": _timestamp_string(original_invoice_issued_at),
+                "affected_line_numbers": [
+                    line["line_number"] for line in inverted_lines
+                ]
+                if affected_line_numbers is None
+                else _normalize_affected_line_numbers(
+                    affected_line_numbers,
+                    original_lines,
+                ),
+            },
+        },
+        "lines": inverted_lines,
+        "totals": _invert_rectification_totals(original_totals, inverted_lines),
+        "payment": deepcopy(original_snapshot.get("payment") or {}),
+        "references": {
+            "source": source,
+            "actor": _serialize_actor(actor),
+            "original_invoice_id": original_invoice_id,
+            "original_invoice_number": original_invoice_number,
+            "original_invoice_issued_at": _timestamp_string(original_invoice_issued_at),
+        },
+    }
+
+    return rectification_snapshot
 
 
 def _copy_mapping(value, field):
@@ -686,3 +842,246 @@ def _serialize_actor(actor):
         if value is not None:
             payload[key] = value
     return payload or None
+
+
+def _rectification_original_invoice_type(original_invoice, original_snapshot):
+    invoice_type = _getattr(original_invoice, "invoice_type")
+    if invoice_type:
+        return invoice_type
+    operation = original_snapshot.get("operation")
+    if isinstance(operation, dict):
+        return operation.get("invoice_type")
+    return None
+
+
+def _invert_rectification_line(line, index):
+    if not isinstance(line, dict):
+        raise InvoiceSnapshotValidationError(
+            f"original_invoice.invoice_snapshot.lines.{index}",
+            "Linea invalida.",
+        )
+
+    inverted = deepcopy(line)
+    monetary_fields = (
+        "unit_price_net",
+        "unit_amount_before_discount",
+        "line_amount_before_discount",
+        "discount_amount",
+        "line_tax_base_before_discount",
+        "discount_tax_base",
+        "line_total",
+        "tax_base",
+        "tax_amount",
+    )
+    for field in monetary_fields:
+        if field in inverted and inverted[field] is not None:
+            if field == "unit_price_net":
+                inverted[field] = _negative_net_money(inverted[field], f"original_invoice.invoice_snapshot.lines.{index}.{field}")
+            else:
+                inverted[field] = _negative_money(inverted[field], f"original_invoice.invoice_snapshot.lines.{index}.{field}")
+
+    if "tax_rate" in inverted and inverted["tax_rate"] is not None:
+        inverted["tax_rate"] = _money(inverted["tax_rate"], f"original_invoice.invoice_snapshot.lines.{index}.tax_rate")
+
+    return inverted
+
+
+def _invert_rectification_totals(original_totals, inverted_lines):
+    if not isinstance(original_totals, dict):
+        raise InvoiceSnapshotValidationError(
+            "original_invoice.invoice_snapshot.totals",
+            "La factura original debe contener totales fiscales.",
+        )
+
+    expected = {
+        "products_amount_before_discount": _negative_money(
+            original_totals.get("products_amount_before_discount", "0.00"),
+            "original_invoice.invoice_snapshot.totals.products_amount_before_discount",
+        ),
+        "shipping_amount_before_discount": _negative_money(
+            original_totals.get("shipping_amount_before_discount", "0.00"),
+            "original_invoice.invoice_snapshot.totals.shipping_amount_before_discount",
+        ),
+        "total_amount_before_discount": _negative_money(
+            original_totals.get("total_amount_before_discount", "0.00"),
+            "original_invoice.invoice_snapshot.totals.total_amount_before_discount",
+        ),
+        "discount_amount": _negative_money(
+            original_totals.get("discount_amount", "0.00"),
+            "original_invoice.invoice_snapshot.totals.discount_amount",
+        ),
+        "total_amount": _negative_money(
+            original_totals.get("total_amount", "0.00"),
+            "original_invoice.invoice_snapshot.totals.total_amount",
+        ),
+        "tax_base": _negative_money(
+            original_totals.get("tax_base", "0.00"),
+            "original_invoice.invoice_snapshot.totals.tax_base",
+        ),
+        "tax_amount": _negative_money(
+            original_totals.get("tax_amount", "0.00"),
+            "original_invoice.invoice_snapshot.totals.tax_amount",
+        ),
+        "rounding_adjustment": _negative_money(
+            original_totals.get("rounding_adjustment", "0.00"),
+            "original_invoice.invoice_snapshot.totals.rounding_adjustment",
+        ),
+    }
+
+    product_line_sum = _quantize_money(
+        sum(
+            _to_decimal(line["line_amount_before_discount"], f"lines.{line['line_number']}.line_amount_before_discount")
+            for line in inverted_lines
+            if line.get("line_type") == "product"
+        )
+    )
+    shipping_line_sum = _quantize_money(
+        sum(
+            _to_decimal(line["line_amount_before_discount"], f"lines.{line['line_number']}.line_amount_before_discount")
+            for line in inverted_lines
+            if line.get("line_type") == "shipping"
+        )
+    )
+    if _quantize_money(
+        sum(_to_decimal(line["tax_base"], f"lines.{line['line_number']}.tax_base") for line in inverted_lines)
+    ) != _to_decimal(expected["tax_base"], "totals.tax_base"):
+        raise InvoiceSnapshotValidationError("totals.tax_base", "La base rectificativa no reconcilia.")
+    if _quantize_money(
+        sum(_to_decimal(line["tax_amount"], f"lines.{line['line_number']}.tax_amount") for line in inverted_lines)
+    ) != _to_decimal(expected["tax_amount"], "totals.tax_amount"):
+        raise InvoiceSnapshotValidationError("totals.tax_amount", "El IVA rectificativo no reconcilia.")
+    if _quantize_money(
+        sum(_to_decimal(line["line_total"], f"lines.{line['line_number']}.line_total") for line in inverted_lines)
+    ) != _to_decimal(expected["total_amount"], "totals.total_amount"):
+        raise InvoiceSnapshotValidationError("totals.total_amount", "El total rectificativo no reconcilia.")
+    if product_line_sum != _to_decimal(
+        expected["products_amount_before_discount"],
+        "totals.products_amount_before_discount",
+    ):
+        raise InvoiceSnapshotValidationError(
+            "totals.products_amount_before_discount",
+            "El subtotal de productos rectificativo no reconcilia.",
+        )
+    if shipping_line_sum != _to_decimal(
+        expected["shipping_amount_before_discount"],
+        "totals.shipping_amount_before_discount",
+    ):
+        raise InvoiceSnapshotValidationError(
+            "totals.shipping_amount_before_discount",
+            "El envio rectificativo no reconcilia.",
+        )
+    if _quantize_money(product_line_sum + shipping_line_sum) != _to_decimal(
+        expected["total_amount_before_discount"],
+        "totals.total_amount_before_discount",
+    ):
+        raise InvoiceSnapshotValidationError(
+            "totals.total_amount_before_discount",
+            "La base rectificativa antes de descuento no reconcilia.",
+        )
+
+    return expected
+
+
+def _validate_rectification_line_totals(original_lines, inverted_lines):
+    if len(original_lines) != len(inverted_lines):
+        raise InvoiceSnapshotValidationError(
+            "original_invoice.invoice_snapshot.lines",
+            "La rectificacion total debe conservar el mismo numero de lineas.",
+        )
+
+    monetary_fields = (
+        "unit_price_net",
+        "unit_amount_before_discount",
+        "line_amount_before_discount",
+        "discount_amount",
+        "line_tax_base_before_discount",
+        "discount_tax_base",
+        "line_total",
+        "tax_base",
+        "tax_amount",
+    )
+
+    for index, (original_line, inverted_line) in enumerate(zip(original_lines, inverted_lines), start=1):
+        if not isinstance(original_line, dict) or not isinstance(inverted_line, dict):
+            raise InvoiceSnapshotValidationError(
+                f"original_invoice.invoice_snapshot.lines.{index}",
+                "Linea invalida.",
+            )
+        if original_line.get("line_number") != inverted_line.get("line_number"):
+            raise InvoiceSnapshotValidationError(
+                f"original_invoice.invoice_snapshot.lines.{index}.line_number",
+                "La linea rectificativa debe conservar el numero de linea original.",
+            )
+        for field in monetary_fields:
+            if original_line.get(field) is None and inverted_line.get(field) is None:
+                continue
+            if field == "unit_price_net":
+                expected = _negative_net_money(
+                    original_line.get(field, "0.000000"),
+                    f"original_invoice.invoice_snapshot.lines.{index}.{field}",
+                )
+            else:
+                expected = _negative_money(
+                    original_line.get(field, "0.00"),
+                    f"original_invoice.invoice_snapshot.lines.{index}.{field}",
+                )
+            if inverted_line.get(field) != expected:
+                raise InvoiceSnapshotValidationError(
+                    f"original_invoice.invoice_snapshot.lines.{index}.{field}",
+                    "La linea rectificativa no reconcilia con la original.",
+                )
+
+
+def _normalize_affected_line_numbers(affected_line_numbers, original_lines):
+    original_numbers = [line["line_number"] for line in original_lines]
+    normalized = []
+    seen = set()
+    for index, value in enumerate(affected_line_numbers, start=1):
+        try:
+            line_number = int(value)
+        except (TypeError, ValueError):
+            raise InvoiceSnapshotValidationError(
+                f"operation.rectification.affected_line_numbers.{index}",
+                "Numero de linea invalido.",
+            )
+        if line_number in seen:
+            raise InvoiceSnapshotValidationError(
+                f"operation.rectification.affected_line_numbers.{index}",
+                "La lista de lineas afectadas no puede repetirse.",
+            )
+        seen.add(line_number)
+        normalized.append(line_number)
+
+    if sorted(normalized) != sorted(original_numbers):
+        raise InvoiceSnapshotValidationError(
+            "operation.rectification.affected_line_numbers",
+            "La rectificacion total debe incluir todas las lineas originales.",
+        )
+
+    return normalized
+
+
+def _negative_money(value, field):
+    amount = -_to_decimal(value, field)
+    amount = _quantize_money(amount)
+    if amount == 0:
+        amount = Decimal("0.00")
+    return f"{amount:.2f}"
+
+
+def _negative_net_money(value, field):
+    amount = -_to_decimal(value, field)
+    amount = amount.quantize(NET_UNIT_PRICE_QUANTUM, rounding=ROUND_HALF_UP)
+    if amount == 0:
+        amount = Decimal("0.000000")
+    return f"{amount:.6f}"
+
+
+def _timestamp_string(value):
+    if isinstance(value, datetime):
+        return value.isoformat()
+    if isinstance(value, date):
+        return value.isoformat()
+    if isinstance(value, str) and value:
+        return value
+    raise InvoiceSnapshotValidationError("original_invoice.issued_at", "Fecha original invalida.")

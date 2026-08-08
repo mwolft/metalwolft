@@ -157,6 +157,46 @@ def snapshot_v2(overrides=None):
     return data
 
 
+def rectification_snapshot_v3(overrides=None):
+    data = copy.deepcopy(snapshot_v2())
+    data["schema_version"] = 3
+    data["metadata"]["generator"] = "invoice_snapshot_builder_v3"
+    data["operation"]["invoice_type"] = "corrective"
+    data["operation"]["rectification"] = {
+        "rectification_type": "differences",
+        "rectification_scope": "total",
+        "rectification_reason": "invoice_error",
+        "original_invoice_id": 789,
+        "original_invoice_number": "F2026000001",
+        "original_invoice_issued_at": "2026-07-16T09:30:00",
+    }
+    for line in data["lines"]:
+        for field in (
+            "unit_price_net",
+            "unit_amount_before_discount",
+            "line_amount_before_discount",
+            "discount_amount",
+            "line_tax_base_before_discount",
+            "discount_tax_base",
+            "line_total",
+            "tax_base",
+            "tax_amount",
+        ):
+            line[field] = f"-{line[field]}" if line[field] != "0.00" else "0.00"
+    for field in (
+        "products_amount_before_discount",
+        "shipping_amount_before_discount",
+        "total_amount_before_discount",
+        "discount_amount",
+        "total_amount",
+        "tax_base",
+        "tax_amount",
+    ):
+        data["totals"][field] = f"-{data['totals'][field]}" if data["totals"][field] != "0.00" else "0.00"
+    data.update(overrides or {})
+    return data
+
+
 class SnapshotOnlyInvoice:
     def __init__(self, invoice_number="F2026000001", invoice_snapshot=None, stored_hash=None):
         self.invoice_number = invoice_number
@@ -289,6 +329,34 @@ class InvoicePdfServiceTest(unittest.TestCase):
         self.assertIn("78,512397 €", text)
         self.assertIn("-7,85 €", text)
         self.assertNotIn("Importe original", text)
+
+    def test_pdf_v3_rectification_uses_the_v2_fiscal_line_presentation(self):
+        fiscal_snapshot = rectification_snapshot_v3()
+        original_snapshot = copy.deepcopy(fiscal_snapshot)
+
+        invoice = SnapshotOnlyInvoice(invoice_number="R2026000001", invoice_snapshot=fiscal_snapshot)
+        with temp_invoice_dir() as tmpdir:
+            result = generate_invoice_pdf(invoice, output_dir=tmpdir)
+            text = normalized_pdf_text(Path(tmpdir) / result.filename)
+
+        self.assertIn("Factura rectificativa", text)
+        self.assertIn("R2026000001", text)
+        self.assertIn("RECTIFICA LA FACTURA", text)
+        self.assertIn("F2026000001", text)
+        self.assertIn("-78,512397 €", text)
+        self.assertIn("-85,50 €", text)
+        self.assertIn("Precio unitario sin IVA", text)
+        self.assertIn("Descuento s/base", text)
+        self.assertEqual(fiscal_snapshot, original_snapshot)
+
+    def test_pdf_v3_rejects_a_rectification_without_original_reference(self):
+        fiscal_snapshot = rectification_snapshot_v3()
+        del fiscal_snapshot["operation"]["rectification"]["original_invoice_number"]
+        invoice = SnapshotOnlyInvoice(invoice_number="R2026000001", invoice_snapshot=fiscal_snapshot)
+
+        with temp_invoice_dir() as tmpdir:
+            with self.assertRaisesRegex(InvoicePdfSnapshotMissing, "original_invoice_number"):
+                generate_invoice_pdf(invoice, output_dir=tmpdir)
 
     def test_pdf_v1_remains_renderable_without_v2_line_fields(self):
         invoice = SnapshotOnlyInvoice(invoice_snapshot=snapshot())

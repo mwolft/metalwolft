@@ -152,11 +152,13 @@ def render_invoice_delivery_email(
     order_reference,
     trade_name,
     customer_name=None,
+    original_invoice_number=None,
 ):
     invoice_number_text = _required_text(invoice_number, "invoice_number")
     order_reference_text = _text(order_reference)
     trade_name_text = _text(trade_name) or BRAND_NAME
     customer_name_text = _text(customer_name)
+    original_invoice_number_text = _text(original_invoice_number)
     greeting = f"Hola {customer_name_text}," if customer_name_text else "Hola,"
 
     if order_reference_text:
@@ -170,13 +172,32 @@ def render_invoice_delivery_email(
         order_plain = ""
         order_html = ""
 
+    is_rectification = bool(original_invoice_number_text)
+    invoice_label = "Factura rectificativa" if is_rectification else "Factura"
+    if is_rectification:
+        attachment_sentence = "Adjuntamos la factura rectificativa en formato PDF."
+    original_plain = (
+        f"Factura original rectificada: {original_invoice_number_text}\n"
+        if is_rectification
+        else ""
+    )
+    original_html = (
+        _render_invoice_detail_row(
+            "Factura original rectificada",
+            original_invoice_number_text,
+        )
+        if is_rectification
+        else ""
+    )
+
     text_body = (
         "METALWOLFT\n"
         f"{BRAND_TAGLINE}\n\n"
         f"{greeting}\n\n"
-        f"Tu factura {invoice_number_text}\n\n"
+        f"Tu {invoice_label.lower()} {invoice_number_text}\n\n"
         f"{attachment_sentence}\n\n"
-        f"Factura: {invoice_number_text}\n"
+        f"{invoice_label}: {invoice_number_text}\n"
+        f"{original_plain}"
         f"{order_plain}"
         "Documento: PDF adjunto\n\n"
         f"Gracias por confiar en {trade_name_text}.\n\n"
@@ -189,14 +210,15 @@ def render_invoice_delivery_email(
         f"{_html(greeting)}"
         "</p>"
         f'<h1 style="margin:0 0 12px;color:{COLOR_TEXT};font-family:Arial,Helvetica,sans-serif;'
-        f'font-size:27px;line-height:1.2;font-weight:700;">Tu factura {_html(invoice_number_text)}</h1>'
+        f'font-size:27px;line-height:1.2;font-weight:700;">Tu {_html(invoice_label.lower())} {_html(invoice_number_text)}</h1>'
         f'<p style="margin:0 0 24px;color:{COLOR_TEXT};font-size:16px;line-height:1.6;">'
         f"{_html(attachment_sentence)}"
         "</p>"
         '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" '
         f'style="width:100%;margin:0 0 24px;background:{COLOR_SURFACE_ALT};border:1px solid {COLOR_BORDER};'
         'border-collapse:collapse;">'
-        f"{_render_invoice_detail_row('Factura', invoice_number_text)}"
+        f"{_render_invoice_detail_row(invoice_label, invoice_number_text)}"
+        f"{original_html}"
         f"{order_html}"
         f"{_render_invoice_detail_row('Documento', 'PDF adjunto')}"
         "</table>"
@@ -208,7 +230,11 @@ def render_invoice_delivery_email(
     return RenderedEmail(
         text=text_body,
         html=_render_shell(
-            preheader=f"Tu factura {invoice_number_text} está adjunta en formato PDF.",
+            preheader=(
+                f"Tu factura rectificativa {invoice_number_text} está adjunta en formato PDF."
+                if is_rectification
+                else f"Tu factura {invoice_number_text} está adjunta en formato PDF."
+            ),
             content_html=content_html,
         ),
     )
