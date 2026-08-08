@@ -101,7 +101,7 @@ test("usa precio rebajado si existe", () => {
   assert.equal(unitPrice({ height: 100, width: 100, pricePerM2: 100, discountedPricePerM2: 80 }), 80);
 });
 
-test("área menor de 0,2 aplica multiplicador 3 y mínimo", () => {
+test("área menor de 0,2 aplica el mínimo del producto", () => {
   assert.equal(unitPrice({ height: 30, width: 30, pricePerM2: 300 }), 300);
 });
 

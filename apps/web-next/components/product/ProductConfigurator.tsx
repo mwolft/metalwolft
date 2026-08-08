@@ -1021,9 +1021,6 @@ export function ProductConfigurator({
                 {quoteNotice}
               </p>
             ) : null}
-            {calculatedQuote.area < 1 ? (
-              <p className="mw-configurator-result__warning">Área &lt; 1 m² incrementa coste.</p>
-            ) : null}
             {deliveryEstimate}
             {canAddToCart ? (
               <div className="mw-configurator-cart-actions">

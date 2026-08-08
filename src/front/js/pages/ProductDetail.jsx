@@ -150,7 +150,6 @@ export const ProductDetail = () => {
     const [mounting, setMounting] = useState(DEFAULT_MOUNTING);
     const [color, setColor] = useState(DEFAULT_COLOR);
     const [calculatedPrice, setCalculatedPrice] = useState(null);
-    const [calculatedArea, setCalculatedArea] = useState(null);
     const [calcError, setCalcError] = useState('');
     const [priceNeedsRecalculation, setPriceNeedsRecalculation] = useState(false);
     const [showRestoredPriceReady, setShowRestoredPriceReady] = useState(false);
@@ -187,13 +186,11 @@ export const ProductDetail = () => {
     const applyPriceQuote = (quote) => {
         if (!quote || quote.error) {
             setCalcError(quote?.error || 'No se pudo calcular el precio');
-            setCalculatedArea(null);
             setCalculatedPrice(null);
             return null;
         }
 
         setCalcError('');
-        setCalculatedArea(quote.area);
         setCalculatedPrice(quote.formattedPrice);
         return quote;
     };
@@ -227,9 +224,8 @@ export const ProductDetail = () => {
     const invalidateCalculatedPrice = () => {
         clearRestoredPriceReady();
 
-        if (calculatedPrice || calculatedArea) {
+        if (calculatedPrice) {
             setCalculatedPrice(null);
-            setCalculatedArea(null);
             setPriceNeedsRecalculation(true);
         }
     };
@@ -407,7 +403,6 @@ export const ProductDetail = () => {
         setMounting(DEFAULT_MOUNTING);
         setColor(DEFAULT_COLOR);
         setCalculatedPrice(null);
-        setCalculatedArea(null);
         setPriceNeedsRecalculation(false);
         setShowRestoredPriceReady(false);
     };
@@ -1058,7 +1053,6 @@ export const ProductDetail = () => {
                                             )}
                                             <h5 className="product-price-result-value">{calculatedPrice} €</h5>
                                             <p className="mb-0">IVA incluido para esta configuración.</p>
-                                            {calculatedArea < 1 && <p className="text-warning mb-0 mt-2">Área &lt; 1 m² incrementa coste.</p>}
                                         </div>
                                     ) : (
                                         <div className={pricePromptClassName} ref={priceFeedbackRef}>
