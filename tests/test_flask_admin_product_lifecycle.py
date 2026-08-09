@@ -175,6 +175,12 @@ class ProductLifecycleAdminFunctionalTest(unittest.TestCase):
 
         self.assertIn("published", list_columns)
         self.assertIn("available_for_sale", list_columns)
+        self.assertIn("opening_type", form._fields)
+        self.assertEqual(form.opening_type.label.text, "Tipo de apertura")
+        self.assertEqual(
+            form.opening_type.choices,
+            [("fixed", "Fija"), ("hinged", "Abatible")],
+        )
         self.assertEqual(form.published.label.text, "Publicado")
         self.assertEqual(form.available_for_sale.label.text, "Disponible para venta")
         self.assertIn("sitemap", form.published.description)

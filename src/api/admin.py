@@ -379,12 +379,6 @@ class ProductAdminView(SafeModelView):
         'available_for_sale': 'Disponible para venta',
         'opening_type': 'Tipo de apertura',
     }
-    form_choices = {
-        'opening_type': [
-            ('fixed', 'Fija'),
-            ('hinged', 'Abatible'),
-        ],
-    }
     form_args = {
         'published': {
             'label': 'Publicado',
@@ -462,7 +456,14 @@ class ProductAdminView(SafeModelView):
         return super().get_count_query()
 
     form_extra_fields = {
-        'categoria_id': SelectField('Categoría', choices=[])
+        'categoria_id': SelectField('Categoría', choices=[]),
+        'opening_type': SelectField(
+            'Tipo de apertura',
+            choices=[
+                ('fixed', 'Fija'),
+                ('hinged', 'Abatible'),
+            ],
+        ),
     }
 
     def on_form_prefill(self, form, id):
