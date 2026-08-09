@@ -70,23 +70,58 @@ textarea:focus-visible {
   cursor: pointer;
   opacity: 0;
   pointer-events: none;
-  transform: translateY(0.55rem);
-  transition: opacity 220ms ease, transform 220ms ease;
+  transform: translateY(0.55rem) scale(0.9);
+  transition: opacity 250ms ease, transform 250ms ease;
 }
 
 .mw-back-to-top.is-visible {
   opacity: 1;
   pointer-events: auto;
-  transform: translateY(0);
+  transform: translateY(0) scale(1);
+  transition-duration: 400ms;
+}
+
+.mw-back-to-top.is-visible:hover,
+.mw-back-to-top.is-visible:active {
+  transform: translateY(-0.1rem) scale(1.04);
 }
 
 .mw-back-to-top svg {
   width: 1.2rem;
   height: 1.2rem;
+  transition: transform 180ms ease;
+}
+
+.mw-back-to-top.is-visible svg {
+  animation: mw-back-to-top-icon-enter 400ms ease-out;
+}
+
+.mw-back-to-top.is-visible:hover svg,
+.mw-back-to-top.is-visible:active svg {
+  transform: translateY(-0.12rem);
+}
+
+@keyframes mw-back-to-top-icon-enter {
+  0% {
+    transform: translateY(0.2rem);
+  }
+
+  65% {
+    transform: translateY(-0.04rem);
+  }
+
+  100% {
+    transform: translateY(0);
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .mw-back-to-top {
+    transition: none;
+  }
+
+  .mw-back-to-top svg {
+    animation: none;
     transition: none;
   }
 }
