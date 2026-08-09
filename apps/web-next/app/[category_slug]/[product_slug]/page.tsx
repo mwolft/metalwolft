@@ -108,7 +108,17 @@ function buildProductJsonLd(product: ApiProduct) {
       "@type": "Brand",
       name: siteConfig.name
     },
-    url: absoluteUrl(canonicalPath)
+    url: absoluteUrl(canonicalPath),
+    offers: {
+      "@type": "Offer",
+      url: absoluteUrl(canonicalPath),
+      priceCurrency: "EUR",
+      // Flask exposes the active price per m2; the current minimum is one m2.
+      price: product.precio_rebajado ?? product.precio,
+      availability: product.available_for_sale
+        ? "https://schema.org/InStock"
+        : "https://schema.org/OutOfStock"
+    }
   };
 }
 
