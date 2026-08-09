@@ -77,6 +77,7 @@ assert.match(detailsStepSource, /role="alert"/);
 assert.match(detailsStepSource, /aria-label="Campos pendientes"/);
 assert.doesNotMatch(detailsStepSource, /Revisa estos datos antes de continuar/);
 assert.doesNotMatch(detailsStepSource, /mw-checkout-validation-summary__heading/);
+assert.match(detailsStepSource, /mw-checkout-validation-summary__icon/);
 assert.match(detailsStepSource, /focusCheckoutField\(item\.field\)/);
 assert.doesNotMatch(detailsStepSource, /<span className="mw-field-error"/);
 assert.match(
@@ -97,7 +98,11 @@ assert.match(
 );
 assert.match(
   globalStylesSource,
-  /\.mw-checkout-validation-summary\s*\{[^}]*margin-top:\s*0\.65rem;[^}]*padding:\s*0;/s
+  /\.mw-checkout-validation-summary\s*\{[^}]*display:\s*flex;[^}]*align-items:\s*center;[^}]*margin-top:\s*0\.65rem;[^}]*padding:\s*0;/s
+);
+assert.match(
+  globalStylesSource,
+  /\.mw-checkout-validation-summary__icon\s*\{[^}]*border-radius:\s*50%;[^}]*background:\s*var\(--mw-accent-dark\);/s
 );
 assert.doesNotMatch(
   globalStylesSource,

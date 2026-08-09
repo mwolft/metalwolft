@@ -4047,12 +4047,30 @@ textarea:focus-visible {
 }
 
 .mw-checkout-validation-summary {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
   margin-top: 0.65rem;
   padding: 0;
 }
 
+.mw-checkout-validation-summary__icon {
+  display: grid;
+  width: 1.1rem;
+  height: 1.1rem;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--mw-accent-dark);
+  color: #fff;
+  font-size: 0.72rem;
+  font-weight: 800;
+  line-height: 1;
+}
+
 .mw-checkout-validation-summary ul {
   display: grid;
+  flex: 1 1 auto;
   gap: 0.1rem;
   margin: 0;
   padding: 0;

@@ -707,6 +707,9 @@ export function CartDetailsStep({
               className="mw-checkout-validation-summary"
               role="alert"
             >
+              <span aria-hidden="true" className="mw-checkout-validation-summary__icon">
+                !
+              </span>
               <ul>
                 {checkoutErrorSummary.map((item) => (
                   <li key={item.field}>
