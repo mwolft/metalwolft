@@ -23,7 +23,7 @@ assert.match(
 );
 
 const formIndex = detailsStepSource.indexOf(
-  '<form className="mw-checkout-form" onSubmit={handleContinueToPayment}>'
+  '<form\n          className="mw-checkout-form"\n          id="mw-checkout-details-form"\n          onSubmit={handleContinueToPayment}\n        >'
 );
 const policyIndex = detailsStepSource.indexOf(
   '<label className="mw-checkout-option mw-checkout-option--policy">'
@@ -33,9 +33,13 @@ const orderIndex = detailsStepSource.indexOf(
 );
 const linesIndex = detailsStepSource.indexOf("<CheckoutLines lines={quote.lines} />");
 const submitIndex = detailsStepSource.indexOf(
-  '<button className="mw-button mw-button--primary mw-checkout-submit" type="submit">'
+  '<button\n            className="mw-button mw-button--primary mw-checkout-submit"\n            form="mw-checkout-details-form"\n            type="submit"\n          >'
 );
-const formEndIndex = detailsStepSource.indexOf("</form>", submitIndex);
+const formEndIndex = detailsStepSource.indexOf("</form>", formIndex);
+const summaryIndex = detailsStepSource.indexOf(
+  '<aside className="mw-checkout-summary" aria-label="Resumen economico">'
+);
+const deliveryEstimateIndex = detailsStepSource.indexOf("{deliveryEstimate}");
 
 for (const [label, index] of [
   ["form", formIndex],
@@ -43,7 +47,9 @@ for (const [label, index] of [
   ["order", orderIndex],
   ["lines", linesIndex],
   ["submit", submitIndex],
-  ["form end", formEndIndex]
+  ["form end", formEndIndex],
+  ["summary", summaryIndex],
+  ["delivery estimate", deliveryEstimateIndex]
 ]) {
   assert.notEqual(index, -1, `Missing ${label} markup`);
 }
@@ -51,8 +57,10 @@ for (const [label, index] of [
 assert.ok(formIndex < policyIndex);
 assert.ok(policyIndex < orderIndex);
 assert.ok(orderIndex < linesIndex);
-assert.ok(linesIndex < submitIndex);
-assert.ok(submitIndex < formEndIndex);
+assert.ok(linesIndex < formEndIndex);
+assert.ok(formEndIndex < summaryIndex);
+assert.ok(summaryIndex < deliveryEstimateIndex);
+assert.ok(deliveryEstimateIndex < submitIndex);
 
 assert.match(detailsStepSource, /Particular \/ autónomo/);
 assert.match(detailsStepSource, /value="company"/);

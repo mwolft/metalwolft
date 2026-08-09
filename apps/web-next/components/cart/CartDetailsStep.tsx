@@ -421,7 +421,11 @@ export function CartDetailsStep({
           </p>
         </div>
 
-        <form className="mw-checkout-form" onSubmit={handleContinueToPayment}>
+        <form
+          className="mw-checkout-form"
+          id="mw-checkout-details-form"
+          onSubmit={handleContinueToPayment}
+        >
           <section className="mw-checkout-form-section" aria-labelledby="checkout-contact-title">
             <h3 id="checkout-contact-title">Datos de contacto</h3>
             <div className="mw-checkout-form-grid">
@@ -614,9 +618,6 @@ export function CartDetailsStep({
             <CheckoutLines lines={quote.lines} />
           </section>
 
-          <button className="mw-button mw-button--primary mw-checkout-submit" type="submit">
-            Continuar al pago
-          </button>
         </form>
       </div>
 
@@ -641,6 +642,13 @@ export function CartDetailsStep({
           />
           <CheckoutTotals quote={quote} />
           {deliveryEstimate}
+          <button
+            className="mw-button mw-button--primary mw-checkout-submit"
+            form="mw-checkout-details-form"
+            type="submit"
+          >
+            Continuar al pago
+          </button>
         </div>
       </aside>
     </section>

@@ -3183,7 +3183,6 @@ textarea:focus-visible {
 
 .mw-cart-line__prices span,
 .mw-cart-summary p {
-  color: var(--mw-muted);
   line-height: 1.6;
 }
 
