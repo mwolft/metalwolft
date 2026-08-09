@@ -62,7 +62,7 @@ export function BackToTopButton() {
       type="button"
     >
       <svg aria-hidden="true" viewBox="0 0 24 24">
-        <path d="M12 4 4.5 11.5h4.75V20h5.5v-8.5H19z" fill="currentColor" />
+        <path d="M4.5 16.1a1.65 1.65 0 0 1 0-2.33l6.34-6.35a1.65 1.65 0 0 1 2.33 0l6.34 6.35a1.65 1.65 0 1 1-2.33 2.33L12 10.93l-5.17 5.17a1.65 1.65 0 0 1-2.33 0Z" fill="currentColor" />
       </svg>
     </button>
   );
