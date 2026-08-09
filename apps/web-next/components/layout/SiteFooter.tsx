@@ -35,21 +35,15 @@ export function SiteFooter() {
                   <span>13005 Ciudad Real · España</span>
                 </address>
               </div>
-              <a
-                aria-label="Ver ubicación de MetalWolft en Google Maps"
-                className="mw-footer__map-preview"
-                href="https://maps.app.goo.gl/jG5SvHQvDozB4puc7"
-                rel="noopener noreferrer"
-                target="_blank"
-              >
+              <div aria-hidden="true" className="mw-footer__map-preview">
                 <Image
-                  src="/metalwolft-location-map.jpg"
+                  src="/metalwolft-location-map.png"
                   alt=""
                   width={612}
                   height={344}
                   sizes="(max-width: 640px) 100vw, 306px"
                 />
-              </a>
+              </div>
             </div>
           </div>
 
