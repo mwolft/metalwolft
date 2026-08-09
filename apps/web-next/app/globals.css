@@ -2089,10 +2089,14 @@ textarea:focus-visible {
 
 .mw-delivery-estimate--compact {
   gap: 0.15rem;
-  margin-top: 0.75rem;
+  margin-top: 1.2rem;
   padding: 0.55rem 0.65rem;
   border-radius: 8px;
   background: rgba(255, 50, 77, 0.055);
+}
+
+.mw-delivery-estimate--compact .mw-delivery-estimate__detail {
+  font-size: 0.74rem;
 }
 
 .mw-delivery-estimate--banner {
@@ -3186,7 +3190,7 @@ textarea:focus-visible {
 .mw-cart-summary__actions {
   display: grid;
   gap: 0.75rem;
-  margin-top: 0.75rem;
+  margin-top: 1.2rem;
 }
 
 .mw-cart-summary__actions .mw-button {
