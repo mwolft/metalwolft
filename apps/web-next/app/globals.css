@@ -4046,6 +4046,62 @@ textarea:focus-visible {
   margin-top: 1rem;
 }
 
+.mw-checkout-validation-summary {
+  margin-top: 1rem;
+  padding: 0.8rem 0.9rem;
+  border: 1px solid rgba(207, 28, 53, 0.28);
+  border-left: 3px solid var(--mw-accent-dark);
+  border-radius: 10px;
+  background: rgba(255, 50, 77, 0.075);
+}
+
+.mw-checkout-validation-summary__heading {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.mw-checkout-validation-summary__heading span {
+  display: grid;
+  width: 1.1rem;
+  height: 1.1rem;
+  place-items: center;
+  border-radius: 999px;
+  background: var(--mw-accent-dark);
+  color: #fff;
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+
+.mw-checkout-validation-summary__heading p {
+  margin: 0;
+  color: var(--mw-text);
+  font-size: 0.86rem;
+  font-weight: 700;
+}
+
+.mw-checkout-validation-summary ul {
+  display: grid;
+  gap: 0.15rem;
+  margin: 0.5rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.mw-checkout-validation-summary button {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--mw-accent-dark);
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.78rem;
+  line-height: 1.35;
+  text-align: left;
+  text-decoration: underline;
+  text-underline-offset: 0.16em;
+}
+
 .mw-checkout-next-step {
   margin: 0.75rem 0 0;
   font-size: 0.94rem;

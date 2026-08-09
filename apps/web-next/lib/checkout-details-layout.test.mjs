@@ -40,6 +40,9 @@ const summaryIndex = detailsStepSource.indexOf(
   '<aside className="mw-checkout-summary" aria-label="Resumen economico">'
 );
 const deliveryEstimateIndex = detailsStepSource.indexOf("{deliveryEstimate}");
+const validationSummaryIndex = detailsStepSource.indexOf(
+  'className="mw-checkout-validation-summary"'
+);
 
 for (const [label, index] of [
   ["form", formIndex],
@@ -49,7 +52,8 @@ for (const [label, index] of [
   ["submit", submitIndex],
   ["form end", formEndIndex],
   ["summary", summaryIndex],
-  ["delivery estimate", deliveryEstimateIndex]
+  ["delivery estimate", deliveryEstimateIndex],
+  ["validation summary", validationSummaryIndex]
 ]) {
   assert.notEqual(index, -1, `Missing ${label} markup`);
 }
@@ -60,11 +64,19 @@ assert.ok(orderIndex < linesIndex);
 assert.ok(linesIndex < formEndIndex);
 assert.ok(formEndIndex < summaryIndex);
 assert.ok(summaryIndex < deliveryEstimateIndex);
+assert.ok(deliveryEstimateIndex < validationSummaryIndex);
+assert.ok(validationSummaryIndex < submitIndex);
 assert.ok(deliveryEstimateIndex < submitIndex);
 
 assert.match(detailsStepSource, /Particular \/ autónomo/);
 assert.match(detailsStepSource, /value="company"/);
 assert.match(detailsStepSource, /function CheckoutLines/);
 assert.match(detailsStepSource, /onSubmit={handleContinueToPayment}/);
+assert.match(detailsStepSource, /setHasAttemptedContinue\(true\)/);
+assert.match(detailsStepSource, /role="alert"/);
+assert.match(detailsStepSource, /Revisa estos datos antes de continuar/);
+assert.match(detailsStepSource, /focusCheckoutField\(item\.field\)/);
+assert.doesNotMatch(detailsStepSource, /<span className="mw-field-error"/);
+assert.match(globalStylesSource, /\.mw-checkout-validation-summary\s*\{[^}]*border-left:\s*3px solid var\(--mw-accent-dark\);/s);
 
 console.log("Checkout details layout assertions passed");

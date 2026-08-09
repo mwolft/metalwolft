@@ -37,6 +37,7 @@ import { CheckoutDiscountForm } from "@/components/cart/CheckoutDiscountForm";
 import { formatScrewConfiguration } from "@/lib/screw-option";
 
 type CheckoutStatus = "loading" | "empty" | "ready" | "error";
+type CheckoutDetailsErrorField = keyof CheckoutCustomerDetails;
 
 type CartDetailsStepProps = {
   loginNextPath?: string;
@@ -108,6 +109,45 @@ function buildLoginHref(nextPath: string) {
   return query ? `/login?next=${pathname}%3F${encodeURIComponent(query)}` : `/login?next=${nextPath}`;
 }
 
+function buildCheckoutErrorSummary(
+  errors: CheckoutDetailsErrors,
+  billingType: CheckoutBillingType
+) {
+  const requiredMessages: Partial<Record<CheckoutDetailsErrorField, string>> = {
+    firstname: "Falta completar el nombre.",
+    lastname: "Falta completar los apellidos.",
+    email: "Falta completar el correo electrónico.",
+    phone: "Falta completar el teléfono.",
+    legal_name:
+      billingType === "company"
+        ? "Falta indicar la razón social."
+        : "Falta completar el nombre fiscal.",
+    tax_id:
+      billingType === "company"
+        ? "Falta indicar el NIF / CIF."
+        : "Falta indicar el NIF / NIE.",
+    billing_address: "Falta indicar la dirección de facturación.",
+    billing_city: "Falta indicar la ciudad de facturación.",
+    billing_postal_code: "Falta indicar el código postal de facturación.",
+    shipping_address: "Falta indicar la dirección de envío.",
+    shipping_city: "Falta indicar la ciudad de envío.",
+    shipping_postal_code: "Falta indicar el código postal de envío.",
+    acceptedPolicy: "Debes aceptar la política de devoluciones y garantías."
+  };
+
+  return (Object.entries(errors) as Array<[CheckoutDetailsErrorField, string | undefined]>)
+    .flatMap(([field, error]) => {
+      if (!error) {
+        return [];
+      }
+
+      return [{
+        field,
+        message: error === "Campo obligatorio." ? requiredMessages[field] ?? error : error
+      }];
+    });
+}
+
 export function CartDetailsStep({
   loginNextPath = "/cart?step=details",
   backHref = "/cart",
@@ -119,6 +159,7 @@ export function CartDetailsStep({
   const [errorMessage, setErrorMessage] = useState("");
   const [details, setDetails] = useState<CheckoutCustomerDetails>(EMPTY_CHECKOUT_CUSTOMER_DETAILS);
   const [detailsErrors, setDetailsErrors] = useState<CheckoutDetailsErrors>({});
+  const [hasAttemptedContinue, setHasAttemptedContinue] = useState(false);
   const [discountInput, setDiscountInput] = useState("");
   const [discountFeedback, setDiscountFeedback] = useState<{
     type: "error" | "success";
@@ -347,6 +388,7 @@ export function CartDetailsStep({
     event.preventDefault();
 
     const validation = validateCheckoutDetails(details);
+    setHasAttemptedContinue(true);
     setDetails(validation.details);
     setDetailsErrors(validation.errors);
 
@@ -409,6 +451,28 @@ export function CartDetailsStep({
     );
   }
 
+  const currentDetailsErrors = hasAttemptedContinue
+    ? validateCheckoutDetails(details).errors
+    : detailsErrors;
+  const checkoutErrorSummary = hasAttemptedContinue
+    ? buildCheckoutErrorSummary(currentDetailsErrors, details.billing_type)
+    : [];
+
+  function focusCheckoutField(field: CheckoutDetailsErrorField) {
+    const fieldElement = document.querySelector<HTMLInputElement>(
+      `#mw-checkout-details-form [name="${field}"]`
+    );
+    if (!fieldElement) {
+      return;
+    }
+
+    const behavior = window.matchMedia("(prefers-reduced-motion: reduce)").matches
+      ? "auto"
+      : "smooth";
+    fieldElement.scrollIntoView({ behavior, block: "center" });
+    fieldElement.focus({ preventScroll: true });
+  }
+
   return (
     <section className="mw-checkout-layout" aria-label="Datos del pedido">
       <div className="mw-checkout-panel">
@@ -431,7 +495,7 @@ export function CartDetailsStep({
             <div className="mw-checkout-form-grid">
               <CheckoutTextField
                 autoComplete="given-name"
-                error={detailsErrors.firstname}
+                error={currentDetailsErrors.firstname}
                 label="Nombre"
                 name="firstname"
                 onChange={handleDetailChange}
@@ -439,7 +503,7 @@ export function CartDetailsStep({
               />
               <CheckoutTextField
                 autoComplete="family-name"
-                error={detailsErrors.lastname}
+                error={currentDetailsErrors.lastname}
                 label="Apellidos"
                 name="lastname"
                 onChange={handleDetailChange}
@@ -447,7 +511,7 @@ export function CartDetailsStep({
               />
               <CheckoutTextField
                 autoComplete="email"
-                error={detailsErrors.email}
+                error={currentDetailsErrors.email}
                 label="Correo electrónico"
                 name="email"
                 onChange={handleDetailChange}
@@ -456,7 +520,7 @@ export function CartDetailsStep({
               />
               <CheckoutTextField
                 autoComplete="tel"
-                error={detailsErrors.phone}
+                error={currentDetailsErrors.phone}
                 label="Teléfono"
                 name="phone"
                 onChange={handleDetailChange}
@@ -500,7 +564,7 @@ export function CartDetailsStep({
             <div className="mw-checkout-form-grid">
               <CheckoutTextField
                 autoComplete={details.billing_type === "company" ? "organization" : "name"}
-                error={detailsErrors.legal_name}
+                error={currentDetailsErrors.legal_name}
                 helper={
                   details.billing_type === "company"
                     ? "El nombre legal que debe aparecer en la factura."
@@ -514,7 +578,7 @@ export function CartDetailsStep({
                 wide
               />
               <CheckoutTextField
-                error={detailsErrors.tax_id}
+                error={currentDetailsErrors.tax_id}
                 label={details.billing_type === "company" ? "NIF / CIF" : "NIF / NIE"}
                 maxLength={20}
                 name="tax_id"
@@ -523,7 +587,7 @@ export function CartDetailsStep({
               />
               <CheckoutTextField
                 autoComplete="billing street-address"
-                error={detailsErrors.billing_address}
+                error={currentDetailsErrors.billing_address}
                 label="Dirección de facturación"
                 name="billing_address"
                 onChange={handleDetailChange}
@@ -532,7 +596,7 @@ export function CartDetailsStep({
               />
               <CheckoutTextField
                 autoComplete="billing postal-code"
-                error={detailsErrors.billing_postal_code}
+                error={currentDetailsErrors.billing_postal_code}
                 label="Código postal"
                 name="billing_postal_code"
                 onChange={handleDetailChange}
@@ -540,7 +604,7 @@ export function CartDetailsStep({
               />
               <CheckoutTextField
                 autoComplete="billing address-level2"
-                error={detailsErrors.billing_city}
+                error={currentDetailsErrors.billing_city}
                 label="Ciudad"
                 name="billing_city"
                 onChange={handleDetailChange}
@@ -568,7 +632,7 @@ export function CartDetailsStep({
               <div className="mw-checkout-form-grid">
                 <CheckoutTextField
                   autoComplete="shipping street-address"
-                  error={detailsErrors.shipping_address}
+                  error={currentDetailsErrors.shipping_address}
                   label="Dirección de envío"
                   name="shipping_address"
                   onChange={handleDetailChange}
@@ -577,7 +641,7 @@ export function CartDetailsStep({
                 />
                 <CheckoutTextField
                   autoComplete="shipping postal-code"
-                  error={detailsErrors.shipping_postal_code}
+                  error={currentDetailsErrors.shipping_postal_code}
                   label="Código postal de envío"
                   name="shipping_postal_code"
                   onChange={handleDetailChange}
@@ -585,7 +649,7 @@ export function CartDetailsStep({
                 />
                 <CheckoutTextField
                   autoComplete="shipping address-level2"
-                  error={detailsErrors.shipping_city}
+                  error={currentDetailsErrors.shipping_city}
                   label="Ciudad de envío"
                   name="shipping_city"
                   onChange={handleDetailChange}
@@ -607,12 +671,6 @@ export function CartDetailsStep({
               <Link href="/politica-devolucion">política de devoluciones y garantías</Link>.
             </span>
           </label>
-          {detailsErrors.acceptedPolicy ? (
-            <p className="mw-field-error" role="alert">
-              {detailsErrors.acceptedPolicy}
-            </p>
-          ) : null}
-
           <section className="mw-checkout-order" aria-labelledby="checkout-order-title">
             <h2 id="checkout-order-title">Tu pedido</h2>
             <CheckoutLines lines={quote.lines} />
@@ -642,6 +700,27 @@ export function CartDetailsStep({
           />
           <CheckoutTotals quote={quote} />
           {deliveryEstimate}
+          {checkoutErrorSummary.length > 0 ? (
+            <section
+              aria-labelledby="mw-checkout-validation-title"
+              className="mw-checkout-validation-summary"
+              role="alert"
+            >
+              <div className="mw-checkout-validation-summary__heading">
+                <span aria-hidden="true">!</span>
+                <p id="mw-checkout-validation-title">Revisa estos datos antes de continuar</p>
+              </div>
+              <ul>
+                {checkoutErrorSummary.map((item) => (
+                  <li key={item.field}>
+                    <button onClick={() => focusCheckoutField(item.field)} type="button">
+                      {item.message}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          ) : null}
           <button
             className="mw-button mw-button--primary mw-checkout-submit"
             form="mw-checkout-details-form"
@@ -678,15 +757,13 @@ function CheckoutTextField({
   value: string;
   wide?: boolean;
 }) {
-  const errorId = error ? `${name}-error` : undefined;
   const helperId = helper ? `${name}-helper` : undefined;
-  const describedBy = [helperId, errorId].filter(Boolean).join(" ") || undefined;
 
   return (
     <label className={`mw-field${wide ? " mw-field--wide" : ""}`}>
       <span>{label}</span>
       <input
-        aria-describedby={describedBy}
+        aria-describedby={helperId}
         aria-invalid={Boolean(error)}
         autoComplete={autoComplete}
         maxLength={maxLength}
@@ -699,11 +776,6 @@ function CheckoutTextField({
         <small className="mw-field-helper" id={helperId}>
           {helper}
         </small>
-      ) : null}
-      {error ? (
-        <span className="mw-field-error" id={errorId}>
-          {error}
-        </span>
       ) : null}
     </label>
   );
