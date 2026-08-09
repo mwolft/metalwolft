@@ -134,6 +134,7 @@ const sources = Object.fromEntries(
       ["dynamicCategory", "app/[category_slug]/page.tsx"],
       ["cartPage", "app/cart/page.tsx"],
       ["cartFlow", "components/cart/CartFlow.tsx"],
+      ["cartClient", "lib/cart-client.ts"],
       ["cartView", "components/cart/CartView.tsx"],
       ["details", "components/cart/CartDetailsStep.tsx"],
       ["payment", "components/cart/CartPaymentStep.tsx"],
@@ -150,7 +151,7 @@ for (const variant of ["default", "banner", "category", "compact"]) {
 assert.match(sources.component, /if \(!estimate\) \{\s*return null;/);
 assert.match(sources.component, /variant === "default" \|\| variant === "compact"/);
 assert.match(sources.component, /<strong>Entrega estimada:<\/strong> \{compactDateRange\}/);
-assert.equal((sources.component.match(/Puede variar según la configuración y el destino\./g) || []).length, 1);
+assert.equal((sources.component.match(/Puede variar según el tipo de reja y la cantidad del pedido\./g) || []).length, 1);
 assert.doesNotMatch(sources.component, /Entrega orientativa entre/);
 assert.equal(
   (sources.component.match(/Previsión orientativa para pedidos realizados hoy/g) || []).length,
@@ -180,13 +181,18 @@ assert.doesNotMatch(sources.component, /Incluye la fabricación a medida/);
 assert.doesNotMatch(sources.component, /y la entrega en domicilio, y puede variar según la configuración y el destino\./);
 assert.doesNotMatch(sources.component, /entrega garantizada|fecha garantizada/i);
 assert.equal((sources.cartPage.match(/fetchDeliveryEstimate\(\)/g) || []).length, 1);
-assert.equal((sources.cartPage.match(/variant="compact"/g) || []).length, 1);
-assert.match(sources.cartFlow, /<CartView deliveryEstimate=\{deliveryEstimate\} \/>/);
-assert.match(sources.cartFlow, /<CartPaymentStep deliveryEstimate=\{deliveryEstimate\} \/>/);
-assert.match(sources.cartFlow, /<CartDetailsStep deliveryEstimate=\{deliveryEstimate\} \/>/);
+assert.match(sources.cartPage, /<CartFlow deliveryEstimate=\{deliveryEstimate\} \/>/);
+assert.match(sources.cartFlow, /getCartDeliveryEstimate/);
+assert.match(sources.cartFlow, /subscribeToCartSnapshotChanges/);
+assert.match(sources.cartFlow, /<DeliveryEstimate estimate=\{contextualEstimate\} variant="compact" \/>/);
+assert.match(sources.cartFlow, /<CartView deliveryEstimate=\{contextualDeliveryEstimate\} \/>/);
+assert.match(sources.cartFlow, /<CartPaymentStep deliveryEstimate=\{contextualDeliveryEstimate\} \/>/);
+assert.match(sources.cartFlow, /<CartDetailsStep deliveryEstimate=\{contextualDeliveryEstimate\} \/>/);
 assert.match(sources.cartView, /\{deliveryEstimate\}/);
 assert.match(sources.details, /<CheckoutTotals quote=\{quote\} \/>\s*\{deliveryEstimate\}/);
 assert.match(sources.payment, /\{deliveryEstimate\}/);
+assert.match(sources.cartClient, /"\/api\/cart\/delivery-estimate"/);
+assert.match(sources.cartClient, /cache:\s*"no-store"/);
 
 for (const clientSource of [
   sources.cartFlow,

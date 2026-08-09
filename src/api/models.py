@@ -37,15 +37,9 @@ class DeliveryEstimateConfig(db.Model):
     is_active = db.Column(db.Boolean, default=True)
 
     def to_dict(self):
-        from datetime import date, timedelta
-        today = date.today()
-        start_date = today + timedelta(days=self.delivery_days)
-        end_date = start_date + timedelta(days=self.range_days)
-        return {
-            "start_date": start_date.strftime("%Y-%m-%d"),
-            "end_date": end_date.strftime("%Y-%m-%d"),
-            "is_active": self.is_active
-        }
+        from api.delivery_estimate_service import build_delivery_estimate
+
+        return build_delivery_estimate(self)
 
 
 class Users(db.Model):
@@ -154,6 +148,10 @@ class Products(db.Model):
             "published OR NOT available_for_sale",
             name="ck_products_published_available_for_sale",
         ),
+        db.CheckConstraint(
+            "opening_type IN ('fixed', 'hinged')",
+            name="ck_products_opening_type",
+        ),
     )
 
     id = db.Column(db.Integer, primary_key=True)
@@ -184,6 +182,12 @@ class Products(db.Model):
     categoria_id = db.Column(db.Integer, db.ForeignKey('categories.id'), nullable=False)
     subcategoria_id = db.Column(db.Integer, db.ForeignKey('subcategories.id'), nullable=True)
     imagen = db.Column(db.String(200), nullable=True)
+    opening_type = db.Column(
+        db.String(16),
+        nullable=False,
+        default="fixed",
+        server_default="fixed",
+    )
     has_abatible = db.Column(db.Boolean, default=False)
     has_door_model = db.Column(db.Boolean, default=False)
     images = db.relationship('ProductImages', backref='product', lazy=True)
@@ -221,6 +225,7 @@ class Products(db.Model):
             "category_slug": self.categoria.slug, 
             "subcategoria_id": self.subcategoria_id,
             "imagen": self.imagen,
+            "opening_type": self.opening_type,
             "has_abatible": self.has_abatible,
             "has_door_model": self.has_door_model,
             "es_mas_vendido": self.es_mas_vendido,

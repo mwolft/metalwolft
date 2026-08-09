@@ -35,7 +35,7 @@ export function DeliveryEstimate({
           <strong>Entrega estimada:</strong> {compactDateRange}
         </p>
         <p className="mw-delivery-estimate__detail">
-          Puede variar según la configuración y el destino.
+          Puede variar según el tipo de reja y la cantidad del pedido.
         </p>
       </div>
     );

@@ -1,10 +1,17 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import dynamic from "next/dynamic";
-import type { ReactNode } from "react";
 import { CartDetailsStep } from "@/components/cart/CartDetailsStep";
 import { CartView } from "@/components/cart/CartView";
+import { DeliveryEstimate } from "@/components/product/DeliveryEstimate";
+import { getToken } from "@/lib/auth-client";
+import {
+  getCartDeliveryEstimate,
+  subscribeToCartSnapshotChanges
+} from "@/lib/cart-client";
+import type { DeliveryEstimate as DeliveryEstimateData } from "@/lib/delivery-estimate";
 
 const CartPaymentStep = dynamic(
   () => import("@/components/cart/CartPaymentStep").then((module) => module.CartPaymentStep),
@@ -27,9 +34,40 @@ const steps: Array<{ id: CartStep; label: string }> = [
   { id: "payment", label: "Pago" }
 ];
 
-export function CartFlow({ deliveryEstimate }: { deliveryEstimate?: ReactNode }) {
+export function CartFlow({ deliveryEstimate }: { deliveryEstimate: DeliveryEstimateData | null }) {
   const searchParams = useSearchParams();
   const currentStep = normalizeStep(searchParams.get("step"));
+  const [contextualEstimate, setContextualEstimate] = useState<DeliveryEstimateData | null>(
+    deliveryEstimate
+  );
+
+  useEffect(() => {
+    const token = getToken();
+    if (!token) {
+      return;
+    }
+
+    let isActive = true;
+    const refreshEstimate = async () => {
+      try {
+        const estimate = await getCartDeliveryEstimate(token);
+        if (isActive) {
+          setContextualEstimate(estimate);
+        }
+      } catch {
+        // Keep the global estimate when the private cart estimate is unavailable.
+      }
+    };
+
+    void refreshEstimate();
+    return subscribeToCartSnapshotChanges(() => {
+      void refreshEstimate();
+    });
+  }, []);
+
+  const contextualDeliveryEstimate = (
+    <DeliveryEstimate estimate={contextualEstimate} variant="compact" />
+  );
 
   return (
     <>
@@ -49,11 +87,11 @@ export function CartFlow({ deliveryEstimate }: { deliveryEstimate?: ReactNode })
       </nav>
 
       {currentStep === "details" ? (
-        <CartDetailsStep deliveryEstimate={deliveryEstimate} />
+        <CartDetailsStep deliveryEstimate={contextualDeliveryEstimate} />
       ) : currentStep === "payment" ? (
-        <CartPaymentStep deliveryEstimate={deliveryEstimate} />
+        <CartPaymentStep deliveryEstimate={contextualDeliveryEstimate} />
       ) : (
-        <CartView deliveryEstimate={deliveryEstimate} />
+        <CartView deliveryEstimate={contextualDeliveryEstimate} />
       )}
     </>
   );

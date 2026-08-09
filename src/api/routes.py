@@ -47,6 +47,7 @@ from api.product_lifecycle import (
     resolve_publicly_accessible_product_by_slugs,
 )
 from api.checkout_cart_cleanup import cleanup_cart_lines_from_checkout_quote
+from api.delivery_estimate_service import build_delivery_estimate
 from api.checkout_payment_security import is_modifiable_stripe_checkout_session
 from api.checkout_analytics import (
     CheckoutAnalyticsSnapshotError,
@@ -1456,6 +1457,40 @@ def get_delivery_estimate():
         response = jsonify({"message": "Error al obtener la estimación"})
         response.headers['Access-Control-Allow-Origin'] = '*'
         response.headers['Access-Control-Expose-Headers'] = 'Authorization'
+        return response, 500
+
+
+@api.route('/cart/delivery-estimate', methods=['GET'])
+@jwt_required()
+def get_cart_delivery_estimate():
+    try:
+        current_user = get_jwt_identity()
+        config = DeliveryEstimateConfig.query.filter_by(is_active=True).first()
+        if not config:
+            response = jsonify({"is_active": False})
+            response.headers['Access-Control-Allow-Origin'] = '*'
+            response.headers['Access-Control-Expose-Headers'] = 'Authorization'
+            response.headers['Cache-Control'] = 'private, no-store'
+            response.headers['Vary'] = 'Authorization'
+            return response, 404
+
+        cart_items = Cart.query.filter_by(usuario_id=current_user['user_id']).all()
+        response = jsonify(build_delivery_estimate(config, cart_items=cart_items))
+        response.headers['Access-Control-Allow-Origin'] = '*'
+        response.headers['Access-Control-Expose-Headers'] = 'Authorization'
+        response.headers['Cache-Control'] = 'private, no-store'
+        response.headers['Vary'] = 'Authorization'
+        return response, 200
+    except Exception as error:
+        current_app.logger.error(
+            "cart_delivery_estimate_lookup_failed error_type=%s",
+            type(error).__name__,
+        )
+        response = jsonify({"message": "Error al obtener la estimación"})
+        response.headers['Access-Control-Allow-Origin'] = '*'
+        response.headers['Access-Control-Expose-Headers'] = 'Authorization'
+        response.headers['Cache-Control'] = 'private, no-store'
+        response.headers['Vary'] = 'Authorization'
         return response, 500
 
 

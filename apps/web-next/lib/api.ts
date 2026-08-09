@@ -87,6 +87,7 @@ export type ApiProduct = {
   subcategoria_id: number | null;
   subcategoria_nombre?: string | null;
   imagen: string | null;
+  opening_type: "fixed" | "hinged";
   has_abatible: boolean;
   has_door_model: boolean;
   es_mas_vendido: boolean;

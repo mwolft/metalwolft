@@ -377,6 +377,13 @@ class ProductAdminView(SafeModelView):
     column_labels = {
         'published': 'Publicado',
         'available_for_sale': 'Disponible para venta',
+        'opening_type': 'Tipo de apertura',
+    }
+    form_choices = {
+        'opening_type': [
+            ('fixed', 'Fija'),
+            ('hinged', 'Abatible'),
+        ],
     }
     form_args = {
         'published': {
@@ -406,6 +413,7 @@ class ProductAdminView(SafeModelView):
         'precio',
         'precio_rebajado',
         'porcentaje_rebaja',
+        'opening_type',
         'has_abatible',
         'has_door_model',
         'es_mas_vendido',

@@ -196,6 +196,7 @@ class ProductLifecycleSQLiteModelTest(unittest.TestCase):
                 "category_slug",
                 "subcategoria_id",
                 "imagen",
+                "opening_type",
                 "has_abatible",
                 "has_door_model",
                 "es_mas_vendido",
@@ -204,6 +205,7 @@ class ProductLifecycleSQLiteModelTest(unittest.TestCase):
             },
         )
         self.assertIs(serialized["available_for_sale"], False)
+        self.assertEqual(serialized["opening_type"], "fixed")
         self.assertNotIn("published", serialized)
 
         serialized_with_images = product.serialize_with_images()
@@ -225,6 +227,12 @@ class ProductLifecycleSQLiteModelTest(unittest.TestCase):
             "ck_products_published_available_for_sale",
             constraint_names,
         )
+        self.assertIn("ck_products_opening_type", constraint_names)
+
+        opening_type = Products.__table__.c["opening_type"]
+        self.assertFalse(opening_type.nullable)
+        self.assertEqual(opening_type.default.arg, "fixed")
+        self.assertEqual(str(opening_type.server_default.arg), "fixed")
 
     def test_published_but_unavailable_and_unpublished_unavailable_are_valid(self):
         db.session.add(self.make_product(available_for_sale=False))

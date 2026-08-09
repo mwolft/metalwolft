@@ -1,3 +1,5 @@
+import { parseDeliveryEstimate, type DeliveryEstimate } from "@/lib/delivery-estimate";
+
 export type CartItem = {
   id: number;
   usuario_id: number;
@@ -153,6 +155,14 @@ export async function getCart(token: string, options: GetCartOptions = {}) {
     emitCartSnapshotChanged({ items, reason: "sync" });
   }
   return items;
+}
+
+export async function getCartDeliveryEstimate(token: string): Promise<DeliveryEstimate | null> {
+  const payload = await requestCart<unknown>(token, "/api/cart/delivery-estimate", {
+    cache: "no-store"
+  });
+
+  return parseDeliveryEstimate(payload);
 }
 
 export async function addCartItem(token: string, item: AddCartItemInput) {
