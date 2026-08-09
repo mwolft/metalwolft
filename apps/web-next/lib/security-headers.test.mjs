@@ -20,6 +20,8 @@ try {
   assert.match(csp, /https:\/\/res\.cloudinary\.com/);
   assert.match(csp, /https:\/\/www\.googletagmanager\.com/);
   assert.match(csp, /https:\/\/www\.google-analytics\.com/);
+  assert.match(csp, /https:\/\/region1\.analytics\.google\.com/);
+  assert.match(csp, /https:\/\/www\.google\.es/);
   assert.match(csp, /https:\/\/js\.stripe\.com/);
   assert.match(csp, /https:\/\/api\.stripe\.com/);
   assert.match(csp, /https:\/\/hooks\.stripe\.com/);
@@ -29,7 +31,7 @@ try {
   assert.equal(headers["Cross-Origin-Opener-Policy"], "same-origin-allow-popups");
   assert.equal(headers["Strict-Transport-Security"], "max-age=31536000");
 
-  console.log("13 security header assertions passed");
+  console.log("17 security header assertions passed");
 } finally {
   if (originalNodeEnv === undefined) {
     delete process.env.NODE_ENV;
