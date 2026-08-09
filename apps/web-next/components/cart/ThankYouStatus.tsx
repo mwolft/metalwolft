@@ -10,6 +10,7 @@ import {
   type CheckoutStatusResponse
 } from "@/lib/checkout-client";
 import { clearStoredCheckoutDiscountCode } from "@/lib/checkout-discount";
+import { ThankYouPurchaseEvent } from "@/components/analytics/ThankYouPurchaseEvent";
 import { MetalSpinner } from "@/components/ui/MetalSpinner";
 
 const MAX_STATUS_POLLS = 8;
@@ -173,6 +174,7 @@ export function ThankYouStatus() {
         description="Tu pedido se ha confirmado correctamente."
         tone="success"
       >
+        <ThankYouPurchaseEvent purchase={statusData.purchase} />
         {statusData.order?.locator ? (
           <p>
             <strong>Localizador:</strong> {statusData.order.locator}

@@ -146,6 +146,66 @@ def render_order_confirmation_email(
     )
 
 
+def render_cart_reminder_email(*, customer_firstname, lines, subtotal, cart_url):
+    customer_name = _text(customer_firstname)
+    cart_url_text = _required_text(cart_url, "cart_url")
+    subtotal_text = _format_money(subtotal, "subtotal")
+    rendered_lines = tuple(_render_order_line(line) for line in tuple(lines or ()))
+    if not rendered_lines:
+        raise TransactionalEmailRenderError("El carrito no contiene l\u00edneas disponibles.")
+
+    greeting = f"Hola {customer_name}," if customer_name else "Hola,"
+    plain_lines = "\n\n".join(line[0] for line in rendered_lines)
+    lines_html = "".join(line[1] for line in rendered_lines)
+
+    text_body = (
+        "METALWOLFT\n"
+        f"{BRAND_TAGLINE}\n\n"
+        f"{greeting}\n\n"
+        "Tu carrito sigue listo.\n\n"
+        "Hemos guardado la configuraci\u00f3n de los productos que a\u00f1adiste.\n\n"
+        "RESUMEN DEL CARRITO\n\n"
+        f"{plain_lines}\n\n"
+        f"Subtotal de productos guardados: {subtotal_text}\n\n"
+        f"Volver a mi carrito: {cart_url_text}\n\n"
+        "Si necesitas revisar las medidas o la instalaci\u00f3n, estaremos encantados de ayudarte.\n\n"
+        "MetalWolft\n"
+        "Fabricaci\u00f3n de rejas a medida"
+    )
+
+    content_html = (
+        f'<p style="margin:0 0 18px;color:{COLOR_MUTED};font-size:15px;line-height:1.6;">'
+        f"{_html(greeting)}"
+        "</p>"
+        f'<h1 style="margin:0 0 12px;color:{COLOR_TEXT};font-family:Arial,Helvetica,sans-serif;'
+        'font-size:27px;line-height:1.2;font-weight:700;">Tu carrito sigue listo</h1>'
+        f'<p style="margin:0 0 24px;color:{COLOR_TEXT};font-size:16px;line-height:1.6;">'
+        "Hemos guardado la configuraci\u00f3n de los productos que a\u00f1adiste."
+        "</p>"
+        f'<h2 style="margin:0 0 12px;color:{COLOR_TEXT};font-family:Arial,Helvetica,sans-serif;'
+        'font-size:14px;line-height:1.4;font-weight:700;letter-spacing:0.08em;">RESUMEN DEL CARRITO</h2>'
+        f"{lines_html}"
+        '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" '
+        f'style="width:100%;margin:20px 0 24px;border-top:1px solid {COLOR_BORDER};border-collapse:collapse;">'
+        f"{_render_total_row('Subtotal de productos guardados', subtotal_text, emphasized=True)}"
+        "</table>"
+        f'<a href="{_html(cart_url_text)}" '
+        f'style="display:inline-block;background:{COLOR_ACCENT};color:#ffffff;text-decoration:none;font-size:16px;'
+        'font-weight:700;padding:13px 22px;border-radius:999px;">Volver a mi carrito</a>'
+        f'<p style="margin:22px 0 0;color:{COLOR_MUTED};font-size:14px;line-height:1.6;">'
+        "Si necesitas revisar las medidas o la instalaci\u00f3n, estaremos encantados de ayudarte."
+        "</p>"
+    )
+
+    return RenderedEmail(
+        text=text_body,
+        html=_render_shell(
+            preheader="Tu carrito sigue listo para cuando quieras continuar.",
+            content_html=content_html,
+        ),
+    )
+
+
 def render_invoice_delivery_email(
     *,
     invoice_number,

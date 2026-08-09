@@ -48,6 +48,10 @@ from api.product_lifecycle import (
 )
 from api.checkout_cart_cleanup import cleanup_cart_lines_from_checkout_quote
 from api.checkout_payment_security import is_modifiable_stripe_checkout_session
+from api.checkout_analytics import (
+    CheckoutAnalyticsSnapshotError,
+    build_confirmed_purchase_payload,
+)
 from api.customer_order_serializers import (
     serialize_customer_order_detail,
     serialize_customer_order_summary,
@@ -2403,6 +2407,19 @@ def checkout_status():
         state = "processing"
         message = "Estamos confirmando tu pedido."
 
+    purchase = None
+    if state == "confirmed":
+        try:
+            purchase = build_confirmed_purchase_payload(
+                order=order,
+                checkout_session=checkout_session,
+            )
+        except CheckoutAnalyticsSnapshotError:
+            logger.warning(
+                "Checkout confirmado sin snapshot analitico valido: checkout_session=%s",
+                checkout_session.id,
+            )
+
     response = jsonify({
         "state": state,
         "message": message,
@@ -2420,7 +2437,8 @@ def checkout_status():
         "total_amount": checkout_session.total_amount,
         "shipping_cost": checkout_session.shipping_cost,
         "discount_code": checkout_session.discount_code,
-        "discount_percent": checkout_session.discount_percent
+        "discount_percent": checkout_session.discount_percent,
+        "purchase": purchase,
     })
     response.headers['Access-Control-Allow-Origin'] = '*'
     response.headers['Access-Control-Expose-Headers'] = 'Authorization'

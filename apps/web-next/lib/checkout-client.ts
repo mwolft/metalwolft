@@ -121,6 +121,21 @@ export type CheckoutStatusResponse = {
   shipping_cost?: number | null;
   discount_code?: string | null;
   discount_percent?: number | null;
+  purchase?: CheckoutPurchase | null;
+};
+
+export type CheckoutPurchase = {
+  transaction_id: string;
+  value: number;
+  currency: "EUR";
+  shipping: number;
+  coupon: string | null;
+  items: Array<{
+    item_id: number;
+    item_name: string;
+    price: number;
+    quantity: number;
+  }>;
 };
 
 export class CheckoutClientError extends Error {

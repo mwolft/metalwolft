@@ -21,11 +21,11 @@ function buildContentSecurityPolicy() {
     "object-src 'none'",
     "form-action 'self'",
     "frame-ancestors 'self'",
-    "script-src 'self' 'unsafe-inline' https://js.stripe.com https://*.js.stripe.com https://maps.googleapis.com https://*.paypal.com https://*.paypalobjects.com https://*.venmo.com",
+    "script-src 'self' 'unsafe-inline' https://www.googletagmanager.com https://js.stripe.com https://*.js.stripe.com https://maps.googleapis.com https://*.paypal.com https://*.paypalobjects.com https://*.venmo.com",
     "style-src 'self' 'unsafe-inline' https://*.paypal.com https://*.paypalobjects.com https://*.venmo.com",
     "img-src 'self' data: blob: https://res.cloudinary.com https://*.stripe.com https://*.paypal.com https://*.paypalobjects.com https://*.venmo.com",
     "font-src 'self' data:",
-    `connect-src 'self' ${apiOrigin} https://api.stripe.com https://maps.googleapis.com https://res.cloudinary.com https://*.paypal.com https://*.paypalobjects.com https://*.venmo.com`,
+    `connect-src 'self' ${apiOrigin} https://www.googletagmanager.com https://www.google-analytics.com https://region1.google-analytics.com https://api.stripe.com https://maps.googleapis.com https://res.cloudinary.com https://*.paypal.com https://*.paypalobjects.com https://*.venmo.com`,
     "frame-src 'self' https://js.stripe.com https://*.js.stripe.com https://hooks.stripe.com https://*.paypal.com https://*.paypalobjects.com https://*.venmo.com",
     "child-src 'self' https://*.paypal.com https://*.paypalobjects.com https://*.venmo.com",
     "media-src 'self' blob: https://res.cloudinary.com"
@@ -58,6 +58,11 @@ const nextConfig = {
       {
         source: "/politica-devoluciones",
         destination: "/politica-devolucion",
+        permanent: true
+      },
+      {
+        source: "/politica-de-cookies",
+        destination: "/politica-cookies",
         permanent: true
       },
       {

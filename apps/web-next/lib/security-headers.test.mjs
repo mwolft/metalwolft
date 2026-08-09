@@ -18,6 +18,8 @@ try {
   assert.match(csp, /frame-ancestors 'self'/);
   assert.match(csp, /connect-src 'self' https:\/\/api\.metalwolft\.com/);
   assert.match(csp, /https:\/\/res\.cloudinary\.com/);
+  assert.match(csp, /https:\/\/www\.googletagmanager\.com/);
+  assert.match(csp, /https:\/\/www\.google-analytics\.com/);
   assert.match(csp, /https:\/\/js\.stripe\.com/);
   assert.match(csp, /https:\/\/api\.stripe\.com/);
   assert.match(csp, /https:\/\/hooks\.stripe\.com/);

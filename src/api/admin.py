@@ -54,6 +54,12 @@ from api.invoice_email_service import (
     send_invoice_email as send_invoice_email_v2,
 )
 from api.utils import mail
+from api.cart_reminder_service import (
+    CartReminderDeliveryError,
+    CartReminderIneligibleError,
+    get_cart_reminder_eligibility,
+    send_manual_cart_reminder,
+)
 from api.invoice_admin_helpers import (
     build_invoice_issuer_from_config,
     invoice_admin_actor_from_basic_auth,
@@ -318,7 +324,23 @@ class SafeModelView(SecureModelView):
 
 
 # ========================== VISTAS ==========================
+def _format_user_cart_reminder(view, context, model, name):
+    eligibility = get_cart_reminder_eligibility(db_session=view.session, user=model)
+    if not eligibility.eligible:
+        return Markup('<span class="text-muted">No elegible</span>')
+
+    action_url = view.get_url(".send_cart_reminder", user_id=model.id)
+    confirmation = "Se enviara un recordatorio manual con el carrito guardado. Continuar?"
+    return Markup(
+        '<form method="post" action="{action_url}" style="margin:0;" '
+        'onsubmit="return confirm(\'{confirmation}\');">'
+        '<button type="submit" class="btn btn-primary btn-sm">Enviar recordatorio</button>'
+        "</form>"
+    ).format(action_url=action_url, confirmation=confirmation)
+
+
 class UsersAdminView(SafeModelView):
+    can_view_details = True
     column_default_sort = ('id', True)  # DESC
     column_sortable_list = ('id', 'email')
     column_searchable_list = ('email',)
@@ -337,11 +359,49 @@ class UsersAdminView(SafeModelView):
         'billing_postal_code',
         'CIF',
     )
+    column_details_list = column_list + ('cart_reminder',)
     form_excluded_columns = ('password', 'orders', 'favorites', 'cart')
 
-    column_formatters = {
-        'email': lambda v, c, m, p: Markup(f'<a href="mailto:{m.email}">{m.email}</a>') if m.email else ''
+    column_labels = {
+        'cart_reminder': 'Recordatorio de carrito',
     }
+    column_formatters = {
+        'email': lambda v, c, m, p: Markup(f'<a href="mailto:{m.email}">{m.email}</a>') if m.email else '',
+    }
+    column_formatters_detail = {
+        **column_formatters,
+        'cart_reminder': _format_user_cart_reminder,
+    }
+
+    @expose('/send-cart-reminder/<int:user_id>', methods=['POST'])
+    def send_cart_reminder(self, user_id):
+        user = self.session.get(Users, user_id)
+        if not user:
+            flash('Usuario no encontrado.', 'error')
+            return redirect(self.get_url('.index_view'))
+
+        try:
+            frontend_base_url = (
+                current_app.config.get('FRONTEND_URL') or 'https://www.metalwolft.com'
+            ).rstrip('/')
+            send_manual_cart_reminder(
+                db_session=self.session,
+                user=user,
+                cart_url=f'{frontend_base_url}/cart',
+                logger=current_app.logger,
+            )
+            flash('Recordatorio de carrito enviado correctamente.', 'success')
+        except CartReminderIneligibleError as exc:
+            current_app.logger.info('Cart reminder rejected user_id=%s', user_id)
+            flash(str(exc), 'warning')
+        except CartReminderDeliveryError:
+            current_app.logger.error('Cart reminder delivery failed user_id=%s', user_id)
+            flash('No se pudo enviar el recordatorio del carrito.', 'error')
+        except Exception:
+            current_app.logger.exception('Unexpected cart reminder error user_id=%s', user_id)
+            flash('No se pudo enviar el recordatorio del carrito.', 'error')
+
+        return redirect(self.get_url('.index_view'))
 
 
 class ProductAdminView(SafeModelView):

@@ -4,6 +4,7 @@ import { PageContainer } from "@/components/layout/PageContainer";
 import { contactDetails, contactLinks } from "@/lib/contact";
 import { legalFooterLinks } from "@/lib/legal";
 import { footerCatalogLinks, footerGuideLinks } from "@/lib/navigation";
+import { CookieConsentSettingsButton } from "@/components/analytics/CookieConsentSettingsButton";
 
 export function SiteFooter() {
   return (
@@ -94,6 +95,7 @@ export function SiteFooter() {
                   {link.label}
                 </Link>
               ))}
+              <CookieConsentSettingsButton />
             </div>
           </nav>
         </div>

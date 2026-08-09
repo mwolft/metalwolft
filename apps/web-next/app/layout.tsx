@@ -2,6 +2,8 @@ import type { Metadata, Viewport } from "next";
 import type { ReactNode } from "react";
 import { SiteHeader } from "@/components/layout/SiteHeader";
 import { SiteFooter } from "@/components/layout/SiteFooter";
+import { GtmAnalytics } from "@/components/analytics/GtmAnalytics";
+import { CookieConsentBanner } from "@/components/analytics/CookieConsentBanner";
 import { CartProvider } from "@/components/cart/CartProvider";
 import { NotificationProvider } from "@/components/notifications/NotificationProvider";
 import { siteConfig } from "@/lib/metadata";
@@ -33,6 +35,8 @@ export default function RootLayout({
   return (
     <html lang="es">
       <body>
+        <GtmAnalytics />
+        <CookieConsentBanner />
         <CartProvider>
           <NotificationProvider>
             <div className="mw-site-shell">

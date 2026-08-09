@@ -54,6 +54,7 @@ import {
   isTemporaryQuoteNetworkError,
   requestProductQuote
 } from "@/lib/product-quote-client";
+import { pushGtmEvent } from "@/lib/analytics";
 
 type ProductConfiguratorProps = {
   productId: number;
@@ -266,6 +267,7 @@ export function ProductConfigurator({
   const [quoteRequestVersion, setQuoteRequestVersion] = useState(0);
   const [needsRecalculation, setNeedsRecalculation] = useState(false);
   const activeQuoteController = useRef<AbortController | null>(null);
+  const lastTrackedQuoteKey = useRef<string | null>(null);
   const [cartStatus, setCartStatus] = useState<"idle" | "adding" | "success" | "error">("idle");
   const [cartFeedback, setCartFeedback] = useState("");
   const dimensionHelpId = useId();
@@ -545,6 +547,27 @@ export function ProductConfigurator({
         }
 
         setCalculatedQuote(toDisplayedAuthoritativeQuote(quote));
+        const quoteKey = [
+          productId,
+          quote.alto,
+          quote.ancho,
+          quote.anclaje,
+          quote.color,
+          quote.screw_option,
+          quote.unit_price
+        ].join(":");
+        if (lastTrackedQuoteKey.current !== quoteKey) {
+          lastTrackedQuoteKey.current = quoteKey;
+          pushGtmEvent({
+            event: "calcular_precio",
+            product_name: productName,
+            product_slug: productSlug,
+            height_cm: quote.alto,
+            width_cm: quote.ancho,
+            area_m2: (quote.alto * quote.ancho) / 10_000,
+            final_price: quote.unit_price.toFixed(2)
+          });
+        }
         setNeedsRecalculation(false);
       } catch (error) {
         if (controller.signal.aborted || isAbortError(error)) {
