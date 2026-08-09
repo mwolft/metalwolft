@@ -37,7 +37,9 @@ export function BackToTopButton() {
       onClick={scrollToTop}
       type="button"
     >
-      <span aria-hidden="true">↑</span>
+      <svg aria-hidden="true" viewBox="0 0 24 24">
+        <path d="m6 14 6-6 6 6" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" />
+      </svg>
     </button>
   );
 }

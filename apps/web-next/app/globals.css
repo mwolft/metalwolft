@@ -59,22 +59,20 @@ textarea:focus-visible {
   bottom: max(1rem, env(safe-area-inset-bottom));
   z-index: 50;
   display: grid;
-  width: 2.65rem;
-  height: 2.65rem;
+  width: 2.35rem;
+  height: 2.35rem;
   place-items: center;
-  border: 1px solid rgba(255, 255, 255, 0.72);
+  border: 0;
   border-radius: 999px;
-  background: var(--mw-text);
-  box-shadow: 0 8px 20px rgba(31, 41, 55, 0.2);
+  background: var(--mw-accent-dark);
+  box-shadow: 0 5px 14px rgba(31, 41, 55, 0.16);
   color: #fff;
   cursor: pointer;
-  font-family: inherit;
-  font-size: 1.35rem;
-  line-height: 1;
 }
 
-.mw-back-to-top:hover {
-  background: var(--mw-accent-dark);
+.mw-back-to-top svg {
+  width: 1.2rem;
+  height: 1.2rem;
 }
 
 .mw-visually-hidden {
