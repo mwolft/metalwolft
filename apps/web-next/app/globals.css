@@ -53,6 +53,30 @@ textarea:focus-visible {
   outline-offset: 3px;
 }
 
+.mw-back-to-top {
+  position: fixed;
+  right: max(1rem, env(safe-area-inset-right));
+  bottom: max(1rem, env(safe-area-inset-bottom));
+  z-index: 50;
+  display: grid;
+  width: 2.65rem;
+  height: 2.65rem;
+  place-items: center;
+  border: 1px solid rgba(255, 255, 255, 0.72);
+  border-radius: 999px;
+  background: var(--mw-text);
+  box-shadow: 0 8px 20px rgba(31, 41, 55, 0.2);
+  color: #fff;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 1.35rem;
+  line-height: 1;
+}
+
+.mw-back-to-top:hover {
+  background: var(--mw-accent-dark);
+}
+
 .mw-visually-hidden {
   position: absolute;
   width: 1px;

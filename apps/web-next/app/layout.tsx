@@ -2,6 +2,8 @@ import type { Metadata, Viewport } from "next";
 import type { ReactNode } from "react";
 import { SiteHeader } from "@/components/layout/SiteHeader";
 import { SiteFooter } from "@/components/layout/SiteFooter";
+import { BackToTopButton } from "@/components/layout/BackToTopButton";
+import { ScrollRestoration } from "@/components/layout/ScrollRestoration";
 import { GtmAnalytics } from "@/components/analytics/GtmAnalytics";
 import { CookieConsentBanner } from "@/components/analytics/CookieConsentBanner";
 import { CartProvider } from "@/components/cart/CartProvider";
@@ -37,12 +39,14 @@ export default function RootLayout({
       <body>
         <GtmAnalytics />
         <CookieConsentBanner />
+        <ScrollRestoration />
         <CartProvider>
           <NotificationProvider>
             <div className="mw-site-shell">
               <SiteHeader />
               <main className="mw-site-main">{children}</main>
               <SiteFooter />
+              <BackToTopButton />
             </div>
           </NotificationProvider>
         </CartProvider>
