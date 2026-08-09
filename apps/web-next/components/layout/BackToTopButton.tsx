@@ -1,25 +1,42 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 const SCROLL_THRESHOLD = 480;
 
 export function BackToTopButton() {
+  const isVisibleRef = useRef(false);
+  const [isRendered, setIsRendered] = useState(false);
   const [isVisible, setIsVisible] = useState(false);
 
   useEffect(() => {
+    let frameId = 0;
     const updateVisibility = () => {
-      setIsVisible(window.scrollY >= SCROLL_THRESHOLD);
+      const shouldBeVisible = window.scrollY >= SCROLL_THRESHOLD;
+      if (shouldBeVisible === isVisibleRef.current) {
+        return;
+      }
+
+      isVisibleRef.current = shouldBeVisible;
+      if (shouldBeVisible) {
+        setIsRendered(true);
+        frameId = window.requestAnimationFrame(() => setIsVisible(true));
+      } else {
+        window.cancelAnimationFrame(frameId);
+        frameId = 0;
+        setIsVisible(false);
+      }
     };
 
     updateVisibility();
     window.addEventListener("scroll", updateVisibility, { passive: true });
     return () => {
+      window.cancelAnimationFrame(frameId);
       window.removeEventListener("scroll", updateVisibility);
     };
   }, []);
 
-  if (!isVisible) {
+  if (!isRendered) {
     return null;
   }
 
@@ -33,8 +50,15 @@ export function BackToTopButton() {
   return (
     <button
       aria-label="Volver arriba"
-      className="mw-back-to-top"
+      aria-hidden={!isVisible}
+      className={`mw-back-to-top${isVisible ? " is-visible" : ""}`}
       onClick={scrollToTop}
+      onTransitionEnd={() => {
+        if (!isVisibleRef.current) {
+          setIsRendered(false);
+        }
+      }}
+      tabIndex={isVisible ? 0 : -1}
       type="button"
     >
       <svg aria-hidden="true" viewBox="0 0 24 24">
