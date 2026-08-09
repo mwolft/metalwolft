@@ -151,7 +151,10 @@ for (const variant of ["default", "banner", "category", "compact"]) {
 assert.match(sources.component, /if \(!estimate\) \{\s*return null;/);
 assert.match(sources.component, /variant === "default" \|\| variant === "compact"/);
 assert.match(sources.component, /<strong>Entrega estimada:<\/strong> \{compactDateRange\}/);
-assert.equal((sources.component.match(/Puede variar según el tipo de reja y la cantidad del pedido\./g) || []).length, 1);
+assert.match(sources.component, /estimate\.adjustments && estimate\.adjustments\.length > 0/);
+assert.match(sources.component, /ⓘ<\/span> \{adjustment\.message\}/);
+assert.doesNotMatch(sources.component, /Puede variar según el tipo de reja y la cantidad del pedido\./);
+assert.match(sources.component, /Puede variar según la configuración y el destino\./);
 assert.doesNotMatch(sources.component, /Entrega orientativa entre/);
 assert.equal(
   (sources.component.match(/Previsión orientativa para pedidos realizados hoy/g) || []).length,

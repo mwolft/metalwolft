@@ -136,6 +136,21 @@ class CartDeliveryEstimateEndpointTest(unittest.TestCase):
         today = date.today()
         self.assertEqual(payload["start_date"], (today + timedelta(days=23)).isoformat())
         self.assertEqual(payload["end_date"], (today + timedelta(days=30)).isoformat())
+        self.assertEqual(
+            payload["adjustments"],
+            [
+                {
+                    "code": "hinged_product",
+                    "days": 3,
+                    "message": "+3 días por incluir una reja abatible",
+                },
+                {
+                    "code": "quantity_six_or_more",
+                    "days": 5,
+                    "message": "+5 días por cantidad del pedido",
+                },
+            ],
+        )
 
 
 if __name__ == "__main__":

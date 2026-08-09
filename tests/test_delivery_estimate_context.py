@@ -14,6 +14,7 @@ from api.delivery_estimate_service import (  # noqa: E402
     OPENING_TYPE_FIXED,
     OPENING_TYPE_HINGED,
     build_delivery_estimate,
+    calculate_delivery_adjustments,
     calculate_delivery_adjustment_days,
 )
 
@@ -66,6 +67,28 @@ class DeliveryEstimateContextTest(unittest.TestCase):
             8,
         )
 
+    def test_adjustments_include_only_the_authoritative_reasons_applied(self):
+        adjustments = calculate_delivery_adjustments([
+            self.cart_line(5),
+            self.cart_line(1, OPENING_TYPE_HINGED),
+        ])
+
+        self.assertEqual(
+            adjustments,
+            [
+                {
+                    "code": "hinged_product",
+                    "days": 3,
+                    "message": "+3 días por incluir una reja abatible",
+                },
+                {
+                    "code": "quantity_six_or_more",
+                    "days": 5,
+                    "message": "+5 días por cantidad del pedido",
+                },
+            ],
+        )
+
     def test_legacy_availability_flag_does_not_classify_the_cart_line(self):
         fixed_product_available_as_hinged = SimpleNamespace(
             opening_type=OPENING_TYPE_FIXED,
@@ -88,6 +111,7 @@ class DeliveryEstimateContextTest(unittest.TestCase):
 
         self.assertEqual(global_estimate["start_date"], "2026-08-24")
         self.assertEqual(global_estimate["end_date"], "2026-08-31")
+        self.assertNotIn("adjustments", global_estimate)
         self.assertEqual(contextual_estimate["start_date"], "2026-09-01")
         self.assertEqual(contextual_estimate["end_date"], "2026-09-08")
 

@@ -2099,6 +2099,17 @@ textarea:focus-visible {
   font-size: 0.74rem;
 }
 
+.mw-delivery-estimate__adjustments {
+  display: grid;
+  gap: 0.1rem;
+}
+
+.mw-delivery-estimate__adjustment {
+  color: var(--mw-muted);
+  font-size: 0.74rem;
+  line-height: 1.35;
+}
+
 .mw-delivery-estimate--banner {
   margin: 1.1rem 0 0;
   padding: 1rem 1.2rem;

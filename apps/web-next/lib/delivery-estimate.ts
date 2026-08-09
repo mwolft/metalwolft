@@ -1,7 +1,14 @@
+export type DeliveryEstimateAdjustment = {
+  code: string;
+  days: number;
+  message: string;
+};
+
 export type DeliveryEstimate = {
   start_date: string;
   end_date: string;
   is_active: true;
+  adjustments?: DeliveryEstimateAdjustment[];
 };
 
 type CivilDate = {
@@ -103,10 +110,36 @@ export function parseDeliveryEstimate(payload: unknown): DeliveryEstimate | null
     return null;
   }
 
+  const adjustments = Array.isArray(candidate.adjustments)
+    ? candidate.adjustments.flatMap((adjustment) => {
+        if (typeof adjustment !== "object" || adjustment === null) {
+          return [];
+        }
+        const adjustmentCandidate = adjustment as Record<string, unknown>;
+        const { code, days, message } = adjustmentCandidate;
+        if (
+          typeof code !== "string" ||
+          typeof days !== "number" ||
+          !Number.isInteger(days) ||
+          days <= 0 ||
+          typeof message !== "string"
+        ) {
+          return [];
+        }
+
+        return [{
+          code,
+          days,
+          message
+        }];
+      })
+    : undefined;
+
   return {
     start_date: candidate.start_date as string,
     end_date: candidate.end_date as string,
-    is_active: true
+    is_active: true,
+    ...(adjustments === undefined ? {} : { adjustments })
   };
 }
 

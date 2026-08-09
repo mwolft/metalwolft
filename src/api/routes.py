@@ -1475,7 +1475,13 @@ def get_cart_delivery_estimate():
             return response, 404
 
         cart_items = Cart.query.filter_by(usuario_id=current_user['user_id']).all()
-        response = jsonify(build_delivery_estimate(config, cart_items=cart_items))
+        response = jsonify(
+            build_delivery_estimate(
+                config,
+                cart_items=cart_items,
+                include_adjustments=True,
+            )
+        )
         response.headers['Access-Control-Allow-Origin'] = '*'
         response.headers['Access-Control-Expose-Headers'] = 'Authorization'
         response.headers['Cache-Control'] = 'private, no-store'

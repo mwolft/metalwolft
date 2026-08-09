@@ -34,9 +34,21 @@ export function DeliveryEstimate({
         <p className="mw-delivery-estimate__primary">
           <strong>Entrega estimada:</strong> {compactDateRange}
         </p>
-        <p className="mw-delivery-estimate__detail">
-          Puede variar según el tipo de reja y la cantidad del pedido.
-        </p>
+        {variant === "compact" ? (
+          estimate.adjustments && estimate.adjustments.length > 0 ? (
+            <div className="mw-delivery-estimate__adjustments">
+              {estimate.adjustments.map((adjustment) => (
+                <p key={adjustment.code} className="mw-delivery-estimate__adjustment">
+                  <span aria-hidden="true">ⓘ</span> {adjustment.message}
+                </p>
+              ))}
+            </div>
+          ) : null
+        ) : (
+          <p className="mw-delivery-estimate__detail">
+            Puede variar según la configuración y el destino.
+          </p>
+        )}
       </div>
     );
   }
