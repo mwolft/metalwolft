@@ -661,6 +661,7 @@ export function CartDetailsStep({
 
           <label className="mw-checkout-option mw-checkout-option--policy">
             <input
+              aria-invalid={Boolean(currentDetailsErrors.acceptedPolicy)}
               checked={details.acceptedPolicy}
               name="acceptedPolicy"
               onChange={handleDetailChange}
@@ -702,14 +703,10 @@ export function CartDetailsStep({
           {deliveryEstimate}
           {checkoutErrorSummary.length > 0 ? (
             <section
-              aria-labelledby="mw-checkout-validation-title"
+              aria-label="Campos pendientes"
               className="mw-checkout-validation-summary"
               role="alert"
             >
-              <div className="mw-checkout-validation-summary__heading">
-                <span aria-hidden="true">!</span>
-                <p id="mw-checkout-validation-title">Revisa estos datos antes de continuar</p>
-              </div>
               <ul>
                 {checkoutErrorSummary.map((item) => (
                   <li key={item.field}>

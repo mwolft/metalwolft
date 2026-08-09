@@ -74,9 +74,34 @@ assert.match(detailsStepSource, /function CheckoutLines/);
 assert.match(detailsStepSource, /onSubmit={handleContinueToPayment}/);
 assert.match(detailsStepSource, /setHasAttemptedContinue\(true\)/);
 assert.match(detailsStepSource, /role="alert"/);
-assert.match(detailsStepSource, /Revisa estos datos antes de continuar/);
+assert.match(detailsStepSource, /aria-label="Campos pendientes"/);
+assert.doesNotMatch(detailsStepSource, /Revisa estos datos antes de continuar/);
+assert.doesNotMatch(detailsStepSource, /mw-checkout-validation-summary__heading/);
 assert.match(detailsStepSource, /focusCheckoutField\(item\.field\)/);
 assert.doesNotMatch(detailsStepSource, /<span className="mw-field-error"/);
-assert.match(globalStylesSource, /\.mw-checkout-validation-summary\s*\{[^}]*border-left:\s*3px solid var\(--mw-accent-dark\);/s);
+assert.match(
+  detailsStepSource,
+  /hasAttemptedContinue\s*\?\s*validateCheckoutDetails\(details\)\.errors/
+);
+assert.match(
+  detailsStepSource,
+  /aria-invalid=\{Boolean\(currentDetailsErrors\.acceptedPolicy\)\}/
+);
+assert.match(
+  globalStylesSource,
+  /\.mw-checkout-form \.mw-field input\[aria-invalid="true"\]\s*\{/s
+);
+assert.match(
+  globalStylesSource,
+  /\.mw-checkout-form \.mw-checkout-option input\[aria-invalid="true"\]\s*\{/s
+);
+assert.match(
+  globalStylesSource,
+  /\.mw-checkout-validation-summary\s*\{[^}]*margin-top:\s*0\.65rem;[^}]*padding:\s*0;/s
+);
+assert.doesNotMatch(
+  globalStylesSource,
+  /\.mw-checkout-validation-summary\s*\{[^}]*\b(?:border|background)\s*:/s
+);
 
 console.log("Checkout details layout assertions passed");
