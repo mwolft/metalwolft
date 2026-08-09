@@ -2653,11 +2653,12 @@ textarea:focus-visible {
 .mw-cookie-consent__content {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 1rem;
   width: 100%;
   padding: 0.8rem 1rem;
   border: 1px solid rgba(255, 255, 255, 0.16);
-  background: linear-gradient(135deg, #374151 0%, #1f2937 100%);
+  background: linear-gradient(135deg, #757575 0%, #666666 100%);
   box-shadow: 0 12px 30px rgba(17, 24, 39, 0.28);
   pointer-events: auto;
 }
@@ -2665,6 +2666,7 @@ textarea:focus-visible {
 .mw-cookie-consent p {
   margin: 0;
   color: #ffffff;
+  text-align: center;
   font-size: 0.88rem;
   line-height: 1.45;
 }
