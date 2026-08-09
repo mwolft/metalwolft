@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import {
   fetchDeliveryEstimate,
+  formatCartDeliveryDateRangeEs,
   formatCivilDateEs,
   formatCivilDateRangeCompactEs,
   formatCivilDateRangeEs,
@@ -124,6 +125,18 @@ assert.equal(
   "24 de agosto de 2026"
 );
 assert.equal(formatCivilDateRangeCompactEs("2026-08-28", "2026-08-24"), null);
+assert.equal(
+  formatCartDeliveryDateRangeEs("2026-08-31", "2026-09-04", 2026),
+  "31 ago–4 sep"
+);
+assert.equal(
+  formatCartDeliveryDateRangeEs("2026-12-29", "2027-01-05", 2026),
+  "29 dic–5 ene 2027"
+);
+assert.equal(
+  formatCartDeliveryDateRangeEs("2025-08-31", "2025-09-04", 2026),
+  "31 ago–4 sep 2025"
+);
 
 const sources = Object.fromEntries(
   await Promise.all(
@@ -150,9 +163,11 @@ for (const variant of ["default", "banner", "category", "compact"]) {
 }
 assert.match(sources.component, /if \(!estimate\) \{\s*return null;/);
 assert.match(sources.component, /variant === "default" \|\| variant === "compact"/);
-assert.match(sources.component, /<strong>Entrega estimada:<\/strong> \{compactDateRange\}/);
+assert.match(sources.component, /mw-delivery-estimate__compact-label">Entrega estimada:/);
+assert.match(sources.component, /mw-delivery-estimate__compact-range">\{compactDateRange\}/);
 assert.match(sources.component, /estimate\.adjustments && estimate\.adjustments\.length > 0/);
 assert.match(sources.component, /ⓘ<\/span> \{adjustment\.message\}/);
+assert.match(sources.component, /Plazo calculado para los productos de tu carrito\./);
 assert.doesNotMatch(sources.component, /Puede variar según el tipo de reja y la cantidad del pedido\./);
 assert.match(sources.component, /Puede variar según la configuración y el destino\./);
 assert.doesNotMatch(sources.component, /Entrega orientativa entre/);
@@ -164,6 +179,7 @@ assert.match(
   sources.styles,
   /\.mw-delivery-estimate--default,\s*\.mw-delivery-estimate--compact\s*{[^}]*padding:\s*0;[^}]*border:\s*0;[^}]*border-radius:\s*0;[^}]*background:\s*transparent;/s
 );
+assert.match(sources.styles, /\.mw-delivery-estimate__compact-range\s*\{[^}]*font-size:\s*1rem;[^}]*font-weight:\s*700;/s);
 assert.match(sources.component, /Los plazos pueden variar según el modelo, la configuración y el destino\./);
 
 for (const categorySource of [sources.mainCategory, sources.dynamicCategory]) {

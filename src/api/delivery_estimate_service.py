@@ -19,19 +19,19 @@ def calculate_delivery_adjustments(cart_items):
         adjustments.append({
             "code": "hinged_product",
             "days": 3,
-            "message": "+3 días por incluir una reja abatible",
+            "message": "+3 días por incluir una reja abatible.",
         })
     if total_quantity >= 6:
         adjustments.append({
             "code": "quantity_six_or_more",
             "days": 5,
-            "message": "+5 días por cantidad del pedido",
+            "message": "+5 días por cantidad del pedido.",
         })
     elif total_quantity >= 4:
         adjustments.append({
             "code": "quantity_four_to_five",
             "days": 2,
-            "message": "+2 días por cantidad del pedido",
+            "message": "+2 días por cantidad del pedido.",
         })
 
     return adjustments

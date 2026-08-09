@@ -2172,6 +2172,25 @@ textarea:focus-visible {
   font-size: 0.74rem;
 }
 
+.mw-delivery-estimate__compact-heading {
+  display: grid;
+  gap: 0.05rem;
+}
+
+.mw-delivery-estimate__compact-label {
+  color: var(--mw-muted);
+  font-size: 0.74rem;
+  font-weight: 600;
+  line-height: 1.25;
+}
+
+.mw-delivery-estimate__compact-range {
+  color: var(--mw-text);
+  font-size: 1rem;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
 .mw-delivery-estimate__adjustments {
   display: grid;
   gap: 0.1rem;

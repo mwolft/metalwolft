@@ -38,6 +38,20 @@ const MONTHS_ES = [
   "noviembre",
   "diciembre"
 ] as const;
+const MONTHS_SHORT_ES = [
+  "ene",
+  "feb",
+  "mar",
+  "abr",
+  "may",
+  "jun",
+  "jul",
+  "ago",
+  "sep",
+  "oct",
+  "nov",
+  "dic"
+] as const;
 
 function configuredApiBaseUrl() {
   const candidates = [
@@ -190,6 +204,34 @@ export function formatCivilDateRangeCompactEs(startValue: string, endValue: stri
   }
 
   return `${formatCivilDateEs(startValue)}–${formatCivilDateEs(endValue)}`;
+}
+
+export function formatCartDeliveryDateRangeEs(
+  startValue: string,
+  endValue: string,
+  currentYear = new Date().getFullYear()
+) {
+  const range = parseCivilDateRange(startValue, endValue);
+  if (!range) {
+    return null;
+  }
+  const { startDate, endDate } = range;
+  const startLabel = `${startDate.day} ${MONTHS_SHORT_ES[startDate.month - 1]}`;
+  const endLabel = `${endDate.day} ${MONTHS_SHORT_ES[endDate.month - 1]}`;
+
+  if (civilDateKey(startDate) === civilDateKey(endDate)) {
+    return startDate.year === currentYear ? startLabel : `${startLabel} ${startDate.year}`;
+  }
+
+  if (startDate.year === endDate.year) {
+    const rangeLabel = `${startLabel}–${endLabel}`;
+    return startDate.year === currentYear ? rangeLabel : `${rangeLabel} ${startDate.year}`;
+  }
+
+  const startWithYear = startDate.year === currentYear
+    ? startLabel
+    : `${startLabel} ${startDate.year}`;
+  return `${startWithYear}–${endLabel} ${endDate.year}`;
 }
 
 export async function fetchDeliveryEstimate(

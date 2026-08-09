@@ -79,12 +79,12 @@ class DeliveryEstimateContextTest(unittest.TestCase):
                 {
                     "code": "hinged_product",
                     "days": 3,
-                    "message": "+3 días por incluir una reja abatible",
+                    "message": "+3 días por incluir una reja abatible.",
                 },
                 {
                     "code": "quantity_six_or_more",
                     "days": 5,
-                    "message": "+5 días por cantidad del pedido",
+                    "message": "+5 días por cantidad del pedido.",
                 },
             ],
         )

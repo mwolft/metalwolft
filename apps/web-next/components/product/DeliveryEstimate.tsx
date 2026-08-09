@@ -1,6 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import {
+  formatCartDeliveryDateRangeEs,
   formatCivilDateEs,
   formatCivilDateRangeCompactEs,
   formatCivilDateRangeEs,
@@ -21,19 +22,25 @@ export function DeliveryEstimate({
   }
 
   if (variant === "default" || variant === "compact") {
-    const compactDateRange = formatCivilDateRangeCompactEs(
-      estimate.start_date,
-      estimate.end_date
-    );
+    const compactDateRange = variant === "compact"
+      ? formatCartDeliveryDateRangeEs(estimate.start_date, estimate.end_date)
+      : formatCivilDateRangeCompactEs(estimate.start_date, estimate.end_date);
     if (!compactDateRange) {
       return null;
     }
 
     return (
       <div className={`mw-delivery-estimate mw-delivery-estimate--${variant}`}>
-        <p className="mw-delivery-estimate__primary">
-          <strong>Entrega estimada:</strong> {compactDateRange}
-        </p>
+        {variant === "compact" ? (
+          <div className="mw-delivery-estimate__compact-heading">
+            <p className="mw-delivery-estimate__compact-label">Entrega estimada:</p>
+            <p className="mw-delivery-estimate__compact-range">{compactDateRange}</p>
+          </div>
+        ) : (
+          <p className="mw-delivery-estimate__primary">
+            <strong>Entrega estimada:</strong> {compactDateRange}
+          </p>
+        )}
         {variant === "compact" ? (
           estimate.adjustments && estimate.adjustments.length > 0 ? (
             <div className="mw-delivery-estimate__adjustments">
@@ -43,7 +50,11 @@ export function DeliveryEstimate({
                 </p>
               ))}
             </div>
-          ) : null
+          ) : (
+            <p className="mw-delivery-estimate__detail">
+              Plazo calculado para los productos de tu carrito.
+            </p>
+          )
         ) : (
           <p className="mw-delivery-estimate__detail">
             Puede variar según la configuración y el destino.
