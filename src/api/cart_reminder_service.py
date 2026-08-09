@@ -125,6 +125,7 @@ def _build_cart_line(item):
         screw_configuration=screw_configuration,
         line_total=_cart_line_total(item),
         image_url=_product_image_url(product),
+        total_label="Total",
     )
 
 

@@ -22,7 +22,8 @@ assert.match(banner, /href="\/politica-de-cookies"/);
 assert.match(gtm, /addEventListener\(ANALYTICS_CONSENT_CHANGED_EVENT, updateConsent\)/);
 assert.match(gtm, /setIsEnabled\(hasAnalyticsConsent\(\)\)/);
 assert.match(footer, /<CookieConsentSettingsButton \/>/);
-assert.match(styles, /\.mw-cookie-consent__content\s*{[^}]*linear-gradient\(135deg, #1f2937 0%, #111827 100%\)/s);
+assert.match(styles, /\.mw-cookie-consent\s*{[^}]*right: 0;[^}]*bottom: 0;[^}]*left: 0;/s);
+assert.match(styles, /\.mw-cookie-consent__content\s*{[^}]*width: 100%;[^}]*linear-gradient\(135deg, #374151 0%, #1f2937 100%\)/s);
 assert.match(styles, /\.mw-cookie-consent__actions \.mw-button--primary\s*{[^}]*background: #cf1c35/s);
 assert.match(styles, /\.mw-cookie-consent__actions \.mw-button--secondary\s*{[^}]*background: transparent/s);
 

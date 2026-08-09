@@ -115,6 +115,8 @@ class CartReminderDeliveryTest(unittest.TestCase):
         self.assertEqual(sent[0]["subject"], "Tu carrito sigue listo | MetalWolft")
         self.assertIn("RESUMEN DEL CARRITO", sent[0]["body"])
         self.assertIn("278,00", sent[0]["body"])
+        self.assertIn("Total: 278,00", sent[0]["body"])
+        self.assertIn(">Total</td>", sent[0]["html"])
         self.assertIn("Volver a mi carrito: https://www.metalwolft.com/cart", sent[0]["body"])
         self.assertIn("Volver a mi carrito", sent[0]["html"])
         self.assertIn('href="https://www.metalwolft.com/cart"', sent[0]["html"])

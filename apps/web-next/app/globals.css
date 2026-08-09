@@ -2641,9 +2641,9 @@ textarea:focus-visible {
 
 .mw-cookie-consent {
   position: fixed;
-  right: 1rem;
-  bottom: 1rem;
-  left: 1rem;
+  right: 0;
+  bottom: 0;
+  left: 0;
   z-index: 60;
   display: flex;
   justify-content: center;
@@ -2654,10 +2654,10 @@ textarea:focus-visible {
   display: flex;
   align-items: center;
   gap: 1rem;
-  width: min(100%, 48rem);
+  width: 100%;
   padding: 0.8rem 1rem;
   border: 1px solid rgba(255, 255, 255, 0.16);
-  background: linear-gradient(135deg, #1f2937 0%, #111827 100%);
+  background: linear-gradient(135deg, #374151 0%, #1f2937 100%);
   box-shadow: 0 12px 30px rgba(17, 24, 39, 0.28);
   pointer-events: auto;
 }
@@ -4043,9 +4043,9 @@ textarea:focus-visible {
 
 @media (max-width: 640px) {
   .mw-cookie-consent {
-    right: 0.75rem;
-    bottom: 0.75rem;
-    left: 0.75rem;
+    right: 0;
+    bottom: 0;
+    left: 0;
   }
 
   .mw-cookie-consent__content {

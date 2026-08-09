@@ -32,6 +32,7 @@ class OrderEmailLine:
     screw_configuration: str
     line_total: object
     image_url: str | None = None
+    total_label: str | None = None
 
 
 def render_order_confirmation_email(
@@ -313,6 +314,9 @@ def _render_order_line(line):
     screw_configuration = _text(line.screw_configuration) or "-"
     line_total = _format_money(line.line_total, "line_total")
     image_url = _email_image_url(line.image_url)
+    total_label = _text(line.total_label)
+    text_total_label = total_label or "Importe"
+    html_total_label = total_label or "Importe de línea"
 
     plain = (
         f"{product_name} ×{quantity}\n"
@@ -321,7 +325,7 @@ def _render_order_line(line):
         f"Color: {color}\n"
         f"Tornillos: {screw_configuration}\n"
         f"Cantidad: {quantity}\n"
-        f"Importe: {line_total}"
+        f"{text_total_label}: {line_total}"
     )
 
     image_cell = ""
@@ -350,7 +354,7 @@ def _render_order_line(line):
         f"Tornillos {_html(screw_configuration)}"
         "</td></tr><tr>"
         f'<td colspan="{2 if image_cell else 1}" style="padding:4px 0 16px;color:{COLOR_MUTED};font-size:13px;line-height:1.4;">'
-        "Importe de línea</td>"
+        f"{_html(html_total_label)}</td>"
         f'<td align="right" style="padding:4px 0 16px 12px;color:{COLOR_TEXT};font-size:15px;'
         f'line-height:1.4;font-weight:700;white-space:nowrap;">{_html(line_total)}</td>'
         "</tr></table>"
