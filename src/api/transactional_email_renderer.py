@@ -31,6 +31,7 @@ class OrderEmailLine:
     color: str
     screw_configuration: str
     line_total: object
+    image_url: str | None = None
 
 
 def render_order_confirmation_email(
@@ -311,6 +312,7 @@ def _render_order_line(line):
     color = _text(line.color) or "-"
     screw_configuration = _text(line.screw_configuration) or "-"
     line_total = _format_money(line.line_total, "line_total")
+    image_url = _email_image_url(line.image_url)
 
     plain = (
         f"{product_name} ×{quantity}\n"
@@ -322,22 +324,32 @@ def _render_order_line(line):
         f"Importe: {line_total}"
     )
 
+    image_cell = ""
+    if image_url:
+        image_cell = (
+            f'<td valign="top" width="64" style="width:64px;padding:16px 12px 4px 0;">'
+            f'<img src="{_html(image_url)}" alt="" width="56" height="56" '
+            'style="display:block;width:56px;height:56px;border:0;border-radius:6px;object-fit:cover;" '
+            'loading="lazy"></td>'
+        )
+
     html = (
         '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" '
         f'style="width:100%;border-top:1px solid {COLOR_BORDER};border-collapse:collapse;">'
         "<tr>"
+        f"{image_cell}"
         f'<td style="padding:16px 0 4px;color:{COLOR_TEXT};font-size:16px;line-height:1.4;font-weight:700;'
         'word-break:break-word;">'
         f"{_html(product_name)}</td>"
         f'<td align="right" valign="top" style="padding:16px 0 4px 12px;color:{COLOR_TEXT};'
         f'font-size:15px;line-height:1.4;font-weight:600;white-space:nowrap;">×{_html(quantity)}</td>'
         "</tr><tr>"
-        f'<td colspan="2" style="padding:0 0 5px;color:{COLOR_MUTED};font-size:14px;line-height:1.55;">'
+        f'<td colspan="{3 if image_cell else 2}" style="padding:0 0 5px;color:{COLOR_MUTED};font-size:14px;line-height:1.55;">'
         f"{_html(measurements)} · {_html(anchorage)}<br>"
         f"{_html(color)}<br>"
         f"Tornillos {_html(screw_configuration)}"
         "</td></tr><tr>"
-        f'<td style="padding:4px 0 16px;color:{COLOR_MUTED};font-size:13px;line-height:1.4;">'
+        f'<td colspan="{2 if image_cell else 1}" style="padding:4px 0 16px;color:{COLOR_MUTED};font-size:13px;line-height:1.4;">'
         "Importe de línea</td>"
         f'<td align="right" style="padding:4px 0 16px 12px;color:{COLOR_TEXT};font-size:15px;'
         f'line-height:1.4;font-weight:700;white-space:nowrap;">{_html(line_total)}</td>'
@@ -450,6 +462,11 @@ def _required_text(value, field_name):
     if not normalized:
         raise TransactionalEmailRenderError(f"Falta el texto requerido: {field_name}.")
     return normalized
+
+
+def _email_image_url(value):
+    normalized = _text(value)
+    return normalized if normalized.startswith(("https://", "http://")) else ""
 
 
 def _text(value):

@@ -33,7 +33,7 @@ def get_cart_reminder_eligibility(*, db_session, user):
     cart_items = tuple(
         db_session.query(Cart)
         .filter_by(usuario_id=user.id)
-        .order_by(Cart.added_at.desc())
+        .order_by(Cart.added_at.desc(), Cart.id.desc())
         .all()
     )
     latest_cart_added_at = next((item.added_at for item in cart_items if item.added_at), None)
@@ -124,6 +124,7 @@ def _build_cart_line(item):
         color=_humanize_color(getattr(item, "color", None)),
         screw_configuration=screw_configuration,
         line_total=_cart_line_total(item),
+        image_url=_product_image_url(product),
     )
 
 
@@ -182,3 +183,8 @@ def _humanize_color(value):
     normalized = str(value or "").strip()
     rule = CONFIGURATOR_COLORS.get(normalized)
     return str(rule.get("label") or rule.get("name") or normalized).strip() if rule else (normalized or "-")
+
+
+def _product_image_url(product):
+    image_url = str(getattr(product, "imagen", "") or "").strip()
+    return image_url if image_url.startswith(("https://", "http://")) else None

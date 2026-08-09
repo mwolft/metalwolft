@@ -32,7 +32,7 @@ def user(**overrides):
 def cart_item(**overrides):
     values = {
         "producto_id": 4,
-        "product": SimpleNamespace(nombre="Reja fija Albany"),
+        "product": SimpleNamespace(nombre="Reja fija Albany", imagen=None),
         "alto": 100,
         "ancho": 80,
         "anclaje": "Sin obra: con agujeros interiores",
@@ -90,7 +90,13 @@ class CartReminderDeliveryTest(unittest.TestCase):
         eligibility = CartReminderEligibility(
             eligible=True,
             reason=None,
-            cart_items=(cart_item(product=SimpleNamespace(nombre="<Albany>")),),
+            cart_items=(
+                cart_item(
+                    product=SimpleNamespace(
+                        nombre="<Albany>", imagen="https://example.com/albany.jpg"
+                    )
+                ),
+            ),
             latest_cart_added_at=None,
             later_order=None,
         )
@@ -114,6 +120,21 @@ class CartReminderDeliveryTest(unittest.TestCase):
         self.assertIn('href="https://www.metalwolft.com/cart"', sent[0]["html"])
         self.assertIn("&lt;Albany&gt;", sent[0]["html"])
         self.assertNotIn("<Albany>", sent[0]["html"])
+        self.assertIn('src="https://example.com/albany.jpg"', sent[0]["html"])
+
+    def test_manual_send_omits_product_image_when_none_is_available(self):
+        sent = []
+        eligibility = CartReminderEligibility(True, None, (cart_item(),), None, None)
+        with patch("api.cart_reminder_service.get_cart_reminder_eligibility", return_value=eligibility):
+            send_manual_cart_reminder(
+                db_session=object(),
+                user=user(),
+                cart_url="https://www.metalwolft.com/cart",
+                logger=SimpleNamespace(info=lambda *args, **kwargs: None),
+                send_email_func=lambda **kwargs: sent.append(kwargs) or True,
+            )
+
+        self.assertNotIn('<img src=', sent[0]["html"])
 
     def test_transport_failure_is_explicit(self):
         eligibility = CartReminderEligibility(True, None, (cart_item(),), None, None)
@@ -129,14 +150,16 @@ class CartReminderDeliveryTest(unittest.TestCase):
 
 
 class CartReminderAdminSourceTest(unittest.TestCase):
-    def test_flask_admin_exposes_only_manual_eligible_action(self):
+    def test_flask_admin_exposes_cart_action_not_user_action(self):
         source = (SRC_DIR / "api" / "admin.py").read_text(encoding="utf-8")
 
-        self.assertIn("def _format_user_cart_reminder", source)
+        self.assertIn("def _format_cart_reminder", source)
         self.assertIn("get_cart_reminder_eligibility", source)
-        self.assertIn("can_view_details = True", source)
-        self.assertIn("column_details_list = column_list + ('cart_reminder',)", source)
-        self.assertIn("@expose('/send-cart-reminder/<int:user_id>', methods=['POST'])", source)
+        self.assertIn("class CartAdminView", source)
+        self.assertIn("'cart_reminder'", source)
+        self.assertIn("@expose('/send-cart-reminder/<int:cart_id>', methods=['POST'])", source)
+        self.assertNotIn("def _format_user_cart_reminder", source)
+        self.assertNotIn("@expose('/send-cart-reminder/<int:user_id>', methods=['POST'])", source)
         self.assertIn("send_manual_cart_reminder(", source)
         self.assertIn("Enviar recordatorio", source)
 
