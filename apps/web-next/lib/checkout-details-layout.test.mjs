@@ -4,7 +4,7 @@ import { readFileSync } from "node:fs";
 const detailsStepSource = readFileSync(
   new URL("../components/cart/CartDetailsStep.tsx", import.meta.url),
   "utf8"
-);
+).replace(/\r\n/g, "\n");
 const globalStylesSource = readFileSync(
   new URL("../app/globals.css", import.meta.url),
   "utf8"
@@ -71,6 +71,16 @@ assert.ok(deliveryEstimateIndex < submitIndex);
 assert.match(detailsStepSource, /Particular \/ autónomo/);
 assert.match(detailsStepSource, /value="company"/);
 assert.match(detailsStepSource, /function CheckoutLines/);
+assert.match(
+  detailsStepSource,
+  /Longitud tornillos: \$\{screwLength\.toLocaleString\("es-ES"\)\} mm/
+);
+assert.match(detailsStepSource, /screwLength > 0/);
+assert.match(detailsStepSource, /Acabado: esmalte sintético/);
+assert.match(
+  globalStylesSource,
+  /\.mw-checkout-line p\.mw-checkout-line__secondary\s*{[^}]*font-size:\s*0\.74rem;[^}]*font-weight:\s*400;/s
+);
 assert.match(detailsStepSource, /onSubmit={handleContinueToPayment}/);
 assert.match(detailsStepSource, /setHasAttemptedContinue\(true\)/);
 assert.match(detailsStepSource, /role="alert"/);

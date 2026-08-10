@@ -94,7 +94,13 @@ assert.match(cartSource, /Longitud tornillos: \$\{screwLength\.toLocaleString\("
 assert.match(cartSource, /screwLength > 0/);
 assert.doesNotMatch(cartSource, /mw-cart-config__screws/);
 assert.match(cartSource, /Acabado: esmalte sintético/);
-assert.match(checkoutSource, /Tornillos: \{screwConfiguration\}/);
+assert.match(checkoutSource, /line\.screw_length_mm/);
+assert.match(
+  checkoutSource,
+  /Longitud tornillos: \$\{screwLength\.toLocaleString\("es-ES"\)\} mm/
+);
+assert.match(checkoutSource, /screwLength > 0/);
+assert.doesNotMatch(checkoutSource, /Tornillos: \{screwConfiguration\}/);
 assert.match(stylesSource, /\.mw-configurator-screws__options[\s\S]*grid-template-columns: 1fr;/);
 assert.match(
   stylesSource,

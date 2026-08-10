@@ -34,7 +34,6 @@ import {
   saveStoredCheckoutDiscountCode
 } from "@/lib/checkout-discount";
 import { CheckoutDiscountForm } from "@/components/cart/CheckoutDiscountForm";
-import { formatScrewConfiguration } from "@/lib/screw-option";
 
 type CheckoutStatus = "loading" | "empty" | "ready" | "error";
 type CheckoutDetailsErrorField = keyof CheckoutCustomerDetails;
@@ -785,7 +784,10 @@ function CheckoutLines({ lines }: { lines: CheckoutQuoteLine[] }) {
   return (
     <div className="mw-checkout-lines">
       {lines.map((line) => {
-        const screwConfiguration = formatScrewConfiguration(line);
+        const screwLength = Number(line.screw_length_mm);
+        const screwLengthLabel = Number.isFinite(screwLength) && screwLength > 0
+          ? `Longitud tornillos: ${screwLength.toLocaleString("es-ES")} mm`
+          : null;
         return (
           <article className="mw-checkout-line" key={lineKey(line)}>
             <div>
@@ -796,7 +798,10 @@ function CheckoutLines({ lines }: { lines: CheckoutQuoteLine[] }) {
               <p>
                 {line.anclaje || "-"} - {formatColor(line.color)}
               </p>
-              {screwConfiguration ? <p>Tornillos: {screwConfiguration}</p> : null}
+              {screwLengthLabel ? (
+                <p className="mw-checkout-line__secondary">{screwLengthLabel}</p>
+              ) : null}
+              <p className="mw-checkout-line__secondary">Acabado: esmalte sintético</p>
             </div>
             <div className="mw-checkout-line__price">
               <span>{line.quantity} ud.</span>

@@ -29,12 +29,12 @@ assert.match(cartView, /"--mw-cart-config-color": colorVisual\.hex/);
 assert.match(cartView, /aria-hidden="true"[\s\S]*?mw-cart-config__color-swatch/);
 assert.match(
   cartView,
-  /<dt>Color<\/dt>\s*<dd>\{formatColor\(item\.color\)\}<\/dd>[\s\S]*?mw-cart-config__color-swatch/
+  /<dt>Color<\/dt>\s*<dd>[\s\S]*?\{formatColor\(item\.color\)\}[\s\S]*?Acabado: esmalte sintético[\s\S]*?<\/dd>[\s\S]*?mw-cart-config__color-swatch/
 );
 assert.doesNotMatch(cartView, /src="\/icons\/[^\"]*color/i);
-assert.match(cartView, /formatScrewConfiguration\(item\)/);
-assert.match(cartView, /className="mw-cart-config__screws"/);
-assert.match(cartView, /<dt>Tornillos<\/dt>/);
+assert.match(cartView, /Longitud tornillos: \$\{screwLength\.toLocaleString\("es-ES"\)\} mm/);
+assert.match(cartView, /screwLength > 0/);
+assert.doesNotMatch(cartView, /className="mw-cart-config__screws"/);
 
 assert.match(
   styles,
@@ -55,6 +55,10 @@ assert.match(
 assert.match(
   styles,
   /\.mw-cart-config__color-swatch\s*{[^}]*border:\s*1px solid[^}]*border-radius:\s*999px;[^}]*background-color:\s*var\(--mw-cart-config-color\);/s
+);
+assert.match(
+  styles,
+  /\.mw-cart-config__secondary\s*{[^}]*color:\s*var\(--mw-muted\);[^}]*font-size:\s*0\.74rem;/s
 );
 assert.match(
   styles,
