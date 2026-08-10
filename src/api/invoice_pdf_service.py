@@ -629,6 +629,7 @@ def _line_description(line):
     color = _humanize_color(configuration.get("color"))
     if color:
         secondary_details.append(_pdf_text(color))
+        secondary_details.append("Esmalte sintético")
     screw_length = _format_measurement(configuration.get("screw_length_mm"))
     if screw_length:
         secondary_details.append(f"Tornillos {_pdf_text(screw_length)} mm")

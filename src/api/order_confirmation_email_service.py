@@ -49,6 +49,11 @@ def _humanize_color(value):
     return str(rule.get("label") or rule.get("name") or normalized).strip()
 
 
+def _format_color_with_finish(value):
+    color = _humanize_color(value)
+    return f"{color} · Esmalte sintético" if color != "-" else color
+
+
 def _build_order_line(line):
     product_name = (
         line.get("product_name")
@@ -65,7 +70,7 @@ def _build_order_line(line):
         quantity=line.get("quantity", 1),
         measurements=_format_measurements(line),
         anchorage=_humanize_anchorage(line.get("anclaje")),
-        color=_humanize_color(line.get("color")),
+        color=_format_color_with_finish(line.get("color")),
         screw_configuration=screw_configuration,
         line_total=line.get("line_total"),
     )

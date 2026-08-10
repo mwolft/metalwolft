@@ -275,6 +275,30 @@ def tearDownModule():
 
 
 class InvoicePdfServiceTest(unittest.TestCase):
+    def test_line_description_includes_synthetic_enamel_for_satin_and_forge(self):
+        for color, expected in (
+            ("satinado_blanco", "Blanco liso · Esmalte sintético"),
+            ("forja_gris", "Gris acero forja · Esmalte sintético"),
+        ):
+            with self.subTest(color=color):
+                description = _line_description(
+                    {
+                        "description": "Reja fija Albany",
+                        "configuration": {
+                            "height_cm": "100",
+                            "width_cm": "100",
+                            "anchoring": "Sin obra: con agujeros interiores",
+                            "color": color,
+                            "screw_option": "long_150",
+                            "screw_length_mm": 150,
+                            "screw_supplement": "8.95",
+                        },
+                    }
+                )
+
+                self.assertIn(expected, description)
+                self.assertIn("Tornillos 150 mm", description)
+
     def test_claws_line_omits_screws(self):
         description = _line_description(
             {
@@ -292,6 +316,7 @@ class InvoicePdfServiceTest(unittest.TestCase):
         )
 
         self.assertIn("Garras metálicas", description)
+        self.assertIn("Negro forja · Esmalte sintético", description)
         self.assertNotIn("Tornillos", description)
 
     def test_generates_valid_pdf_from_snapshot_and_updates_pdf_path(self):
@@ -327,6 +352,7 @@ class InvoicePdfServiceTest(unittest.TestCase):
             "30 × 30 cm",
             "Agujeros interiores",
             "Blanco liso",
+            "Esmalte sintético",
             "Tornillos 150 mm",
             "Gastos de",
             "Descuento",

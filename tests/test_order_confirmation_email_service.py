@@ -66,13 +66,13 @@ class OrderConfirmationEmailServiceTest(unittest.TestCase):
         self.assertIn("Estado del pago: confirmado", sent[0]["body"])
         self.assertIn("Reja fija Pittsburgh", sent[0]["body"])
         self.assertIn("Cantidad: 2", sent[0]["body"])
-        self.assertIn("Color: Blanco liso", sent[0]["body"])
+        self.assertIn("Color: Blanco liso · Esmalte sintético", sent[0]["body"])
         self.assertIn("Instalación: Agujeros interiores", sent[0]["body"])
         self.assertIn("Tornillos: 150 mm (+8,95 €)", sent[0]["body"])
         self.assertIn("Envío: GRATIS", sent[0]["body"])
         self.assertIn("TOTAL: 180,50 €", sent[0]["body"])
         self.assertIn("<!doctype html>", sent[0]["html"])
-        self.assertIn("Blanco liso", sent[0]["html"])
+        self.assertIn("Blanco liso · Esmalte sintético", sent[0]["html"])
         self.assertIn("Pago confirmado", sent[0]["html"])
 
     def test_missing_line_total_is_not_recalculated_from_unit_price(self):
@@ -126,7 +126,29 @@ class OrderConfirmationEmailServiceTest(unittest.TestCase):
 
         self.assertIn("Importe: 191,23 €", sent[0]["body"])
         self.assertIn("Tornillos: 100 mm incluidos", sent[0]["body"])
+        self.assertIn("Color: Blanco liso · Esmalte sintético", sent[0]["body"])
         self.assertNotIn("Importe: 2,00 €", sent[0]["body"])
+
+    def test_forge_color_includes_synthetic_enamel_in_text_and_html(self):
+        sent = []
+        quote = checkout_quote()
+        quote["lines"][0]["color"] = "forja_gris"
+
+        send_order_confirmation_email(
+            user=SimpleNamespace(email="cliente@example.com"),
+            order=SimpleNamespace(locator="AB1234", total_amount=180.5),
+            checkout_quote=quote,
+            customer_firstname="Sergio",
+            mail_username="admin@example.com",
+            logger=SimpleNamespace(
+                info=lambda *args, **kwargs: None,
+                error=lambda *args, **kwargs: None,
+            ),
+            send_email_func=lambda **kwargs: sent.append(kwargs) or True,
+        )
+
+        self.assertIn("Color: Gris acero forja · Esmalte sintético", sent[0]["body"])
+        self.assertIn("Gris acero forja · Esmalte sintético", sent[0]["html"])
 
     def test_claws_email_omits_screws(self):
         sent = []
@@ -151,6 +173,7 @@ class OrderConfirmationEmailServiceTest(unittest.TestCase):
         )
 
         self.assertIn("Instalación: Garras metálicas", sent[0]["body"])
+        self.assertIn("Color: Blanco liso · Esmalte sintético", sent[0]["body"])
         self.assertNotIn("Tornillos", sent[0]["body"])
 
     def test_real_flask_mail_mime_contains_plain_text_and_html(self):
