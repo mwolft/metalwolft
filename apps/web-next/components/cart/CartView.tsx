@@ -27,7 +27,6 @@ import {
   isAvailableForSale
 } from "@/lib/product-lifecycle";
 import { getColorVisual } from "@/lib/configurator-options";
-import { formatScrewConfiguration } from "@/lib/screw-option";
 
 type CartColorStyle = CSSProperties & {
   "--mw-cart-config-color": string;
@@ -380,7 +379,10 @@ export function CartView({ deliveryEstimate }: { deliveryEstimate?: ReactNode })
           const lineTotal = Number(item.precio_total || 0) * quantity;
           const availableForSale = isAvailableForSale(item);
           const colorVisual = getColorVisual(item.color ?? "");
-          const screwConfiguration = formatScrewConfiguration(item);
+          const screwLength = Number(item.screw_length_mm);
+          const screwLengthLabel = Number.isFinite(screwLength) && screwLength > 0
+            ? `Longitud tornillos: ${screwLength.toLocaleString("es-ES")} mm`
+            : null;
 
           return (
             <article className="mw-cart-line" key={key}>
@@ -449,11 +451,21 @@ export function CartView({ deliveryEstimate }: { deliveryEstimate?: ReactNode })
                         width={35}
                       />
                     </dt>
-                    <dd>{item.anclaje || "-"}</dd>
+                    <dd>
+                      {item.anclaje || "-"}
+                      {screwLengthLabel ? (
+                        <small className="mw-cart-config__secondary">{screwLengthLabel}</small>
+                      ) : null}
+                    </dd>
                   </div>
                   <div>
                     <dt>Color</dt>
-                    <dd>{formatColor(item.color)}</dd>
+                    <dd>
+                      {formatColor(item.color)}
+                      <small className="mw-cart-config__secondary">
+                        Acabado: esmalte sintético
+                      </small>
+                    </dd>
                     <span
                       aria-hidden="true"
                       className={`mw-cart-config__color-swatch${
@@ -466,12 +478,6 @@ export function CartView({ deliveryEstimate }: { deliveryEstimate?: ReactNode })
                       }
                     />
                   </div>
-                  {screwConfiguration ? (
-                    <div className="mw-cart-config__screws">
-                      <dt>Tornillos</dt>
-                      <dd>{screwConfiguration}</dd>
-                    </div>
-                  ) : null}
                 </dl>
 
                 <div className="mw-cart-line__actions">

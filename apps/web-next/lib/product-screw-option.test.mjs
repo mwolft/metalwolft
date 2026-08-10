@@ -89,8 +89,16 @@ assert.match(
 assert.match(configuratorSource, /screw_option: screwOption/);
 assert.match(configuratorSource, /screwOption: isNonEmptyString/);
 assert.doesNotMatch(configuratorSource, /8\.95/);
-assert.match(cartSource, /formatScrewConfiguration\(item\)/);
+assert.match(cartSource, /item\.screw_length_mm/);
+assert.match(cartSource, /Longitud tornillos: \$\{screwLength\.toLocaleString\("es-ES"\)\} mm/);
+assert.match(cartSource, /screwLength > 0/);
+assert.doesNotMatch(cartSource, /mw-cart-config__screws/);
+assert.match(cartSource, /Acabado: esmalte sintético/);
 assert.match(checkoutSource, /Tornillos: \{screwConfiguration\}/);
 assert.match(stylesSource, /\.mw-configurator-screws__options[\s\S]*grid-template-columns: 1fr;/);
+assert.match(
+  stylesSource,
+  /\.mw-cart-config__secondary\s*{[^}]*color:\s*var\(--mw-muted\);[^}]*font-size:\s*0\.74rem;/s
+);
 
 console.log("14 screw option tests passed");

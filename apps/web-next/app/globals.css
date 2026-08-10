@@ -3325,6 +3325,15 @@ textarea:focus-visible {
   font-weight: 800;
 }
 
+.mw-cart-config__secondary {
+  display: block;
+  margin-top: 0.18rem;
+  color: var(--mw-muted);
+  font-size: 0.74rem;
+  font-weight: 400;
+  line-height: 1.35;
+}
+
 .mw-cart-quantity {
   display: inline-flex;
   align-items: center;
