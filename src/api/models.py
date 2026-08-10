@@ -19,6 +19,7 @@ def _serialize_screw_configuration(anclaje, screw_option, screw_length_mm, screw
     if normalized_length is None:
         legacy_configuration = resolve_screw_configuration(anclaje, normalized_option)
         if legacy_configuration:
+            normalized_option = legacy_configuration["screw_option"]
             normalized_length = legacy_configuration["screw_length_mm"]
             if normalized_supplement is None:
                 normalized_supplement = legacy_configuration["screw_supplement"]

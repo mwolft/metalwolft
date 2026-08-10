@@ -115,7 +115,7 @@ def _build_cart_line(item):
     screw_configuration = format_screw_configuration(
         getattr(item, "screw_length_mm", None),
         getattr(item, "screw_supplement", None),
-    ) or "-"
+    )
     return OrderEmailLine(
         product_name=str(product_name).strip(),
         quantity=_positive_quantity(getattr(item, "quantity", None)),

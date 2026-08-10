@@ -93,6 +93,15 @@ class TransactionalOrderEmailRendererTest(unittest.TestCase):
         self.assertIn("Tornillos 150 mm (+8,95 €)", rendered.html)
         self.assertNotIn("Descuento:", rendered.text)
 
+    def test_omits_screws_when_the_anchorage_does_not_use_them(self):
+        rendered = render_order(
+            lines=(order_line(anchorage="Garras metálicas", screw_configuration=None),)
+        )
+
+        self.assertIn("Instalación: Garras metálicas", rendered.text)
+        self.assertNotIn("Tornillos", rendered.text)
+        self.assertNotIn("Tornillos", rendered.html)
+
     def test_escapes_every_dynamic_value_in_html(self):
         malicious = '<script>alert("owned")</script> & "cliente"'
         rendered = render_order(

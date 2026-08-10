@@ -54,6 +54,7 @@ from api.utils import (
     DEFAULT_CONFIGURATOR_SCREW_OPTION,
     LEGACY_ANCHORAGE_RECONFIGURE_MESSAGE,
     SCREW_OPTION_LONG_150,
+    SCREW_OPTION_NOT_APPLICABLE,
     build_configured_reja_quote,
     serialize_configurator_configuration,
 )
@@ -138,12 +139,17 @@ class ConfiguratorPricingTest(unittest.TestCase):
         )
         self.assertEqual(
             [option["supplement"] for option in configuration["anchorages"]],
-            [0.0, 24.95, 39.95],
+            [0.0, 24.95, 49.95],
         )
         self.assertEqual(
             [option["enabled"] for option in configuration["anchorages"]],
+            [True, True, True],
+        )
+        self.assertEqual(
+            [option["screw_required"] for option in configuration["anchorages"]],
             [True, True, False],
         )
+        self.assertEqual(configuration["screw_options"][ANCHORAGE_METAL_CLAWS], [])
         self.assertEqual(len(configuration["colors"]), 10)
         self.assertEqual(
             {option["finish"] for option in configuration["colors"]},
@@ -306,9 +312,18 @@ class ConfiguratorPricingTest(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "torniller"):
             quote(100, 100, screw_option=150)
 
-    def test_disabled_metal_claws_are_rejected(self):
-        with self.assertRaisesRegex(ValueError, "disponible"):
-            quote(100, 100, ANCHORAGE_METAL_CLAWS)
+    def test_metal_claws_are_priced_without_screws(self):
+        result = quote(100, 100, ANCHORAGE_METAL_CLAWS)
+
+        self.assertEqual(result["anchorage_supplement"], 49.95)
+        self.assertEqual(result["screw_option"], SCREW_OPTION_NOT_APPLICABLE)
+        self.assertIsNone(result["screw_length_mm"])
+        self.assertEqual(result["screw_supplement"], 0.0)
+        self.assertEqual(result["unit_price"], 149.95)
+
+    def test_metal_claws_reject_screw_options(self):
+        with self.assertRaisesRegex(ValueError, "no admite"):
+            quote(100, 100, ANCHORAGE_METAL_CLAWS, screw_option=SCREW_OPTION_LONG_150)
 
     def test_unknown_anchorage_is_rejected(self):
         with self.assertRaisesRegex(ValueError, "instalaci"):

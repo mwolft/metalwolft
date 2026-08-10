@@ -20,7 +20,8 @@ const validConfiguration = {
       label: "Sin obra: con agujeros interiores",
       description: "Instalación sin obra mediante agujeros interiores.",
       supplement: 0,
-      enabled: true
+      enabled: true,
+      screw_required: true
     },
     {
       value: "Sin obra: con pletinas",
@@ -28,7 +29,8 @@ const validConfiguration = {
       label: "Sin obra: con pletinas",
       description: "Instalación sin obra mediante pletinas.",
       supplement: 24.95,
-      enabled: true
+      enabled: true,
+      screw_required: true
     }
   ],
   colors: [
@@ -77,6 +79,34 @@ const validConfiguration = {
     screw_option: "standard"
   }
 };
+
+{
+  const configuration = await requestProductConfiguration(7, {
+    apiBaseUrl: "https://api.example.test",
+    fetcher: async () =>
+      Response.json({
+        ...validConfiguration,
+        anchorages: [
+          ...validConfiguration.anchorages,
+          {
+            value: "Con obra: con garras metálicas",
+            name: "Garras metálicas",
+            label: "Con obra: con garras metálicas",
+            description: "Instalación con obra mediante garras metálicas.",
+            supplement: 49.95,
+            enabled: true,
+            screw_required: false
+          }
+        ],
+        screw_options: {
+          ...validConfiguration.screw_options,
+          "Con obra: con garras metálicas": []
+        }
+      })
+  });
+
+  assert.equal(configuration.anchorages[2].screw_required, false);
+}
 
 {
   let capturedUrl = "";

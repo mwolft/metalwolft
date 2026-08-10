@@ -20,6 +20,7 @@ CONFIGURATOR_ANCHORAGES = {
         "description": "Instalación sin obra mediante agujeros interiores.",
         "supplement": 0.0,
         "enabled": True,
+        "screw_required": True,
     },
     ANCHORAGE_FRONT_PLATES: {
         "name": "Pletinas",
@@ -27,13 +28,15 @@ CONFIGURATOR_ANCHORAGES = {
         "description": "Instalación sin obra mediante pletinas.",
         "supplement": 24.95,
         "enabled": True,
+        "screw_required": True,
     },
     ANCHORAGE_METAL_CLAWS: {
         "name": "Garras metálicas",
         "label": ANCHORAGE_METAL_CLAWS,
         "description": "Instalación con obra mediante garras metálicas.",
-        "supplement": 39.95,
-        "enabled": False,
+        "supplement": 49.95,
+        "enabled": True,
+        "screw_required": False,
     },
 }
 
@@ -117,6 +120,7 @@ DEFAULT_CONFIGURATOR_ANCHORAGE = ANCHORAGE_INTERIOR_HOLES
 DEFAULT_CONFIGURATOR_COLOR = "satinado_blanco"
 DEFAULT_CONFIGURATOR_SCREW_OPTION = "standard"
 SCREW_OPTION_LONG_150 = "long_150"
+SCREW_OPTION_NOT_APPLICABLE = "not_applicable"
 
 CONFIGURATOR_SCREW_OPTIONS = {
     ANCHORAGE_INTERIOR_HOLES: {
@@ -151,6 +155,7 @@ CONFIGURATOR_SCREW_OPTIONS = {
             "enabled": True,
         },
     },
+    ANCHORAGE_METAL_CLAWS: {},
 }
 
 
@@ -177,6 +182,7 @@ def serialize_configurator_configuration(product_id):
                 "description": rule["description"],
                 "supplement": rule["supplement"],
                 "enabled": rule["enabled"],
+                "screw_required": rule["screw_required"],
             }
             for value, rule in CONFIGURATOR_ANCHORAGES.items()
         ],
@@ -259,6 +265,19 @@ def validate_configurator_options(anclaje, color, screw_option=None):
     if not color_rule["enabled"]:
         raise ValueError("Este color no está disponible actualmente")
 
+    if not anchorage_rule["screw_required"]:
+        if normalized_screw_option not in {
+            DEFAULT_CONFIGURATOR_SCREW_OPTION,
+            SCREW_OPTION_NOT_APPLICABLE,
+        }:
+            raise ValueError("Esta instalación no admite opciones de tornillería")
+        return (
+            normalized_anclaje,
+            normalized_color,
+            SCREW_OPTION_NOT_APPLICABLE,
+            {"length_mm": None, "supplement": 0.0},
+        )
+
     screw_options = CONFIGURATOR_SCREW_OPTIONS.get(normalized_anclaje)
     screw_rule = screw_options.get(normalized_screw_option) if screw_options else None
     if not screw_rule:
@@ -273,6 +292,13 @@ def validate_configurator_options(anclaje, color, screw_option=None):
 def resolve_screw_configuration(anclaje, screw_option=None):
     normalized_anclaje = _normalize_anchorage_value(anclaje)
     normalized_screw_option = _normalize_screw_option_value(screw_option)
+    anchorage_rule = CONFIGURATOR_ANCHORAGES.get(normalized_anclaje)
+    if anchorage_rule and not anchorage_rule["screw_required"]:
+        return {
+            "screw_option": SCREW_OPTION_NOT_APPLICABLE,
+            "screw_length_mm": None,
+            "screw_supplement": 0.0,
+        }
     screw_options = CONFIGURATOR_SCREW_OPTIONS.get(normalized_anclaje)
     screw_rule = screw_options.get(normalized_screw_option) if screw_options else None
     if not screw_rule or not screw_rule["enabled"]:

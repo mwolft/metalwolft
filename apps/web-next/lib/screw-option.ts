@@ -1,4 +1,5 @@
 export const DEFAULT_SCREW_OPTION = "standard";
+export const NOT_APPLICABLE_SCREW_OPTION = "not_applicable";
 
 const AMOUNT_FORMATTER = new Intl.NumberFormat("es-ES", {
   minimumFractionDigits: 2,

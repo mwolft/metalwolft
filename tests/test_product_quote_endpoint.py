@@ -38,7 +38,9 @@ if HAS_ENDPOINT_DEPS:
     from api.utils import (
         ANCHORAGE_FRONT_PLATES,
         ANCHORAGE_INTERIOR_HOLES,
+        ANCHORAGE_METAL_CLAWS,
         DEFAULT_CONFIGURATOR_SCREW_OPTION,
+        SCREW_OPTION_NOT_APPLICABLE,
         SCREW_OPTION_LONG_150,
     )
 
@@ -166,11 +168,11 @@ class ProductQuoteEndpointTest(unittest.TestCase):
         )
         self.assertEqual(
             [option["supplement"] for option in configuration["anchorages"]],
-            [0.0, 24.95, 39.95],
+            [0.0, 24.95, 49.95],
         )
         self.assertEqual(
             [option["enabled"] for option in configuration["anchorages"]],
-            [True, True, False],
+            [True, True, True],
         )
         self.assertEqual(
             configuration["anchorages"][1]["name"],
@@ -188,6 +190,8 @@ class ProductQuoteEndpointTest(unittest.TestCase):
             ],
             [70, 150],
         )
+        self.assertFalse(configuration["anchorages"][2]["screw_required"])
+        self.assertEqual(configuration["screw_options"].get(ANCHORAGE_METAL_CLAWS), [])
         self.assertTrue(all(option["enabled"] for option in configuration["colors"]))
         self.assertEqual(
             configuration["colors"][0],
@@ -295,6 +299,20 @@ class ProductQuoteEndpointTest(unittest.TestCase):
         self.assertEqual(quote["screw_supplement"], 8.95)
         self.assertEqual(quote["unit_price"], 133.9)
 
+    def test_metal_claws_are_quoted_without_screws(self):
+        response = self.post_quote(
+            self.available_product_id,
+            self.quote_payload(anclaje=ANCHORAGE_METAL_CLAWS, quantity=1),
+        )
+
+        self.assertEqual(response.status_code, 200)
+        quote = response.get_json()
+        self.assertEqual(quote["anchorage_supplement"], 49.95)
+        self.assertEqual(quote["screw_option"], SCREW_OPTION_NOT_APPLICABLE)
+        self.assertIsNone(quote["screw_length_mm"])
+        self.assertEqual(quote["screw_supplement"], 0.0)
+        self.assertEqual(quote["unit_price"], 149.95)
+
     def test_order_line_freezes_resolved_screw_configuration(self):
         response = self.post_quote(
             self.available_product_id,
@@ -327,6 +345,40 @@ class ProductQuoteEndpointTest(unittest.TestCase):
         self.assertEqual(serialized["screw_option"], SCREW_OPTION_LONG_150)
         self.assertEqual(serialized["screw_length_mm"], 150)
         self.assertEqual(serialized["screw_supplement"], 8.95)
+
+    def test_checkout_order_line_preserves_claws_without_screws(self):
+        response = self.post_quote(
+            self.available_product_id,
+            self.quote_payload(anclaje=ANCHORAGE_METAL_CLAWS, quantity=1),
+        )
+        quote_line = {
+            **response.get_json(),
+            "product_name": "Reja disponible",
+            "line_total": 149.95,
+            "shipping_type": "normal",
+            "shipping_cost": 0.0,
+        }
+
+        detail_data = _build_order_details_from_checkout_quote({"lines": [quote_line]})[0]
+        detail = OrderDetails(
+            order_id=1,
+            product_id=detail_data["producto_id"],
+            quantity=detail_data["quantity"],
+            alto=detail_data["alto"],
+            ancho=detail_data["ancho"],
+            anclaje=detail_data["anclaje"],
+            color=detail_data["color"],
+            screw_option=detail_data["screw_option"],
+            screw_length_mm=detail_data["screw_length_mm"],
+            screw_supplement=detail_data["screw_supplement"],
+            precio_total=detail_data["precio_total"],
+        )
+
+        serialized = detail.serialize()
+        self.assertEqual(serialized["anclaje"], ANCHORAGE_METAL_CLAWS)
+        self.assertEqual(serialized["screw_option"], SCREW_OPTION_NOT_APPLICABLE)
+        self.assertIsNone(serialized["screw_length_mm"])
+        self.assertEqual(serialized["screw_supplement"], 0.0)
 
     def test_rejects_unavailable_product(self):
         response = self.post_quote(self.unavailable_product_id)

@@ -30,6 +30,7 @@ import {
 } from "@/lib/configurator-options";
 import {
   DEFAULT_SCREW_OPTION,
+  NOT_APPLICABLE_SCREW_OPTION,
   selectCompatibleScrewOption
 } from "@/lib/screw-option";
 import {
@@ -328,6 +329,10 @@ export function ProductConfigurator({
       ),
     [anchorage, productConfiguration]
   );
+  const selectedAnchorage = productConfiguration?.anchorages.find(
+    (option) => option.value === anchorage
+  );
+  const selectedAnchorageRequiresScrews = selectedAnchorage?.screw_required ?? true;
   const configurationReady =
     configurationStatus === "ready" || configurationStatus === "fallback";
   const controlsDisabled = !configurationReady;
@@ -470,13 +475,20 @@ export function ProductConfigurator({
     }
 
     setScrewOption((current) =>
-      selectCompatibleScrewOption(
-        current,
-        configuredScrewOptions,
-        productConfiguration.defaults.screw_option
-      )
+      selectedAnchorageRequiresScrews
+        ? selectCompatibleScrewOption(
+            current,
+            configuredScrewOptions,
+            productConfiguration.defaults.screw_option
+          )
+        : NOT_APPLICABLE_SCREW_OPTION
     );
-  }, [configurationReady, configuredScrewOptions, productConfiguration]);
+  }, [
+    configurationReady,
+    configuredScrewOptions,
+    productConfiguration,
+    selectedAnchorageRequiresScrews
+  ]);
 
   useEffect(() => {
     const pendingConfig = readPendingProductConfig(productId, categorySlug, productSlug);
@@ -906,7 +918,7 @@ export function ProductConfigurator({
           </label>
         </div>
 
-        {configuredScrewOptions.length ? (
+        {selectedAnchorageRequiresScrews && configuredScrewOptions.length ? (
           <fieldset className="mw-configurator-screws">
             <legend>Tornillería</legend>
             <div className="mw-configurator-screws__options">

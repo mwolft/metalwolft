@@ -58,7 +58,7 @@ def _build_order_line(line):
     screw_configuration = format_screw_configuration(
         line.get("screw_length_mm"),
         line.get("screw_supplement"),
-    ) or "-"
+    )
 
     return OrderEmailLine(
         product_name=str(product_name).strip(),

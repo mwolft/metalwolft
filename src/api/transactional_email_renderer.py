@@ -29,7 +29,7 @@ class OrderEmailLine:
     measurements: str
     anchorage: str
     color: str
-    screw_configuration: str
+    screw_configuration: str | None
     line_total: object
     image_url: str | None = None
     total_label: str | None = None
@@ -311,7 +311,7 @@ def _render_order_line(line):
     measurements = _text(line.measurements) or "-"
     anchorage = _text(line.anchorage) or "-"
     color = _text(line.color) or "-"
-    screw_configuration = _text(line.screw_configuration) or "-"
+    screw_configuration = _text(line.screw_configuration)
     line_total = _format_money(line.line_total, "line_total")
     image_url = _email_image_url(line.image_url)
     total_label = _text(line.total_label)
@@ -323,9 +323,9 @@ def _render_order_line(line):
         f"Medidas: {measurements}\n"
         f"Instalación: {anchorage}\n"
         f"Color: {color}\n"
-        f"Tornillos: {screw_configuration}\n"
-        f"Cantidad: {quantity}\n"
-        f"{text_total_label}: {line_total}"
+        + (f"Tornillos: {screw_configuration}\n" if screw_configuration else "")
+        + f"Cantidad: {quantity}\n"
+        + f"{text_total_label}: {line_total}"
     )
 
     image_cell = ""
@@ -338,6 +338,7 @@ def _render_order_line(line):
         )
 
     html = (
+        (
         '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" '
         f'style="width:100%;border-top:1px solid {COLOR_BORDER};border-collapse:collapse;">'
         "<tr>"
@@ -350,14 +351,17 @@ def _render_order_line(line):
         "</tr><tr>"
         f'<td colspan="{3 if image_cell else 2}" style="padding:0 0 5px;color:{COLOR_MUTED};font-size:14px;line-height:1.55;">'
         f"{_html(measurements)} · {_html(anchorage)}<br>"
-        f"{_html(color)}<br>"
-        f"Tornillos {_html(screw_configuration)}"
+        f"{_html(color)}"
+        )
+        + (f"<br>Tornillos {_html(screw_configuration)}" if screw_configuration else "")
+        + (
         "</td></tr><tr>"
         f'<td colspan="{2 if image_cell else 1}" style="padding:4px 0 16px;color:{COLOR_MUTED};font-size:13px;line-height:1.4;">'
         f"{_html(html_total_label)}</td>"
         f'<td align="right" style="padding:4px 0 16px 12px;color:{COLOR_TEXT};font-size:15px;'
         f'line-height:1.4;font-weight:700;white-space:nowrap;">{_html(line_total)}</td>'
         "</tr></table>"
+        )
     )
     return plain, html
 

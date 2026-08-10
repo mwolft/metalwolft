@@ -22,6 +22,7 @@ from api.invoice_pdf_service import (  # noqa: E402
     InvoicePdfUnsupportedSchema,
     InvoicePdfWriteError,
     generate_invoice_pdf,
+    _line_description,
 )
 from api.invoice_snapshot_integrity import calculate_invoice_snapshot_hash  # noqa: E402
 
@@ -274,6 +275,25 @@ def tearDownModule():
 
 
 class InvoicePdfServiceTest(unittest.TestCase):
+    def test_claws_line_omits_screws(self):
+        description = _line_description(
+            {
+                "description": "Reja fija Albany",
+                "configuration": {
+                    "height_cm": "100",
+                    "width_cm": "100",
+                    "anchoring": "Con obra: con garras metálicas",
+                    "color": "forja_negro",
+                    "screw_option": "not_applicable",
+                    "screw_length_mm": None,
+                    "screw_supplement": "0.00",
+                },
+            }
+        )
+
+        self.assertIn("Garras metálicas", description)
+        self.assertNotIn("Tornillos", description)
+
     def test_generates_valid_pdf_from_snapshot_and_updates_pdf_path(self):
         invoice = SnapshotOnlyInvoice()
 

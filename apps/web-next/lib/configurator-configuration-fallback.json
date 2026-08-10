@@ -13,7 +13,8 @@
       "label": "Sin obra: con agujeros interiores",
       "description": "Instalación sin obra mediante agujeros interiores.",
       "supplement": 0,
-      "enabled": true
+      "enabled": true,
+      "screw_required": true
     },
     {
       "value": "Sin obra: con pletinas",
@@ -21,15 +22,17 @@
       "label": "Sin obra: con pletinas",
       "description": "Instalación sin obra mediante pletinas.",
       "supplement": 24.95,
-      "enabled": true
+      "enabled": true,
+      "screw_required": true
     },
     {
       "value": "Con obra: con garras metálicas",
       "name": "Garras metálicas",
       "label": "Con obra: con garras metálicas",
       "description": "Instalación con obra mediante garras metálicas.",
-      "supplement": 39.95,
-      "enabled": false
+      "supplement": 49.95,
+      "enabled": false,
+      "screw_required": false
     }
   ],
   "colors": [

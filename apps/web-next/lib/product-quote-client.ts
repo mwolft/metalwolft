@@ -18,7 +18,7 @@ export type ProductQuoteResponse = {
   anclaje: string;
   color: string;
   screw_option: string;
-  screw_length_mm: number;
+  screw_length_mm: number | null;
   currency: string;
   base_unit_price: number;
   anchorage_supplement: number;
@@ -86,7 +86,7 @@ function isProductQuoteResponse(
     typeof value.anclaje === "string" &&
     typeof value.color === "string" &&
     typeof value.screw_option === "string" &&
-    isFiniteNumber(value.screw_length_mm) &&
+    (value.screw_length_mm === null || isFiniteNumber(value.screw_length_mm)) &&
     typeof value.currency === "string" &&
     isFiniteNumber(value.base_unit_price) &&
     isFiniteNumber(value.anchorage_supplement) &&

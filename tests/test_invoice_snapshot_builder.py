@@ -314,6 +314,35 @@ class InvoiceSnapshotBuilderTest(unittest.TestCase):
         self.assertEqual(snapshot["totals"]["total_amount"], "124.95")
         assert_fiscal_totals(self, snapshot)
 
+    def test_snapshot_preserves_claws_without_screw_configuration(self):
+        checkout_quote = quote(
+            {
+                "lines": [
+                    {
+                        **quote()["lines"][0],
+                        "anclaje": "Con obra: con garras metálicas",
+                        "screw_option": "not_applicable",
+                        "screw_length_mm": None,
+                        "screw_supplement": 0.0,
+                        "unit_price": 149.95,
+                        "line_total": 149.95,
+                    }
+                ],
+                "subtotal": 149.95,
+                "shipping_cost": 21.0,
+                "total_amount": 170.95,
+            }
+        )
+
+        snapshot = build(checkout_session=checkout_session({"quote_snapshot": checkout_quote}))
+
+        configuration = snapshot["lines"][0]["configuration"]
+        self.assertEqual(configuration["anchoring"], "Con obra: con garras metálicas")
+        self.assertEqual(configuration["screw_option"], "not_applicable")
+        self.assertIsNone(configuration["screw_length_mm"])
+        self.assertEqual(configuration["screw_supplement"], "0.00")
+        self.assertEqual(snapshot["totals"]["products_amount_before_discount"], "149.95")
+
     def test_builds_customer_from_canonical_checkout_fields(self):
         canonical_customer = customer_snapshot(
             {

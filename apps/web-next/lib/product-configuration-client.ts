@@ -29,6 +29,7 @@ export type ProductConfigurationResponse = {
     description: string;
     supplement: number;
     enabled: boolean;
+    screw_required: boolean;
   }>;
   colors: Array<{
     value: string;
@@ -132,7 +133,8 @@ function isProductConfigurationResponse(
       typeof option.label === "string" &&
       typeof option.description === "string" &&
       isFiniteNumber(option.supplement) &&
-      typeof option.enabled === "boolean"
+      typeof option.enabled === "boolean" &&
+      typeof option.screw_required === "boolean"
   );
   const colorsValid = value.colors.every(
     (option) =>
@@ -168,8 +170,10 @@ function isProductConfigurationResponse(
   const enabledColors = value.colors.filter((option) => option.enabled);
   const defaults = value.defaults as ProductConfigurationResponse["defaults"];
   const screwOptions = value.screw_options as ProductConfigurationResponse["screw_options"];
-  const enabledAnchoragesHaveScrews = enabledAnchorages.every((anchorage) =>
-    (screwOptions[anchorage.value] ?? []).some((option) => option.enabled)
+  const enabledAnchoragesHaveScrews = enabledAnchorages.every(
+    (anchorage) =>
+      !anchorage.screw_required ||
+      (screwOptions[anchorage.value] ?? []).some((option) => option.enabled)
   );
   const defaultScrewOptionExists = (screwOptions[defaults.anchorage] ?? []).some(
     (option) => option.enabled && option.value === defaults.screw_option

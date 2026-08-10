@@ -77,6 +77,7 @@ def _serialize_customer_order_line(detail):
     if screw_length_mm is None:
         resolved_screws = resolve_screw_configuration(detail.anclaje, screw_option)
         if resolved_screws:
+            screw_option = resolved_screws["screw_option"]
             screw_length_mm = resolved_screws["screw_length_mm"]
             screw_supplement = resolved_screws["screw_supplement"]
 

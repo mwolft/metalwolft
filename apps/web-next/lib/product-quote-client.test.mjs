@@ -61,6 +61,33 @@ const request = {
 }
 
 {
+  const clawsQuote = await requestProductQuote(
+    {
+      ...request,
+      anclaje: "Con obra: con garras metálicas",
+      screw_option: "not_applicable"
+    },
+    {
+      apiBaseUrl: "https://api.example.test",
+      fetcher: async () =>
+        Response.json({
+          ...validQuote,
+          anclaje: "Con obra: con garras metálicas",
+          screw_option: "not_applicable",
+          screw_length_mm: null,
+          anchorage_supplement: 49.95,
+          screw_supplement: 0,
+          unit_price: 169.95,
+          subtotal: 169.95
+        })
+    }
+  );
+
+  assert.equal(clawsQuote.screw_length_mm, null);
+  assert.equal(clawsQuote.screw_option, "not_applicable");
+}
+
+{
   await assert.rejects(
     requestProductQuote(request, {
       apiBaseUrl: "https://api.example.test",

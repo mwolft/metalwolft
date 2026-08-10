@@ -128,6 +128,31 @@ class OrderConfirmationEmailServiceTest(unittest.TestCase):
         self.assertIn("Tornillos: 100 mm incluidos", sent[0]["body"])
         self.assertNotIn("Importe: 2,00 €", sent[0]["body"])
 
+    def test_claws_email_omits_screws(self):
+        sent = []
+        quote = checkout_quote()
+        quote["lines"][0].update({
+            "anclaje": "Con obra: con garras metálicas",
+            "screw_option": "not_applicable",
+            "screw_length_mm": None,
+            "screw_supplement": 0,
+            "unit_price": 149.95,
+            "line_total": 299.90,
+        })
+
+        send_order_confirmation_email(
+            user=SimpleNamespace(email="cliente@example.com"),
+            order=SimpleNamespace(locator="AB1234", total_amount=299.90),
+            checkout_quote=quote,
+            customer_firstname="Sergio",
+            mail_username="admin@example.com",
+            logger=SimpleNamespace(info=lambda *args, **kwargs: None, error=lambda *args, **kwargs: None),
+            send_email_func=lambda **kwargs: sent.append(kwargs) or True,
+        )
+
+        self.assertIn("Instalación: Garras metálicas", sent[0]["body"])
+        self.assertNotIn("Tornillos", sent[0]["body"])
+
     def test_real_flask_mail_mime_contains_plain_text_and_html(self):
         from api import email_routes
 

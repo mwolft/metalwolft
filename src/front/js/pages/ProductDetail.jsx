@@ -37,7 +37,8 @@ const DEFAULT_MOUNTING = MOUNTING_INTERIOR_HOLES;
 const DEFAULT_COLOR = 'satinado_blanco';
 const MOUNTING_SUPPLEMENTS = {
     [MOUNTING_INTERIOR_HOLES]: 0,
-    [MOUNTING_FRONT_PLATES]: 24.95
+    [MOUNTING_FRONT_PLATES]: 24.95,
+    [MOUNTING_METAL_CLAWS]: 49.95
 };
 
 const normalizeMounting = (value) =>
@@ -83,10 +84,6 @@ const buildPriceQuote = ({ rawHeight, rawWidth, product, mounting }) => {
     const dimensionError = getDimensionValidationError(rawHeight, rawWidth);
     if (dimensionError) {
         return { error: dimensionError };
-    }
-
-    if (mounting === MOUNTING_METAL_CLAWS || (mounting || '').includes('garras')) {
-        return { error: 'Esta opción no está disponible temporalmente' };
     }
 
     const mountingSupplement = MOUNTING_SUPPLEMENTS[mounting];
@@ -377,11 +374,6 @@ export const ProductDetail = () => {
         if (!store.isLoged) {
             savePendingProductConfig();
             navigate("/login");
-            return;
-        }
-
-        if (mounting.includes("garras")) {
-            setNotification("Esta opción no está disponible temporalmente");
             return;
         }
 
@@ -926,9 +918,7 @@ export const ProductDetail = () => {
                                             >
                                                 <option value={MOUNTING_INTERIOR_HOLES}>Sin obra: con agujeros interiores</option>
                                                 <option value={MOUNTING_FRONT_PLATES}>Sin obra: con pletinas (+24,95 €)</option>
-                                                <option value={MOUNTING_METAL_CLAWS} disabled>
-                                                    Con obra: con garras metálicas (no disponible)
-                                                </option>
+                                                <option value={MOUNTING_METAL_CLAWS}>Con obra: con garras metálicas (+49,95 €)</option>
                                             </Form.Select>
                                             {activeColor && (
                                                 <div
