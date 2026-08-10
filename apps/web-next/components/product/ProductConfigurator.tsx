@@ -329,6 +329,12 @@ export function ProductConfigurator({
       ),
     [anchorage, productConfiguration]
   );
+  const standardScrewLength = useMemo(
+    () =>
+      configuredScrewOptions.find((option) => option.value === DEFAULT_SCREW_OPTION)
+        ?.length_mm ?? null,
+    [configuredScrewOptions]
+  );
   const selectedAnchorage = productConfiguration?.anchorages.find(
     (option) => option.value === anchorage
   );
@@ -963,12 +969,14 @@ export function ProductConfigurator({
                 </label>
               ))}
             </div>
-            <p className="mw-configurator-screws__help">
-              <strong>¿Qué longitud elegir?</strong>{" "}
-              80 mm para fijación directa sobre ladrillo, hormigón u otra base maciza. 150 mm
-              cuando haya que atravesar revestimientos o alcanzar una base de fijación más
-              profunda.
-            </p>
+            {standardScrewLength !== null ? (
+              <p className="mw-configurator-screws__help">
+                <strong>¿Qué longitud elegir?</strong>{" "}
+                {standardScrewLength} mm para fijación directa sobre ladrillo, hormigón u otra
+                base maciza. 150 mm cuando haya que atravesar revestimientos o alcanzar una base
+                de fijación más profunda.
+              </p>
+            ) : null}
           </fieldset>
         ) : null}
 

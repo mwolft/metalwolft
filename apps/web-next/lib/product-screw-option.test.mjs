@@ -15,6 +15,7 @@ const plateOptions = [
   { value: "standard", length_mm: 70 },
   { value: "long_150", length_mm: 150 }
 ];
+const garrasOptions = [];
 
 assert.equal(
   selectCompatibleScrewOption("standard", plateOptions),
@@ -23,6 +24,7 @@ assert.equal(
 );
 assert.equal(interiorOptions.find(({ value }) => value === "standard")?.length_mm, 80);
 assert.equal(plateOptions.find(({ value }) => value === "standard")?.length_mm, 70);
+assert.equal(garrasOptions.find(({ value }) => value === "standard")?.length_mm ?? null, null);
 assert.equal(
   selectCompatibleScrewOption("long_150", plateOptions),
   "long_150",
@@ -73,6 +75,16 @@ assert.match(
 assert.match(
   configuratorSource,
   /¿Qué longitud elegir\?/
+);
+assert.match(
+  configuratorSource,
+  /configuredScrewOptions\.find\(\(option\) => option\.value === DEFAULT_SCREW_OPTION\)/
+);
+assert.match(configuratorSource, /\{standardScrewLength\} mm para fijación directa/);
+assert.match(configuratorSource, /selectedAnchorageRequiresScrews && configuredScrewOptions\.length/);
+assert.match(
+  configuratorSource,
+  /standardScrewLength !== null \? \(\s*<p className="mw-configurator-screws__help">/s
 );
 assert.match(configuratorSource, /screw_option: screwOption/);
 assert.match(configuratorSource, /screwOption: isNonEmptyString/);
