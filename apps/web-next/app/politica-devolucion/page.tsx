@@ -55,7 +55,7 @@ export default function ReturnsPolicyPage() {
         </p>
         <ul className="mw-list">
           <li>Altura: tolerancia máxima aproximada de ±5 mm.</li>
-          <li>Ancho: tolerancia máxima aproximada de ±2 mm.</li>
+          <li>Ancho: tolerancia máxima aproximada de ±5 mm.</li>
         </ul>
       </section>
 
