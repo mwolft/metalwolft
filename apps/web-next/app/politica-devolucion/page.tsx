@@ -48,15 +48,15 @@ export default function ReturnsPolicyPage() {
       <section className="mw-section">
         <h2>2. Tolerancias de fabricación</h2>
         <p>
-          Debido a la naturaleza artesanal y a medida del proceso, pueden
-          existir pequeñas variaciones respecto a las medidas solicitadas. Estas
-          diferencias forman parte de las tolerancias normales de fabricación y
-          no constituyen por sí mismas un defecto.
+          Al tratarse de productos fabricados a medida, pueden existir pequeñas
+          variaciones entre las medidas solicitadas y las medidas finales de la
+          reja. Estas variaciones, dentro de los márgenes indicados, forman parte
+          de las tolerancias normales del proceso de fabricación y no constituyen
+          por sí mismas un defecto.
         </p>
-        <ul className="mw-list">
-          <li>Altura: tolerancia máxima aproximada de ±5 mm.</li>
-          <li>Ancho: tolerancia máxima aproximada de ±5 mm.</li>
-        </ul>
+        <p>
+          <strong>Tolerancia máxima en altura y ancho: ±5 mm.</strong>
+        </p>
       </section>
 
       <section className="mw-section">
@@ -70,7 +70,8 @@ export default function ReturnsPolicyPage() {
           máximo de 48 horas desde la recepción.
         </p>
         <p>
-          El canal preferente para esta revisión es el formulario de incidencias
+          El canal preferente para esta revisión es el{" "}
+          <Link className="mw-inline-link" href="/formulario-incidencias">formulario de incidencias</Link>{" "}
           del sitio. Si necesitas asistencia adicional, también puedes escribirnos
           desde la página de <Link href="/contact">contacto</Link> indicando tu
           número de pedido y adjuntando fotografías claras.
@@ -95,8 +96,10 @@ export default function ReturnsPolicyPage() {
         <p>
           Estas adaptaciones forman parte del proceso de fabricación a medida y
           no se consideran un defecto. Si detectas una diferencia relevante
-          respecto a lo solicitado, debes comunicarla antes de la instalación
-          para que podamos revisar el caso y proponer la solución adecuada.
+          respecto a lo solicitado, debes comunicarla mediante el{" "}
+          <Link className="mw-inline-link" href="/formulario-incidencias">formulario de incidencias</Link>{" "}
+          antes de la instalación para que podamos revisar el caso y proponer la
+          solución adecuada.
         </p>
       </section>
 

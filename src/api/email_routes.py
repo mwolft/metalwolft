@@ -12,6 +12,7 @@ import time
 from flask import Blueprint, request, jsonify, current_app
 from flask_mail import Mail, Message
 from sqlalchemy import event, inspect as sqla_inspect
+from werkzeug.utils import secure_filename
 
 from api.models import db, Orders
 
@@ -24,6 +25,19 @@ CONTACT_RATE_LIMIT_WINDOW_SECONDS = 600
 CONTACT_GLOBAL_RATE_LIMIT_REQUESTS = 60
 CONTACT_SMTP_TIMEOUT_SECONDS = 10
 CONTACT_RECIPIENT = "admin@metalwolft.com"
+ISSUE_MAX_REQUEST_BYTES = 16 * 1024 * 1024
+ISSUE_MAX_IMAGES = 3
+ISSUE_MAX_IMAGE_BYTES = 5 * 1024 * 1024
+ISSUE_RATE_LIMIT_REQUESTS = 5
+ISSUE_ALLOWED_IMAGE_MIME_TYPES = frozenset({"image/jpeg", "image/png", "image/webp"})
+ISSUE_TYPES = frozenset(
+    {
+        "Pintura o acabado",
+        "Medidas o encaje",
+        "Transporte o embalaje",
+        "Otro",
+    }
+)
 
 _EMAIL_PATTERN = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 _PHONE_PATTERN = re.compile(r"^[0-9+().\-\s]+$")
@@ -87,6 +101,7 @@ class _ContactRateLimiter:
 
 
 _contact_rate_limiter = _ContactRateLimiter()
+_issue_rate_limiter = _ContactRateLimiter()
 
 
 def _contact_client_key():
@@ -433,66 +448,134 @@ def send_order_status_email(user_email, order_status, locator):
         return False
 
 
+def _normalize_issue_report_data(data):
+    field_rules = {
+        "name": ("El nombre", 1, 80),
+        "email": ("El email", 3, 254),
+        "order_number": ("El número de pedido", 1, 80),
+    }
+    normalized = {}
+
+    for field, (label, minimum, maximum) in field_rules.items():
+        value = data.get(field)
+        if not isinstance(value, str):
+            return None, f"{label} es obligatorio."
+
+        value = " ".join(value.strip().split())
+        if len(value) < minimum or len(value) > maximum:
+            return None, f"{label} debe tener entre {minimum} y {maximum} caracteres."
+        normalized[field] = value
+
+    if not _EMAIL_PATTERN.fullmatch(normalized["email"]):
+        return None, "El email no tiene un formato válido."
+
+    issue_type = data.get("issue_type")
+    if issue_type not in ISSUE_TYPES:
+        return None, "Selecciona un tipo de incidencia válido."
+    normalized["issue_type"] = issue_type
+
+    message_text = data.get("message", "")
+    if not isinstance(message_text, str):
+        return None, "La descripción de la incidencia no es válida."
+    message_text = message_text.strip()
+    if len(message_text) > 4_000:
+        return None, "La descripción no puede superar los 4000 caracteres."
+    normalized["message"] = message_text
+
+    return normalized, None
+
+
+def _matches_issue_image_signature(content, content_type):
+    signatures = {
+        "image/jpeg": lambda value: value.startswith(b"\xff\xd8\xff"),
+        "image/png": lambda value: value.startswith(b"\x89PNG\r\n\x1a\n"),
+        "image/webp": lambda value: len(value) >= 12
+        and value.startswith(b"RIFF")
+        and value[8:12] == b"WEBP",
+    }
+    return signatures[content_type](content)
+
+
+def _validate_issue_images(files):
+    images = [file for file in files if file and file.filename]
+    if len(images) > ISSUE_MAX_IMAGES:
+        return None, f"Puedes adjuntar un máximo de {ISSUE_MAX_IMAGES} imágenes."
+
+    attachments = []
+    for position, image in enumerate(images, start=1):
+        content_type = (image.mimetype or "").lower()
+        if content_type not in ISSUE_ALLOWED_IMAGE_MIME_TYPES:
+            return None, "Las imágenes deben estar en formato JPG, PNG o WebP."
+
+        content = image.read(ISSUE_MAX_IMAGE_BYTES + 1)
+        if not content or len(content) > ISSUE_MAX_IMAGE_BYTES:
+            return None, "Cada imagen puede ocupar como máximo 5 MB."
+        if not _matches_issue_image_signature(content, content_type):
+            return None, "Una de las imágenes no tiene un formato válido."
+
+        filename = secure_filename(image.filename) or f"incidencia-{position}.jpg"
+        attachments.append((filename, content_type, content))
+
+    return attachments, None
+
+
+def _send_issue_report_email(issue_data, attachments):
+    body = "\n".join(
+        [
+            "INCIDENCIA DE CLIENTE - METALWOLFT",
+            "",
+            f"Nombre completo: {issue_data['name']}",
+            f"Correo electrónico: {issue_data['email']}",
+            f"Número de pedido: {issue_data['order_number']}",
+            f"Tipo de incidencia: {issue_data['issue_type']}",
+            "",
+            "Descripción del problema:",
+            issue_data["message"] or "(sin descripción)",
+            "",
+            "Este mensaje se ha generado automáticamente desde el formulario de incidencias de MetalWolft.",
+        ]
+    )
+    message = Message(
+        subject=f"Incidencia de cliente #{issue_data['order_number']} - {issue_data['issue_type']}",
+        sender=current_app.config.get("MAIL_DEFAULT_SENDER"),
+        recipients=[CONTACT_RECIPIENT],
+        body=body,
+    )
+
+    for filename, content_type, content in attachments:
+        message.attach(filename=filename, content_type=content_type, data=content)
+
+    mail.send(message)
+
+
 @email_bp.route('/report-issue', methods=['POST'])
 def report_issue():
-    """
-    Recibe incidencias desde el formulario de devolución/pintura.
-    Permite adjuntar imágenes y envía un correo al administrador.
-    """
+    allowed, retry_after = _issue_rate_limiter.allow(_contact_client_key())
+    if not allowed:
+        response = jsonify({"error": "Has enviado demasiadas solicitudes. Inténtalo de nuevo más tarde."})
+        response.status_code = 429
+        response.headers["Retry-After"] = str(retry_after)
+        return response
+
+    if (
+        request.content_length is not None
+        and request.content_length > ISSUE_MAX_REQUEST_BYTES
+    ):
+        return jsonify({"error": "La solicitud es demasiado grande."}), 400
+
+    issue_data, validation_error = _normalize_issue_report_data(request.form)
+    if validation_error:
+        return jsonify({"error": validation_error}), 400
+
+    attachments, image_error = _validate_issue_images(request.files.getlist("images"))
+    if image_error:
+        return jsonify({"error": image_error}), 400
+
     try:
-        # ✅ Si el frontend usa multipart/form-data
-        data = request.form
-        files = request.files
-
-        nombre = data.get('name')
-        email = data.get('email')
-        order_number = data.get('order_number')
-        issue_type = data.get('issue_type')
-        message_text = data.get('message')
-
-        # Validación básica
-        if not nombre or not email or not order_number or not issue_type:
-            return jsonify({"error": "Faltan campos obligatorios."}), 400
-
-        # 🧾 Cuerpo del correo
-        body = f"""
-        INCIDENCIA DE CLIENTE - METALWOLFT
-
-        Nombre completo: {nombre}
-        Correo electrónico: {email}
-        Número de pedido: {order_number}
-        Tipo de incidencia: {issue_type}
-
-        Descripción del problema:
-        {message_text or '(sin descripción)'}
-
-        -----------------------------------------
-        Este mensaje se ha generado automáticamente
-        desde el formulario de incidencias de MetalWolft.
-        Por favor, revise la información y adjuntos.
-        """
-
-
-        msg = Message(
-            subject=f"🧾 Incidencia de cliente #{order_number} - {issue_type}",
-            sender=os.getenv('MAIL_DEFAULT_SENDER'),
-            recipients=['admin@metalwolft.com'],
-            body=body
-        )
-
-        # 📎 Adjuntar imágenes si las hay
-        for key in files:
-            file = files[key]
-            if file and file.filename:
-                msg.attach(
-                    filename=file.filename,
-                    content_type=file.content_type,
-                    data=file.read()
-                )
-
-        mail.send(msg)
+        _send_issue_report_email(issue_data, attachments)
         return jsonify({"message": "Incidencia enviada correctamente."}), 200
-
-    except Exception as e:
-        current_app.logger.error(f"❌ Error al enviar incidencia: {str(e)}")
-        return jsonify({"error": "Internal server error"}), 500
+    except Exception as error:
+        current_app.logger.error(
+            "Issue report delivery failed (error_type=%s)", type(error).__name__
+        )
+        return jsonify({"error": "El servicio de incidencias no está disponible."}), 503

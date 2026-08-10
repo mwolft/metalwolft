@@ -2908,6 +2908,72 @@ textarea:focus-visible {
   margin-top: 1.3rem;
 }
 
+.mw-issue-report-form__file-input {
+  width: 100%;
+  padding: 0.7rem;
+  border: 1px dashed rgba(156, 163, 175, 0.85);
+  border-radius: 12px;
+  background: rgba(248, 250, 252, 0.7);
+  color: var(--mw-text);
+  font: inherit;
+}
+
+.mw-issue-report-form__feedback {
+  margin: 0;
+  color: var(--mw-accent-dark);
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.mw-issue-report-form__previews {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.75rem;
+  margin: 1rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.mw-issue-report-form__previews li {
+  display: grid;
+  gap: 0.45rem;
+  min-width: 0;
+}
+
+.mw-issue-report-form__previews img {
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  border-radius: 12px;
+  object-fit: cover;
+}
+
+.mw-issue-report-form__previews div {
+  display: grid;
+  gap: 0.2rem;
+}
+
+.mw-issue-report-form__previews span {
+  overflow: hidden;
+  color: var(--mw-muted);
+  font-size: 0.78rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mw-issue-report-form__previews button {
+  width: fit-content;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--mw-accent-dark);
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 0.16em;
+}
+
 .mw-form-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
