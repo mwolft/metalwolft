@@ -64,7 +64,15 @@ assert.ok(installationIndex >= 0 && screwIndex > installationIndex && colorIndex
 assert.match(configuratorSource, /type="radio"/);
 assert.match(
   configuratorSource,
-  /Elige la longitud según el espesor de la zona donde vas a fijar la reja\./
+  /Para fijación directa sobre base maciza\./
+);
+assert.match(
+  configuratorSource,
+  /Para revestimientos o mayor profundidad de fijación\./
+);
+assert.match(
+  configuratorSource,
+  /¿Qué longitud elegir\?/
 );
 assert.match(configuratorSource, /screw_option: screwOption/);
 assert.match(configuratorSource, /screwOption: isNonEmptyString/);

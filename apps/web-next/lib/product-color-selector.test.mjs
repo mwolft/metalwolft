@@ -35,9 +35,10 @@ assert.deepEqual(
 );
 
 assert.match(source, /groups\.get\(option\.finish\)/);
-assert.match(source, /label: option\.finish_label/);
+assert.match(source, /label: option\.finish === "liso" \? "Satinado" : option\.finish_label/);
 assert.match(source, /<fieldset className="mw-configurator-colors">/);
 assert.match(source, /<legend>Color<\/legend>/);
+assert.match(source, /Acabado con esmalte sintético de alta resistencia\./);
 assert.match(source, /type="button"/);
 assert.match(source, /aria-pressed={color === option\.value}/);
 assert.match(source, /option\.label}, recomendado por MetalWolft/);

@@ -312,7 +312,7 @@ export function ProductConfigurator({
         }
         groups.set(option.finish, {
           value: option.finish,
-          label: option.finish_label,
+          label: option.finish === "liso" ? "Satinado" : option.finish_label,
           options: [renderedOption]
         });
       });
@@ -949,21 +949,34 @@ export function ProductConfigurator({
                       {option.label} · {option.length_mm} mm
                     </strong>
                     <small>
-                      {option.description}
-                      {option.supplement > 0
-                        ? ` · +${formatCurrency(option.supplement)} €`
-                        : ""}
+                      {option.length_mm === 80
+                        ? "Para fijación directa sobre base maciza."
+                        : option.value === "long_150"
+                          ? "Para revestimientos o mayor profundidad de fijación."
+                          : option.description}
                     </small>
+                    {option.length_mm === 80 ? <small>Incluida en el pedido</small> : null}
+                    {option.supplement > 0 ? (
+                      <small>+{formatCurrency(option.supplement)} €</small>
+                    ) : null}
                   </span>
                 </label>
               ))}
             </div>
-            <p>Elige la longitud según el espesor de la zona donde vas a fijar la reja.</p>
+            <p className="mw-configurator-screws__help">
+              <strong>¿Qué longitud elegir?</strong>{" "}
+              80 mm para fijación directa sobre ladrillo, hormigón u otra base maciza. 150 mm
+              cuando haya que atravesar revestimientos o alcanzar una base de fijación más
+              profunda.
+            </p>
           </fieldset>
         ) : null}
 
         <fieldset className="mw-configurator-colors">
           <legend>Color</legend>
+          <p className="mw-configurator-colors__help">
+            Acabado con esmalte sintético de alta resistencia.
+          </p>
           {configuredColorGroups.map((group) => (
             <div className="mw-configurator-color-group" key={group.label}>
               <p>{group.label}</p>
