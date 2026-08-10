@@ -4002,10 +4002,15 @@ textarea:focus-visible {
   line-height: 1.45;
 }
 
-.mw-checkout-line p.mw-checkout-line__secondary {
+.mw-checkout-line p.mw-checkout-line__technical {
   margin-top: 0.16rem;
   font-size: 0.74rem;
   font-weight: 400;
+}
+
+.mw-checkout-line__technical strong {
+  color: var(--mw-text);
+  font-weight: 600;
 }
 
 .mw-checkout-line__price {

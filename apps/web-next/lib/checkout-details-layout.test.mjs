@@ -71,15 +71,22 @@ assert.ok(deliveryEstimateIndex < submitIndex);
 assert.match(detailsStepSource, /Particular \/ autónomo/);
 assert.match(detailsStepSource, /value="company"/);
 assert.match(detailsStepSource, /function CheckoutLines/);
+assert.match(detailsStepSource, /<strong>Alto:<\/strong>/);
+assert.match(detailsStepSource, /<strong>Ancho:<\/strong>/);
+assert.match(detailsStepSource, /<strong>Instalación:<\/strong>/);
 assert.match(
   detailsStepSource,
-  /Longitud tornillos: \$\{screwLength\.toLocaleString\("es-ES"\)\} mm/
+  /<strong>Tornillos:<\/strong> \{screwLength\.toLocaleString\("es-ES"\)\} mm/
 );
-assert.match(detailsStepSource, /screwLength > 0/);
-assert.match(detailsStepSource, /Acabado: esmalte sintético/);
+assert.match(detailsStepSource, /const hasScrewLength = Number\.isFinite\(screwLength\) && screwLength > 0/);
+assert.match(
+  detailsStepSource,
+  /<strong>Color:<\/strong> \{formatColor\(line\.color\)\} · <strong>Acabado:<\/strong>/
+);
+assert.match(detailsStepSource, /Esmalte sintético/);
 assert.match(
   globalStylesSource,
-  /\.mw-checkout-line p\.mw-checkout-line__secondary\s*{[^}]*font-size:\s*0\.74rem;[^}]*font-weight:\s*400;/s
+  /\.mw-checkout-line p\.mw-checkout-line__technical\s*{[^}]*font-size:\s*0\.74rem;[^}]*font-weight:\s*400;/s
 );
 assert.match(detailsStepSource, /onSubmit={handleContinueToPayment}/);
 assert.match(detailsStepSource, /setHasAttemptedContinue\(true\)/);

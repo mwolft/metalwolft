@@ -785,23 +785,27 @@ function CheckoutLines({ lines }: { lines: CheckoutQuoteLine[] }) {
     <div className="mw-checkout-lines">
       {lines.map((line) => {
         const screwLength = Number(line.screw_length_mm);
-        const screwLengthLabel = Number.isFinite(screwLength) && screwLength > 0
-          ? `Longitud tornillos: ${screwLength.toLocaleString("es-ES")} mm`
-          : null;
+        const hasScrewLength = Number.isFinite(screwLength) && screwLength > 0;
         return (
           <article className="mw-checkout-line" key={lineKey(line)}>
             <div>
               <h3>{line.product_name}</h3>
-              <p>
-                {formatDimension(line.alto)} x {formatDimension(line.ancho)}
+              <p className="mw-checkout-line__technical">
+                <strong>Alto:</strong> {formatDimension(line.alto)} · <strong>Ancho:</strong>{" "}
+                {formatDimension(line.ancho)}
               </p>
-              <p>
-                {line.anclaje || "-"} - {formatColor(line.color)}
+              <p className="mw-checkout-line__technical">
+                <strong>Instalación:</strong> {line.anclaje || "-"}
               </p>
-              {screwLengthLabel ? (
-                <p className="mw-checkout-line__secondary">{screwLengthLabel}</p>
+              {hasScrewLength ? (
+                <p className="mw-checkout-line__technical">
+                  <strong>Tornillos:</strong> {screwLength.toLocaleString("es-ES")} mm
+                </p>
               ) : null}
-              <p className="mw-checkout-line__secondary">Acabado: esmalte sintético</p>
+              <p className="mw-checkout-line__technical">
+                <strong>Color:</strong> {formatColor(line.color)} · <strong>Acabado:</strong>{" "}
+                Esmalte sintético
+              </p>
             </div>
             <div className="mw-checkout-line__price">
               <span>{line.quantity} ud.</span>

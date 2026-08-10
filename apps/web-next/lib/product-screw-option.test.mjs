@@ -97,9 +97,9 @@ assert.match(cartSource, /Acabado: esmalte sintético/);
 assert.match(checkoutSource, /line\.screw_length_mm/);
 assert.match(
   checkoutSource,
-  /Longitud tornillos: \$\{screwLength\.toLocaleString\("es-ES"\)\} mm/
+  /<strong>Tornillos:<\/strong> \{screwLength\.toLocaleString\("es-ES"\)\} mm/
 );
-assert.match(checkoutSource, /screwLength > 0/);
+assert.match(checkoutSource, /const hasScrewLength = Number\.isFinite\(screwLength\) && screwLength > 0/);
 assert.doesNotMatch(checkoutSource, /Tornillos: \{screwConfiguration\}/);
 assert.match(stylesSource, /\.mw-configurator-screws__options[\s\S]*grid-template-columns: 1fr;/);
 assert.match(
