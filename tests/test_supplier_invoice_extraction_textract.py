@@ -90,7 +90,7 @@ class TextractSupplierInvoiceExtractionProviderTest(unittest.TestCase):
     def test_receiver_tax_id_is_never_used_as_supplier_tax_id(self):
         fields = textract_response()["ExpenseDocuments"][0]["SummaryFields"]
         fields[1] = summary_field("VENDOR_ADDRESS", "Calle Ejemplo 1", vendor=True)
-        fields.append(summary_field("RECEIVER_ADDRESS", "Cliente NIF 12345678Z"))
+        fields.append(summary_field("OTHER", "05703874N", label="DNI/CIF"))
         payload = build_textract_supplier_invoice_extraction_payload(textract_response(fields=fields))
         self.assertIsNone(payload["fields"]["supplier_tax_id"]["value"])
 
@@ -109,12 +109,51 @@ class TextractSupplierInvoiceExtractionProviderTest(unittest.TestCase):
         self.assertEqual(payload["fields"]["total_amount"]["value"], "536.93")
         self.assertIn("Se han detectado varios totales; revisa el importe propuesto.", payload["warnings"])
 
-    def test_ambiguous_date_is_not_normalized(self):
+    def test_ambiguous_date_without_spanish_context_is_not_normalized(self):
         fields = textract_response()["ExpenseDocuments"][0]["SummaryFields"]
+        fields[0] = summary_field("VENDOR_NAME", "Proveedor", vendor=False)
+        fields[1] = summary_field("VENDOR_ADDRESS", "Calle Ejemplo 1", vendor=False)
         fields[3] = summary_field("INVOICE_RECEIPT_DATE", "05/06/2026")
         payload = build_textract_supplier_invoice_extraction_payload(textract_response(fields=fields))
         self.assertIsNone(payload["fields"]["issue_date"]["value"])
         self.assertIn("La fecha detectada es ambigua y requiere revisión manual.", payload["warnings"])
+
+    def test_real_spanish_invoice_patterns_are_normalized_without_using_receiver_tax_id(self):
+        fields = [
+            summary_field("VENDOR_NAME", "HIERROS ACERGOM, S.L.L.", confidence=99.698),
+            summary_field("INVOICE_RECEIPT_ID", "43002146", label="Código", confidence=99.0),
+            summary_field("INVOICE_RECEIPT_ID", "076088", label="Factura", confidence=98.682),
+            summary_field("INVOICE_RECEIPT_DATE", "12/06/2026", label="Fecha", confidence=75.324),
+            summary_field("SUBTOTAL", "319,24", label="B. Imponible", confidence=90.277),
+            summary_field("TAX", "67,04", label="Importe IVA %", confidence=96.250),
+            summary_field("OTHER", "21,00", label="% IVA", confidence=99.848),
+            summary_field("TOTAL", "386,28", label="TOTAL", confidence=98.485),
+            summary_field("OTHER", "B13559141", label="CIF:", confidence=99.920),
+            summary_field("OTHER", "05703874N", label="DNI/CIF", confidence=99.0),
+            summary_field("TOTAL", "386,28", label="Importe:", confidence=99.9),
+        ]
+        payload = build_textract_supplier_invoice_extraction_payload(textract_response(fields=fields))
+
+        self.assertEqual(payload["fields"]["supplier_legal_name"]["value"], "HIERROS ACERGOM, S.L.L.")
+        self.assertEqual(payload["fields"]["supplier_tax_id"]["value"], "B13559141")
+        self.assertEqual(payload["fields"]["supplier_invoice_number"]["value"], "076088")
+        self.assertEqual(payload["fields"]["issue_date"]["value"], "2026-06-12")
+        self.assertEqual(payload["fields"]["total_amount"]["value"], "386.28")
+        self.assertEqual(payload["tax_breakdowns"], [{
+            "tax_base": "319.24", "tax_rate": "21.00", "tax_amount": "67.04",
+            "deductible_tax_amount": None, "confidence": 0.90277, "source": {"page": 1},
+        }])
+
+    def test_tax_breakdown_is_not_inferred_when_the_real_style_does_not_reconcile(self):
+        fields = [
+            summary_field("SUBTOTAL", "319,24", label="B. Imponible"),
+            summary_field("TAX", "67,03", label="Importe IVA %"),
+            summary_field("OTHER", "21,00", label="% IVA"),
+            summary_field("TOTAL", "386,28", label="TOTAL"),
+        ]
+        payload = build_textract_supplier_invoice_extraction_payload(textract_response(fields=fields))
+        self.assertEqual(payload["tax_breakdowns"], [])
+        self.assertIn("No se ha podido identificar una base imponible de IVA de forma inequívoca.", payload["warnings"])
 
     def test_multiple_tax_rates_are_kept_separate_when_each_breakdown_reconciles(self):
         fields = textract_response()["ExpenseDocuments"][0]["SummaryFields"][:5]

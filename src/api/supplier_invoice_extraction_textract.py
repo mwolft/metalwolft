@@ -39,6 +39,12 @@ TEXTRACT_MAX_SYNC_BYTES = 10 * 1024 * 1024
 TEXTRACT_SUPPORTED_MIME_TYPES = {"application/pdf", "image/jpeg", "image/png"}
 _SPANISH_TAX_ID = re.compile(r"(?<![A-Z0-9])(?:[0-9]{8}[A-Z]|[A-HJ-NP-SUVW][0-9]{7}[0-9A-J])(?![A-Z0-9])", re.I)
 _PERCENT = re.compile(r"([0-9]+(?:[.,][0-9]+)?)\s*%")
+_SUPPLIER_TAX_ID_LABELS = {"CIF", "NIF", "VATID", "NIFCIF", "CIFNIF"}
+_INVOICE_NUMBER_LABELS = {"FACTURA", "NFACTURA", "NOFACTURA", "INVOICE", "INVOICENUMBER"}
+_INVOICE_NUMBER_PENALTIES = {"CODIGO", "CLIENTE", "CUSTOMER"}
+_TAX_BASE_LABELS = {"BIMPONIBLE", "BASEIMPONIBLE"}
+_TAX_AMOUNT_LABELS = {"IMPORTEIVA", "CUOTAIVA", "IVA"}
+_TAX_RATE_LABELS = {"IVA", "PORCENTAJEIVA", "TIPOIVA"}
 
 
 @dataclass(frozen=True)
@@ -163,13 +169,17 @@ def build_textract_supplier_invoice_extraction_payload(response):
     if not isinstance(fields, list):
         raise SupplierInvoiceExtractionProviderError("Textract ha devuelto una respuesta no válida.", code="invalid_response")
 
-    _set_text(payload, "supplier_legal_name", _select_single(fields, {"VENDOR_NAME"}, vendor_only=True))
-    _set_text(payload, "supplier_invoice_number", _select_single(fields, {"INVOICE_RECEIPT_ID"}))
-    _set_date(payload, _select_single(fields, {"INVOICE_RECEIPT_DATE"}))
+    _set_text(payload, "supplier_legal_name", _select_vendor_name(fields))
+    _set_text(payload, "supplier_invoice_number", _select_invoice_number(fields))
+    _set_vendor_tax_id(payload, fields)
+    _set_date(
+        payload,
+        _select_single(fields, {"INVOICE_RECEIPT_DATE"}),
+        spanish_context=bool(payload["fields"]["supplier_tax_id"]["value"]),
+    )
     total = _select_total(fields)
     _set_money(payload, "total_amount", total)
     _set_currency(payload, total)
-    _set_vendor_tax_id(payload, [field for field in fields if _is_vendor_field(field)])
     payload["tax_breakdowns"] = _extract_tax_breakdowns(fields, payload)
     payload["warnings"].extend((
         "El tipo fiscal requiere revisión manual.",
@@ -183,10 +193,10 @@ def _set_text(payload, name, candidate):
         payload["fields"][name] = _canonical(candidate["value"], candidate)
 
 
-def _set_date(payload, candidate):
+def _set_date(payload, candidate, *, spanish_context=False):
     if not candidate:
         return
-    value = _parse_date(candidate["value"])
+    value = _parse_date(candidate["value"], prefer_day_first=spanish_context)
     if value is None:
         payload["warnings"].append("La fecha detectada es ambigua y requiere revisión manual.")
     else:
@@ -212,19 +222,26 @@ def _set_currency(payload, candidate):
 
 
 def _set_vendor_tax_id(payload, fields):
-    matches = []
-    source = None
+    candidates = []
+    has_vendor_name = bool(payload["fields"]["supplier_legal_name"]["value"])
     for field in fields:
-        for text in (_field_value(field), _field_label(field)):
-            if text:
-                found = _SPANISH_TAX_ID.findall(text.upper())
-                if found:
-                    matches.extend(found)
-                    source = source or field
-    matches = list(dict.fromkeys(matches))
-    if len(matches) == 1:
-        payload["fields"]["supplier_tax_id"] = _canonical(matches[0], _candidate(source))
-    elif len(matches) > 1:
+        label = _normalised_label(_field_label(field))
+        is_vendor_candidate = _is_vendor_field(field)
+        if label not in _SUPPLIER_TAX_ID_LABELS and not is_vendor_candidate:
+            continue
+        matches = list(dict.fromkeys(_SPANISH_TAX_ID.findall((_field_value(field) or "").upper())))
+        if len(matches) != 1:
+            continue
+        tax_id = matches[0]
+        if not is_vendor_candidate and not (has_vendor_name and _is_company_tax_id(tax_id)):
+            continue
+        candidates.append((tax_id, field, is_vendor_candidate))
+    supplier_ids = list(dict.fromkeys(item[0] for item in candidates))
+    if len(supplier_ids) == 1:
+        tax_id = supplier_ids[0]
+        source = next(item[1] for item in candidates if item[0] == tax_id)
+        payload["fields"]["supplier_tax_id"] = _canonical(tax_id, _candidate(source))
+    elif len(supplier_ids) > 1:
         payload["warnings"].append("Se han detectado varios NIF/CIF de proveedor.")
 
 
@@ -232,25 +249,34 @@ def _extract_tax_breakdowns(fields, payload):
     total = payload["fields"]["total_amount"]["value"]
     if total is None:
         return []
-    taxes, bases = [], []
+    taxes, bases, rates = [], [], []
     for field in fields:
-        label = f"{_field_label(field)} {_field_type(field)}".lower()
+        label = _normalised_label(_field_label(field))
         value = _parse_money(_field_value(field))
-        rate = _first_rate(_field_label(field), _field_value(field))
         if value is None:
             continue
-        if (_field_type(field) == "TAX" or "iva" in label or "vat" in label) and rate is not None:
-            taxes.append((value, rate, field))
-        if _field_type(field) == "SUBTOTAL" or "base imponible" in label:
-            bases.append((value, rate, field))
+        if _is_tax_base_field(field, label):
+            bases.append((value, _parse_rate(_field_label(field)), field))
+        if _is_tax_amount_field(field, label) and not (
+            _field_type(field) != "TAX" and _is_tax_rate_field(field, label)
+        ):
+            taxes.append((value, field))
+        if _is_tax_rate_field(field, label) and not _is_tax_base_field(field, label):
+            rates.append((_parse_rate(_field_label(field)) or value, field))
     results = []
-    for tax_amount, rate, tax_field in taxes:
-        matches = [(base, base_field) for base, base_rate, base_field in bases
-                   if base_rate in {None, rate} and _tax_matches(base, rate, tax_amount)]
+    for tax_amount, tax_field in taxes:
+        matches = []
+        for base, base_rate, base_field in bases:
+            candidate_rates = [(base_rate, base_field)] if base_rate is not None else rates
+            matches.extend(
+                (base, rate, base_field, rate_field)
+                for rate, rate_field in candidate_rates
+                if _tax_matches(base, rate, tax_amount)
+            )
         if len(matches) != 1:
             payload["warnings"].append("No se ha podido identificar una base imponible de IVA de forma inequívoca.")
             continue
-        base, base_field = matches[0]
+        base, rate, base_field, rate_field = matches[0]
         results.append({
             "tax_base": _money(base), "tax_rate": _money(rate), "tax_amount": _money(tax_amount),
             "deductible_tax_amount": None, "confidence": _minimum_confidence(base_field, tax_field),
@@ -271,7 +297,15 @@ def _select_total(fields):
     if not items:
         return None
     values = {item["value"] for item in items}
-    items.sort(key=lambda item: ("total factura" in item["label"].lower(), "total" in item["label"].lower(), item["confidence"] or 0), reverse=True)
+    items.sort(
+        key=lambda item: (
+            _normalised_label(item["label"]) == "TOTAL",
+            "totalfactura" in _normalised_label(item["label"]).lower(),
+            "total" in _normalised_label(item["label"]).lower(),
+            item["confidence"] or 0,
+        ),
+        reverse=True,
+    )
     if len(values) > 1:
         items[0]["multiple"] = True
     return items[0]
@@ -283,6 +317,37 @@ def _select_single(fields, field_types, *, vendor_only=False):
     if not items or len({item["value"] for item in items}) != 1:
         return None
     return max(items, key=lambda item: item["confidence"] or 0)
+
+
+def _select_vendor_name(fields):
+    direct = _select_single(fields, {"VENDOR_NAME"})
+    if direct:
+        return direct
+    return _select_single(fields, {"NAME"}, vendor_only=True)
+
+
+def _select_invoice_number(fields):
+    candidates = [
+        _candidate(field)
+        for field in fields
+        if _field_type(field) == "INVOICE_RECEIPT_ID" and _field_value(field)
+    ]
+    if not candidates:
+        return None
+    candidates.sort(
+        key=lambda item: (
+            _normalised_label(item["label"]) in _INVOICE_NUMBER_LABELS,
+            not any(token in _normalised_label(item["label"]) for token in _INVOICE_NUMBER_PENALTIES),
+            item["confidence"] or 0,
+        ),
+        reverse=True,
+    )
+    first, second = candidates[0], candidates[1] if len(candidates) > 1 else None
+    if second and first["value"] != second["value"]:
+        first_score = _invoice_number_score(first)
+        if first_score == _invoice_number_score(second):
+            return None
+    return first
 
 
 def _candidate(field):
@@ -323,7 +388,38 @@ def _is_vendor_field(field):
     return any("VENDOR" in (group.get("Types") or []) for group in (field.get("GroupProperties") or []) if isinstance(group, dict))
 
 
-def _parse_date(value):
+def _is_company_tax_id(value):
+    return bool(re.fullmatch(r"[A-HJ-NP-SUVW][0-9]{7}[0-9A-J]", value or "", re.I))
+
+
+def _normalised_label(value):
+    normalized = str(value or "").upper().replace("Á", "A").replace("É", "E").replace("Í", "I")
+    normalized = normalized.replace("Ó", "O").replace("Ú", "U").replace("Ñ", "N")
+    return re.sub(r"[^A-Z0-9]", "", normalized)
+
+
+def _invoice_number_score(candidate):
+    label = _normalised_label(candidate["label"])
+    return (
+        label in _INVOICE_NUMBER_LABELS,
+        not any(token in label for token in _INVOICE_NUMBER_PENALTIES),
+        candidate["confidence"] or 0,
+    )
+
+
+def _is_tax_base_field(field, label):
+    return _field_type(field) == "SUBTOTAL" or label in _TAX_BASE_LABELS
+
+
+def _is_tax_amount_field(field, label):
+    return _field_type(field) == "TAX" or label in _TAX_AMOUNT_LABELS
+
+
+def _is_tax_rate_field(field, label):
+    return label in _TAX_RATE_LABELS or bool(_PERCENT.search(_field_label(field) or ""))
+
+
+def _parse_date(value, *, prefer_day_first=False):
     if not isinstance(value, str):
         return None
     try:
@@ -334,7 +430,7 @@ def _parse_date(value):
     if not match:
         return None
     day, month, year = map(int, match.groups())
-    if day <= 12 and month <= 12:
+    if day <= 12 and month <= 12 and not prefer_day_first:
         return None
     try:
         return datetime(year, month, day).date().isoformat()
