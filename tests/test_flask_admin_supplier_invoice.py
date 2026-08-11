@@ -31,6 +31,9 @@ if HAS_ADMIN_DEPS:
     from sqlalchemy.orm import configure_mappers  # noqa: E402
 
     import api.admin as admin_module  # noqa: E402
+    from api.supplier_invoice_registration_service import (  # noqa: E402
+        SupplierInvoiceRegistrationValidationError,
+    )
     from api.models import (  # noqa: E402
         SupplierInvoice,
         SupplierInvoiceReceptionSequence,
@@ -102,7 +105,10 @@ class FlaskAdminSupplierInvoiceTest(unittest.TestCase):
         raise AssertionError("Supplier invoice registration route was not registered")
 
     def _url(self):
-        return self._register_rule().rule.replace("<int:supplier_invoice_id>", str(self.invoice_id))
+        return self._registration_url(self.invoice_id)
+
+    def _registration_url(self, supplier_invoice_id):
+        return self._register_rule().rule.replace("<int:supplier_invoice_id>", str(supplier_invoice_id))
 
     def _edit_url(self):
         for rule in self.app.url_map.iter_rules():
@@ -218,6 +224,108 @@ class FlaskAdminSupplierInvoiceTest(unittest.TestCase):
                 self.assertFalse(form.validate())
                 self.assertTrue(form.issue_date.errors)
                 self.assertFalse(form.operation_date.errors)
+
+    def test_tax_breakdown_inline_html_and_script_are_csp_safe(self):
+        with self.app.app_context():
+            invoice = db.session.get(SupplierInvoice, self.invoice_id)
+            with self.app.test_request_context("/admin/supplierinvoice/edit/"):
+                form = self.view.edit_form(invoice)
+                inline_html = str(form.tax_breakdowns())
+
+        script_path = SRC_DIR / "static" / "admin" / "supplier_invoice_tax_breakdowns.js"
+        script = script_path.read_text(encoding="utf-8")
+
+        self.assertIn('type="button"', inline_html)
+        self.assertIn('data-supplier-invoice-inline-add="tax_breakdowns"', inline_html)
+        self.assertNotIn("javascript:", inline_html.lower())
+        self.assertNotIn("onclick=", inline_html.lower())
+        self.assertEqual(self.view.extra_js, ["/static/admin/supplier_invoice_tax_breakdowns.js"])
+        self.assertIn("window.faForm.addInlineField", script)
+        self.assertIn("nextPosition", script)
+        self.assertNotIn("javascript:", script.lower())
+        self.assertNotIn("onclick", script.lower())
+
+    def test_multiple_inline_tax_breakdowns_populate_with_distinct_positions(self):
+        form_data = {
+            "supplier_legal_name": "Proveedor de prueba SL",
+            "supplier_tax_id": "B87654321",
+            "supplier_invoice_number": "P-2026-003",
+            "issue_date": "2026-07-25",
+            "concept": "Material auxiliar",
+            "total_amount": "242.00",
+            "currency": "EUR",
+            "fiscal_invoice_type": "F1",
+            "tax_treatment": "domestic_standard",
+            "status": "draft",
+            "source": "manual",
+            "tax_breakdowns-0-position": "1",
+            "tax_breakdowns-0-tax_base": "100.00",
+            "tax_breakdowns-0-tax_rate": "21.00",
+            "tax_breakdowns-0-tax_amount": "21.00",
+            "tax_breakdowns-0-deductible_tax_amount": "21.00",
+            "tax_breakdowns-1-position": "2",
+            "tax_breakdowns-1-tax_base": "100.00",
+            "tax_breakdowns-1-tax_rate": "21.00",
+            "tax_breakdowns-1-tax_amount": "21.00",
+            "tax_breakdowns-1-deductible_tax_amount": "21.00",
+        }
+        with self.app.app_context():
+            with self.app.test_request_context(
+                "/admin/supplierinvoice/new/",
+                method="POST",
+                data=form_data,
+            ):
+                form = self.view.create_form()
+                self.assertTrue(form.validate())
+                invoice = SupplierInvoice()
+                form.populate_obj(invoice)
+
+            self.assertEqual(len(invoice.tax_breakdowns), 2)
+            self.assertEqual([item.position for item in invoice.tax_breakdowns], [1, 2])
+
+    def test_registration_error_messages_are_specific_and_safe(self):
+        messages = {
+            "Debe existir al menos un desglose de IVA.": "Debe existir al menos un desglose de IVA.",
+            "El total no coincide con la suma de las bases y cuotas de IVA.": (
+                "El total no coincide con la suma de las bases y cuotas de IVA."
+            ),
+            "La cuota deducible no puede superar la cuota soportada.": (
+                "La cuota deducible no puede superar la cuota soportada."
+            ),
+        }
+        for source_message, expected_message in messages.items():
+            with self.subTest(source_message=source_message):
+                error = SupplierInvoiceRegistrationValidationError(source_message)
+                self.assertEqual(
+                    admin_module._supplier_invoice_registration_error_message(error),
+                    expected_message,
+                )
+
+        unknown_error = SupplierInvoiceRegistrationValidationError("internal detail that must not be displayed")
+        self.assertEqual(
+            admin_module._supplier_invoice_registration_error_message(unknown_error),
+            "No se ha podido registrar la factura recibida. Revisa sus datos fiscales.",
+        )
+
+    def test_registering_without_tax_breakdowns_flashes_the_specific_message(self):
+        with self.app.app_context():
+            invoice = SupplierInvoice(
+                supplier_legal_name="Proveedor sin desglose SL",
+                supplier_tax_id="B11223344",
+                supplier_invoice_number="P-2026-004",
+                issue_date=date(2026, 7, 25),
+                concept="Documento sin desglose",
+                total_amount=Decimal("0.00"),
+            )
+            db.session.add(invoice)
+            db.session.commit()
+            invoice_id = invoice.id
+
+        response = self.client.post(self._registration_url(invoice_id), headers=self._auth_header())
+        self.assertEqual(response.status_code, 302)
+        with self.client.session_transaction() as session:
+            flashed_messages = [message for _category, message in session.get("_flashes", [])]
+        self.assertIn("Debe existir al menos un desglose de IVA.", flashed_messages)
 
 
 if __name__ == "__main__":

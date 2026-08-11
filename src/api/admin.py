@@ -5,6 +5,8 @@ from flask_admin import Admin, AdminIndexView, expose
 from flask_admin.actions import action
 from markupsafe import Markup
 from flask_admin.contrib.sqla import ModelView
+from flask_admin.contrib.sqla.form import InlineModelConverter, InlineModelFormList
+from flask_admin.form import RenderTemplateWidget
 from wtforms import validators
 from wtforms.fields import SelectField, StringField, DateField, TextAreaField
 from .models import (
@@ -33,6 +35,7 @@ from api.invoice_accounting_service import (
 from api.supplier_invoice_registration_service import (
     SupplierInvoiceDuplicateError,
     SupplierInvoiceRegistrationError,
+    SupplierInvoiceRegistrationValidationError,
     find_possible_supplier_invoice_duplicates,
     register_supplier_invoice,
 )
@@ -1250,10 +1253,30 @@ def _format_supplier_invoice_hash(view, context, model, name):
     return f"{snapshot_hash[:12]}…"
 
 
+class SupplierInvoiceTaxBreakdownInlineFieldList(InlineModelFormList):
+    widget = RenderTemplateWidget("admin/supplier_invoice_tax_breakdowns_inline.html")
+
+
+class SupplierInvoiceInlineModelConverter(InlineModelConverter):
+    inline_field_list_type = SupplierInvoiceTaxBreakdownInlineFieldList
+
+
+def _supplier_invoice_registration_error_message(error):
+    message = str(error)
+    known_messages = {
+        "Debe existir al menos un desglose de IVA.": message,
+        "El total no coincide con la suma de las bases y cuotas de IVA.": message,
+        "La cuota deducible no puede superar la cuota soportada.": message,
+    }
+    return known_messages.get(message, "No se ha podido registrar la factura recibida. Revisa sus datos fiscales.")
+
+
 class SupplierInvoiceAdminView(SafeModelView):
     can_view_details = True
     column_default_sort = ("created_at", True)
     inline_models = (SupplierInvoiceTaxBreakdown,)
+    inline_model_form_converter = SupplierInvoiceInlineModelConverter
+    extra_js = ["/static/admin/supplier_invoice_tax_breakdowns.js"]
     column_list = [
         "id",
         "reception_number",
@@ -1458,10 +1481,18 @@ class SupplierInvoiceAdminView(SafeModelView):
             self.session.rollback()
             flash("Existe una posible factura duplicada. Marca la confirmación explícita para continuar.", "error")
             return redirect(self.get_url(".confirm_register", supplier_invoice_id=supplier_invoice.id))
-        except SupplierInvoiceRegistrationError:
+        except SupplierInvoiceRegistrationValidationError as error:
             self.session.rollback()
             current_app.logger.warning(
                 "Supplier invoice registration rejected invoice_id=%s",
+                supplier_invoice_id,
+            )
+            flash(_supplier_invoice_registration_error_message(error), "error")
+            return redirect(self.get_url(".details_view", id=supplier_invoice.id))
+        except SupplierInvoiceRegistrationError:
+            self.session.rollback()
+            current_app.logger.warning(
+                "Supplier invoice registration failed invoice_id=%s",
                 supplier_invoice_id,
                 exc_info=True,
             )
