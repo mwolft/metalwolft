@@ -13,6 +13,10 @@ MIGRATION_PATH = (
     ROOT_DIR
     / "src/migrations/versions/b2c3d4e5f6a7_add_invoice_rectification_fields.py"
 )
+AEAT_TYPE_MIGRATION_PATH = (
+    ROOT_DIR
+    / "src/migrations/versions/c1d2e3f4a5b6_add_invoice_rectification_aeat_type.py"
+)
 
 
 def read(path):
@@ -34,6 +38,10 @@ def migration_source():
     return MIGRATION_PATH.read_text(encoding="utf-8")
 
 
+def aeat_type_migration_source():
+    return AEAT_TYPE_MIGRATION_PATH.read_text(encoding="utf-8")
+
+
 class InvoiceRectificationModelSourceTest(unittest.TestCase):
     def test_new_rectification_fields_and_relationship_are_declared(self):
         source = invoices_block()
@@ -43,6 +51,7 @@ class InvoiceRectificationModelSourceTest(unittest.TestCase):
         self.assertIn('"ix_invoices_original_invoice_id"', source)
         self.assertIn("rectification_type = db.Column(db.String(30), nullable=True)", source)
         self.assertIn("rectification_reason = db.Column(db.String(50), nullable=True)", source)
+        self.assertIn("rectification_aeat_type = db.Column(db.String(2), nullable=True)", source)
         self.assertIn("original_invoice = db.relationship(", source)
         self.assertIn("backref=db.backref('corrective_invoices', lazy=True)", source)
         self.assertIn("remote_side=[id]", source)
@@ -55,6 +64,8 @@ class InvoiceRectificationModelSourceTest(unittest.TestCase):
         self.assertIn("ck_invoices_invoice_type_valid", source)
         self.assertIn("ck_invoices_rectification_type_valid", source)
         self.assertIn("ck_invoices_rectification_reason_valid", source)
+        self.assertIn("ck_invoices_rectification_aeat_type_valid", source)
+        self.assertIn("ck_invoices_rectification_aeat_type_corrective_only", source)
         self.assertIn("ck_invoices_original_invoice_not_self", source)
         self.assertIn("invoice_type = 'corrective'", source)
         self.assertIn("invoice_type = 'ordinary'", source)
@@ -62,6 +73,7 @@ class InvoiceRectificationModelSourceTest(unittest.TestCase):
         self.assertIn("rectification_reason IS NULL OR rectification_reason IN (", source)
         self.assertIn("'invoice_error'", source)
         self.assertIn("'shipping_error'", source)
+        self.assertIn("'R1', 'R2', 'R3', 'R4', 'R5'", source)
         self.assertNotIn("ondelete='CASCADE'", source)
         self.assertNotIn("cascade='delete'", source)
         self.assertNotIn("cascade='delete-orphan'", source)
@@ -104,6 +116,16 @@ class InvoiceRectificationMigrationTest(unittest.TestCase):
         self.assertIn("'ix_invoices_original_invoice_id'", source)
         self.assertIn("unique=False", source)
         self.assertIn("op.drop_index('ix_invoices_original_invoice_id'", source)
+
+    def test_aeat_type_migration_is_additive_and_merges_current_heads(self):
+        source = aeat_type_migration_source()
+
+        self.assertIn('revision = "c1d2e3f4a5b6"', source)
+        self.assertIn('down_revision = ("e5f6a7b8c9d0", "f1a2b3c4d5e6")', source)
+        self.assertIn('sa.Column("rectification_aeat_type", sa.String(length=2), nullable=True)', source)
+        self.assertIn("ck_invoices_rectification_aeat_type_valid", source)
+        self.assertIn("ck_invoices_rectification_aeat_type_corrective_only", source)
+        self.assertNotIn("UPDATE invoices", source)
 
 try:
     from flask import Flask  # noqa: E402
@@ -206,6 +228,7 @@ class InvoiceRectificationSQLiteTest(unittest.TestCase):
         self.assertIsNone(saved.original_invoice_id)
         self.assertIsNone(saved.rectification_type)
         self.assertIsNone(saved.rectification_reason)
+        self.assertIsNone(saved.rectification_aeat_type)
         self.assertEqual(len(saved.corrective_invoices), 0)
 
     def test_corrective_invoice_can_reference_original_invoice(self):
@@ -229,6 +252,7 @@ class InvoiceRectificationSQLiteTest(unittest.TestCase):
             original_invoice_id=original.id,
             rectification_type="differences",
             rectification_reason="invoice_error",
+            rectification_aeat_type="R4",
         )
 
         db.session.commit()
@@ -237,6 +261,43 @@ class InvoiceRectificationSQLiteTest(unittest.TestCase):
         self.assertIs(corrective.original_invoice, original)
         self.assertEqual(len(original.corrective_invoices), 1)
         self.assertEqual(original.corrective_invoices[0].invoice_number, "R2026000001")
+
+    def test_legacy_invoices_and_rectifications_can_keep_a_null_aeat_type(self):
+        original = self.make_invoice(invoice_number="F2026000001")
+        db.session.commit()
+
+        self.make_invoice(
+            invoice_number="R2026000001",
+            invoice_type="corrective",
+            amount=-1.69,
+            original_invoice_id=original.id,
+            rectification_type="differences",
+            rectification_reason="invoice_error",
+        )
+
+        db.session.commit()
+
+    def test_invalid_or_non_corrective_aeat_type_is_rejected(self):
+        original = self.make_invoice(invoice_number="F2026000001")
+        db.session.commit()
+
+        self.make_invoice(
+            invoice_number="R2026000001",
+            invoice_type="corrective",
+            amount=-1.69,
+            original_invoice_id=original.id,
+            rectification_type="differences",
+            rectification_reason="invoice_error",
+            rectification_aeat_type="R9",
+        )
+        self.assert_integrity_error()
+
+        self.make_invoice(
+            invoice_number="F2026000002",
+            invoice_type="ordinary",
+            rectification_aeat_type="R4",
+        )
+        self.assert_integrity_error()
 
     def test_corrective_without_original_is_rejected(self):
         self.make_invoice(
