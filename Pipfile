@@ -5,6 +5,7 @@ name = "pypi"
 
 [packages]
 alembic = "==1.13.3"
+boto3 = "==1.35.99"
 bcrypt = "*"
 blinker = "==1.8.2"
 brotli = "*"

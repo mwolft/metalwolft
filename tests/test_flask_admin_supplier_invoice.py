@@ -1,10 +1,14 @@
 import base64
 import importlib.util
+import re
 import sys
 import unittest
 from datetime import date
 from decimal import Decimal
+from io import BytesIO
 from pathlib import Path
+from types import SimpleNamespace
+from unittest.mock import Mock, patch
 
 
 ROOT_DIR = Path(__file__).resolve().parents[1]
@@ -36,6 +40,7 @@ if HAS_ADMIN_DEPS:
     )
     from api.models import (  # noqa: E402
         SupplierInvoice,
+        SupplierInvoiceDocument,
         SupplierInvoiceReceptionSequence,
         SupplierInvoiceTaxBreakdown,
         db,
@@ -115,6 +120,24 @@ class FlaskAdminSupplierInvoiceTest(unittest.TestCase):
             if rule.endpoint.endswith(".edit_view"):
                 return f"{rule.rule}?id={self.invoice_id}"
         raise AssertionError("Supplier invoice edit route was not registered")
+
+    def _upload_rule(self):
+        for rule in self.app.url_map.iter_rules():
+            if rule.endpoint.endswith(".upload_document"):
+                return rule
+        raise AssertionError("Supplier invoice upload route was not registered")
+
+    def _upload_url(self, supplier_invoice_id=None):
+        rule = self._upload_rule().rule
+        if supplier_invoice_id:
+            return f"{rule}?supplier_invoice_id={supplier_invoice_id}"
+        return rule
+
+    def _download_rule(self):
+        for rule in self.app.url_map.iter_rules():
+            if rule.endpoint.endswith(".download_document"):
+                return rule
+        raise AssertionError("Supplier invoice download route was not registered")
 
     def test_confirmation_action_registers_only_an_editable_draft(self):
         response = self.client.get(self._url(), headers=self._auth_header())
@@ -326,6 +349,105 @@ class FlaskAdminSupplierInvoiceTest(unittest.TestCase):
         with self.client.session_transaction() as session:
             flashed_messages = [message for _category, message in session.get("_flashes", [])]
         self.assertIn("Debe existir al menos un desglose de IVA.", flashed_messages)
+
+    def test_document_upload_page_is_authenticated_csrf_protected_and_csp_safe(self):
+        response = self.client.get(self._upload_url(self.invoice_id), headers=self._auth_header())
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(b"SUBIR DOCUMENTO", response.data)
+        self.assertIn(b'enctype="multipart/form-data"', response.data)
+        self.assertIn(b'name="csrf_token"', response.data)
+        self.assertNotIn(b"javascript:", response.data.lower())
+        self.assertNotIn(b"onclick=", response.data.lower())
+
+        invalid_response = self.client.post(
+            self._upload_url(self.invoice_id),
+            data={"document": (BytesIO(b"irrelevant"), "invoice.pdf")},
+            content_type="multipart/form-data",
+            headers=self._auth_header(),
+        )
+        self.assertEqual(invalid_response.status_code, 302)
+        with self.client.session_transaction() as session:
+            messages = [message for _category, message in session.get("_flashes", [])]
+        self.assertIn("La sesión del formulario ha caducado. Vuelve a intentarlo.", messages)
+
+    def test_upload_action_persists_via_service_and_warns_for_duplicate_hash(self):
+        response = self.client.get(self._upload_url(self.invoice_id), headers=self._auth_header())
+        token = re.search(rb'name="csrf_token" value="([^"]+)"', response.data).group(1).decode()
+
+        with self.app.app_context():
+            invoice = db.session.get(SupplierInvoice, self.invoice_id)
+            document = SupplierInvoiceDocument(
+                supplier_invoice=invoice,
+                storage_provider="r2",
+                storage_key="supplier-invoices/2026/08/test.pdf",
+                original_filename="test.pdf",
+                mime_type="application/pdf",
+                file_size=4,
+                sha256="a" * 64,
+                uploaded_by="admin",
+            )
+            db.session.add(document)
+            db.session.commit()
+
+        result = SimpleNamespace(document=document, duplicate_count=1)
+        with patch.object(admin_module, "upload_supplier_invoice_document", return_value=result) as upload:
+            response = self.client.post(
+                self._upload_url(self.invoice_id),
+                data={
+                    "csrf_token": token,
+                    "document": (BytesIO(b"test"), "test.pdf"),
+                },
+                content_type="multipart/form-data",
+                headers=self._auth_header(),
+            )
+        self.assertEqual(response.status_code, 302)
+        upload.assert_called_once()
+        with self.client.session_transaction() as session:
+            messages = [message for _category, message in session.get("_flashes", [])]
+        self.assertIn(
+            "Se ha detectado un documento con el mismo hash. Revisa si es un duplicado antes de registrarlo.",
+            messages,
+        )
+
+    def test_document_download_is_authenticated_and_uses_safe_headers(self):
+        with self.app.app_context():
+            invoice = db.session.get(SupplierInvoice, self.invoice_id)
+            document = SupplierInvoiceDocument(
+                supplier_invoice=invoice,
+                storage_provider="r2",
+                storage_key="supplier-invoices/2026/08/test.pdf",
+                original_filename="test.pdf",
+                mime_type="application/pdf",
+                file_size=4,
+                sha256="b" * 64,
+            )
+            db.session.add(document)
+            db.session.commit()
+            document_id = document.id
+
+        storage = Mock()
+        storage.get_document.return_value = b"test"
+        url = self._download_rule().rule.replace("<int:document_id>", str(document_id))
+        unauthorized_response = self.client.get(url)
+        self.assertEqual(unauthorized_response.status_code, 401)
+        with patch.object(admin_module, "get_supplier_invoice_document_storage", return_value=storage):
+            response = self.client.get(url, headers=self._auth_header())
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data, b"test")
+        self.assertIn("attachment; filename=test.pdf", response.headers["Content-Disposition"])
+        self.assertEqual(response.headers["X-Content-Type-Options"], "nosniff")
+        self.assertEqual(response.headers["Cache-Control"], "no-store")
+
+    def test_registered_invoice_does_not_offer_or_accept_document_upload(self):
+        self.client.post(self._url(), headers=self._auth_header())
+        response = self.client.get(self._upload_url(self.invoice_id), headers=self._auth_header())
+        self.assertEqual(response.status_code, 302)
+        with self.app.app_context():
+            registered = db.session.get(SupplierInvoice, self.invoice_id)
+            view = type("View", (), {"get_url": lambda *_args, **_kwargs: "/documents"})()
+            formatted = str(admin_module._format_supplier_invoice_documents(view, None, registered, None))
+        self.assertNotIn("SUBIR DOCUMENTO", formatted)
 
 
 if __name__ == "__main__":

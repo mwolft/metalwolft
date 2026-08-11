@@ -1,6 +1,10 @@
+import hmac
 import os
+import secrets
 from collections.abc import Mapping
-from flask import request, Response, current_app, send_file, flash, redirect
+from io import BytesIO
+
+from flask import request, Response, current_app, send_file, flash, redirect, session
 from flask_admin import Admin, AdminIndexView, expose
 from flask_admin.actions import action
 from markupsafe import Markup
@@ -14,7 +18,7 @@ from .models import (
     Categories, Subcategories, Cart,
     Orders, OrderDetails, Favorites,
     Posts, Comments, Invoices, VeriFactuRecord, DeliveryEstimateConfig,
-    AccountingEntry, SupplierInvoice, SupplierInvoiceTaxBreakdown,
+    AccountingEntry, SupplierInvoice, SupplierInvoiceDocument, SupplierInvoiceTaxBreakdown,
 )
 from api.accounting_excel_service import (
     AccountingExcelExportError,
@@ -38,6 +42,18 @@ from api.supplier_invoice_registration_service import (
     SupplierInvoiceRegistrationValidationError,
     find_possible_supplier_invoice_duplicates,
     register_supplier_invoice,
+)
+from api.supplier_invoice_document_service import (
+    SupplierInvoiceDocumentError,
+    SupplierInvoiceDocumentImmutabilityError,
+    SupplierInvoiceDocumentPersistenceError,
+    SupplierInvoiceDocumentValidationError,
+    upload_supplier_invoice_document,
+)
+from api.supplier_invoice_document_storage import (
+    SupplierInvoiceDocumentStorageConfigurationError,
+    SupplierInvoiceDocumentStorageOperationError,
+    get_supplier_invoice_document_storage,
 )
 from api.invoice_pdf_download_service import (
     InvoicePdfDownloadFileMissing,
@@ -1253,6 +1269,75 @@ def _format_supplier_invoice_hash(view, context, model, name):
     return f"{snapshot_hash[:12]}…"
 
 
+SUPPLIER_DOCUMENT_UPLOAD_CSRF_SESSION_KEY = "supplier_document_upload_csrf"
+
+
+def _issue_supplier_document_upload_csrf_token():
+    token = session.get(SUPPLIER_DOCUMENT_UPLOAD_CSRF_SESSION_KEY)
+    if not token:
+        token = secrets.token_urlsafe(32)
+        session[SUPPLIER_DOCUMENT_UPLOAD_CSRF_SESSION_KEY] = token
+    return token
+
+
+def _valid_supplier_document_upload_csrf_token(token):
+    expected_token = session.get(SUPPLIER_DOCUMENT_UPLOAD_CSRF_SESSION_KEY)
+    return bool(
+        expected_token
+        and token
+        and hmac.compare_digest(str(expected_token), str(token))
+    )
+
+
+def _format_supplier_invoice_documents(view, context, model, name):
+    documents = list(getattr(model, "documents", []) or [])
+    upload_url = view.get_url(".upload_document", supplier_invoice_id=model.id)
+    if not documents:
+        if model.status == SupplierInvoice.STATUS_REGISTERED:
+            return Markup("<span class='text-muted'>Sin documentos adjuntos</span>")
+        return Markup(
+            '<a class="btn btn-default btn-sm" href="{upload_url}">SUBIR DOCUMENTO</a>'
+        ).format(upload_url=upload_url)
+
+    items = []
+    for document in documents:
+        download_url = view.get_url(".download_document", document_id=document.id)
+        items.append(
+            '<li>{filename} <span class="text-muted">({mime}, {size} bytes, {hash}…)</span> '
+            '<a class="btn btn-default btn-xs" href="{download_url}">DESCARGAR</a></li>'.format(
+                filename=document.original_filename,
+                mime=document.mime_type,
+                size=document.file_size,
+                hash=document.sha256[:12],
+                download_url=download_url,
+            )
+        )
+    upload_action = ""
+    if model.status != SupplierInvoice.STATUS_REGISTERED:
+        upload_action = (
+            '<p><a class="btn btn-default btn-sm" href="{upload_url}">SUBIR DOCUMENTO</a></p>'.format(
+                upload_url=upload_url,
+            )
+        )
+    return Markup("<ul>{items}</ul>{upload_action}").format(
+        items=Markup("".join(items)),
+        upload_action=Markup(upload_action),
+    )
+
+
+def _supplier_document_redirect_url(view, document):
+    if document.supplier_invoice_id:
+        return view.get_url(".details_view", id=document.supplier_invoice_id)
+    return view.get_url(".index_view")
+
+
+def _cleanup_supplier_document_after_commit_failure(storage_key):
+    try:
+        get_supplier_invoice_document_storage(current_app).delete_document(storage_key=storage_key)
+    except Exception:
+        current_app.logger.error("Supplier document cleanup after database failure was unsuccessful")
+
+
 class SupplierInvoiceTaxBreakdownInlineFieldList(InlineModelFormList):
     widget = RenderTemplateWidget("admin/supplier_invoice_tax_breakdowns_inline.html")
 
@@ -1309,6 +1394,7 @@ class SupplierInvoiceAdminView(SafeModelView):
         "special_regime_key",
         "status",
         "source",
+        "documents",
         "tax_breakdowns",
         "snapshot_schema_version",
         "snapshot_hash",
@@ -1347,6 +1433,7 @@ class SupplierInvoiceAdminView(SafeModelView):
         "fiscal_invoice_type": "Tipo fiscal",
         "tax_treatment": "Tratamiento fiscal",
         "special_regime_key": "Régimen especial",
+        "documents": "Documentos",
         "tax_breakdowns": "Desgloses IVA",
         "snapshot_schema_version": "Versión snapshot",
         "snapshot_hash": "Hash snapshot",
@@ -1355,6 +1442,7 @@ class SupplierInvoiceAdminView(SafeModelView):
     column_formatters = {
         "registration_action": _format_supplier_invoice_registration,
         "snapshot_hash": _format_supplier_invoice_hash,
+        "documents": _format_supplier_invoice_documents,
     }
     column_formatters_detail = column_formatters
     form_columns = [
@@ -1431,6 +1519,122 @@ class SupplierInvoiceAdminView(SafeModelView):
             flash("Una factura recibida registrada no puede borrarse.", "error")
             return False
         return super().delete_model(model)
+
+    @expose("/upload-document/", methods=["GET", "POST"])
+    def upload_document(self):
+        supplier_invoice_id = request.values.get("supplier_invoice_id", type=int)
+        supplier_invoice = (
+            self.session.get(SupplierInvoice, supplier_invoice_id)
+            if supplier_invoice_id
+            else None
+        )
+        if supplier_invoice_id and not supplier_invoice:
+            flash("Factura recibida no encontrada.", "error")
+            return redirect(self.get_url(".index_view"))
+        if supplier_invoice and supplier_invoice.status == SupplierInvoice.STATUS_REGISTERED:
+            flash("No se pueden añadir documentos a una factura recibida registrada.", "error")
+            return redirect(self.get_url(".details_view", id=supplier_invoice.id))
+
+        if request.method == "GET":
+            return self.render(
+                "admin/supplier_invoice_document_upload.html",
+                supplier_invoice=supplier_invoice,
+                csrf_token=_issue_supplier_document_upload_csrf_token(),
+                action_url=self.get_url(
+                    ".upload_document",
+                    supplier_invoice_id=supplier_invoice.id if supplier_invoice else None,
+                ),
+                cancel_url=(
+                    self.get_url(".details_view", id=supplier_invoice.id)
+                    if supplier_invoice
+                    else self.get_url(".index_view")
+                ),
+            )
+
+        if not _valid_supplier_document_upload_csrf_token(request.form.get("csrf_token")):
+            flash("La sesión del formulario ha caducado. Vuelve a intentarlo.", "error")
+            return redirect(request.url)
+
+        actor = request.authorization.username if request.authorization else None
+        result = None
+        try:
+            result = upload_supplier_invoice_document(
+                request.files.get("document"),
+                supplier_invoice=supplier_invoice,
+                actor=actor,
+                db_session=self.session,
+            )
+            self.session.commit()
+        except SupplierInvoiceDocumentValidationError as error:
+            self.session.rollback()
+            flash(str(error), "error")
+            return redirect(request.url)
+        except SupplierInvoiceDocumentImmutabilityError as error:
+            self.session.rollback()
+            flash(str(error), "error")
+            return redirect(request.url)
+        except SupplierInvoiceDocumentPersistenceError:
+            self.session.rollback()
+            current_app.logger.warning("Supplier document metadata persistence failed")
+            flash("No se ha podido guardar la referencia del documento.", "error")
+            return redirect(request.url)
+        except SupplierInvoiceDocumentStorageConfigurationError:
+            self.session.rollback()
+            current_app.logger.warning("Supplier document storage configuration is missing")
+            flash("El almacenamiento privado de documentos no está configurado.", "error")
+            return redirect(request.url)
+        except (SupplierInvoiceDocumentStorageOperationError, SupplierInvoiceDocumentError):
+            self.session.rollback()
+            current_app.logger.warning("Supplier document upload failed")
+            flash("No se ha podido subir el documento privado.", "error")
+            return redirect(request.url)
+        except Exception:
+            self.session.rollback()
+            if result:
+                _cleanup_supplier_document_after_commit_failure(result.document.storage_key)
+            current_app.logger.exception("Unexpected supplier document upload failure")
+            flash("No se ha podido subir el documento privado.", "error")
+            return redirect(request.url)
+
+        if result.duplicate_count:
+            flash(
+                "Se ha detectado un documento con el mismo hash. Revisa si es un duplicado antes de registrarlo.",
+                "warning",
+            )
+        else:
+            flash("Documento privado subido correctamente.", "success")
+        if supplier_invoice:
+            return redirect(self.get_url(".details_view", id=supplier_invoice.id))
+        return redirect(self.get_url(".index_view"))
+
+    @expose("/download-document/<int:document_id>", methods=["GET"])
+    def download_document(self, document_id):
+        document = self.session.get(SupplierInvoiceDocument, document_id)
+        if not document:
+            flash("Documento recibido no encontrado.", "error")
+            return redirect(self.get_url(".index_view"))
+        try:
+            storage = get_supplier_invoice_document_storage(current_app)
+            content = storage.get_document(storage_key=document.storage_key)
+        except SupplierInvoiceDocumentStorageConfigurationError:
+            current_app.logger.warning("Supplier document storage configuration is missing")
+            flash("El almacenamiento privado de documentos no está configurado.", "error")
+            return redirect(_supplier_document_redirect_url(self, document))
+        except SupplierInvoiceDocumentStorageOperationError:
+            current_app.logger.warning("Supplier document download failed document_id=%s", document.id)
+            flash("No se ha podido descargar el documento privado.", "error")
+            return redirect(_supplier_document_redirect_url(self, document))
+
+        response = send_file(
+            BytesIO(content),
+            mimetype=document.mime_type,
+            as_attachment=True,
+            download_name=document.original_filename,
+            max_age=0,
+        )
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        response.headers["Cache-Control"] = "no-store"
+        return response
 
     @expose("/confirm-register/<int:supplier_invoice_id>", methods=["GET", "POST"])
     def confirm_register(self, supplier_invoice_id):

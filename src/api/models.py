@@ -1068,6 +1068,11 @@ class SupplierInvoice(db.Model):
         server_default=db.func.now(),
         onupdate=db.func.now(),
     )
+    documents = db.relationship(
+        "SupplierInvoiceDocument",
+        back_populates="supplier_invoice",
+        lazy=True,
+    )
 
     def __repr__(self):
         return f"<SupplierInvoice id={self.id} reception={self.reception_number} status={self.status}>"
@@ -1106,6 +1111,83 @@ class SupplierInvoiceTaxBreakdown(db.Model):
 
     def __repr__(self):
         return f"<SupplierInvoiceTaxBreakdown invoice={self.supplier_invoice_id} position={self.position}>"
+
+
+class SupplierInvoiceDocument(db.Model):
+    """Private source document uploaded for a supplier invoice draft."""
+
+    __tablename__ = "supplier_invoice_documents"
+    __table_args__ = (
+        db.Index(
+            "ix_supplier_invoice_documents_sha256",
+            "sha256",
+            unique=False,
+        ),
+        db.Index(
+            "ix_supplier_invoice_documents_supplier_invoice_id",
+            "supplier_invoice_id",
+            unique=False,
+        ),
+        db.CheckConstraint(
+            "storage_provider IN ('r2')",
+            name="ck_supplier_invoice_documents_storage_provider_valid",
+        ),
+        db.CheckConstraint(
+            "file_size > 0",
+            name="ck_supplier_invoice_documents_file_size_positive",
+        ),
+        db.CheckConstraint(
+            "processing_status IN ('uploaded', 'failed')",
+            name="ck_supplier_invoice_documents_processing_status_valid",
+        ),
+        db.CheckConstraint(
+            "sha256 <> ''",
+            name="ck_supplier_invoice_documents_sha256_present",
+        ),
+        db.CheckConstraint(
+            "storage_key <> ''",
+            name="ck_supplier_invoice_documents_storage_key_present",
+        ),
+    )
+
+    STATUS_UPLOADED = "uploaded"
+    STATUS_FAILED = "failed"
+
+    id = db.Column(db.Integer, primary_key=True)
+    supplier_invoice_id = db.Column(
+        db.Integer,
+        db.ForeignKey("supplier_invoices.id", ondelete="RESTRICT"),
+        nullable=True,
+    )
+    storage_provider = db.Column(db.String(20), nullable=False)
+    storage_key = db.Column(db.String(255), nullable=False, unique=True)
+    original_filename = db.Column(db.String(255), nullable=False)
+    mime_type = db.Column(db.String(100), nullable=False)
+    file_size = db.Column(db.Integer, nullable=False)
+    sha256 = db.Column(db.String(64), nullable=False)
+    uploaded_at = db.Column(db.DateTime, nullable=False, server_default=db.func.now())
+    uploaded_by = db.Column(db.String(255), nullable=True)
+    processing_status = db.Column(
+        db.String(30),
+        nullable=False,
+        default=STATUS_UPLOADED,
+        server_default=STATUS_UPLOADED,
+    )
+    created_at = db.Column(db.DateTime, nullable=False, server_default=db.func.now())
+    updated_at = db.Column(
+        db.DateTime,
+        nullable=False,
+        server_default=db.func.now(),
+        onupdate=db.func.now(),
+    )
+    supplier_invoice = db.relationship(
+        "SupplierInvoice",
+        back_populates="documents",
+        lazy=True,
+    )
+
+    def __repr__(self):
+        return f"<SupplierInvoiceDocument id={self.id} invoice={self.supplier_invoice_id}>"
 
 
 class SupplierInvoiceReceptionSequence(db.Model):

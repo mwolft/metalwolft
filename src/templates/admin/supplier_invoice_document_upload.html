@@ -1,0 +1,25 @@
+{% extends 'admin/master.html' %}
+
+{% block body %}
+  <div class="container-fluid">
+    <h3>Subir documento recibido</h3>
+    {% if supplier_invoice %}
+      <p>
+        El documento se asociará al borrador
+        <strong>{{ supplier_invoice.supplier_invoice_number or 'sin número' }}</strong>.
+      </p>
+    {% else %}
+      <p>El documento quedará pendiente de asociar a una factura recibida.</p>
+    {% endif %}
+    <p class="text-muted">Se admiten PDF, JPEG y PNG de hasta 15 MB.</p>
+    <form method="post" action="{{ action_url }}" enctype="multipart/form-data">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <div class="form-group">
+        <label for="supplier-document">Documento</label>
+        <input id="supplier-document" name="document" type="file" class="form-control" accept="application/pdf,image/jpeg,image/png" required>
+      </div>
+      <button type="submit" class="btn btn-primary">SUBIR DOCUMENTO</button>
+      <a href="{{ cancel_url }}" class="btn btn-default">Cancelar</a>
+    </form>
+  </div>
+{% endblock %}
