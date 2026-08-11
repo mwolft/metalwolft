@@ -5,6 +5,7 @@ from datetime import date, datetime, timezone
 from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 from hashlib import sha256
 import json
+import os
 
 from flask import current_app
 
@@ -19,6 +20,10 @@ from api.supplier_invoice_document_storage import get_supplier_invoice_document_
 from api.supplier_invoice_extraction_provider import (
     FakeSupplierInvoiceExtractionProvider,
     SupplierInvoiceExtractionProviderError,
+)
+from api.supplier_invoice_extraction_textract import (
+    TextractSupplierInvoiceExtractionProvider,
+    TextractSupplierInvoiceExtractionSettings,
 )
 
 
@@ -65,13 +70,22 @@ class SupplierInvoiceExtractionResult:
 
 def get_supplier_invoice_extraction_provider(app):
     provider = str(app.config.get("SUPPLIER_INVOICE_EXTRACTION_PROVIDER") or "fake").strip().lower()
-    if provider != "fake":
+    if provider == "fake":
+        if os.getenv("APP_ENV", "").strip().lower() == "production":
+            raise SupplierInvoiceExtractionEligibilityError(
+                "Configura Amazon Textract antes de extraer documentos en producción."
+            )
+        return FakeSupplierInvoiceExtractionProvider(
+            payload=app.config.get("SUPPLIER_INVOICE_EXTRACTION_FAKE_PAYLOAD"),
+        )
+    if provider == "textract":
+        return TextractSupplierInvoiceExtractionProvider(
+            TextractSupplierInvoiceExtractionSettings.from_app_config(app.config)
+        )
+    else:
         raise SupplierInvoiceExtractionEligibilityError(
             "El proveedor de extracción configurado no está disponible."
         )
-    return FakeSupplierInvoiceExtractionProvider(
-        payload=app.config.get("SUPPLIER_INVOICE_EXTRACTION_FAKE_PAYLOAD"),
-    )
 
 
 def run_supplier_invoice_extraction(
@@ -108,8 +122,8 @@ def run_supplier_invoice_extraction(
             payload["warnings"],
             _find_extraction_duplicate_warnings(document, payload, db_session=session),
         )
-    except SupplierInvoiceExtractionProviderError:
-        return _mark_failed_extraction(extraction, document, "provider_error", timestamp)
+    except SupplierInvoiceExtractionProviderError as error:
+        return _mark_failed_extraction(extraction, document, error.code, timestamp)
     except SupplierInvoiceExtractionPayloadError:
         return _mark_failed_extraction(extraction, document, "invalid_payload", timestamp)
     except Exception:

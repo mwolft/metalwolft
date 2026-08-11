@@ -7,6 +7,10 @@ from copy import deepcopy
 class SupplierInvoiceExtractionProviderError(Exception):
     """Raised when an extraction provider cannot return a proposal."""
 
+    def __init__(self, message="No se ha podido extraer una propuesta.", *, code="provider_error"):
+        super().__init__(message)
+        self.code = code
+
 
 class SupplierInvoiceExtractionProvider(ABC):
     provider_name = "unknown"
@@ -46,11 +50,12 @@ class FakeSupplierInvoiceExtractionProvider(SupplierInvoiceExtractionProvider):
     provider_name = "fake"
     extractor_version = "fake-v1"
 
-    def __init__(self, *, payload=None, error=None):
+    def __init__(self, *, payload=None, error=None, error_code="provider_error"):
         self.payload = payload or build_empty_supplier_invoice_extraction_payload()
         self.error = error
+        self.error_code = error_code
 
     def extract(self, document_bytes, mime_type):
         if self.error:
-            raise SupplierInvoiceExtractionProviderError(str(self.error))
+            raise SupplierInvoiceExtractionProviderError(str(self.error), code=self.error_code)
         return deepcopy(self.payload)

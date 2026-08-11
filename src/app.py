@@ -270,6 +270,18 @@ app.config["R2_ENDPOINT_URL"] = (os.getenv("R2_ENDPOINT_URL") or "").strip()
 app.config["R2_ACCESS_KEY_ID"] = (os.getenv("R2_ACCESS_KEY_ID") or "").strip()
 app.config["R2_SECRET_ACCESS_KEY"] = (os.getenv("R2_SECRET_ACCESS_KEY") or "").strip()
 app.config["SUPPLIER_DOCUMENT_MAX_BYTES"] = 15 * 1024 * 1024
+app.config["SUPPLIER_INVOICE_EXTRACTION_PROVIDER"] = (
+    os.getenv("SUPPLIER_INVOICE_EXTRACTION_PROVIDER") or "fake"
+).strip().lower()
+app.config["AWS_TEXTRACT_REGION"] = (os.getenv("AWS_TEXTRACT_REGION") or "").strip()
+app.config["AWS_TEXTRACT_ACCESS_KEY_ID"] = (os.getenv("AWS_TEXTRACT_ACCESS_KEY_ID") or "").strip()
+app.config["AWS_TEXTRACT_SECRET_ACCESS_KEY"] = (os.getenv("AWS_TEXTRACT_SECRET_ACCESS_KEY") or "").strip()
+app.config["AWS_TEXTRACT_CONNECT_TIMEOUT_SECONDS"] = os.getenv(
+    "AWS_TEXTRACT_CONNECT_TIMEOUT_SECONDS", "5"
+)
+app.config["AWS_TEXTRACT_READ_TIMEOUT_SECONDS"] = os.getenv(
+    "AWS_TEXTRACT_READ_TIMEOUT_SECONDS", "30"
+)
 app.config["INVOICE_FOLDER"] = os.path.join(
     os.path.dirname(os.path.abspath(__file__)),
     "src",

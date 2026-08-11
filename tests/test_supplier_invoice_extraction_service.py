@@ -151,6 +151,18 @@ class SupplierInvoiceExtractionServiceTest(unittest.TestCase):
         self.assertEqual(result.extraction.error_code, "provider_error")
         self.assertEqual(self.document.processing_status, SupplierInvoiceDocument.STATUS_FAILED)
 
+    def test_provider_failure_keeps_a_safe_specific_error_code(self):
+        result = run_supplier_invoice_extraction(
+            self.document,
+            provider=FakeSupplierInvoiceExtractionProvider(
+                error="access denied", error_code="access_denied"
+            ),
+            db_session=db.session,
+            storage=self._storage(),
+        )
+        self.assertFalse(result.succeeded)
+        self.assertEqual(result.extraction.error_code, "access_denied")
+
     def test_float_money_is_rejected_and_tax_mismatch_becomes_a_warning(self):
         invalid = extraction_payload()
         invalid["fields"]["total_amount"]["value"] = 121.0
