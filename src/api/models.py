@@ -573,6 +573,15 @@ class Invoices(db.Model):
             name="ck_invoices_rectification_reason_valid",
         ),
         db.CheckConstraint(
+            "rectification_aeat_type IS NULL OR rectification_aeat_type IN "
+            "('R1', 'R2', 'R3', 'R4', 'R5')",
+            name="ck_invoices_rectification_aeat_type_valid",
+        ),
+        db.CheckConstraint(
+            "rectification_aeat_type IS NULL OR invoice_type = 'corrective'",
+            name="ck_invoices_rectification_aeat_type_corrective_only",
+        ),
+        db.CheckConstraint(
             "original_invoice_id IS NULL OR original_invoice_id != id",
             name="ck_invoices_original_invoice_not_self",
         ),
@@ -585,6 +594,7 @@ class Invoices(db.Model):
     original_invoice_id = db.Column(db.Integer, db.ForeignKey('invoices.id'), nullable=True)
     rectification_type = db.Column(db.String(30), nullable=True)
     rectification_reason = db.Column(db.String(50), nullable=True)
+    rectification_aeat_type = db.Column(db.String(2), nullable=True)
     created_at = db.Column(db.DateTime, default=db.func.current_timestamp())
     pdf_path = db.Column(db.String(255), nullable=True)
     amount = db.Column(db.Float, nullable=False)

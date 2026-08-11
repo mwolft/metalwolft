@@ -245,6 +245,14 @@ Los campos v2 forman parte natural del JSON canónico y, por tanto, del hash de 
 
 El renderer PDF no calcula impuestos ni precios. Para v1 conserva su presentación histórica; para v2 muestra `Precio unitario sin IVA` y `Descuento s/base` a partir de los campos ya congelados.
 
+### Rectificativas v3 y clasificación AEAT
+
+Las rectificativas totales nuevas se construyen como `schema_version: 3` exclusivamente desde el snapshot inmutable v2 de la factura original. Conservan en `operation.rectification` la referencia congelada a la original, el motivo interno y `aeat_type` (`R1` a `R5`).
+
+`aeat_type` es una clasificación fiscal explícita: no se infiere a partir de `rectification_reason`. En el alcance operativo actual solo se emiten `R1` y `R4`; `R2`, `R3` y `R5` permanecen reservados para flujos que todavía no existen. El servicio de emisión persiste el mismo valor en `Invoices.rectification_aeat_type` y en el snapshot antes de calcular su hash.
+
+El campo es aditivo y opcional dentro de v3 para preservar rectificativas v3 históricas ya emitidas: no se reescriben sus JSON ni hashes y se muestran como `Sin clasificación AEAT`. Todas las nuevas rectificativas deben incluirlo.
+
 ### Emisor
 
 Debe incluir:
@@ -846,7 +854,7 @@ No deben resolverse arbitrariamente:
 - Datos fiscales exactos del emisor.
 - Cuándo emitir automáticamente.
 - Fecha de operación frente a fecha de emisión.
-- Facturas rectificativas.
+- Rectificativas parciales y los flujos específicos para R2, R3 y R5.
 - Pedidos con total cero.
 - Facturas manuales sin pedido.
 - Varias expediciones.

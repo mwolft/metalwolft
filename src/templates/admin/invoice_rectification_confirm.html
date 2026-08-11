@@ -21,6 +21,18 @@
           {% endfor %}
         </select>
       </div>
+      <div class="form-group">
+        <label for="rectification_aeat_type">Tipo fiscal AEAT</label>
+        <select id="rectification_aeat_type" name="rectification_aeat_type" class="form-control" required>
+          <option value="" selected disabled>Selecciona un tipo fiscal AEAT</option>
+          {% for value in aeat_type_choices %}
+            <option value="{{ value }}">{{ value }}</option>
+          {% endfor %}
+        </select>
+        <p class="help-block">
+          Esta clasificación se conservará para la futura exportación AEAT y es independiente del motivo interno.
+        </p>
+      </div>
       <button type="submit" class="btn btn-danger">EMITIR RECTIFICATIVA TOTAL</button>
       <a href="{{ cancel_url }}" class="btn btn-default">Cancelar</a>
     </form>

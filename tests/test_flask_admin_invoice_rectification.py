@@ -132,6 +132,12 @@ class FlaskAdminInvoiceRectificationHttpTest(unittest.TestCase):
         self.assertIn(b"EMITIR RECTIFICATIVA TOTAL", response.data)
         self.assertIn(b"rectification_reason", response.data)
         self.assertIn(b"Factura emitida por error", response.data)
+        self.assertIn(b"rectification_aeat_type", response.data)
+        self.assertIn(b"R1", response.data)
+        self.assertIn(b"R4", response.data)
+        self.assertNotIn(b"R2", response.data)
+        self.assertNotIn(b"R3", response.data)
+        self.assertNotIn(b"R5", response.data)
 
         for invoice_id in (self.unissued_id, self.v1_id):
             with self.subTest(invoice_id=invoice_id):
@@ -150,6 +156,21 @@ class FlaskAdminInvoiceRectificationHttpTest(unittest.TestCase):
         issuer.assert_not_called()
         self.assertIn(
             ("error", "Selecciona un motivo v\u00e1lido para la rectificaci\u00f3n."),
+            self._flashes(),
+        )
+
+    def test_aeat_type_is_required_before_the_service_is_called(self):
+        with patch("api.admin.issue_total_rectification_for_invoice") as issuer:
+            response = self.client.post(
+                self._url(self.ordinary_id),
+                headers=self._auth_header(),
+                data={"rectification_reason": "invoice_error"},
+            )
+
+        self.assertEqual(response.status_code, 302)
+        issuer.assert_not_called()
+        self.assertIn(
+            ("error", "Selecciona un tipo fiscal AEAT válido para la rectificación."),
             self._flashes(),
         )
 
@@ -182,6 +203,7 @@ class FlaskAdminInvoiceRectificationHttpTest(unittest.TestCase):
                 headers=self._auth_header(),
                 data={
                     "rectification_reason": "invoice_error",
+                    "rectification_aeat_type": "R4",
                     "rectification_scope": "partial",
                 },
             )
@@ -200,6 +222,7 @@ class FlaskAdminInvoiceRectificationHttpTest(unittest.TestCase):
             original_invoice_id=self.ordinary_id,
             rectification_type="differences",
             rectification_reason="invoice_error",
+            rectification_aeat_type="R4",
             amount=-1.21,
             client_name="Cliente Test",
             client_address="Calle Test 1",
@@ -222,7 +245,7 @@ class FlaskAdminInvoiceRectificationHttpTest(unittest.TestCase):
             response = self.client.post(
                 self._url(self.ordinary_id),
                 headers=self._auth_header(),
-                data={"rectification_reason": "invoice_error"},
+                data={"rectification_reason": "invoice_error", "rectification_aeat_type": "R4"},
             )
 
         self.assertEqual(response.status_code, 302)
@@ -230,6 +253,7 @@ class FlaskAdminInvoiceRectificationHttpTest(unittest.TestCase):
         self.assertEqual(issuer.call_args.kwargs["original_invoice_id"], self.ordinary_id)
         self.assertEqual(issuer.call_args.kwargs["rectification_type"], "differences")
         self.assertEqual(issuer.call_args.kwargs["rectification_reason"], "invoice_error")
+        self.assertEqual(issuer.call_args.kwargs["rectification_aeat_type"], "R4")
         self.assertEqual(issuer.call_args.kwargs["rectification_scope"], "total")
         self.assertNotIn("partial", str(issuer.call_args))
 
@@ -241,6 +265,7 @@ class FlaskAdminInvoiceRectificationHttpTest(unittest.TestCase):
                 original_invoice_id=self.ordinary_id,
                 rectification_type="differences",
                 rectification_reason="invoice_error",
+                rectification_aeat_type="R4",
                 amount=-1.21,
                 client_name="Cliente Test",
                 client_address="Calle Test 1",
@@ -248,7 +273,7 @@ class FlaskAdminInvoiceRectificationHttpTest(unittest.TestCase):
                 order_details=[],
                 invoice_snapshot={
                     "schema_version": 3,
-                    "operation": {"rectification": {"rectification_scope": "total"}},
+                    "operation": {"rectification": {"rectification_scope": "total", "aeat_type": "R4"}},
                 },
                 invoice_snapshot_schema_version=3,
                 invoice_snapshot_hash="rectification-hash",
@@ -262,7 +287,7 @@ class FlaskAdminInvoiceRectificationHttpTest(unittest.TestCase):
             response = self.client.post(
                 self._url(self.ordinary_id),
                 headers=self._auth_header(),
-                data={"rectification_reason": "invoice_error"},
+                data={"rectification_reason": "invoice_error", "rectification_aeat_type": "R4"},
             )
 
         self.assertEqual(response.status_code, 302)
@@ -278,6 +303,7 @@ class FlaskAdminInvoiceRectificationHttpTest(unittest.TestCase):
                 original_invoice_id=self.ordinary_id,
                 rectification_type="differences",
                 rectification_reason="return",
+                rectification_aeat_type="R4",
                 amount=-1.21,
                 client_name="Cliente Test",
                 client_address="Calle Test 1",
@@ -298,7 +324,7 @@ class FlaskAdminInvoiceRectificationHttpTest(unittest.TestCase):
             response = self.client.post(
                 self._url(self.ordinary_id),
                 headers=self._auth_header(),
-                data={"rectification_reason": "invoice_error"},
+                data={"rectification_reason": "invoice_error", "rectification_aeat_type": "R4"},
             )
 
         self.assertEqual(response.status_code, 302)
@@ -317,6 +343,7 @@ class FlaskAdminInvoiceRectificationHttpTest(unittest.TestCase):
                 original_invoice_id=original.id,
                 rectification_type="differences",
                 rectification_reason="invoice_error",
+                rectification_aeat_type="R4",
                 amount=-1.21,
                 client_name="Cliente Test",
                 client_address="Calle Test 1",
@@ -340,6 +367,35 @@ class FlaskAdminInvoiceRectificationHttpTest(unittest.TestCase):
 
         self.assertIn("Ver rectificativa R2026000001", str(original_markup))
         self.assertIn("Ver factura original F2026000001", str(corrective_markup))
+        self.assertIn("Tipo fiscal AEAT: R4", str(corrective_markup))
+
+    def test_legacy_rectification_detail_marks_missing_aeat_classification(self):
+        with self.app.app_context():
+            original = db.session.get(Invoices, self.ordinary_id)
+            corrective = Invoices(
+                invoice_number="R2026000001",
+                invoice_type="corrective",
+                original_invoice_id=original.id,
+                rectification_type="differences",
+                rectification_reason="invoice_error",
+                amount=-1.21,
+                client_name="Cliente Test",
+                client_address="Calle Test 1",
+                client_cif="00000000T",
+                order_details=[],
+                invoice_snapshot={"schema_version": 3},
+                invoice_snapshot_schema_version=3,
+                invoice_snapshot_hash="rectification-hash",
+                issued_at=datetime(2026, 8, 8, 12, 0, 0),
+            )
+            db.session.add(corrective)
+            db.session.commit()
+
+            view = next(view for view in self.admin._views if isinstance(view, admin_module.InvoiceAdminView))
+            with self.app.test_request_context("/admin/invoices/details/"):
+                markup = admin_module._format_admin_invoice_type_detail(view, None, corrective, "invoice_type")
+
+        self.assertIn("Sin clasificación AEAT", str(markup))
 
 
 if __name__ == "__main__":

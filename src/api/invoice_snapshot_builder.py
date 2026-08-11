@@ -13,6 +13,8 @@ NET_UNIT_PRICE_QUANTUM = Decimal("0.000001")
 FINAL_CHECKOUT_STATUSES = {"paid", "order_created"}
 RECTIFICATION_TYPES = {"differences", "substitution"}
 RECTIFICATION_SCOPES = {"total", "partial"}
+RECTIFICATION_AEAT_TYPES = {"R1", "R2", "R3", "R4", "R5"}
+SUPPORTED_TOTAL_RECTIFICATION_AEAT_TYPES = {"R1", "R4"}
 RECTIFICATION_REASON_TEXTS = {
     "invoice_error": "Factura emitida por error",
     "return": "Devolucion",
@@ -110,6 +112,7 @@ def build_rectification_snapshot_from_invoice(
     issue_date,
     rectification_type,
     rectification_reason,
+    aeat_type,
     rectification_scope="total",
     affected_line_numbers=None,
     source="manual",
@@ -132,6 +135,11 @@ def build_rectification_snapshot_from_invoice(
         raise InvoiceSnapshotValidationError(
             "operation.rectification.rectification_reason",
             "Motivo de rectificacion no soportado.",
+        )
+    if aeat_type not in RECTIFICATION_AEAT_TYPES:
+        raise InvoiceSnapshotValidationError(
+            "operation.rectification.aeat_type",
+            "Tipo fiscal AEAT de rectificacion no soportado.",
         )
     if rectification_scope not in RECTIFICATION_SCOPES:
         raise InvoiceSnapshotValidationError(
@@ -221,6 +229,7 @@ def build_rectification_snapshot_from_invoice(
                 "rectification_scope": rectification_scope,
                 "rectification_reason": rectification_reason,
                 "rectification_reason_text": RECTIFICATION_REASON_TEXTS[rectification_reason],
+                "aeat_type": aeat_type,
                 "original_invoice_id": original_invoice_id,
                 "original_invoice_number": original_invoice_number,
                 "original_invoice_issued_at": _timestamp_string(original_invoice_issued_at),

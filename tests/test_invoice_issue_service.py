@@ -122,7 +122,7 @@ def original_invoice(overrides=None):
     return FakeInvoice(**data)
 
 
-def rectification_snapshot():
+def rectification_snapshot(aeat_type="R4"):
     return {
         "schema_version": 3,
         "customer": {
@@ -137,6 +137,7 @@ def rectification_snapshot():
                 "rectification_type": "differences",
                 "rectification_scope": "total",
                 "rectification_reason": "invoice_error",
+                "aeat_type": aeat_type,
                 "original_invoice_id": 789,
                 "original_invoice_number": "F2026000001",
             },
@@ -377,6 +378,7 @@ class InvoiceRectificationIssueServiceTest(unittest.TestCase):
                 original_invoice_id=789,
                 rectification_type="differences",
                 rectification_reason="invoice_error",
+                rectification_aeat_type="R4",
                 issue_date=issued_at,
                 source="admin_manual",
                 actor={"email": "admin@example.com"},
@@ -389,6 +391,7 @@ class InvoiceRectificationIssueServiceTest(unittest.TestCase):
             issue_date=issued_at,
             rectification_type="differences",
             rectification_reason="invoice_error",
+            aeat_type="R4",
             rectification_scope="total",
             source="admin_manual",
             actor={"email": "admin@example.com"},
@@ -406,6 +409,7 @@ class InvoiceRectificationIssueServiceTest(unittest.TestCase):
         self.assertEqual(result.invoice.original_invoice_id, 789)
         self.assertEqual(result.invoice.rectification_type, "differences")
         self.assertEqual(result.invoice.rectification_reason, "invoice_error")
+        self.assertEqual(result.invoice.rectification_aeat_type, "R4")
         self.assertEqual(result.invoice.order_id, 123)
         self.assertEqual(result.invoice.amount, -116.0)
         self.assertIs(result.invoice.invoice_snapshot, snapshot)
@@ -428,6 +432,7 @@ class InvoiceRectificationIssueServiceTest(unittest.TestCase):
             invoice_number="R2026000001",
             rectification_type="differences",
             rectification_reason="invoice_error",
+            rectification_aeat_type="R4",
             invoice_snapshot=rectification_snapshot(),
         )
 
@@ -441,6 +446,7 @@ class InvoiceRectificationIssueServiceTest(unittest.TestCase):
                 original_invoice_id=789,
                 rectification_type="differences",
                 rectification_reason="invoice_error",
+                rectification_aeat_type="R4",
                 issue_date=datetime(2026, 7, 17),
             )
 
@@ -459,6 +465,7 @@ class InvoiceRectificationIssueServiceTest(unittest.TestCase):
             invoice_number="R2026000001",
             rectification_type="differences",
             rectification_reason="invoice_error",
+            rectification_aeat_type="R4",
             invoice_snapshot=rectification_snapshot(),
         )
 
@@ -469,13 +476,39 @@ class InvoiceRectificationIssueServiceTest(unittest.TestCase):
                 issue_total_rectification_for_invoice(
                     db_session=session,
                     original_invoice_id=789,
-                    rectification_type="differences",
-                    rectification_reason="return",
+                rectification_type="differences",
+                rectification_reason="return",
+                rectification_aeat_type="R4",
                     issue_date=datetime(2026, 7, 17),
                 )
 
         self.assertEqual(session.commit_count, 0)
         self.assertEqual(session.rollback_count, 1)
+
+    def test_rejects_a_second_total_rectification_with_different_aeat_type(self):
+        session = FakeDbSession()
+        original = original_invoice()
+        existing = FakeInvoice(
+            invoice_number="R2026000001",
+            rectification_type="differences",
+            rectification_reason="invoice_error",
+            rectification_aeat_type="R4",
+            invoice_snapshot=rectification_snapshot(),
+        )
+
+        with patch("api.invoice_issue_service._lock_invoice_for_update", return_value=original), patch(
+            "api.invoice_issue_service._find_existing_corrective_invoice", return_value=existing
+        ), patch("api.invoice_issue_service.acquire_next_invoice_number") as acquire_number:
+            with self.assertRaisesRegex(InvoiceIssueError, "ya tiene una rectificacion"):
+                issue_total_rectification_for_invoice(
+                    db_session=session,
+                    original_invoice_id=789,
+                    rectification_type="differences",
+                    rectification_reason="invoice_error",
+                    rectification_aeat_type="R1",
+                )
+
+        acquire_number.assert_not_called()
 
     def test_rejects_missing_unissued_or_invalid_original_invoice(self):
         cases = (
@@ -495,6 +528,7 @@ class InvoiceRectificationIssueServiceTest(unittest.TestCase):
                             original_invoice_id=789,
                             rectification_type="differences",
                             rectification_reason="invoice_error",
+                            rectification_aeat_type="R4",
                             issue_date=datetime(2026, 7, 17),
                         )
                 self.assertEqual(session.rollback_count, 1)
@@ -516,6 +550,7 @@ class InvoiceRectificationIssueServiceTest(unittest.TestCase):
                     original_invoice_id=789,
                     rectification_type="differences",
                     rectification_reason="invoice_error",
+                    rectification_aeat_type="R4",
                     rectification_scope="partial",
                     issue_date=datetime(2026, 7, 17),
                 )
@@ -523,6 +558,73 @@ class InvoiceRectificationIssueServiceTest(unittest.TestCase):
         build_snapshot.assert_not_called()
         acquire_number.assert_not_called()
         self.assertEqual(session.rollback_count, 0)
+
+    def test_service_accepts_r1_for_a_new_total_rectification(self):
+        session = FakeDbSession()
+        original = original_invoice()
+        snapshot = rectification_snapshot("R1")
+        allocation = SimpleNamespace(invoice_number="R2026000001")
+
+        with patch("api.invoice_issue_service._lock_invoice_for_update", return_value=original), patch(
+            "api.invoice_issue_service._find_existing_corrective_invoice", return_value=None
+        ), patch("api.invoice_issue_service._invoice_model", return_value=FakeInvoice), patch(
+            "api.invoice_issue_service.build_rectification_snapshot_from_invoice", return_value=snapshot
+        ), patch(
+            "api.invoice_issue_service.acquire_next_invoice_number", return_value=allocation
+        ), patch(
+            "api.invoice_issue_service.calculate_invoice_snapshot_hash", return_value="rectification-hash"
+        ):
+            result = issue_total_rectification_for_invoice(
+                db_session=session,
+                original_invoice_id=789,
+                rectification_type="differences",
+                rectification_reason="invoice_error",
+                rectification_aeat_type="R1",
+            )
+
+        self.assertTrue(result.created)
+        self.assertEqual(result.invoice.rectification_aeat_type, "R1")
+
+    def test_rejects_a_snapshot_with_a_different_aeat_type_before_number_allocation(self):
+        session = FakeDbSession()
+        original = original_invoice()
+
+        with patch("api.invoice_issue_service._lock_invoice_for_update", return_value=original), patch(
+            "api.invoice_issue_service._find_existing_corrective_invoice", return_value=None
+        ), patch(
+            "api.invoice_issue_service.build_rectification_snapshot_from_invoice",
+            return_value=rectification_snapshot("R1"),
+        ), patch("api.invoice_issue_service.acquire_next_invoice_number") as acquire_number:
+            with self.assertRaisesRegex(InvoiceIssueError, "tipo fiscal AEAT solicitado"):
+                issue_total_rectification_for_invoice(
+                    db_session=session,
+                    original_invoice_id=789,
+                    rectification_type="differences",
+                    rectification_reason="invoice_error",
+                    rectification_aeat_type="R4",
+                )
+
+        acquire_number.assert_not_called()
+
+    def test_rejects_unsupported_aeat_types_before_locking_or_number_allocation(self):
+        for aeat_type in ("R2", "R3", "R5"):
+            with self.subTest(aeat_type=aeat_type):
+                session = FakeDbSession()
+                with patch("api.invoice_issue_service._lock_invoice_for_update") as lock_invoice, patch(
+                    "api.invoice_issue_service.acquire_next_invoice_number"
+                ) as acquire_number:
+                    with self.assertRaisesRegex(InvoiceIssueError, "tipo fiscal AEAT"):
+                        issue_total_rectification_for_invoice(
+                            db_session=session,
+                            original_invoice_id=789,
+                            rectification_type="differences",
+                            rectification_reason="invoice_error",
+                            rectification_aeat_type=aeat_type,
+                        )
+
+                lock_invoice.assert_not_called()
+                acquire_number.assert_not_called()
+                self.assertEqual(session.rollback_count, 0)
 
 
 class InvoiceFinalizerSourceRegressionTest(unittest.TestCase):

@@ -17,6 +17,7 @@ from api.invoice_snapshot_builder import (  # noqa: E402
     build_invoice_snapshot,
     build_rectification_snapshot_from_invoice,
 )
+from api.invoice_snapshot_integrity import calculate_invoice_snapshot_hash  # noqa: E402
 
 
 def issuer(overrides=None):
@@ -726,6 +727,7 @@ class InvoiceRectificationSnapshotBuilderTest(unittest.TestCase):
                 issue_date=overrides.get("issue_date", datetime(2026, 7, 17, 9, 0)),
                 rectification_type=overrides.get("rectification_type", "differences"),
                 rectification_reason=overrides.get("rectification_reason", "invoice_error"),
+                aeat_type=overrides.get("aeat_type", "R4"),
                 rectification_scope=overrides.get("rectification_scope", "total"),
                 affected_line_numbers=overrides.get("affected_line_numbers"),
                 source=overrides.get("source", "manual"),
@@ -739,6 +741,7 @@ class InvoiceRectificationSnapshotBuilderTest(unittest.TestCase):
             issue_date=overrides.get("issue_date", datetime(2026, 7, 17, 9, 0)),
             rectification_type=overrides.get("rectification_type", "differences"),
             rectification_reason=overrides.get("rectification_reason", "invoice_error"),
+            aeat_type=overrides.get("aeat_type", "R4"),
             rectification_scope=overrides.get("rectification_scope", "total"),
             affected_line_numbers=overrides.get("affected_line_numbers"),
             source=overrides.get("source", "manual"),
@@ -754,6 +757,7 @@ class InvoiceRectificationSnapshotBuilderTest(unittest.TestCase):
             issue_date=datetime(2026, 7, 17, 9, 0),
             rectification_type="differences",
             rectification_reason="invoice_error",
+            aeat_type="R4",
             rectification_scope="total",
             source="manual",
         )
@@ -762,6 +766,7 @@ class InvoiceRectificationSnapshotBuilderTest(unittest.TestCase):
             issue_date=datetime(2026, 7, 17, 9, 0),
             rectification_type="differences",
             rectification_reason="invoice_error",
+            aeat_type="R4",
             rectification_scope="total",
             source="manual",
         )
@@ -774,6 +779,7 @@ class InvoiceRectificationSnapshotBuilderTest(unittest.TestCase):
         self.assertEqual(first["operation"]["rectification"]["rectification_type"], "differences")
         self.assertEqual(first["operation"]["rectification"]["rectification_scope"], "total")
         self.assertEqual(first["operation"]["rectification"]["rectification_reason"], "invoice_error")
+        self.assertEqual(first["operation"]["rectification"]["aeat_type"], "R4")
         self.assertEqual(first["operation"]["rectification"]["rectification_reason_text"], "Factura emitida por error")
         self.assertEqual(first["operation"]["rectification"]["original_invoice_id"], 2001)
         self.assertEqual(first["operation"]["rectification"]["original_invoice_number"], "F2026000001")
@@ -896,6 +902,27 @@ class InvoiceRectificationSnapshotBuilderTest(unittest.TestCase):
             rectification_type=None,
         )
 
+    def test_rejects_missing_aeat_type(self):
+        self.assert_rectification_validation_error(
+            "operation.rectification.aeat_type",
+            aeat_type=None,
+        )
+
+    def test_builder_accepts_each_supported_aeat_type(self):
+        for aeat_type in ("R1", "R2", "R3", "R4", "R5"):
+            with self.subTest(aeat_type=aeat_type):
+                snapshot = self.build_rectification(aeat_type=aeat_type)
+                self.assertEqual(snapshot["operation"]["rectification"]["aeat_type"], aeat_type)
+
+    def test_aeat_type_is_part_of_the_rectification_snapshot_hash(self):
+        r1_snapshot = self.build_rectification(aeat_type="R1")
+        r4_snapshot = self.build_rectification(aeat_type="R4")
+
+        self.assertNotEqual(
+            calculate_invoice_snapshot_hash(r1_snapshot),
+            calculate_invoice_snapshot_hash(r4_snapshot),
+        )
+
     def test_rejects_invalid_rectification_values(self):
         self.assert_rectification_validation_error(
             "operation.rectification.rectification_type",
@@ -904,6 +931,10 @@ class InvoiceRectificationSnapshotBuilderTest(unittest.TestCase):
         self.assert_rectification_validation_error(
             "operation.rectification.rectification_reason",
             rectification_reason="invalid",
+        )
+        self.assert_rectification_validation_error(
+            "operation.rectification.aeat_type",
+            aeat_type="R9",
         )
 
     def test_rejects_invalid_affected_line_numbers(self):

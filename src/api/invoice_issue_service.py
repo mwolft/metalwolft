@@ -6,6 +6,7 @@ from typing import Mapping
 
 from api.invoice_number_service import InvoiceNumberError, acquire_next_invoice_number
 from api.invoice_snapshot_builder import (
+    SUPPORTED_TOTAL_RECTIFICATION_AEAT_TYPES,
     build_invoice_snapshot,
     build_rectification_snapshot_from_invoice,
 )
@@ -117,6 +118,7 @@ def issue_total_rectification_for_invoice(
     original_invoice_id,
     rectification_type,
     rectification_reason,
+    rectification_aeat_type,
     issue_date=None,
     source=DEFAULT_ISSUANCE_SOURCE,
     actor=None,
@@ -132,6 +134,8 @@ def issue_total_rectification_for_invoice(
         raise InvoiceIssueError("El identificador de la factura original es obligatorio.")
     if rectification_scope != "total":
         raise InvoiceIssueError("La rectificacion parcial todavia no esta soportada.")
+    if rectification_aeat_type not in SUPPORTED_TOTAL_RECTIFICATION_AEAT_TYPES:
+        raise InvoiceIssueError("El tipo fiscal AEAT seleccionado no esta soportado para esta rectificacion.")
 
     issued_at = issue_date or datetime.now(timezone.utc)
     locked_original = None
@@ -149,6 +153,7 @@ def issue_total_rectification_for_invoice(
                 existing_rectification,
                 rectification_type=rectification_type,
                 rectification_reason=rectification_reason,
+                rectification_aeat_type=rectification_aeat_type,
                 rectification_scope=rectification_scope,
             )
             db_session.commit()
@@ -163,10 +168,12 @@ def issue_total_rectification_for_invoice(
             issue_date=issued_at,
             rectification_type=rectification_type,
             rectification_reason=rectification_reason,
+            aeat_type=rectification_aeat_type,
             rectification_scope=rectification_scope,
             source=source,
             actor=actor,
         )
+        _ensure_rectification_snapshot_aeat_type(snapshot, rectification_aeat_type)
         allocation = acquire_next_invoice_number(
             db_session,
             series=DEFAULT_RECTIFICATION_SERIES,
@@ -184,6 +191,7 @@ def issue_total_rectification_for_invoice(
             actor=actor,
             rectification_type=rectification_type,
             rectification_reason=rectification_reason,
+            rectification_aeat_type=rectification_aeat_type,
         )
         db_session.add(invoice)
         db_session.flush()
@@ -295,6 +303,7 @@ def _build_corrective_invoice_record(
     actor,
     rectification_type,
     rectification_reason,
+    rectification_aeat_type,
 ):
     Invoices = _invoice_model()
     customer = snapshot["customer"]
@@ -306,6 +315,7 @@ def _build_corrective_invoice_record(
         original_invoice_id=original_invoice.id,
         rectification_type=rectification_type,
         rectification_reason=rectification_reason,
+        rectification_aeat_type=rectification_aeat_type,
         pdf_path=None,
         amount=_snapshot_total_amount(snapshot),
         client_name=customer["legal_name"],
@@ -339,6 +349,7 @@ def _ensure_matching_total_rectification(
     *,
     rectification_type,
     rectification_reason,
+    rectification_aeat_type,
     rectification_scope,
 ):
     snapshot = getattr(invoice, "invoice_snapshot", None)
@@ -349,9 +360,18 @@ def _ensure_matching_total_rectification(
         and rectification.get("rectification_scope") == rectification_scope
         and getattr(invoice, "rectification_type", None) == rectification_type
         and getattr(invoice, "rectification_reason", None) == rectification_reason
+        and getattr(invoice, "rectification_aeat_type", None) == rectification_aeat_type
+        and rectification.get("aeat_type") == rectification_aeat_type
     ):
         return
     raise InvoiceIssueError("La factura original ya tiene una rectificacion emitida.")
+
+
+def _ensure_rectification_snapshot_aeat_type(snapshot, rectification_aeat_type):
+    operation = snapshot.get("operation") if isinstance(snapshot, Mapping) else None
+    rectification = operation.get("rectification") if isinstance(operation, Mapping) else None
+    if not isinstance(rectification, Mapping) or rectification.get("aeat_type") != rectification_aeat_type:
+        raise InvoiceIssueError("El snapshot rectificativo no contiene el tipo fiscal AEAT solicitado.")
 
 
 def _snapshot_total_amount(snapshot):

@@ -74,6 +74,7 @@ from api.invoice_issue_service import (
     issue_total_rectification_for_invoice,
 )
 from api.invoice_snapshot_builder import (
+    SUPPORTED_TOTAL_RECTIFICATION_AEAT_TYPES,
     RECTIFICATION_REASON_TEXTS,
     InvoiceSnapshotValidationError,
 )
@@ -1159,15 +1160,17 @@ def _invoice_supports_total_rectification(invoice):
     )
 
 
-def _is_matching_admin_total_rectification(invoice, reason):
+def _is_matching_admin_total_rectification(invoice, reason, aeat_type):
     snapshot = getattr(invoice, "invoice_snapshot", None)
     operation = snapshot.get("operation") if isinstance(snapshot, Mapping) else None
     rectification = operation.get("rectification") if isinstance(operation, Mapping) else None
     return (
         getattr(invoice, "rectification_type", None) == 'differences'
         and getattr(invoice, "rectification_reason", None) == reason
+        and getattr(invoice, "rectification_aeat_type", None) == aeat_type
         and isinstance(rectification, Mapping)
         and rectification.get("rectification_scope") == 'total'
+        and rectification.get("aeat_type") == aeat_type
     )
 
 
@@ -1175,16 +1178,19 @@ def _format_admin_invoice_type_detail(view, context, model, name):
     invoice_type = _format_admin_invoice_value(view, context, model, name)
     if getattr(model, "invoice_type", None) == CORRECTIVE_INVOICE_TYPE:
         original = getattr(model, "original_invoice", None)
+        aeat_type = getattr(model, "rectification_aeat_type", None) or "Sin clasificación AEAT"
         if original and getattr(original, "id", None):
             original_url = view.get_url(".details_view", id=original.id)
             return Markup(
                 '<div>{invoice_type}</div><div style="margin-top: 8px;">'
                 '<a href="{original_url}">Ver factura original {original_number}</a>'
+                '<div style="margin-top: 4px;">Tipo fiscal AEAT: {aeat_type}</div>'
                 '</div>'
             ).format(
                 invoice_type=invoice_type,
                 original_url=original_url,
                 original_number=_format_admin_invoice_nullable(original.invoice_number),
+                aeat_type=aeat_type,
             )
         return invoice_type
 
@@ -1285,6 +1291,7 @@ class InvoiceAdminView(SafeModelView):
         'id': 'ID',
         'invoice_number': 'N.º factura',
         'invoice_type': 'Tipo',
+        'rectification_aeat_type': 'Tipo fiscal AEAT',
         'order_id': 'Pedido',
         'client_name': 'Cliente',
         'client_cif': 'NIF/CIF',
@@ -1306,6 +1313,7 @@ class InvoiceAdminView(SafeModelView):
         'created_at': _format_admin_invoice_datetime,
         'issued_at': _format_admin_invoice_datetime,
         'invoice_type': _format_admin_invoice_value,
+        'rectification_aeat_type': _format_admin_invoice_value,
         'pdf_path': _format_admin_invoice_pdf_available,
         'accounting_entries': _format_admin_invoice_accounting_status,
         'email_status': _format_admin_invoice_value,
@@ -1372,6 +1380,7 @@ class InvoiceAdminView(SafeModelView):
                 'admin/invoice_rectification_confirm.html',
                 invoice=invoice,
                 reason_choices=sorted(RECTIFICATION_REASON_TEXTS.items()),
+                aeat_type_choices=sorted(SUPPORTED_TOTAL_RECTIFICATION_AEAT_TYPES),
                 action_url=self.get_url(".issue_total_rectification", invoice_id=invoice.id),
                 cancel_url=self.get_url(".details_view", id=invoice.id),
             )
@@ -1385,8 +1394,13 @@ class InvoiceAdminView(SafeModelView):
             flash('Selecciona un motivo v\u00e1lido para la rectificaci\u00f3n.', 'error')
             return redirect(self.get_url(".issue_total_rectification", invoice_id=invoice.id))
 
+        aeat_type = (request.form.get('rectification_aeat_type') or '').strip()
+        if aeat_type not in SUPPORTED_TOTAL_RECTIFICATION_AEAT_TYPES:
+            flash('Selecciona un tipo fiscal AEAT válido para la rectificación.', 'error')
+            return redirect(self.get_url(".issue_total_rectification", invoice_id=invoice.id))
+
         if existing is not None:
-            if _is_matching_admin_total_rectification(existing, reason):
+            if _is_matching_admin_total_rectification(existing, reason, aeat_type):
                 flash(f'La factura ya tiene la rectificativa {existing.invoice_number}.', 'info')
                 return redirect(self.get_url(".details_view", id=existing.id))
             flash('La factura ya tiene una rectificativa incompatible.', 'error')
@@ -1398,6 +1412,7 @@ class InvoiceAdminView(SafeModelView):
                 original_invoice_id=invoice.id,
                 rectification_type='differences',
                 rectification_reason=reason,
+                rectification_aeat_type=aeat_type,
                 rectification_scope='total',
                 source='manual',
                 actor=invoice_admin_actor_from_basic_auth(request.authorization),
