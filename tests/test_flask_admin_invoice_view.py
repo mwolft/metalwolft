@@ -422,6 +422,7 @@ class FlaskAdminInvoiceViewTest(unittest.TestCase):
         self.assertIn("export_aeat_sales_ledger(entries, output_path=output_path, overwrite=True)", route_source)
         self.assertIn("send_file(", route_source)
         self.assertIn("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", route_source)
+        self.assertIn("No se puede generar el libro AEAT:", route_source)
 
         for forbidden in (
             "Invoices.query",

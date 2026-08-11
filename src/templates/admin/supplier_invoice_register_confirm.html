@@ -1,0 +1,31 @@
+{% extends 'admin/master.html' %}
+
+{% block body %}
+  <div class="container-fluid">
+    <h3>Confirmar y registrar factura recibida</h3>
+    <p>
+      Vas a registrar la factura <strong>{{ supplier_invoice.supplier_invoice_number or 'sin número' }}</strong>
+      del proveedor <strong>{{ supplier_invoice.supplier_legal_name or 'sin proveedor' }}</strong>.
+    </p>
+    <p class="text-warning">
+      El registro asignará un número interno de recepción y congelará los datos fiscales actuales.
+      Esta acción no se puede editar desde administración.
+    </p>
+    <form method="post" action="{{ action_url }}">
+      {% if duplicate_count %}
+        <div class="alert alert-warning">
+          Se ha detectado {{ duplicate_count }} posible coincidencia por proveedor y número de factura.
+          Revisa el documento antes de continuar.
+        </div>
+        <div class="checkbox">
+          <label>
+            <input type="checkbox" name="allow_duplicate" value="1">
+            Confirmo que debo registrar esta posible factura duplicada.
+          </label>
+        </div>
+      {% endif %}
+      <button type="submit" class="btn btn-primary">CONFIRMAR Y REGISTRAR</button>
+      <a href="{{ cancel_url }}" class="btn btn-default">Cancelar</a>
+    </form>
+  </div>
+{% endblock %}

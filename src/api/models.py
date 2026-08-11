@@ -979,6 +979,154 @@ class AccountingEntry(db.Model):
         )
 
 
+class SupplierInvoice(db.Model):
+    """A supplier document registered independently from sales invoices."""
+
+    __tablename__ = "supplier_invoices"
+    __table_args__ = (
+        db.Index(
+            "ix_supplier_invoices_supplier_tax_id_invoice_number",
+            "supplier_tax_id",
+            "supplier_invoice_number",
+            unique=False,
+        ),
+        db.CheckConstraint(
+            "status IN ('draft', 'needs_review', 'registered', 'cancelled')",
+            name="ck_supplier_invoices_status_valid",
+        ),
+        db.CheckConstraint(
+            "currency = 'EUR'",
+            name="ck_supplier_invoices_currency_eur",
+        ),
+        db.CheckConstraint(
+            "supplier_country_code = 'ES'",
+            name="ck_supplier_invoices_country_es",
+        ),
+        db.CheckConstraint(
+            "supplier_tax_id_type = 'NIF'",
+            name="ck_supplier_invoices_tax_id_type_nif",
+        ),
+        db.CheckConstraint(
+            "fiscal_invoice_type = 'F1'",
+            name="ck_supplier_invoices_fiscal_type_f1",
+        ),
+        db.CheckConstraint(
+            "tax_treatment = 'domestic_standard'",
+            name="ck_supplier_invoices_tax_treatment_domestic_standard",
+        ),
+        db.CheckConstraint(
+            "reception_number IS NULL OR reception_number >= 1",
+            name="ck_supplier_invoices_reception_number_positive",
+        ),
+        db.CheckConstraint(
+            "status != 'registered' OR ("
+            "reception_number IS NOT NULL AND registered_at IS NOT NULL AND "
+            "fiscal_snapshot IS NOT NULL AND snapshot_schema_version = 1 AND "
+            "snapshot_hash IS NOT NULL"
+            ")",
+            name="ck_supplier_invoices_registered_snapshot_complete",
+        ),
+    )
+
+    STATUS_DRAFT = "draft"
+    STATUS_NEEDS_REVIEW = "needs_review"
+    STATUS_REGISTERED = "registered"
+    STATUS_CANCELLED = "cancelled"
+
+    id = db.Column(db.Integer, primary_key=True)
+    supplier_legal_name = db.Column(db.String(255), nullable=True)
+    supplier_tax_id = db.Column(db.String(50), nullable=True)
+    supplier_country_code = db.Column(db.String(2), nullable=False, default="ES", server_default="ES")
+    supplier_tax_id_type = db.Column(db.String(20), nullable=False, default="NIF", server_default="NIF")
+    supplier_invoice_number = db.Column(db.String(100), nullable=True)
+    reception_number = db.Column(db.Integer, nullable=True, unique=True)
+    issue_date = db.Column(db.Date, nullable=True)
+    operation_date = db.Column(db.Date, nullable=True)
+    received_at = db.Column(db.DateTime, nullable=False, server_default=db.func.now())
+    registered_at = db.Column(db.DateTime, nullable=True)
+    registered_by = db.Column(db.String(255), nullable=True)
+    concept = db.Column(db.Text, nullable=True)
+    currency = db.Column(db.String(3), nullable=False, default="EUR", server_default="EUR")
+    total_amount = db.Column(db.Numeric(12, 2), nullable=True)
+    fiscal_invoice_type = db.Column(db.String(10), nullable=False, default="F1", server_default="F1")
+    tax_treatment = db.Column(
+        db.String(40),
+        nullable=False,
+        default="domestic_standard",
+        server_default="domestic_standard",
+    )
+    special_regime_key = db.Column(db.String(20), nullable=True)
+    status = db.Column(db.String(30), nullable=False, default=STATUS_DRAFT, server_default=STATUS_DRAFT)
+    source = db.Column(db.String(30), nullable=False, default="manual", server_default="manual")
+    fiscal_snapshot = db.Column(db.JSON, nullable=True)
+    snapshot_schema_version = db.Column(db.Integer, nullable=True)
+    snapshot_hash = db.Column(db.String(64), nullable=True)
+    created_at = db.Column(db.DateTime, nullable=False, server_default=db.func.now())
+    updated_at = db.Column(
+        db.DateTime,
+        nullable=False,
+        server_default=db.func.now(),
+        onupdate=db.func.now(),
+    )
+
+    def __repr__(self):
+        return f"<SupplierInvoice id={self.id} reception={self.reception_number} status={self.status}>"
+
+
+class SupplierInvoiceTaxBreakdown(db.Model):
+    __tablename__ = "supplier_invoice_tax_breakdowns"
+    __table_args__ = (
+        db.UniqueConstraint(
+            "supplier_invoice_id",
+            "position",
+            name="uq_supplier_invoice_tax_breakdowns_position",
+        ),
+        db.CheckConstraint("position >= 1", name="ck_supplier_invoice_tax_breakdowns_position_positive"),
+        db.CheckConstraint("tax_base >= 0", name="ck_supplier_invoice_tax_breakdowns_tax_base_nonnegative"),
+        db.CheckConstraint("tax_rate >= 0", name="ck_supplier_invoice_tax_breakdowns_tax_rate_nonnegative"),
+        db.CheckConstraint("tax_amount >= 0", name="ck_supplier_invoice_tax_breakdowns_tax_amount_nonnegative"),
+        db.CheckConstraint(
+            "deductible_tax_amount >= 0 AND deductible_tax_amount <= tax_amount",
+            name="ck_supplier_invoice_tax_breakdowns_deductible_valid",
+        ),
+    )
+
+    id = db.Column(db.Integer, primary_key=True)
+    supplier_invoice_id = db.Column(db.Integer, db.ForeignKey("supplier_invoices.id"), nullable=False)
+    position = db.Column(db.Integer, nullable=False)
+    tax_base = db.Column(db.Numeric(12, 2), nullable=False)
+    tax_rate = db.Column(db.Numeric(5, 2), nullable=False)
+    tax_amount = db.Column(db.Numeric(12, 2), nullable=False)
+    deductible_tax_amount = db.Column(db.Numeric(12, 2), nullable=False)
+    supplier_invoice = db.relationship(
+        "SupplierInvoice",
+        backref=db.backref("tax_breakdowns", lazy=True),
+        lazy=True,
+    )
+
+    def __repr__(self):
+        return f"<SupplierInvoiceTaxBreakdown invoice={self.supplier_invoice_id} position={self.position}>"
+
+
+class SupplierInvoiceReceptionSequence(db.Model):
+    """Singleton row locked while assigning internal receipt numbers."""
+
+    __tablename__ = "supplier_invoice_reception_sequences"
+    __table_args__ = (
+        db.CheckConstraint("last_number >= 0", name="ck_supplier_invoice_reception_sequences_last_number_nonnegative"),
+    )
+
+    id = db.Column(db.Integer, primary_key=True)
+    last_number = db.Column(db.Integer, nullable=False, default=0, server_default="0")
+    created_at = db.Column(db.DateTime, nullable=False, server_default=db.func.now())
+    updated_at = db.Column(
+        db.DateTime,
+        nullable=False,
+        server_default=db.func.now(),
+        onupdate=db.func.now(),
+    )
+
+
 class InvoiceSequence(db.Model):
     __tablename__ = "invoice_sequences"
     __table_args__ = (
