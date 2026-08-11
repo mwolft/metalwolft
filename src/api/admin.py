@@ -5,6 +5,7 @@ from flask_admin import Admin, AdminIndexView, expose
 from flask_admin.actions import action
 from markupsafe import Markup
 from flask_admin.contrib.sqla import ModelView
+from wtforms import validators
 from wtforms.fields import SelectField, StringField, DateField, TextAreaField
 from .models import (
     db, Users, Products, ProductImages,
@@ -1359,19 +1360,23 @@ class SupplierInvoiceAdminView(SafeModelView):
         "snapshot_schema_version",
         "snapshot_hash",
     ]
-    form_overrides = {"status": SelectField}
+    form_overrides = {
+        "issue_date": DateField,
+        "operation_date": DateField,
+        "status": SelectField,
+    }
     form_args = {
         "issue_date": {
             "format": "%Y-%m-%d",
+            "validators": [validators.InputRequired()],
             "render_kw": {
-                "data-date-format": "yyyy-mm-dd",
                 "placeholder": "YYYY-MM-DD",
             },
         },
         "operation_date": {
             "format": "%Y-%m-%d",
+            "validators": [validators.Optional()],
             "render_kw": {
-                "data-date-format": "yyyy-mm-dd",
                 "placeholder": "YYYY-MM-DD",
             },
         },

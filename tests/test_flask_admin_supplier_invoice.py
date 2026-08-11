@@ -143,7 +143,7 @@ class FlaskAdminSupplierInvoiceTest(unittest.TestCase):
             after = admin_module._format_supplier_invoice_registration(view, None, registered, None)
             self.assertNotIn("CONFIRMAR Y REGISTRAR", str(after))
 
-    def test_date_fields_use_four_digit_year_widget_and_parse_iso_dates(self):
+    def test_date_fields_render_as_native_iso_date_inputs_and_parse_dates(self):
         with self.app.app_context():
             invoice = db.session.get(SupplierInvoice, self.invoice_id)
             with self.app.test_request_context(
@@ -155,28 +155,69 @@ class FlaskAdminSupplierInvoiceTest(unittest.TestCase):
 
                 self.assertIn("%Y-%m-%d", form.issue_date.format)
                 self.assertIn("%Y-%m-%d", form.operation_date.format)
-                self.assertIn('data-date-format="yyyy-mm-dd"', str(form.issue_date()))
-                self.assertIn('data-date-format="yyyy-mm-dd"', str(form.operation_date()))
+                issue_html = str(form.issue_date())
+                operation_html = str(form.operation_date())
+                self.assertIn('type="date"', issue_html)
+                self.assertIn('type="date"', operation_html)
+                self.assertNotIn("data-role=\"datepicker\"", issue_html)
+                self.assertNotIn("data-role=\"datepicker\"", operation_html)
+                self.assertNotIn("data-date-format", issue_html)
+                self.assertNotIn("data-date-format", operation_html)
+                for literal_token in ("yyyy", "Tu", "Su"):
+                    self.assertNotIn(literal_token, issue_html)
+                    self.assertNotIn(literal_token, operation_html)
 
                 self.assertEqual(form.issue_date.data, date(2026, 7, 25))
                 self.assertEqual(form.operation_date.data, date(2026, 12, 31))
 
-    def test_editing_draft_preserves_issue_date_and_allows_empty_operation_date(self):
+    def test_create_then_edit_draft_preserves_issue_date_and_allows_empty_operation_date(self):
         with self.app.app_context():
-            invoice = db.session.get(SupplierInvoice, self.invoice_id)
             with self.app.test_request_context(
-                "/admin/supplierinvoice/edit/",
+                "/admin/supplierinvoice/new/",
                 method="POST",
-                data={"issue_date": "2026-07-25", "operation_date": ""},
+                data={
+                    "supplier_legal_name": "Proveedor de prueba SL",
+                    "supplier_tax_id": "B87654321",
+                    "supplier_invoice_number": "P-2026-002",
+                    "issue_date": "2026-07-25",
+                    "operation_date": "",
+                    "concept": "Material auxiliar",
+                    "total_amount": "0.00",
+                    "currency": "EUR",
+                    "fiscal_invoice_type": "F1",
+                    "tax_treatment": "domestic_standard",
+                    "status": "draft",
+                    "source": "manual",
+                },
             ):
-                form = self.view.edit_form(invoice)
+                form = self.view.create_form()
                 self.assertTrue(form.validate())
+                invoice = SupplierInvoice()
                 form.populate_obj(invoice)
+            db.session.add(invoice)
             db.session.commit()
 
-            updated = db.session.get(SupplierInvoice, self.invoice_id)
+            updated = db.session.get(SupplierInvoice, invoice.id)
             self.assertEqual(updated.issue_date, date(2026, 7, 25))
             self.assertIsNone(updated.operation_date)
+
+            with self.app.test_request_context("/admin/supplierinvoice/edit/"):
+                edit_form = self.view.edit_form(updated)
+                self.assertEqual(edit_form.issue_date.data, date(2026, 7, 25))
+                self.assertIsNone(edit_form.operation_date.data)
+                self.assertIn('value="2026-07-25"', str(edit_form.issue_date()))
+
+    def test_issue_date_is_required_while_operation_date_remains_optional(self):
+        with self.app.app_context():
+            with self.app.test_request_context(
+                "/admin/supplierinvoice/new/",
+                method="POST",
+                data={"issue_date": "", "operation_date": ""},
+            ):
+                form = self.view.create_form()
+                self.assertFalse(form.validate())
+                self.assertTrue(form.issue_date.errors)
+                self.assertFalse(form.operation_date.errors)
 
 
 if __name__ == "__main__":
