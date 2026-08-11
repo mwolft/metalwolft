@@ -1137,7 +1137,7 @@ class SupplierInvoiceDocument(db.Model):
             name="ck_supplier_invoice_documents_file_size_positive",
         ),
         db.CheckConstraint(
-            "processing_status IN ('uploaded', 'failed')",
+            "processing_status IN ('uploaded', 'extracting', 'extracted', 'needs_review', 'failed', 'applied')",
             name="ck_supplier_invoice_documents_processing_status_valid",
         ),
         db.CheckConstraint(
@@ -1151,7 +1151,11 @@ class SupplierInvoiceDocument(db.Model):
     )
 
     STATUS_UPLOADED = "uploaded"
+    STATUS_EXTRACTING = "extracting"
+    STATUS_EXTRACTED = "extracted"
+    STATUS_NEEDS_REVIEW = "needs_review"
     STATUS_FAILED = "failed"
+    STATUS_APPLIED = "applied"
 
     id = db.Column(db.Integer, primary_key=True)
     supplier_invoice_id = db.Column(
@@ -1185,9 +1189,75 @@ class SupplierInvoiceDocument(db.Model):
         back_populates="documents",
         lazy=True,
     )
+    extractions = db.relationship(
+        "SupplierInvoiceExtraction",
+        back_populates="supplier_invoice_document",
+        lazy=True,
+    )
 
     def __repr__(self):
         return f"<SupplierInvoiceDocument id={self.id} invoice={self.supplier_invoice_id}>"
+
+
+class SupplierInvoiceExtraction(db.Model):
+    """A non-fiscal, reviewable proposal extracted from a private source document."""
+
+    __tablename__ = "supplier_invoice_extractions"
+    __table_args__ = (
+        db.Index(
+            "ix_supplier_invoice_extractions_document_id",
+            "supplier_invoice_document_id",
+            unique=False,
+        ),
+        db.CheckConstraint(
+            "status IN ('extracting', 'extracted', 'needs_review', 'failed', 'applied')",
+            name="ck_supplier_invoice_extractions_status_valid",
+        ),
+        db.CheckConstraint(
+            "status NOT IN ('extracted', 'needs_review', 'applied') OR ("
+            "extraction_payload IS NOT NULL AND payload_hash IS NOT NULL AND completed_at IS NOT NULL"
+            ")",
+            name="ck_supplier_invoice_extractions_completed_payload_present",
+        ),
+        db.CheckConstraint(
+            "status != 'failed' OR completed_at IS NOT NULL",
+            name="ck_supplier_invoice_extractions_failed_completed",
+        ),
+    )
+
+    STATUS_EXTRACTING = "extracting"
+    STATUS_EXTRACTED = "extracted"
+    STATUS_NEEDS_REVIEW = "needs_review"
+    STATUS_FAILED = "failed"
+    STATUS_APPLIED = "applied"
+
+    id = db.Column(db.Integer, primary_key=True)
+    supplier_invoice_document_id = db.Column(
+        db.Integer,
+        db.ForeignKey("supplier_invoice_documents.id", ondelete="RESTRICT"),
+        nullable=False,
+    )
+    provider = db.Column(db.String(50), nullable=False)
+    extractor_version = db.Column(db.String(100), nullable=False)
+    status = db.Column(db.String(30), nullable=False, default=STATUS_EXTRACTING)
+    payload_schema_version = db.Column(db.Integer, nullable=False, default=1)
+    extraction_payload = db.Column(db.JSON, nullable=True)
+    payload_hash = db.Column(db.String(64), nullable=True)
+    started_at = db.Column(db.DateTime, nullable=False, server_default=db.func.now())
+    completed_at = db.Column(db.DateTime, nullable=True)
+    error_code = db.Column(db.String(50), nullable=True)
+    created_at = db.Column(db.DateTime, nullable=False, server_default=db.func.now())
+    supplier_invoice_document = db.relationship(
+        "SupplierInvoiceDocument",
+        back_populates="extractions",
+        lazy=True,
+    )
+
+    def __repr__(self):
+        return (
+            f"<SupplierInvoiceExtraction id={self.id} "
+            f"document={self.supplier_invoice_document_id} status={self.status}>"
+        )
 
 
 class SupplierInvoiceReceptionSequence(db.Model):

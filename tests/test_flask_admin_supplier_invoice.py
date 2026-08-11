@@ -3,7 +3,7 @@ import importlib.util
 import re
 import sys
 import unittest
-from datetime import date
+from datetime import date, datetime
 from decimal import Decimal
 from io import BytesIO
 from pathlib import Path
@@ -41,6 +41,7 @@ if HAS_ADMIN_DEPS:
     from api.models import (  # noqa: E402
         SupplierInvoice,
         SupplierInvoiceDocument,
+        SupplierInvoiceExtraction,
         SupplierInvoiceReceptionSequence,
         SupplierInvoiceTaxBreakdown,
         db,
@@ -138,6 +139,18 @@ class FlaskAdminSupplierInvoiceTest(unittest.TestCase):
             if rule.endpoint.endswith(".download_document"):
                 return rule
         raise AssertionError("Supplier invoice download route was not registered")
+
+    def _review_extraction_rule(self):
+        for rule in self.app.url_map.iter_rules():
+            if rule.endpoint.endswith(".review_extraction"):
+                return rule
+        raise AssertionError("Supplier extraction review route was not registered")
+
+    def _extract_rule(self):
+        for rule in self.app.url_map.iter_rules():
+            if rule.endpoint.endswith(".extract_document"):
+                return rule
+        raise AssertionError("Supplier document extraction route was not registered")
 
     def test_confirmation_action_registers_only_an_editable_draft(self):
         response = self.client.get(self._url(), headers=self._auth_header())
@@ -448,6 +461,106 @@ class FlaskAdminSupplierInvoiceTest(unittest.TestCase):
             view = type("View", (), {"get_url": lambda *_args, **_kwargs: "/documents"})()
             formatted = str(admin_module._format_supplier_invoice_documents(view, None, registered, None))
         self.assertNotIn("SUBIR DOCUMENTO", formatted)
+
+    def test_extraction_action_and_review_are_csrf_safe_and_do_not_register(self):
+        payload = {
+            "schema_version": 1,
+            "fields": {
+                name: {"value": None, "confidence": None, "source": None}
+                for name in (
+                    "supplier_legal_name", "supplier_tax_id", "supplier_invoice_number",
+                    "issue_date", "operation_date", "concept", "currency", "total_amount",
+                    "fiscal_invoice_type", "tax_treatment",
+                )
+            },
+            "tax_breakdowns": [],
+            "warnings": ["Revisión manual necesaria."],
+        }
+        payload["fields"]["currency"]["value"] = "EUR"
+        payload["fields"]["fiscal_invoice_type"]["value"] = "F1"
+        payload["fields"]["tax_treatment"]["value"] = "domestic_standard"
+        with self.app.app_context():
+            invoice = db.session.get(SupplierInvoice, self.invoice_id)
+            document = SupplierInvoiceDocument(
+                supplier_invoice=invoice,
+                storage_provider="r2",
+                storage_key="supplier-invoices/2026/08/extraction.pdf",
+                original_filename="extraction.pdf",
+                mime_type="application/pdf",
+                file_size=4,
+                sha256="c" * 64,
+            )
+            db.session.add(document)
+            db.session.flush()
+            extraction = SupplierInvoiceExtraction(
+                supplier_invoice_document=document,
+                provider="fake",
+                extractor_version="fake-v1",
+                status=SupplierInvoiceExtraction.STATUS_NEEDS_REVIEW,
+                payload_schema_version=1,
+                extraction_payload=payload,
+                payload_hash="d" * 64,
+                started_at=datetime(2026, 8, 11),
+                completed_at=datetime(2026, 8, 11),
+            )
+            db.session.add(extraction)
+            db.session.commit()
+            extraction_id = extraction.id
+            with self.app.test_request_context("/admin/supplierinvoice/"):
+                formatted = str(admin_module._format_supplier_invoice_extraction(self.view, None, invoice, None))
+        self.assertIn("EXTRAER DATOS", formatted)
+        self.assertIn('method="post"', formatted)
+        self.assertNotIn("javascript:", formatted.lower())
+        self.assertNotIn("onclick=", formatted.lower())
+
+        review_url = self._review_extraction_rule().rule.replace("<int:extraction_id>", str(extraction_id))
+        response = self.client.get(review_url, headers=self._auth_header())
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(b"Revisar propuesta de extracci", response.data)
+        self.assertIn(b"Revisi", response.data)
+        with self.app.app_context():
+            invoice = db.session.get(SupplierInvoice, self.invoice_id)
+            self.assertEqual(invoice.status, SupplierInvoice.STATUS_DRAFT)
+            self.assertIsNone(invoice.reception_number)
+
+    def test_extract_document_post_creates_a_reviewable_attempt_without_registering(self):
+        with self.app.app_context():
+            invoice = db.session.get(SupplierInvoice, self.invoice_id)
+            document = SupplierInvoiceDocument(
+                supplier_invoice=invoice,
+                storage_provider="r2",
+                storage_key="supplier-invoices/2026/08/extract-post.pdf",
+                original_filename="extract-post.pdf",
+                mime_type="application/pdf",
+                file_size=4,
+                sha256="e" * 64,
+            )
+            db.session.add(document)
+            db.session.commit()
+            document_id = document.id
+
+        upload_page = self.client.get(self._upload_url(self.invoice_id), headers=self._auth_header())
+        token = re.search(rb'name="csrf_token" value="([^"]+)"', upload_page.data).group(1).decode()
+        storage = Mock()
+        storage.get_document.return_value = b"test"
+        extract_url = self._extract_rule().rule.replace("<int:document_id>", str(document_id))
+        with patch(
+            "api.supplier_invoice_extraction_service.get_supplier_invoice_document_storage",
+            return_value=storage,
+        ):
+            response = self.client.post(
+                extract_url,
+                data={"csrf_token": token},
+                headers=self._auth_header(),
+            )
+        self.assertEqual(response.status_code, 302)
+        self.assertIn("review-extraction", response.headers["Location"])
+        with self.app.app_context():
+            extraction = db.session.query(SupplierInvoiceExtraction).one()
+            invoice = db.session.get(SupplierInvoice, self.invoice_id)
+            self.assertEqual(extraction.status, SupplierInvoiceExtraction.STATUS_NEEDS_REVIEW)
+            self.assertEqual(invoice.status, SupplierInvoice.STATUS_DRAFT)
+            self.assertIsNone(invoice.reception_number)
 
 
 if __name__ == "__main__":

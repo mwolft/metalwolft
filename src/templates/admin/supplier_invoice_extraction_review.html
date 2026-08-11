@@ -1,0 +1,82 @@
+{% extends 'admin/master.html' %}
+
+{% macro field_row(label, field) -%}
+  <tr>
+    <th>{{ label }}</th>
+    <td>{{ field.value if field.value is not none else '—' }}</td>
+    <td>{{ field.confidence if field.confidence is not none else '—' }}</td>
+    <td>{{ ('Pág. ' ~ field.source.page) if field.source else '—' }}</td>
+  </tr>
+{%- endmacro %}
+
+{% block body %}
+  <div class="container-fluid">
+    <h3>Revisar propuesta de extracción</h3>
+    <p>
+      Documento: <strong>{{ document.original_filename }}</strong> ·
+      Proveedor: <strong>{{ extraction.provider }}</strong> ·
+      Versión: <strong>{{ extraction.extractor_version }}</strong> ·
+      Estado: <strong>{{ extraction.status }}</strong>
+    </p>
+    <p><a class="btn btn-default btn-sm" href="{{ url_for('.download_document', document_id=document.id) }}">DESCARGAR DOCUMENTO</a></p>
+
+    {% if extraction.extraction_payload %}
+      {% set payload = extraction.extraction_payload %}
+      {% if payload.warnings %}
+        <div class="alert alert-warning">
+          <strong>Revisión necesaria</strong>
+          <ul>{% for warning in payload.warnings %}<li>{{ warning }}</li>{% endfor %}</ul>
+        </div>
+      {% endif %}
+      <table class="table table-bordered table-condensed">
+        <thead><tr><th>Campo</th><th>Propuesta</th><th>Confianza</th><th>Origen</th></tr></thead>
+        <tbody>
+          {{ field_row('Proveedor', payload.fields.supplier_legal_name) }}
+          {{ field_row('NIF/CIF', payload.fields.supplier_tax_id) }}
+          {{ field_row('N.º factura', payload.fields.supplier_invoice_number) }}
+          {{ field_row('Fecha expedición', payload.fields.issue_date) }}
+          {{ field_row('Fecha operación', payload.fields.operation_date) }}
+          {{ field_row('Concepto', payload.fields.concept) }}
+          {{ field_row('Moneda', payload.fields.currency) }}
+          {{ field_row('Total', payload.fields.total_amount) }}
+          {{ field_row('Tipo fiscal', payload.fields.fiscal_invoice_type) }}
+          {{ field_row('Tratamiento fiscal', payload.fields.tax_treatment) }}
+        </tbody>
+      </table>
+
+      <h4>Desgloses de IVA propuestos</h4>
+      {% if payload.tax_breakdowns %}
+        <table class="table table-bordered table-condensed">
+          <thead><tr><th>Base</th><th>Tipo IVA</th><th>Cuota</th><th>Cuota deducible</th><th>Confianza</th></tr></thead>
+          <tbody>
+            {% for item in payload.tax_breakdowns %}
+              <tr>
+                <td>{{ item.tax_base }}</td><td>{{ item.tax_rate }}</td><td>{{ item.tax_amount }}</td>
+                <td><input class="form-control input-sm" form="apply-extraction" name="deductible_tax_amount" inputmode="decimal" placeholder="Obligatoria al aplicar"></td>
+                <td>{{ item.confidence if item.confidence is not none else '—' }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      {% else %}
+        <p class="text-muted">No hay desgloses para aplicar. Complétalos manualmente en el borrador.</p>
+      {% endif %}
+
+      {% if supplier_invoice and extraction.status in ['extracted', 'needs_review'] %}
+        <form id="apply-extraction" method="post" action="{{ apply_url }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+          <div class="checkbox"><label><input type="checkbox" name="replace_existing_fields" value="1"> Reemplazar los datos ya informados del borrador.</label></div>
+          {% if payload.tax_breakdowns %}
+            <div class="checkbox"><label><input type="checkbox" name="replace_tax_breakdowns" value="1"> Reemplazar los desgloses actuales tras revisar cada cuota deducible.</label></div>
+          {% endif %}
+          <div class="checkbox"><label><input type="checkbox" name="confirm_apply" value="1" required> He revisado la propuesta y entiendo que no registra la factura.</label></div>
+          <button type="submit" class="btn btn-primary">APLICAR AL BORRADOR</button>
+          <a href="{{ cancel_url }}" class="btn btn-default">Cancelar</a>
+        </form>
+      {% endif %}
+    {% else %}
+      <div class="alert alert-danger">La extracción no contiene una propuesta válida.</div>
+      <a href="{{ cancel_url }}" class="btn btn-default">Volver</a>
+    {% endif %}
+  </div>
+{% endblock %}

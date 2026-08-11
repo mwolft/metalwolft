@@ -18,7 +18,8 @@ from .models import (
     Categories, Subcategories, Cart,
     Orders, OrderDetails, Favorites,
     Posts, Comments, Invoices, VeriFactuRecord, DeliveryEstimateConfig,
-    AccountingEntry, SupplierInvoice, SupplierInvoiceDocument, SupplierInvoiceTaxBreakdown,
+    AccountingEntry, SupplierInvoice, SupplierInvoiceDocument, SupplierInvoiceExtraction,
+    SupplierInvoiceTaxBreakdown,
 )
 from api.accounting_excel_service import (
     AccountingExcelExportError,
@@ -54,6 +55,14 @@ from api.supplier_invoice_document_storage import (
     SupplierInvoiceDocumentStorageConfigurationError,
     SupplierInvoiceDocumentStorageOperationError,
     get_supplier_invoice_document_storage,
+)
+from api.supplier_invoice_extraction_service import (
+    SupplierInvoiceExtractionApplyError,
+    SupplierInvoiceExtractionEligibilityError,
+    SupplierInvoiceExtractionError,
+    apply_supplier_invoice_extraction,
+    get_supplier_invoice_extraction_provider,
+    run_supplier_invoice_extraction,
 )
 from api.invoice_pdf_download_service import (
     InvoicePdfDownloadFileMissing,
@@ -1325,6 +1334,25 @@ def _format_supplier_invoice_documents(view, context, model, name):
     )
 
 
+def _format_supplier_invoice_extraction(view, context, model, name):
+    if model.status == SupplierInvoice.STATUS_REGISTERED:
+        return Markup("<span class='text-muted'>No disponible tras registrar</span>")
+    documents = list(getattr(model, "documents", []) or [])
+    if not documents:
+        return Markup("<span class='text-muted'>Sube un documento para extraer datos</span>")
+    csrf_token = _issue_supplier_document_upload_csrf_token()
+    actions = []
+    for document in documents:
+        action_url = view.get_url(".extract_document", document_id=document.id)
+        actions.append(
+            '<form method="post" action="{action_url}" style="display: inline; margin-right: 4px;">'
+            '<input type="hidden" name="csrf_token" value="{csrf_token}">'
+            '<button type="submit" class="btn btn-default btn-xs">EXTRAER DATOS</button>'
+            '</form>'.format(action_url=action_url, csrf_token=csrf_token)
+        )
+    return Markup("".join(actions))
+
+
 def _supplier_document_redirect_url(view, document):
     if document.supplier_invoice_id:
         return view.get_url(".details_view", id=document.supplier_invoice_id)
@@ -1395,6 +1423,7 @@ class SupplierInvoiceAdminView(SafeModelView):
         "status",
         "source",
         "documents",
+        "extraction_action",
         "tax_breakdowns",
         "snapshot_schema_version",
         "snapshot_hash",
@@ -1434,6 +1463,7 @@ class SupplierInvoiceAdminView(SafeModelView):
         "tax_treatment": "Tratamiento fiscal",
         "special_regime_key": "Régimen especial",
         "documents": "Documentos",
+        "extraction_action": "Extracción",
         "tax_breakdowns": "Desgloses IVA",
         "snapshot_schema_version": "Versión snapshot",
         "snapshot_hash": "Hash snapshot",
@@ -1443,6 +1473,7 @@ class SupplierInvoiceAdminView(SafeModelView):
         "registration_action": _format_supplier_invoice_registration,
         "snapshot_hash": _format_supplier_invoice_hash,
         "documents": _format_supplier_invoice_documents,
+        "extraction_action": _format_supplier_invoice_extraction,
     }
     column_formatters_detail = column_formatters
     form_columns = [
@@ -1635,6 +1666,103 @@ class SupplierInvoiceAdminView(SafeModelView):
         response.headers["X-Content-Type-Options"] = "nosniff"
         response.headers["Cache-Control"] = "no-store"
         return response
+
+    @expose("/extract-document/<int:document_id>", methods=["POST"])
+    def extract_document(self, document_id):
+        if not _valid_supplier_document_upload_csrf_token(request.form.get("csrf_token")):
+            flash("La sesión del formulario ha caducado. Vuelve a intentarlo.", "error")
+            return redirect(request.referrer or self.get_url(".index_view"))
+        document = self.session.get(SupplierInvoiceDocument, document_id)
+        if not document:
+            flash("Documento recibido no encontrado.", "error")
+            return redirect(self.get_url(".index_view"))
+        try:
+            result = run_supplier_invoice_extraction(
+                document,
+                provider=get_supplier_invoice_extraction_provider(current_app),
+                db_session=self.session,
+            )
+            self.session.commit()
+        except SupplierInvoiceExtractionEligibilityError as error:
+            self.session.rollback()
+            flash(str(error), "error")
+            return redirect(_supplier_document_redirect_url(self, document))
+        except SupplierInvoiceExtractionError:
+            self.session.rollback()
+            current_app.logger.warning("Supplier document extraction rejected document_id=%s", document.id)
+            flash("No se ha podido extraer una propuesta del documento.", "error")
+            return redirect(_supplier_document_redirect_url(self, document))
+        except Exception:
+            self.session.rollback()
+            current_app.logger.exception("Unexpected supplier document extraction failure document_id=%s", document.id)
+            flash("No se ha podido extraer una propuesta del documento.", "error")
+            return redirect(_supplier_document_redirect_url(self, document))
+
+        if result.succeeded:
+            flash("Propuesta de extracción creada. Revísala antes de aplicarla.", "success")
+        else:
+            flash("No se ha podido extraer una propuesta del documento.", "error")
+        return redirect(self.get_url(".review_extraction", extraction_id=result.extraction.id))
+
+    @expose("/review-extraction/<int:extraction_id>", methods=["GET"])
+    def review_extraction(self, extraction_id):
+        extraction = self.session.get(SupplierInvoiceExtraction, extraction_id)
+        if not extraction:
+            flash("Propuesta de extracción no encontrada.", "error")
+            return redirect(self.get_url(".index_view"))
+        document = extraction.supplier_invoice_document
+        return self.render(
+            "admin/supplier_invoice_extraction_review.html",
+            extraction=extraction,
+            document=document,
+            supplier_invoice=document.supplier_invoice,
+            csrf_token=_issue_supplier_document_upload_csrf_token(),
+            apply_url=self.get_url(".apply_extraction", extraction_id=extraction.id),
+            cancel_url=_supplier_document_redirect_url(self, document),
+        )
+
+    @expose("/apply-extraction/<int:extraction_id>", methods=["POST"])
+    def apply_extraction(self, extraction_id):
+        if not _valid_supplier_document_upload_csrf_token(request.form.get("csrf_token")):
+            flash("La sesión del formulario ha caducado. Vuelve a intentarlo.", "error")
+            return redirect(request.referrer or self.get_url(".index_view"))
+        extraction = self.session.get(SupplierInvoiceExtraction, extraction_id)
+        if not extraction:
+            flash("Propuesta de extracción no encontrada.", "error")
+            return redirect(self.get_url(".index_view"))
+        supplier_invoice = extraction.supplier_invoice_document.supplier_invoice
+        if not supplier_invoice:
+            flash("Asocia el documento a un borrador antes de aplicar la propuesta.", "error")
+            return redirect(self.get_url(".review_extraction", extraction_id=extraction.id))
+        if request.form.get("confirm_apply") != "1":
+            flash("Confirma que has revisado los datos antes de aplicarlos.", "error")
+            return redirect(self.get_url(".review_extraction", extraction_id=extraction.id))
+        try:
+            apply_supplier_invoice_extraction(
+                extraction,
+                supplier_invoice,
+                replace_existing_fields=request.form.get("replace_existing_fields") == "1",
+                replace_tax_breakdowns=request.form.get("replace_tax_breakdowns") == "1",
+                deductible_tax_amounts=request.form.getlist("deductible_tax_amount"),
+                db_session=self.session,
+            )
+            self.session.commit()
+        except SupplierInvoiceExtractionApplyError as error:
+            self.session.rollback()
+            flash(str(error), "error")
+            return redirect(self.get_url(".review_extraction", extraction_id=extraction.id))
+        except SupplierInvoiceExtractionError:
+            self.session.rollback()
+            current_app.logger.warning("Supplier extraction application failed extraction_id=%s", extraction.id)
+            flash("No se ha podido aplicar la propuesta al borrador.", "error")
+            return redirect(self.get_url(".review_extraction", extraction_id=extraction.id))
+        except Exception:
+            self.session.rollback()
+            current_app.logger.exception("Unexpected supplier extraction application failure extraction_id=%s", extraction.id)
+            flash("No se ha podido aplicar la propuesta al borrador.", "error")
+            return redirect(self.get_url(".review_extraction", extraction_id=extraction.id))
+        flash("Propuesta aplicada al borrador. Revisa y registra la factura manualmente.", "success")
+        return redirect(self.get_url(".details_view", id=supplier_invoice.id))
 
     @expose("/confirm-register/<int:supplier_invoice_id>", methods=["GET", "POST"])
     def confirm_register(self, supplier_invoice_id):
