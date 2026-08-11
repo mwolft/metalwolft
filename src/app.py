@@ -262,6 +262,14 @@ app.config["MAIL_DEFAULT_SENDER"] = os.getenv(
     "MAIL_DEFAULT_SENDER", app.config["MAIL_USERNAME"]
 )
 app.config["FRONTEND_URL"] = os.getenv("FRONTEND_URL", "http://localhost:3000")
+app.config["SUPPLIER_DOCUMENT_STORAGE_PROVIDER"] = (
+    os.getenv("SUPPLIER_DOCUMENT_STORAGE_PROVIDER") or ""
+).strip().lower()
+app.config["R2_BUCKET_NAME"] = (os.getenv("R2_BUCKET_NAME") or "").strip()
+app.config["R2_ENDPOINT_URL"] = (os.getenv("R2_ENDPOINT_URL") or "").strip()
+app.config["R2_ACCESS_KEY_ID"] = (os.getenv("R2_ACCESS_KEY_ID") or "").strip()
+app.config["R2_SECRET_ACCESS_KEY"] = (os.getenv("R2_SECRET_ACCESS_KEY") or "").strip()
+app.config["SUPPLIER_DOCUMENT_MAX_BYTES"] = 15 * 1024 * 1024
 app.config["INVOICE_FOLDER"] = os.path.join(
     os.path.dirname(os.path.abspath(__file__)),
     "src",
