@@ -40,6 +40,8 @@ TEXTRACT_SUPPORTED_MIME_TYPES = {"application/pdf", "image/jpeg", "image/png"}
 _SPANISH_TAX_ID = re.compile(r"(?<![A-Z0-9])(?:[0-9]{8}[A-Z]|[A-HJ-NP-SUVW][0-9]{7}[0-9A-J])(?![A-Z0-9])", re.I)
 _PERCENT = re.compile(r"([0-9]+(?:[.,][0-9]+)?)\s*%")
 _SUPPLIER_TAX_ID_LABELS = {"CIF", "NIF", "VATID", "NIFCIF", "CIFNIF"}
+_RECEIVER_TAX_ID_LABELS = {"DNI", "DNICIF", "NIFCLIENTE", "CLIENTENIF"}
+_RESPONSIBLE_NAME_LABELS = {"RESPONSABLE", "RAZONSOCIAL", "DENOMINACIONSOCIAL"}
 _INVOICE_NUMBER_LABELS = {"FACTURA", "NFACTURA", "NOFACTURA", "INVOICE", "INVOICENUMBER"}
 _INVOICE_NUMBER_PENALTIES = {"CODIGO", "CLIENTE", "CUSTOMER"}
 _TAX_BASE_LABELS = {"BIMPONIBLE", "BASEIMPONIBLE"}
@@ -222,20 +224,10 @@ def _set_currency(payload, candidate):
 
 
 def _set_vendor_tax_id(payload, fields):
-    candidates = []
-    has_vendor_name = bool(payload["fields"]["supplier_legal_name"]["value"])
-    for field in fields:
-        label = _normalised_label(_field_label(field))
-        is_vendor_candidate = _is_vendor_field(field)
-        if label not in _SUPPLIER_TAX_ID_LABELS and not is_vendor_candidate:
-            continue
-        matches = list(dict.fromkeys(_SPANISH_TAX_ID.findall((_field_value(field) or "").upper())))
-        if len(matches) != 1:
-            continue
-        tax_id = matches[0]
-        if not is_vendor_candidate and not (has_vendor_name and _is_company_tax_id(tax_id)):
-            continue
-        candidates.append((tax_id, field, is_vendor_candidate))
+    candidates = _supplier_company_tax_id_candidates(
+        fields,
+        supplier_context=bool(payload["fields"]["supplier_legal_name"]["value"]) or _has_vendor_context(fields),
+    )
     supplier_ids = list(dict.fromkeys(item[0] for item in candidates))
     if len(supplier_ids) == 1:
         tax_id = supplier_ids[0]
@@ -264,6 +256,7 @@ def _extract_tax_breakdowns(fields, payload):
         if _is_tax_rate_field(field, label) and not _is_tax_base_field(field, label):
             rates.append((_parse_rate(_field_label(field)) or value, field))
     results = []
+    warnings = []
     for tax_amount, tax_field in taxes:
         matches = []
         for base, base_rate, base_field in bases:
@@ -275,7 +268,7 @@ def _extract_tax_breakdowns(fields, payload):
             )
         matches = _deduplicate_tax_matches(matches)
         if len(matches) != 1:
-            payload["warnings"].append("No se ha podido identificar una base imponible de IVA de forma inequívoca.")
+            warnings.append("No se ha podido identificar una base imponible de IVA de forma inequívoca.")
             continue
         base, rate, base_field, rate_field = matches[0]
         results.append({
@@ -286,10 +279,11 @@ def _extract_tax_breakdowns(fields, payload):
     if results:
         calculated = sum((Decimal(row["tax_base"]) + Decimal(row["tax_amount"]) for row in results), Decimal("0.00"))
         if calculated != Decimal(total):
+            payload["warnings"].extend(warnings)
             payload["warnings"].append("Los desgloses de IVA detectados no coinciden con el total de la factura.")
             return []
-    elif taxes and not payload["warnings"]:
-        payload["warnings"].append("Se ha detectado un tipo de IVA sin base y cuota verificables.")
+    elif taxes:
+        payload["warnings"].extend(warnings or ["Se ha detectado un tipo de IVA sin base y cuota verificables."])
     return results
 
 
@@ -333,8 +327,6 @@ def _select_vendor_name(fields):
         and _field_value(field)
         and (_field_type(field) == "VENDOR_NAME" or _is_vendor_field(field))
     ]
-    if not candidates:
-        return None
     compatible = [
         candidate
         for candidate in candidates
@@ -343,9 +335,16 @@ def _select_vendor_name(fields):
     if vendor_evidence and compatible:
         return max(compatible, key=lambda item: item["confidence"] or 0)
     clusters = {_normalised_vendor_name(candidate["value"]) for candidate in candidates}
-    if len(clusters) != 1:
+    if candidates and len(clusters) == 1:
+        return max(candidates, key=lambda item: item["confidence"] or 0)
+    if not _has_vendor_context(fields) or len(_supplier_company_tax_id_values(fields)) != 1:
         return None
-    return max(candidates, key=lambda item: item["confidence"] or 0)
+    responsible_candidates = [_responsible_name_candidate(field) for field in fields]
+    responsible_candidates = [candidate for candidate in responsible_candidates if candidate]
+    responsible_clusters = {_normalised_vendor_name(candidate["value"]) for candidate in responsible_candidates}
+    if len(responsible_clusters) != 1:
+        return None
+    return max(responsible_candidates, key=lambda item: item["confidence"] or 0)
 
 
 def _select_invoice_number(fields):
@@ -408,6 +407,45 @@ def _page(field):
 
 def _is_vendor_field(field):
     return any("VENDOR" in (group.get("Types") or []) for group in (field.get("GroupProperties") or []) if isinstance(group, dict))
+
+
+def _has_vendor_context(fields):
+    return any(_is_vendor_field(field) for field in fields)
+
+
+def _supplier_company_tax_id_candidates(fields, *, supplier_context):
+    candidates = []
+    for field in fields:
+        label = _normalised_label(_field_label(field))
+        if label in _RECEIVER_TAX_ID_LABELS:
+            continue
+        is_vendor_candidate = _is_vendor_field(field)
+        if label not in _SUPPLIER_TAX_ID_LABELS and not is_vendor_candidate:
+            continue
+        matches = list(dict.fromkeys(_SPANISH_TAX_ID.findall((_field_value(field) or "").upper())))
+        if len(matches) != 1 or not _is_company_tax_id(matches[0]):
+            continue
+        if is_vendor_candidate or supplier_context:
+            candidates.append((matches[0], field, is_vendor_candidate))
+    return candidates
+
+
+def _supplier_company_tax_id_values(fields):
+    return {item[0] for item in _supplier_company_tax_id_candidates(fields, supplier_context=True)}
+
+
+def _responsible_name_candidate(field):
+    if _normalised_label(_field_label(field)) not in _RESPONSIBLE_NAME_LABELS:
+        return None
+    value = _field_value(field)
+    if not value:
+        return None
+    value = re.sub(r"^\s*RESPONSABLE\s*:\s*", "", value, flags=re.I).strip()
+    if not value:
+        return None
+    candidate = _candidate(field)
+    candidate["value"] = value
+    return candidate
 
 
 def _is_company_tax_id(value):

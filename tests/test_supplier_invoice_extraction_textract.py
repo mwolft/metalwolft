@@ -231,6 +231,53 @@ class TextractSupplierInvoiceExtractionProviderTest(unittest.TestCase):
             "El tratamiento fiscal requiere revisión manual.",
         ])
 
+    def test_vendor_address_context_supports_responsible_name_and_explicit_company_cif(self):
+        fields = [
+            summary_field("ADDRESS", "Calle del Acero 1", vendor=True),
+            summary_field("CITY", "Ciudad Real", vendor=True),
+            summary_field("ZIP_CODE", "13001", vendor=True),
+            summary_field(
+                "OTHER",
+                "RESPONSABLE: HIERROS Y ACEROS CIUDAD REAL, S.L.",
+                label="RESPONSABLE:",
+                confidence=98.9,
+            ),
+            summary_field("TAX_PAYER_ID", "B13019559", label="CIF:", confidence=99.9),
+            summary_field("TAX_PAYER_ID", "05703874N", label="DNI/CIF:", confidence=99.6),
+            summary_field("SUBTOTAL", "35,76", label="B. Imponible", confidence=98.2),
+            summary_field("TAX", "21,00", label="% IVA", confidence=99.1),
+            summary_field("TAX", "7,51", label="%RE", confidence=99.0),
+            summary_field("TOTAL", "43,27", label="TOTAL", confidence=99.8),
+        ]
+
+        payload = build_textract_supplier_invoice_extraction_payload(textract_response(fields=fields))
+
+        self.assertEqual(
+            payload["fields"]["supplier_legal_name"]["value"],
+            "HIERROS Y ACEROS CIUDAD REAL, S.L.",
+        )
+        self.assertEqual(payload["fields"]["supplier_tax_id"]["value"], "B13019559")
+        self.assertNotEqual(payload["fields"]["supplier_tax_id"]["value"], "05703874N")
+        self.assertEqual(payload["tax_breakdowns"], [{
+            "tax_base": "35.76", "tax_rate": "21.00", "tax_amount": "7.51",
+            "deductible_tax_amount": None, "confidence": 0.982, "source": {"page": 1},
+        }])
+        self.assertEqual(payload["warnings"], [
+            "El tipo fiscal requiere revisión manual.",
+            "El tratamiento fiscal requiere revisión manual.",
+        ])
+
+    def test_responsible_name_without_vendor_context_is_not_used(self):
+        fields = [
+            summary_field("OTHER", "RESPONSABLE: Cliente SA", label="RESPONSABLE:"),
+            summary_field("TAX_PAYER_ID", "B13019559", label="CIF:"),
+        ]
+
+        payload = build_textract_supplier_invoice_extraction_payload(textract_response(fields=fields))
+
+        self.assertIsNone(payload["fields"]["supplier_legal_name"]["value"])
+        self.assertIsNone(payload["fields"]["supplier_tax_id"]["value"])
+
     def test_tax_breakdown_is_not_inferred_when_the_real_style_does_not_reconcile(self):
         fields = [
             summary_field("SUBTOTAL", "319,24", label="B. Imponible"),
