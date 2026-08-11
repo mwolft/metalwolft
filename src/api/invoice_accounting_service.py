@@ -11,7 +11,7 @@ STATUS_PENDING = AccountingEntry.STATUS_PENDING
 STATUS_RECORDED = AccountingEntry.STATUS_RECORDED
 STATUS_FAILED = AccountingEntry.STATUS_FAILED
 
-SUPPORTED_SNAPSHOT_SCHEMA_VERSIONS = {1, 2}
+SUPPORTED_SNAPSHOT_SCHEMA_VERSIONS = {1, 2, 3}
 
 
 class AccountingEntryError(Exception):
@@ -34,8 +34,8 @@ def create_accounting_entry(invoice, *, db_session=None):
     """Create the internal sale accounting entry for an emitted invoice.
 
     This service is intentionally idempotent and does not commit or rollback.
-    It copies accounting data from InvoiceSnapshot v1 and never mutates fiscal
-    invoice fields such as number, snapshot, hash, or issued_at.
+    It copies accounting data from InvoiceSnapshot v1-v3 and never mutates
+    fiscal invoice fields such as number, snapshot, hash, or issued_at.
     """
     session = db_session or db.session
     invoice_id = _required_invoice_id(invoice)
@@ -101,7 +101,48 @@ def _validated_snapshot(invoice):
         if not isinstance(snapshot.get(block), dict):
             raise AccountingEntryValidationError(f"Invoice snapshot block {block} is required.")
 
+    if schema_version == 3:
+        _validate_total_rectification_snapshot(invoice, snapshot)
+
     return snapshot
+
+
+def _validate_total_rectification_snapshot(invoice, snapshot):
+    operation = snapshot["operation"]
+    if operation.get("invoice_type") != "corrective":
+        raise AccountingEntryValidationError("Corrective snapshot invoice type is required.")
+    if getattr(invoice, "invoice_type", None) != "corrective":
+        raise AccountingEntryValidationError("Corrective invoice type is required.")
+
+    rectification = operation.get("rectification")
+    if not isinstance(rectification, dict):
+        raise AccountingEntryValidationError("Corrective snapshot reference is required.")
+    if rectification.get("rectification_scope") != "total":
+        raise AccountingEntryValidationError("Only total rectifications are supported.")
+
+    original_invoice_id = _positive_integer(
+        rectification.get("original_invoice_id"),
+        "Corrective original invoice id is required.",
+    )
+    if original_invoice_id != getattr(invoice, "original_invoice_id", None):
+        raise AccountingEntryValidationError("Corrective original invoice reference does not match.")
+
+    if not str(rectification.get("original_invoice_number") or "").strip():
+        raise AccountingEntryValidationError("Corrective original invoice number is required.")
+    _invoice_date_value(
+        rectification.get("original_invoice_issued_at"),
+        "Corrective original invoice issue date is required.",
+    )
+
+
+def _positive_integer(value, message):
+    try:
+        parsed = int(value)
+    except (TypeError, ValueError) as exc:
+        raise AccountingEntryValidationError(message) from exc
+    if parsed <= 0 or str(parsed) != str(value).strip():
+        raise AccountingEntryValidationError(message)
+    return parsed
 
 
 def _validate_snapshot_hash(invoice, snapshot):
@@ -115,7 +156,13 @@ def _validate_snapshot_hash(invoice, snapshot):
 
 
 def _invoice_date(snapshot):
-    issue_date = snapshot["operation"].get("issue_date")
+    return _invoice_date_value(
+        snapshot["operation"].get("issue_date"),
+        "Invoice issue date is required.",
+    )
+
+
+def _invoice_date_value(issue_date, required_message):
     if isinstance(issue_date, date) and not isinstance(issue_date, datetime):
         return issue_date
     if isinstance(issue_date, datetime):
@@ -125,7 +172,7 @@ def _invoice_date(snapshot):
             return datetime.fromisoformat(issue_date).date()
         except ValueError as exc:
             raise AccountingEntryValidationError("Invoice issue date is invalid.") from exc
-    raise AccountingEntryValidationError("Invoice issue date is required.")
+    raise AccountingEntryValidationError(required_message)
 
 
 def _customer_name(snapshot):

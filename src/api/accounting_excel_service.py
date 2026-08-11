@@ -10,6 +10,8 @@ SUPPORTED_CURRENCY = "EUR"
 HEADERS = [
     "Fecha factura",
     "Número factura",
+    "Tipo de factura",
+    "Factura rectificada",
     "Cliente",
     "NIF/CIF",
     "Base imponible",
@@ -112,10 +114,14 @@ def _prepared_entry(entry):
     if currency != SUPPORTED_CURRENCY:
         raise AccountingExcelValidationError("Moneda no soportada para la exportacion contable.")
 
+    document = _document_context(entry)
+
     return {
         "id": _entry_id(entry),
         "invoice_date": _invoice_date(getattr(entry, "invoice_date", None)),
         "invoice_number": _required_text(getattr(entry, "invoice_number", None), "invoice_number"),
+        "invoice_type": document["invoice_type"],
+        "rectified_invoice_number": document["rectified_invoice_number"],
         "customer_name": _required_text(getattr(entry, "customer_name", None), "customer_name"),
         "customer_tax_id": _optional_text(getattr(entry, "customer_tax_id", None)),
         "taxable_base": _money(getattr(entry, "taxable_base", None), "taxable_base"),
@@ -144,6 +150,8 @@ def _build_workbook(entries):
         worksheet.append([
             entry["invoice_date"],
             entry["invoice_number"],
+            entry["invoice_type"],
+            entry["rectified_invoice_number"],
             entry["customer_name"],
             entry["customer_tax_id"],
             entry["taxable_base"],
@@ -165,7 +173,7 @@ def _build_workbook(entries):
 def _apply_formats(worksheet):
     for row in worksheet.iter_rows(min_row=2, max_row=worksheet.max_row):
         row[0].number_format = DATE_FORMAT
-        for cell in row[4:7]:
+        for cell in row[6:9]:
             cell.number_format = MONEY_FORMAT
 
 
@@ -173,15 +181,17 @@ def _apply_column_widths(worksheet):
     widths = {
         "A": 14,
         "B": 22,
-        "C": 28,
-        "D": 16,
-        "E": 16,
-        "F": 12,
-        "G": 14,
-        "H": 10,
-        "I": 18,
-        "J": 12,
+        "C": 18,
+        "D": 22,
+        "E": 28,
+        "F": 16,
+        "G": 16,
+        "H": 12,
+        "I": 14,
+        "J": 10,
         "K": 18,
+        "L": 12,
+        "M": 18,
     }
     for column, width in widths.items():
         worksheet.column_dimensions[column].width = width
@@ -190,6 +200,34 @@ def _apply_column_widths(worksheet):
 def _entry_id(entry):
     entry_id = getattr(entry, "id", None)
     return int(entry_id or 0)
+
+
+def _document_context(entry):
+    invoice = getattr(entry, "invoice", None)
+    if invoice is None:
+        raise AccountingExcelValidationError("La factura emitida es obligatoria para la exportacion.")
+
+    invoice_type = getattr(invoice, "invoice_type", None)
+    if invoice_type in (None, "ordinary"):
+        return {
+            "invoice_type": "Ordinaria",
+            "rectified_invoice_number": None,
+        }
+    if invoice_type != "corrective":
+        raise AccountingExcelValidationError("Tipo de factura no soportado para la exportacion.")
+
+    original_invoice_id = getattr(invoice, "original_invoice_id", None)
+    original_invoice = getattr(invoice, "original_invoice", None)
+    if not original_invoice_id or original_invoice is None:
+        raise AccountingExcelValidationError("La factura rectificativa no tiene factura original valida.")
+
+    return {
+        "invoice_type": "Rectificativa",
+        "rectified_invoice_number": _required_text(
+            getattr(original_invoice, "invoice_number", None),
+            "original_invoice.invoice_number",
+        ),
+    }
 
 
 def _invoice_date(value):

@@ -289,6 +289,55 @@ class AccountingEntryServiceSQLiteTest(unittest.TestCase):
         db.session.commit()
         return invoice
 
+    def make_total_rectification(self, *, snapshot=None, stored_hash=None):
+        original = self.make_invoice(snapshot=self.snapshot(schema_version=2))
+        rectification_snapshot = snapshot or {
+            "schema_version": 3,
+            "metadata": {"generator": "invoice_snapshot_builder_v3"},
+            "customer": {
+                "legal_name": "Cliente Contable",
+                "tax_id": "00000000T",
+            },
+            "operation": {
+                "invoice_type": "corrective",
+                "issue_date": "2026-07-16",
+                "currency": "EUR",
+                "order_id": 321,
+                "rectification": {
+                    "rectification_scope": "total",
+                    "original_invoice_id": original.id,
+                    "original_invoice_number": original.invoice_number,
+                    "original_invoice_issued_at": original.issued_at.isoformat(),
+                },
+            },
+            "payment": {"provider": "stripe"},
+            "totals": {
+                "tax_base": "-100.00",
+                "tax_amount": "-21.00",
+                "total_amount": "-121.00",
+            },
+        }
+        rectification = Invoices(
+            invoice_number="R2026000001",
+            invoice_type="corrective",
+            original_invoice_id=original.id,
+            rectification_type="differences",
+            rectification_reason="invoice_error",
+            amount=-121.00,
+            client_name="Cliente Contable",
+            client_address="Legacy Address",
+            client_cif="00000000T",
+            client_phone="600000000",
+            order_details=[],
+            invoice_snapshot=rectification_snapshot,
+            invoice_snapshot_schema_version=3,
+            invoice_snapshot_hash=stored_hash or calculate_invoice_snapshot_hash(rectification_snapshot),
+            issued_at=datetime(2026, 7, 16, 12, 0, 0),
+        )
+        db.session.add(rectification)
+        db.session.commit()
+        return original, rectification
+
     def fiscal_state(self, invoice):
         return {
             "invoice_number": invoice.invoice_number,
@@ -332,6 +381,66 @@ class AccountingEntryServiceSQLiteTest(unittest.TestCase):
 
         self.assertEqual(entry.taxable_base, Decimal("100.00"))
         self.assertEqual(entry.total_amount, Decimal("121.00"))
+
+    def test_total_rectification_v3_copies_exact_negative_snapshot_amounts(self):
+        original, rectification = self.make_total_rectification()
+        original_entry = create_accounting_entry(original, db_session=db.session)
+        db.session.commit()
+        original_before = self.fiscal_state(original)
+        rectification_before = copy.deepcopy(rectification.invoice_snapshot)
+
+        entry = create_accounting_entry(rectification, db_session=db.session)
+        db.session.commit()
+
+        self.assertEqual(entry.invoice_id, rectification.id)
+        self.assertEqual(entry.invoice_number, "R2026000001")
+        self.assertEqual(entry.taxable_base, Decimal("-100.00"))
+        self.assertEqual(entry.vat_amount, Decimal("-21.00"))
+        self.assertEqual(entry.total_amount, Decimal("-121.00"))
+        self.assertEqual(original_entry.taxable_base, Decimal("100.00"))
+        self.assert_invoice_fiscal_state_unchanged(original, original_before)
+        self.assertEqual(rectification.invoice_snapshot, rectification_before)
+
+    def test_total_rectification_v3_is_idempotent(self):
+        _, rectification = self.make_total_rectification()
+
+        first = create_accounting_entry(rectification, db_session=db.session)
+        db.session.commit()
+        second = create_accounting_entry(rectification, db_session=db.session)
+
+        self.assertEqual(first.id, second.id)
+        self.assertEqual(
+            db.session.query(AccountingEntry).filter_by(invoice_id=rectification.id).count(),
+            1,
+        )
+
+    def test_v3_requires_corrective_operation_type(self):
+        _, rectification = self.make_total_rectification()
+        invalid_snapshot = copy.deepcopy(rectification.invoice_snapshot)
+        invalid_snapshot["operation"]["invoice_type"] = "ordinary"
+        rectification.invoice_snapshot = invalid_snapshot
+        rectification.invoice_snapshot_hash = calculate_invoice_snapshot_hash(invalid_snapshot)
+        db.session.commit()
+
+        with self.assertRaises(AccountingEntryValidationError):
+            create_accounting_entry(rectification, db_session=db.session)
+
+    def test_v3_requires_matching_original_invoice_reference(self):
+        _, rectification = self.make_total_rectification()
+        invalid_snapshot = copy.deepcopy(rectification.invoice_snapshot)
+        invalid_snapshot["operation"]["rectification"]["original_invoice_id"] = 999
+        rectification.invoice_snapshot = invalid_snapshot
+        rectification.invoice_snapshot_hash = calculate_invoice_snapshot_hash(invalid_snapshot)
+        db.session.commit()
+
+        with self.assertRaises(AccountingEntryValidationError):
+            create_accounting_entry(rectification, db_session=db.session)
+
+    def test_v3_hash_mismatch_is_rejected(self):
+        _, rectification = self.make_total_rectification(stored_hash="bad-hash")
+
+        with self.assertRaises(AccountingEntryIntegrityError):
+            create_accounting_entry(rectification, db_session=db.session)
 
     def test_idempotency_returns_existing_entry(self):
         invoice = self.make_invoice()

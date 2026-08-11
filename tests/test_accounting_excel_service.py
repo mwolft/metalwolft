@@ -3,7 +3,7 @@ import sys
 import unittest
 import uuid
 from contextlib import contextmanager
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import date
 from decimal import Decimal
 from pathlib import Path
@@ -32,6 +32,21 @@ TEST_TMP_ROOT = ROOT_DIR / "tmp-accounting-excel-tests"
 
 
 @dataclass
+class InvoiceDouble:
+    invoice_type: str | None = "ordinary"
+    original_invoice_id: int | None = None
+    original_invoice: object | None = None
+
+    @property
+    def order(self):
+        raise AssertionError("Excel export must not read live order relationship")
+
+    @property
+    def invoice_snapshot(self):
+        raise AssertionError("Excel export must not read invoice snapshot")
+
+
+@dataclass
 class AccountingEntryDouble:
     id: int
     invoice_date: date
@@ -47,9 +62,7 @@ class AccountingEntryDouble:
     status: str = "pending"
     entry_type: str = "sale"
 
-    @property
-    def invoice(self):
-        raise AssertionError("Excel export must not read live invoice relationship")
+    invoice: InvoiceDouble = field(default_factory=InvoiceDouble)
 
     @property
     def order(self):
@@ -139,9 +152,9 @@ class AccountingExcelServiceTest(unittest.TestCase):
             _, workbook = export_and_open([entry()], tmpdir / "ingresos.xlsx")
             sheet = workbook[SALES_SHEET_NAME]
 
-            self.assertEqual(sheet["E2"].value, Decimal("100.00"))
-            self.assertEqual(sheet["F2"].value, Decimal("21.00"))
-            self.assertEqual(sheet["G2"].value, Decimal("121.00"))
+            self.assertEqual(sheet["G2"].value, Decimal("100.00"))
+            self.assertEqual(sheet["H2"].value, Decimal("21.00"))
+            self.assertEqual(sheet["I2"].value, Decimal("121.00"))
 
     def test_dates_are_written_as_dates(self):
         with temp_export_dir() as tmpdir:
@@ -156,7 +169,7 @@ class AccountingExcelServiceTest(unittest.TestCase):
             sheet = workbook[SALES_SHEET_NAME]
 
             self.assertEqual(sheet.freeze_panes, "A2")
-            self.assertEqual(sheet.auto_filter.ref, "A1:K2")
+            self.assertEqual(sheet.auto_filter.ref, "A1:M2")
 
     def test_money_and_date_formats_are_applied(self):
         with temp_export_dir() as tmpdir:
@@ -164,9 +177,9 @@ class AccountingExcelServiceTest(unittest.TestCase):
             sheet = workbook[SALES_SHEET_NAME]
 
             self.assertEqual(sheet["A2"].number_format, DATE_FORMAT)
-            self.assertEqual(sheet["E2"].number_format, MONEY_FORMAT)
-            self.assertEqual(sheet["F2"].number_format, MONEY_FORMAT)
             self.assertEqual(sheet["G2"].number_format, MONEY_FORMAT)
+            self.assertEqual(sheet["H2"].number_format, MONEY_FORMAT)
+            self.assertEqual(sheet["I2"].number_format, MONEY_FORMAT)
 
     def test_header_bold_and_column_widths_are_set(self):
         with temp_export_dir() as tmpdir:
@@ -181,28 +194,60 @@ class AccountingExcelServiceTest(unittest.TestCase):
             _, workbook = export_and_open([entry(customer_tax_id=None)], tmpdir / "ingresos.xlsx")
             sheet = workbook[SALES_SHEET_NAME]
 
-            self.assertIsNone(sheet["D2"].value)
+            self.assertIsNone(sheet["F2"].value)
 
     def test_stripe_payment_provider_is_exported(self):
         with temp_export_dir() as tmpdir:
             _, workbook = export_and_open([entry(payment_provider="stripe")], tmpdir / "ingresos.xlsx")
             sheet = workbook[SALES_SHEET_NAME]
 
-            self.assertEqual(sheet["I2"].value, "stripe")
+            self.assertEqual(sheet["K2"].value, "stripe")
 
     def test_paypal_payment_provider_is_exported(self):
         with temp_export_dir() as tmpdir:
             _, workbook = export_and_open([entry(payment_provider="paypal")], tmpdir / "ingresos.xlsx")
             sheet = workbook[SALES_SHEET_NAME]
 
-            self.assertEqual(sheet["I2"].value, "paypal")
+            self.assertEqual(sheet["K2"].value, "paypal")
 
     def test_nullable_order_id_exports_empty_cell(self):
         with temp_export_dir() as tmpdir:
             _, workbook = export_and_open([entry(order_id=None)], tmpdir / "ingresos.xlsx")
             sheet = workbook[SALES_SHEET_NAME]
 
-            self.assertIsNone(sheet["J2"].value)
+            self.assertIsNone(sheet["L2"].value)
+
+    def test_ordinary_invoice_is_identified_without_rectification_reference(self):
+        with temp_export_dir() as tmpdir:
+            _, workbook = export_and_open([entry()], tmpdir / "ingresos.xlsx")
+            sheet = workbook[SALES_SHEET_NAME]
+
+            self.assertEqual(sheet["C2"].value, "Ordinaria")
+            self.assertIsNone(sheet["D2"].value)
+
+    def test_corrective_invoice_keeps_reference_and_negative_amounts(self):
+        corrective = InvoiceDouble(
+            invoice_type="corrective",
+            original_invoice_id=50,
+            original_invoice=type("OriginalInvoice", (), {"invoice_number": "F2026000001"})(),
+        )
+        corrective_entry = entry(
+            invoice_number="R2026000001",
+            taxable_base=Decimal("-100.00"),
+            vat_amount=Decimal("-21.00"),
+            total_amount=Decimal("-121.00"),
+            invoice=corrective,
+        )
+
+        with temp_export_dir() as tmpdir:
+            _, workbook = export_and_open([corrective_entry], tmpdir / "ingresos.xlsx")
+            sheet = workbook[SALES_SHEET_NAME]
+
+            self.assertEqual(sheet["C2"].value, "Rectificativa")
+            self.assertEqual(sheet["D2"].value, "F2026000001")
+            self.assertEqual(sheet["G2"].value, Decimal("-100.00"))
+            self.assertEqual(sheet["H2"].value, Decimal("-21.00"))
+            self.assertEqual(sheet["I2"].value, Decimal("-121.00"))
 
     def test_existing_file_without_overwrite_is_rejected(self):
         with temp_export_dir() as tmpdir:
@@ -278,7 +323,7 @@ class AccountingExcelServiceTest(unittest.TestCase):
                     output_path=tmpdir / "ingresos.xlsx",
                 )
 
-    def test_export_does_not_read_live_relations(self):
+    def test_export_reads_only_the_persisted_invoice_relation(self):
         with temp_export_dir() as tmpdir:
             export_sales_accounting_entries([entry()], output_path=tmpdir / "ingresos.xlsx")
 
@@ -305,8 +350,9 @@ class AccountingExcelServiceTest(unittest.TestCase):
             "Users",
             "CheckoutSessions",
             "Products",
-            "invoice.",
-            "entry.invoice",
+            "entry.order",
+            "invoice.order",
+            "invoice.invoice_snapshot",
         ):
             self.assertNotIn(forbidden, source)
 
