@@ -273,6 +273,7 @@ def _extract_tax_breakdowns(fields, payload):
                 for rate, rate_field in candidate_rates
                 if _tax_matches(base, rate, tax_amount)
             )
+        matches = _deduplicate_tax_matches(matches)
         if len(matches) != 1:
             payload["warnings"].append("No se ha podido identificar una base imponible de IVA de forma inequívoca.")
             continue
@@ -287,7 +288,7 @@ def _extract_tax_breakdowns(fields, payload):
         if calculated != Decimal(total):
             payload["warnings"].append("Los desgloses de IVA detectados no coinciden con el total de la factura.")
             return []
-    elif taxes:
+    elif taxes and not payload["warnings"]:
         payload["warnings"].append("Se ha detectado un tipo de IVA sin base y cuota verificables.")
     return results
 
@@ -320,10 +321,31 @@ def _select_single(fields, field_types, *, vendor_only=False):
 
 
 def _select_vendor_name(fields):
-    direct = _select_single(fields, {"VENDOR_NAME"})
-    if direct:
-        return direct
-    return _select_single(fields, {"NAME"}, vendor_only=True)
+    vendor_evidence = {
+        _normalised_vendor_name(_field_value(field))
+        for field in fields
+        if _field_type(field) == "NAME" and _is_vendor_field(field) and _field_value(field)
+    }
+    candidates = [
+        _candidate(field)
+        for field in fields
+        if _field_type(field) in {"VENDOR_NAME", "NAME"}
+        and _field_value(field)
+        and (_field_type(field) == "VENDOR_NAME" or _is_vendor_field(field))
+    ]
+    if not candidates:
+        return None
+    compatible = [
+        candidate
+        for candidate in candidates
+        if _normalised_vendor_name(candidate["value"]) in vendor_evidence
+    ]
+    if vendor_evidence and compatible:
+        return max(compatible, key=lambda item: item["confidence"] or 0)
+    clusters = {_normalised_vendor_name(candidate["value"]) for candidate in candidates}
+    if len(clusters) != 1:
+        return None
+    return max(candidates, key=lambda item: item["confidence"] or 0)
 
 
 def _select_invoice_number(fields):
@@ -390,6 +412,10 @@ def _is_vendor_field(field):
 
 def _is_company_tax_id(value):
     return bool(re.fullmatch(r"[A-HJ-NP-SUVW][0-9]{7}[0-9A-J]", value or "", re.I))
+
+
+def _normalised_vendor_name(value):
+    return _normalised_label(value)
 
 
 def _normalised_label(value):
@@ -472,6 +498,26 @@ def _money(value):
 
 def _tax_matches(base, rate, tax_amount):
     return (base * rate / Decimal("100")).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP) == tax_amount
+
+
+def _deduplicate_tax_matches(matches):
+    grouped = {}
+    for base, rate, base_field, rate_field in matches:
+        key = (base, rate)
+        current = grouped.get(key)
+        candidate = (base, rate, base_field, rate_field)
+        if current is None or _tax_base_priority(base_field) > _tax_base_priority(current[2]):
+            grouped[key] = candidate
+    return list(grouped.values())
+
+
+def _tax_base_priority(field):
+    label = _normalised_label(_field_label(field))
+    return (
+        label in _TAX_BASE_LABELS,
+        _field_type(field) == "SUBTOTAL",
+        _confidence(field) or 0,
+    )
 
 
 def _minimum_confidence(*fields):

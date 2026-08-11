@@ -102,6 +102,19 @@ class TextractSupplierInvoiceExtractionProviderTest(unittest.TestCase):
         self.assertEqual(payload["tax_breakdowns"], [])
         self.assertIn("No se ha podido identificar una base imponible de IVA de forma inequívoca.", payload["warnings"])
 
+    def test_distinct_reconciling_tax_bases_remain_ambiguous(self):
+        fields = [
+            summary_field("SUBTOTAL", "100,00", label="Base imponible 21%"),
+            summary_field("SUBTOTAL", "105,00", label="Base imponible 20%"),
+            summary_field("TAX", "21,00", label="Cuota IVA"),
+            summary_field("TOTAL", "121,00", label="TOTAL"),
+        ]
+
+        payload = build_textract_supplier_invoice_extraction_payload(textract_response(fields=fields))
+
+        self.assertEqual(payload["tax_breakdowns"], [])
+        self.assertIn("No se ha podido identificar una base imponible de IVA de forma inequívoca.", payload["warnings"])
+
     def test_multiple_totals_keep_the_best_explicit_candidate_with_a_warning(self):
         fields = textract_response()["ExpenseDocuments"][0]["SummaryFields"]
         fields.append(summary_field("TOTAL", "1,75 €", label="Subtotal final", confidence=99))
@@ -132,6 +145,16 @@ class TextractSupplierInvoiceExtractionProviderTest(unittest.TestCase):
                 "PageNumber": 1,
             },
             {
+                "Type": {"Text": "VENDOR_NAME"},
+                "ValueDetection": {"Text": "Hierros Acergom S.L.L.", "Confidence": 98.466},
+                "PageNumber": 1,
+            },
+            {
+                "Type": {"Text": "VENDOR_NAME"},
+                "ValueDetection": {"Text": "Alectroom Comercial SL", "Confidence": 96.689},
+                "PageNumber": 1,
+            },
+            {
                 "Type": {"Text": "INVOICE_RECEIPT_ID"},
                 "LabelDetection": {"Text": "Código"},
                 "ValueDetection": {"Text": "43002146", "Confidence": 99.0},
@@ -147,6 +170,12 @@ class TextractSupplierInvoiceExtractionProviderTest(unittest.TestCase):
                 "Type": {"Text": "INVOICE_RECEIPT_DATE"},
                 "LabelDetection": {"Text": "Fecha"},
                 "ValueDetection": {"Text": "12/06/2026", "Confidence": 75.324},
+                "PageNumber": 1,
+            },
+            {
+                "Type": {"Text": "SUBTOTAL"},
+                "LabelDetection": {"Text": "Importe Bruto"},
+                "ValueDetection": {"Text": "319,24", "Confidence": 60.208},
                 "PageNumber": 1,
             },
             {
@@ -197,6 +226,10 @@ class TextractSupplierInvoiceExtractionProviderTest(unittest.TestCase):
             "tax_base": "319.24", "tax_rate": "21.00", "tax_amount": "67.04",
             "deductible_tax_amount": None, "confidence": 0.90277, "source": {"page": 1},
         }])
+        self.assertEqual(payload["warnings"], [
+            "El tipo fiscal requiere revisión manual.",
+            "El tratamiento fiscal requiere revisión manual.",
+        ])
 
     def test_tax_breakdown_is_not_inferred_when_the_real_style_does_not_reconcile(self):
         fields = [
