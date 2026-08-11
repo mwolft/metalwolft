@@ -11,7 +11,7 @@ from .models import (
     Categories, Subcategories, Cart,
     Orders, OrderDetails, Favorites,
     Posts, Comments, Invoices, VeriFactuRecord, DeliveryEstimateConfig,
-    AccountingEntry
+    AccountingEntry, SupplierInvoice, SupplierInvoiceTaxBreakdown,
 )
 from api.accounting_excel_service import (
     AccountingExcelExportError,
@@ -28,6 +28,12 @@ from api.invoice_accounting_service import (
     AccountingEntryUnsupportedSchema,
     AccountingEntryValidationError,
     create_accounting_entry,
+)
+from api.supplier_invoice_registration_service import (
+    SupplierInvoiceDuplicateError,
+    SupplierInvoiceRegistrationError,
+    find_possible_supplier_invoice_duplicates,
+    register_supplier_invoice,
 )
 from api.invoice_pdf_download_service import (
     InvoicePdfDownloadFileMissing,
@@ -1224,6 +1230,236 @@ def _admin_total_rectification_success_message(result):
     return f"Ya existe la factura rectificativa {result.invoice_number}."
 
 
+def _format_supplier_invoice_registration(view, context, model, name):
+    if model.status == SupplierInvoice.STATUS_REGISTERED:
+        return Markup("<span class='label label-success'>Registrada</span>")
+    if model.status == SupplierInvoice.STATUS_CANCELLED:
+        return Markup("<span class='label label-default'>Cancelada</span>")
+
+    action_url = view.get_url(".confirm_register", supplier_invoice_id=model.id)
+    return Markup(
+        '<a class="btn btn-primary btn-sm" href="{action_url}">CONFIRMAR Y REGISTRAR</a>'
+    ).format(action_url=action_url)
+
+
+def _format_supplier_invoice_hash(view, context, model, name):
+    snapshot_hash = getattr(model, name, None)
+    if not snapshot_hash:
+        return "—"
+    return f"{snapshot_hash[:12]}…"
+
+
+class SupplierInvoiceAdminView(SafeModelView):
+    can_view_details = True
+    column_default_sort = ("created_at", True)
+    inline_models = (SupplierInvoiceTaxBreakdown,)
+    column_list = [
+        "id",
+        "reception_number",
+        "supplier_legal_name",
+        "supplier_tax_id",
+        "supplier_invoice_number",
+        "issue_date",
+        "total_amount",
+        "status",
+        "registration_action",
+    ]
+    column_details_list = [
+        "id",
+        "reception_number",
+        "supplier_legal_name",
+        "supplier_tax_id",
+        "supplier_country_code",
+        "supplier_tax_id_type",
+        "supplier_invoice_number",
+        "issue_date",
+        "operation_date",
+        "received_at",
+        "registered_at",
+        "registered_by",
+        "concept",
+        "currency",
+        "total_amount",
+        "fiscal_invoice_type",
+        "tax_treatment",
+        "special_regime_key",
+        "status",
+        "source",
+        "tax_breakdowns",
+        "snapshot_schema_version",
+        "snapshot_hash",
+        "registration_action",
+    ]
+    column_searchable_list = [
+        "supplier_legal_name",
+        "supplier_tax_id",
+        "supplier_invoice_number",
+    ]
+    column_filters = ["status", "issue_date", "registered_at", "created_at"]
+    column_sortable_list = [
+        "id",
+        "reception_number",
+        "supplier_legal_name",
+        "supplier_invoice_number",
+        "issue_date",
+        "total_amount",
+        "status",
+        "created_at",
+    ]
+    column_labels = {
+        "reception_number": "N.º recepción",
+        "supplier_legal_name": "Proveedor",
+        "supplier_tax_id": "NIF/CIF proveedor",
+        "supplier_country_code": "País proveedor",
+        "supplier_tax_id_type": "Tipo identificador",
+        "supplier_invoice_number": "N.º factura proveedor",
+        "issue_date": "Fecha expedición",
+        "operation_date": "Fecha operación",
+        "received_at": "Recibida",
+        "registered_at": "Registrada",
+        "registered_by": "Registrada por",
+        "concept": "Concepto",
+        "total_amount": "Total",
+        "fiscal_invoice_type": "Tipo fiscal",
+        "tax_treatment": "Tratamiento fiscal",
+        "special_regime_key": "Régimen especial",
+        "tax_breakdowns": "Desgloses IVA",
+        "snapshot_schema_version": "Versión snapshot",
+        "snapshot_hash": "Hash snapshot",
+        "registration_action": "Registro",
+    }
+    column_formatters = {
+        "registration_action": _format_supplier_invoice_registration,
+        "snapshot_hash": _format_supplier_invoice_hash,
+    }
+    column_formatters_detail = column_formatters
+    form_columns = [
+        "supplier_legal_name",
+        "supplier_tax_id",
+        "supplier_country_code",
+        "supplier_tax_id_type",
+        "supplier_invoice_number",
+        "issue_date",
+        "operation_date",
+        "concept",
+        "currency",
+        "total_amount",
+        "fiscal_invoice_type",
+        "tax_treatment",
+        "special_regime_key",
+        "status",
+        "source",
+    ]
+    form_excluded_columns = [
+        "reception_number",
+        "received_at",
+        "registered_at",
+        "registered_by",
+        "fiscal_snapshot",
+        "snapshot_schema_version",
+        "snapshot_hash",
+    ]
+    form_overrides = {"status": SelectField}
+    form_args = {
+        "status": {
+            "choices": [
+                (SupplierInvoice.STATUS_DRAFT, "Borrador"),
+                (SupplierInvoice.STATUS_NEEDS_REVIEW, "Revisar"),
+                (SupplierInvoice.STATUS_CANCELLED, "Cancelada"),
+            ]
+        }
+    }
+
+    @expose("/edit/", methods=("GET", "POST"))
+    def edit_view(self):
+        supplier_invoice = self.get_one(request.args.get("id"))
+        if supplier_invoice and supplier_invoice.status == SupplierInvoice.STATUS_REGISTERED:
+            flash("Una factura recibida registrada no puede editarse.", "error")
+            return redirect(self.get_url(".details_view", id=supplier_invoice.id))
+        return super().edit_view()
+
+    def on_model_change(self, form, model, is_created):
+        if model.status == SupplierInvoice.STATUS_REGISTERED:
+            raise ValueError("Las facturas recibidas solo se registran mediante la acción de confirmación.")
+        if is_created and model.status != SupplierInvoice.STATUS_DRAFT:
+            raise ValueError("Una factura recibida nueva debe crearse como borrador.")
+
+    def delete_model(self, model):
+        if model.status == SupplierInvoice.STATUS_REGISTERED:
+            flash("Una factura recibida registrada no puede borrarse.", "error")
+            return False
+        return super().delete_model(model)
+
+    @expose("/confirm-register/<int:supplier_invoice_id>", methods=["GET", "POST"])
+    def confirm_register(self, supplier_invoice_id):
+        supplier_invoice = self.session.get(SupplierInvoice, supplier_invoice_id)
+        if not supplier_invoice:
+            flash("Factura recibida no encontrada.", "error")
+            return redirect(self.get_url(".index_view"))
+        if supplier_invoice.status == SupplierInvoice.STATUS_REGISTERED:
+            flash("La factura recibida ya está registrada.", "info")
+            return redirect(self.get_url(".details_view", id=supplier_invoice.id))
+        if supplier_invoice.status not in (
+            SupplierInvoice.STATUS_DRAFT,
+            SupplierInvoice.STATUS_NEEDS_REVIEW,
+        ):
+            flash("Esta factura recibida no puede registrarse desde su estado actual.", "error")
+            return redirect(self.get_url(".details_view", id=supplier_invoice.id))
+
+        duplicates = find_possible_supplier_invoice_duplicates(
+            supplier_invoice,
+            db_session=self.session,
+        )
+        if request.method == "GET":
+            return self.render(
+                "admin/supplier_invoice_register_confirm.html",
+                supplier_invoice=supplier_invoice,
+                duplicate_count=len(duplicates),
+                action_url=self.get_url(".confirm_register", supplier_invoice_id=supplier_invoice.id),
+                cancel_url=self.get_url(".details_view", id=supplier_invoice.id),
+            )
+
+        allow_duplicate = request.form.get("allow_duplicate") == "1"
+        actor = request.authorization.username if request.authorization else None
+        try:
+            result = register_supplier_invoice(
+                supplier_invoice,
+                db_session=self.session,
+                actor=actor,
+                allow_duplicate=allow_duplicate,
+            )
+            self.session.commit()
+            message = (
+                f"Factura recibida registrada con número de recepción {result.invoice.reception_number}."
+                if result.registered
+                else "La factura recibida ya estaba registrada."
+            )
+            flash(message, "success" if result.registered else "info")
+        except SupplierInvoiceDuplicateError:
+            self.session.rollback()
+            flash("Existe una posible factura duplicada. Marca la confirmación explícita para continuar.", "error")
+            return redirect(self.get_url(".confirm_register", supplier_invoice_id=supplier_invoice.id))
+        except SupplierInvoiceRegistrationError:
+            self.session.rollback()
+            current_app.logger.warning(
+                "Supplier invoice registration rejected invoice_id=%s",
+                supplier_invoice_id,
+                exc_info=True,
+            )
+            flash("No se ha podido registrar la factura recibida. Revisa sus datos fiscales.", "error")
+            return redirect(self.get_url(".details_view", id=supplier_invoice.id))
+        except Exception:
+            self.session.rollback()
+            current_app.logger.exception(
+                "Unexpected supplier invoice registration failure invoice_id=%s",
+                supplier_invoice_id,
+            )
+            flash("No se ha podido registrar la factura recibida.", "error")
+            return redirect(self.get_url(".details_view", id=supplier_invoice.id))
+
+        return redirect(self.get_url(".details_view", id=supplier_invoice.id))
+
+
 class InvoiceAdminView(SafeModelView):
     can_create = False
     can_edit = False
@@ -2019,6 +2255,7 @@ def setup_admin(app):
     admin.add_view(FavoritesAdminView(Favorites, db.session, name="Favoritos"))
     admin.add_view(SafeModelView(Posts, db.session))
     admin.add_view(SafeModelView(Comments, db.session))
+    admin.add_view(SupplierInvoiceAdminView(SupplierInvoice, db.session, name="Facturas recibidas"))
     admin.add_view(InvoiceAdminView(Invoices, db.session))
     admin.add_view(VeriFactuRecordAdminView(VeriFactuRecord, db.session, name="VeriFactu"))
     admin.add_view(SafeModelView(DeliveryEstimateConfig, db.session))
