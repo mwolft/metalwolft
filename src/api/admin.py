@@ -1361,6 +1361,20 @@ class SupplierInvoiceAdminView(SafeModelView):
     ]
     form_overrides = {"status": SelectField}
     form_args = {
+        "issue_date": {
+            "format": "%Y-%m-%d",
+            "render_kw": {
+                "data-date-format": "yyyy-mm-dd",
+                "placeholder": "YYYY-MM-DD",
+            },
+        },
+        "operation_date": {
+            "format": "%Y-%m-%d",
+            "render_kw": {
+                "data-date-format": "yyyy-mm-dd",
+                "placeholder": "YYYY-MM-DD",
+            },
+        },
         "status": {
             "choices": [
                 (SupplierInvoice.STATUS_DRAFT, "Borrador"),

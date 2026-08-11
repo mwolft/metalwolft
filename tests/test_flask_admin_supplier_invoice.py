@@ -28,6 +28,7 @@ HAS_ADMIN_DEPS = all(
 if HAS_ADMIN_DEPS:
     from flask import Flask  # noqa: E402
     from flask_admin import Admin  # noqa: E402
+    from sqlalchemy.orm import configure_mappers  # noqa: E402
 
     import api.admin as admin_module  # noqa: E402
     from api.models import (  # noqa: E402
@@ -43,6 +44,7 @@ class FlaskAdminSupplierInvoiceTest(unittest.TestCase):
     def setUp(self):
         admin_module.ADMIN_USER = "admin"
         admin_module.ADMIN_PW = "secret"
+        configure_mappers()
         self.app = Flask(__name__, template_folder=str(SRC_DIR / "templates"))
         self.app.config.update(
             SECRET_KEY="test-secret",
@@ -140,6 +142,41 @@ class FlaskAdminSupplierInvoiceTest(unittest.TestCase):
             registered = db.session.get(SupplierInvoice, self.invoice_id)
             after = admin_module._format_supplier_invoice_registration(view, None, registered, None)
             self.assertNotIn("CONFIRMAR Y REGISTRAR", str(after))
+
+    def test_date_fields_use_four_digit_year_widget_and_parse_iso_dates(self):
+        with self.app.app_context():
+            invoice = db.session.get(SupplierInvoice, self.invoice_id)
+            with self.app.test_request_context(
+                "/admin/supplierinvoice/edit/",
+                method="POST",
+                data={"issue_date": "2026-07-25", "operation_date": "2026-12-31"},
+            ):
+                form = self.view.edit_form(invoice)
+
+                self.assertIn("%Y-%m-%d", form.issue_date.format)
+                self.assertIn("%Y-%m-%d", form.operation_date.format)
+                self.assertIn('data-date-format="yyyy-mm-dd"', str(form.issue_date()))
+                self.assertIn('data-date-format="yyyy-mm-dd"', str(form.operation_date()))
+
+                self.assertEqual(form.issue_date.data, date(2026, 7, 25))
+                self.assertEqual(form.operation_date.data, date(2026, 12, 31))
+
+    def test_editing_draft_preserves_issue_date_and_allows_empty_operation_date(self):
+        with self.app.app_context():
+            invoice = db.session.get(SupplierInvoice, self.invoice_id)
+            with self.app.test_request_context(
+                "/admin/supplierinvoice/edit/",
+                method="POST",
+                data={"issue_date": "2026-07-25", "operation_date": ""},
+            ):
+                form = self.view.edit_form(invoice)
+                self.assertTrue(form.validate())
+                form.populate_obj(invoice)
+            db.session.commit()
+
+            updated = db.session.get(SupplierInvoice, self.invoice_id)
+            self.assertEqual(updated.issue_date, date(2026, 7, 25))
+            self.assertIsNone(updated.operation_date)
 
 
 if __name__ == "__main__":
