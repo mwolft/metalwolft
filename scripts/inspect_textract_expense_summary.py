@@ -5,6 +5,8 @@ does not invoke the extraction workflow, so it cannot modify SupplierInvoice.
 """
 
 import argparse
+import hashlib
+import inspect
 import sys
 from pathlib import Path
 
@@ -16,11 +18,11 @@ sys.path.insert(0, str(SRC_DIR))
 from app import app  # noqa: E402
 from api.models import SupplierInvoiceDocument, SupplierInvoiceExtraction, db  # noqa: E402
 from api.supplier_invoice_document_storage import get_supplier_invoice_document_storage  # noqa: E402
+import api.supplier_invoice_extraction_textract as textract_mapper  # noqa: E402
 from api.supplier_invoice_extraction_textract import (  # noqa: E402
     TextractSupplierInvoiceExtractionProvider,
     TextractSupplierInvoiceExtractionSettings,
     _validate_document,
-    build_textract_supplier_invoice_extraction_payload,
 )
 
 
@@ -95,6 +97,90 @@ def print_canonical_payload(payload):
     print(f"warnings={payload['warnings']!r}")
 
 
+def trace_normalize_response(response):
+    """Trace mapper decisions in memory and restore every helper immediately."""
+    mapper_path = inspect.getsourcefile(textract_mapper.build_textract_supplier_invoice_extraction_payload)
+    mapper_source = Path(mapper_path).read_bytes() if mapper_path else b""
+    print(
+        "[Mapper trace] file={!r} sha256={} helpers={}".format(
+            mapper_path,
+            hashlib.sha256(mapper_source).hexdigest()[:12],
+            ",".join(
+                name
+                for name in (
+                    "_select_single",
+                    "_select_vendor_name",
+                    "_select_invoice_number",
+                    "_set_vendor_tax_id",
+                    "_set_date",
+                    "_extract_tax_breakdowns",
+                )
+                if hasattr(textract_mapper, name)
+            ),
+        )
+    )
+    originals = {}
+
+    def wrap(name, renderer):
+        original = getattr(textract_mapper, name, None)
+        if original is None:
+            print(f"[Mapper trace] helper_missing={name}")
+            return
+        originals[name] = original
+
+        def traced(*args, **kwargs):
+            result = original(*args, **kwargs)
+            print(renderer(args, kwargs, result))
+            return result
+
+        setattr(textract_mapper, name, traced)
+
+    def candidate_value(candidate):
+        return None if candidate is None else {
+            "value": candidate.get("value"),
+            "label": candidate.get("label"),
+            "page": candidate.get("page"),
+        }
+
+    wrap(
+        "_select_single",
+        lambda args, kwargs, result: "[Mapper trace] select_single types={!r} vendor_only={!r} result={!r}".format(
+            args[1] if len(args) > 1 else None,
+            kwargs.get("vendor_only", False),
+            candidate_value(result),
+        ),
+    )
+    wrap(
+        "_select_vendor_name",
+        lambda args, kwargs, result: f"[Mapper trace] vendor_candidate={candidate_value(result)!r}",
+    )
+    wrap(
+        "_select_invoice_number",
+        lambda args, kwargs, result: f"[Mapper trace] invoice_candidate={candidate_value(result)!r}",
+    )
+    wrap(
+        "_set_vendor_tax_id",
+        lambda args, kwargs, result: "[Mapper trace] supplier_tax_id_after={!r}".format(
+            args[0]["fields"]["supplier_tax_id"]["value"]
+        ),
+    )
+    wrap(
+        "_set_date",
+        lambda args, kwargs, result: "[Mapper trace] issue_date_after={!r} spanish_context={!r}".format(
+            args[0]["fields"]["issue_date"]["value"], kwargs.get("spanish_context")
+        ),
+    )
+    wrap(
+        "_extract_tax_breakdowns",
+        lambda args, kwargs, result: f"[Mapper trace] tax_breakdowns={result!r}",
+    )
+    try:
+        return textract_mapper.build_textract_supplier_invoice_extraction_payload(response)
+    finally:
+        for name, original in originals.items():
+            setattr(textract_mapper, name, original)
+
+
 def main():
     args = parse_args()
     with app.app_context():
@@ -107,11 +193,7 @@ def main():
         )
         response = provider.client.analyze_expense(Document={"Bytes": content})
         # This is the exact in-memory normalizer used by provider.extract after AnalyzeExpense.
-        canonical_payload = (
-            build_textract_supplier_invoice_extraction_payload(response)
-            if args.normalize
-            else None
-        )
+        canonical_payload = trace_normalize_response(response) if args.normalize else None
 
     expense_documents = response.get("ExpenseDocuments") if isinstance(response, dict) else None
     if not isinstance(expense_documents, list):
