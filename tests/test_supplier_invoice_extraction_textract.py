@@ -120,17 +120,71 @@ class TextractSupplierInvoiceExtractionProviderTest(unittest.TestCase):
 
     def test_real_spanish_invoice_patterns_are_normalized_without_using_receiver_tax_id(self):
         fields = [
-            summary_field("VENDOR_NAME", "HIERROS ACERGOM, S.L.L.", confidence=99.698),
-            summary_field("INVOICE_RECEIPT_ID", "43002146", label="Código", confidence=99.0),
-            summary_field("INVOICE_RECEIPT_ID", "076088", label="Factura", confidence=98.682),
-            summary_field("INVOICE_RECEIPT_DATE", "12/06/2026", label="Fecha", confidence=75.324),
-            summary_field("SUBTOTAL", "319,24", label="B. Imponible", confidence=90.277),
-            summary_field("TAX", "67,04", label="Importe IVA %", confidence=96.250),
-            summary_field("OTHER", "21,00", label="% IVA", confidence=99.848),
-            summary_field("TOTAL", "386,28", label="TOTAL", confidence=98.485),
-            summary_field("OTHER", "B13559141", label="CIF:", confidence=99.920),
-            summary_field("OTHER", "05703874N", label="DNI/CIF", confidence=99.0),
-            summary_field("TOTAL", "386,28", label="Importe:", confidence=99.9),
+            {
+                "Type": {"Text": "NAME"},
+                "ValueDetection": {"Text": "HIERROS ACERGOM, S.L.L.", "Confidence": 99.698},
+                "PageNumber": 1,
+                "GroupProperties": [{"Types": ["VENDOR"]}],
+            },
+            {
+                "Type": {"Text": "VENDOR_NAME"},
+                "ValueDetection": {"Text": "HIERROS ACERGOM, S.L.L.", "Confidence": 99.698},
+                "PageNumber": 1,
+            },
+            {
+                "Type": {"Text": "INVOICE_RECEIPT_ID"},
+                "LabelDetection": {"Text": "Código"},
+                "ValueDetection": {"Text": "43002146", "Confidence": 99.0},
+                "PageNumber": 1,
+            },
+            {
+                "Type": {"Text": "INVOICE_RECEIPT_ID"},
+                "LabelDetection": {"Text": "Factura"},
+                "ValueDetection": {"Text": "076088", "Confidence": 98.682},
+                "PageNumber": 1,
+            },
+            {
+                "Type": {"Text": "INVOICE_RECEIPT_DATE"},
+                "LabelDetection": {"Text": "Fecha"},
+                "ValueDetection": {"Text": "12/06/2026", "Confidence": 75.324},
+                "PageNumber": 1,
+            },
+            {
+                "Type": {"Text": "SUBTOTAL"},
+                "LabelDetection": {"Text": "B. Imponible"},
+                "ValueDetection": {"Text": "319,24", "Confidence": 90.277},
+                "PageNumber": 1,
+            },
+            {
+                "Type": {"Text": "TAX"},
+                "LabelDetection": {"Text": "Importe IVA %"},
+                "ValueDetection": {"Text": "67,04", "Confidence": 96.250},
+                "PageNumber": 1,
+            },
+            {
+                "Type": {"Text": "OTHER"},
+                "LabelDetection": {"Text": "% IVA"},
+                "ValueDetection": {"Text": "21,00", "Confidence": 99.848},
+                "PageNumber": 1,
+            },
+            {
+                "Type": {"Text": "TOTAL"},
+                "LabelDetection": {"Text": "TOTAL"},
+                "ValueDetection": {"Text": "386,28", "Confidence": 98.485},
+                "PageNumber": 1,
+            },
+            {
+                "Type": {"Text": "OTHER"},
+                "LabelDetection": {"Text": "CIF:"},
+                "ValueDetection": {"Text": "B13559141", "Confidence": 99.920},
+                "PageNumber": 1,
+            },
+            {
+                "Type": {"Text": "OTHER"},
+                "LabelDetection": {"Text": "DNI/CIF"},
+                "ValueDetection": {"Text": "05703874N", "Confidence": 99.615},
+                "PageNumber": 1,
+            },
         ]
         payload = build_textract_supplier_invoice_extraction_payload(textract_response(fields=fields))
 
