@@ -43,6 +43,9 @@ class InvoiceDouble:
     invoice_snapshot_hash: str | None
     issued_at: datetime | None = datetime(2026, 7, 18, 10, 0, 0)
     invoice_type: str | None = "ordinary"
+    original_invoice_id: int | None = None
+    rectification_aeat_type: str | None = None
+    original_invoice: object | None = None
 
     @property
     def order(self):
@@ -145,10 +148,20 @@ def snapshot(**overrides):
     return data
 
 
-def invoice(*, invoice_number="F2026000001", invoice_snapshot=None, stored_hash=None):
+def invoice(
+    *,
+    invoice_id=1,
+    invoice_number="F2026000001",
+    invoice_snapshot=None,
+    stored_hash=None,
+    invoice_type="ordinary",
+    original_invoice_id=None,
+    rectification_aeat_type=None,
+    original_invoice=None,
+):
     fiscal_snapshot = snapshot() if invoice_snapshot is None else invoice_snapshot
     return InvoiceDouble(
-        id=1,
+        id=invoice_id,
         invoice_number=invoice_number,
         invoice_snapshot=fiscal_snapshot,
         invoice_snapshot_hash=stored_hash or (
@@ -156,6 +169,10 @@ def invoice(*, invoice_number="F2026000001", invoice_snapshot=None, stored_hash=
             if isinstance(fiscal_snapshot, dict)
             else None
         ),
+        invoice_type=invoice_type,
+        original_invoice_id=original_invoice_id,
+        rectification_aeat_type=rectification_aeat_type,
+        original_invoice=original_invoice,
     )
 
 
@@ -165,6 +182,74 @@ def entry(**overrides):
         "invoice_date": date(2026, 7, 18),
         "invoice_number": "F2026000001",
         "invoice": invoice(),
+    }
+    data.update(overrides)
+    return AccountingEntryDouble(**data)
+
+
+def corrective_snapshot(*, aeat_type="R1", original_invoice_id=1, original_invoice_number="F2026000001", **overrides):
+    original = snapshot()
+    data = {
+        **copy.deepcopy(original),
+        "schema_version": 3,
+        "metadata": {"generator": "invoice_snapshot_builder_v3"},
+        "operation": {
+            **copy.deepcopy(original["operation"]),
+            "invoice_type": "corrective",
+            "issue_date": "2026-07-19",
+            "rectification": {
+                "rectification_type": "differences",
+                "rectification_scope": "total",
+                "rectification_reason": "invoice_error",
+                "rectification_reason_text": "Factura emitida por error",
+                "aeat_type": aeat_type,
+                "original_invoice_id": original_invoice_id,
+                "original_invoice_number": original_invoice_number,
+                "original_invoice_issued_at": "2026-07-18T10:00:00",
+                "affected_line_numbers": [1],
+            },
+        },
+        "lines": [{
+            **copy.deepcopy(original["lines"][0]),
+            "tax_base": "-100.00",
+            "tax_amount": "-21.00",
+            "line_total": "-121.00",
+        }],
+        "totals": {
+            "tax_base": "-100.00",
+            "tax_amount": "-21.00",
+            "total_amount": "-121.00",
+        },
+    }
+    data.update(overrides)
+    return data
+
+
+def corrective_entry(*, aeat_type="R1", snapshot_overrides=None, **overrides):
+    original = invoice(invoice_id=41, invoice_number="F2026000001")
+    fiscal_snapshot = corrective_snapshot(
+        original_invoice_id=original.id,
+        original_invoice_number=original.invoice_number,
+        aeat_type=aeat_type,
+        **(snapshot_overrides or {}),
+    )
+    corrective = invoice(
+        invoice_id=42,
+        invoice_number="R2026000001",
+        invoice_snapshot=fiscal_snapshot,
+        invoice_type="corrective",
+        original_invoice_id=41,
+        rectification_aeat_type=aeat_type,
+        original_invoice=original,
+    )
+    data = {
+        "id": 2,
+        "invoice_date": date(2026, 7, 19),
+        "invoice_number": "R2026000001",
+        "invoice": corrective,
+        "taxable_base": Decimal("-100.00"),
+        "vat_amount": Decimal("-21.00"),
+        "total_amount": Decimal("-121.00"),
     }
     data.update(overrides)
     return AccountingEntryDouble(**data)
@@ -201,6 +286,36 @@ class AeatSalesLedgerServiceTest(unittest.TestCase):
 
         self.assertEqual(result.row_count, 1)
         self.assertEqual(workbook[AEAT_SALES_LEDGER_SHEET_NAME]["L3"].value, "F2026000001")
+
+    def test_classified_total_rectificatives_export_as_r1_or_r4(self):
+        for aeat_type in ("R1", "R4"):
+            with self.subTest(aeat_type=aeat_type), temp_export_dir() as tmpdir:
+                accounting_entry = corrective_entry(aeat_type=aeat_type)
+                before_snapshot = copy.deepcopy(accounting_entry.invoice.invoice_snapshot)
+                result, workbook = export_and_open([accounting_entry], tmpdir / "aeat.xlsx")
+                sheet = workbook[AEAT_SALES_LEDGER_SHEET_NAME]
+
+                self.assertEqual(result.row_count, 1)
+                self.assertEqual(sheet["F3"].value, aeat_type)
+                self.assertEqual(sheet["L3"].value, "R2026000001")
+                self.assertEqual(sheet["I3"].value.date(), date(2026, 7, 19))
+                self.assertEqual(sheet["AJ3"].value, "F2026000001")
+                self.assertEqual(sheet["H3"].value, Decimal("-100.00"))
+                self.assertEqual(sheet["V3"].value, Decimal("-100.00"))
+                self.assertEqual(sheet["X3"].value, Decimal("-21.00"))
+                self.assertEqual(sheet["U3"].value, Decimal("-121.00"))
+                self.assertEqual(accounting_entry.invoice.invoice_snapshot, before_snapshot)
+                self.assertEqual(accounting_entry.status, "pending")
+
+    def test_mixed_ordinary_and_corrective_rows_keep_deterministic_order(self):
+        ordinary = entry(id=1)
+        corrective = corrective_entry(id=2)
+
+        with temp_export_dir() as tmpdir:
+            _, workbook = export_and_open([corrective, ordinary], tmpdir / "aeat.xlsx")
+            sheet = workbook[AEAT_SALES_LEDGER_SHEET_NAME]
+
+        self.assertEqual([sheet["L3"].value, sheet["L4"].value], ["F2026000001", "R2026000001"])
 
     def test_row_mapping_matches_aeat_sales_ledger_v1(self):
         with temp_export_dir() as tmpdir:
@@ -334,7 +449,7 @@ class AeatSalesLedgerServiceTest(unittest.TestCase):
             with self.assertRaises(AeatSalesLedgerValidationError):
                 export_aeat_sales_ledger([bad_entry], output_path=tmpdir / "aeat.xlsx")
 
-    def test_unsupported_schema_and_corrective_invoice_are_rejected(self):
+    def test_unsupported_schema_and_legacy_corrective_invoice_are_rejected(self):
         with temp_export_dir() as tmpdir:
             unsupported = snapshot(schema_version=999)
             unsupported_entry = entry(invoice=invoice(invoice_snapshot=unsupported))
@@ -347,6 +462,76 @@ class AeatSalesLedgerServiceTest(unittest.TestCase):
                 export_aeat_sales_ledger([unsupported_entry], output_path=tmpdir / "unsupported.xlsx")
             with self.assertRaises(AeatSalesLedgerValidationError):
                 export_aeat_sales_ledger([corrective_entry], output_path=tmpdir / "corrective.xlsx")
+
+    def test_corrective_requires_classification_and_matching_frozen_reference(self):
+        cases = [
+            ("missing model classification", corrective_entry(aeat_type=None)),
+            (
+                "missing snapshot classification",
+                corrective_entry(snapshot_overrides={
+                    "operation": {
+                        **corrective_snapshot()["operation"],
+                        "rectification": {
+                            **corrective_snapshot()["operation"]["rectification"],
+                            "aeat_type": None,
+                        },
+                    },
+                }),
+            ),
+            ("r2 out of scope", corrective_entry(aeat_type="R2")),
+            ("r3 out of scope", corrective_entry(aeat_type="R3")),
+            ("r5 out of scope", corrective_entry(aeat_type="R5")),
+            (
+                "partial",
+                corrective_entry(snapshot_overrides={
+                    "operation": {
+                        **corrective_snapshot()["operation"],
+                        "rectification": {
+                            **corrective_snapshot()["operation"]["rectification"],
+                            "rectification_scope": "partial",
+                        },
+                    },
+                }),
+            ),
+        ]
+
+        with temp_export_dir() as tmpdir:
+            for label, accounting_entry in cases:
+                with self.subTest(label=label), self.assertRaises(AeatSalesLedgerValidationError):
+                    export_aeat_sales_ledger([accounting_entry], output_path=tmpdir / f"{label}.xlsx")
+
+    def test_corrective_rejects_model_snapshot_and_original_reference_mismatches(self):
+        mismatch = corrective_entry()
+        mismatch.invoice.rectification_aeat_type = "R4"
+        missing_original = corrective_entry()
+        missing_original.invoice.original_invoice = None
+        different_original_number = corrective_entry()
+        different_original_number.invoice.original_invoice.invoice_number = "F2026000099"
+        different_original_date = corrective_entry()
+        different_original_date.invoice.original_invoice.issued_at = datetime(2026, 7, 20, 10, 0, 0)
+        mismatched_original_id = corrective_entry()
+        mismatched_original_id.invoice.original_invoice_id = 99
+        v3_ordinary = corrective_entry(snapshot_overrides={
+            "operation": {
+                **corrective_snapshot()["operation"],
+                "invoice_type": "ordinary",
+            },
+        })
+        invalid_hash = corrective_entry()
+        invalid_hash.invoice.invoice_snapshot_hash = "invalid"
+
+        with temp_export_dir() as tmpdir:
+            for label, accounting_entry in (
+                ("type-mismatch", mismatch),
+                ("missing-original", missing_original),
+                ("number-mismatch", different_original_number),
+                ("date-mismatch", different_original_date),
+                ("id-mismatch", mismatched_original_id),
+                ("v3-ordinary", v3_ordinary),
+                ("invalid-hash", invalid_hash),
+            ):
+                with self.subTest(label=label), self.assertRaises(AeatSalesLedgerValidationError):
+                    export_aeat_sales_ledger([accounting_entry], output_path=tmpdir / f"{label}.xlsx")
 
     def test_non_sale_non_eur_and_missing_tax_id_are_rejected(self):
         with temp_export_dir() as tmpdir:

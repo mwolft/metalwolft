@@ -9,7 +9,8 @@ from api.invoice_snapshot_integrity import calculate_invoice_snapshot_hash
 AEAT_SALES_LEDGER_SHEET_NAME = "EXPEDIDAS_INGRESOS"
 SALE_ENTRY_TYPE = "sale"
 ORDINARY_INVOICE_TYPE = "ordinary"
-SUPPORTED_SCHEMA_VERSIONS = {1, 2}
+CORRECTIVE_INVOICE_TYPE = "corrective"
+SUPPORTED_SCHEMA_VERSIONS = {1, 2, 3}
 SUPPORTED_CURRENCY = "EUR"
 SUPPORTED_COUNTRY_CODE = "ES"
 SUPPORTED_TAX_ID_TYPE = "4"
@@ -17,6 +18,7 @@ BUSINESS_ACTIVITY_CODE = "A"
 BUSINESS_ACTIVITY_TYPE = "3"
 IAE_CODE = "3141"
 AEAT_INVOICE_TYPE = "F1"
+SUPPORTED_RECTIFICATION_AEAT_TYPES = {"R1", "R4"}
 AEAT_INCOME_CONCEPT = "I01"
 AEAT_OPERATION_KEY = "1"
 AEAT_OPERATION_QUALIFICATION = "S1"
@@ -225,7 +227,7 @@ def _prepared_entry(entry):
 
     snapshot = _validated_snapshot(invoice)
     _validate_snapshot_hash(invoice, snapshot)
-    _validate_ordinary_invoice(invoice, snapshot)
+    invoice_context = _validate_invoice_for_ledger(invoice, snapshot)
 
     invoice_number = _required_text(getattr(entry, "invoice_number", None), "invoice_number")
     if invoice_number != _required_text(getattr(invoice, "invoice_number", None), "invoice.invoice_number"):
@@ -259,8 +261,14 @@ def _prepared_entry(entry):
         "tax_base": tax_base,
         "tax_amount": tax_amount,
         "total_amount": total_amount,
-        "tax_rate": _tax_rate(snapshot, tax_base, tax_amount),
-        "reference": _external_reference(snapshot),
+        "tax_rate": _tax_rate(
+            snapshot,
+            tax_base,
+            tax_amount,
+            require_explicit_rate=invoice_context["invoice_type"] == CORRECTIVE_INVOICE_TYPE,
+        ),
+        "invoice_type": invoice_context["aeat_invoice_type"],
+        "reference": invoice_context["reference"],
     }
 
 
@@ -291,12 +299,98 @@ def _validate_snapshot_hash(invoice, snapshot):
         raise AeatSalesLedgerValidationError("La integridad del snapshot fiscal no coincide.")
 
 
+def _validate_invoice_for_ledger(invoice, snapshot):
+    schema_version = snapshot["schema_version"]
+    if schema_version in {1, 2}:
+        return _validate_ordinary_invoice(invoice, snapshot)
+    if schema_version == 3:
+        return _validate_corrective_invoice(invoice, snapshot)
+    raise AeatSalesLedgerValidationError("Version de snapshot fiscal no soportada.")
+
+
 def _validate_ordinary_invoice(invoice, snapshot):
     model_type = getattr(invoice, "invoice_type", None)
     snapshot_type = snapshot["operation"].get("invoice_type")
-    invoice_type = snapshot_type or model_type
-    if invoice_type != ORDINARY_INVOICE_TYPE:
-        raise AeatSalesLedgerValidationError("Solo se soportan facturas ordinarias en el libro AEAT v1.")
+    if snapshot_type != ORDINARY_INVOICE_TYPE or model_type not in (None, ORDINARY_INVOICE_TYPE):
+        raise AeatSalesLedgerValidationError("El libro AEAT solo admite facturas ordinarias v1/v2 o rectificativas v3.")
+    return {
+        "invoice_type": ORDINARY_INVOICE_TYPE,
+        "aeat_invoice_type": AEAT_INVOICE_TYPE,
+        "reference": _external_reference(snapshot),
+    }
+
+
+def _validate_corrective_invoice(invoice, snapshot):
+    if getattr(invoice, "invoice_type", None) != CORRECTIVE_INVOICE_TYPE:
+        raise AeatSalesLedgerValidationError("La rectificativa no coincide con su tipo fiscal persistido.")
+    if snapshot["operation"].get("invoice_type") != CORRECTIVE_INVOICE_TYPE:
+        raise AeatSalesLedgerValidationError("El snapshot rectificativo no tiene tipo corrective.")
+
+    rectification = snapshot["operation"].get("rectification")
+    if not isinstance(rectification, dict):
+        raise AeatSalesLedgerValidationError("La rectificativa no contiene su referencia fiscal congelada.")
+    if rectification.get("rectification_scope") != "total":
+        raise AeatSalesLedgerValidationError("El libro AEAT no admite rectificativas parciales.")
+
+    invoice_number = _required_text(getattr(invoice, "invoice_number", None), "invoice.invoice_number")
+    model_aeat_type = _optional_text(getattr(invoice, "rectification_aeat_type", None))
+    snapshot_aeat_type = _optional_text(rectification.get("aeat_type"))
+    if not model_aeat_type or not snapshot_aeat_type:
+        raise AeatSalesLedgerValidationError(
+            f"La factura rectificativa {invoice_number} no tiene clasificacion fiscal AEAT."
+        )
+    if model_aeat_type != snapshot_aeat_type:
+        raise AeatSalesLedgerValidationError(
+            f"La factura rectificativa {invoice_number} tiene una clasificacion AEAT incoherente."
+        )
+    if model_aeat_type not in SUPPORTED_RECTIFICATION_AEAT_TYPES:
+        raise AeatSalesLedgerValidationError(
+            f"La factura rectificativa {invoice_number} usa un tipo AEAT fuera del alcance actual."
+        )
+
+    original_invoice_id = _positive_int(
+        rectification.get("original_invoice_id"),
+        "operation.rectification.original_invoice_id",
+    )
+    if original_invoice_id != _positive_int(
+        getattr(invoice, "original_invoice_id", None),
+        "invoice.original_invoice_id",
+    ):
+        raise AeatSalesLedgerValidationError(
+            f"La factura rectificativa {invoice_number} no coincide con su factura original persistida."
+        )
+
+    original_number = _required_text(
+        rectification.get("original_invoice_number"),
+        "operation.rectification.original_invoice_number",
+    )
+    original_issued_at = _snapshot_date(
+        rectification.get("original_invoice_issued_at"),
+        "operation.rectification.original_invoice_issued_at",
+    )
+    original_invoice = getattr(invoice, "original_invoice", None)
+    if original_invoice is None:
+        raise AeatSalesLedgerValidationError(
+            f"La factura rectificativa {invoice_number} no tiene factura original relacionada."
+        )
+    if _positive_int(getattr(original_invoice, "id", None), "original_invoice.id") != original_invoice_id:
+        raise AeatSalesLedgerValidationError(
+            f"La factura rectificativa {invoice_number} tiene una referencia original incoherente."
+        )
+    if _required_text(getattr(original_invoice, "invoice_number", None), "original_invoice.invoice_number") != original_number:
+        raise AeatSalesLedgerValidationError(
+            f"La factura rectificativa {invoice_number} no coincide con el numero congelado de la original."
+        )
+    if _snapshot_date(getattr(original_invoice, "issued_at", None), "original_invoice.issued_at") != original_issued_at:
+        raise AeatSalesLedgerValidationError(
+            f"La factura rectificativa {invoice_number} no coincide con la fecha congelada de la original."
+        )
+
+    return {
+        "invoice_type": CORRECTIVE_INVOICE_TYPE,
+        "aeat_invoice_type": model_aeat_type,
+        "reference": original_number,
+    }
 
 
 def _validate_entry_totals(entry, tax_base, tax_amount, total_amount):
@@ -318,7 +412,7 @@ def _country_code(customer):
     return country_code
 
 
-def _tax_rate(snapshot, tax_base, tax_amount):
+def _tax_rate(snapshot, tax_base, tax_amount, *, require_explicit_rate=False):
     line_rates = set()
     lines = snapshot.get("lines")
     if isinstance(lines, list):
@@ -333,6 +427,9 @@ def _tax_rate(snapshot, tax_base, tax_amount):
         raise AeatSalesLedgerValidationError("El libro AEAT v1 no soporta facturas con varios tipos de IVA.")
     if len(line_rates) == 1:
         return next(iter(line_rates))
+
+    if require_explicit_rate:
+        raise AeatSalesLedgerValidationError("La rectificativa debe conservar un tipo de IVA fiscal congelado.")
 
     if tax_base <= Decimal("0.00"):
         raise AeatSalesLedgerValidationError("No se puede derivar el tipo de IVA con base imponible cero.")
@@ -387,6 +484,16 @@ def _entry_id(entry):
     return int(entry_id or 0)
 
 
+def _positive_int(value, field):
+    try:
+        number = int(value)
+    except (TypeError, ValueError) as exc:
+        raise AeatSalesLedgerValidationError(f"Identificador obligatorio invalido: {field}.") from exc
+    if number <= 0:
+        raise AeatSalesLedgerValidationError(f"Identificador obligatorio invalido: {field}.")
+    return number
+
+
 def _quarter(issue_date):
     return f"{((issue_date.month - 1) // 3) + 1}T"
 
@@ -406,7 +513,7 @@ def _aeat_row(entry):
         BUSINESS_ACTIVITY_CODE,
         BUSINESS_ACTIVITY_TYPE,
         IAE_CODE,
-        AEAT_INVOICE_TYPE,
+        entry["invoice_type"],
         AEAT_INCOME_CONCEPT,
         entry["tax_base"],
         entry["issue_date"],

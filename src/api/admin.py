@@ -1730,9 +1730,9 @@ class InvoiceAdminView(SafeModelView):
                 download_name=result.filename,
                 mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
             )
-        except AeatSalesLedgerError:
+        except AeatSalesLedgerError as exc:
             current_app.logger.exception("Flask Admin AEAT sales ledger export failed")
-            flash('No se ha podido generar el libro AEAT de ingresos.', 'error')
+            flash(f'No se puede generar el libro AEAT: {exc}', 'error')
         except Exception:
             current_app.logger.exception("Unexpected Flask Admin AEAT sales ledger export error")
             flash('No se ha podido generar el libro AEAT de ingresos.', 'error')
