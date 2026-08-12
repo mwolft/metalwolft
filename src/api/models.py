@@ -1021,10 +1021,19 @@ class SupplierInvoice(db.Model):
         db.CheckConstraint(
             "status != 'registered' OR ("
             "reception_number IS NOT NULL AND registered_at IS NOT NULL AND "
-            "fiscal_snapshot IS NOT NULL AND snapshot_schema_version = 1 AND "
+            "fiscal_snapshot IS NOT NULL AND snapshot_schema_version IN (1, 2) AND "
             "snapshot_hash IS NOT NULL"
             ")",
             name="ck_supplier_invoices_registered_snapshot_complete",
+        ),
+        db.CheckConstraint(
+            "aeat_expense_concept_code IS NULL OR "
+            "aeat_expense_concept_code IN ('G01', 'G03', 'G22', 'G24')",
+            name="ck_supplier_invoices_aeat_expense_concept_code_valid",
+        ),
+        db.CheckConstraint(
+            "expense_deductible_amount IS NULL OR expense_deductible_amount >= 0",
+            name="ck_supplier_invoices_expense_deductible_amount_nonnegative",
         ),
     )
 
@@ -1056,6 +1065,8 @@ class SupplierInvoice(db.Model):
         server_default="domestic_standard",
     )
     special_regime_key = db.Column(db.String(20), nullable=True)
+    aeat_expense_concept_code = db.Column(db.String(3), nullable=True)
+    expense_deductible_amount = db.Column(db.Numeric(12, 2), nullable=True)
     status = db.Column(db.String(30), nullable=False, default=STATUS_DRAFT, server_default=STATUS_DRAFT)
     source = db.Column(db.String(30), nullable=False, default="manual", server_default="manual")
     fiscal_snapshot = db.Column(db.JSON, nullable=True)

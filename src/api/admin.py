@@ -12,7 +12,7 @@ from flask_admin.contrib.sqla import ModelView
 from flask_admin.contrib.sqla.form import InlineModelConverter, InlineModelFormList
 from flask_admin.form import RenderTemplateWidget
 from wtforms import validators
-from wtforms.fields import SelectField, StringField, DateField, TextAreaField
+from wtforms.fields import DecimalField, SelectField, StringField, DateField, TextAreaField
 from .models import (
     db, Users, Products, ProductImages,
     Categories, Subcategories, Cart,
@@ -41,8 +41,12 @@ from api.supplier_invoice_registration_service import (
     SupplierInvoiceDuplicateError,
     SupplierInvoiceRegistrationError,
     SupplierInvoiceRegistrationValidationError,
+    apply_supplier_invoice_expense_classification_defaults,
     find_possible_supplier_invoice_duplicates,
+    propose_aeat_expense_concept_code,
+    propose_expense_deductible_amount,
     register_supplier_invoice,
+    requires_nonstandard_g01_confirmation,
 )
 from api.supplier_invoice_document_service import (
     SupplierInvoiceDocumentError,
@@ -1380,6 +1384,10 @@ def _supplier_invoice_registration_error_message(error):
         "Debe existir al menos un desglose de IVA.": message,
         "El total no coincide con la suma de las bases y cuotas de IVA.": message,
         "La cuota deducible no puede superar la cuota soportada.": message,
+        "Selecciona un concepto de gasto AEAT válido.": message,
+        "El concepto de gasto AEAT seleccionado está fuera del alcance nacional actual.": message,
+        "Confirma expresamente el uso de G01 para este proveedor.": message,
+        "El gasto deducible debe estar entre cero y el total de la factura.": message,
     }
     return known_messages.get(message, "No se ha podido registrar la factura recibida. Revisa sus datos fiscales.")
 
@@ -1415,6 +1423,8 @@ class SupplierInvoiceAdminView(SafeModelView):
         "registered_at",
         "registered_by",
         "concept",
+        "aeat_expense_concept_code",
+        "expense_deductible_amount",
         "currency",
         "total_amount",
         "fiscal_invoice_type",
@@ -1458,6 +1468,8 @@ class SupplierInvoiceAdminView(SafeModelView):
         "registered_at": "Registrada",
         "registered_by": "Registrada por",
         "concept": "Concepto",
+        "aeat_expense_concept_code": "Concepto de gasto AEAT",
+        "expense_deductible_amount": "Gasto deducible",
         "total_amount": "Total",
         "fiscal_invoice_type": "Tipo fiscal",
         "tax_treatment": "Tratamiento fiscal",
@@ -1485,6 +1497,8 @@ class SupplierInvoiceAdminView(SafeModelView):
         "issue_date",
         "operation_date",
         "concept",
+        "aeat_expense_concept_code",
+        "expense_deductible_amount",
         "currency",
         "total_amount",
         "fiscal_invoice_type",
@@ -1505,6 +1519,8 @@ class SupplierInvoiceAdminView(SafeModelView):
     form_overrides = {
         "issue_date": DateField,
         "operation_date": DateField,
+        "aeat_expense_concept_code": SelectField,
+        "expense_deductible_amount": DecimalField,
         "status": SelectField,
     }
     form_args = {
@@ -1522,6 +1538,18 @@ class SupplierInvoiceAdminView(SafeModelView):
                 "placeholder": "YYYY-MM-DD",
             },
         },
+        "aeat_expense_concept_code": {
+            "choices": [
+                ("G01", "G01"),
+                ("G03", "G03"),
+            ],
+            "validators": [validators.Optional()],
+        },
+        "expense_deductible_amount": {
+            "places": 2,
+            "rounding": None,
+            "validators": [validators.Optional()],
+        },
         "status": {
             "choices": [
                 (SupplierInvoice.STATUS_DRAFT, "Borrador"),
@@ -1530,6 +1558,29 @@ class SupplierInvoiceAdminView(SafeModelView):
             ]
         }
     }
+
+    def create_form(self, obj=None):
+        form = super().create_form(obj)
+        self._prefill_expense_classification(form, obj)
+        return form
+
+    def edit_form(self, obj=None):
+        form = super().edit_form(obj)
+        self._prefill_expense_classification(form, obj)
+        return form
+
+    @staticmethod
+    def _prefill_expense_classification(form, supplier_invoice):
+        if supplier_invoice is None:
+            return
+        if not supplier_invoice.aeat_expense_concept_code:
+            form.aeat_expense_concept_code.data = propose_aeat_expense_concept_code(
+                supplier_invoice.supplier_tax_id
+            )
+        if supplier_invoice.expense_deductible_amount is None:
+            proposal = propose_expense_deductible_amount(supplier_invoice.tax_breakdowns)
+            if proposal is not None:
+                form.expense_deductible_amount.data = proposal
 
     @expose("/edit/", methods=("GET", "POST"))
     def edit_view(self):
@@ -1544,6 +1595,7 @@ class SupplierInvoiceAdminView(SafeModelView):
             raise ValueError("Las facturas recibidas solo se registran mediante la acción de confirmación.")
         if is_created and model.status != SupplierInvoice.STATUS_DRAFT:
             raise ValueError("Una factura recibida nueva debe crearse como borrador.")
+        apply_supplier_invoice_expense_classification_defaults(model)
 
     def delete_model(self, model):
         if model.status == SupplierInvoice.STATUS_REGISTERED:
@@ -1789,11 +1841,15 @@ class SupplierInvoiceAdminView(SafeModelView):
                 "admin/supplier_invoice_register_confirm.html",
                 supplier_invoice=supplier_invoice,
                 duplicate_count=len(duplicates),
+                requires_nonstandard_g01_confirmation=requires_nonstandard_g01_confirmation(
+                    supplier_invoice
+                ),
                 action_url=self.get_url(".confirm_register", supplier_invoice_id=supplier_invoice.id),
                 cancel_url=self.get_url(".details_view", id=supplier_invoice.id),
             )
 
         allow_duplicate = request.form.get("allow_duplicate") == "1"
+        allow_nonstandard_g01 = request.form.get("allow_nonstandard_g01") == "1"
         actor = request.authorization.username if request.authorization else None
         try:
             result = register_supplier_invoice(
@@ -1801,6 +1857,7 @@ class SupplierInvoiceAdminView(SafeModelView):
                 db_session=self.session,
                 actor=actor,
                 allow_duplicate=allow_duplicate,
+                allow_nonstandard_g01=allow_nonstandard_g01,
             )
             self.session.commit()
             message = (

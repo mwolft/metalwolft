@@ -57,6 +57,11 @@ class SupplierInvoiceRegistrationServiceTest(unittest.TestCase):
         self.context.pop()
 
     def make_draft(self, *, total_amount="121.00", breakdowns=None, **overrides):
+        breakdown_values = breakdowns or [("100.00", "21.00", "21.00", "21.00")]
+        default_expense_deductible_amount = sum(
+            (Decimal(values[0]) for values in breakdown_values),
+            Decimal("0.00"),
+        )
         invoice = SupplierInvoice(
             supplier_legal_name=overrides.pop("supplier_legal_name", "Acero Proveedor SL"),
             supplier_tax_id=overrides.pop("supplier_tax_id", "B12345678"),
@@ -65,12 +70,17 @@ class SupplierInvoiceRegistrationServiceTest(unittest.TestCase):
             operation_date=overrides.pop("operation_date", None),
             concept=overrides.pop("concept", "Material de taller"),
             total_amount=Decimal(total_amount),
+            aeat_expense_concept_code=overrides.pop("aeat_expense_concept_code", "G03"),
+            expense_deductible_amount=overrides.pop(
+                "expense_deductible_amount",
+                default_expense_deductible_amount,
+            ),
             **overrides,
         )
         db.session.add(invoice)
         db.session.flush()
         for position, values in enumerate(
-            breakdowns or [("100.00", "21.00", "21.00", "21.00")],
+            breakdown_values,
             start=1,
         ):
             db.session.add(
@@ -113,10 +123,15 @@ class SupplierInvoiceRegistrationServiceTest(unittest.TestCase):
         self.assertTrue(result.registered)
         self.assertEqual(invoice.status, SupplierInvoice.STATUS_REGISTERED)
         self.assertEqual(invoice.reception_number, 1)
-        self.assertEqual(invoice.snapshot_schema_version, 1)
+        self.assertEqual(invoice.snapshot_schema_version, 2)
         self.assertEqual(invoice.fiscal_snapshot["supplier"]["tax_id"], "B12345678")
         self.assertEqual(invoice.fiscal_snapshot["tax_breakdowns"][0]["tax_base"], "100.00")
         self.assertEqual(invoice.fiscal_snapshot["totals"]["tax_amount"], "21.00")
+        self.assertEqual(invoice.fiscal_snapshot["document"]["received_at"], invoice.received_at.isoformat())
+        self.assertEqual(invoice.fiscal_snapshot["expense_classification"], {
+            "aeat_expense_concept_code": "G03",
+            "expense_deductible_amount": "100.00",
+        })
         self.assertEqual(
             invoice.snapshot_hash,
             calculate_supplier_invoice_snapshot_hash(invoice.fiscal_snapshot),
@@ -164,6 +179,10 @@ class SupplierInvoiceRegistrationServiceTest(unittest.TestCase):
                 "deductible_tax_amount": Decimal("21.00"),
             }],
             total_amount=Decimal("121.00"),
+            expense_classification={
+                "aeat_expense_concept_code": "G03",
+                "expense_deductible_amount": Decimal("100.00"),
+            },
             registered_at=registered_at,
         )
         second.supplier_invoice_number = first.supplier_invoice_number
@@ -177,6 +196,10 @@ class SupplierInvoiceRegistrationServiceTest(unittest.TestCase):
                 "deductible_tax_amount": Decimal("21.00"),
             }],
             total_amount=Decimal("121.00"),
+            expense_classification={
+                "aeat_expense_concept_code": "G03",
+                "expense_deductible_amount": Decimal("100.00"),
+            },
             registered_at=registered_at,
         )
 
@@ -189,6 +212,7 @@ class SupplierInvoiceRegistrationServiceTest(unittest.TestCase):
     def test_scope_and_supplier_validation_reject_unsupported_or_missing_values(self):
         service_cases = [
             ("missing-tax-id", {"supplier_tax_id": None}),
+            ("reserved-g22", {"aeat_expense_concept_code": "G22"}),
         ]
         for label, overrides in service_cases:
             with self.subTest(label=label):
@@ -243,6 +267,75 @@ class SupplierInvoiceRegistrationServiceTest(unittest.TestCase):
             db.session.commit()
         db.session.rollback()
 
+    def test_v1_snapshot_remains_valid_without_v2_expense_fields(self):
+        invoice = self.make_draft(
+            aeat_expense_concept_code=None,
+            expense_deductible_amount=None,
+        )
+        invoice.reception_number = 7
+        invoice.registered_at = datetime(2026, 8, 11, 10, 0, 0)
+        invoice.fiscal_snapshot = {"schema_version": 1, "legacy": True}
+        invoice.snapshot_schema_version = 1
+        invoice.snapshot_hash = "a" * 64
+        invoice.status = SupplierInvoice.STATUS_REGISTERED
+        db.session.commit()
+
+        self.assertEqual(invoice.snapshot_schema_version, 1)
+        self.assertIsNone(invoice.aeat_expense_concept_code)
+        self.assertIsNone(invoice.expense_deductible_amount)
+
+    def test_g01_is_proposed_for_known_suppliers_and_requires_confirmation_elsewhere(self):
+        invoice = self.make_draft(
+            supplier_tax_id="B13559141",
+            aeat_expense_concept_code="G01",
+        )
+        register_supplier_invoice(invoice, db_session=db.session)
+        self.assertEqual(invoice.fiscal_snapshot["expense_classification"]["aeat_expense_concept_code"], "G01")
+
+        nonstandard = self.make_draft(
+            supplier_tax_id="B99999999",
+            supplier_invoice_number="P-2026-002",
+            aeat_expense_concept_code="G01",
+        )
+        with self.assertRaises(SupplierInvoiceRegistrationValidationError):
+            register_supplier_invoice(nonstandard, db_session=db.session)
+
+        result = register_supplier_invoice(
+            nonstandard,
+            db_session=db.session,
+            allow_nonstandard_g01=True,
+        )
+        self.assertTrue(result.registered)
+
+    def test_registration_fills_only_missing_expense_defaults(self):
+        invoice = self.make_draft(
+            supplier_tax_id="B13559141",
+            aeat_expense_concept_code=None,
+            expense_deductible_amount=None,
+        )
+        register_supplier_invoice(invoice, db_session=db.session)
+
+        self.assertEqual(invoice.aeat_expense_concept_code, "G01")
+        self.assertEqual(invoice.expense_deductible_amount, Decimal("100.00"))
+
+        manual = self.make_draft(
+            supplier_invoice_number="P-2026-manual",
+            aeat_expense_concept_code="G03",
+            expense_deductible_amount=Decimal("121.00"),
+        )
+        register_supplier_invoice(manual, db_session=db.session)
+        self.assertEqual(manual.aeat_expense_concept_code, "G03")
+        self.assertEqual(manual.expense_deductible_amount, Decimal("121.00"))
+
+    def test_expense_deductible_amount_is_independent_from_vat_deduction(self):
+        invoice = self.make_draft(expense_deductible_amount=Decimal("121.00"))
+        register_supplier_invoice(invoice, db_session=db.session)
+
+        self.assertEqual(
+            invoice.fiscal_snapshot["expense_classification"]["expense_deductible_amount"],
+            "121.00",
+        )
+
     def test_sales_models_are_not_part_of_the_supplier_registration_service(self):
         source = (SRC_DIR / "api/supplier_invoice_registration_service.py").read_text(encoding="utf-8")
         self.assertNotIn("Invoices", source)
@@ -259,6 +352,17 @@ class SupplierInvoiceMigrationSourceTest(unittest.TestCase):
         self.assertIn('"supplier_invoice_reception_sequences"', source)
         self.assertNotIn('"invoices",', source)
         self.assertNotIn('"accounting_entries"', source)
+
+    def test_expense_classification_migration_is_additive_and_preserves_v1(self):
+        source = (
+            ROOT_DIR
+            / "src/migrations/versions/b5c6d7e8f9a0_add_supplier_invoice_expense_classification.py"
+        ).read_text(encoding="utf-8")
+
+        self.assertIn('down_revision = "a4b5c6d7e8f9"', source)
+        self.assertIn('"aeat_expense_concept_code"', source)
+        self.assertIn('"expense_deductible_amount"', source)
+        self.assertIn("snapshot_schema_version IN (1, 2)", source)
 
 
 if __name__ == "__main__":

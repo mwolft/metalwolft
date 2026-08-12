@@ -85,6 +85,8 @@ class FlaskAdminSupplierInvoiceTest(unittest.TestCase):
             issue_date=date(2026, 8, 11),
             concept="Material de taller",
             total_amount=Decimal("121.00"),
+            aeat_expense_concept_code="G03",
+            expense_deductible_amount=Decimal("100.00"),
         )
         db.session.add(invoice)
         db.session.flush()
@@ -163,6 +165,47 @@ class FlaskAdminSupplierInvoiceTest(unittest.TestCase):
             registered = db.session.get(SupplierInvoice, self.invoice_id)
             self.assertEqual(registered.status, SupplierInvoice.STATUS_REGISTERED)
             self.assertEqual(registered.reception_number, 1)
+            self.assertEqual(registered.snapshot_schema_version, 2)
+
+    def test_edit_form_prefills_editable_expense_classification_for_empty_draft_values(self):
+        with self.app.app_context():
+            invoice = db.session.get(SupplierInvoice, self.invoice_id)
+            invoice.supplier_tax_id = "B13559141"
+            invoice.aeat_expense_concept_code = None
+            invoice.expense_deductible_amount = None
+            with self.app.test_request_context("/admin/supplierinvoice/edit/"):
+                form = self.view.edit_form(invoice)
+
+        self.assertEqual(form.aeat_expense_concept_code.data, "G01")
+        self.assertEqual(form.expense_deductible_amount.data, Decimal("100.00"))
+
+    def test_nonstandard_g01_requires_explicit_admin_confirmation(self):
+        with self.app.app_context():
+            invoice = db.session.get(SupplierInvoice, self.invoice_id)
+            invoice.aeat_expense_concept_code = "G01"
+            db.session.commit()
+
+        response = self.client.get(self._url(), headers=self._auth_header())
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(b'name="allow_nonstandard_g01"', response.data)
+
+        self.client.post(self._url(), headers=self._auth_header())
+        with self.app.app_context():
+            self.assertEqual(
+                db.session.get(SupplierInvoice, self.invoice_id).status,
+                SupplierInvoice.STATUS_DRAFT,
+            )
+
+        self.client.post(
+            self._url(),
+            data={"allow_nonstandard_g01": "1"},
+            headers=self._auth_header(),
+        )
+        with self.app.app_context():
+            self.assertEqual(
+                db.session.get(SupplierInvoice, self.invoice_id).status,
+                SupplierInvoice.STATUS_REGISTERED,
+            )
 
     def test_registered_invoice_cannot_open_edit_or_be_deleted(self):
         self.client.post(self._url(), headers=self._auth_header())
