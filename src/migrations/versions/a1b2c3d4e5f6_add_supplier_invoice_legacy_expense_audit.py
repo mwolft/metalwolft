@@ -20,7 +20,7 @@ def upgrade():
     op.add_column("supplier_invoices", sa.Column("legacy_expense_classified_by", sa.String(length=255), nullable=True))
     op.add_column("supplier_invoices", sa.Column("legacy_expense_received_at", sa.Date(), nullable=True))
     op.create_check_constraint(
-        "ck_supplier_invoices_legacy_expense_classification_audit_complete",
+        "ck_supplier_invoices_legacy_expense_audit",
         "supplier_invoices",
         "(legacy_expense_classified_at IS NULL AND legacy_expense_classified_by IS NULL) OR "
         "(legacy_expense_classified_at IS NOT NULL AND legacy_expense_classified_by IS NOT NULL)",
@@ -29,7 +29,7 @@ def upgrade():
 
 def downgrade():
     op.drop_constraint(
-        "ck_supplier_invoices_legacy_expense_classification_audit_complete",
+        "ck_supplier_invoices_legacy_expense_audit",
         "supplier_invoices",
         type_="check",
     )
