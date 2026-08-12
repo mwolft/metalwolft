@@ -142,6 +142,12 @@ class FlaskAdminSupplierInvoiceTest(unittest.TestCase):
                 return rule
         raise AssertionError("Supplier invoice download route was not registered")
 
+    def _delete_document_rule(self):
+        for rule in self.app.url_map.iter_rules():
+            if rule.endpoint.endswith(".delete_document"):
+                return rule
+        raise AssertionError("Supplier invoice delete document route was not registered")
+
     def _review_extraction_rule(self):
         for rule in self.app.url_map.iter_rules():
             if rule.endpoint.endswith(".review_extraction"):
@@ -188,6 +194,8 @@ class FlaskAdminSupplierInvoiceTest(unittest.TestCase):
 
         self.assertEqual(form.aeat_expense_concept_code.data, "G01")
         self.assertEqual(form.expense_deductible_amount.data, Decimal("100.00"))
+        self.assertEqual(form.aeat_expense_concept_code.label.text, "Concepto de gasto AEAT (propuesto)")
+        self.assertIn("Propuesto según el NIF", form.aeat_expense_concept_code.description)
 
     def test_nonstandard_g01_requires_explicit_admin_confirmation(self):
         with self.app.app_context():
@@ -504,6 +512,63 @@ class FlaskAdminSupplierInvoiceTest(unittest.TestCase):
         self.assertIn("attachment; filename=test.pdf", response.headers["Content-Disposition"])
         self.assertEqual(response.headers["X-Content-Type-Options"], "nosniff")
         self.assertEqual(response.headers["Cache-Control"], "no-store")
+
+    def test_document_delete_requires_confirmation_and_only_shows_when_eligible(self):
+        with self.app.app_context():
+            invoice = db.session.get(SupplierInvoice, self.invoice_id)
+            removable = SupplierInvoiceDocument(
+                supplier_invoice=invoice,
+                storage_provider="r2",
+                storage_key="supplier-invoices/2026/08/removable.pdf",
+                original_filename="removable.pdf",
+                mime_type="application/pdf",
+                file_size=4,
+                sha256="1" * 64,
+            )
+            applied = SupplierInvoiceDocument(
+                supplier_invoice=invoice,
+                storage_provider="r2",
+                storage_key="supplier-invoices/2026/08/applied.pdf",
+                original_filename="applied.pdf",
+                mime_type="application/pdf",
+                file_size=4,
+                sha256="2" * 64,
+                processing_status=SupplierInvoiceDocument.STATUS_APPLIED,
+            )
+            db.session.add_all((removable, applied))
+            db.session.flush()
+            db.session.add(
+                SupplierInvoiceExtraction(
+                    supplier_invoice_document=applied,
+                    provider="fake",
+                    extractor_version="fake-v1",
+                    status=SupplierInvoiceExtraction.STATUS_APPLIED,
+                    payload_schema_version=1,
+                    extraction_payload={"schema_version": 1},
+                    payload_hash="3" * 64,
+                    completed_at=datetime(2026, 8, 11),
+                )
+            )
+            db.session.commit()
+            with self.app.test_request_context("/admin/supplierinvoice/"):
+                formatted = str(admin_module._format_supplier_invoice_documents(self.view, None, invoice, None))
+            self.assertEqual(formatted.count("ELIMINAR DOCUMENTO"), 1)
+            document_id = removable.id
+
+        delete_url = self._delete_document_rule().rule.replace("<int:document_id>", str(document_id))
+        response = self.client.get(delete_url, headers=self._auth_header())
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(b"Confirmo que quiero eliminar", response.data)
+        token = re.search(rb'name="csrf_token" value="([^"]+)"', response.data).group(1).decode()
+
+        with patch.object(admin_module, "delete_supplier_invoice_document") as delete_document:
+            response = self.client.post(
+                delete_url,
+                data={"csrf_token": token, "confirm_delete": "1"},
+                headers=self._auth_header(),
+            )
+        self.assertEqual(response.status_code, 302)
+        delete_document.assert_called_once()
 
     def test_registered_invoice_does_not_offer_or_accept_document_upload(self):
         self.client.post(self._url(), headers=self._auth_header())

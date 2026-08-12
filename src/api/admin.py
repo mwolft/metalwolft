@@ -49,10 +49,16 @@ from api.supplier_invoice_registration_service import (
     requires_nonstandard_g01_confirmation,
 )
 from api.supplier_invoice_document_service import (
+    SupplierInvoiceDocumentDeletionBlockedError,
+    SupplierInvoiceDocumentDeletionError,
+    SupplierInvoiceDocumentDeletionPersistenceError,
+    SupplierInvoiceDocumentDeletionStorageError,
     SupplierInvoiceDocumentError,
     SupplierInvoiceDocumentImmutabilityError,
     SupplierInvoiceDocumentPersistenceError,
     SupplierInvoiceDocumentValidationError,
+    can_delete_supplier_invoice_document,
+    delete_supplier_invoice_document,
     upload_supplier_invoice_document,
 )
 from api.supplier_invoice_document_storage import (
@@ -1315,14 +1321,23 @@ def _format_supplier_invoice_documents(view, context, model, name):
     items = []
     for document in documents:
         download_url = view.get_url(".download_document", document_id=document.id)
+        delete_action = ""
+        if can_delete_supplier_invoice_document(document):
+            delete_url = view.get_url(".delete_document", document_id=document.id)
+            delete_action = (
+                ' <a class="btn btn-danger btn-xs" href="{delete_url}">ELIMINAR DOCUMENTO</a>'.format(
+                    delete_url=delete_url
+                )
+            )
         items.append(
             '<li>{filename} <span class="text-muted">({mime}, {size} bytes, {hash}…)</span> '
-            '<a class="btn btn-default btn-xs" href="{download_url}">DESCARGAR</a></li>'.format(
+            '<a class="btn btn-default btn-xs" href="{download_url}">DESCARGAR</a>{delete_action}</li>'.format(
                 filename=document.original_filename,
                 mime=document.mime_type,
                 size=document.file_size,
                 hash=document.sha256[:12],
                 download_url=download_url,
+                delete_action=delete_action,
             )
         )
     upload_action = ""
@@ -1468,7 +1483,7 @@ class SupplierInvoiceAdminView(SafeModelView):
         "registered_at": "Registrada",
         "registered_by": "Registrada por",
         "concept": "Concepto",
-        "aeat_expense_concept_code": "Concepto de gasto AEAT",
+        "aeat_expense_concept_code": "Concepto de gasto AEAT (propuesto)",
         "expense_deductible_amount": "Gasto deducible",
         "total_amount": "Total",
         "fiscal_invoice_type": "Tipo fiscal",
@@ -1539,12 +1554,14 @@ class SupplierInvoiceAdminView(SafeModelView):
             },
         },
         "aeat_expense_concept_code": {
+            "label": "Concepto de gasto AEAT (propuesto)",
             "choices": [
                 ("", "Selecciona un concepto"),
                 ("G01", "G01"),
                 ("G03", "G03"),
             ],
             "validators": [validators.Optional()],
+            "description": "Propuesto según el NIF del proveedor. Puedes corregirlo antes de registrar.",
         },
         "expense_deductible_amount": {
             "places": 2,
@@ -1719,6 +1736,50 @@ class SupplierInvoiceAdminView(SafeModelView):
         response.headers["X-Content-Type-Options"] = "nosniff"
         response.headers["Cache-Control"] = "no-store"
         return response
+
+    @expose("/delete-document/<int:document_id>", methods=["GET", "POST"])
+    def delete_document(self, document_id):
+        document = self.session.get(SupplierInvoiceDocument, document_id)
+        if not document:
+            flash("Documento recibido no encontrado.", "error")
+            return redirect(self.get_url(".index_view"))
+        redirect_url = _supplier_document_redirect_url(self, document)
+        if not can_delete_supplier_invoice_document(document):
+            flash("Este documento no se puede eliminar desde su estado actual.", "error")
+            return redirect(redirect_url)
+
+        if request.method == "GET":
+            return self.render(
+                "admin/supplier_invoice_document_delete_confirm.html",
+                document=document,
+                csrf_token=_issue_supplier_document_upload_csrf_token(),
+                action_url=self.get_url(".delete_document", document_id=document.id),
+                cancel_url=redirect_url,
+            )
+
+        if not _valid_supplier_document_upload_csrf_token(request.form.get("csrf_token")):
+            flash("La sesión del formulario ha caducado. Vuelve a intentarlo.", "error")
+            return redirect(request.url)
+        if request.form.get("confirm_delete") != "1":
+            flash("Confirma la eliminación del documento para continuar.", "error")
+            return redirect(request.url)
+
+        try:
+            delete_supplier_invoice_document(document, db_session=self.session)
+        except SupplierInvoiceDocumentDeletionBlockedError as error:
+            flash(str(error), "error")
+        except SupplierInvoiceDocumentDeletionStorageError as error:
+            current_app.logger.warning("Supplier document deletion failed document_id=%s", document_id)
+            flash(str(error), "error")
+        except (SupplierInvoiceDocumentDeletionPersistenceError, SupplierInvoiceDocumentDeletionError):
+            current_app.logger.warning("Supplier document deletion persistence failed document_id=%s", document_id)
+            flash("No se ha podido completar la eliminación del documento. Puedes reintentarlo.", "error")
+        except Exception:
+            current_app.logger.exception("Unexpected supplier document deletion failure document_id=%s", document_id)
+            flash("No se ha podido completar la eliminación del documento. Puedes reintentarlo.", "error")
+        else:
+            flash("Documento privado eliminado correctamente.", "success")
+        return redirect(redirect_url)
 
     @expose("/extract-document/<int:document_id>", methods=["POST"])
     def extract_document(self, document_id):

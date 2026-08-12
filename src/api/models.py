@@ -1148,7 +1148,7 @@ class SupplierInvoiceDocument(db.Model):
             name="ck_supplier_invoice_documents_file_size_positive",
         ),
         db.CheckConstraint(
-            "processing_status IN ('uploaded', 'extracting', 'extracted', 'needs_review', 'failed', 'applied')",
+            "processing_status IN ('uploaded', 'extracting', 'extracted', 'needs_review', 'failed', 'applied', 'deleting', 'delete_failed')",
             name="ck_supplier_invoice_documents_processing_status_valid",
         ),
         db.CheckConstraint(
@@ -1167,6 +1167,8 @@ class SupplierInvoiceDocument(db.Model):
     STATUS_NEEDS_REVIEW = "needs_review"
     STATUS_FAILED = "failed"
     STATUS_APPLIED = "applied"
+    STATUS_DELETING = "deleting"
+    STATUS_DELETE_FAILED = "delete_failed"
 
     id = db.Column(db.Integer, primary_key=True)
     supplier_invoice_id = db.Column(
