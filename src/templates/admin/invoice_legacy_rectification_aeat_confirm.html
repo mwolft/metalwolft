@@ -1,0 +1,29 @@
+{% extends 'admin/master.html' %}
+
+{% block body %}
+  <div class="container-fluid">
+    <h3>Clasificar AEAT rectificativa legacy</h3>
+    <p>La factura <strong>{{ invoice.invoice_number }}</strong> rectifica <strong>{{ details.original_invoice_number }}</strong>.</p>
+    <dl class="dl-horizontal">
+      <dt>Fecha original</dt><dd>{{ details.original_invoice_issued_at }}</dd>
+      <dt>Motivo congelado</dt><dd>{{ details.reason_text or details.reason or '—' }}</dd>
+      <dt>Base / IVA / Total</dt><dd>{{ details.tax_base }} / {{ details.tax_amount }} / {{ details.total_amount }} EUR</dd>
+    </dl>
+    <p class="text-warning">La decisión se registra con el administrador y la fecha de confirmación. No modifica el snapshot histórico ni su hash.</p>
+    <form method="post" action="{{ action_url }}">
+      <div class="form-group">
+        <label for="rectification_aeat_type">Tipo fiscal AEAT</label>
+        <select id="rectification_aeat_type" name="rectification_aeat_type" class="form-control" required>
+          <option value="" {% if not existing_aeat_type %}selected{% endif %} disabled>Selecciona R1 o R4</option>
+          {% for value in aeat_type_choices %}<option value="{{ value }}" {% if value == existing_aeat_type %}selected{% endif %}>{{ value }}</option>{% endfor %}
+        </select>
+        {% if existing_aeat_type %}<p class="help-block">Se confirmará la clasificación {{ existing_aeat_type }} ya registrada, añadiendo la trazabilidad pendiente.</p>{% endif %}
+      </div>
+      <div class="checkbox">
+        <label><input type="checkbox" name="confirm_legacy_classification" value="confirmed" required> Confirmo esta clasificación manual.</label>
+      </div>
+      <button type="submit" class="btn btn-warning">CLASIFICAR AEAT RECTIFICATIVA LEGACY</button>
+      <a href="{{ cancel_url }}" class="btn btn-default">Cancelar</a>
+    </form>
+  </div>
+{% endblock %}

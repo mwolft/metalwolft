@@ -1,5 +1,6 @@
 import sys
 import unittest
+from datetime import datetime
 from pathlib import Path
 
 
@@ -16,6 +17,10 @@ MIGRATION_PATH = (
 AEAT_TYPE_MIGRATION_PATH = (
     ROOT_DIR
     / "src/migrations/versions/c1d2e3f4a5b6_add_invoice_rectification_aeat_type.py"
+)
+LEGACY_AEAT_AUDIT_MIGRATION_PATH = (
+    ROOT_DIR
+    / "src/migrations/versions/d7e8f9a0b1c2_add_invoice_legacy_rectification_aeat_audit.py"
 )
 
 
@@ -42,6 +47,10 @@ def aeat_type_migration_source():
     return AEAT_TYPE_MIGRATION_PATH.read_text(encoding="utf-8")
 
 
+def legacy_aeat_audit_migration_source():
+    return LEGACY_AEAT_AUDIT_MIGRATION_PATH.read_text(encoding="utf-8")
+
+
 class InvoiceRectificationModelSourceTest(unittest.TestCase):
     def test_new_rectification_fields_and_relationship_are_declared(self):
         source = invoices_block()
@@ -52,6 +61,8 @@ class InvoiceRectificationModelSourceTest(unittest.TestCase):
         self.assertIn("rectification_type = db.Column(db.String(30), nullable=True)", source)
         self.assertIn("rectification_reason = db.Column(db.String(50), nullable=True)", source)
         self.assertIn("rectification_aeat_type = db.Column(db.String(2), nullable=True)", source)
+        self.assertIn("rectification_aeat_classified_at = db.Column(db.DateTime, nullable=True)", source)
+        self.assertIn("rectification_aeat_classified_by = db.Column(db.String(255), nullable=True)", source)
         self.assertIn("original_invoice = db.relationship(", source)
         self.assertIn("backref=db.backref('corrective_invoices', lazy=True)", source)
         self.assertIn("remote_side=[id]", source)
@@ -66,6 +77,9 @@ class InvoiceRectificationModelSourceTest(unittest.TestCase):
         self.assertIn("ck_invoices_rectification_reason_valid", source)
         self.assertIn("ck_invoices_rectification_aeat_type_valid", source)
         self.assertIn("ck_invoices_rectification_aeat_type_corrective_only", source)
+        self.assertIn("ck_invoices_rectification_aeat_classified_at_corrective_only", source)
+        self.assertIn("ck_invoices_rectification_aeat_classified_by_corrective_only", source)
+        self.assertIn("ck_invoices_rectification_aeat_classification_audit_complete", source)
         self.assertIn("ck_invoices_original_invoice_not_self", source)
         self.assertIn("invoice_type = 'corrective'", source)
         self.assertIn("invoice_type = 'ordinary'", source)
@@ -125,6 +139,15 @@ class InvoiceRectificationMigrationTest(unittest.TestCase):
         self.assertIn('sa.Column("rectification_aeat_type", sa.String(length=2), nullable=True)', source)
         self.assertIn("ck_invoices_rectification_aeat_type_valid", source)
         self.assertIn("ck_invoices_rectification_aeat_type_corrective_only", source)
+        self.assertNotIn("UPDATE invoices", source)
+
+    def test_legacy_aeat_audit_migration_is_additive_and_chained_from_current_head(self):
+        source = legacy_aeat_audit_migration_source()
+
+        self.assertIn('revision = "d7e8f9a0b1c2"', source)
+        self.assertIn('down_revision = "c6d7e8f9a0b1"', source)
+        self.assertIn('"rectification_aeat_classified_at"', source)
+        self.assertIn('"rectification_aeat_classified_by"', source)
         self.assertNotIn("UPDATE invoices", source)
 
 try:
@@ -218,6 +241,10 @@ class InvoiceRectificationSQLiteTest(unittest.TestCase):
             db.session.commit()
         db.session.rollback()
 
+    def test_orm_declares_legacy_aeat_classification_audit_columns(self):
+        self.assertIn("rectification_aeat_classified_at", Invoices.__table__.c)
+        self.assertIn("rectification_aeat_classified_by", Invoices.__table__.c)
+
     def test_ordinary_invoice_can_be_stored_without_rectification_reference(self):
         self.make_invoice()
 
@@ -229,6 +256,8 @@ class InvoiceRectificationSQLiteTest(unittest.TestCase):
         self.assertIsNone(saved.rectification_type)
         self.assertIsNone(saved.rectification_reason)
         self.assertIsNone(saved.rectification_aeat_type)
+        self.assertIsNone(saved.rectification_aeat_classified_at)
+        self.assertIsNone(saved.rectification_aeat_classified_by)
         self.assertEqual(len(saved.corrective_invoices), 0)
 
     def test_corrective_invoice_can_reference_original_invoice(self):
@@ -289,6 +318,30 @@ class InvoiceRectificationSQLiteTest(unittest.TestCase):
             rectification_type="differences",
             rectification_reason="invoice_error",
             rectification_aeat_type="R9",
+        )
+        self.assert_integrity_error()
+
+    def test_legacy_aeat_audit_fields_must_be_complete_and_corrective_only(self):
+        original = self.make_invoice(invoice_number="F2026000001")
+        db.session.commit()
+
+        self.make_invoice(
+            invoice_number="R2026000001",
+            invoice_type="corrective",
+            amount=-1.69,
+            original_invoice_id=original.id,
+            rectification_type="differences",
+            rectification_reason="invoice_error",
+            rectification_aeat_type="R1",
+            rectification_aeat_classified_at=datetime(2026, 8, 12, 10, 0, 0),
+        )
+        self.assert_integrity_error()
+
+        self.make_invoice(
+            invoice_number="F2026000002",
+            invoice_type="ordinary",
+            rectification_aeat_classified_at=datetime(2026, 8, 12, 10, 0, 0),
+            rectification_aeat_classified_by="flask_admin:admin",
         )
         self.assert_integrity_error()
 

@@ -24,6 +24,17 @@
           </label>
         </div>
       {% endif %}
+      {% if requires_nonstandard_g01_confirmation %}
+        <div class="alert alert-warning">
+          G01 está reservado habitualmente para proveedores de hierro. Revisa esta clasificación antes de registrar.
+        </div>
+        <div class="checkbox">
+          <label>
+            <input type="checkbox" name="allow_nonstandard_g01" value="1" required>
+            Confirmo expresamente el uso de G01 para este proveedor.
+          </label>
+        </div>
+      {% endif %}
       <button type="submit" class="btn btn-primary">CONFIRMAR Y REGISTRAR</button>
       <a href="{{ cancel_url }}" class="btn btn-default">Cancelar</a>
     </form>

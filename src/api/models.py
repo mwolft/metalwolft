@@ -582,6 +582,19 @@ class Invoices(db.Model):
             name="ck_invoices_rectification_aeat_type_corrective_only",
         ),
         db.CheckConstraint(
+            "rectification_aeat_classified_at IS NULL OR invoice_type = 'corrective'",
+            name="ck_invoices_rectification_aeat_classified_at_corrective_only",
+        ),
+        db.CheckConstraint(
+            "rectification_aeat_classified_by IS NULL OR invoice_type = 'corrective'",
+            name="ck_invoices_rectification_aeat_classified_by_corrective_only",
+        ),
+        db.CheckConstraint(
+            "(rectification_aeat_classified_at IS NULL AND rectification_aeat_classified_by IS NULL) OR "
+            "(rectification_aeat_classified_at IS NOT NULL AND rectification_aeat_classified_by IS NOT NULL)",
+            name="ck_invoices_rectification_aeat_classification_audit_complete",
+        ),
+        db.CheckConstraint(
             "original_invoice_id IS NULL OR original_invoice_id != id",
             name="ck_invoices_original_invoice_not_self",
         ),
@@ -595,6 +608,8 @@ class Invoices(db.Model):
     rectification_type = db.Column(db.String(30), nullable=True)
     rectification_reason = db.Column(db.String(50), nullable=True)
     rectification_aeat_type = db.Column(db.String(2), nullable=True)
+    rectification_aeat_classified_at = db.Column(db.DateTime, nullable=True)
+    rectification_aeat_classified_by = db.Column(db.String(255), nullable=True)
     created_at = db.Column(db.DateTime, default=db.func.current_timestamp())
     pdf_path = db.Column(db.String(255), nullable=True)
     amount = db.Column(db.Float, nullable=False)
@@ -1021,10 +1036,24 @@ class SupplierInvoice(db.Model):
         db.CheckConstraint(
             "status != 'registered' OR ("
             "reception_number IS NOT NULL AND registered_at IS NOT NULL AND "
-            "fiscal_snapshot IS NOT NULL AND snapshot_schema_version = 1 AND "
+            "fiscal_snapshot IS NOT NULL AND snapshot_schema_version IN (1, 2) AND "
             "snapshot_hash IS NOT NULL"
             ")",
             name="ck_supplier_invoices_registered_snapshot_complete",
+        ),
+        db.CheckConstraint(
+            "aeat_expense_concept_code IS NULL OR "
+            "aeat_expense_concept_code IN ('G01', 'G03', 'G22', 'G24')",
+            name="ck_supplier_invoices_aeat_expense_concept_code_valid",
+        ),
+        db.CheckConstraint(
+            "expense_deductible_amount IS NULL OR expense_deductible_amount >= 0",
+            name="ck_supplier_invoices_expense_deductible_amount_nonnegative",
+        ),
+        db.CheckConstraint(
+            "(legacy_expense_classified_at IS NULL AND legacy_expense_classified_by IS NULL) OR "
+            "(legacy_expense_classified_at IS NOT NULL AND legacy_expense_classified_by IS NOT NULL)",
+            name="ck_supplier_invoices_legacy_expense_classification_audit_complete",
         ),
     )
 
@@ -1048,6 +1077,7 @@ class SupplierInvoice(db.Model):
     concept = db.Column(db.Text, nullable=True)
     currency = db.Column(db.String(3), nullable=False, default="EUR", server_default="EUR")
     total_amount = db.Column(db.Numeric(12, 2), nullable=True)
+
     fiscal_invoice_type = db.Column(db.String(10), nullable=False, default="F1", server_default="F1")
     tax_treatment = db.Column(
         db.String(40),
@@ -1056,6 +1086,11 @@ class SupplierInvoice(db.Model):
         server_default="domestic_standard",
     )
     special_regime_key = db.Column(db.String(20), nullable=True)
+    aeat_expense_concept_code = db.Column(db.String(3), nullable=True)
+    expense_deductible_amount = db.Column(db.Numeric(12, 2), nullable=True)
+    legacy_expense_classified_at = db.Column(db.DateTime, nullable=True)
+    legacy_expense_classified_by = db.Column(db.String(255), nullable=True)
+    legacy_expense_received_at = db.Column(db.Date, nullable=True)
     status = db.Column(db.String(30), nullable=False, default=STATUS_DRAFT, server_default=STATUS_DRAFT)
     source = db.Column(db.String(30), nullable=False, default="manual", server_default="manual")
     fiscal_snapshot = db.Column(db.JSON, nullable=True)
@@ -1137,7 +1172,7 @@ class SupplierInvoiceDocument(db.Model):
             name="ck_supplier_invoice_documents_file_size_positive",
         ),
         db.CheckConstraint(
-            "processing_status IN ('uploaded', 'failed')",
+            "processing_status IN ('uploaded', 'extracting', 'extracted', 'needs_review', 'failed', 'applied', 'deleting', 'delete_failed')",
             name="ck_supplier_invoice_documents_processing_status_valid",
         ),
         db.CheckConstraint(
@@ -1151,7 +1186,13 @@ class SupplierInvoiceDocument(db.Model):
     )
 
     STATUS_UPLOADED = "uploaded"
+    STATUS_EXTRACTING = "extracting"
+    STATUS_EXTRACTED = "extracted"
+    STATUS_NEEDS_REVIEW = "needs_review"
     STATUS_FAILED = "failed"
+    STATUS_APPLIED = "applied"
+    STATUS_DELETING = "deleting"
+    STATUS_DELETE_FAILED = "delete_failed"
 
     id = db.Column(db.Integer, primary_key=True)
     supplier_invoice_id = db.Column(
@@ -1185,9 +1226,75 @@ class SupplierInvoiceDocument(db.Model):
         back_populates="documents",
         lazy=True,
     )
+    extractions = db.relationship(
+        "SupplierInvoiceExtraction",
+        back_populates="supplier_invoice_document",
+        lazy=True,
+    )
 
     def __repr__(self):
         return f"<SupplierInvoiceDocument id={self.id} invoice={self.supplier_invoice_id}>"
+
+
+class SupplierInvoiceExtraction(db.Model):
+    """A non-fiscal, reviewable proposal extracted from a private source document."""
+
+    __tablename__ = "supplier_invoice_extractions"
+    __table_args__ = (
+        db.Index(
+            "ix_supplier_invoice_extractions_document_id",
+            "supplier_invoice_document_id",
+            unique=False,
+        ),
+        db.CheckConstraint(
+            "status IN ('extracting', 'extracted', 'needs_review', 'failed', 'applied')",
+            name="ck_supplier_invoice_extractions_status_valid",
+        ),
+        db.CheckConstraint(
+            "status NOT IN ('extracted', 'needs_review', 'applied') OR ("
+            "extraction_payload IS NOT NULL AND payload_hash IS NOT NULL AND completed_at IS NOT NULL"
+            ")",
+            name="ck_supplier_invoice_extractions_completed_payload_present",
+        ),
+        db.CheckConstraint(
+            "status != 'failed' OR completed_at IS NOT NULL",
+            name="ck_supplier_invoice_extractions_failed_completed",
+        ),
+    )
+
+    STATUS_EXTRACTING = "extracting"
+    STATUS_EXTRACTED = "extracted"
+    STATUS_NEEDS_REVIEW = "needs_review"
+    STATUS_FAILED = "failed"
+    STATUS_APPLIED = "applied"
+
+    id = db.Column(db.Integer, primary_key=True)
+    supplier_invoice_document_id = db.Column(
+        db.Integer,
+        db.ForeignKey("supplier_invoice_documents.id", ondelete="RESTRICT"),
+        nullable=False,
+    )
+    provider = db.Column(db.String(50), nullable=False)
+    extractor_version = db.Column(db.String(100), nullable=False)
+    status = db.Column(db.String(30), nullable=False, default=STATUS_EXTRACTING)
+    payload_schema_version = db.Column(db.Integer, nullable=False, default=1)
+    extraction_payload = db.Column(db.JSON, nullable=True)
+    payload_hash = db.Column(db.String(64), nullable=True)
+    started_at = db.Column(db.DateTime, nullable=False, server_default=db.func.now())
+    completed_at = db.Column(db.DateTime, nullable=True)
+    error_code = db.Column(db.String(50), nullable=True)
+    created_at = db.Column(db.DateTime, nullable=False, server_default=db.func.now())
+    supplier_invoice_document = db.relationship(
+        "SupplierInvoiceDocument",
+        back_populates="extractions",
+        lazy=True,
+    )
+
+    def __repr__(self):
+        return (
+            f"<SupplierInvoiceExtraction id={self.id} "
+            f"document={self.supplier_invoice_document_id} status={self.status}>"
+        )
 
 
 class SupplierInvoiceReceptionSequence(db.Model):

@@ -45,6 +45,8 @@ class InvoiceDouble:
     invoice_type: str | None = "ordinary"
     original_invoice_id: int | None = None
     rectification_aeat_type: str | None = None
+    rectification_aeat_classified_at: datetime | None = None
+    rectification_aeat_classified_by: str | None = None
     original_invoice: object | None = None
 
     @property
@@ -157,6 +159,8 @@ def invoice(
     invoice_type="ordinary",
     original_invoice_id=None,
     rectification_aeat_type=None,
+    rectification_aeat_classified_at=None,
+    rectification_aeat_classified_by=None,
     original_invoice=None,
 ):
     fiscal_snapshot = snapshot() if invoice_snapshot is None else invoice_snapshot
@@ -172,6 +176,8 @@ def invoice(
         invoice_type=invoice_type,
         original_invoice_id=original_invoice_id,
         rectification_aeat_type=rectification_aeat_type,
+        rectification_aeat_classified_at=rectification_aeat_classified_at,
+        rectification_aeat_classified_by=rectification_aeat_classified_by,
         original_invoice=original_invoice,
     )
 
@@ -255,6 +261,18 @@ def corrective_entry(*, aeat_type="R1", snapshot_overrides=None, **overrides):
     return AccountingEntryDouble(**data)
 
 
+def legacy_corrective_entry(*, aeat_type=None, classified_at=None, classified_by=None, **overrides):
+    accounting_entry = corrective_entry(aeat_type=aeat_type, **overrides)
+    rectification = accounting_entry.invoice.invoice_snapshot["operation"]["rectification"]
+    rectification.pop("aeat_type")
+    accounting_entry.invoice.invoice_snapshot_hash = calculate_invoice_snapshot_hash(
+        accounting_entry.invoice.invoice_snapshot
+    )
+    accounting_entry.invoice.rectification_aeat_classified_at = classified_at
+    accounting_entry.invoice.rectification_aeat_classified_by = classified_by
+    return accounting_entry
+
+
 def export_and_open(entries, path):
     result = export_aeat_sales_ledger(entries, output_path=path)
     workbook = load_workbook(path, data_only=True)
@@ -306,6 +324,66 @@ class AeatSalesLedgerServiceTest(unittest.TestCase):
                 self.assertEqual(sheet["U3"].value, Decimal("-121.00"))
                 self.assertEqual(accounting_entry.invoice.invoice_snapshot, before_snapshot)
                 self.assertEqual(accounting_entry.status, "pending")
+
+    def test_legacy_total_rectificatives_require_audited_manual_r1_or_r4(self):
+        for aeat_type in ("R1", "R4"):
+            with self.subTest(aeat_type=aeat_type), temp_export_dir() as tmpdir:
+                accounting_entry = legacy_corrective_entry(
+                    aeat_type=aeat_type,
+                    classified_at=datetime(2026, 8, 12, 10, 0, 0),
+                    classified_by="flask_admin:admin",
+                )
+                before_snapshot = copy.deepcopy(accounting_entry.invoice.invoice_snapshot)
+                before_hash = accounting_entry.invoice.invoice_snapshot_hash
+                _, workbook = export_and_open([accounting_entry], tmpdir / "aeat.xlsx")
+
+                self.assertEqual(workbook[AEAT_SALES_LEDGER_SHEET_NAME]["F3"].value, aeat_type)
+                self.assertEqual(accounting_entry.invoice.invoice_snapshot, before_snapshot)
+                self.assertEqual(accounting_entry.invoice.invoice_snapshot_hash, before_hash)
+
+    def test_legacy_total_rectificative_without_manual_classification_is_rejected_specifically(self):
+        accounting_entry = legacy_corrective_entry()
+        with temp_export_dir() as tmpdir, self.assertRaisesRegex(
+            AeatSalesLedgerValidationError,
+            "histórica y requiere clasificación AEAT manual R1/R4",
+        ):
+            export_aeat_sales_ledger([accounting_entry], output_path=tmpdir / "aeat.xlsx")
+
+    def test_legacy_total_rectificative_with_r4_but_without_audit_is_rejected_specifically(self):
+        accounting_entry = legacy_corrective_entry(aeat_type="R4")
+        with temp_export_dir() as tmpdir, self.assertRaisesRegex(
+            AeatSalesLedgerValidationError,
+            "histórica y requiere clasificación AEAT manual R1/R4",
+        ):
+            export_aeat_sales_ledger([accounting_entry], output_path=tmpdir / "aeat.xlsx")
+
+    def test_legacy_total_rectificative_rejects_missing_audit_invalid_hash_partial_and_out_of_scope_type(self):
+        missing_actor = legacy_corrective_entry(
+            aeat_type="R1", classified_at=datetime(2026, 8, 12, 10, 0, 0)
+        )
+        invalid_hash = legacy_corrective_entry(
+            aeat_type="R1",
+            classified_at=datetime(2026, 8, 12, 10, 0, 0),
+            classified_by="flask_admin:admin",
+        )
+        invalid_hash.invoice.invoice_snapshot_hash = "invalid"
+        partial = legacy_corrective_entry(
+            aeat_type="R1",
+            classified_at=datetime(2026, 8, 12, 10, 0, 0),
+            classified_by="flask_admin:admin",
+        )
+        partial.invoice.invoice_snapshot["operation"]["rectification"]["rectification_scope"] = "partial"
+        partial.invoice.invoice_snapshot_hash = calculate_invoice_snapshot_hash(partial.invoice.invoice_snapshot)
+        r2 = legacy_corrective_entry(
+            aeat_type="R2",
+            classified_at=datetime(2026, 8, 12, 10, 0, 0),
+            classified_by="flask_admin:admin",
+        )
+
+        with temp_export_dir() as tmpdir:
+            for label, accounting_entry in (("missing-audit", missing_actor), ("invalid-hash", invalid_hash), ("partial", partial), ("r2", r2)):
+                with self.subTest(label=label), self.assertRaises(AeatSalesLedgerValidationError):
+                    export_aeat_sales_ledger([accounting_entry], output_path=tmpdir / f"{label}.xlsx")
 
     def test_mixed_ordinary_and_corrective_rows_keep_deterministic_order(self):
         ordinary = entry(id=1)

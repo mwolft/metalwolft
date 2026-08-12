@@ -1,0 +1,20 @@
+{% extends 'admin/master.html' %}
+
+{% block body %}
+  <div class="container-fluid">
+    <h3>Nueva factura recibida</h3>
+    <p>Sube la factura del proveedor. Crearemos el borrador y extraeremos sus datos automáticamente.</p>
+    <p class="text-muted">Se admiten archivos PDF de hasta 15 MB.</p>
+    <form method="post" action="{{ action_url }}" enctype="multipart/form-data" data-supplier-invoice-upload-and-process>
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <input type="hidden" name="submission_token" value="{{ submission_token }}">
+      <div class="form-group">
+        <label for="supplier-invoice-pdf">Factura PDF</label>
+        <input id="supplier-invoice-pdf" name="document" type="file" class="form-control" accept="application/pdf" required>
+      </div>
+      <button type="submit" class="btn btn-primary" data-upload-and-process-submit>SUBIR Y PROCESAR</button>
+      <a href="{{ cancel_url }}" class="btn btn-default">Cancelar</a>
+    </form>
+  </div>
+  <script src="{{ url_for('static', filename='admin/supplier_invoice_upload_and_process.js') }}"></script>
+{% endblock %}

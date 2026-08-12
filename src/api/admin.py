@@ -12,13 +12,14 @@ from flask_admin.contrib.sqla import ModelView
 from flask_admin.contrib.sqla.form import InlineModelConverter, InlineModelFormList
 from flask_admin.form import RenderTemplateWidget
 from wtforms import validators
-from wtforms.fields import SelectField, StringField, DateField, TextAreaField
+from wtforms.fields import DecimalField, SelectField, StringField, DateField, TextAreaField
 from .models import (
     db, Users, Products, ProductImages,
     Categories, Subcategories, Cart,
     Orders, OrderDetails, Favorites,
     Posts, Comments, Invoices, VeriFactuRecord, DeliveryEstimateConfig,
-    AccountingEntry, SupplierInvoice, SupplierInvoiceDocument, SupplierInvoiceTaxBreakdown,
+    AccountingEntry, SupplierInvoice, SupplierInvoiceDocument, SupplierInvoiceExtraction,
+    SupplierInvoiceTaxBreakdown,
 )
 from api.accounting_excel_service import (
     AccountingExcelExportError,
@@ -27,6 +28,10 @@ from api.accounting_excel_service import (
 from api.aeat_sales_ledger_service import (
     AeatSalesLedgerError,
     export_aeat_sales_ledger,
+)
+from api.aeat_unified_ledger_service import (
+    AeatUnifiedLedgerError,
+    export_aeat_unified_ledger,
 )
 from api.flask_mail_invoice_adapter import FlaskMailInvoiceAdapter, FlaskMailInvoiceAdapterError
 from api.email_routes import send_order_status_email
@@ -40,20 +45,44 @@ from api.supplier_invoice_registration_service import (
     SupplierInvoiceDuplicateError,
     SupplierInvoiceRegistrationError,
     SupplierInvoiceRegistrationValidationError,
+    apply_supplier_invoice_expense_classification_defaults,
     find_possible_supplier_invoice_duplicates,
+    propose_aeat_expense_concept_code,
+    propose_expense_deductible_amount,
     register_supplier_invoice,
+    requires_nonstandard_g01_confirmation,
+)
+from api.supplier_invoice_legacy_expense_aeat_service import (
+    LegacySupplierInvoiceExpenseAeatError,
+    classify_legacy_supplier_invoice_expense_aeat,
+    is_legacy_supplier_invoice_eligible_for_manual_classification,
+    legacy_supplier_invoice_expense_details,
 )
 from api.supplier_invoice_document_service import (
+    SupplierInvoiceDocumentDeletionBlockedError,
+    SupplierInvoiceDocumentDeletionError,
+    SupplierInvoiceDocumentDeletionPersistenceError,
+    SupplierInvoiceDocumentDeletionStorageError,
     SupplierInvoiceDocumentError,
     SupplierInvoiceDocumentImmutabilityError,
     SupplierInvoiceDocumentPersistenceError,
     SupplierInvoiceDocumentValidationError,
+    can_delete_supplier_invoice_document,
+    delete_supplier_invoice_document,
     upload_supplier_invoice_document,
 )
 from api.supplier_invoice_document_storage import (
     SupplierInvoiceDocumentStorageConfigurationError,
     SupplierInvoiceDocumentStorageOperationError,
     get_supplier_invoice_document_storage,
+)
+from api.supplier_invoice_extraction_service import (
+    SupplierInvoiceExtractionApplyError,
+    SupplierInvoiceExtractionEligibilityError,
+    SupplierInvoiceExtractionError,
+    apply_supplier_invoice_extraction,
+    get_supplier_invoice_extraction_provider,
+    run_supplier_invoice_extraction,
 )
 from api.invoice_pdf_download_service import (
     InvoicePdfDownloadFileMissing,
@@ -98,6 +127,13 @@ from api.invoice_issue_service import (
     InvoiceNumberError,
     issue_invoice_for_order,
     issue_total_rectification_for_invoice,
+)
+from api.invoice_legacy_rectification_aeat_service import (
+    LegacyRectificationAeatClassificationError,
+    SUPPORTED_LEGACY_AEAT_TYPES,
+    classify_legacy_total_rectification_aeat,
+    is_legacy_rectification_eligible_for_manual_classification,
+    legacy_rectification_details,
 )
 from api.invoice_snapshot_builder import (
     SUPPORTED_TOTAL_RECTIFICATION_AEAT_TYPES,
@@ -327,7 +363,73 @@ class SecureAdminIndexView(AdminIndexView):
             selected_year=selected_year,
             tz_es=tz_es,
             break_even_kpi=break_even_kpi,
+            aeat_unified_url=self.get_url('.unified_aeat_ledger'),
         )
+
+    @expose('/libro-aeat', methods=['GET', 'POST'])
+    def unified_aeat_ledger(self):
+        from datetime import datetime, timezone
+
+        current_year = datetime.now(timezone.utc).year
+        if request.method == 'GET':
+            return self.render(
+                'admin/aeat_unified_ledger_form.html',
+                current_year=current_year,
+                action_url=self.get_url('.unified_aeat_ledger'),
+                cancel_url=self.get_url('.index'),
+            )
+
+        try:
+            year = int(request.form.get('year', ''))
+        except (TypeError, ValueError):
+            year = 0
+        period = (request.form.get('period') or '').strip()
+        if year < 1000 or year > 9999 or period not in {'1T', '2T', '3T', '4T'}:
+            flash('Selecciona un ejercicio y periodo AEAT validos.', 'error')
+            return redirect(self.get_url('.unified_aeat_ledger'))
+
+        sales_entries = (
+            db.session.query(AccountingEntry)
+            .filter_by(entry_type=AccountingEntry.ENTRY_TYPE_SALE)
+            .order_by(
+                AccountingEntry.invoice_date.asc(),
+                AccountingEntry.invoice_number.asc(),
+                AccountingEntry.id.asc(),
+            )
+            .all()
+        )
+        supplier_invoices = (
+            db.session.query(SupplierInvoice)
+            .filter_by(status=SupplierInvoice.STATUS_REGISTERED)
+            .order_by(SupplierInvoice.id.asc())
+            .all()
+        )
+        filename = f'metalwolft_aeat_{year}_{period}.xlsx'
+        output_path = os.path.join(_admin_accounting_export_folder(), filename)
+
+        try:
+            result = export_aeat_unified_ledger(
+                sales_entries,
+                supplier_invoices,
+                year=year,
+                period=period,
+                output_path=output_path,
+                overwrite=True,
+            )
+            return send_file(
+                result.output_path,
+                as_attachment=True,
+                download_name=result.filename,
+                mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            )
+        except AeatUnifiedLedgerError as exc:
+            current_app.logger.warning('Flask Admin unified AEAT ledger export rejected: %s', exc)
+            flash(f'No se puede generar el libro AEAT conjunto: {exc}', 'error')
+        except Exception:
+            current_app.logger.exception('Unexpected Flask Admin unified AEAT ledger export error')
+            flash('No se ha podido generar el libro AEAT conjunto.', 'error')
+
+        return redirect(self.get_url('.unified_aeat_ledger'))
 
 
 # ========================== BASE SEGURA PARA MODELOS ==========================
@@ -1207,7 +1309,7 @@ def _format_admin_invoice_type_detail(view, context, model, name):
         aeat_type = getattr(model, "rectification_aeat_type", None) or "Sin clasificación AEAT"
         if original and getattr(original, "id", None):
             original_url = view.get_url(".details_view", id=original.id)
-            return Markup(
+            detail = Markup(
                 '<div>{invoice_type}</div><div style="margin-top: 8px;">'
                 '<a href="{original_url}">Ver factura original {original_number}</a>'
                 '<div style="margin-top: 4px;">Tipo fiscal AEAT: {aeat_type}</div>'
@@ -1218,6 +1320,13 @@ def _format_admin_invoice_type_detail(view, context, model, name):
                 original_number=_format_admin_invoice_nullable(original.invoice_number),
                 aeat_type=aeat_type,
             )
+            if is_legacy_rectification_eligible_for_manual_classification(model):
+                confirmation_url = view.get_url(".classify_legacy_rectification_aeat", invoice_id=model.id)
+                detail += Markup(
+                    '<div style="margin-top: 8px;"><a class="btn btn-warning btn-sm" href="{url}">'
+                    'CLASIFICAR AEAT RECTIFICATIVA LEGACY</a></div>'
+                ).format(url=confirmation_url)
+            return detail
         return invoice_type
 
     corrective = _find_invoice_corrective_invoice(view, model)
@@ -1252,7 +1361,14 @@ def _admin_total_rectification_success_message(result):
 
 def _format_supplier_invoice_registration(view, context, model, name):
     if model.status == SupplierInvoice.STATUS_REGISTERED:
-        return Markup("<span class='label label-success'>Registrada</span>")
+        detail = Markup("<span class='label label-success'>Registrada</span>")
+        if is_legacy_supplier_invoice_eligible_for_manual_classification(model):
+            action_url = view.get_url(".classify_legacy_expense_aeat", supplier_invoice_id=model.id)
+            detail += Markup(
+                '<div style="margin-top: 8px;"><a class="btn btn-warning btn-sm" href="{url}">'
+                'CLASIFICAR GASTO AEAT LEGACY</a></div>'
+            ).format(url=action_url)
+        return detail
     if model.status == SupplierInvoice.STATUS_CANCELLED:
         return Markup("<span class='label label-default'>Cancelada</span>")
 
@@ -1270,6 +1386,7 @@ def _format_supplier_invoice_hash(view, context, model, name):
 
 
 SUPPLIER_DOCUMENT_UPLOAD_CSRF_SESSION_KEY = "supplier_document_upload_csrf"
+SUPPLIER_DOCUMENT_UPLOAD_AND_PROCESS_TOKEN_SESSION_KEY = "supplier_document_upload_and_process"
 
 
 def _issue_supplier_document_upload_csrf_token():
@@ -1289,6 +1406,24 @@ def _valid_supplier_document_upload_csrf_token(token):
     )
 
 
+def _issue_supplier_document_upload_and_process_token():
+    token = secrets.token_urlsafe(32)
+    session[SUPPLIER_DOCUMENT_UPLOAD_AND_PROCESS_TOKEN_SESSION_KEY] = token
+    return token
+
+
+def _consume_supplier_document_upload_and_process_token(token):
+    expected_token = session.get(SUPPLIER_DOCUMENT_UPLOAD_AND_PROCESS_TOKEN_SESSION_KEY)
+    if not (
+        expected_token
+        and token
+        and hmac.compare_digest(str(expected_token), str(token))
+    ):
+        return False
+    session.pop(SUPPLIER_DOCUMENT_UPLOAD_AND_PROCESS_TOKEN_SESSION_KEY, None)
+    return True
+
+
 def _format_supplier_invoice_documents(view, context, model, name):
     documents = list(getattr(model, "documents", []) or [])
     upload_url = view.get_url(".upload_document", supplier_invoice_id=model.id)
@@ -1302,14 +1437,23 @@ def _format_supplier_invoice_documents(view, context, model, name):
     items = []
     for document in documents:
         download_url = view.get_url(".download_document", document_id=document.id)
+        delete_action = ""
+        if can_delete_supplier_invoice_document(document):
+            delete_url = view.get_url(".delete_document", document_id=document.id)
+            delete_action = (
+                ' <a class="btn btn-danger btn-xs" href="{delete_url}">ELIMINAR DOCUMENTO</a>'.format(
+                    delete_url=delete_url
+                )
+            )
         items.append(
             '<li>{filename} <span class="text-muted">({mime}, {size} bytes, {hash}…)</span> '
-            '<a class="btn btn-default btn-xs" href="{download_url}">DESCARGAR</a></li>'.format(
+            '<a class="btn btn-default btn-xs" href="{download_url}">DESCARGAR</a>{delete_action}</li>'.format(
                 filename=document.original_filename,
                 mime=document.mime_type,
                 size=document.file_size,
                 hash=document.sha256[:12],
                 download_url=download_url,
+                delete_action=delete_action,
             )
         )
     upload_action = ""
@@ -1323,6 +1467,25 @@ def _format_supplier_invoice_documents(view, context, model, name):
         items=Markup("".join(items)),
         upload_action=Markup(upload_action),
     )
+
+
+def _format_supplier_invoice_extraction(view, context, model, name):
+    if model.status == SupplierInvoice.STATUS_REGISTERED:
+        return Markup("<span class='text-muted'>No disponible tras registrar</span>")
+    documents = list(getattr(model, "documents", []) or [])
+    if not documents:
+        return Markup("<span class='text-muted'>Sube un documento para extraer datos</span>")
+    csrf_token = _issue_supplier_document_upload_csrf_token()
+    actions = []
+    for document in documents:
+        action_url = view.get_url(".extract_document", document_id=document.id)
+        actions.append(
+            '<form method="post" action="{action_url}" style="display: inline; margin-right: 4px;">'
+            '<input type="hidden" name="csrf_token" value="{csrf_token}">'
+            '<button type="submit" class="btn btn-default btn-xs">EXTRAER DATOS</button>'
+            '</form>'.format(action_url=action_url, csrf_token=csrf_token)
+        )
+    return Markup("".join(actions))
 
 
 def _supplier_document_redirect_url(view, document):
@@ -1349,9 +1512,23 @@ class SupplierInvoiceInlineModelConverter(InlineModelConverter):
 def _supplier_invoice_registration_error_message(error):
     message = str(error)
     known_messages = {
+        "Campo obligatorio ausente: supplier_legal_name.": "Indica la razón social o nombre del proveedor.",
+        "Campo obligatorio ausente: supplier_tax_id.": "Indica el NIF/CIF del proveedor.",
+        "Campo obligatorio ausente: supplier_invoice_number.": "Indica el número de factura del proveedor.",
+        "Campo obligatorio ausente: issue_date.": "Indica la fecha de expedición.",
+        "Fecha no válida: issue_date.": "Indica una fecha de expedición válida.",
+        "Importe no válido: total_amount.": "Indica un total de factura válido.",
+        "Importe no válido: tax_base.": "Revisa los importes del desglose de IVA.",
+        "Importe no válido: tax_rate.": "Revisa los importes del desglose de IVA.",
+        "Importe no válido: tax_amount.": "Revisa los importes del desglose de IVA.",
+        "Importe no válido: deductible_tax_amount.": "Revisa los importes del desglose de IVA.",
         "Debe existir al menos un desglose de IVA.": message,
         "El total no coincide con la suma de las bases y cuotas de IVA.": message,
         "La cuota deducible no puede superar la cuota soportada.": message,
+        "Selecciona un concepto de gasto AEAT válido.": message,
+        "El concepto de gasto AEAT seleccionado está fuera del alcance nacional actual.": message,
+        "Confirma expresamente el uso de G01 para este proveedor.": message,
+        "El gasto deducible debe estar entre cero y el total de la factura.": message,
     }
     return known_messages.get(message, "No se ha podido registrar la factura recibida. Revisa sus datos fiscales.")
 
@@ -1359,6 +1536,7 @@ def _supplier_invoice_registration_error_message(error):
 class SupplierInvoiceAdminView(SafeModelView):
     can_view_details = True
     column_default_sort = ("created_at", True)
+    list_template = "admin/supplier_invoice_list.html"
     inline_models = (SupplierInvoiceTaxBreakdown,)
     inline_model_form_converter = SupplierInvoiceInlineModelConverter
     extra_js = ["/static/admin/supplier_invoice_tax_breakdowns.js"]
@@ -1387,6 +1565,8 @@ class SupplierInvoiceAdminView(SafeModelView):
         "registered_at",
         "registered_by",
         "concept",
+        "aeat_expense_concept_code",
+        "expense_deductible_amount",
         "currency",
         "total_amount",
         "fiscal_invoice_type",
@@ -1395,6 +1575,7 @@ class SupplierInvoiceAdminView(SafeModelView):
         "status",
         "source",
         "documents",
+        "extraction_action",
         "tax_breakdowns",
         "snapshot_schema_version",
         "snapshot_hash",
@@ -1429,11 +1610,14 @@ class SupplierInvoiceAdminView(SafeModelView):
         "registered_at": "Registrada",
         "registered_by": "Registrada por",
         "concept": "Concepto",
+        "aeat_expense_concept_code": "Concepto de gasto AEAT (propuesto)",
+        "expense_deductible_amount": "Gasto deducible",
         "total_amount": "Total",
         "fiscal_invoice_type": "Tipo fiscal",
         "tax_treatment": "Tratamiento fiscal",
         "special_regime_key": "Régimen especial",
         "documents": "Documentos",
+        "extraction_action": "Extracción",
         "tax_breakdowns": "Desgloses IVA",
         "snapshot_schema_version": "Versión snapshot",
         "snapshot_hash": "Hash snapshot",
@@ -1443,6 +1627,7 @@ class SupplierInvoiceAdminView(SafeModelView):
         "registration_action": _format_supplier_invoice_registration,
         "snapshot_hash": _format_supplier_invoice_hash,
         "documents": _format_supplier_invoice_documents,
+        "extraction_action": _format_supplier_invoice_extraction,
     }
     column_formatters_detail = column_formatters
     form_columns = [
@@ -1454,6 +1639,8 @@ class SupplierInvoiceAdminView(SafeModelView):
         "issue_date",
         "operation_date",
         "concept",
+        "aeat_expense_concept_code",
+        "expense_deductible_amount",
         "currency",
         "total_amount",
         "fiscal_invoice_type",
@@ -1474,12 +1661,14 @@ class SupplierInvoiceAdminView(SafeModelView):
     form_overrides = {
         "issue_date": DateField,
         "operation_date": DateField,
+        "aeat_expense_concept_code": SelectField,
+        "expense_deductible_amount": DecimalField,
         "status": SelectField,
     }
     form_args = {
         "issue_date": {
             "format": "%Y-%m-%d",
-            "validators": [validators.InputRequired()],
+            "validators": [validators.Optional()],
             "render_kw": {
                 "placeholder": "YYYY-MM-DD",
             },
@@ -1490,6 +1679,25 @@ class SupplierInvoiceAdminView(SafeModelView):
             "render_kw": {
                 "placeholder": "YYYY-MM-DD",
             },
+            "description": (
+                "Al aplicar una extracción se propone la fecha de expedición. "
+                "Puedes corregirla antes de registrar."
+            ),
+        },
+        "aeat_expense_concept_code": {
+            "label": "Concepto de gasto AEAT (propuesto)",
+            "choices": [
+                ("", "Selecciona un concepto"),
+                ("G01", "G01"),
+                ("G03", "G03"),
+            ],
+            "validators": [validators.Optional()],
+            "description": "Propuesto según el NIF del proveedor. Puedes corregirlo antes de registrar.",
+        },
+        "expense_deductible_amount": {
+            "places": 2,
+            "rounding": None,
+            "validators": [validators.Optional()],
         },
         "status": {
             "choices": [
@@ -1499,6 +1707,29 @@ class SupplierInvoiceAdminView(SafeModelView):
             ]
         }
     }
+
+    def create_form(self, obj=None):
+        form = super().create_form(obj)
+        self._prefill_expense_classification(form, obj)
+        return form
+
+    def edit_form(self, obj=None):
+        form = super().edit_form(obj)
+        self._prefill_expense_classification(form, obj)
+        return form
+
+    @staticmethod
+    def _prefill_expense_classification(form, supplier_invoice):
+        if supplier_invoice is None:
+            return
+        if not supplier_invoice.aeat_expense_concept_code:
+            form.aeat_expense_concept_code.data = propose_aeat_expense_concept_code(
+                supplier_invoice.supplier_tax_id
+            )
+        if supplier_invoice.expense_deductible_amount is None:
+            proposal = propose_expense_deductible_amount(supplier_invoice.tax_breakdowns)
+            if proposal is not None:
+                form.expense_deductible_amount.data = proposal
 
     @expose("/edit/", methods=("GET", "POST"))
     def edit_view(self):
@@ -1513,12 +1744,104 @@ class SupplierInvoiceAdminView(SafeModelView):
             raise ValueError("Las facturas recibidas solo se registran mediante la acción de confirmación.")
         if is_created and model.status != SupplierInvoice.STATUS_DRAFT:
             raise ValueError("Una factura recibida nueva debe crearse como borrador.")
+        apply_supplier_invoice_expense_classification_defaults(model)
 
     def delete_model(self, model):
         if model.status == SupplierInvoice.STATUS_REGISTERED:
             flash("Una factura recibida registrada no puede borrarse.", "error")
             return False
         return super().delete_model(model)
+
+    @expose("/upload-and-process/", methods=["GET", "POST"])
+    def upload_and_process(self):
+        if request.method == "GET":
+            return self.render(
+                "admin/supplier_invoice_upload_and_process.html",
+                csrf_token=_issue_supplier_document_upload_csrf_token(),
+                submission_token=_issue_supplier_document_upload_and_process_token(),
+                action_url=self.get_url(".upload_and_process"),
+                cancel_url=self.get_url(".index_view"),
+            )
+
+        if not _valid_supplier_document_upload_csrf_token(request.form.get("csrf_token")):
+            flash("La sesiÃ³n del formulario ha caducado. Vuelve a intentarlo.", "error")
+            return redirect(request.url)
+        if not _consume_supplier_document_upload_and_process_token(
+            request.form.get("submission_token")
+        ):
+            flash("Esta subida ya se ha procesado. Vuelve a abrir el formulario para reintentarlo.", "error")
+            return redirect(self.get_url(".upload_and_process"))
+
+        actor = request.authorization.username if request.authorization else None
+        upload_result = None
+        extraction_result = None
+        try:
+            supplier_invoice = SupplierInvoice(status=SupplierInvoice.STATUS_DRAFT, source="manual")
+            self.session.add(supplier_invoice)
+            self.session.flush()
+            upload_result = upload_supplier_invoice_document(
+                request.files.get("document"),
+                supplier_invoice=supplier_invoice,
+                actor=actor,
+                db_session=self.session,
+                allowed_mime_types={"application/pdf"},
+            )
+            extraction_result = run_supplier_invoice_extraction(
+                upload_result.document,
+                provider=get_supplier_invoice_extraction_provider(current_app),
+                db_session=self.session,
+            )
+            self.session.commit()
+        except SupplierInvoiceDocumentValidationError as error:
+            self.session.rollback()
+            flash(str(error), "error")
+            return redirect(self.get_url(".upload_and_process"))
+        except SupplierInvoiceDocumentPersistenceError:
+            self.session.rollback()
+            current_app.logger.warning("Supplier document metadata persistence failed")
+            flash("No se ha podido guardar la referencia del documento.", "error")
+            return redirect(self.get_url(".upload_and_process"))
+        except SupplierInvoiceDocumentStorageConfigurationError:
+            self.session.rollback()
+            current_app.logger.warning("Supplier document storage configuration is missing")
+            flash("El almacenamiento privado de documentos no estÃ¡ configurado.", "error")
+            return redirect(self.get_url(".upload_and_process"))
+        except (SupplierInvoiceDocumentStorageOperationError, SupplierInvoiceDocumentError):
+            self.session.rollback()
+            current_app.logger.warning("Supplier document upload failed")
+            flash("No se ha podido subir el documento privado.", "error")
+            return redirect(self.get_url(".upload_and_process"))
+        except SupplierInvoiceExtractionEligibilityError as error:
+            self.session.rollback()
+            if upload_result:
+                _cleanup_supplier_document_after_commit_failure(upload_result.document.storage_key)
+            flash(str(error), "error")
+            return redirect(self.get_url(".upload_and_process"))
+        except SupplierInvoiceExtractionError:
+            self.session.rollback()
+            if upload_result:
+                _cleanup_supplier_document_after_commit_failure(upload_result.document.storage_key)
+            current_app.logger.warning("Supplier document extraction rejected after upload")
+            flash("No se ha podido extraer una propuesta del documento.", "error")
+            return redirect(self.get_url(".upload_and_process"))
+        except Exception:
+            self.session.rollback()
+            if upload_result:
+                _cleanup_supplier_document_after_commit_failure(upload_result.document.storage_key)
+            current_app.logger.exception("Unexpected supplier document upload-and-process failure")
+            flash("No se ha podido subir y procesar el documento.", "error")
+            return redirect(self.get_url(".upload_and_process"))
+
+        if upload_result.duplicate_count:
+            flash(
+                "Se ha detectado un documento con el mismo hash. Revisa si es un duplicado antes de registrarlo.",
+                "warning",
+            )
+        if extraction_result.succeeded:
+            flash("Propuesta de extracciÃ³n creada. RevÃ­sala antes de aplicarla.", "success")
+        else:
+            flash("No se ha podido extraer una propuesta del documento.", "error")
+        return redirect(self.get_url(".review_extraction", extraction_id=extraction_result.extraction.id))
 
     @expose("/upload-document/", methods=["GET", "POST"])
     def upload_document(self):
@@ -1636,6 +1959,147 @@ class SupplierInvoiceAdminView(SafeModelView):
         response.headers["Cache-Control"] = "no-store"
         return response
 
+    @expose("/delete-document/<int:document_id>", methods=["GET", "POST"])
+    def delete_document(self, document_id):
+        document = self.session.get(SupplierInvoiceDocument, document_id)
+        if not document:
+            flash("Documento recibido no encontrado.", "error")
+            return redirect(self.get_url(".index_view"))
+        redirect_url = _supplier_document_redirect_url(self, document)
+        if not can_delete_supplier_invoice_document(document):
+            flash("Este documento no se puede eliminar desde su estado actual.", "error")
+            return redirect(redirect_url)
+
+        if request.method == "GET":
+            return self.render(
+                "admin/supplier_invoice_document_delete_confirm.html",
+                document=document,
+                csrf_token=_issue_supplier_document_upload_csrf_token(),
+                action_url=self.get_url(".delete_document", document_id=document.id),
+                cancel_url=redirect_url,
+            )
+
+        if not _valid_supplier_document_upload_csrf_token(request.form.get("csrf_token")):
+            flash("La sesión del formulario ha caducado. Vuelve a intentarlo.", "error")
+            return redirect(request.url)
+        if request.form.get("confirm_delete") != "1":
+            flash("Confirma la eliminación del documento para continuar.", "error")
+            return redirect(request.url)
+
+        try:
+            delete_supplier_invoice_document(document, db_session=self.session)
+        except SupplierInvoiceDocumentDeletionBlockedError as error:
+            flash(str(error), "error")
+        except SupplierInvoiceDocumentDeletionStorageError as error:
+            current_app.logger.warning("Supplier document deletion failed document_id=%s", document_id)
+            flash(str(error), "error")
+        except (SupplierInvoiceDocumentDeletionPersistenceError, SupplierInvoiceDocumentDeletionError):
+            current_app.logger.warning("Supplier document deletion persistence failed document_id=%s", document_id)
+            flash("No se ha podido completar la eliminación del documento. Puedes reintentarlo.", "error")
+        except Exception:
+            current_app.logger.exception("Unexpected supplier document deletion failure document_id=%s", document_id)
+            flash("No se ha podido completar la eliminación del documento. Puedes reintentarlo.", "error")
+        else:
+            flash("Documento privado eliminado correctamente.", "success")
+        return redirect(redirect_url)
+
+    @expose("/extract-document/<int:document_id>", methods=["POST"])
+    def extract_document(self, document_id):
+        if not _valid_supplier_document_upload_csrf_token(request.form.get("csrf_token")):
+            flash("La sesión del formulario ha caducado. Vuelve a intentarlo.", "error")
+            return redirect(request.referrer or self.get_url(".index_view"))
+        document = self.session.get(SupplierInvoiceDocument, document_id)
+        if not document:
+            flash("Documento recibido no encontrado.", "error")
+            return redirect(self.get_url(".index_view"))
+        try:
+            result = run_supplier_invoice_extraction(
+                document,
+                provider=get_supplier_invoice_extraction_provider(current_app),
+                db_session=self.session,
+            )
+            self.session.commit()
+        except SupplierInvoiceExtractionEligibilityError as error:
+            self.session.rollback()
+            flash(str(error), "error")
+            return redirect(_supplier_document_redirect_url(self, document))
+        except SupplierInvoiceExtractionError:
+            self.session.rollback()
+            current_app.logger.warning("Supplier document extraction rejected document_id=%s", document.id)
+            flash("No se ha podido extraer una propuesta del documento.", "error")
+            return redirect(_supplier_document_redirect_url(self, document))
+        except Exception:
+            self.session.rollback()
+            current_app.logger.exception("Unexpected supplier document extraction failure document_id=%s", document.id)
+            flash("No se ha podido extraer una propuesta del documento.", "error")
+            return redirect(_supplier_document_redirect_url(self, document))
+
+        if result.succeeded:
+            flash("Propuesta de extracción creada. Revísala antes de aplicarla.", "success")
+        else:
+            flash("No se ha podido extraer una propuesta del documento.", "error")
+        return redirect(self.get_url(".review_extraction", extraction_id=result.extraction.id))
+
+    @expose("/review-extraction/<int:extraction_id>", methods=["GET"])
+    def review_extraction(self, extraction_id):
+        extraction = self.session.get(SupplierInvoiceExtraction, extraction_id)
+        if not extraction:
+            flash("Propuesta de extracción no encontrada.", "error")
+            return redirect(self.get_url(".index_view"))
+        document = extraction.supplier_invoice_document
+        return self.render(
+            "admin/supplier_invoice_extraction_review.html",
+            extraction=extraction,
+            document=document,
+            supplier_invoice=document.supplier_invoice,
+            csrf_token=_issue_supplier_document_upload_csrf_token(),
+            apply_url=self.get_url(".apply_extraction", extraction_id=extraction.id),
+            cancel_url=_supplier_document_redirect_url(self, document),
+        )
+
+    @expose("/apply-extraction/<int:extraction_id>", methods=["POST"])
+    def apply_extraction(self, extraction_id):
+        if not _valid_supplier_document_upload_csrf_token(request.form.get("csrf_token")):
+            flash("La sesión del formulario ha caducado. Vuelve a intentarlo.", "error")
+            return redirect(request.referrer or self.get_url(".index_view"))
+        extraction = self.session.get(SupplierInvoiceExtraction, extraction_id)
+        if not extraction:
+            flash("Propuesta de extracción no encontrada.", "error")
+            return redirect(self.get_url(".index_view"))
+        supplier_invoice = extraction.supplier_invoice_document.supplier_invoice
+        if not supplier_invoice:
+            flash("Asocia el documento a un borrador antes de aplicar la propuesta.", "error")
+            return redirect(self.get_url(".review_extraction", extraction_id=extraction.id))
+        if request.form.get("confirm_apply") != "1":
+            flash("Confirma que has revisado los datos antes de aplicarlos.", "error")
+            return redirect(self.get_url(".review_extraction", extraction_id=extraction.id))
+        try:
+            apply_supplier_invoice_extraction(
+                extraction,
+                supplier_invoice,
+                replace_existing_fields=request.form.get("replace_existing_fields") == "1",
+                replace_tax_breakdowns=request.form.get("replace_tax_breakdowns") == "1",
+                deductible_tax_amounts=request.form.getlist("deductible_tax_amount"),
+                db_session=self.session,
+            )
+            self.session.commit()
+        except SupplierInvoiceExtractionApplyError as error:
+            self.session.rollback()
+            flash(str(error), "error")
+            return redirect(self.get_url(".review_extraction", extraction_id=extraction.id))
+        except SupplierInvoiceExtractionError:
+            self.session.rollback()
+            current_app.logger.warning("Supplier extraction application failed extraction_id=%s", extraction.id)
+            flash("No se ha podido aplicar la propuesta al borrador.", "error")
+            return redirect(self.get_url(".review_extraction", extraction_id=extraction.id))
+        except Exception:
+            self.session.rollback()
+            current_app.logger.exception("Unexpected supplier extraction application failure extraction_id=%s", extraction.id)
+            flash("No se ha podido aplicar la propuesta al borrador.", "error")
+            return redirect(self.get_url(".review_extraction", extraction_id=extraction.id))
+        flash("Propuesta aplicada al borrador. Revisa y registra la factura manualmente.", "success")
+        return redirect(self.get_url(".details_view", id=supplier_invoice.id))
+
     @expose("/confirm-register/<int:supplier_invoice_id>", methods=["GET", "POST"])
     def confirm_register(self, supplier_invoice_id):
         supplier_invoice = self.session.get(SupplierInvoice, supplier_invoice_id)
@@ -1661,11 +2125,15 @@ class SupplierInvoiceAdminView(SafeModelView):
                 "admin/supplier_invoice_register_confirm.html",
                 supplier_invoice=supplier_invoice,
                 duplicate_count=len(duplicates),
+                requires_nonstandard_g01_confirmation=requires_nonstandard_g01_confirmation(
+                    supplier_invoice
+                ),
                 action_url=self.get_url(".confirm_register", supplier_invoice_id=supplier_invoice.id),
                 cancel_url=self.get_url(".details_view", id=supplier_invoice.id),
             )
 
         allow_duplicate = request.form.get("allow_duplicate") == "1"
+        allow_nonstandard_g01 = request.form.get("allow_nonstandard_g01") == "1"
         actor = request.authorization.username if request.authorization else None
         try:
             result = register_supplier_invoice(
@@ -1673,6 +2141,7 @@ class SupplierInvoiceAdminView(SafeModelView):
                 db_session=self.session,
                 actor=actor,
                 allow_duplicate=allow_duplicate,
+                allow_nonstandard_g01=allow_nonstandard_g01,
             )
             self.session.commit()
             message = (
@@ -1713,6 +2182,70 @@ class SupplierInvoiceAdminView(SafeModelView):
 
         return redirect(self.get_url(".details_view", id=supplier_invoice.id))
 
+    @expose("/classify-legacy-expense-aeat/<int:supplier_invoice_id>", methods=["GET", "POST"])
+    def classify_legacy_expense_aeat(self, supplier_invoice_id):
+        supplier_invoice = self.session.get(SupplierInvoice, supplier_invoice_id)
+        if not supplier_invoice:
+            flash("Factura recibida no encontrada.", "error")
+            return redirect(self.get_url(".index_view"))
+
+        if request.method == "GET":
+            if not is_legacy_supplier_invoice_eligible_for_manual_classification(supplier_invoice):
+                flash("Esta factura recibida no puede clasificarse mediante el flujo legacy.", "error")
+                return redirect(self.get_url(".details_view", id=supplier_invoice.id))
+            try:
+                details = legacy_supplier_invoice_expense_details(supplier_invoice)
+            except LegacySupplierInvoiceExpenseAeatError:
+                flash("Esta factura recibida no puede clasificarse mediante el flujo legacy.", "error")
+                return redirect(self.get_url(".details_view", id=supplier_invoice.id))
+            return self.render(
+                "admin/supplier_invoice_legacy_expense_aeat_confirm.html",
+                supplier_invoice=supplier_invoice,
+                details=details,
+                csrf_token=_issue_supplier_document_upload_csrf_token(),
+                action_url=self.get_url(
+                    ".classify_legacy_expense_aeat",
+                    supplier_invoice_id=supplier_invoice.id,
+                ),
+                cancel_url=self.get_url(".details_view", id=supplier_invoice.id),
+            )
+
+        if not _valid_supplier_document_upload_csrf_token(request.form.get("csrf_token")):
+            flash("La sesión del formulario ha caducado. Vuelve a intentarlo.", "error")
+            return redirect(request.url)
+        if request.form.get("confirm_legacy_classification") != "confirmed":
+            flash("Confirma la clasificación AEAT legacy antes de continuar.", "error")
+            return redirect(request.url)
+
+        try:
+            classify_legacy_supplier_invoice_expense_aeat(
+                supplier_invoice,
+                aeat_expense_concept_code=request.form.get("aeat_expense_concept_code"),
+                expense_deductible_amount=request.form.get("expense_deductible_amount"),
+                legacy_expense_received_at=request.form.get("legacy_expense_received_at"),
+                actor=request.authorization.username if request.authorization else None,
+            )
+            self.session.commit()
+            flash(
+                "Clasificación AEAT legacy guardada. El snapshot histórico no se ha modificado.",
+                "success",
+            )
+        except LegacySupplierInvoiceExpenseAeatError as error:
+            self.session.rollback()
+            current_app.logger.warning(
+                "Invalid legacy supplier invoice AEAT classification invoice_id=%s",
+                supplier_invoice_id,
+            )
+            flash(str(error), "error")
+        except Exception:
+            self.session.rollback()
+            current_app.logger.exception(
+                "Unexpected legacy supplier invoice AEAT classification invoice_id=%s",
+                supplier_invoice_id,
+            )
+            flash("No se ha podido guardar la clasificación AEAT legacy.", "error")
+        return redirect(self.get_url(".details_view", id=supplier_invoice.id))
+
 
 class InvoiceAdminView(SafeModelView):
     can_create = False
@@ -1724,6 +2257,9 @@ class InvoiceAdminView(SafeModelView):
         'id',
         'invoice_number',
         'invoice_type',
+        'rectification_aeat_type',
+        'rectification_aeat_classified_at',
+        'rectification_aeat_classified_by',
         'order_id',
         'client_name',
         'client_cif',
@@ -1739,6 +2275,9 @@ class InvoiceAdminView(SafeModelView):
         'id',
         'invoice_number',
         'invoice_type',
+        'rectification_aeat_type',
+        'rectification_aeat_classified_at',
+        'rectification_aeat_classified_by',
         'order_id',
         'client_name',
         'client_address',
@@ -1782,6 +2321,8 @@ class InvoiceAdminView(SafeModelView):
         'invoice_number': 'N.º factura',
         'invoice_type': 'Tipo',
         'rectification_aeat_type': 'Tipo fiscal AEAT',
+        'rectification_aeat_classified_at': 'Clasificada AEAT el',
+        'rectification_aeat_classified_by': 'Clasificada AEAT por',
         'order_id': 'Pedido',
         'client_name': 'Cliente',
         'client_cif': 'NIF/CIF',
@@ -1804,6 +2345,8 @@ class InvoiceAdminView(SafeModelView):
         'issued_at': _format_admin_invoice_datetime,
         'invoice_type': _format_admin_invoice_value,
         'rectification_aeat_type': _format_admin_invoice_value,
+        'rectification_aeat_classified_at': _format_admin_invoice_datetime,
+        'rectification_aeat_classified_by': _format_admin_invoice_value,
         'pdf_path': _format_admin_invoice_pdf_available,
         'accounting_entries': _format_admin_invoice_accounting_status,
         'email_status': _format_admin_invoice_value,
@@ -1929,6 +2472,58 @@ class InvoiceAdminView(SafeModelView):
             flash('No se ha podido emitir la rectificativa total.', 'error')
 
         return redirect(self.get_url(".details_view", id=invoice.id))
+
+    @expose('/classify-legacy-rectification-aeat/<int:invoice_id>', methods=['GET', 'POST'])
+    def classify_legacy_rectification_aeat(self, invoice_id):
+        invoice = self.session.get(Invoices, invoice_id)
+        if not invoice:
+            flash('Factura no encontrada.', 'error')
+            return redirect(self.get_url('.index_view'))
+
+        if request.method == 'GET':
+            if not is_legacy_rectification_eligible_for_manual_classification(invoice):
+                flash('Esta rectificativa no puede clasificarse mediante el flujo legacy.', 'error')
+                return redirect(self.get_url('.details_view', id=invoice.id))
+            try:
+                details = legacy_rectification_details(invoice)
+            except LegacyRectificationAeatClassificationError:
+                flash('Esta rectificativa no puede clasificarse mediante el flujo legacy.', 'error')
+                return redirect(self.get_url('.details_view', id=invoice.id))
+            return self.render(
+                'admin/invoice_legacy_rectification_aeat_confirm.html',
+                invoice=invoice,
+                details=details,
+                existing_aeat_type=getattr(invoice, 'rectification_aeat_type', None),
+                aeat_type_choices=sorted(SUPPORTED_LEGACY_AEAT_TYPES),
+                action_url=self.get_url('.classify_legacy_rectification_aeat', invoice_id=invoice.id),
+                cancel_url=self.get_url('.details_view', id=invoice.id),
+            )
+
+        aeat_type = (request.form.get('rectification_aeat_type') or '').strip()
+        if aeat_type not in SUPPORTED_LEGACY_AEAT_TYPES:
+            flash('Selecciona R1 o R4 para la clasificación AEAT legacy.', 'error')
+            return redirect(self.get_url('.classify_legacy_rectification_aeat', invoice_id=invoice.id))
+        if request.form.get('confirm_legacy_classification') != 'confirmed':
+            flash('Confirma la clasificación AEAT legacy antes de continuar.', 'error')
+            return redirect(self.get_url('.classify_legacy_rectification_aeat', invoice_id=invoice.id))
+
+        try:
+            classify_legacy_total_rectification_aeat(
+                invoice,
+                aeat_type=aeat_type,
+                actor=invoice_admin_actor_from_basic_auth(request.authorization),
+            )
+            self.session.commit()
+            flash('Clasificación AEAT legacy guardada. El snapshot histórico no se ha modificado.', 'success')
+        except LegacyRectificationAeatClassificationError as exc:
+            self.session.rollback()
+            current_app.logger.warning('Invalid legacy rectification AEAT classification for invoice %s', invoice_id)
+            flash(str(exc), 'error')
+        except Exception:
+            self.session.rollback()
+            current_app.logger.exception('Unexpected legacy rectification AEAT classification error for invoice %s', invoice_id)
+            flash('No se ha podido guardar la clasificación AEAT legacy.', 'error')
+        return redirect(self.get_url('.details_view', id=invoice.id))
 
     @expose('/generate-pdf/<int:invoice_id>', methods=['POST'])
     def generate_pdf(self, invoice_id):

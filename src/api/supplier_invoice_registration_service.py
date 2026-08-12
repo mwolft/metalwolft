@@ -13,8 +13,8 @@ from api.models import (
 from api.supplier_invoice_snapshot_integrity import calculate_supplier_invoice_snapshot_hash
 
 
-SNAPSHOT_SCHEMA_VERSION = 1
-SNAPSHOT_GENERATOR = "supplier_invoice_registration_v1"
+SNAPSHOT_SCHEMA_VERSION = 2
+SNAPSHOT_GENERATOR = "supplier_invoice_registration_v2"
 SUPPORTED_CURRENCY = "EUR"
 SUPPORTED_COUNTRY_CODE = "ES"
 SUPPORTED_TAX_ID_TYPE = "NIF"
@@ -22,6 +22,9 @@ SUPPORTED_FISCAL_INVOICE_TYPE = "F1"
 SUPPORTED_TAX_TREATMENT = "domestic_standard"
 SUPPORTED_SOURCE = "manual"
 EDITABLE_STATUSES = {SupplierInvoice.STATUS_DRAFT, SupplierInvoice.STATUS_NEEDS_REVIEW}
+SUPPORTED_AEAT_EXPENSE_CONCEPT_CODES = {"G01", "G03", "G22", "G24"}
+REGISTERABLE_AEAT_EXPENSE_CONCEPT_CODES = {"G01", "G03"}
+G01_SUPPLIER_TAX_IDS = {"B13559141", "B13019559"}
 
 
 class SupplierInvoiceRegistrationError(Exception):
@@ -49,6 +52,7 @@ def register_supplier_invoice(
     db_session=None,
     actor=None,
     allow_duplicate=False,
+    allow_nonstandard_g01=False,
     registered_at=None,
 ):
     """Freeze a validated draft and assign its next internal receipt number.
@@ -72,7 +76,11 @@ def register_supplier_invoice(
     if getattr(supplier_invoice, "reception_number", None) is not None:
         raise SupplierInvoiceRegistrationValidationError("El número de recepción solo se asigna al registrar.")
 
-    validated = _validate_registration_input(supplier_invoice)
+    apply_supplier_invoice_expense_classification_defaults(supplier_invoice)
+    validated = _validate_registration_input(
+        supplier_invoice,
+        allow_nonstandard_g01=allow_nonstandard_g01,
+    )
     duplicates = find_possible_supplier_invoice_duplicates(supplier_invoice, db_session=session)
     if duplicates and not allow_duplicate:
         raise SupplierInvoiceDuplicateError(
@@ -97,6 +105,7 @@ def register_supplier_invoice(
         supplier_invoice,
         breakdowns=validated["breakdowns"],
         total_amount=validated["total_amount"],
+        expense_classification=validated["expense_classification"],
         registered_at=registered_at_value,
         duplicate_override_used=bool(allow_duplicate and duplicates),
     )
@@ -131,11 +140,61 @@ def find_possible_supplier_invoice_duplicates(supplier_invoice, *, db_session=No
     return query.order_by(SupplierInvoice.id.asc()).all()
 
 
+def propose_aeat_expense_concept_code(supplier_tax_id):
+    """Return the editable national-expense proposal, never an extraction decision."""
+    tax_id = _optional_text(supplier_tax_id)
+    if not tax_id:
+        return None
+    if tax_id.upper() in G01_SUPPLIER_TAX_IDS:
+        return "G01"
+    return "G03"
+
+
+def propose_expense_deductible_amount(breakdowns):
+    """Suggest the domestic-standard deductible expense from persisted VAT bases."""
+    if not isinstance(breakdowns, (list, tuple)) or not breakdowns:
+        return None
+    return sum(
+        (_money(getattr(item, "tax_base", None), "tax_base") for item in breakdowns),
+        Decimal("0.00"),
+    ).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+
+
+def apply_supplier_invoice_expense_classification_defaults(supplier_invoice):
+    """Fill only empty draft decisions; explicit human values always win."""
+    expense_code = _optional_text(
+        getattr(supplier_invoice, "aeat_expense_concept_code", None)
+    )
+    if not expense_code:
+        # Flask-Admin submits an empty SelectField as ""; the fiscal column uses NULL.
+        supplier_invoice.aeat_expense_concept_code = None
+        proposal = propose_aeat_expense_concept_code(
+            getattr(supplier_invoice, "supplier_tax_id", None)
+        )
+        if proposal is not None:
+            supplier_invoice.aeat_expense_concept_code = proposal
+    if getattr(supplier_invoice, "expense_deductible_amount", None) is None:
+        proposal = propose_expense_deductible_amount(
+            getattr(supplier_invoice, "tax_breakdowns", None)
+        )
+        if proposal is not None:
+            supplier_invoice.expense_deductible_amount = proposal
+
+
+def requires_nonstandard_g01_confirmation(supplier_invoice):
+    supplier_tax_id = _optional_text(getattr(supplier_invoice, "supplier_tax_id", None))
+    return (
+        _optional_text(getattr(supplier_invoice, "aeat_expense_concept_code", None)) == "G01"
+        and (supplier_tax_id or "").upper() not in G01_SUPPLIER_TAX_IDS
+    )
+
+
 def build_supplier_invoice_snapshot(
     supplier_invoice,
     *,
     breakdowns,
     total_amount,
+    expense_classification,
     registered_at,
     duplicate_override_used=False,
 ):
@@ -161,8 +220,12 @@ def build_supplier_invoice_snapshot(
                 "reception_number",
             ),
             "issue_date": _date_string(supplier_invoice.issue_date, "issue_date"),
-            "operation_date": _optional_date_string(supplier_invoice.operation_date, "operation_date"),
-            "concept": _required_text(supplier_invoice.concept, "concept"),
+            "operation_date": _date_string(
+                supplier_invoice.operation_date or supplier_invoice.issue_date,
+                "operation_date",
+            ),
+            "received_at": _timestamp_string(supplier_invoice.received_at),
+            "concept": _optional_text(supplier_invoice.concept),
             "currency": _required_text(supplier_invoice.currency, "currency"),
             "fiscal_invoice_type": _required_text(
                 supplier_invoice.fiscal_invoice_type,
@@ -189,6 +252,12 @@ def build_supplier_invoice_snapshot(
             ),
             "total_amount": _money_string(total_amount),
         },
+        "expense_classification": {
+            "aeat_expense_concept_code": expense_classification["aeat_expense_concept_code"],
+            "expense_deductible_amount": _money_string(
+                expense_classification["expense_deductible_amount"]
+            ),
+        },
         "registration": {
             "registered_at": _timestamp_string(registered_at),
             "registered_by": _optional_text(supplier_invoice.registered_by),
@@ -198,11 +267,10 @@ def build_supplier_invoice_snapshot(
     }
 
 
-def _validate_registration_input(supplier_invoice):
+def _validate_registration_input(supplier_invoice, *, allow_nonstandard_g01=False):
     _required_text(supplier_invoice.supplier_legal_name, "supplier_legal_name")
     _required_text(supplier_invoice.supplier_tax_id, "supplier_tax_id")
     _required_text(supplier_invoice.supplier_invoice_number, "supplier_invoice_number")
-    _required_text(supplier_invoice.concept, "concept")
     _date_string(supplier_invoice.issue_date, "issue_date")
     _optional_date_string(supplier_invoice.operation_date, "operation_date")
 
@@ -225,7 +293,48 @@ def _validate_registration_input(supplier_invoice):
         raise SupplierInvoiceRegistrationValidationError(
             "El total no coincide con la suma de las bases y cuotas de IVA."
         )
-    return {"breakdowns": breakdowns, "total_amount": total_amount}
+    expense_classification = _validated_expense_classification(
+        supplier_invoice,
+        total_amount=total_amount,
+        allow_nonstandard_g01=allow_nonstandard_g01,
+    )
+    return {
+        "breakdowns": breakdowns,
+        "total_amount": total_amount,
+        "expense_classification": expense_classification,
+    }
+
+
+def _validated_expense_classification(
+    supplier_invoice,
+    *,
+    total_amount,
+    allow_nonstandard_g01,
+):
+    code = _optional_text(getattr(supplier_invoice, "aeat_expense_concept_code", None))
+    if code not in SUPPORTED_AEAT_EXPENSE_CONCEPT_CODES:
+        raise SupplierInvoiceRegistrationValidationError("Selecciona un concepto de gasto AEAT válido.")
+    if code not in REGISTERABLE_AEAT_EXPENSE_CONCEPT_CODES:
+        raise SupplierInvoiceRegistrationValidationError(
+            "El concepto de gasto AEAT seleccionado está fuera del alcance nacional actual."
+        )
+    if requires_nonstandard_g01_confirmation(supplier_invoice) and not allow_nonstandard_g01:
+        raise SupplierInvoiceRegistrationValidationError(
+            "Confirma expresamente el uso de G01 para este proveedor."
+        )
+
+    amount = _money(
+        getattr(supplier_invoice, "expense_deductible_amount", None),
+        "expense_deductible_amount",
+    )
+    if amount < Decimal("0.00") or amount > total_amount:
+        raise SupplierInvoiceRegistrationValidationError(
+            "El gasto deducible debe estar entre cero y el total de la factura."
+        )
+    return {
+        "aeat_expense_concept_code": code,
+        "expense_deductible_amount": amount,
+    }
 
 
 def _validated_breakdowns(breakdowns):

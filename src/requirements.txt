@@ -52,3 +52,4 @@ WTForms==3.1.2
 zopfli==0.2.3
 flask-talisman==1.1.0
 python-slugify==8.0.1
+openai==1.109.1

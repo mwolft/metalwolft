@@ -1,0 +1,41 @@
+{% extends 'admin/master.html' %}
+
+{% block body %}
+  <div class="container-fluid">
+    <h3>Clasificar gasto AEAT legacy</h3>
+    <p>Completa de forma auditada los datos que el snapshot v1 no congeló.</p>
+    <dl class="dl-horizontal">
+      <dt>Número recepción</dt><dd>{{ details.reception_number }}</dd>
+      <dt>Proveedor</dt><dd>{{ details.supplier_legal_name }}</dd>
+      <dt>NIF</dt><dd>{{ details.supplier_tax_id }}</dd>
+      <dt>Número factura</dt><dd>{{ details.supplier_invoice_number }}</dd>
+      <dt>Fecha expedición</dt><dd>{{ details.issue_date }}</dd>
+      <dt>Fecha operación</dt><dd>{{ details.operation_date or details.issue_date }}</dd>
+      <dt>Base / IVA / Total</dt><dd>{{ details.tax_base }} / {{ details.tax_amount }} / {{ details.total_amount }} EUR</dd>
+    </dl>
+    <p class="text-warning">Esta acción no modifica el snapshot v1 ni su hash. La fecha de recepción debe confirmarse expresamente.</p>
+    <form method="post" action="{{ action_url }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <div class="form-group">
+        <label for="aeat_expense_concept_code">Concepto de gasto AEAT</label>
+        <select id="aeat_expense_concept_code" name="aeat_expense_concept_code" class="form-control" required>
+          <option value="G01" {% if details.proposed_expense_code == 'G01' %}selected{% endif %}>G01</option>
+          <option value="G03" {% if details.proposed_expense_code == 'G03' %}selected{% endif %}>G03</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label for="expense_deductible_amount">Gasto deducible</label>
+        <input id="expense_deductible_amount" name="expense_deductible_amount" type="number" class="form-control" step="0.01" min="0" value="{{ details.proposed_expense_deductible_amount }}" required>
+      </div>
+      <div class="form-group">
+        <label for="legacy_expense_received_at">Fecha recepción fiscal</label>
+        <input id="legacy_expense_received_at" name="legacy_expense_received_at" type="date" class="form-control" value="{{ details.proposed_received_at }}" required>
+      </div>
+      <div class="checkbox">
+        <label><input type="checkbox" name="confirm_legacy_classification" value="confirmed" required> Confirmo los datos fiscales legacy para incluir esta factura en el libro AEAT.</label>
+      </div>
+      <button type="submit" class="btn btn-warning">CLASIFICAR GASTO AEAT LEGACY</button>
+      <a href="{{ cancel_url }}" class="btn btn-default">Cancelar</a>
+    </form>
+  </div>
+{% endblock %}

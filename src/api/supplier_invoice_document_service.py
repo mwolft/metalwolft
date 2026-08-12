@@ -13,7 +13,7 @@ from pypdf import PdfReader
 from pypdf.errors import PdfReadError
 from werkzeug.utils import secure_filename
 
-from api.models import SupplierInvoice, SupplierInvoiceDocument, db
+from api.models import SupplierInvoice, SupplierInvoiceDocument, SupplierInvoiceExtraction, db
 from api.supplier_invoice_document_storage import get_supplier_invoice_document_storage
 
 
@@ -42,6 +42,22 @@ class SupplierInvoiceDocumentPersistenceError(SupplierInvoiceDocumentError):
     """Raised when metadata cannot be persisted after a successful upload."""
 
 
+class SupplierInvoiceDocumentDeletionError(SupplierInvoiceDocumentError):
+    """Raised when a private source document cannot be removed safely."""
+
+
+class SupplierInvoiceDocumentDeletionBlockedError(SupplierInvoiceDocumentDeletionError):
+    """Raised when fiscal or extraction state prevents document deletion."""
+
+
+class SupplierInvoiceDocumentDeletionStorageError(SupplierInvoiceDocumentDeletionError):
+    """Raised when R2 deletion fails and the document is retained for retry."""
+
+
+class SupplierInvoiceDocumentDeletionPersistenceError(SupplierInvoiceDocumentDeletionError):
+    """Raised when metadata cleanup fails after the object deletion attempt."""
+
+
 @dataclass(frozen=True)
 class ValidatedSupplierInvoiceDocument:
     original_filename: str
@@ -57,7 +73,12 @@ class SupplierInvoiceDocumentUploadResult:
     duplicate_count: int
 
 
-def validate_supplier_invoice_document_upload(file_storage, *, max_bytes=MAX_DOCUMENT_BYTES):
+def validate_supplier_invoice_document_upload(
+    file_storage,
+    *,
+    max_bytes=MAX_DOCUMENT_BYTES,
+    allowed_mime_types=None,
+):
     if file_storage is None or not getattr(file_storage, "filename", None):
         raise SupplierInvoiceDocumentValidationError("Selecciona un PDF, JPEG o PNG para subir.")
 
@@ -66,6 +87,9 @@ def validate_supplier_invoice_document_upload(file_storage, *, max_bytes=MAX_DOC
     expected_mime_type = ALLOWED_DOCUMENT_TYPES.get(extension)
     if not original_filename or expected_mime_type is None:
         raise SupplierInvoiceDocumentValidationError("Solo se admiten archivos PDF, JPEG o PNG.")
+
+    if allowed_mime_types is not None and expected_mime_type not in set(allowed_mime_types):
+        raise SupplierInvoiceDocumentValidationError("Solo se admiten archivos PDF.")
 
     declared_mime_type = str(getattr(file_storage, "mimetype", "") or "").lower().strip()
     if declared_mime_type != expected_mime_type:
@@ -106,6 +130,7 @@ def upload_supplier_invoice_document(
     db_session=None,
     storage=None,
     now=None,
+    allowed_mime_types=None,
 ):
     """Validate, upload and persist a document; compensate R2 if DB persistence fails."""
     if supplier_invoice and supplier_invoice.status == SupplierInvoice.STATUS_REGISTERED:
@@ -115,7 +140,11 @@ def upload_supplier_invoice_document(
 
     session = db_session or db.session
     max_bytes = int(current_app.config.get("SUPPLIER_DOCUMENT_MAX_BYTES", MAX_DOCUMENT_BYTES))
-    validated = validate_supplier_invoice_document_upload(file_storage, max_bytes=max_bytes)
+    validated = validate_supplier_invoice_document_upload(
+        file_storage,
+        max_bytes=max_bytes,
+        allowed_mime_types=allowed_mime_types,
+    )
     extension = Path(validated.original_filename).suffix.lower()
     storage_key = build_supplier_invoice_document_storage_key(now=now, extension=extension)
     storage = storage or get_supplier_invoice_document_storage(current_app)
@@ -157,6 +186,111 @@ def upload_supplier_invoice_document(
         document=document,
         duplicate_count=duplicate_count,
     )
+
+
+_DELETABLE_INVOICE_STATUSES = {
+    SupplierInvoice.STATUS_DRAFT,
+    SupplierInvoice.STATUS_NEEDS_REVIEW,
+}
+_DELETABLE_EXTRACTION_STATUSES = {
+    SupplierInvoiceExtraction.STATUS_FAILED,
+    SupplierInvoiceExtraction.STATUS_EXTRACTED,
+    SupplierInvoiceExtraction.STATUS_NEEDS_REVIEW,
+}
+
+
+def can_delete_supplier_invoice_document(document):
+    """Return whether an individual source document is safe to remove."""
+    try:
+        _validate_supplier_invoice_document_deletion(document)
+    except SupplierInvoiceDocumentDeletionBlockedError:
+        return False
+    return True
+
+
+def delete_supplier_invoice_document(document, *, db_session=None, storage=None):
+    """Delete an eligible document and its non-fiscal extraction attempts.
+
+    R2 and PostgreSQL do not share a transaction. A committed ``deleting`` state
+    makes interrupted cleanup traceable; failures become ``delete_failed`` and
+    can be retried without database cascades.
+    """
+    session = db_session or db.session
+    _validate_supplier_invoice_document_deletion(document)
+    document_id = document.id
+    storage_key = document.storage_key
+
+    document.processing_status = SupplierInvoiceDocument.STATUS_DELETING
+    try:
+        session.commit()
+    except Exception as exc:
+        session.rollback()
+        raise SupplierInvoiceDocumentDeletionPersistenceError(
+            "No se ha podido preparar la eliminación del documento."
+        ) from exc
+
+    try:
+        (storage or get_supplier_invoice_document_storage(current_app)).delete_document(
+            storage_key=storage_key
+        )
+    except Exception as exc:
+        _mark_supplier_invoice_document_delete_failed(session, document_id)
+        raise SupplierInvoiceDocumentDeletionStorageError(
+            "No se ha podido eliminar el documento privado. Puedes reintentarlo."
+        ) from exc
+
+    try:
+        persisted_document = session.get(SupplierInvoiceDocument, document_id)
+        if persisted_document is None:
+            return
+        for extraction in list(persisted_document.extractions):
+            session.delete(extraction)
+        session.flush()
+        session.delete(persisted_document)
+        session.commit()
+    except Exception as exc:
+        session.rollback()
+        _mark_supplier_invoice_document_delete_failed(session, document_id)
+        raise SupplierInvoiceDocumentDeletionPersistenceError(
+            "El documento se ha marcado para reintento de eliminación."
+        ) from exc
+
+
+def _validate_supplier_invoice_document_deletion(document):
+    if not isinstance(document, SupplierInvoiceDocument) or not getattr(document, "id", None):
+        raise SupplierInvoiceDocumentDeletionBlockedError("El documento recibido no existe.")
+    invoice = document.supplier_invoice
+    if invoice is None or invoice.status not in _DELETABLE_INVOICE_STATUSES:
+        raise SupplierInvoiceDocumentDeletionBlockedError(
+            "Solo se pueden eliminar documentos de facturas recibidas en borrador o revisión."
+        )
+    if document.processing_status == SupplierInvoiceDocument.STATUS_DELETING:
+        raise SupplierInvoiceDocumentDeletionBlockedError(
+            "El documento ya se está eliminando. Espera antes de reintentar."
+        )
+    if document.processing_status in {
+        SupplierInvoiceDocument.STATUS_EXTRACTING,
+        SupplierInvoiceDocument.STATUS_APPLIED,
+    }:
+        raise SupplierInvoiceDocumentDeletionBlockedError(
+            "No se puede eliminar un documento con una extracción aplicada o en curso."
+        )
+    for extraction in document.extractions:
+        if extraction.status not in _DELETABLE_EXTRACTION_STATUSES:
+            raise SupplierInvoiceDocumentDeletionBlockedError(
+                "No se puede eliminar un documento con una extracción aplicada o en curso."
+            )
+
+
+def _mark_supplier_invoice_document_delete_failed(session, document_id):
+    try:
+        session.rollback()
+        document = session.get(SupplierInvoiceDocument, document_id)
+        if document is not None:
+            document.processing_status = SupplierInvoiceDocument.STATUS_DELETE_FAILED
+            session.commit()
+    except Exception:
+        session.rollback()
 
 
 def _detect_document_mime_type(content):

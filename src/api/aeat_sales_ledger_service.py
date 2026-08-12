@@ -4,6 +4,10 @@ from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 from pathlib import Path
 
 from api.invoice_snapshot_integrity import calculate_invoice_snapshot_hash
+from api.invoice_legacy_rectification_aeat_service import (
+    LegacyRectificationAeatClassificationError,
+    legacy_manual_aeat_type_for_export,
+)
 
 
 AEAT_SALES_LEDGER_SHEET_NAME = "EXPEDIDAS_INGRESOS"
@@ -25,6 +29,7 @@ AEAT_OPERATION_QUALIFICATION = "S1"
 DATE_FORMAT = "DD/MM/YYYY"
 MONEY_FORMAT = '#,##0.00'
 PERCENT_FORMAT = '0.00'
+PERIOD_QUARTERS = {"1T": 1, "2T": 2, "3T": 3, "4T": 4}
 
 AEAT_HEADER_ROW_1 = [
     "Autoliquidación(11)",
@@ -130,7 +135,7 @@ def export_aeat_sales_ledger(entries, *, output_path, overwrite=False):
     """Export sale AccountingEntry records to the AEAT EXPEDIDAS_INGRESOS layout."""
     generated_at = datetime.now(timezone.utc)
     path = _validated_output_path(output_path)
-    prepared_entries = _prepared_entries(entries)
+    prepared_entries = prepare_aeat_sales_ledger_rows(entries)
 
     if path.exists() and not overwrite:
         raise AeatSalesLedgerWriteError("El archivo AEAT de ingresos ya existe.")
@@ -154,15 +159,26 @@ def export_aeat_sales_ledger(entries, *, output_path, overwrite=False):
 
 def generate_aeat_sales_ledger_workbook(entries):
     """Build the workbook without saving it, useful for tests and future callers."""
-    return _build_workbook(_prepared_entries(entries))
+    return _build_workbook(prepare_aeat_sales_ledger_rows(entries))
 
 
 def _build_workbook(prepared_entries):
     from openpyxl import Workbook
-    from openpyxl.styles import Font
 
     workbook = Workbook()
-    worksheet = workbook.active
+    workbook.remove(workbook.active)
+    add_aeat_sales_ledger_worksheet(workbook, prepared_entries)
+    return workbook
+
+
+def add_aeat_sales_ledger_worksheet(workbook, prepared_entries):
+    """Append EXPEDIDAS_INGRESOS to an existing workbook from validated rows."""
+    from openpyxl.styles import Font
+
+    if AEAT_SALES_LEDGER_SHEET_NAME in workbook.sheetnames:
+        raise AeatSalesLedgerValidationError("La hoja EXPEDIDAS_INGRESOS ya existe.")
+
+    worksheet = workbook.create_sheet(AEAT_SALES_LEDGER_SHEET_NAME)
     worksheet.title = AEAT_SALES_LEDGER_SHEET_NAME
     worksheet.append(AEAT_HEADER_ROW_1)
     worksheet.append(AEAT_HEADER_ROW_2)
@@ -178,7 +194,7 @@ def _build_workbook(prepared_entries):
     worksheet.auto_filter.ref = f"A2:AJ{worksheet.max_row}"
     _apply_formats(worksheet)
     _apply_column_widths(worksheet)
-    return workbook
+    return worksheet
 
 
 def _validated_output_path(output_path):
@@ -195,12 +211,13 @@ def _validated_output_path(output_path):
     return path
 
 
-def _prepared_entries(entries):
+def prepare_aeat_sales_ledger_rows(entries, *, allow_empty=False):
+    """Validate sale entries and return deterministic rows without writing XLSX."""
     if entries is None:
         raise AeatSalesLedgerValidationError("Debe indicarse al menos un registro contable.")
 
     prepared = [_prepared_entry(entry) for entry in list(entries)]
-    if not prepared:
+    if not prepared and not allow_empty:
         raise AeatSalesLedgerValidationError("Debe indicarse al menos un registro contable.")
 
     return sorted(
@@ -333,20 +350,26 @@ def _validate_corrective_invoice(invoice, snapshot):
         raise AeatSalesLedgerValidationError("El libro AEAT no admite rectificativas parciales.")
 
     invoice_number = _required_text(getattr(invoice, "invoice_number", None), "invoice.invoice_number")
-    model_aeat_type = _optional_text(getattr(invoice, "rectification_aeat_type", None))
-    snapshot_aeat_type = _optional_text(rectification.get("aeat_type"))
-    if not model_aeat_type or not snapshot_aeat_type:
-        raise AeatSalesLedgerValidationError(
-            f"La factura rectificativa {invoice_number} no tiene clasificacion fiscal AEAT."
-        )
-    if model_aeat_type != snapshot_aeat_type:
-        raise AeatSalesLedgerValidationError(
-            f"La factura rectificativa {invoice_number} tiene una clasificacion AEAT incoherente."
-        )
-    if model_aeat_type not in SUPPORTED_RECTIFICATION_AEAT_TYPES:
-        raise AeatSalesLedgerValidationError(
-            f"La factura rectificativa {invoice_number} usa un tipo AEAT fuera del alcance actual."
-        )
+    if "aeat_type" in rectification:
+        model_aeat_type = _optional_text(getattr(invoice, "rectification_aeat_type", None))
+        snapshot_aeat_type = _optional_text(rectification.get("aeat_type"))
+        if not model_aeat_type or not snapshot_aeat_type:
+            raise AeatSalesLedgerValidationError(
+                f"La factura rectificativa {invoice_number} no tiene clasificacion fiscal AEAT."
+            )
+        if model_aeat_type != snapshot_aeat_type:
+            raise AeatSalesLedgerValidationError(
+                f"La factura rectificativa {invoice_number} tiene una clasificacion AEAT incoherente."
+            )
+        if model_aeat_type not in SUPPORTED_RECTIFICATION_AEAT_TYPES:
+            raise AeatSalesLedgerValidationError(
+                f"La factura rectificativa {invoice_number} usa un tipo AEAT fuera del alcance actual."
+            )
+    else:
+        try:
+            model_aeat_type = legacy_manual_aeat_type_for_export(invoice, snapshot)
+        except LegacyRectificationAeatClassificationError as exc:
+            raise AeatSalesLedgerValidationError(str(exc)) from exc
 
     original_invoice_id = _positive_int(
         rectification.get("original_invoice_id"),
@@ -391,6 +414,18 @@ def _validate_corrective_invoice(invoice, snapshot):
         "aeat_invoice_type": model_aeat_type,
         "reference": original_number,
     }
+
+
+def select_aeat_sales_ledger_rows(rows, *, year, period):
+    """Select cumulative quarters using the fiscal issue date already frozen in each row."""
+    normalized_year = _validated_year(year)
+    target_quarter = _validated_period(period)
+    return [
+        row
+        for row in rows
+        if row["exercise"] == normalized_year
+        and PERIOD_QUARTERS[row["period"]] <= target_quarter
+    ]
 
 
 def _validate_entry_totals(entry, tax_base, tax_amount, total_amount):
@@ -496,6 +531,22 @@ def _positive_int(value, field):
 
 def _quarter(issue_date):
     return f"{((issue_date.month - 1) // 3) + 1}T"
+
+
+def _validated_year(year):
+    try:
+        normalized_year = int(year)
+    except (TypeError, ValueError) as exc:
+        raise AeatSalesLedgerValidationError("El ejercicio AEAT no es valido.") from exc
+    if normalized_year < 1000 or normalized_year > 9999:
+        raise AeatSalesLedgerValidationError("El ejercicio AEAT no es valido.")
+    return normalized_year
+
+
+def _validated_period(period):
+    if period not in PERIOD_QUARTERS:
+        raise AeatSalesLedgerValidationError("El periodo AEAT debe ser 1T, 2T, 3T o 4T.")
+    return PERIOD_QUARTERS[period]
 
 
 def _external_reference(snapshot):
