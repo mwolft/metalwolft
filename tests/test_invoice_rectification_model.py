@@ -241,6 +241,10 @@ class InvoiceRectificationSQLiteTest(unittest.TestCase):
             db.session.commit()
         db.session.rollback()
 
+    def test_orm_declares_legacy_aeat_classification_audit_columns(self):
+        self.assertIn("rectification_aeat_classified_at", Invoices.__table__.c)
+        self.assertIn("rectification_aeat_classified_by", Invoices.__table__.c)
+
     def test_ordinary_invoice_can_be_stored_without_rectification_reference(self):
         self.make_invoice()
 

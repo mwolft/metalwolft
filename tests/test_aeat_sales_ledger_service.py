@@ -349,6 +349,14 @@ class AeatSalesLedgerServiceTest(unittest.TestCase):
         ):
             export_aeat_sales_ledger([accounting_entry], output_path=tmpdir / "aeat.xlsx")
 
+    def test_legacy_total_rectificative_with_r4_but_without_audit_is_rejected_specifically(self):
+        accounting_entry = legacy_corrective_entry(aeat_type="R4")
+        with temp_export_dir() as tmpdir, self.assertRaisesRegex(
+            AeatSalesLedgerValidationError,
+            "histórica y requiere clasificación AEAT manual R1/R4",
+        ):
+            export_aeat_sales_ledger([accounting_entry], output_path=tmpdir / "aeat.xlsx")
+
     def test_legacy_total_rectificative_rejects_missing_audit_invalid_hash_partial_and_out_of_scope_type(self):
         missing_actor = legacy_corrective_entry(
             aeat_type="R1", classified_at=datetime(2026, 8, 12, 10, 0, 0)

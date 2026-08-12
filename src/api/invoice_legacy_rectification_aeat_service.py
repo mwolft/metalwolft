@@ -15,20 +15,18 @@ class LegacyRectificationAeatClassificationError(Exception):
 
 
 def is_legacy_rectification_eligible_for_manual_classification(invoice):
-    """Return whether an issued, hashed v3 total rectification lacks AEAT type by legacy contract."""
+    """Return whether an issued legacy v3 rectification still needs an audited R1/R4 decision."""
     try:
         _validate_legacy_rectification_structure(invoice)
     except LegacyRectificationAeatClassificationError:
         return False
 
-    return not any(
-        _optional_text(getattr(invoice, field, None))
-        for field in (
-            "rectification_aeat_type",
-            "rectification_aeat_classified_at",
-            "rectification_aeat_classified_by",
-        )
-    )
+    aeat_type = _optional_text(getattr(invoice, "rectification_aeat_type", None))
+    classified_at = getattr(invoice, "rectification_aeat_classified_at", None)
+    classified_by = _optional_text(getattr(invoice, "rectification_aeat_classified_by", None))
+    if classified_at or classified_by:
+        return False
+    return aeat_type is None or aeat_type in SUPPORTED_LEGACY_AEAT_TYPES
 
 
 def classify_legacy_total_rectification_aeat(invoice, *, aeat_type, actor, classified_at=None):
@@ -42,6 +40,11 @@ def classify_legacy_total_rectification_aeat(invoice, *, aeat_type, actor, class
     if normalized_type not in SUPPORTED_LEGACY_AEAT_TYPES:
         raise LegacyRectificationAeatClassificationError(
             "La clasificación AEAT manual legacy solo admite R1 o R4."
+        )
+    existing_type = _optional_text(getattr(invoice, "rectification_aeat_type", None))
+    if existing_type and existing_type != normalized_type:
+        raise LegacyRectificationAeatClassificationError(
+            "La clasificación AEAT legacy ya elegida debe confirmarse sin modificar su tipo fiscal."
         )
     normalized_actor = _optional_text(actor)
     if not normalized_actor:

@@ -582,6 +582,19 @@ class Invoices(db.Model):
             name="ck_invoices_rectification_aeat_type_corrective_only",
         ),
         db.CheckConstraint(
+            "rectification_aeat_classified_at IS NULL OR invoice_type = 'corrective'",
+            name="ck_invoices_rectification_aeat_classified_at_corrective_only",
+        ),
+        db.CheckConstraint(
+            "rectification_aeat_classified_by IS NULL OR invoice_type = 'corrective'",
+            name="ck_invoices_rectification_aeat_classified_by_corrective_only",
+        ),
+        db.CheckConstraint(
+            "(rectification_aeat_classified_at IS NULL AND rectification_aeat_classified_by IS NULL) OR "
+            "(rectification_aeat_classified_at IS NOT NULL AND rectification_aeat_classified_by IS NOT NULL)",
+            name="ck_invoices_rectification_aeat_classification_audit_complete",
+        ),
+        db.CheckConstraint(
             "original_invoice_id IS NULL OR original_invoice_id != id",
             name="ck_invoices_original_invoice_not_self",
         ),
@@ -595,6 +608,8 @@ class Invoices(db.Model):
     rectification_type = db.Column(db.String(30), nullable=True)
     rectification_reason = db.Column(db.String(50), nullable=True)
     rectification_aeat_type = db.Column(db.String(2), nullable=True)
+    rectification_aeat_classified_at = db.Column(db.DateTime, nullable=True)
+    rectification_aeat_classified_by = db.Column(db.String(255), nullable=True)
     created_at = db.Column(db.DateTime, default=db.func.current_timestamp())
     pdf_path = db.Column(db.String(255), nullable=True)
     amount = db.Column(db.Float, nullable=False)

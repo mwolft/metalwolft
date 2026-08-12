@@ -2235,6 +2235,7 @@ class InvoiceAdminView(SafeModelView):
                 'admin/invoice_legacy_rectification_aeat_confirm.html',
                 invoice=invoice,
                 details=details,
+                existing_aeat_type=getattr(invoice, 'rectification_aeat_type', None),
                 aeat_type_choices=sorted(SUPPORTED_LEGACY_AEAT_TYPES),
                 action_url=self.get_url('.classify_legacy_rectification_aeat', invoice_id=invoice.id),
                 cancel_url=self.get_url('.details_view', id=invoice.id),

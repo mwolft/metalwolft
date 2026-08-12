@@ -14,9 +14,10 @@
       <div class="form-group">
         <label for="rectification_aeat_type">Tipo fiscal AEAT</label>
         <select id="rectification_aeat_type" name="rectification_aeat_type" class="form-control" required>
-          <option value="" selected disabled>Selecciona R1 o R4</option>
-          {% for value in aeat_type_choices %}<option value="{{ value }}">{{ value }}</option>{% endfor %}
+          <option value="" {% if not existing_aeat_type %}selected{% endif %} disabled>Selecciona R1 o R4</option>
+          {% for value in aeat_type_choices %}<option value="{{ value }}" {% if value == existing_aeat_type %}selected{% endif %}>{{ value }}</option>{% endfor %}
         </select>
+        {% if existing_aeat_type %}<p class="help-block">Se confirmará la clasificación {{ existing_aeat_type }} ya registrada, añadiendo la trazabilidad pendiente.</p>{% endif %}
       </div>
       <div class="checkbox">
         <label><input type="checkbox" name="confirm_legacy_classification" value="confirmed" required> Confirmo esta clasificación manual.</label>

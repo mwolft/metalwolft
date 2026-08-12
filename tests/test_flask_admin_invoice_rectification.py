@@ -479,6 +479,59 @@ class FlaskAdminInvoiceRectificationHttpTest(unittest.TestCase):
             self.assertEqual(persisted.invoice_snapshot, snapshot_before)
             self.assertEqual(persisted.invoice_snapshot_hash, hash_before)
 
+    def test_legacy_r4_without_audit_can_be_explicitly_completed_but_not_changed(self):
+        with self.app.app_context():
+            original = db.session.get(Invoices, self.ordinary_id)
+            fiscal_snapshot = self._legacy_snapshot(original)
+            corrective = Invoices(
+                invoice_number="R2026000005",
+                invoice_type="corrective",
+                original_invoice_id=original.id,
+                rectification_type="differences",
+                rectification_reason="invoice_error",
+                rectification_aeat_type="R4",
+                amount=-1.21,
+                client_name="Cliente Test",
+                client_address="Calle Test 1",
+                client_cif="00000000T",
+                order_details=[],
+                invoice_snapshot=copy.deepcopy(fiscal_snapshot),
+                invoice_snapshot_schema_version=3,
+                invoice_snapshot_hash=calculate_invoice_snapshot_hash(fiscal_snapshot),
+                issued_at=datetime(2026, 8, 9, 10, 0, 0),
+            )
+            db.session.add(corrective)
+            db.session.commit()
+            corrective_id = corrective.id
+            snapshot_before = copy.deepcopy(corrective.invoice_snapshot)
+            hash_before = corrective.invoice_snapshot_hash
+
+        confirmation = self.client.get(self._legacy_url(corrective_id), headers=self._auth_header())
+        self.assertEqual(confirmation.status_code, 200)
+        self.assertIn(b'value="R4" selected', confirmation.data)
+
+        changed = self.client.post(
+            self._legacy_url(corrective_id),
+            headers=self._auth_header(),
+            data={"rectification_aeat_type": "R1", "confirm_legacy_classification": "confirmed"},
+        )
+        self.assertEqual(changed.status_code, 302)
+        self.assertIn(("error", "La clasificación AEAT legacy ya elegida debe confirmarse sin modificar su tipo fiscal."), self._flashes())
+
+        completed = self.client.post(
+            self._legacy_url(corrective_id),
+            headers=self._auth_header(),
+            data={"rectification_aeat_type": "R4", "confirm_legacy_classification": "confirmed"},
+        )
+        self.assertEqual(completed.status_code, 302)
+        with self.app.app_context():
+            persisted = db.session.get(Invoices, corrective_id)
+            self.assertEqual(persisted.rectification_aeat_type, "R4")
+            self.assertIsNotNone(persisted.rectification_aeat_classified_at)
+            self.assertEqual(persisted.rectification_aeat_classified_by, "flask_admin:admin")
+            self.assertEqual(persisted.invoice_snapshot, snapshot_before)
+            self.assertEqual(persisted.invoice_snapshot_hash, hash_before)
+
     def test_legacy_classification_action_is_not_offered_for_current_partial_or_invalid_v3(self):
         with self.app.app_context():
             original = db.session.get(Invoices, self.ordinary_id)
