@@ -215,9 +215,12 @@ def build_supplier_invoice_snapshot(
                 "reception_number",
             ),
             "issue_date": _date_string(supplier_invoice.issue_date, "issue_date"),
-            "operation_date": _optional_date_string(supplier_invoice.operation_date, "operation_date"),
+            "operation_date": _date_string(
+                supplier_invoice.operation_date or supplier_invoice.issue_date,
+                "operation_date",
+            ),
             "received_at": _timestamp_string(supplier_invoice.received_at),
-            "concept": _required_text(supplier_invoice.concept, "concept"),
+            "concept": _optional_text(supplier_invoice.concept),
             "currency": _required_text(supplier_invoice.currency, "currency"),
             "fiscal_invoice_type": _required_text(
                 supplier_invoice.fiscal_invoice_type,
@@ -263,7 +266,6 @@ def _validate_registration_input(supplier_invoice, *, allow_nonstandard_g01=Fals
     _required_text(supplier_invoice.supplier_legal_name, "supplier_legal_name")
     _required_text(supplier_invoice.supplier_tax_id, "supplier_tax_id")
     _required_text(supplier_invoice.supplier_invoice_number, "supplier_invoice_number")
-    _required_text(supplier_invoice.concept, "concept")
     _date_string(supplier_invoice.issue_date, "issue_date")
     _optional_date_string(supplier_invoice.operation_date, "operation_date")
 

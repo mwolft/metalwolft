@@ -310,7 +310,7 @@ class FlaskAdminSupplierInvoiceTest(unittest.TestCase):
                 self.assertIsNone(edit_form.operation_date.data)
                 self.assertIn('value="2026-07-25"', str(edit_form.issue_date()))
 
-    def test_issue_date_is_required_while_operation_date_remains_optional(self):
+    def test_draft_form_allows_empty_issue_and_operation_dates(self):
         with self.app.app_context():
             with self.app.test_request_context(
                 "/admin/supplierinvoice/new/",
@@ -318,8 +318,8 @@ class FlaskAdminSupplierInvoiceTest(unittest.TestCase):
                 data={"issue_date": "", "operation_date": ""},
             ):
                 form = self.view.create_form()
-                self.assertFalse(form.validate())
-                self.assertTrue(form.issue_date.errors)
+                self.assertTrue(form.validate())
+                self.assertFalse(form.issue_date.errors)
                 self.assertFalse(form.operation_date.errors)
 
     def test_tax_breakdown_inline_html_and_script_are_csp_safe(self):
@@ -382,6 +382,12 @@ class FlaskAdminSupplierInvoiceTest(unittest.TestCase):
 
     def test_registration_error_messages_are_specific_and_safe(self):
         messages = {
+            "Campo obligatorio ausente: supplier_legal_name.": "Indica la razón social o nombre del proveedor.",
+            "Campo obligatorio ausente: supplier_tax_id.": "Indica el NIF/CIF del proveedor.",
+            "Campo obligatorio ausente: supplier_invoice_number.": "Indica el número de factura del proveedor.",
+            "Campo obligatorio ausente: issue_date.": "Indica la fecha de expedición.",
+            "Fecha no válida: issue_date.": "Indica una fecha de expedición válida.",
+            "Importe no válido: total_amount.": "Indica un total de factura válido.",
             "Debe existir al menos un desglose de IVA.": "Debe existir al menos un desglose de IVA.",
             "El total no coincide con la suma de las bases y cuotas de IVA.": (
                 "El total no coincide con la suma de las bases y cuotas de IVA."

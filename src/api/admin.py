@@ -1396,6 +1396,16 @@ class SupplierInvoiceInlineModelConverter(InlineModelConverter):
 def _supplier_invoice_registration_error_message(error):
     message = str(error)
     known_messages = {
+        "Campo obligatorio ausente: supplier_legal_name.": "Indica la razón social o nombre del proveedor.",
+        "Campo obligatorio ausente: supplier_tax_id.": "Indica el NIF/CIF del proveedor.",
+        "Campo obligatorio ausente: supplier_invoice_number.": "Indica el número de factura del proveedor.",
+        "Campo obligatorio ausente: issue_date.": "Indica la fecha de expedición.",
+        "Fecha no válida: issue_date.": "Indica una fecha de expedición válida.",
+        "Importe no válido: total_amount.": "Indica un total de factura válido.",
+        "Importe no válido: tax_base.": "Revisa los importes del desglose de IVA.",
+        "Importe no válido: tax_rate.": "Revisa los importes del desglose de IVA.",
+        "Importe no válido: tax_amount.": "Revisa los importes del desglose de IVA.",
+        "Importe no válido: deductible_tax_amount.": "Revisa los importes del desglose de IVA.",
         "Debe existir al menos un desglose de IVA.": message,
         "El total no coincide con la suma de las bases y cuotas de IVA.": message,
         "La cuota deducible no puede superar la cuota soportada.": message,
@@ -1541,7 +1551,7 @@ class SupplierInvoiceAdminView(SafeModelView):
     form_args = {
         "issue_date": {
             "format": "%Y-%m-%d",
-            "validators": [validators.InputRequired()],
+            "validators": [validators.Optional()],
             "render_kw": {
                 "placeholder": "YYYY-MM-DD",
             },

@@ -26,6 +26,7 @@ from api.models import (  # noqa: E402
 from api.supplier_invoice_registration_service import (  # noqa: E402
     SupplierInvoiceDuplicateError,
     SupplierInvoiceRegistrationValidationError,
+    apply_supplier_invoice_expense_classification_defaults,
     build_supplier_invoice_snapshot,
     register_supplier_invoice,
 )
@@ -160,6 +161,41 @@ class SupplierInvoiceRegistrationServiceTest(unittest.TestCase):
 
         self.assertIsNone(invoice.reception_number)
         self.assertEqual(db.session.get(SupplierInvoiceReceptionSequence, 1).last_number, 0)
+
+    def test_registration_still_requires_issue_date(self):
+        invoice = self.make_draft(issue_date=None)
+
+        with self.assertRaisesRegex(
+            SupplierInvoiceRegistrationValidationError,
+            "Campo obligatorio ausente: issue_date.",
+        ):
+            register_supplier_invoice(invoice, db_session=db.session)
+
+    def test_optional_concept_is_frozen_as_null(self):
+        invoice = self.make_draft(concept=None)
+
+        register_supplier_invoice(invoice, db_session=db.session)
+
+        self.assertIsNone(invoice.fiscal_snapshot["document"]["concept"])
+
+    def test_snapshot_preserves_explicit_operation_date(self):
+        invoice = self.make_draft(operation_date=date(2026, 8, 9))
+
+        register_supplier_invoice(invoice, db_session=db.session)
+
+        self.assertEqual(invoice.operation_date, date(2026, 8, 9))
+        self.assertEqual(invoice.fiscal_snapshot["document"]["operation_date"], "2026-08-09")
+
+    def test_snapshot_uses_issue_date_when_operation_date_is_missing(self):
+        invoice = self.make_draft(operation_date=None)
+
+        register_supplier_invoice(invoice, db_session=db.session)
+
+        self.assertIsNone(invoice.operation_date)
+        self.assertEqual(
+            invoice.fiscal_snapshot["document"]["operation_date"],
+            invoice.issue_date.isoformat(),
+        )
 
     def test_snapshot_and_hash_are_deterministic_for_same_validated_input(self):
         first = self.make_draft()
@@ -326,6 +362,18 @@ class SupplierInvoiceRegistrationServiceTest(unittest.TestCase):
         register_supplier_invoice(manual, db_session=db.session)
         self.assertEqual(manual.aeat_expense_concept_code, "G03")
         self.assertEqual(manual.expense_deductible_amount, Decimal("121.00"))
+
+    def test_seur_empty_code_proposes_g03_without_overwriting_manual_g01(self):
+        seur = self.make_draft(
+            supplier_tax_id="A28017895",
+            aeat_expense_concept_code=None,
+        )
+        apply_supplier_invoice_expense_classification_defaults(seur)
+        self.assertEqual(seur.aeat_expense_concept_code, "G03")
+
+        seur.aeat_expense_concept_code = "G01"
+        apply_supplier_invoice_expense_classification_defaults(seur)
+        self.assertEqual(seur.aeat_expense_concept_code, "G01")
 
     def test_expense_deductible_amount_is_independent_from_vat_deduction(self):
         invoice = self.make_draft(expense_deductible_amount=Decimal("121.00"))
