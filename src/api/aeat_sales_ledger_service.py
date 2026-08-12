@@ -4,6 +4,10 @@ from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 from pathlib import Path
 
 from api.invoice_snapshot_integrity import calculate_invoice_snapshot_hash
+from api.invoice_legacy_rectification_aeat_service import (
+    LegacyRectificationAeatClassificationError,
+    legacy_manual_aeat_type_for_export,
+)
 
 
 AEAT_SALES_LEDGER_SHEET_NAME = "EXPEDIDAS_INGRESOS"
@@ -333,20 +337,26 @@ def _validate_corrective_invoice(invoice, snapshot):
         raise AeatSalesLedgerValidationError("El libro AEAT no admite rectificativas parciales.")
 
     invoice_number = _required_text(getattr(invoice, "invoice_number", None), "invoice.invoice_number")
-    model_aeat_type = _optional_text(getattr(invoice, "rectification_aeat_type", None))
-    snapshot_aeat_type = _optional_text(rectification.get("aeat_type"))
-    if not model_aeat_type or not snapshot_aeat_type:
-        raise AeatSalesLedgerValidationError(
-            f"La factura rectificativa {invoice_number} no tiene clasificacion fiscal AEAT."
-        )
-    if model_aeat_type != snapshot_aeat_type:
-        raise AeatSalesLedgerValidationError(
-            f"La factura rectificativa {invoice_number} tiene una clasificacion AEAT incoherente."
-        )
-    if model_aeat_type not in SUPPORTED_RECTIFICATION_AEAT_TYPES:
-        raise AeatSalesLedgerValidationError(
-            f"La factura rectificativa {invoice_number} usa un tipo AEAT fuera del alcance actual."
-        )
+    if "aeat_type" in rectification:
+        model_aeat_type = _optional_text(getattr(invoice, "rectification_aeat_type", None))
+        snapshot_aeat_type = _optional_text(rectification.get("aeat_type"))
+        if not model_aeat_type or not snapshot_aeat_type:
+            raise AeatSalesLedgerValidationError(
+                f"La factura rectificativa {invoice_number} no tiene clasificacion fiscal AEAT."
+            )
+        if model_aeat_type != snapshot_aeat_type:
+            raise AeatSalesLedgerValidationError(
+                f"La factura rectificativa {invoice_number} tiene una clasificacion AEAT incoherente."
+            )
+        if model_aeat_type not in SUPPORTED_RECTIFICATION_AEAT_TYPES:
+            raise AeatSalesLedgerValidationError(
+                f"La factura rectificativa {invoice_number} usa un tipo AEAT fuera del alcance actual."
+            )
+    else:
+        try:
+            model_aeat_type = legacy_manual_aeat_type_for_export(invoice, snapshot)
+        except LegacyRectificationAeatClassificationError as exc:
+            raise AeatSalesLedgerValidationError(str(exc)) from exc
 
     original_invoice_id = _positive_int(
         rectification.get("original_invoice_id"),

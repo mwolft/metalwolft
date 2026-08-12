@@ -118,6 +118,13 @@ from api.invoice_issue_service import (
     issue_invoice_for_order,
     issue_total_rectification_for_invoice,
 )
+from api.invoice_legacy_rectification_aeat_service import (
+    LegacyRectificationAeatClassificationError,
+    SUPPORTED_LEGACY_AEAT_TYPES,
+    classify_legacy_total_rectification_aeat,
+    is_legacy_rectification_eligible_for_manual_classification,
+    legacy_rectification_details,
+)
 from api.invoice_snapshot_builder import (
     SUPPORTED_TOTAL_RECTIFICATION_AEAT_TYPES,
     RECTIFICATION_REASON_TEXTS,
@@ -1226,7 +1233,7 @@ def _format_admin_invoice_type_detail(view, context, model, name):
         aeat_type = getattr(model, "rectification_aeat_type", None) or "Sin clasificación AEAT"
         if original and getattr(original, "id", None):
             original_url = view.get_url(".details_view", id=original.id)
-            return Markup(
+            detail = Markup(
                 '<div>{invoice_type}</div><div style="margin-top: 8px;">'
                 '<a href="{original_url}">Ver factura original {original_number}</a>'
                 '<div style="margin-top: 4px;">Tipo fiscal AEAT: {aeat_type}</div>'
@@ -1237,6 +1244,13 @@ def _format_admin_invoice_type_detail(view, context, model, name):
                 original_number=_format_admin_invoice_nullable(original.invoice_number),
                 aeat_type=aeat_type,
             )
+            if is_legacy_rectification_eligible_for_manual_classification(model):
+                confirmation_url = view.get_url(".classify_legacy_rectification_aeat", invoice_id=model.id)
+                detail += Markup(
+                    '<div style="margin-top: 8px;"><a class="btn btn-warning btn-sm" href="{url}">'
+                    'CLASIFICAR AEAT RECTIFICATIVA LEGACY</a></div>'
+                ).format(url=confirmation_url)
+            return detail
         return invoice_type
 
     corrective = _find_invoice_corrective_invoice(view, model)
@@ -1985,6 +1999,9 @@ class InvoiceAdminView(SafeModelView):
         'id',
         'invoice_number',
         'invoice_type',
+        'rectification_aeat_type',
+        'rectification_aeat_classified_at',
+        'rectification_aeat_classified_by',
         'order_id',
         'client_name',
         'client_cif',
@@ -2000,6 +2017,9 @@ class InvoiceAdminView(SafeModelView):
         'id',
         'invoice_number',
         'invoice_type',
+        'rectification_aeat_type',
+        'rectification_aeat_classified_at',
+        'rectification_aeat_classified_by',
         'order_id',
         'client_name',
         'client_address',
@@ -2043,6 +2063,8 @@ class InvoiceAdminView(SafeModelView):
         'invoice_number': 'N.º factura',
         'invoice_type': 'Tipo',
         'rectification_aeat_type': 'Tipo fiscal AEAT',
+        'rectification_aeat_classified_at': 'Clasificada AEAT el',
+        'rectification_aeat_classified_by': 'Clasificada AEAT por',
         'order_id': 'Pedido',
         'client_name': 'Cliente',
         'client_cif': 'NIF/CIF',
@@ -2065,6 +2087,8 @@ class InvoiceAdminView(SafeModelView):
         'issued_at': _format_admin_invoice_datetime,
         'invoice_type': _format_admin_invoice_value,
         'rectification_aeat_type': _format_admin_invoice_value,
+        'rectification_aeat_classified_at': _format_admin_invoice_datetime,
+        'rectification_aeat_classified_by': _format_admin_invoice_value,
         'pdf_path': _format_admin_invoice_pdf_available,
         'accounting_entries': _format_admin_invoice_accounting_status,
         'email_status': _format_admin_invoice_value,
@@ -2190,6 +2214,57 @@ class InvoiceAdminView(SafeModelView):
             flash('No se ha podido emitir la rectificativa total.', 'error')
 
         return redirect(self.get_url(".details_view", id=invoice.id))
+
+    @expose('/classify-legacy-rectification-aeat/<int:invoice_id>', methods=['GET', 'POST'])
+    def classify_legacy_rectification_aeat(self, invoice_id):
+        invoice = self.session.get(Invoices, invoice_id)
+        if not invoice:
+            flash('Factura no encontrada.', 'error')
+            return redirect(self.get_url('.index_view'))
+
+        if request.method == 'GET':
+            if not is_legacy_rectification_eligible_for_manual_classification(invoice):
+                flash('Esta rectificativa no puede clasificarse mediante el flujo legacy.', 'error')
+                return redirect(self.get_url('.details_view', id=invoice.id))
+            try:
+                details = legacy_rectification_details(invoice)
+            except LegacyRectificationAeatClassificationError:
+                flash('Esta rectificativa no puede clasificarse mediante el flujo legacy.', 'error')
+                return redirect(self.get_url('.details_view', id=invoice.id))
+            return self.render(
+                'admin/invoice_legacy_rectification_aeat_confirm.html',
+                invoice=invoice,
+                details=details,
+                aeat_type_choices=sorted(SUPPORTED_LEGACY_AEAT_TYPES),
+                action_url=self.get_url('.classify_legacy_rectification_aeat', invoice_id=invoice.id),
+                cancel_url=self.get_url('.details_view', id=invoice.id),
+            )
+
+        aeat_type = (request.form.get('rectification_aeat_type') or '').strip()
+        if aeat_type not in SUPPORTED_LEGACY_AEAT_TYPES:
+            flash('Selecciona R1 o R4 para la clasificación AEAT legacy.', 'error')
+            return redirect(self.get_url('.classify_legacy_rectification_aeat', invoice_id=invoice.id))
+        if request.form.get('confirm_legacy_classification') != 'confirmed':
+            flash('Confirma la clasificación AEAT legacy antes de continuar.', 'error')
+            return redirect(self.get_url('.classify_legacy_rectification_aeat', invoice_id=invoice.id))
+
+        try:
+            classify_legacy_total_rectification_aeat(
+                invoice,
+                aeat_type=aeat_type,
+                actor=invoice_admin_actor_from_basic_auth(request.authorization),
+            )
+            self.session.commit()
+            flash('Clasificación AEAT legacy guardada. El snapshot histórico no se ha modificado.', 'success')
+        except LegacyRectificationAeatClassificationError as exc:
+            self.session.rollback()
+            current_app.logger.warning('Invalid legacy rectification AEAT classification for invoice %s', invoice_id)
+            flash(str(exc), 'error')
+        except Exception:
+            self.session.rollback()
+            current_app.logger.exception('Unexpected legacy rectification AEAT classification error for invoice %s', invoice_id)
+            flash('No se ha podido guardar la clasificación AEAT legacy.', 'error')
+        return redirect(self.get_url('.details_view', id=invoice.id))
 
     @expose('/generate-pdf/<int:invoice_id>', methods=['POST'])
     def generate_pdf(self, invoice_id):
