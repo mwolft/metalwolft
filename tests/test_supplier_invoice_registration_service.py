@@ -186,6 +186,20 @@ class SupplierInvoiceRegistrationServiceTest(unittest.TestCase):
         self.assertEqual(invoice.operation_date, date(2026, 8, 9))
         self.assertEqual(invoice.fiscal_snapshot["document"]["operation_date"], "2026-08-09")
 
+    def test_snapshot_freezes_the_resolved_national_dates(self):
+        invoice = self.make_draft(
+            issue_date=date(2026, 8, 11),
+            operation_date=date(2026, 8, 11),
+        )
+        invoice.received_at = datetime(2026, 8, 11)
+
+        register_supplier_invoice(invoice, db_session=db.session)
+
+        document = invoice.fiscal_snapshot["document"]
+        self.assertEqual(document["issue_date"], "2026-08-11")
+        self.assertEqual(document["operation_date"], "2026-08-11")
+        self.assertEqual(document["received_at"], "2026-08-11T00:00:00")
+
     def test_snapshot_uses_issue_date_when_operation_date_is_missing(self):
         invoice = self.make_draft(operation_date=None)
 

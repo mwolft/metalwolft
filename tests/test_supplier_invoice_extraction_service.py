@@ -250,12 +250,31 @@ class SupplierInvoiceExtractionServiceTest(unittest.TestCase):
         self.assertEqual(self.invoice.status, SupplierInvoice.STATUS_NEEDS_REVIEW)
         self.assertEqual(self.invoice.supplier_legal_name, "Acero Proveedor SL")
         self.assertEqual(self.invoice.total_amount, Decimal("121.00"))
+        self.assertEqual(self.invoice.issue_date, date(2026, 8, 11))
+        self.assertEqual(self.invoice.operation_date, date(2026, 8, 11))
+        self.assertEqual(self.invoice.received_at.date(), date(2026, 8, 11))
         self.assertEqual(len(self.invoice.tax_breakdowns), 1)
         self.assertEqual(self.invoice.tax_breakdowns[0].deductible_tax_amount, Decimal("0.00"))
         self.assertEqual(self.invoice.aeat_expense_concept_code, "G03")
         self.assertEqual(self.invoice.expense_deductible_amount, Decimal("100.00"))
         self.assertIsNone(self.invoice.reception_number)
         self.assertIsNone(self.invoice.fiscal_snapshot)
+
+    def test_apply_preserves_manual_operation_date_but_uses_issue_date_for_reception(self):
+        self.invoice.operation_date = date(2026, 8, 10)
+        extraction = self._extract().extraction
+
+        apply_supplier_invoice_extraction(
+            extraction,
+            self.invoice,
+            replace_tax_breakdowns=True,
+            deductible_tax_amounts=["21.00"],
+            db_session=db.session,
+        )
+
+        self.assertEqual(self.invoice.issue_date, date(2026, 8, 11))
+        self.assertEqual(self.invoice.operation_date, date(2026, 8, 10))
+        self.assertEqual(self.invoice.received_at.date(), date(2026, 8, 11))
 
     def test_apply_preserves_manual_expense_classification_decisions(self):
         self.invoice.aeat_expense_concept_code = "G01"

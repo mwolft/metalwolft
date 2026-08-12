@@ -1,7 +1,7 @@
 """Build, persist and apply reviewable supplier invoice extraction proposals."""
 
 from dataclasses import dataclass
-from datetime import date, datetime, timezone
+from datetime import date, datetime, time, timezone
 from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 from hashlib import sha256
 import json
@@ -185,6 +185,12 @@ def apply_supplier_invoice_extraction(
 
     for attribute, value in updates.items():
         setattr(supplier_invoice, attribute, value)
+    extracted_issue_date = fields["issue_date"]["value"]
+    if extracted_issue_date is not None:
+        extracted_issue_date = _convert_field_value("issue_date", extracted_issue_date)
+        if supplier_invoice.operation_date is None:
+            supplier_invoice.operation_date = extracted_issue_date
+        supplier_invoice.received_at = datetime.combine(extracted_issue_date, time.min)
     if breakdowns:
         for item in list(supplier_invoice.tax_breakdowns):
             session.delete(item)
