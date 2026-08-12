@@ -1386,6 +1386,7 @@ def _format_supplier_invoice_hash(view, context, model, name):
 
 
 SUPPLIER_DOCUMENT_UPLOAD_CSRF_SESSION_KEY = "supplier_document_upload_csrf"
+SUPPLIER_DOCUMENT_UPLOAD_AND_PROCESS_TOKEN_SESSION_KEY = "supplier_document_upload_and_process"
 
 
 def _issue_supplier_document_upload_csrf_token():
@@ -1403,6 +1404,24 @@ def _valid_supplier_document_upload_csrf_token(token):
         and token
         and hmac.compare_digest(str(expected_token), str(token))
     )
+
+
+def _issue_supplier_document_upload_and_process_token():
+    token = secrets.token_urlsafe(32)
+    session[SUPPLIER_DOCUMENT_UPLOAD_AND_PROCESS_TOKEN_SESSION_KEY] = token
+    return token
+
+
+def _consume_supplier_document_upload_and_process_token(token):
+    expected_token = session.get(SUPPLIER_DOCUMENT_UPLOAD_AND_PROCESS_TOKEN_SESSION_KEY)
+    if not (
+        expected_token
+        and token
+        and hmac.compare_digest(str(expected_token), str(token))
+    ):
+        return False
+    session.pop(SUPPLIER_DOCUMENT_UPLOAD_AND_PROCESS_TOKEN_SESSION_KEY, None)
+    return True
 
 
 def _format_supplier_invoice_documents(view, context, model, name):
@@ -1517,6 +1536,7 @@ def _supplier_invoice_registration_error_message(error):
 class SupplierInvoiceAdminView(SafeModelView):
     can_view_details = True
     column_default_sort = ("created_at", True)
+    list_template = "admin/supplier_invoice_list.html"
     inline_models = (SupplierInvoiceTaxBreakdown,)
     inline_model_form_converter = SupplierInvoiceInlineModelConverter
     extra_js = ["/static/admin/supplier_invoice_tax_breakdowns.js"]
@@ -1731,6 +1751,97 @@ class SupplierInvoiceAdminView(SafeModelView):
             flash("Una factura recibida registrada no puede borrarse.", "error")
             return False
         return super().delete_model(model)
+
+    @expose("/upload-and-process/", methods=["GET", "POST"])
+    def upload_and_process(self):
+        if request.method == "GET":
+            return self.render(
+                "admin/supplier_invoice_upload_and_process.html",
+                csrf_token=_issue_supplier_document_upload_csrf_token(),
+                submission_token=_issue_supplier_document_upload_and_process_token(),
+                action_url=self.get_url(".upload_and_process"),
+                cancel_url=self.get_url(".index_view"),
+            )
+
+        if not _valid_supplier_document_upload_csrf_token(request.form.get("csrf_token")):
+            flash("La sesiÃ³n del formulario ha caducado. Vuelve a intentarlo.", "error")
+            return redirect(request.url)
+        if not _consume_supplier_document_upload_and_process_token(
+            request.form.get("submission_token")
+        ):
+            flash("Esta subida ya se ha procesado. Vuelve a abrir el formulario para reintentarlo.", "error")
+            return redirect(self.get_url(".upload_and_process"))
+
+        actor = request.authorization.username if request.authorization else None
+        upload_result = None
+        extraction_result = None
+        try:
+            supplier_invoice = SupplierInvoice(status=SupplierInvoice.STATUS_DRAFT, source="manual")
+            self.session.add(supplier_invoice)
+            self.session.flush()
+            upload_result = upload_supplier_invoice_document(
+                request.files.get("document"),
+                supplier_invoice=supplier_invoice,
+                actor=actor,
+                db_session=self.session,
+                allowed_mime_types={"application/pdf"},
+            )
+            extraction_result = run_supplier_invoice_extraction(
+                upload_result.document,
+                provider=get_supplier_invoice_extraction_provider(current_app),
+                db_session=self.session,
+            )
+            self.session.commit()
+        except SupplierInvoiceDocumentValidationError as error:
+            self.session.rollback()
+            flash(str(error), "error")
+            return redirect(self.get_url(".upload_and_process"))
+        except SupplierInvoiceDocumentPersistenceError:
+            self.session.rollback()
+            current_app.logger.warning("Supplier document metadata persistence failed")
+            flash("No se ha podido guardar la referencia del documento.", "error")
+            return redirect(self.get_url(".upload_and_process"))
+        except SupplierInvoiceDocumentStorageConfigurationError:
+            self.session.rollback()
+            current_app.logger.warning("Supplier document storage configuration is missing")
+            flash("El almacenamiento privado de documentos no estÃ¡ configurado.", "error")
+            return redirect(self.get_url(".upload_and_process"))
+        except (SupplierInvoiceDocumentStorageOperationError, SupplierInvoiceDocumentError):
+            self.session.rollback()
+            current_app.logger.warning("Supplier document upload failed")
+            flash("No se ha podido subir el documento privado.", "error")
+            return redirect(self.get_url(".upload_and_process"))
+        except SupplierInvoiceExtractionEligibilityError as error:
+            self.session.rollback()
+            if upload_result:
+                _cleanup_supplier_document_after_commit_failure(upload_result.document.storage_key)
+            flash(str(error), "error")
+            return redirect(self.get_url(".upload_and_process"))
+        except SupplierInvoiceExtractionError:
+            self.session.rollback()
+            if upload_result:
+                _cleanup_supplier_document_after_commit_failure(upload_result.document.storage_key)
+            current_app.logger.warning("Supplier document extraction rejected after upload")
+            flash("No se ha podido extraer una propuesta del documento.", "error")
+            return redirect(self.get_url(".upload_and_process"))
+        except Exception:
+            self.session.rollback()
+            if upload_result:
+                _cleanup_supplier_document_after_commit_failure(upload_result.document.storage_key)
+            current_app.logger.exception("Unexpected supplier document upload-and-process failure")
+            flash("No se ha podido subir y procesar el documento.", "error")
+            return redirect(self.get_url(".upload_and_process"))
+
+        if upload_result.duplicate_count:
+            flash(
+                "Se ha detectado un documento con el mismo hash. Revisa si es un duplicado antes de registrarlo.",
+                "warning",
+            )
+        if extraction_result.succeeded:
+            flash("Propuesta de extracciÃ³n creada. RevÃ­sala antes de aplicarla.", "success")
+        else:
+            flash("No se ha podido extraer una propuesta del documento.", "error")
+        return redirect(self.get_url(".review_extraction", extraction_id=extraction_result.extraction.id))
 
     @expose("/upload-document/", methods=["GET", "POST"])
     def upload_document(self):

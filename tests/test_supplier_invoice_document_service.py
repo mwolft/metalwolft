@@ -159,6 +159,23 @@ class SupplierInvoiceDocumentServiceTest(unittest.TestCase):
                 )
                 self.assertEqual(validated.mime_type, mime_type)
 
+    def test_pdf_only_restriction_reuses_the_standard_document_validation(self):
+        from PIL import Image
+
+        image_data = BytesIO()
+        Image.new("RGB", (2, 2), "white").save(image_data, format="PNG")
+        with self.assertRaisesRegex(SupplierInvoiceDocumentValidationError, "Solo se admiten archivos PDF"):
+            validate_supplier_invoice_document_upload(
+                self._file(image_data.getvalue(), "factura.png", "image/png"),
+                allowed_mime_types={"application/pdf"},
+            )
+
+        validated = validate_supplier_invoice_document_upload(
+            self._file(self._valid_pdf_content(), "factura.pdf", "application/pdf"),
+            allowed_mime_types={"application/pdf"},
+        )
+        self.assertEqual(validated.mime_type, "application/pdf")
+
     def test_invalid_content_and_mismatched_mime_are_rejected(self):
         with self.assertRaises(SupplierInvoiceDocumentValidationError):
             validate_supplier_invoice_document_upload(

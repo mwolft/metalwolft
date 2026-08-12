@@ -73,7 +73,12 @@ class SupplierInvoiceDocumentUploadResult:
     duplicate_count: int
 
 
-def validate_supplier_invoice_document_upload(file_storage, *, max_bytes=MAX_DOCUMENT_BYTES):
+def validate_supplier_invoice_document_upload(
+    file_storage,
+    *,
+    max_bytes=MAX_DOCUMENT_BYTES,
+    allowed_mime_types=None,
+):
     if file_storage is None or not getattr(file_storage, "filename", None):
         raise SupplierInvoiceDocumentValidationError("Selecciona un PDF, JPEG o PNG para subir.")
 
@@ -82,6 +87,9 @@ def validate_supplier_invoice_document_upload(file_storage, *, max_bytes=MAX_DOC
     expected_mime_type = ALLOWED_DOCUMENT_TYPES.get(extension)
     if not original_filename or expected_mime_type is None:
         raise SupplierInvoiceDocumentValidationError("Solo se admiten archivos PDF, JPEG o PNG.")
+
+    if allowed_mime_types is not None and expected_mime_type not in set(allowed_mime_types):
+        raise SupplierInvoiceDocumentValidationError("Solo se admiten archivos PDF.")
 
     declared_mime_type = str(getattr(file_storage, "mimetype", "") or "").lower().strip()
     if declared_mime_type != expected_mime_type:
@@ -122,6 +130,7 @@ def upload_supplier_invoice_document(
     db_session=None,
     storage=None,
     now=None,
+    allowed_mime_types=None,
 ):
     """Validate, upload and persist a document; compensate R2 if DB persistence fails."""
     if supplier_invoice and supplier_invoice.status == SupplierInvoice.STATUS_REGISTERED:
@@ -131,7 +140,11 @@ def upload_supplier_invoice_document(
 
     session = db_session or db.session
     max_bytes = int(current_app.config.get("SUPPLIER_DOCUMENT_MAX_BYTES", MAX_DOCUMENT_BYTES))
-    validated = validate_supplier_invoice_document_upload(file_storage, max_bytes=max_bytes)
+    validated = validate_supplier_invoice_document_upload(
+        file_storage,
+        max_bytes=max_bytes,
+        allowed_mime_types=allowed_mime_types,
+    )
     extension = Path(validated.original_filename).suffix.lower()
     storage_key = build_supplier_invoice_document_storage_key(now=now, extension=extension)
     storage = storage or get_supplier_invoice_document_storage(current_app)

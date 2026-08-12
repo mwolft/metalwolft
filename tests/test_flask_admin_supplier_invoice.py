@@ -195,6 +195,15 @@ class FlaskAdminSupplierInvoiceTest(unittest.TestCase):
             return f"{rule}?supplier_invoice_id={supplier_invoice_id}"
         return rule
 
+    def _upload_and_process_rule(self):
+        for rule in self.app.url_map.iter_rules():
+            if rule.endpoint.endswith(".upload_and_process"):
+                return rule
+        raise AssertionError("Supplier invoice upload-and-process route was not registered")
+
+    def _upload_and_process_url(self):
+        return self._upload_and_process_rule().rule
+
     def _download_rule(self):
         for rule in self.app.url_map.iter_rules():
             if rule.endpoint.endswith(".download_document"):
@@ -218,6 +227,270 @@ class FlaskAdminSupplierInvoiceTest(unittest.TestCase):
             if rule.endpoint.endswith(".extract_document"):
                 return rule
         raise AssertionError("Supplier document extraction route was not registered")
+
+    def _quick_upload_tokens(self):
+        response = self.client.get(self._upload_and_process_url(), headers=self._auth_header())
+        self.assertEqual(response.status_code, 200)
+        csrf_token = re.search(rb'name="csrf_token" value="([^"]+)"', response.data).group(1).decode()
+        submission_token = re.search(rb'name="submission_token" value="([^"]+)"', response.data).group(1).decode()
+        return csrf_token, submission_token
+
+    @staticmethod
+    def _persisted_upload_result(supplier_invoice, db_session):
+        document = SupplierInvoiceDocument(
+            supplier_invoice=supplier_invoice,
+            storage_provider="r2",
+            storage_key=f"supplier-invoices/2026/08/quick-{supplier_invoice.id}.pdf",
+            original_filename="factura.pdf",
+            mime_type="application/pdf",
+            file_size=4,
+            sha256=(f"{supplier_invoice.id:064x}"[-64:]),
+            uploaded_by="admin",
+        )
+        db_session.add(document)
+        db_session.flush()
+        return SimpleNamespace(document=document, duplicate_count=0)
+
+    @staticmethod
+    def _failed_extraction_result(document, db_session):
+        extraction = SupplierInvoiceExtraction(
+            supplier_invoice_document=document,
+            provider="fake",
+            extractor_version="fake-v1",
+            status=SupplierInvoiceExtraction.STATUS_FAILED,
+            payload_schema_version=1,
+            error_code="extraction_failed",
+            started_at=datetime(2026, 8, 11),
+            completed_at=datetime(2026, 8, 11),
+        )
+        db_session.add(extraction)
+        db_session.flush()
+        return SimpleNamespace(extraction=extraction, succeeded=False)
+
+    def test_quick_upload_page_and_supplier_invoice_list_use_the_same_route(self):
+        quick_url = self._upload_and_process_url()
+        response = self.client.get(quick_url, headers=self._auth_header())
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(b"Nueva factura recibida", response.data)
+        self.assertIn(b"SUBIR Y PROCESAR", response.data)
+        self.assertIn(b'accept="application/pdf"', response.data)
+
+        list_response = self.client.get("/admin/supplierinvoice/", headers=self._auth_header())
+        self.assertEqual(list_response.status_code, 200)
+        self.assertIn(b"SUBIR FACTURA", list_response.data)
+        self.assertIn(quick_url.encode(), list_response.data)
+
+    def test_dashboard_template_links_to_the_quick_upload_route(self):
+        rendered = (SRC_DIR / "templates" / "admin" / "dashboard.html").read_text(encoding="utf-8")
+        self.assertIn("NUEVA FACTURA RECIBIDA", rendered)
+        self.assertIn("supplierinvoice.upload_and_process", rendered)
+
+    def test_quick_pdf_upload_creates_one_draft_runs_extraction_and_redirects_to_review(self):
+        csrf_token, submission_token = self._quick_upload_tokens()
+
+        def upload(_file, *, supplier_invoice, db_session, **kwargs):
+            self.assertEqual(kwargs["allowed_mime_types"], {"application/pdf"})
+            return self._persisted_upload_result(supplier_invoice, db_session)
+
+        with patch.object(admin_module, "upload_supplier_invoice_document", side_effect=upload) as uploader, patch.object(
+            admin_module,
+            "get_supplier_invoice_extraction_provider",
+            return_value=SimpleNamespace(),
+        ), patch.object(
+            admin_module,
+            "run_supplier_invoice_extraction",
+            side_effect=lambda document, **kwargs: self._failed_extraction_result(document, kwargs["db_session"]),
+        ) as extractor:
+            response = self.client.post(
+                self._upload_and_process_url(),
+                data={
+                    "csrf_token": csrf_token,
+                    "submission_token": submission_token,
+                    "document": (BytesIO(b"pdf"), "factura.pdf", "application/pdf"),
+                },
+                content_type="multipart/form-data",
+                headers=self._auth_header(),
+            )
+
+        self.assertEqual(response.status_code, 302)
+        self.assertIn("review-extraction", response.headers["Location"])
+        uploader.assert_called_once()
+        extractor.assert_called_once()
+        with self.app.app_context():
+            invoices = db.session.query(SupplierInvoice).all()
+            self.assertEqual(len(invoices), 2)
+            quick_draft = next(invoice for invoice in invoices if invoice.id != self.invoice_id)
+            self.assertEqual(quick_draft.status, SupplierInvoice.STATUS_DRAFT)
+            self.assertEqual(len(quick_draft.documents), 1)
+            self.assertEqual(quick_draft.documents[0].mime_type, "application/pdf")
+            self.assertEqual(quick_draft.documents[0].extractions[0].status, SupplierInvoiceExtraction.STATUS_FAILED)
+
+    def test_quick_upload_rejects_non_pdf_without_creating_a_draft(self):
+        csrf_token, submission_token = self._quick_upload_tokens()
+        response = self.client.post(
+            self._upload_and_process_url(),
+            data={
+                "csrf_token": csrf_token,
+                "submission_token": submission_token,
+                "document": (BytesIO(b"image"), "factura.png", "image/png"),
+            },
+            content_type="multipart/form-data",
+            headers=self._auth_header(),
+        )
+        self.assertEqual(response.status_code, 302)
+        with self.app.app_context():
+            self.assertEqual(db.session.query(SupplierInvoice).count(), 1)
+            self.assertEqual(db.session.query(SupplierInvoiceDocument).count(), 0)
+
+    def test_quick_upload_storage_failure_rolls_back_the_new_draft(self):
+        csrf_token, submission_token = self._quick_upload_tokens()
+        with patch.object(
+            admin_module,
+            "upload_supplier_invoice_document",
+            side_effect=admin_module.SupplierInvoiceDocumentStorageOperationError("R2 unavailable"),
+        ):
+            response = self.client.post(
+                self._upload_and_process_url(),
+                data={
+                    "csrf_token": csrf_token,
+                    "submission_token": submission_token,
+                    "document": (BytesIO(b"pdf"), "factura.pdf", "application/pdf"),
+                },
+                content_type="multipart/form-data",
+                headers=self._auth_header(),
+            )
+
+        self.assertEqual(response.status_code, 302)
+        with self.app.app_context():
+            self.assertEqual(db.session.query(SupplierInvoice).count(), 1)
+            self.assertEqual(db.session.query(SupplierInvoiceDocument).count(), 0)
+
+    def test_quick_upload_requires_csrf_and_consumes_the_submission_token(self):
+        _csrf_token, submission_token = self._quick_upload_tokens()
+        missing_csrf = self.client.post(
+            self._upload_and_process_url(),
+            data={"submission_token": submission_token},
+            headers=self._auth_header(),
+        )
+        self.assertEqual(missing_csrf.status_code, 302)
+        csrf_token, submission_token = self._quick_upload_tokens()
+
+        with patch.object(
+            admin_module,
+            "upload_supplier_invoice_document",
+            side_effect=lambda _file, *, supplier_invoice, db_session, **_kwargs: self._persisted_upload_result(
+                supplier_invoice, db_session
+            ),
+        ), patch.object(
+            admin_module,
+            "get_supplier_invoice_extraction_provider",
+            return_value=SimpleNamespace(),
+        ), patch.object(
+            admin_module,
+            "run_supplier_invoice_extraction",
+            side_effect=lambda document, **kwargs: self._failed_extraction_result(document, kwargs["db_session"]),
+        ):
+            first = self.client.post(
+                self._upload_and_process_url(),
+                data={
+                    "csrf_token": csrf_token,
+                    "submission_token": submission_token,
+                    "document": (BytesIO(b"pdf"), "factura.pdf", "application/pdf"),
+                },
+                content_type="multipart/form-data",
+                headers=self._auth_header(),
+            )
+            second = self.client.post(
+                self._upload_and_process_url(),
+                data={
+                    "csrf_token": csrf_token,
+                    "submission_token": submission_token,
+                    "document": (BytesIO(b"pdf"), "factura.pdf", "application/pdf"),
+                },
+                content_type="multipart/form-data",
+                headers=self._auth_header(),
+            )
+
+        self.assertEqual(first.status_code, 302)
+        self.assertEqual(second.status_code, 302)
+        with self.app.app_context():
+            self.assertEqual(db.session.query(SupplierInvoice).count(), 2)
+
+    def test_quick_upload_unexpected_extraction_error_compensates_r2_and_rolls_back(self):
+        csrf_token, submission_token = self._quick_upload_tokens()
+        storage = Mock()
+
+        with patch.object(
+            admin_module,
+            "upload_supplier_invoice_document",
+            side_effect=lambda _file, *, supplier_invoice, db_session, **_kwargs: self._persisted_upload_result(
+                supplier_invoice, db_session
+            ),
+        ), patch.object(
+            admin_module,
+            "get_supplier_invoice_extraction_provider",
+            return_value=SimpleNamespace(),
+        ), patch.object(admin_module, "run_supplier_invoice_extraction", side_effect=RuntimeError("boom")), patch.object(
+            admin_module,
+            "get_supplier_invoice_document_storage",
+            return_value=storage,
+        ):
+            response = self.client.post(
+                self._upload_and_process_url(),
+                data={
+                    "csrf_token": csrf_token,
+                    "submission_token": submission_token,
+                    "document": (BytesIO(b"pdf"), "factura.pdf", "application/pdf"),
+                },
+                content_type="multipart/form-data",
+                headers=self._auth_header(),
+            )
+
+        self.assertEqual(response.status_code, 302)
+        storage.delete_document.assert_called_once()
+        with self.app.app_context():
+            self.assertEqual(db.session.query(SupplierInvoice).count(), 1)
+            self.assertEqual(db.session.query(SupplierInvoiceDocument).count(), 0)
+
+    def test_quick_upload_final_commit_failure_compensates_r2_and_rolls_back(self):
+        csrf_token, submission_token = self._quick_upload_tokens()
+        storage = Mock()
+
+        with patch.object(
+            admin_module,
+            "upload_supplier_invoice_document",
+            side_effect=lambda _file, *, supplier_invoice, db_session, **_kwargs: self._persisted_upload_result(
+                supplier_invoice, db_session
+            ),
+        ), patch.object(
+            admin_module,
+            "get_supplier_invoice_extraction_provider",
+            return_value=SimpleNamespace(),
+        ), patch.object(
+            admin_module,
+            "run_supplier_invoice_extraction",
+            side_effect=lambda document, **kwargs: self._failed_extraction_result(document, kwargs["db_session"]),
+        ), patch.object(self.view.session, "commit", side_effect=RuntimeError("database unavailable")), patch.object(
+            admin_module,
+            "get_supplier_invoice_document_storage",
+            return_value=storage,
+        ):
+            response = self.client.post(
+                self._upload_and_process_url(),
+                data={
+                    "csrf_token": csrf_token,
+                    "submission_token": submission_token,
+                    "document": (BytesIO(b"pdf"), "factura.pdf", "application/pdf"),
+                },
+                content_type="multipart/form-data",
+                headers=self._auth_header(),
+            )
+
+        self.assertEqual(response.status_code, 302)
+        storage.delete_document.assert_called_once()
+        with self.app.app_context():
+            self.assertEqual(db.session.query(SupplierInvoice).count(), 1)
+            self.assertEqual(db.session.query(SupplierInvoiceDocument).count(), 0)
 
     def test_confirmation_action_registers_only_an_editable_draft(self):
         response = self.client.get(self._url(), headers=self._auth_header())

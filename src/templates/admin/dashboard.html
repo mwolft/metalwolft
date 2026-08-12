@@ -26,6 +26,15 @@
             <a class="btn btn-primary" href="{{ aeat_unified_url }}">DESCARGAR LIBRO AEAT</a>
         </div>
     </div>
+    <div class="panel panel-primary" style="margin-bottom:15px;">
+        <div class="panel-body" style="display:flex; align-items:center; justify-content:space-between; gap:15px; flex-wrap:wrap;">
+            <div>
+                <strong>Nueva factura recibida</strong>
+                <div class="text-muted">Sube un PDF y revisa la propuesta antes de registrarla.</div>
+            </div>
+            <a class="btn btn-primary" href="{{ url_for('supplierinvoice.upload_and_process') }}">NUEVA FACTURA RECIBIDA</a>
+        </div>
+    </div>
     <div class="row">
         <div class="col-md-12 col-sm-12">
             <div class="panel panel-success">
