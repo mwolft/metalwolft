@@ -143,7 +143,9 @@ def find_possible_supplier_invoice_duplicates(supplier_invoice, *, db_session=No
 def propose_aeat_expense_concept_code(supplier_tax_id):
     """Return the editable national-expense proposal, never an extraction decision."""
     tax_id = _optional_text(supplier_tax_id)
-    if tax_id and tax_id.upper() in G01_SUPPLIER_TAX_IDS:
+    if not tax_id:
+        return None
+    if tax_id.upper() in G01_SUPPLIER_TAX_IDS:
         return "G01"
     return "G03"
 
@@ -161,9 +163,11 @@ def propose_expense_deductible_amount(breakdowns):
 def apply_supplier_invoice_expense_classification_defaults(supplier_invoice):
     """Fill only empty draft decisions; explicit human values always win."""
     if not _optional_text(getattr(supplier_invoice, "aeat_expense_concept_code", None)):
-        supplier_invoice.aeat_expense_concept_code = propose_aeat_expense_concept_code(
+        proposal = propose_aeat_expense_concept_code(
             getattr(supplier_invoice, "supplier_tax_id", None)
         )
+        if proposal is not None:
+            supplier_invoice.aeat_expense_concept_code = proposal
     if getattr(supplier_invoice, "expense_deductible_amount", None) is None:
         proposal = propose_expense_deductible_amount(
             getattr(supplier_invoice, "tax_breakdowns", None)

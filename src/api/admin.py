@@ -1540,6 +1540,7 @@ class SupplierInvoiceAdminView(SafeModelView):
         },
         "aeat_expense_concept_code": {
             "choices": [
+                ("", "Selecciona un concepto"),
                 ("G01", "G01"),
                 ("G03", "G03"),
             ],

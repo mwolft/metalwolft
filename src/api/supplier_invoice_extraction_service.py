@@ -29,6 +29,9 @@ from api.supplier_invoice_extraction_openai import (
     OpenAISupplierInvoiceExtractionProvider,
     OpenAISupplierInvoiceExtractionSettings,
 )
+from api.supplier_invoice_registration_service import (
+    apply_supplier_invoice_expense_classification_defaults,
+)
 
 
 EXTRACTION_SCHEMA_VERSION = 1
@@ -187,6 +190,9 @@ def apply_supplier_invoice_extraction(
             session.delete(item)
         for item in prepared_breakdowns:
             session.add(SupplierInvoiceTaxBreakdown(supplier_invoice=supplier_invoice, **item))
+
+    # Classify only after the extracted supplier and VAT bases are on the draft.
+    apply_supplier_invoice_expense_classification_defaults(supplier_invoice)
 
     # An extracted proposal always requires an explicit human registration step.
     supplier_invoice.status = SupplierInvoice.STATUS_NEEDS_REVIEW

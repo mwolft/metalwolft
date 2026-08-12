@@ -167,6 +167,16 @@ class FlaskAdminSupplierInvoiceTest(unittest.TestCase):
             self.assertEqual(registered.reception_number, 1)
             self.assertEqual(registered.snapshot_schema_version, 2)
 
+    def test_new_draft_form_does_not_default_to_g01(self):
+        with self.app.app_context():
+            with self.app.test_request_context("/admin/supplierinvoice/new/"):
+                form = self.view.create_form()
+                html = str(form.aeat_expense_concept_code())
+
+        self.assertIsNone(form.aeat_expense_concept_code.data)
+        self.assertIn('value=""', html)
+        self.assertNotIn('value="G01" selected', html)
+
     def test_edit_form_prefills_editable_expense_classification_for_empty_draft_values(self):
         with self.app.app_context():
             invoice = db.session.get(SupplierInvoice, self.invoice_id)
