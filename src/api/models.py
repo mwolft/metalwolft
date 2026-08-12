@@ -1057,6 +1057,12 @@ class SupplierInvoice(db.Model):
     concept = db.Column(db.Text, nullable=True)
     currency = db.Column(db.String(3), nullable=False, default="EUR", server_default="EUR")
     total_amount = db.Column(db.Numeric(12, 2), nullable=True)
+
+    @property
+    def effective_operation_date(self):
+        """Expose the fiscal fallback without changing the original operation date."""
+        return self.operation_date or self.issue_date
+
     fiscal_invoice_type = db.Column(db.String(10), nullable=False, default="F1", server_default="F1")
     tax_treatment = db.Column(
         db.String(40),

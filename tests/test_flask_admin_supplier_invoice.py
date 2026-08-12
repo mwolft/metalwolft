@@ -118,6 +118,9 @@ class FlaskAdminSupplierInvoiceTest(unittest.TestCase):
     def _registration_url(self, supplier_invoice_id):
         return self._register_rule().rule.replace("<int:supplier_invoice_id>", str(supplier_invoice_id))
 
+    def _details_url(self, supplier_invoice_id):
+        return f"/admin/supplierinvoice/details/?id={supplier_invoice_id}"
+
     def _edit_url(self):
         for rule in self.app.url_map.iter_rules():
             if rule.endpoint.endswith(".edit_view"):
@@ -207,6 +210,48 @@ class FlaskAdminSupplierInvoiceTest(unittest.TestCase):
 
         self.assertIn("Si se deja vacía", form.operation_date.description)
         self.assertIn("fecha de expedición", form.operation_date.description)
+
+    def test_details_show_explicit_effective_operation_date(self):
+        with self.app.app_context():
+            invoice = db.session.get(SupplierInvoice, self.invoice_id)
+            invoice.operation_date = date(2026, 8, 9)
+            db.session.commit()
+
+        response = self.client.get(self._details_url(self.invoice_id), headers=self._auth_header())
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(b"Fecha operaci", response.data)
+        self.assertIn(b"2026-08-09", response.data)
+        self.assertNotIn(b"igual a fecha", response.data)
+
+    def test_details_show_issue_date_as_effective_operation_date_without_persisting_it(self):
+        with self.app.app_context():
+            invoice = db.session.get(SupplierInvoice, self.invoice_id)
+            invoice.operation_date = None
+            invoice.issue_date = date(2026, 8, 11)
+            db.session.commit()
+
+        response = self.client.get(self._details_url(self.invoice_id), headers=self._auth_header())
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(b"2026-08-11 (igual a fecha de expedici", response.data)
+        with self.app.app_context():
+            invoice = db.session.get(SupplierInvoice, self.invoice_id)
+            self.assertIsNone(invoice.operation_date)
+
+    def test_details_leave_effective_operation_date_empty_when_both_dates_are_missing(self):
+        with self.app.app_context():
+            invoice = db.session.get(SupplierInvoice, self.invoice_id)
+            invoice.operation_date = None
+            invoice.issue_date = None
+            db.session.commit()
+
+        response = self.client.get(self._details_url(self.invoice_id), headers=self._auth_header())
+
+        self.assertEqual(response.status_code, 200)
+        with self.app.app_context():
+            invoice = db.session.get(SupplierInvoice, self.invoice_id)
+            self.assertIsNone(invoice.effective_operation_date)
 
     def test_edit_form_prefills_editable_expense_classification_for_empty_draft_values(self):
         with self.app.app_context():

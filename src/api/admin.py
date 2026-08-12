@@ -1288,6 +1288,16 @@ def _format_supplier_invoice_hash(view, context, model, name):
     return f"{snapshot_hash[:12]}…"
 
 
+def _format_supplier_invoice_effective_operation_date(view, context, model, name):
+    effective_date = model.effective_operation_date
+    if not effective_date:
+        return "—"
+    formatted_date = effective_date.strftime("%Y-%m-%d")
+    if model.operation_date is None:
+        return f"{formatted_date} (igual a fecha de expedición)"
+    return formatted_date
+
+
 SUPPLIER_DOCUMENT_UPLOAD_CSRF_SESSION_KEY = "supplier_document_upload_csrf"
 
 
@@ -1444,6 +1454,7 @@ class SupplierInvoiceAdminView(SafeModelView):
         "supplier_invoice_number",
         "issue_date",
         "operation_date",
+        "effective_operation_date",
         "received_at",
         "registered_at",
         "registered_by",
@@ -1489,6 +1500,7 @@ class SupplierInvoiceAdminView(SafeModelView):
         "supplier_invoice_number": "N.º factura proveedor",
         "issue_date": "Fecha expedición",
         "operation_date": "Fecha operación",
+        "effective_operation_date": "Fecha operación efectiva",
         "received_at": "Recibida",
         "registered_at": "Registrada",
         "registered_by": "Registrada por",
@@ -1509,6 +1521,7 @@ class SupplierInvoiceAdminView(SafeModelView):
     column_formatters = {
         "registration_action": _format_supplier_invoice_registration,
         "snapshot_hash": _format_supplier_invoice_hash,
+        "effective_operation_date": _format_supplier_invoice_effective_operation_date,
         "documents": _format_supplier_invoice_documents,
         "extraction_action": _format_supplier_invoice_extraction,
     }
