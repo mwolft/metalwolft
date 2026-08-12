@@ -59,7 +59,7 @@ class AeatReceivedExpenseLedgerValidationError(AeatReceivedExpenseLedgerError):
     """Raised when a registered supplier snapshot is not exportable."""
 
 
-def prepare_aeat_received_expense_ledger_rows(supplier_invoices):
+def prepare_aeat_received_expense_ledger_rows(supplier_invoices, *, allow_empty=False):
     """Return deterministic AEAT rows, one per frozen VAT breakdown.
 
     ``supplier_invoices`` can be any iterable of registered SupplierInvoice
@@ -75,7 +75,7 @@ def prepare_aeat_received_expense_ledger_rows(supplier_invoices):
     for supplier_invoice in list(supplier_invoices):
         rows.extend(_prepare_supplier_invoice_rows(supplier_invoice))
 
-    if not rows:
+    if not rows and not allow_empty:
         raise AeatReceivedExpenseLedgerValidationError(
             "Debe indicarse al menos una factura recibida registrada."
         )

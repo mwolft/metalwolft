@@ -123,10 +123,21 @@ def select_aeat_received_expense_ledger_rows(rows, *, year, period):
 
 def _build_workbook(rows):
     from openpyxl import Workbook
-    from openpyxl.styles import Font
 
     workbook = Workbook()
-    worksheet = workbook.active
+    workbook.remove(workbook.active)
+    add_aeat_received_expense_ledger_worksheet(workbook, rows)
+    return workbook
+
+
+def add_aeat_received_expense_ledger_worksheet(workbook, rows):
+    """Append RECIBIDAS_GASTOS to an existing workbook from validated rows."""
+    from openpyxl.styles import Font
+
+    if AEAT_RECEIVED_EXPENSE_LEDGER_SHEET_NAME in workbook.sheetnames:
+        raise AeatReceivedExpenseLedgerWriteError("La hoja RECIBIDAS_GASTOS ya existe.")
+
+    worksheet = workbook.create_sheet(AEAT_RECEIVED_EXPENSE_LEDGER_SHEET_NAME)
     worksheet.title = AEAT_RECEIVED_EXPENSE_LEDGER_SHEET_NAME
     worksheet.append(AEAT_RECEIVED_EXPENSE_HEADER_ROW_1)
     worksheet.append(AEAT_RECEIVED_EXPENSE_HEADER_ROW_2)
@@ -142,7 +153,7 @@ def _build_workbook(rows):
     worksheet.auto_filter.ref = f"A2:AP{worksheet.max_row}"
     _apply_formats(worksheet)
     _apply_column_widths(worksheet)
-    return workbook
+    return worksheet
 
 
 def _validated_output_path(output_path):

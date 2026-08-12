@@ -1,0 +1,25 @@
+{% extends 'admin/master.html' %}
+
+{% block body %}
+  <div class="container-fluid">
+    <h3>Descargar libro AEAT</h3>
+    <p class="text-muted">Genera un workbook global con EXPEDIDAS_INGRESOS y RECIBIDAS_GASTOS.</p>
+    <form method="post" action="{{ action_url }}" style="max-width:420px;">
+      <div class="form-group">
+        <label for="year">Ejercicio</label>
+        <input id="year" name="year" class="form-control" type="number" min="1000" max="9999" value="{{ current_year }}" required>
+      </div>
+      <div class="form-group">
+        <label for="period">Periodo acumulado</label>
+        <select id="period" name="period" class="form-control" required>
+          <option value="1T">1T</option>
+          <option value="2T">2T</option>
+          <option value="3T">3T</option>
+          <option value="4T">4T</option>
+        </select>
+      </div>
+      <button type="submit" class="btn btn-primary">DESCARGAR LIBRO AEAT</button>
+      <a href="{{ cancel_url }}" class="btn btn-default">Cancelar</a>
+    </form>
+  </div>
+{% endblock %}

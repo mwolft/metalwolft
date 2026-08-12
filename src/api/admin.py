@@ -29,6 +29,10 @@ from api.aeat_sales_ledger_service import (
     AeatSalesLedgerError,
     export_aeat_sales_ledger,
 )
+from api.aeat_unified_ledger_service import (
+    AeatUnifiedLedgerError,
+    export_aeat_unified_ledger,
+)
 from api.flask_mail_invoice_adapter import FlaskMailInvoiceAdapter, FlaskMailInvoiceAdapterError
 from api.email_routes import send_order_status_email
 from api.invoice_accounting_service import (
@@ -353,7 +357,73 @@ class SecureAdminIndexView(AdminIndexView):
             selected_year=selected_year,
             tz_es=tz_es,
             break_even_kpi=break_even_kpi,
+            aeat_unified_url=self.get_url('.unified_aeat_ledger'),
         )
+
+    @expose('/libro-aeat', methods=['GET', 'POST'])
+    def unified_aeat_ledger(self):
+        from datetime import datetime, timezone
+
+        current_year = datetime.now(timezone.utc).year
+        if request.method == 'GET':
+            return self.render(
+                'admin/aeat_unified_ledger_form.html',
+                current_year=current_year,
+                action_url=self.get_url('.unified_aeat_ledger'),
+                cancel_url=self.get_url('.index'),
+            )
+
+        try:
+            year = int(request.form.get('year', ''))
+        except (TypeError, ValueError):
+            year = 0
+        period = (request.form.get('period') or '').strip()
+        if year < 1000 or year > 9999 or period not in {'1T', '2T', '3T', '4T'}:
+            flash('Selecciona un ejercicio y periodo AEAT validos.', 'error')
+            return redirect(self.get_url('.unified_aeat_ledger'))
+
+        sales_entries = (
+            db.session.query(AccountingEntry)
+            .filter_by(entry_type=AccountingEntry.ENTRY_TYPE_SALE)
+            .order_by(
+                AccountingEntry.invoice_date.asc(),
+                AccountingEntry.invoice_number.asc(),
+                AccountingEntry.id.asc(),
+            )
+            .all()
+        )
+        supplier_invoices = (
+            db.session.query(SupplierInvoice)
+            .filter_by(status=SupplierInvoice.STATUS_REGISTERED)
+            .order_by(SupplierInvoice.id.asc())
+            .all()
+        )
+        filename = f'metalwolft_aeat_{year}_{period}.xlsx'
+        output_path = os.path.join(_admin_accounting_export_folder(), filename)
+
+        try:
+            result = export_aeat_unified_ledger(
+                sales_entries,
+                supplier_invoices,
+                year=year,
+                period=period,
+                output_path=output_path,
+                overwrite=True,
+            )
+            return send_file(
+                result.output_path,
+                as_attachment=True,
+                download_name=result.filename,
+                mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            )
+        except AeatUnifiedLedgerError as exc:
+            current_app.logger.warning('Flask Admin unified AEAT ledger export rejected: %s', exc)
+            flash(f'No se puede generar el libro AEAT conjunto: {exc}', 'error')
+        except Exception:
+            current_app.logger.exception('Unexpected Flask Admin unified AEAT ledger export error')
+            flash('No se ha podido generar el libro AEAT conjunto.', 'error')
+
+        return redirect(self.get_url('.unified_aeat_ledger'))
 
 
 # ========================== BASE SEGURA PARA MODELOS ==========================
