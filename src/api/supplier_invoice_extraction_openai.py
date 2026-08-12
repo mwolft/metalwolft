@@ -2,7 +2,7 @@
 
 import base64
 from dataclasses import dataclass
-from datetime import date
+from datetime import date, datetime
 from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 import json
 
@@ -266,12 +266,14 @@ def _optional_date(value, field):
     value = _optional_text(value, field)
     if value is None:
         return None
-    try:
-        return date.fromisoformat(value).isoformat()
-    except ValueError as exc:
-        raise SupplierInvoiceExtractionProviderError(
-            "OpenAI ha devuelto una respuesta no válida.", code="invalid_response"
-        ) from exc
+    for date_format in ("%Y-%m-%d", "%d/%m/%Y", "%d-%m-%Y"):
+        try:
+            return datetime.strptime(value, date_format).date().isoformat()
+        except ValueError:
+            continue
+    raise SupplierInvoiceExtractionProviderError(
+        "OpenAI ha devuelto una respuesta no válida.", code="invalid_response"
+    )
 
 
 def _optional_money(value, field):

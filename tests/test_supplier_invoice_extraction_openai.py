@@ -84,6 +84,24 @@ class OpenAISupplierInvoiceExtractionProviderTest(unittest.TestCase):
         self.assertEqual(payload["tax_breakdowns"], [])
         self.assertIn("El desglose de IVA propuesto no coincide con el total de la factura.", payload["warnings"])
 
+    def test_dates_are_normalized_from_supported_spanish_formats(self):
+        for raw_date, expected in (
+            ("2026-05-20", "2026-05-20"),
+            ("20/05/2026", "2026-05-20"),
+            ("20-05-2026", "2026-05-20"),
+        ):
+            with self.subTest(raw_date=raw_date):
+                payload = build_openai_supplier_invoice_extraction_payload(proposal(issue_date=raw_date))
+                self.assertEqual(payload["fields"]["issue_date"]["value"], expected)
+
+    def test_null_operation_date_is_preserved_and_invalid_dates_are_rejected(self):
+        payload = build_openai_supplier_invoice_extraction_payload(proposal(operation_date=None))
+        self.assertIsNone(payload["fields"]["operation_date"]["value"])
+
+        with self.assertRaises(SupplierInvoiceExtractionProviderError) as invalid:
+            build_openai_supplier_invoice_extraction_payload(proposal(issue_date="05/20/2026"))
+        self.assertEqual(invalid.exception.code, "invalid_response")
+
     def test_rejects_unsupported_document_and_invalid_response(self):
         provider, client = self._provider(output={"not": "the schema"})
         with self.assertRaises(SupplierInvoiceExtractionProviderError) as unsupported:
