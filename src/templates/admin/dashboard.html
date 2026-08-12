@@ -1,6 +1,40 @@
 {% extends 'admin/master.html' %}
 
 {% block body %}
+<style>
+    .admin-dashboard-action .panel-body {
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+        gap: 22px;
+        padding-top: 12px;
+        padding-bottom: 12px;
+    }
+
+    .admin-dashboard-action__copy {
+        text-align: right;
+    }
+
+    .admin-dashboard-action .btn {
+        min-width: 190px;
+    }
+
+    @media (max-width: 767px) {
+        .admin-dashboard-action .panel-body {
+            align-items: stretch;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .admin-dashboard-action__copy {
+            text-align: left;
+        }
+
+        .admin-dashboard-action .btn {
+            align-self: flex-start;
+        }
+    }
+</style>
 <div class="container-fluid" style="margin-top:10px;">
     <h3 style="margin-bottom:15px;"><b>RESUMEN:</b></h3>
     <form method="get" data-pjax="false" style="margin-bottom:15px;">
@@ -17,18 +51,18 @@
             Ver
         </button>
     </form>
-    <div class="panel panel-default" style="margin-bottom:15px;">
-        <div class="panel-body" style="display:flex; align-items:center; justify-content:space-between; gap:15px; flex-wrap:wrap;">
-            <div>
+    <div class="panel panel-default admin-dashboard-action" style="margin-bottom:15px;">
+        <div class="panel-body">
+            <div class="admin-dashboard-action__copy">
                 <strong>Libro AEAT conjunto</strong>
                 <div class="text-muted">Facturas expedidas y facturas recibidas por ejercicio y periodo.</div>
             </div>
             <a class="btn btn-primary" href="{{ aeat_unified_url }}">DESCARGAR LIBRO AEAT</a>
         </div>
     </div>
-    <div class="panel panel-primary" style="margin-bottom:15px;">
-        <div class="panel-body" style="display:flex; align-items:center; justify-content:space-between; gap:15px; flex-wrap:wrap;">
-            <div>
+    <div class="panel panel-primary admin-dashboard-action" style="margin-bottom:15px;">
+        <div class="panel-body">
+            <div class="admin-dashboard-action__copy">
                 <strong>Nueva factura recibida</strong>
                 <div class="text-muted">Sube un PDF y revisa la propuesta antes de registrarla.</div>
             </div>
