@@ -473,7 +473,24 @@ class FlaskAdminSupplierInvoiceTest(unittest.TestCase):
                     "fiscal_invoice_type", "tax_treatment",
                 )
             },
-            "tax_breakdowns": [],
+            "tax_breakdowns": [
+                {
+                    "tax_base": "263.09",
+                    "tax_rate": "21.00",
+                    "tax_amount": "55.25",
+                    "deductible_tax_amount": None,
+                    "confidence": 0.98,
+                    "source": None,
+                },
+                {
+                    "tax_base": "100.00",
+                    "tax_rate": "10.00",
+                    "tax_amount": "10.00",
+                    "deductible_tax_amount": None,
+                    "confidence": 0.97,
+                    "source": None,
+                },
+            ],
             "warnings": ["Revisión manual necesaria."],
         }
         payload["fields"]["currency"]["value"] = "EUR"
@@ -518,6 +535,11 @@ class FlaskAdminSupplierInvoiceTest(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertIn(b"Revisar propuesta de extracci", response.data)
         self.assertIn(b"Revisi", response.data)
+        deductible_inputs = re.findall(
+            rb'name="deductible_tax_amount"[^>]*value="([^"]+)"',
+            response.data,
+        )
+        self.assertEqual(deductible_inputs, [b"55.25", b"10.00"])
         with self.app.app_context():
             invoice = db.session.get(SupplierInvoice, self.invoice_id)
             self.assertEqual(invoice.status, SupplierInvoice.STATUS_DRAFT)

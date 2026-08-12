@@ -52,7 +52,7 @@
             {% for item in payload.tax_breakdowns %}
               <tr>
                 <td>{{ item.tax_base }}</td><td>{{ item.tax_rate }}</td><td>{{ item.tax_amount }}</td>
-                <td><input class="form-control input-sm" form="apply-extraction" name="deductible_tax_amount" inputmode="decimal" placeholder="Obligatoria al aplicar"></td>
+                <td><input class="form-control input-sm" form="apply-extraction" name="deductible_tax_amount" inputmode="decimal" value="{{ item.tax_amount }}" placeholder="Obligatoria al aplicar"></td>
                 <td>{{ item.confidence if item.confidence is not none else '—' }}</td>
               </tr>
             {% endfor %}
