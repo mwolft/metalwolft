@@ -1050,6 +1050,11 @@ class SupplierInvoice(db.Model):
             "expense_deductible_amount IS NULL OR expense_deductible_amount >= 0",
             name="ck_supplier_invoices_expense_deductible_amount_nonnegative",
         ),
+        db.CheckConstraint(
+            "(legacy_expense_classified_at IS NULL AND legacy_expense_classified_by IS NULL) OR "
+            "(legacy_expense_classified_at IS NOT NULL AND legacy_expense_classified_by IS NOT NULL)",
+            name="ck_supplier_invoices_legacy_expense_classification_audit_complete",
+        ),
     )
 
     STATUS_DRAFT = "draft"
@@ -1083,6 +1088,9 @@ class SupplierInvoice(db.Model):
     special_regime_key = db.Column(db.String(20), nullable=True)
     aeat_expense_concept_code = db.Column(db.String(3), nullable=True)
     expense_deductible_amount = db.Column(db.Numeric(12, 2), nullable=True)
+    legacy_expense_classified_at = db.Column(db.DateTime, nullable=True)
+    legacy_expense_classified_by = db.Column(db.String(255), nullable=True)
+    legacy_expense_received_at = db.Column(db.Date, nullable=True)
     status = db.Column(db.String(30), nullable=False, default=STATUS_DRAFT, server_default=STATUS_DRAFT)
     source = db.Column(db.String(30), nullable=False, default="manual", server_default="manual")
     fiscal_snapshot = db.Column(db.JSON, nullable=True)

@@ -1,6 +1,6 @@
 import sys
 import unittest
-from datetime import date
+from datetime import date, datetime
 from decimal import Decimal
 from pathlib import Path
 from types import SimpleNamespace
@@ -178,12 +178,95 @@ class AeatReceivedExpenseLedgerServiceTest(unittest.TestCase):
         with self.assertRaisesRegex(AeatReceivedExpenseLedgerValidationError, "No se puede repartir"):
             prepare_aeat_received_expense_ledger_rows([invoice])
 
-    def test_v1_snapshot_is_rejected_with_reception_context(self):
-        invoice = self.make_invoice(snapshot={"schema_version": 1}, snapshot_schema_version=1, reception_number=4)
+    def test_unclassified_v1_is_rejected_with_reception_context(self):
+        invoice = self.make_invoice(reception_number=4)
+        invoice.fiscal_snapshot.pop("expense_classification")
+        invoice.fiscal_snapshot["document"].pop("received_at")
+        invoice.fiscal_snapshot["document"]["reception_number"] = 4
+        invoice.fiscal_snapshot["schema_version"] = 1
+        invoice.snapshot_schema_version = 1
         invoice.snapshot_hash = calculate_supplier_invoice_snapshot_hash(invoice.fiscal_snapshot)
 
-        with self.assertRaisesRegex(AeatReceivedExpenseLedgerValidationError, "numero de recepcion 4.*v1"):
+        with self.assertRaisesRegex(AeatReceivedExpenseLedgerValidationError, "recepciÃ³n 4.*requiere clasificaci"):
             prepare_aeat_received_expense_ledger_rows([invoice])
+
+    def test_classified_v1_uses_audited_fields_without_mutating_the_snapshot(self):
+        invoice = self.make_invoice()
+        snapshot = invoice.fiscal_snapshot
+        snapshot.pop("expense_classification")
+        snapshot["document"].pop("received_at")
+        snapshot["schema_version"] = 1
+        invoice.snapshot_schema_version = 1
+        invoice.snapshot_hash = calculate_supplier_invoice_snapshot_hash(snapshot)
+        invoice.aeat_expense_concept_code = "G03"
+        invoice.expense_deductible_amount = Decimal("35.76")
+        invoice.legacy_expense_received_at = date(2026, 7, 1)
+        invoice.legacy_expense_classified_at = datetime(2026, 8, 12, 10, 0, 0)
+        invoice.legacy_expense_classified_by = "flask_admin:admin"
+        invoice.received_at = datetime(2000, 1, 1)
+        original_snapshot = __import__("copy").deepcopy(snapshot)
+        original_hash = invoice.snapshot_hash
+
+        row = prepare_aeat_received_expense_ledger_rows([invoice])[0]
+
+        self.assertEqual(row["expense_concept_code"], "G03")
+        self.assertEqual(row["received_date"], date(2026, 7, 1))
+        self.assertEqual(invoice.fiscal_snapshot, original_snapshot)
+        self.assertEqual(invoice.snapshot_hash, original_hash)
+
+    def test_classified_v1_falls_back_to_frozen_issue_date_for_operation_date(self):
+        invoice = self.make_invoice()
+        snapshot = invoice.fiscal_snapshot
+        snapshot.pop("expense_classification")
+        snapshot["document"].pop("received_at")
+        snapshot["document"]["operation_date"] = None
+        snapshot["schema_version"] = 1
+        invoice.snapshot_schema_version = 1
+        invoice.snapshot_hash = calculate_supplier_invoice_snapshot_hash(snapshot)
+        invoice.aeat_expense_concept_code = "G01"
+        invoice.expense_deductible_amount = Decimal("35.76")
+        invoice.legacy_expense_received_at = date(2026, 6, 12)
+        invoice.legacy_expense_classified_at = datetime(2026, 8, 12, 10, 0, 0)
+        invoice.legacy_expense_classified_by = "flask_admin:admin"
+
+        row = prepare_aeat_received_expense_ledger_rows([invoice])[0]
+        self.assertEqual(row["operation_date"], date(2026, 6, 12))
+
+    def test_classified_v1_multi_vat_keeps_the_existing_allocation_policy(self):
+        invoice = self.make_invoice()
+        snapshot = invoice.fiscal_snapshot
+        snapshot.pop("expense_classification")
+        snapshot["document"].pop("received_at")
+        snapshot["schema_version"] = 1
+        snapshot["tax_breakdowns"] = [
+            {"position": 1, "tax_base": "20.00", "tax_rate": "21.00", "tax_amount": "4.20", "deductible_tax_amount": "4.20"},
+            {"position": 2, "tax_base": "10.00", "tax_rate": "10.00", "tax_amount": "1.00", "deductible_tax_amount": "1.00"},
+        ]
+        snapshot["totals"] = {
+            "tax_base": "30.00", "tax_amount": "5.20", "deductible_tax_amount": "5.20", "total_amount": "35.20"
+        }
+        invoice.snapshot_schema_version = 1
+        invoice.snapshot_hash = calculate_supplier_invoice_snapshot_hash(snapshot)
+        invoice.aeat_expense_concept_code = "G01"
+        invoice.expense_deductible_amount = Decimal("29.00")
+        invoice.legacy_expense_received_at = date(2026, 6, 12)
+        invoice.legacy_expense_classified_at = datetime(2026, 8, 12, 10, 0, 0)
+        invoice.legacy_expense_classified_by = "flask_admin:admin"
+
+        with self.assertRaisesRegex(AeatReceivedExpenseLedgerValidationError, "No se puede repartir"):
+            prepare_aeat_received_expense_ledger_rows([invoice])
+
+    def test_v2_does_not_consult_legacy_columns(self):
+        invoice = self.make_invoice(
+            aeat_expense_concept_code="G03",
+            expense_deductible_amount=Decimal("0.00"),
+            legacy_expense_received_at=date(2000, 1, 1),
+            legacy_expense_classified_at=datetime(2000, 1, 1),
+            legacy_expense_classified_by="legacy",
+        )
+        row = prepare_aeat_received_expense_ledger_rows([invoice])[0]
+        self.assertEqual(row["expense_concept_code"], "G01")
+        self.assertEqual(row["received_date"], date(2026, 6, 12))
 
     def test_altered_snapshot_hash_is_rejected(self):
         with self.assertRaisesRegex(AeatReceivedExpenseLedgerValidationError, "integridad"):

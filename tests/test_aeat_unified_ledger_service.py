@@ -294,18 +294,46 @@ class AeatUnifiedLedgerServiceTest(unittest.TestCase):
                 [sales_entry()], [invalid_received], year=2026, period="1T"
             )
 
-    def test_received_v1_is_rejected_instead_of_silently_omitted(self):
+    def test_unclassified_received_v1_aborts_the_workbook(self):
         legacy_received = supplier_invoice()
+        legacy_received.fiscal_snapshot.pop("expense_classification")
+        legacy_received.fiscal_snapshot["document"].pop("received_at")
         legacy_received.fiscal_snapshot["schema_version"] = 1
         legacy_received.snapshot_schema_version = 1
         legacy_received.snapshot_hash = calculate_supplier_invoice_snapshot_hash(
             legacy_received.fiscal_snapshot
         )
 
-        with self.assertRaisesRegex(AeatUnifiedLedgerValidationError, "snapshot v1"):
+        with self.assertRaisesRegex(AeatUnifiedLedgerValidationError, "requiere clasificaci"):
             generate_aeat_unified_ledger_workbook(
                 [sales_entry()], [legacy_received], year=2026, period="1T"
             )
+
+    def test_classified_received_v1_is_included_without_changing_the_snapshot(self):
+        legacy_received = supplier_invoice()
+        legacy_received.fiscal_snapshot.pop("expense_classification")
+        legacy_received.fiscal_snapshot["document"].pop("received_at")
+        legacy_received.fiscal_snapshot["schema_version"] = 1
+        legacy_received.snapshot_schema_version = 1
+        legacy_received.snapshot_hash = calculate_supplier_invoice_snapshot_hash(
+            legacy_received.fiscal_snapshot
+        )
+        legacy_received.aeat_expense_concept_code = "G01"
+        legacy_received.expense_deductible_amount = Decimal("35.76")
+        legacy_received.legacy_expense_received_at = date(2026, 2, 12)
+        legacy_received.legacy_expense_classified_at = datetime(2026, 8, 12, 10, 0, 0)
+        legacy_received.legacy_expense_classified_by = "flask_admin:admin"
+        snapshot_before = copy.deepcopy(legacy_received.fiscal_snapshot)
+        hash_before = legacy_received.snapshot_hash
+
+        workbook, _, received_rows = generate_aeat_unified_ledger_workbook(
+            [sales_entry()], [legacy_received], year=2026, period="1T"
+        )
+
+        self.assertEqual(workbook["RECIBIDAS_GASTOS"]["G3"].value, "G01")
+        self.assertEqual(len(received_rows), 1)
+        self.assertEqual(legacy_received.fiscal_snapshot, snapshot_before)
+        self.assertEqual(legacy_received.snapshot_hash, hash_before)
 
     def test_export_writes_the_requested_two_sheet_xlsx(self):
         with TemporaryDirectory() as temporary_dir:

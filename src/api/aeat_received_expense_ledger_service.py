@@ -5,12 +5,16 @@ registered SupplierInvoice snapshot and exposes one normalized row per VAT
 breakdown so a future XLSX writer has no fiscal decisions left to make.
 """
 
-from datetime import date, datetime
+from datetime import date, datetime, time
 from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 
 from api.supplier_invoice_snapshot_integrity import (
     SupplierInvoiceSnapshotIntegrityError,
     calculate_supplier_invoice_snapshot_hash,
+)
+from api.supplier_invoice_legacy_expense_aeat_service import (
+    LegacySupplierInvoiceExpenseAeatError,
+    legacy_supplier_invoice_expense_data_for_export,
 )
 
 
@@ -94,7 +98,24 @@ def _prepare_supplier_invoice_rows(supplier_invoice):
     _validate_registered_invoice(supplier_invoice)
     snapshot = _validated_snapshot(supplier_invoice)
     _validate_snapshot_hash(supplier_invoice, snapshot)
-    prepared = _prepare_snapshot(snapshot)
+    if snapshot["schema_version"] == 1:
+        try:
+            legacy = legacy_supplier_invoice_expense_data_for_export(
+                supplier_invoice,
+                snapshot,
+            )
+        except LegacySupplierInvoiceExpenseAeatError as exc:
+            raise AeatReceivedExpenseLedgerValidationError(str(exc)) from exc
+        prepared = _prepare_snapshot(
+            snapshot,
+            expense_classification={
+                "aeat_expense_concept_code": legacy["aeat_expense_concept_code"],
+                "expense_deductible_amount": legacy["expense_deductible_amount"],
+            },
+            received_at=datetime.combine(legacy["received_at"], time.min),
+        )
+    else:
+        prepared = _prepare_snapshot(snapshot)
 
     deductible_expenses = _allocated_deductible_expenses(prepared)
     return [
@@ -123,20 +144,19 @@ def _validated_snapshot(supplier_invoice):
         )
 
     schema_version = snapshot.get("schema_version")
-    if schema_version == 1:
-        raise AeatReceivedExpenseLedgerValidationError(
-            "La factura recibida con numero de recepcion "
-            f"{reception_number or 'sin asignar'} usa snapshot v1 y no contiene "
-            "los datos necesarios para RECIBIDAS_GASTOS."
-        )
-    if schema_version != SUPPORTED_SCHEMA_VERSION:
+    if schema_version not in {1, SUPPORTED_SCHEMA_VERSION}:
         raise AeatReceivedExpenseLedgerValidationError(
             "Version de snapshot fiscal no soportada para RECIBIDAS_GASTOS."
         )
-    if getattr(supplier_invoice, "snapshot_schema_version", None) != SUPPORTED_SCHEMA_VERSION:
+    if getattr(supplier_invoice, "snapshot_schema_version", None) != schema_version:
         raise AeatReceivedExpenseLedgerValidationError(
             "La version persistida no coincide con el snapshot fiscal de la factura recibida."
         )
+
+    # v1 is verified by the dedicated legacy service, including the exact
+    # structural requirements and its audited live-data exception.
+    if schema_version == 1:
+        return snapshot
 
     for block in ("supplier", "document", "totals", "expense_classification"):
         if not isinstance(snapshot.get(block), dict):
@@ -166,11 +186,11 @@ def _validate_snapshot_hash(supplier_invoice, snapshot):
         )
 
 
-def _prepare_snapshot(snapshot):
+def _prepare_snapshot(snapshot, *, expense_classification=None, received_at=None):
     supplier = snapshot["supplier"]
     document = snapshot["document"]
     totals = snapshot["totals"]
-    classification = snapshot["expense_classification"]
+    classification = expense_classification or snapshot["expense_classification"]
 
     _require_exact(document.get("currency"), SUPPORTED_CURRENCY, "document.currency")
     _require_exact(
@@ -230,7 +250,10 @@ def _prepare_snapshot(snapshot):
         "supplier_legal_name": supplier_legal_name,
         "issue_date": issue_date,
         "operation_date": operation_date,
-        "received_at": _snapshot_datetime(document.get("received_at"), "document.received_at"),
+        "received_at": _snapshot_datetime(
+            received_at if received_at is not None else document.get("received_at"),
+            "document.received_at",
+        ),
         "reception_number": _positive_int(
             document.get("reception_number"), "document.reception_number"
         ),

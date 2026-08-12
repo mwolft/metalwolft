@@ -52,6 +52,12 @@ from api.supplier_invoice_registration_service import (
     register_supplier_invoice,
     requires_nonstandard_g01_confirmation,
 )
+from api.supplier_invoice_legacy_expense_aeat_service import (
+    LegacySupplierInvoiceExpenseAeatError,
+    classify_legacy_supplier_invoice_expense_aeat,
+    is_legacy_supplier_invoice_eligible_for_manual_classification,
+    legacy_supplier_invoice_expense_details,
+)
 from api.supplier_invoice_document_service import (
     SupplierInvoiceDocumentDeletionBlockedError,
     SupplierInvoiceDocumentDeletionError,
@@ -1355,7 +1361,14 @@ def _admin_total_rectification_success_message(result):
 
 def _format_supplier_invoice_registration(view, context, model, name):
     if model.status == SupplierInvoice.STATUS_REGISTERED:
-        return Markup("<span class='label label-success'>Registrada</span>")
+        detail = Markup("<span class='label label-success'>Registrada</span>")
+        if is_legacy_supplier_invoice_eligible_for_manual_classification(model):
+            action_url = view.get_url(".classify_legacy_expense_aeat", supplier_invoice_id=model.id)
+            detail += Markup(
+                '<div style="margin-top: 8px;"><a class="btn btn-warning btn-sm" href="{url}">'
+                'CLASIFICAR GASTO AEAT LEGACY</a></div>'
+            ).format(url=action_url)
+        return detail
     if model.status == SupplierInvoice.STATUS_CANCELLED:
         return Markup("<span class='label label-default'>Cancelada</span>")
 
@@ -2056,6 +2069,70 @@ class SupplierInvoiceAdminView(SafeModelView):
             flash("No se ha podido registrar la factura recibida.", "error")
             return redirect(self.get_url(".details_view", id=supplier_invoice.id))
 
+        return redirect(self.get_url(".details_view", id=supplier_invoice.id))
+
+    @expose("/classify-legacy-expense-aeat/<int:supplier_invoice_id>", methods=["GET", "POST"])
+    def classify_legacy_expense_aeat(self, supplier_invoice_id):
+        supplier_invoice = self.session.get(SupplierInvoice, supplier_invoice_id)
+        if not supplier_invoice:
+            flash("Factura recibida no encontrada.", "error")
+            return redirect(self.get_url(".index_view"))
+
+        if request.method == "GET":
+            if not is_legacy_supplier_invoice_eligible_for_manual_classification(supplier_invoice):
+                flash("Esta factura recibida no puede clasificarse mediante el flujo legacy.", "error")
+                return redirect(self.get_url(".details_view", id=supplier_invoice.id))
+            try:
+                details = legacy_supplier_invoice_expense_details(supplier_invoice)
+            except LegacySupplierInvoiceExpenseAeatError:
+                flash("Esta factura recibida no puede clasificarse mediante el flujo legacy.", "error")
+                return redirect(self.get_url(".details_view", id=supplier_invoice.id))
+            return self.render(
+                "admin/supplier_invoice_legacy_expense_aeat_confirm.html",
+                supplier_invoice=supplier_invoice,
+                details=details,
+                csrf_token=_issue_supplier_document_upload_csrf_token(),
+                action_url=self.get_url(
+                    ".classify_legacy_expense_aeat",
+                    supplier_invoice_id=supplier_invoice.id,
+                ),
+                cancel_url=self.get_url(".details_view", id=supplier_invoice.id),
+            )
+
+        if not _valid_supplier_document_upload_csrf_token(request.form.get("csrf_token")):
+            flash("La sesiÃ³n del formulario ha caducado. Vuelve a intentarlo.", "error")
+            return redirect(request.url)
+        if request.form.get("confirm_legacy_classification") != "confirmed":
+            flash("Confirma la clasificaciÃ³n AEAT legacy antes de continuar.", "error")
+            return redirect(request.url)
+
+        try:
+            classify_legacy_supplier_invoice_expense_aeat(
+                supplier_invoice,
+                aeat_expense_concept_code=request.form.get("aeat_expense_concept_code"),
+                expense_deductible_amount=request.form.get("expense_deductible_amount"),
+                legacy_expense_received_at=request.form.get("legacy_expense_received_at"),
+                actor=request.authorization.username if request.authorization else None,
+            )
+            self.session.commit()
+            flash(
+                "ClasificaciÃ³n AEAT legacy guardada. El snapshot histÃ³rico no se ha modificado.",
+                "success",
+            )
+        except LegacySupplierInvoiceExpenseAeatError as error:
+            self.session.rollback()
+            current_app.logger.warning(
+                "Invalid legacy supplier invoice AEAT classification invoice_id=%s",
+                supplier_invoice_id,
+            )
+            flash(str(error), "error")
+        except Exception:
+            self.session.rollback()
+            current_app.logger.exception(
+                "Unexpected legacy supplier invoice AEAT classification invoice_id=%s",
+                supplier_invoice_id,
+            )
+            flash("No se ha podido guardar la clasificaciÃ³n AEAT legacy.", "error")
         return redirect(self.get_url(".details_view", id=supplier_invoice.id))
 
 

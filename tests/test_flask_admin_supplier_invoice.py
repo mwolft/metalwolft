@@ -46,6 +46,7 @@ if HAS_ADMIN_DEPS:
         SupplierInvoiceTaxBreakdown,
         db,
     )
+    from api.supplier_invoice_snapshot_integrity import calculate_supplier_invoice_snapshot_hash  # noqa: E402
 
 
 @unittest.skipUnless(HAS_ADMIN_DEPS, "Flask Admin test dependencies are not installed.")
@@ -123,6 +124,64 @@ class FlaskAdminSupplierInvoiceTest(unittest.TestCase):
             if rule.endpoint.endswith(".edit_view"):
                 return f"{rule.rule}?id={self.invoice_id}"
         raise AssertionError("Supplier invoice edit route was not registered")
+
+    def _legacy_classification_url(self, supplier_invoice_id):
+        for rule in self.app.url_map.iter_rules():
+            if rule.endpoint.endswith(".classify_legacy_expense_aeat"):
+                return rule.rule.replace("<int:supplier_invoice_id>", str(supplier_invoice_id))
+        raise AssertionError("Supplier invoice legacy classification route was not registered")
+
+    def _make_registered_legacy(self, *, supplier_tax_id="B13019559"):
+        invoice = db.session.get(SupplierInvoice, self.invoice_id)
+        snapshot = {
+            "schema_version": 1,
+            "supplier": {
+                "legal_name": "Proveedor legacy SL",
+                "tax_id": supplier_tax_id,
+                "country_code": "ES",
+                "tax_id_type": "NIF",
+            },
+            "document": {
+                "supplier_invoice_number": "LEGACY-1",
+                "reception_number": 7,
+                "issue_date": "2026-06-12",
+                "operation_date": None,
+                "concept": "Material",
+                "currency": "EUR",
+                "fiscal_invoice_type": "F1",
+                "tax_treatment": "domestic_standard",
+                "special_regime_key": None,
+            },
+            "tax_breakdowns": [{
+                "position": 1,
+                "tax_base": "35.76",
+                "tax_rate": "21.00",
+                "tax_amount": "7.51",
+                "deductible_tax_amount": "7.51",
+            }],
+            "totals": {
+                "tax_base": "35.76",
+                "tax_amount": "7.51",
+                "deductible_tax_amount": "7.51",
+                "total_amount": "43.27",
+            },
+            "registration": {
+                "registered_at": "2026-06-12T00:00:00",
+                "registered_by": "admin",
+                "source": "manual",
+                "duplicate_override_used": False,
+            },
+        }
+        invoice.status = SupplierInvoice.STATUS_REGISTERED
+        invoice.reception_number = 7
+        invoice.registered_at = datetime(2026, 6, 12)
+        invoice.fiscal_snapshot = snapshot
+        invoice.snapshot_schema_version = 1
+        invoice.snapshot_hash = calculate_supplier_invoice_snapshot_hash(snapshot)
+        invoice.aeat_expense_concept_code = None
+        invoice.expense_deductible_amount = None
+        db.session.commit()
+        return invoice
 
     def _upload_rule(self):
         for rule in self.app.url_map.iter_rules():
@@ -258,6 +317,62 @@ class FlaskAdminSupplierInvoiceTest(unittest.TestCase):
             self.assertEqual(response.status_code, 302)
         with self.app.test_request_context("/admin/supplierinvoice/"):
             self.assertFalse(self.view.delete_model(registered))
+
+    def test_legacy_classification_requires_csrf_confirmation_and_persists_audit(self):
+        with self.app.app_context():
+            invoice = self._make_registered_legacy()
+            snapshot_before = dict(invoice.fiscal_snapshot)
+            hash_before = invoice.snapshot_hash
+            url = self._legacy_classification_url(invoice.id)
+
+        response = self.client.get(url, headers=self._auth_header())
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(b"CLASIFICAR GASTO AEAT LEGACY", response.data)
+        self.assertIn(b'value="G01" selected', response.data)
+        token = re.search(rb'name="csrf_token" value="([^"]+)"', response.data).group(1).decode()
+
+        response = self.client.post(
+            url,
+            data={
+                "csrf_token": token,
+                "aeat_expense_concept_code": "G01",
+                "expense_deductible_amount": "35.76",
+                "legacy_expense_received_at": "2026-06-12",
+            },
+            headers=self._auth_header(),
+        )
+        self.assertEqual(response.status_code, 302)
+        with self.app.app_context():
+            self.assertIsNone(db.session.get(SupplierInvoice, self.invoice_id).legacy_expense_classified_at)
+
+        response = self.client.post(
+            url,
+            data={
+                "csrf_token": token,
+                "confirm_legacy_classification": "confirmed",
+                "aeat_expense_concept_code": "G01",
+                "expense_deductible_amount": "35.76",
+                "legacy_expense_received_at": "2026-06-12",
+            },
+            headers=self._auth_header(),
+        )
+        self.assertEqual(response.status_code, 302)
+        with self.app.app_context():
+            persisted = db.session.get(SupplierInvoice, self.invoice_id)
+            self.assertEqual(persisted.aeat_expense_concept_code, "G01")
+            self.assertEqual(persisted.expense_deductible_amount, Decimal("35.76"))
+            self.assertEqual(persisted.legacy_expense_received_at, date(2026, 6, 12))
+            self.assertEqual(persisted.legacy_expense_classified_by, "admin")
+            self.assertIsNotNone(persisted.legacy_expense_classified_at)
+            self.assertEqual(persisted.fiscal_snapshot, snapshot_before)
+            self.assertEqual(persisted.snapshot_hash, hash_before)
+
+    def test_legacy_classification_action_is_not_available_for_v2(self):
+        response = self.client.get(
+            self._legacy_classification_url(self.invoice_id),
+            headers=self._auth_header(),
+        )
+        self.assertEqual(response.status_code, 302)
         with self.app.app_context():
             self.assertIsNotNone(db.session.get(SupplierInvoice, self.invoice_id))
 
