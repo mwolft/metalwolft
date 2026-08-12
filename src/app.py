@@ -282,6 +282,13 @@ app.config["AWS_TEXTRACT_CONNECT_TIMEOUT_SECONDS"] = os.getenv(
 app.config["AWS_TEXTRACT_READ_TIMEOUT_SECONDS"] = os.getenv(
     "AWS_TEXTRACT_READ_TIMEOUT_SECONDS", "30"
 )
+app.config["OPENAI_API_KEY"] = (os.getenv("OPENAI_API_KEY") or "").strip()
+app.config["OPENAI_SUPPLIER_INVOICE_MODEL"] = (
+    os.getenv("OPENAI_SUPPLIER_INVOICE_MODEL") or "gpt-4.1-mini"
+).strip()
+app.config["OPENAI_SUPPLIER_INVOICE_TIMEOUT_SECONDS"] = os.getenv(
+    "OPENAI_SUPPLIER_INVOICE_TIMEOUT_SECONDS", "45"
+)
 app.config["INVOICE_FOLDER"] = os.path.join(
     os.path.dirname(os.path.abspath(__file__)),
     "src",

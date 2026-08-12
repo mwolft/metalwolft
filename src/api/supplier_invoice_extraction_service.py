@@ -25,6 +25,10 @@ from api.supplier_invoice_extraction_textract import (
     TextractSupplierInvoiceExtractionProvider,
     TextractSupplierInvoiceExtractionSettings,
 )
+from api.supplier_invoice_extraction_openai import (
+    OpenAISupplierInvoiceExtractionProvider,
+    OpenAISupplierInvoiceExtractionSettings,
+)
 
 
 EXTRACTION_SCHEMA_VERSION = 1
@@ -81,6 +85,10 @@ def get_supplier_invoice_extraction_provider(app):
     if provider == "textract":
         return TextractSupplierInvoiceExtractionProvider(
             TextractSupplierInvoiceExtractionSettings.from_app_config(app.config)
+        )
+    if provider == "openai":
+        return OpenAISupplierInvoiceExtractionProvider(
+            OpenAISupplierInvoiceExtractionSettings.from_app_config(app.config)
         )
     else:
         raise SupplierInvoiceExtractionEligibilityError(
