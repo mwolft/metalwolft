@@ -1562,6 +1562,10 @@ class SupplierInvoiceAdminView(SafeModelView):
             "render_kw": {
                 "placeholder": "YYYY-MM-DD",
             },
+            "description": (
+                "Si se deja vacía, al registrar se usará la fecha de expedición "
+                "como fecha de operación efectiva."
+            ),
         },
         "aeat_expense_concept_code": {
             "label": "Concepto de gasto AEAT (propuesto)",

@@ -183,6 +183,31 @@ class FlaskAdminSupplierInvoiceTest(unittest.TestCase):
         self.assertIn('value=""', html)
         self.assertNotIn('value="G01" selected', html)
 
+    def test_new_draft_persists_blank_expense_code_as_null(self):
+        response = self.client.post(
+            "/admin/supplierinvoice/new/",
+            data={
+                "status": SupplierInvoice.STATUS_DRAFT,
+                "aeat_expense_concept_code": "",
+                "issue_date": "",
+                "operation_date": "",
+            },
+            headers=self._auth_header(),
+        )
+
+        self.assertEqual(response.status_code, 302)
+        with self.app.app_context():
+            draft = SupplierInvoice.query.order_by(SupplierInvoice.id.desc()).first()
+            self.assertIsNone(draft.aeat_expense_concept_code)
+
+    def test_operation_date_help_explains_registration_fallback(self):
+        with self.app.app_context():
+            with self.app.test_request_context("/admin/supplierinvoice/new/"):
+                form = self.view.create_form()
+
+        self.assertIn("Si se deja vacía", form.operation_date.description)
+        self.assertIn("fecha de expedición", form.operation_date.description)
+
     def test_edit_form_prefills_editable_expense_classification_for_empty_draft_values(self):
         with self.app.app_context():
             invoice = db.session.get(SupplierInvoice, self.invoice_id)

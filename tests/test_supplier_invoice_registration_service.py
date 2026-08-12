@@ -375,6 +375,19 @@ class SupplierInvoiceRegistrationServiceTest(unittest.TestCase):
         apply_supplier_invoice_expense_classification_defaults(seur)
         self.assertEqual(seur.aeat_expense_concept_code, "G01")
 
+    def test_blank_expense_code_becomes_null_until_a_supplier_tax_id_is_available(self):
+        invoice = self.make_draft(
+            supplier_tax_id=None,
+            aeat_expense_concept_code="",
+        )
+
+        apply_supplier_invoice_expense_classification_defaults(invoice)
+
+        self.assertIsNone(invoice.aeat_expense_concept_code)
+        invoice.supplier_tax_id = "B99999999"
+        apply_supplier_invoice_expense_classification_defaults(invoice)
+        self.assertEqual(invoice.aeat_expense_concept_code, "G03")
+
     def test_expense_deductible_amount_is_independent_from_vat_deduction(self):
         invoice = self.make_draft(expense_deductible_amount=Decimal("121.00"))
         register_supplier_invoice(invoice, db_session=db.session)

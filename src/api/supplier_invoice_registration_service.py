@@ -162,7 +162,12 @@ def propose_expense_deductible_amount(breakdowns):
 
 def apply_supplier_invoice_expense_classification_defaults(supplier_invoice):
     """Fill only empty draft decisions; explicit human values always win."""
-    if not _optional_text(getattr(supplier_invoice, "aeat_expense_concept_code", None)):
+    expense_code = _optional_text(
+        getattr(supplier_invoice, "aeat_expense_concept_code", None)
+    )
+    if not expense_code:
+        # Flask-Admin submits an empty SelectField as ""; the fiscal column uses NULL.
+        supplier_invoice.aeat_expense_concept_code = None
         proposal = propose_aeat_expense_concept_code(
             getattr(supplier_invoice, "supplier_tax_id", None)
         )
