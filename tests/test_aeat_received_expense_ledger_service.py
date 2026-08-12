@@ -187,7 +187,7 @@ class AeatReceivedExpenseLedgerServiceTest(unittest.TestCase):
         invoice.snapshot_schema_version = 1
         invoice.snapshot_hash = calculate_supplier_invoice_snapshot_hash(invoice.fiscal_snapshot)
 
-        with self.assertRaisesRegex(AeatReceivedExpenseLedgerValidationError, "recepciÃ³n 4.*requiere clasificaci"):
+        with self.assertRaisesRegex(AeatReceivedExpenseLedgerValidationError, "recepción 4.*requiere clasificaci"):
             prepare_aeat_received_expense_ledger_rows([invoice])
 
     def test_classified_v1_uses_audited_fields_without_mutating_the_snapshot(self):

@@ -2100,10 +2100,10 @@ class SupplierInvoiceAdminView(SafeModelView):
             )
 
         if not _valid_supplier_document_upload_csrf_token(request.form.get("csrf_token")):
-            flash("La sesiÃ³n del formulario ha caducado. Vuelve a intentarlo.", "error")
+            flash("La sesión del formulario ha caducado. Vuelve a intentarlo.", "error")
             return redirect(request.url)
         if request.form.get("confirm_legacy_classification") != "confirmed":
-            flash("Confirma la clasificaciÃ³n AEAT legacy antes de continuar.", "error")
+            flash("Confirma la clasificación AEAT legacy antes de continuar.", "error")
             return redirect(request.url)
 
         try:
@@ -2116,7 +2116,7 @@ class SupplierInvoiceAdminView(SafeModelView):
             )
             self.session.commit()
             flash(
-                "ClasificaciÃ³n AEAT legacy guardada. El snapshot histÃ³rico no se ha modificado.",
+                "Clasificación AEAT legacy guardada. El snapshot histórico no se ha modificado.",
                 "success",
             )
         except LegacySupplierInvoiceExpenseAeatError as error:
@@ -2132,7 +2132,7 @@ class SupplierInvoiceAdminView(SafeModelView):
                 "Unexpected legacy supplier invoice AEAT classification invoice_id=%s",
                 supplier_invoice_id,
             )
-            flash("No se ha podido guardar la clasificaciÃ³n AEAT legacy.", "error")
+            flash("No se ha podido guardar la clasificación AEAT legacy.", "error")
         return redirect(self.get_url(".details_view", id=supplier_invoice.id))
 
 

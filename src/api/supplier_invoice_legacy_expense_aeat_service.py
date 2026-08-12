@@ -66,7 +66,7 @@ def classify_legacy_supplier_invoice_expense_aeat(
     """Persist a human-confirmed legacy completion without altering v1 JSON/hash."""
     if not is_legacy_supplier_invoice_eligible_for_manual_classification(invoice):
         raise LegacySupplierInvoiceExpenseAeatError(
-            "La factura recibida no es elegible para clasificaciÃ³n AEAT legacy."
+            "La factura recibida no es elegible para clasificación AEAT legacy."
         )
 
     snapshot = _validate_legacy_structure(invoice)
@@ -75,7 +75,7 @@ def classify_legacy_supplier_invoice_expense_aeat(
     code = _optional_text(aeat_expense_concept_code)
     if code not in SUPPORTED_EXPENSE_CODES:
         raise LegacySupplierInvoiceExpenseAeatError(
-            "La clasificaciÃ³n AEAT legacy solo admite G01 o G03."
+            "La clasificación AEAT legacy solo admite G01 o G03."
         )
     amount = _money(expense_deductible_amount, "expense_deductible_amount")
     if amount < Decimal("0.00") or amount > totals["total_amount"]:
@@ -86,7 +86,7 @@ def classify_legacy_supplier_invoice_expense_aeat(
     normalized_actor = _optional_text(actor)
     if not normalized_actor:
         raise LegacySupplierInvoiceExpenseAeatError(
-            "La clasificaciÃ³n AEAT legacy requiere identificar al administrador."
+            "La clasificación AEAT legacy requiere identificar al administrador."
         )
 
     invoice.aeat_expense_concept_code = code
@@ -105,13 +105,13 @@ def legacy_supplier_invoice_expense_data_for_export(invoice, snapshot):
     if not _has_complete_audit(invoice):
         number = getattr(invoice, "reception_number", None) or "sin asignar"
         raise LegacySupplierInvoiceExpenseAeatError(
-            "La factura recibida con nÃºmero de recepciÃ³n "
-            f"{number} es histÃ³rica y requiere clasificaciÃ³n AEAT legacy antes de exportar."
+            "La factura recibida con número de recepción "
+            f"{number} es histórica y requiere clasificación AEAT legacy antes de exportar."
         )
     code = _optional_text(getattr(invoice, "aeat_expense_concept_code", None))
     if code not in SUPPORTED_EXPENSE_CODES:
         raise LegacySupplierInvoiceExpenseAeatError(
-            "La factura recibida histÃ³rica usa un concepto de gasto AEAT fuera del alcance actual."
+            "La factura recibida histórica usa un concepto de gasto AEAT fuera del alcance actual."
         )
     return {
         "aeat_expense_concept_code": code,
@@ -135,7 +135,7 @@ def _validate_legacy_structure(invoice, *, snapshot=None):
         raise LegacySupplierInvoiceExpenseAeatError("La factura recibida no usa un snapshot v1 legacy.")
     snapshot = snapshot if snapshot is not None else getattr(invoice, "fiscal_snapshot", None)
     if not isinstance(snapshot, Mapping) or snapshot.get("schema_version") != LEGACY_SCHEMA_VERSION:
-        raise LegacySupplierInvoiceExpenseAeatError("El snapshot fiscal v1 no es vÃ¡lido.")
+        raise LegacySupplierInvoiceExpenseAeatError("El snapshot fiscal v1 no es válido.")
     stored_hash = _optional_text(getattr(invoice, "snapshot_hash", None))
     if not stored_hash or calculate_supplier_invoice_snapshot_hash(snapshot) != stored_hash:
         raise LegacySupplierInvoiceExpenseAeatError("La integridad del snapshot fiscal no coincide.")
@@ -147,15 +147,15 @@ def _validate_legacy_structure(invoice, *, snapshot=None):
     if not all(isinstance(block, Mapping) for block in (supplier, document, totals)) or not isinstance(breakdowns, list):
         raise LegacySupplierInvoiceExpenseAeatError("El snapshot v1 no contiene la estructura fiscal necesaria.")
     if _optional_text(supplier.get("country_code")) != "ES" or _optional_text(supplier.get("tax_id_type")) != "NIF":
-        raise LegacySupplierInvoiceExpenseAeatError("La factura recibida legacy estÃ¡ fuera del alcance nacional.")
+        raise LegacySupplierInvoiceExpenseAeatError("La factura recibida legacy está fuera del alcance nacional.")
     if _optional_text(document.get("currency")) != "EUR":
-        raise LegacySupplierInvoiceExpenseAeatError("La factura recibida legacy no estÃ¡ en EUR.")
+        raise LegacySupplierInvoiceExpenseAeatError("La factura recibida legacy no está en EUR.")
     if _optional_text(document.get("fiscal_invoice_type")) != "F1":
         raise LegacySupplierInvoiceExpenseAeatError("La factura recibida legacy no usa tipo fiscal F1.")
     if _optional_text(document.get("tax_treatment")) != "domestic_standard":
         raise LegacySupplierInvoiceExpenseAeatError("La factura recibida legacy no usa tratamiento nacional ordinario.")
     if _optional_text(document.get("special_regime_key")):
-        raise LegacySupplierInvoiceExpenseAeatError("La factura recibida legacy usa un rÃ©gimen especial no soportado.")
+        raise LegacySupplierInvoiceExpenseAeatError("La factura recibida legacy usa un régimen especial no soportado.")
 
     _required_text(supplier.get("legal_name"), "supplier.legal_name")
     _required_text(supplier.get("tax_id"), "supplier.tax_id")
@@ -167,7 +167,7 @@ def _validate_legacy_structure(invoice, *, snapshot=None):
         getattr(invoice, "reception_number", None), "invoice.reception_number"
     ):
         raise LegacySupplierInvoiceExpenseAeatError(
-            "El nÃºmero de recepciÃ³n persistido no coincide con el snapshot v1."
+            "El número de recepción persistido no coincide con el snapshot v1."
         )
     _required_date(document.get("issue_date"), "document.issue_date")
     _optional_date(document.get("operation_date"))
@@ -183,7 +183,7 @@ def _validated_breakdowns(raw_breakdowns):
     breakdowns = []
     for index, raw in enumerate(raw_breakdowns, start=1):
         if not isinstance(raw, Mapping):
-            raise LegacySupplierInvoiceExpenseAeatError(f"Desglose de IVA invÃ¡lido: {index}.")
+            raise LegacySupplierInvoiceExpenseAeatError(f"Desglose de IVA inválido: {index}.")
         position = _positive_int(raw.get("position"), f"tax_breakdowns.{index}.position")
         if position in positions:
             raise LegacySupplierInvoiceExpenseAeatError("Las posiciones de IVA no pueden repetirse.")
@@ -291,17 +291,17 @@ def _optional_date(value):
         try:
             return datetime.fromisoformat(value).date()
         except ValueError as exc:
-            raise LegacySupplierInvoiceExpenseAeatError("Fecha fiscal legacy invÃ¡lida.") from exc
-    raise LegacySupplierInvoiceExpenseAeatError("Fecha fiscal legacy invÃ¡lida.")
+            raise LegacySupplierInvoiceExpenseAeatError("Fecha fiscal legacy inválida.") from exc
+    raise LegacySupplierInvoiceExpenseAeatError("Fecha fiscal legacy inválida.")
 
 
 def _positive_int(value, field):
     try:
         number = int(value)
     except (TypeError, ValueError) as exc:
-        raise LegacySupplierInvoiceExpenseAeatError(f"Identificador invÃ¡lido: {field}.") from exc
+        raise LegacySupplierInvoiceExpenseAeatError(f"Identificador inválido: {field}.") from exc
     if number <= 0 or str(number) != str(value).strip():
-        raise LegacySupplierInvoiceExpenseAeatError(f"Identificador invÃ¡lido: {field}.")
+        raise LegacySupplierInvoiceExpenseAeatError(f"Identificador inválido: {field}.")
     return number
 
 
@@ -309,16 +309,16 @@ def _money(value, field):
     try:
         amount = Decimal(str(value))
     except (InvalidOperation, TypeError, ValueError) as exc:
-        raise LegacySupplierInvoiceExpenseAeatError(f"Importe no vÃ¡lido: {field}.") from exc
+        raise LegacySupplierInvoiceExpenseAeatError(f"Importe no válido: {field}.") from exc
     if not amount.is_finite():
-        raise LegacySupplierInvoiceExpenseAeatError(f"Importe no vÃ¡lido: {field}.")
+        raise LegacySupplierInvoiceExpenseAeatError(f"Importe no válido: {field}.")
     return amount.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
 
 
 def _nonnegative_money(value, field):
     amount = _money(value, field)
     if amount < Decimal("0.00"):
-        raise LegacySupplierInvoiceExpenseAeatError(f"Importe negativo no vÃ¡lido: {field}.")
+        raise LegacySupplierInvoiceExpenseAeatError(f"Importe negativo no válido: {field}.")
     return amount
 
 
@@ -328,5 +328,5 @@ def _sum(values):
 
 def _normalized_datetime(value):
     if not isinstance(value, datetime):
-        raise LegacySupplierInvoiceExpenseAeatError("La fecha de clasificaciÃ³n no es vÃ¡lida.")
+        raise LegacySupplierInvoiceExpenseAeatError("La fecha de clasificación no es válida.")
     return value.replace(tzinfo=None)
