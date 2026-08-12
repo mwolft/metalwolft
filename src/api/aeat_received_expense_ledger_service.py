@@ -218,14 +218,18 @@ def _prepare_snapshot(snapshot):
             "El concepto de gasto AEAT esta fuera del alcance nacional actual."
         )
 
+    issue_date = _snapshot_date(document.get("issue_date"), "document.issue_date")
+    operation_date = _snapshot_date(
+        document.get("operation_date") or document.get("issue_date"),
+        "document.operation_date",
+    )
+
     return {
         "supplier_invoice_number": supplier_invoice_number,
         "supplier_tax_id": supplier_tax_id,
         "supplier_legal_name": supplier_legal_name,
-        "issue_date": _snapshot_date(document.get("issue_date"), "document.issue_date"),
-        "operation_date": _snapshot_date(
-            document.get("operation_date"), "document.operation_date"
-        ),
+        "issue_date": issue_date,
+        "operation_date": operation_date,
         "received_at": _snapshot_datetime(document.get("received_at"), "document.received_at"),
         "reception_number": _positive_int(
             document.get("reception_number"), "document.reception_number"

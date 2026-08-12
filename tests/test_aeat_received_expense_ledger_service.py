@@ -131,6 +131,17 @@ class AeatReceivedExpenseLedgerServiceTest(unittest.TestCase):
             "G03",
         )
 
+    def test_missing_operation_date_uses_the_frozen_issue_date(self):
+        invoice = self.make_invoice()
+        invoice.fiscal_snapshot["document"]["operation_date"] = None
+        invoice.snapshot_hash = calculate_supplier_invoice_snapshot_hash(invoice.fiscal_snapshot)
+
+        row = prepare_aeat_received_expense_ledger_rows([invoice])[0]
+
+        self.assertEqual(row["issue_date"], date(2026, 6, 12))
+        self.assertEqual(row["operation_date"], date(2026, 6, 12))
+        self.assertIsNone(invoice.fiscal_snapshot["document"]["operation_date"])
+
     def test_multiple_breakdowns_use_each_base_when_expense_equals_total_base(self):
         invoice = self.make_invoice()
         snapshot = invoice.fiscal_snapshot
