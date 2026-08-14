@@ -257,7 +257,10 @@ export function CustomerOrderDetailView({ orderId }: { orderId: number }) {
   }
 
   const hasShippingAddress =
-    hasText(order.shipping_address.recipient) || hasText(order.shipping_address.city);
+    hasText(order.shipping_address.recipient) ||
+    hasText(order.shipping_address.address) ||
+    hasText(order.shipping_address.postal_code) ||
+    hasText(order.shipping_address.city);
   const estimatedDeliveryDate = order.estimated_delivery_at
     ? formatCivilDateEs(order.estimated_delivery_at)
     : null;
@@ -337,6 +340,18 @@ export function CustomerOrderDetailView({ orderId }: { orderId: number }) {
               <div>
                 <dt>Destinatario</dt>
                 <dd>{order.shipping_address.recipient}</dd>
+              </div>
+            ) : null}
+            {hasText(order.shipping_address.address) ? (
+              <div>
+                <dt>{"Direcci\u00f3n"}</dt>
+                <dd>{order.shipping_address.address}</dd>
+              </div>
+            ) : null}
+            {hasText(order.shipping_address.postal_code) ? (
+              <div>
+                <dt>{"C\u00f3digo postal"}</dt>
+                <dd>{order.shipping_address.postal_code}</dd>
               </div>
             ) : null}
             {hasText(order.shipping_address.city) ? (

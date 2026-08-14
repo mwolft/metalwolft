@@ -116,7 +116,7 @@ class FlaskAdminOrderViewInvoiceNumberTest(unittest.TestCase):
 
     def test_order_admin_view_exposes_details_for_contextual_invoice_action(self):
         self.assertIn("can_view_details = True", self.view_source)
-        self.assertIn("column_details_list = column_list", self.view_source)
+        self.assertIn("'shipping_address_summary'", self.view_source)
         self.assertIn("'invoice_number': _format_order_invoice_detail", self.view_source)
 
 

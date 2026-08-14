@@ -7,7 +7,7 @@ from io import BytesIO
 from flask import request, Response, current_app, send_file, flash, redirect, session
 from flask_admin import Admin, AdminIndexView, expose
 from flask_admin.actions import action
-from markupsafe import Markup
+from markupsafe import Markup, escape
 from flask_admin.contrib.sqla import ModelView
 from flask_admin.contrib.sqla.form import InlineModelConverter, InlineModelFormList
 from flask_admin.form import RenderTemplateWidget
@@ -719,7 +719,7 @@ class OrderAdminView(SafeModelView):
         'estimated_delivery_at',
         'estimated_delivery_note',
     ]
-    column_details_list = column_list
+    column_details_list = [*column_list, 'shipping_address_summary']
 
     column_editable_list = ['total_amount', 'order_status']
     column_searchable_list = ['invoice_number', 'locator', 'discount_code']
@@ -740,6 +740,7 @@ class OrderAdminView(SafeModelView):
         'order_status': 'Estado',
         'estimated_delivery_at': 'Entrega estimada',
         'estimated_delivery_note': 'Nota entrega',
+        'shipping_address_summary': 'Direcci\u00f3n de env\u00edo',
     }
 
     column_formatters = {
@@ -756,6 +757,11 @@ class OrderAdminView(SafeModelView):
     column_formatters_detail = {
         **column_formatters,
         'invoice_number': _format_order_invoice_detail,
+        'shipping_address_summary': lambda v, c, m, p: (
+            Markup("<br>").join(
+                escape(part) for part in (m.shipping_address_summary or "").splitlines()
+            ) if m.shipping_address_summary else "—"
+        ),
     }
 
     form_extra_fields = {

@@ -15,6 +15,10 @@ from sqlalchemy import event, inspect as sqla_inspect
 from werkzeug.utils import secure_filename
 
 from api.models import db, Orders
+from api.transactional_email_renderer import (
+    render_order_delivery_estimate_update_email,
+    render_order_status_update_email,
+)
 
 email_bp = Blueprint('email_bp', __name__)
 mail = Mail()
@@ -372,6 +376,18 @@ def enviar_correo_cambio_estado_o_entrega(mapper, connection, target: Orders):
                 """
                 etiquetas += f"""<td style="padding-top: 5px; font-size: 12px;">{texto}</td>"""
 
+            rendered_email = render_order_status_update_email(
+                order_reference=locator,
+                current_status=estado_actual,
+                statuses=estados,
+                estimated_delivery_date=fmt_fecha_estimada(),
+                estimated_delivery_note=(
+                    getattr(target, 'estimated_delivery_note', None)
+                    if hasattr(target, 'estimated_delivery_note')
+                    else None
+                ),
+            )
+
             html_body = f"""
             <p style="font-weight: bold; font-size: 18px; margin-bottom: 10px;">📦 Estado de su pedido</p>
             <p>Estimado cliente,</p>
@@ -394,14 +410,19 @@ def enviar_correo_cambio_estado_o_entrega(mapper, connection, target: Orders):
             send_email(
                 subject=f"Actualización de tu pedido: {estados[indice_actual][1]}",
                 recipients=[email],
-                body="",
-                html=html_body
+                body=rendered_email.text,
+                html=rendered_email.html
             )
 
         # 2) Cambio de entrega estimada (fecha/nota) sin cambio de estado: email breve
         elif cambio_entrega and email:
             fecha = fmt_fecha_estimada()
             nota = getattr(target, 'estimated_delivery_note', None) if hasattr(target, 'estimated_delivery_note') else None
+            rendered_email = render_order_delivery_estimate_update_email(
+                order_reference=locator,
+                estimated_delivery_date=fecha,
+                estimated_delivery_note=nota,
+            )
 
             partes = ["<p>Estimado cliente,</p>"]
             if fecha:
@@ -419,8 +440,8 @@ def enviar_correo_cambio_estado_o_entrega(mapper, connection, target: Orders):
             send_email(
                 subject="Actualización: entrega estimada de tu pedido",
                 recipients=[email],
-                body="",
-                html=html_body
+                body=rendered_email.text,
+                html=rendered_email.html
             )
 
     except Exception as e:

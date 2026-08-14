@@ -28,6 +28,8 @@ export type CustomerOrderInvoice = {
 
 export type CustomerOrderShippingAddress = {
   recipient: string | null;
+  address: string | null;
+  postal_code: string | null;
   city: string | null;
 };
 
@@ -124,6 +126,8 @@ function isCustomerOrderShippingAddress(value: unknown): value is CustomerOrderS
   return (
     isRecord(value) &&
     isNullableString(value.recipient) &&
+    isNullableString(value.address) &&
+    isNullableString(value.postal_code) &&
     isNullableString(value.city)
   );
 }
