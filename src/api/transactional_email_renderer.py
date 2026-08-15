@@ -2,6 +2,8 @@ from dataclasses import dataclass
 from decimal import Decimal, InvalidOperation
 from html import escape
 
+from api.order_shipping import ShippingAddress, shipping_address_lines
+
 
 BRAND_NAME = "MetalWolft"
 BRAND_TAGLINE = "Rejas para ventanas a medida"
@@ -10,6 +12,8 @@ COLOR_MUTED = "#6b7280"
 COLOR_BORDER = "#e5e7eb"
 COLOR_SURFACE_ALT = "#fff6f7"
 COLOR_ACCENT = "#cf1c35"
+INSTALLATION_GUIDE_URL = "https://www.metalwolft.com/instalation-rejas-para-ventanas"
+MAINTENANCE_GUIDE_URL = "https://www.metalwolft.com/mantenimiento-retoque-rejas-metalicas"
 
 
 class TransactionalEmailRenderError(ValueError):
@@ -44,6 +48,7 @@ def render_order_confirmation_email(
     shipping_cost,
     discount_amount,
     total_amount,
+    shipping_address=None,
 ):
     order_reference_text = _required_text(order_reference, "order_reference")
     customer_name = _text(customer_firstname)
@@ -71,6 +76,7 @@ def render_order_confirmation_email(
         totals.append(f"Descuento: −{discount_text}")
     totals.append(f"TOTAL: {total_text}")
     totals_text = "\n".join(totals)
+    shipping_text_body = _render_order_shipping_text(shipping_address)
 
     text_body = (
         "METALWOLFT\n"
@@ -83,6 +89,7 @@ def render_order_confirmation_email(
         "RESUMEN DEL PEDIDO\n\n"
         f"{plain_lines}\n\n"
         f"{totals_text}\n\n"
+        f"{shipping_text_body}"
         "Ahora comenzaremos a preparar y fabricar tu pedido.\n"
         "Te informaremos cuando avance su estado.\n\n"
         "Gracias por confiar en MetalWolft.\n\n"
@@ -101,6 +108,8 @@ def render_order_confirmation_email(
     discount_row = ""
     if discount_value > 0:
         discount_row = _render_total_row("Descuento", f"−{discount_text}")
+
+    shipping_html = _render_order_shipping_html(shipping_address)
 
     content_html = (
         f'<p style="margin:0 0 18px;color:{COLOR_MUTED};font-size:15px;line-height:1.6;">'
@@ -131,6 +140,7 @@ def render_order_confirmation_email(
         f"{discount_row}"
         f"{_render_total_row('TOTAL', total_text, emphasized=True)}"
         "</table>"
+        f"{shipping_html}"
         f'<div style="padding:18px;background:{COLOR_SURFACE_ALT};border-left:3px solid {COLOR_ACCENT};">'
         f'<p style="margin:0 0 5px;color:{COLOR_TEXT};font-size:15px;line-height:1.5;font-weight:600;">'
         "Ahora comenzaremos a preparar y fabricar tu pedido.</p>"
@@ -143,6 +153,298 @@ def render_order_confirmation_email(
         text=text_body,
         html=_render_shell(
             preheader=f"Hemos recibido correctamente tu pedido {order_reference_text}.",
+            content_html=content_html,
+        ),
+    )
+
+
+def _render_order_shipping_text(shipping_address):
+    if not isinstance(shipping_address, ShippingAddress) or not shipping_address.is_available:
+        return ""
+    if shipping_address.same_as_billing:
+        return "DIRECCI\u00d3N DE ENV\u00cdO\nMisma que la direcci\u00f3n de facturaci\u00f3n.\n\n"
+    return "DIRECCI\u00d3N DE ENV\u00cdO\n" + "\n".join(shipping_address_lines(shipping_address)) + "\n\n"
+
+
+def _render_order_shipping_html(shipping_address):
+    if not isinstance(shipping_address, ShippingAddress) or not shipping_address.is_available:
+        return ""
+    if shipping_address.same_as_billing:
+        details = "Misma que la direcci\u00f3n de facturaci\u00f3n."
+    else:
+        details = "<br>".join(_html(line) for line in shipping_address_lines(shipping_address))
+    return (
+        f'<div style="margin:0 0 24px;padding:16px;background:{COLOR_SURFACE_ALT};border:1px solid {COLOR_BORDER};">'
+        f'<p style="margin:0 0 6px;color:{COLOR_TEXT};font-size:13px;line-height:1.4;font-weight:700;letter-spacing:0.08em;">DIRECCI\u00d3N DE ENV\u00cdO</p>'
+        f'<p style="margin:0;color:{COLOR_TEXT};font-size:14px;line-height:1.55;">{details}</p>'
+        "</div>"
+    )
+
+
+def render_order_status_update_email(
+    *,
+    order_reference,
+    current_status,
+    statuses,
+    estimated_delivery_date=None,
+    estimated_delivery_note=None,
+):
+    order_reference_text = _required_text(order_reference, "order_reference")
+    current_status_text = _required_text(current_status, "current_status")
+    normalized_statuses = tuple(statuses or ())
+    current_index = next(
+        (
+            index
+            for index, status in enumerate(normalized_statuses)
+            if isinstance(status, tuple) and len(status) == 2 and status[0] == current_status_text
+        ),
+        None,
+    )
+    if current_index is None:
+        raise TransactionalEmailRenderError("El estado actual del pedido no es v\u00e1lido.")
+
+    current_label = _required_text(normalized_statuses[current_index][1], "current_status_label")
+    delivery_date = _text(estimated_delivery_date)
+    delivery_note = _text(estimated_delivery_note)
+    delivery_text = _render_status_delivery_text(delivery_date, delivery_note)
+    progress_text = "\n".join(
+        f"{'Completado' if index < current_index else 'Actual' if index == current_index else 'Pendiente'}: {label}"
+        for index, (_, label) in enumerate(normalized_statuses)
+    )
+    guidance_text, guidance_html = _render_order_status_guidance(current_status_text)
+
+    text_body = (
+        "METALWOLFT\n"
+        f"{BRAND_TAGLINE}\n\n"
+        "ESTADO DE TU PEDIDO\n\n"
+        f"Tu pedido ha cambiado de estado y ahora se encuentra en la fase: {current_label}.\n\n"
+        f"Localizador: {order_reference_text}\n"
+        f"{delivery_text}"
+        "\nPROGRESO DEL PEDIDO\n"
+        f"{progress_text}\n\n"
+        f"{guidance_text}"
+        "Si tienes cualquier duda, puedes responder directamente a este correo.\n\n"
+        "MetalWolft\n"
+        "Fabricaci\u00f3n de rejas a medida"
+    )
+
+    detail_rows = _render_invoice_detail_row("Localizador", order_reference_text)
+    if delivery_date:
+        detail_rows += _render_invoice_detail_row("Fecha estimada de entrega", delivery_date)
+    if delivery_note:
+        detail_rows += _render_invoice_detail_row("Nota", delivery_note)
+
+    progress_rows = "".join(
+        _render_status_progress_row(label, index, current_index)
+        for index, (_, label) in enumerate(normalized_statuses)
+    )
+    content_html = (
+        f'<h1 style="margin:0 0 12px;color:{COLOR_TEXT};font-family:Arial,Helvetica,sans-serif;'
+        'font-size:28px;line-height:1.2;font-weight:700;">Estado de tu pedido</h1>'
+        f'<p style="margin:0 0 18px;color:{COLOR_TEXT};font-size:16px;line-height:1.6;">'
+        f'Tu pedido ha cambiado de estado y ahora se encuentra en la fase: '
+        f'<strong style="color:{COLOR_ACCENT};">{_html(current_label)}</strong>.'
+        "</p>"
+        '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" '
+        f'style="width:100%;margin:0 0 24px;background:{COLOR_SURFACE_ALT};border:1px solid {COLOR_BORDER};'
+        'border-collapse:collapse;">'
+        f"{detail_rows}"
+        "</table>"
+        f'<h2 style="margin:0 0 12px;color:{COLOR_TEXT};font-family:Arial,Helvetica,sans-serif;'
+        'font-size:14px;line-height:1.4;font-weight:700;letter-spacing:0.08em;">PROGRESO DEL PEDIDO</h2>'
+        '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" '
+        f'style="width:100%;margin:0 0 24px;border:1px solid {COLOR_BORDER};border-collapse:collapse;">'
+        f"{progress_rows}"
+        "</table>"
+        f"{guidance_html}"
+        f'<p style="margin:0;color:{COLOR_MUTED};font-size:14px;line-height:1.6;">'
+        "Si tienes cualquier duda, puedes responder directamente a este correo."
+        "</p>"
+    )
+
+    return RenderedEmail(
+        text=text_body,
+        html=_render_shell(
+            preheader=f"Tu pedido {order_reference_text} est\u00e1 ahora en {current_label}.",
+            content_html=content_html,
+        ),
+    )
+
+
+def _render_order_status_guidance(current_status):
+    if current_status == "enviado":
+        return (
+            "Prepárate para la instalación\n"
+            "Antes de instalar tu reja, consulta nuestra guía de instalación y manipulación. "
+            "Encontrarás cómo desembalarla, proteger el acabado y realizar correctamente la fijación.\n"
+            f"Ver guía de instalación: {INSTALLATION_GUIDE_URL}\n\n",
+            f'<div style="margin:0 0 24px;padding:16px;background:{COLOR_SURFACE_ALT};border-left:3px solid {COLOR_ACCENT};">'
+            f'<p style="margin:0 0 6px;color:{COLOR_TEXT};font-size:15px;line-height:1.45;font-weight:700;">'
+            "Prepárate para la instalación</p>"
+            f'<p style="margin:0 0 9px;color:{COLOR_MUTED};font-size:14px;line-height:1.55;">'
+            "Antes de instalar tu reja, consulta nuestra guía de instalación y manipulación. Encontrarás cómo "
+            "desembalarla, proteger el acabado y realizar correctamente la fijación.</p>"
+            f'<a href="{INSTALLATION_GUIDE_URL}" style="color:{COLOR_ACCENT};font-size:14px;line-height:1.4;font-weight:700;">'
+            "Ver guía de instalación</a></div>",
+        )
+
+    if current_status == "entregado":
+        return (
+            "Ya tienes tu reja\n"
+            "Consulta la guía de instalación antes de montarla y guarda la guía de mantenimiento para la limpieza "
+            "y pequeños retoques.\n"
+            f"Guía de instalación: {INSTALLATION_GUIDE_URL}\n"
+            f"Mantenimiento y retoque: {MAINTENANCE_GUIDE_URL}\n\n",
+            f'<div style="margin:0 0 24px;padding:16px;background:{COLOR_SURFACE_ALT};border-left:3px solid {COLOR_ACCENT};">'
+            f'<p style="margin:0 0 6px;color:{COLOR_TEXT};font-size:15px;line-height:1.45;font-weight:700;">'
+            "Ya tienes tu reja</p>"
+            f'<p style="margin:0 0 9px;color:{COLOR_MUTED};font-size:14px;line-height:1.55;">'
+            "Consulta la guía de instalación antes de montarla y guarda la guía de mantenimiento para la limpieza "
+            "y pequeños retoques.</p>"
+            f'<a href="{INSTALLATION_GUIDE_URL}" style="color:{COLOR_ACCENT};font-size:14px;line-height:1.4;font-weight:700;">'
+            "Guía de instalación</a>"
+            f'<span style="color:{COLOR_MUTED};font-size:14px;">&nbsp;·&nbsp;</span>'
+            f'<a href="{MAINTENANCE_GUIDE_URL}" style="color:{COLOR_ACCENT};font-size:14px;line-height:1.4;font-weight:700;">'
+            "Mantenimiento y retoque</a></div>",
+        )
+
+    return "", ""
+
+
+def _render_status_delivery_text(delivery_date, delivery_note):
+    details = []
+    if delivery_date:
+        details.append(f"Fecha estimada de entrega: {delivery_date}")
+    if delivery_note:
+        details.append(f"Nota: {delivery_note}")
+    return "\n".join(details) + ("\n" if details else "")
+
+
+def _render_status_progress_row(label, index, current_index):
+    if index < current_index:
+        state_label = "Completado"
+        state_color = "#15803d"
+    elif index == current_index:
+        state_label = "Estado actual"
+        state_color = COLOR_ACCENT
+    else:
+        state_label = "Pendiente"
+        state_color = COLOR_MUTED
+    return (
+        "<tr>"
+        f'<td style="padding:11px 14px;border-bottom:1px solid {COLOR_BORDER};color:{COLOR_TEXT};font-size:14px;line-height:1.4;font-weight:600;">'
+        f"{_html(label)}</td>"
+        f'<td align="right" style="padding:11px 14px;border-bottom:1px solid {COLOR_BORDER};color:{state_color};font-size:13px;line-height:1.4;font-weight:700;white-space:nowrap;">'
+        f"{state_label}</td>"
+        "</tr>"
+    )
+
+
+def render_order_delivery_estimate_update_email(
+    *, order_reference, estimated_delivery_date=None, estimated_delivery_note=None
+):
+    order_reference_text = _required_text(order_reference, "order_reference")
+    delivery_date = _text(estimated_delivery_date)
+    delivery_note = _text(estimated_delivery_note)
+
+    plain_details = [f"Localizador: {order_reference_text}"]
+    if delivery_date:
+        plain_details.insert(0, f"Fecha estimada de entrega: {delivery_date}")
+    if delivery_note:
+        plain_details.append(f"Nota: {delivery_note}")
+
+    introduction = (
+        "Hemos actualizado la fecha estimada de entrega de tu pedido."
+        if delivery_date
+        else "Hemos actualizado la informaci\u00f3n de entrega de tu pedido."
+    )
+    text_body = (
+        "METALWOLFT\n"
+        f"{BRAND_TAGLINE}\n\n"
+        "ACTUALIZACI\u00d3N DE ENTREGA\n\n"
+        f"{introduction}\n\n"
+        + "\n".join(plain_details)
+        + "\n\nSi tienes cualquier duda, puedes responder directamente a este correo.\n\n"
+        "MetalWolft\n"
+        "Fabricaci\u00f3n de rejas a medida"
+    )
+
+    detail_rows = _render_invoice_detail_row("Localizador", order_reference_text)
+    if delivery_date:
+        detail_rows += _render_invoice_detail_row("Fecha estimada de entrega", delivery_date)
+    if delivery_note:
+        detail_rows += _render_invoice_detail_row("Nota", delivery_note)
+    content_html = (
+        f'<h1 style="margin:0 0 12px;color:{COLOR_TEXT};font-family:Arial,Helvetica,sans-serif;'
+        'font-size:28px;line-height:1.2;font-weight:700;">Actualizaci\u00f3n de entrega</h1>'
+        f'<p style="margin:0 0 18px;color:{COLOR_TEXT};font-size:16px;line-height:1.6;">'
+        f"{_html(introduction)}"
+        "</p>"
+        '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" '
+        f'style="width:100%;margin:0 0 24px;background:{COLOR_SURFACE_ALT};border:1px solid {COLOR_BORDER};'
+        'border-collapse:collapse;">'
+        f"{detail_rows}"
+        "</table>"
+        f'<p style="margin:0;color:{COLOR_MUTED};font-size:14px;line-height:1.6;">'
+        "Si tienes cualquier duda, puedes responder directamente a este correo."
+        "</p>"
+    )
+    return RenderedEmail(
+        text=text_body,
+        html=_render_shell(
+            preheader=(
+                f"Nueva fecha estimada de entrega: {delivery_date}."
+                if delivery_date
+                else f"Actualizaci\u00f3n de entrega para tu pedido {order_reference_text}."
+            ),
+            content_html=content_html,
+        ),
+    )
+
+
+def render_account_welcome_email(*, customer_firstname=None, login_url):
+    login_url_text = _required_text(login_url, "login_url")
+    customer_name = _text(customer_firstname)
+    greeting = f"Hola, {customer_name}," if customer_name else "Hola,"
+    introduction = (
+        "Tu cuenta ha sido creada correctamente. Ya puedes iniciar sesi\u00f3n, explorar nuestros modelos "
+        "y consultar tus pedidos desde tu cuenta."
+    )
+    closing = (
+        "Gracias por registrarte en MetalWolft. Si necesitas ayuda, puedes responder "
+        "directamente a este correo."
+    )
+    text_body = (
+        "METALWOLFT\n"
+        f"{BRAND_TAGLINE}\n\n"
+        "\u00a1Bienvenido a MetalWolft!\n\n"
+        f"{greeting}\n\n"
+        f"{introduction}\n\n"
+        f"Iniciar sesi\u00f3n: {login_url_text}\n\n"
+        f"{closing}\n\n"
+        "MetalWolft\n"
+        "Fabricaci\u00f3n de rejas a medida"
+    )
+    content_html = (
+        f'<p style="margin:0 0 18px;color:{COLOR_MUTED};font-size:15px;line-height:1.6;">'
+        f"{_html(greeting)}"
+        "</p>"
+        f'<h1 style="margin:0 0 12px;color:{COLOR_TEXT};font-family:Arial,Helvetica,sans-serif;'
+        'font-size:28px;line-height:1.2;font-weight:700;">\u00a1Bienvenido a MetalWolft!</h1>'
+        f'<p style="margin:0 0 24px;color:{COLOR_TEXT};font-size:16px;line-height:1.6;">'
+        f"{_html(introduction)}"
+        "</p>"
+        f'<a href="{_html(login_url_text)}" '
+        f'style="display:inline-block;background:{COLOR_ACCENT};color:#ffffff;text-decoration:none;font-size:16px;'
+        'font-weight:700;padding:13px 22px;border-radius:999px;">Iniciar sesi\u00f3n</a>'
+        f'<p style="margin:22px 0 0;color:{COLOR_MUTED};font-size:14px;line-height:1.6;">'
+        f"{_html(closing)}"
+        "</p>"
+    )
+    return RenderedEmail(
+        text=text_body,
+        html=_render_shell(
+            preheader="Tu cuenta de MetalWolft ha sido creada correctamente.",
             content_html=content_html,
         ),
     )
@@ -423,7 +725,7 @@ def _render_shell(*, preheader, content_html):
         f"{_html(BRAND_TAGLINE)}</div>"
         "</td></tr>"
         f'<tr><td style="padding:4px 28px 30px;">{content_html}</td></tr>'
-        f'<tr><td style="padding:20px 28px;background:{COLOR_SURFACE_ALT};border-top:1px solid {COLOR_BORDER};">'
+        f'<tr><td style="padding:20px 28px;background:#ffffff;border-top:1px solid {COLOR_BORDER};">'
         f'<p style="margin:0 0 4px;color:{COLOR_TEXT};font-size:13px;line-height:1.4;font-weight:700;">'
         "MetalWolft</p>"
         f'<p style="margin:0;color:{COLOR_MUTED};font-size:12px;line-height:1.5;">'

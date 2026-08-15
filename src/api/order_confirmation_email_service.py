@@ -4,6 +4,7 @@ from api.transactional_email_renderer import (
     OrderEmailLine,
     render_order_confirmation_email,
 )
+from api.order_shipping import shipping_address_from_customer_snapshot
 from api.utils import (
     CONFIGURATOR_ANCHORAGES,
     CONFIGURATOR_COLORS,
@@ -76,7 +77,9 @@ def _build_order_line(line):
     )
 
 
-def _build_order_confirmation_email(*, order, checkout_quote, customer_firstname):
+def _build_order_confirmation_email(
+    *, order, checkout_quote, customer_firstname, customer_snapshot=None
+):
     return render_order_confirmation_email(
         order_reference=order.locator,
         customer_firstname=customer_firstname,
@@ -88,6 +91,7 @@ def _build_order_confirmation_email(*, order, checkout_quote, customer_firstname
         shipping_cost=checkout_quote.get("shipping_cost"),
         discount_amount=checkout_quote.get("discount_amount"),
         total_amount=order.total_amount,
+        shipping_address=shipping_address_from_customer_snapshot(customer_snapshot),
     )
 
 
@@ -97,6 +101,7 @@ def send_order_confirmation_email(
     order,
     checkout_quote,
     customer_firstname,
+    customer_snapshot=None,
     mail_username,
     logger,
     send_email_func=None,
@@ -115,6 +120,7 @@ def send_order_confirmation_email(
             order=order,
             checkout_quote=checkout_quote,
             customer_firstname=customer_firstname,
+            customer_snapshot=customer_snapshot,
         )
         email_sent = send_email_func(
             subject=f"Hemos recibido tu pedido {order.locator}",

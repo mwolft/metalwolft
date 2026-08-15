@@ -35,16 +35,35 @@ export const blogArticles: BlogArticle[] = [
   },
   {
     slug: "instalation-rejas-para-ventanas",
-    title: "Instalación de rejas para ventanas sin obra",
+    title: "Guía de instalación y manipulación de rejas para ventanas",
+    metadataTitle: "Guía de instalación y manipulación de rejas para ventanas | MetalWolft",
     description:
-      "Paso a paso para instalar rejas para ventanas sin obra, con herramientas, consejos de nivelación y recomendaciones para un acabado firme y duradero.",
+      "Guía práctica para desembalar, manipular e instalar una reja para ventana: comprobaciones previas, anclajes, tornillería, fijación y revisión final.",
+    metadataDescription:
+      "Guía práctica para desembalar, manipular e instalar una reja para ventana: comprobaciones previas, anclajes, tornillería, fijación y revisión final.",
     excerpt:
-      "Herramientas, orden de montaje y recomendaciones prácticas para colocar una reja sin obra con seguridad y buen acabado.",
+      "Comprueba, desembala y coloca tu reja con un orden claro para cuidar el acabado y revisar cada punto de fijación.",
     image:
       "https://res.cloudinary.com/dewanllxn/image/upload/v1733562840/rejas-de-seguridad-para-ventanas_buzhg0.avif",
-    imageAlt: "Instalación de rejas para ventanas sin obra",
-    readingTime: "7 min",
+    imageAlt: "Instalación y manipulación de una reja para ventana",
+    readingTime: "10 min",
     topic: "Instalación"
+  },
+  {
+    slug: "mantenimiento-retoque-rejas-metalicas",
+    title: "Mantenimiento y retoque del acabado de rejas metálicas",
+    metadataTitle: "Mantenimiento y retoque de rejas metálicas | MetalWolft",
+    description:
+      "Cómo limpiar, revisar y retocar pequeños roces, desconchados o puntos localizados de corrosión en rejas metálicas con acabado de esmalte sintético antioxidante.",
+    metadataDescription:
+      "Cómo limpiar, revisar y retocar pequeños roces, desconchados o puntos localizados de corrosión en rejas metálicas con acabado de esmalte sintético antioxidante.",
+    excerpt:
+      "Limpieza cotidiana, revisión visual y retoque localizado del acabado cuando el daño es pequeño y posterior a la instalación.",
+    image:
+      "https://res.cloudinary.com/dewanllxn/image/upload/v1733562840/rejas-de-seguridad-para-ventanas_buzhg0.avif",
+    imageAlt: "Reja metálica para ventana con acabado protector",
+    readingTime: "8 min",
+    topic: "Mantenimiento"
   },
   {
     slug: "plazos-entrega-rejas-a-medida",

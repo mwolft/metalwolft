@@ -91,6 +91,8 @@ class CustomerOrderSerializerTest(unittest.TestCase):
             anclaje = "Sin obra: con pletinas"
             firstname = "Ana"
             lastname = "Cliente"
+            shipping_address = "Calle de entrega 12"
+            shipping_postal_code = "28013"
             shipping_city = "Madrid"
 
         class Order:
@@ -114,6 +116,8 @@ class CustomerOrderSerializerTest(unittest.TestCase):
                 "estimated_delivery_at": None,
                 "shipping_address": {
                     "recipient": "Ana Cliente",
+                    "address": "Calle de entrega 12",
+                    "postal_code": "28013",
                     "city": "Madrid",
                 },
                 "lines": [
@@ -597,7 +601,7 @@ class CustomerOrdersEndpointTest(unittest.TestCase):
         )
         self.assertEqual(
             set(order["shipping_address"].keys()),
-            {"recipient", "city"},
+            {"recipient", "address", "postal_code", "city"},
         )
         self.assertEqual(
             set(order["lines"][0].keys()),
@@ -633,6 +637,8 @@ class CustomerOrdersEndpointTest(unittest.TestCase):
             order["shipping_address"],
             {
                 "recipient": "Ana Cliente",
+                "address": "Calle privada 1",
+                "postal_code": "28001",
                 "city": "Madrid",
             },
         )
@@ -670,9 +676,7 @@ class CustomerOrdersEndpointTest(unittest.TestCase):
             "email",
             "phone",
             "telefono",
-            "shipping_postal_code",
             "billing_postal_code",
-            "shipping_address\":\"Calle",
             "billing_address",
             "CIF",
             "NIF",

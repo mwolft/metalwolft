@@ -12,8 +12,12 @@ from api.transactional_email_renderer import (  # noqa: E402
     OrderEmailLine,
     TransactionalEmailRenderError,
     render_invoice_delivery_email,
+    render_account_welcome_email,
+    render_order_delivery_estimate_update_email,
     render_order_confirmation_email,
+    render_order_status_update_email,
 )
+from api.order_shipping import ShippingAddress  # noqa: E402
 
 
 def order_line(**overrides):
@@ -93,6 +97,43 @@ class TransactionalOrderEmailRendererTest(unittest.TestCase):
         self.assertIn("Tornillos 150 mm (+8,95 €)", rendered.html)
         self.assertNotIn("Descuento:", rendered.text)
 
+    def test_renders_full_frozen_shipping_address_in_plain_text_and_html(self):
+        rendered = render_order(
+            shipping_address=ShippingAddress(
+                recipient="Ana Cliente",
+                address="Calle Mayor 12",
+                postal_code="28013",
+                city="Madrid",
+                province="Madrid",
+                country_code="ES",
+            )
+        )
+
+        for expected in (
+            "DIRECCI\u00d3N DE ENV\u00cdO",
+            "Ana Cliente",
+            "Calle Mayor 12",
+            "28013 Madrid",
+            "Madrid",
+            "ES",
+        ):
+            self.assertIn(expected, rendered.text)
+            self.assertIn(expected, rendered.html)
+
+    def test_renders_same_as_billing_message_when_shipping_is_not_different(self):
+        rendered = render_order(
+            shipping_address=ShippingAddress(
+                address="Calle Mayor 12",
+                postal_code="28013",
+                city="Madrid",
+                same_as_billing=True,
+            )
+        )
+
+        expected = "Misma que la direcci\u00f3n de facturaci\u00f3n."
+        self.assertIn(expected, rendered.text)
+        self.assertIn(expected, rendered.html)
+
     def test_omits_screws_when_the_anchorage_does_not_use_them(self):
         rendered = render_order(
             lines=(order_line(anchorage="Garras metálicas", screw_configuration=None),)
@@ -101,6 +142,159 @@ class TransactionalOrderEmailRendererTest(unittest.TestCase):
         self.assertIn("Instalación: Garras metálicas", rendered.text)
         self.assertNotIn("Tornillos", rendered.text)
         self.assertNotIn("Tornillos", rendered.html)
+
+
+class TransactionalOrderStatusEmailRendererTest(unittest.TestCase):
+    def test_renders_status_progress_details_and_plain_text(self):
+        rendered = render_order_status_update_email(
+            order_reference="QE2885",
+            current_status="pintura",
+            statuses=(
+                ("pendiente", "Pendiente"),
+                ("fabricacion", "Fabricaci\u00f3n"),
+                ("pintura", "Pintura"),
+                ("embalaje", "Embalaje"),
+            ),
+            estimated_delivery_date="15/09/2026",
+            estimated_delivery_note="Preparaci\u00f3n de la expedici\u00f3n",
+        )
+
+        for expected in (
+            "ESTADO DE TU PEDIDO",
+            "Pintura",
+            "QE2885",
+            "15/09/2026",
+            "Preparaci\u00f3n de la expedici\u00f3n",
+            "Completado: Pendiente",
+            "Actual: Pintura",
+        ):
+            self.assertIn(expected, rendered.text)
+
+        for expected in (
+            "Estado de tu pedido",
+            "Pintura",
+            "QE2885",
+            "15/09/2026",
+            "Preparaci\u00f3n de la expedici\u00f3n",
+            "PROGRESO DEL PEDIDO",
+        ):
+            self.assertIn(expected, rendered.html)
+
+        self.assertIn("Estado actual", rendered.html)
+        self.assertIn("#cf1c35", rendered.html)
+        self.assertNotIn("\U0001f4e6", rendered.html)
+        self.assertNotIn("\U0001f4cd", rendered.html)
+
+    def test_sent_status_includes_only_the_installation_guide(self):
+        rendered = render_order_status_update_email(
+            order_reference="QE2885",
+            current_status="enviado",
+            statuses=(("pendiente", "Pendiente"), ("enviado", "Enviado"), ("entregado", "Entregado")),
+        )
+
+        for body in (rendered.text, rendered.html):
+            self.assertIn("Prepárate para la instalación", body)
+            self.assertIn("Ver guía de instalación", body)
+            self.assertIn("https://www.metalwolft.com/instalation-rejas-para-ventanas", body)
+            self.assertNotIn("Mantenimiento y retoque", body)
+
+        self.assertLess(rendered.html.index("PROGRESO DEL PEDIDO"), rendered.html.index("Prepárate para la instalación"))
+        self.assertLess(
+            rendered.html.index("Prepárate para la instalación"),
+            rendered.html.index("Si tienes cualquier duda"),
+        )
+
+    def test_delivered_status_includes_installation_and_maintenance_guides(self):
+        rendered = render_order_status_update_email(
+            order_reference="QE2885",
+            current_status="entregado",
+            statuses=(("pendiente", "Pendiente"), ("enviado", "Enviado"), ("entregado", "Entregado")),
+        )
+
+        for body in (rendered.text, rendered.html):
+            self.assertIn("Ya tienes tu reja", body)
+            self.assertIn("Guía de instalación", body)
+            self.assertIn("Mantenimiento y retoque", body)
+            self.assertIn("https://www.metalwolft.com/instalation-rejas-para-ventanas", body)
+            self.assertIn("https://www.metalwolft.com/mantenimiento-retoque-rejas-metalicas", body)
+
+    def test_non_post_sale_statuses_do_not_include_guides(self):
+        statuses = (
+            ("pendiente", "Pendiente"),
+            ("fabricacion", "Fabricación"),
+            ("pintura", "Pintura"),
+            ("embalaje", "Embalaje"),
+        )
+        for current_status, _ in statuses:
+            rendered = render_order_status_update_email(
+                order_reference="QE2885",
+                current_status=current_status,
+                statuses=statuses,
+            )
+
+            for body in (rendered.text, rendered.html):
+                self.assertNotIn("Prepárate para la instalación", body)
+                self.assertNotIn("Ya tienes tu reja", body)
+                self.assertNotIn("mantenimiento-retoque-rejas-metalicas", body)
+
+
+class TransactionalWelcomeEmailRendererTest(unittest.TestCase):
+    def test_renders_welcome_email_with_name_cta_and_plain_text_equivalent(self):
+        rendered = render_account_welcome_email(
+            customer_firstname="Sergio",
+            login_url="https://www.metalwolft.com/login",
+        )
+
+        for expected in (
+            "\u00a1Bienvenido a MetalWolft!",
+            "Hola, Sergio,",
+            "Tu cuenta ha sido creada correctamente.",
+            "Iniciar sesi\u00f3n",
+            "https://www.metalwolft.com/login",
+            "Gracias por registrarte en MetalWolft.",
+        ):
+            self.assertIn(expected, rendered.text)
+            self.assertIn(expected, rendered.html)
+
+        self.assertIn('href="https://www.metalwolft.com/login"', rendered.html)
+        self.assertIn("border-radius:999px", rendered.html)
+        self.assertIn("<!doctype html>", rendered.html)
+        self.assertNotIn("Metal Wolft \u00a9 2025", rendered.html)
+
+    def test_renders_generic_greeting_without_customer_name(self):
+        rendered = render_account_welcome_email(
+            login_url="https://www.metalwolft.com/login",
+        )
+
+        self.assertIn("Hola,\n", rendered.text)
+        self.assertNotIn("Hola, None", rendered.text)
+        self.assertIn("<!doctype html>", rendered.html)
+
+    def test_renders_delivery_estimate_update_with_details_and_plain_text(self):
+        rendered = render_order_delivery_estimate_update_email(
+            order_reference="QE2885",
+            estimated_delivery_date="15/09/2026",
+            estimated_delivery_note="Preparaci\u00f3n de la expedici\u00f3n",
+        )
+
+        for expected in (
+            "ACTUALIZACI\u00d3N DE ENTREGA",
+            "Fecha estimada de entrega: 15/09/2026",
+            "Nota: Preparaci\u00f3n de la expedici\u00f3n",
+            "Localizador: QE2885",
+        ):
+            self.assertIn(expected, rendered.text)
+
+        for expected in (
+            "Actualizaci\u00f3n de entrega",
+            "Fecha estimada de entrega",
+            "15/09/2026",
+            "Preparaci\u00f3n de la expedici\u00f3n",
+            "QE2885",
+            "<!doctype html>",
+        ):
+            self.assertIn(expected, rendered.html)
+        self.assertNotIn("\U0001f4cd", rendered.html)
 
     def test_escapes_every_dynamic_value_in_html(self):
         malicious = '<script>alert("owned")</script> & "cliente"'

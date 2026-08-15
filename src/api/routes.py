@@ -68,6 +68,7 @@ from api.customer_profile import (
 )
 from api.payment_amounts import PaymentAmountValidationError, validate_payment_amount
 from api.order_confirmation_email_service import send_order_confirmation_email
+from api.transactional_email_renderer import render_account_welcome_email
 from api.post_order_invoice_hook import handle_post_order_invoice_workflow
 from api.original_invoice_renderer import render_original_order_invoice_pdf
 from api.invoice_admin_helpers import (
@@ -1428,6 +1429,7 @@ def _finalize_order_from_checkout_quote(user, checkout_quote, customer_snapshot,
         order=new_order,
         checkout_quote=checkout_quote,
         customer_firstname=customer_firstname,
+        customer_snapshot=customer_snapshot,
         mail_username=current_app.config['MAIL_USERNAME'],
         logger=logger,
     )
@@ -2761,49 +2763,16 @@ def signup():
 
     # --- Emails ---
     # 1) Bienvenida al usuario
-    html_body_user = f"""
-    <h2 style="color:#ff324d; font-family:Arial, sans-serif; text-align:center;">
-    ¡Bienvenido a Metal Wolft!
-    </h2>
-
-    <p style="font-size:16px; font-family:Arial, sans-serif;">
-    Hola,
-    </p>
-
-    <p style="font-size:16px; font-family:Arial, sans-serif;">
-    Tu cuenta ha sido creada correctamente. Ahora puedes iniciar sesión, explorar nuestros productos y seguir tus pedidos en todo momento.
-    </p>
-
-    <p style="font-size:16px; font-family:Arial, sans-serif;">
-    Para comenzar, accede a tu cuenta haciendo clic aquí:
-    </p>
-
-    <p style="text-align:center;">
-    <a href="https://www.metalwolft.com/login" 
-        style="display:inline-block; padding:10px 20px; background-color:#ff324d; color:white; 
-                text-decoration:none; border-radius:5px; font-weight:bold;">
-        Iniciar Sesión
-    </a>
-    </p>
-
-    <p style="font-size:16px; font-family:Arial, sans-serif;">
-    Gracias por registrarte en <strong>Metal Wolft</strong>.  
-    Si tienes alguna pregunta, responde directamente a este correo o visita nuestra sección de ayuda.
-    </p>
-
-    <hr style="border:none; border-top:1px solid #ddd; margin:20px 0;">
-
-    <p style="font-size:12px; color:#777; font-family:Arial, sans-serif; text-align:center;">
-    Metal Wolft © 2025 España
-    </p>
-
-    """
+    rendered_welcome_email = render_account_welcome_email(
+        customer_firstname=user.firstname,
+        login_url="https://www.metalwolft.com/login",
+    )
     try:
         send_email(
             subject="¡Bienvenido a Metal Wolft!",
             recipients=[email],
-            body="Gracias por registrarte en Metal Wolft.",
-            html=html_body_user
+            body=rendered_welcome_email.text,
+            html=rendered_welcome_email.html
         )
     except Exception as e:
         current_app.logger.warning(

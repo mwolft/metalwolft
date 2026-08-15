@@ -257,7 +257,10 @@ export function CustomerOrderDetailView({ orderId }: { orderId: number }) {
   }
 
   const hasShippingAddress =
-    hasText(order.shipping_address.recipient) || hasText(order.shipping_address.city);
+    hasText(order.shipping_address.recipient) ||
+    hasText(order.shipping_address.address) ||
+    hasText(order.shipping_address.postal_code) ||
+    hasText(order.shipping_address.city);
   const estimatedDeliveryDate = order.estimated_delivery_at
     ? formatCivilDateEs(order.estimated_delivery_at)
     : null;
@@ -339,6 +342,18 @@ export function CustomerOrderDetailView({ orderId }: { orderId: number }) {
                 <dd>{order.shipping_address.recipient}</dd>
               </div>
             ) : null}
+            {hasText(order.shipping_address.address) ? (
+              <div>
+                <dt>{"Direcci\u00f3n"}</dt>
+                <dd>{order.shipping_address.address}</dd>
+              </div>
+            ) : null}
+            {hasText(order.shipping_address.postal_code) ? (
+              <div>
+                <dt>{"C\u00f3digo postal"}</dt>
+                <dd>{order.shipping_address.postal_code}</dd>
+              </div>
+            ) : null}
             {hasText(order.shipping_address.city) ? (
               <div>
                 <dt>Ciudad</dt>
@@ -348,6 +363,17 @@ export function CustomerOrderDetailView({ orderId }: { orderId: number }) {
           </dl>
         </section>
       ) : null}
+
+      <section className="mw-customer-order-guides" aria-labelledby="customer-order-guides-title">
+        <div>
+          <p className="mw-note">Ayuda con tu reja</p>
+          <h3 id="customer-order-guides-title">Instalación y cuidado</h3>
+        </div>
+        <nav aria-label="Guías para tu reja">
+          <Link href="/instalation-rejas-para-ventanas">Guía de instalación y manipulación</Link>
+          <Link href="/mantenimiento-retoque-rejas-metalicas">Mantenimiento y retoque</Link>
+        </nav>
+      </section>
 
       <section className="mw-account-card" aria-labelledby="customer-order-invoice-title">
         <div className="mw-account-section-heading">
