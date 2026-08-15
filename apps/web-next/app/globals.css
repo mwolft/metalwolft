@@ -1477,6 +1477,80 @@ textarea:focus-visible {
   margin-top: 0.6rem;
 }
 
+.mw-installation-toc ol,
+.mw-maintenance-toc ol {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.5rem 1.8rem;
+  margin: 0.9rem 0 0;
+  padding-left: 1.25rem;
+}
+
+.mw-installation-toc a,
+.mw-maintenance-toc a {
+  color: var(--mw-text);
+  font-weight: 650;
+  text-decoration-color: rgba(207, 28, 53, 0.55);
+  text-underline-offset: 0.18em;
+}
+
+.mw-installation-toc a:hover,
+.mw-installation-toc a:focus-visible,
+.mw-maintenance-toc a:hover,
+.mw-maintenance-toc a:focus-visible {
+  color: var(--mw-accent);
+}
+
+.mw-installation-callout,
+.mw-maintenance-callout {
+  margin-top: 1.15rem;
+  padding: 0.9rem 1rem;
+  border-left: 3px solid var(--mw-accent);
+  background: #fff8f8;
+}
+
+.mw-installation-callout p,
+.mw-maintenance-callout p {
+  margin: 0;
+}
+
+.mw-installation-callout p + p,
+.mw-maintenance-callout p + p {
+  margin-top: 0.45rem;
+}
+
+.mw-maintenance-callout__title {
+  color: var(--mw-text);
+  font-size: 0.88rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.mw-maintenance-faq-list {
+  display: grid;
+  gap: 0.7rem;
+  margin-top: 1rem;
+}
+
+.mw-maintenance-faq-item {
+  border: 1px solid rgba(209, 213, 219, 0.86);
+  border-radius: 10px;
+  background: #ffffff;
+}
+
+.mw-maintenance-faq-item summary {
+  cursor: pointer;
+  padding: 0.9rem 1rem;
+  color: var(--mw-text);
+  font-weight: 700;
+}
+
+.mw-maintenance-faq-item p {
+  margin: 0;
+  padding: 0 1rem 0.95rem;
+}
+
 .mw-breadcrumbs {
   display: flex;
   gap: 0.55rem;
@@ -4548,6 +4622,11 @@ textarea:focus-visible {
   .mw-panel,
   .mw-section {
     padding: 1.35rem;
+  }
+
+  .mw-installation-toc ol,
+  .mw-maintenance-toc ol {
+    grid-template-columns: 1fr;
   }
 
   .mw-product-heading {
