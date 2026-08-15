@@ -923,6 +923,9 @@ export function ProductConfigurator({
             </select>
           </label>
         </div>
+        <p className="mw-configurator-installation-guide">
+          ¿Cómo se instala? <Link href="/instalation-rejas-para-ventanas">Ver guía de instalación</Link>
+        </p>
 
         {selectedAnchorageRequiresScrews && configuredScrewOptions.length ? (
           <fieldset className="mw-configurator-screws">

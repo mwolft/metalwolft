@@ -326,6 +326,16 @@ class Orders(db.Model):
     user = db.relationship('Users', backref='orders', lazy=True)
     order_details = db.relationship('OrderDetails', backref='order', lazy=True)
 
+    @property
+    def shipping_address_summary(self):
+        from api.order_shipping import (
+            shipping_address_from_order_details,
+            shipping_address_lines,
+        )
+
+        shipping_address = shipping_address_from_order_details(self.order_details)
+        return "\n".join(shipping_address_lines(shipping_address)) or None
+
     def __repr__(self):
         return f'<Order {self.id} by User {self.user_id}>'
 

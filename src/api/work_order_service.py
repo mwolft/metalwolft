@@ -8,6 +8,7 @@ from reportlab.pdfgen import canvas
 from reportlab.platypus import Paragraph, Table, TableStyle
 
 from api.utils import format_screw_configuration
+from api.order_shipping import shipping_address_from_order_details, shipping_address_lines
 
 
 COLOR_PRIMARY = colors.Color(1, 0.196, 0.302)
@@ -74,6 +75,11 @@ def _build_header_rows(order):
 
     if order.estimated_delivery_note:
         rows.append(("Nota entrega", order.estimated_delivery_note))
+
+    shipping_address = shipping_address_from_order_details(order.order_details)
+    shipping_lines = shipping_address_lines(shipping_address)
+    if shipping_lines:
+        rows.append(("Direcci\u00f3n de env\u00edo", " | ".join(shipping_lines)))
 
     return rows
 

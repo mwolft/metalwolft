@@ -100,6 +100,35 @@ class OrderConfirmationEmailServiceTest(unittest.TestCase):
         self.assertIn("TransactionalEmailRenderError", logged_text)
         self.assertNotIn("95.0", logged_text)
 
+    def test_email_uses_only_checkout_snapshot_for_shipping_address(self):
+        sent = []
+        send_order_confirmation_email(
+            user=SimpleNamespace(email="cliente@example.com"),
+            order=SimpleNamespace(locator="AB1234", total_amount=180.5),
+            checkout_quote=checkout_quote(),
+            customer_firstname="Sergio",
+            customer_snapshot={
+                "firstname": "Ana",
+                "lastname": "Cliente",
+                "billing_address": "Calle Fiscal 1",
+                "billing_postal_code": "13001",
+                "billing_city": "Ciudad Real",
+                "shipping_address": "Calle Entrega 12",
+                "shipping_postal_code": "28013",
+                "shipping_city": "Madrid",
+                "shipping_province": "Madrid",
+                "shipping_country_code": "ES",
+            },
+            mail_username="admin@example.com",
+            logger=SimpleNamespace(info=lambda *args, **kwargs: None, error=lambda *args, **kwargs: None),
+            send_email_func=lambda **kwargs: sent.append(kwargs) or True,
+        )
+
+        self.assertIn("DIRECCI\u00d3N DE ENV\u00cdO", sent[0]["body"])
+        self.assertIn("Calle Entrega 12", sent[0]["body"])
+        self.assertIn("28013 Madrid", sent[0]["html"])
+        self.assertNotIn("Calle Fiscal 1", sent[0]["body"])
+
     def test_uses_authoritative_line_total_and_standard_screw_label(self):
         sent = []
         quote = checkout_quote()

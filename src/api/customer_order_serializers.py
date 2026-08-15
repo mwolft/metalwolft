@@ -3,6 +3,7 @@ from __future__ import annotations
 from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 
 from api.utils import DEFAULT_CONFIGURATOR_SCREW_OPTION, resolve_screw_configuration
+from api.order_shipping import shipping_address_from_order_details
 
 
 PUBLIC_ORDER_STATUS = {
@@ -51,22 +52,12 @@ def serialize_customer_order_detail(order, invoice=None, *, invoice_pdf_availabl
 
 
 def _serialize_shipping_address(order_details):
-    first_detail = next(iter(order_details), None)
-    if not first_detail:
-        return {
-            "recipient": None,
-            "city": None,
-        }
-
-    recipient = " ".join(
-        part.strip()
-        for part in (first_detail.firstname or "", first_detail.lastname or "")
-        if part and part.strip()
-    ) or None
-
+    address = shipping_address_from_order_details(order_details)
     return {
-        "recipient": recipient,
-        "city": first_detail.shipping_city,
+        "recipient": address.recipient,
+        "address": address.address,
+        "postal_code": address.postal_code,
+        "city": address.city,
     }
 
 

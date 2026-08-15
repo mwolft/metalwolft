@@ -11,6 +11,7 @@ const STATIC_ROUTES = [
   { path: "/blogs", changeFrequency: "weekly", priority: 0.85 },
   { path: "/medir-hueco-rejas-para-ventanas", changeFrequency: "monthly", priority: 0.75 },
   { path: "/instalation-rejas-para-ventanas", changeFrequency: "monthly", priority: 0.75 },
+  { path: "/mantenimiento-acabado-rejas-metalicas", changeFrequency: "monthly", priority: 0.75 },
   { path: "/plazos-entrega-rejas-a-medida", changeFrequency: "monthly", priority: 0.75 },
   { path: "/recepcion-pedidos-revisar-antes-firmar", changeFrequency: "monthly", priority: 0.75 },
   { path: "/donde-comprar-rejas-leroy-ikea", changeFrequency: "monthly", priority: 0.75 },
