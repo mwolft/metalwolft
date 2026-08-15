@@ -1921,6 +1921,19 @@ textarea:focus-visible {
   text-underline-offset: 0.16em;
 }
 
+.mw-configurator-installation-guide {
+  margin: -0.15rem 0 0;
+  color: var(--mw-muted);
+  font-size: 0.82rem;
+  line-height: 1.5;
+}
+
+.mw-configurator-installation-guide a {
+  color: var(--mw-accent-dark);
+  font-weight: 700;
+  text-underline-offset: 0.18em;
+}
+
 .mw-configurator-selected-color {
   display: grid;
   gap: 0.4rem;
@@ -3851,6 +3864,36 @@ textarea:focus-visible {
   gap: 1rem;
 }
 
+.mw-customer-order-guides {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1rem 0;
+  border-top: 1px solid rgba(229, 231, 235, 0.92);
+  border-bottom: 1px solid rgba(229, 231, 235, 0.92);
+}
+
+.mw-customer-order-guides h3 {
+  margin: 0.2rem 0 0;
+  color: var(--mw-text);
+  font-size: 1rem;
+}
+
+.mw-customer-order-guides nav {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.45rem 1rem;
+}
+
+.mw-customer-order-guides a {
+  color: var(--mw-accent-dark);
+  font-size: 0.86rem;
+  font-weight: 700;
+  text-underline-offset: 0.18em;
+}
+
 .mw-customer-order-invoice__button {
   justify-self: start;
 }
@@ -4668,9 +4711,14 @@ textarea:focus-visible {
   }
 
   .mw-customer-order-detail__header,
-  .mw-customer-order-line__heading {
+  .mw-customer-order-line__heading,
+  .mw-customer-order-guides {
     align-items: stretch;
     flex-direction: column;
+  }
+
+  .mw-customer-order-guides nav {
+    justify-content: flex-start;
   }
 
   .mw-customer-order-config {

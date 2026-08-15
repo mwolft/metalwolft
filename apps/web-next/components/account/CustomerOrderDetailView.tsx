@@ -364,6 +364,17 @@ export function CustomerOrderDetailView({ orderId }: { orderId: number }) {
         </section>
       ) : null}
 
+      <section className="mw-customer-order-guides" aria-labelledby="customer-order-guides-title">
+        <div>
+          <p className="mw-note">Ayuda con tu reja</p>
+          <h3 id="customer-order-guides-title">Instalación y cuidado</h3>
+        </div>
+        <nav aria-label="Guías para tu reja">
+          <Link href="/instalation-rejas-para-ventanas">Guía de instalación y manipulación</Link>
+          <Link href="/mantenimiento-retoque-rejas-metalicas">Mantenimiento y retoque</Link>
+        </nav>
+      </section>
+
       <section className="mw-account-card" aria-labelledby="customer-order-invoice-title">
         <div className="mw-account-section-heading">
           <p className="mw-note">Factura</p>

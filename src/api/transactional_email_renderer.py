@@ -12,6 +12,8 @@ COLOR_MUTED = "#6b7280"
 COLOR_BORDER = "#e5e7eb"
 COLOR_SURFACE_ALT = "#fff6f7"
 COLOR_ACCENT = "#cf1c35"
+INSTALLATION_GUIDE_URL = "https://www.metalwolft.com/instalation-rejas-para-ventanas"
+MAINTENANCE_GUIDE_URL = "https://www.metalwolft.com/mantenimiento-retoque-rejas-metalicas"
 
 
 class TransactionalEmailRenderError(ValueError):
@@ -209,6 +211,7 @@ def render_order_status_update_email(
         f"{'Completado' if index < current_index else 'Actual' if index == current_index else 'Pendiente'}: {label}"
         for index, (_, label) in enumerate(normalized_statuses)
     )
+    guidance_text, guidance_html = _render_order_status_guidance(current_status_text)
 
     text_body = (
         "METALWOLFT\n"
@@ -219,6 +222,7 @@ def render_order_status_update_email(
         f"{delivery_text}"
         "\nPROGRESO DEL PEDIDO\n"
         f"{progress_text}\n\n"
+        f"{guidance_text}"
         "Si tienes cualquier duda, puedes responder directamente a este correo.\n\n"
         "MetalWolft\n"
         "Fabricaci\u00f3n de rejas a medida"
@@ -252,6 +256,7 @@ def render_order_status_update_email(
         f'style="width:100%;margin:0 0 24px;border:1px solid {COLOR_BORDER};border-collapse:collapse;">'
         f"{progress_rows}"
         "</table>"
+        f"{guidance_html}"
         f'<p style="margin:0;color:{COLOR_MUTED};font-size:14px;line-height:1.6;">'
         "Si tienes cualquier duda, puedes responder directamente a este correo."
         "</p>"
@@ -264,6 +269,46 @@ def render_order_status_update_email(
             content_html=content_html,
         ),
     )
+
+
+def _render_order_status_guidance(current_status):
+    if current_status == "enviado":
+        return (
+            "Prepárate para la instalación\n"
+            "Antes de instalar tu reja, consulta nuestra guía de instalación y manipulación. "
+            "Encontrarás cómo desembalarla, proteger el acabado y realizar correctamente la fijación.\n"
+            f"Ver guía de instalación: {INSTALLATION_GUIDE_URL}\n\n",
+            f'<div style="margin:0 0 24px;padding:16px;background:{COLOR_SURFACE_ALT};border-left:3px solid {COLOR_ACCENT};">'
+            f'<p style="margin:0 0 6px;color:{COLOR_TEXT};font-size:15px;line-height:1.45;font-weight:700;">'
+            "Prepárate para la instalación</p>"
+            f'<p style="margin:0 0 9px;color:{COLOR_MUTED};font-size:14px;line-height:1.55;">'
+            "Antes de instalar tu reja, consulta nuestra guía de instalación y manipulación. Encontrarás cómo "
+            "desembalarla, proteger el acabado y realizar correctamente la fijación.</p>"
+            f'<a href="{INSTALLATION_GUIDE_URL}" style="color:{COLOR_ACCENT};font-size:14px;line-height:1.4;font-weight:700;">'
+            "Ver guía de instalación</a></div>",
+        )
+
+    if current_status == "entregado":
+        return (
+            "Ya tienes tu reja\n"
+            "Consulta la guía de instalación antes de montarla y guarda la guía de mantenimiento para la limpieza "
+            "y pequeños retoques.\n"
+            f"Guía de instalación: {INSTALLATION_GUIDE_URL}\n"
+            f"Mantenimiento y retoque: {MAINTENANCE_GUIDE_URL}\n\n",
+            f'<div style="margin:0 0 24px;padding:16px;background:{COLOR_SURFACE_ALT};border-left:3px solid {COLOR_ACCENT};">'
+            f'<p style="margin:0 0 6px;color:{COLOR_TEXT};font-size:15px;line-height:1.45;font-weight:700;">'
+            "Ya tienes tu reja</p>"
+            f'<p style="margin:0 0 9px;color:{COLOR_MUTED};font-size:14px;line-height:1.55;">'
+            "Consulta la guía de instalación antes de montarla y guarda la guía de mantenimiento para la limpieza "
+            "y pequeños retoques.</p>"
+            f'<a href="{INSTALLATION_GUIDE_URL}" style="color:{COLOR_ACCENT};font-size:14px;line-height:1.4;font-weight:700;">'
+            "Guía de instalación</a>"
+            f'<span style="color:{COLOR_MUTED};font-size:14px;">&nbsp;·&nbsp;</span>'
+            f'<a href="{MAINTENANCE_GUIDE_URL}" style="color:{COLOR_ACCENT};font-size:14px;line-height:1.4;font-weight:700;">'
+            "Mantenimiento y retoque</a></div>",
+        )
+
+    return "", ""
 
 
 def _render_status_delivery_text(delivery_date, delivery_note):

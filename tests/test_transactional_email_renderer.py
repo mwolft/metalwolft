@@ -185,6 +185,58 @@ class TransactionalOrderStatusEmailRendererTest(unittest.TestCase):
         self.assertNotIn("\U0001f4e6", rendered.html)
         self.assertNotIn("\U0001f4cd", rendered.html)
 
+    def test_sent_status_includes_only_the_installation_guide(self):
+        rendered = render_order_status_update_email(
+            order_reference="QE2885",
+            current_status="enviado",
+            statuses=(("pendiente", "Pendiente"), ("enviado", "Enviado"), ("entregado", "Entregado")),
+        )
+
+        for body in (rendered.text, rendered.html):
+            self.assertIn("Prepárate para la instalación", body)
+            self.assertIn("Ver guía de instalación", body)
+            self.assertIn("https://www.metalwolft.com/instalation-rejas-para-ventanas", body)
+            self.assertNotIn("Mantenimiento y retoque", body)
+
+        self.assertLess(rendered.html.index("PROGRESO DEL PEDIDO"), rendered.html.index("Prepárate para la instalación"))
+        self.assertLess(
+            rendered.html.index("Prepárate para la instalación"),
+            rendered.html.index("Si tienes cualquier duda"),
+        )
+
+    def test_delivered_status_includes_installation_and_maintenance_guides(self):
+        rendered = render_order_status_update_email(
+            order_reference="QE2885",
+            current_status="entregado",
+            statuses=(("pendiente", "Pendiente"), ("enviado", "Enviado"), ("entregado", "Entregado")),
+        )
+
+        for body in (rendered.text, rendered.html):
+            self.assertIn("Ya tienes tu reja", body)
+            self.assertIn("Guía de instalación", body)
+            self.assertIn("Mantenimiento y retoque", body)
+            self.assertIn("https://www.metalwolft.com/instalation-rejas-para-ventanas", body)
+            self.assertIn("https://www.metalwolft.com/mantenimiento-retoque-rejas-metalicas", body)
+
+    def test_non_post_sale_statuses_do_not_include_guides(self):
+        statuses = (
+            ("pendiente", "Pendiente"),
+            ("fabricacion", "Fabricación"),
+            ("pintura", "Pintura"),
+            ("embalaje", "Embalaje"),
+        )
+        for current_status, _ in statuses:
+            rendered = render_order_status_update_email(
+                order_reference="QE2885",
+                current_status=current_status,
+                statuses=statuses,
+            )
+
+            for body in (rendered.text, rendered.html):
+                self.assertNotIn("Prepárate para la instalación", body)
+                self.assertNotIn("Ya tienes tu reja", body)
+                self.assertNotIn("mantenimiento-retoque-rejas-metalicas", body)
+
 
 class TransactionalWelcomeEmailRendererTest(unittest.TestCase):
     def test_renders_welcome_email_with_name_cta_and_plain_text_equivalent(self):

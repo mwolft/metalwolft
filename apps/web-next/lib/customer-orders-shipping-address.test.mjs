@@ -15,5 +15,8 @@ assert.match(client, /isNullableString\(value\.address\)/);
 assert.match(client, /isNullableString\(value\.postal_code\)/);
 assert.match(detail, /order\.shipping_address\.address/);
 assert.match(detail, /order\.shipping_address\.postal_code/);
+assert.match(detail, /Ayuda con tu reja/);
+assert.match(detail, /href="\/instalation-rejas-para-ventanas"/);
+assert.match(detail, /href="\/mantenimiento-retoque-rejas-metalicas"/);
 
-console.log("6 customer order shipping address assertions passed");
+console.log("9 customer order shipping address assertions passed");

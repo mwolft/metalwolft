@@ -88,6 +88,9 @@ assert.match(
 );
 assert.match(configuratorSource, /screw_option: screwOption/);
 assert.match(configuratorSource, /screwOption: isNonEmptyString/);
+assert.match(configuratorSource, /¿Cómo se instala\?/);
+assert.match(configuratorSource, /href="\/instalation-rejas-para-ventanas"/);
+assert.doesNotMatch(configuratorSource, /mantenimiento-retoque-rejas-metalicas/);
 assert.doesNotMatch(configuratorSource, /8\.95/);
 assert.match(cartSource, /item\.screw_length_mm/);
 assert.match(cartSource, /Longitud tornillos: \$\{screwLength\.toLocaleString\("es-ES"\)\} mm/);
@@ -107,4 +110,4 @@ assert.match(
   /\.mw-cart-config__secondary\s*{[^}]*color:\s*var\(--mw-muted\);[^}]*font-size:\s*0\.74rem;/s
 );
 
-console.log("14 screw option tests passed");
+console.log("17 screw option tests passed");
