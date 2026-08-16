@@ -692,6 +692,8 @@ def _admin_issue_invoice_success_message(result):
 
 class OrderAdminView(SafeModelView):
     can_view_details = True
+    extra_css = ["/static/admin/order_sent_email_options.css"]
+    extra_js = ["/static/admin/order_sent_email_options.js"]
 
     _SENT_EMAIL_OPTION_FIELDS = (
         'send_sent_status_email',
@@ -843,7 +845,14 @@ class OrderAdminView(SafeModelView):
         return form
 
     def on_model_change(self, form, model, is_created):
-        if not is_created and form.order_status.data == 'enviado':
+        status_history = inspect(model).attrs.order_status.history
+        is_transition_to_sent = (
+            not is_created
+            and form.order_status.data == 'enviado'
+            and status_history.has_changes()
+            and all(str(previous_status).strip().lower() != 'enviado' for previous_status in status_history.deleted)
+        )
+        if is_transition_to_sent:
             # These controls affect only the pending status email and are never persisted on Orders.
             model.__dict__['_admin_sent_status_email_options'] = {
                 'send_email': bool(form.send_sent_status_email.data),
