@@ -21,7 +21,7 @@ assert.match(blog, /title: "Mantenimiento y acabado de rejas metálicas"/);
 assert.match(blog, /metadataTitle: "Mantenimiento y acabado de rejas metálicas \| MetalWolft"/);
 assert.match(
   blog,
-  /metadataDescription:\s*"Cómo limpiar, revisar y retocar pequeños roces, desconchados o puntos localizados de corrosión en rejas metálicas con acabado de esmalte sintético antioxidante\."/
+  /metadataDescription:\s*"Consejos para limpiar, revisar y conservar el acabado de tu reja, además de actuar correctamente ante pequeños roces, desconchados o puntos localizados de corrosión\."/
 );
 assert.match(
   sitemap,
@@ -30,7 +30,7 @@ assert.match(
 
 for (const heading of [
   "Índice de mantenimiento",
-  "Antes de intervenir",
+  "Cuidado del acabado",
   "Limpieza ordinaria",
   "Revisión periódica",
   "Retoque de un pequeño roce o desconchado",
@@ -51,9 +51,11 @@ for (const href of [
   assert.match(article, new RegExp(`href="${href}"`));
 }
 
-assert.match(article, /¿Has recibido la reja con una posible incidencia\?/);
+assert.match(article, /href="#cuidado-del-acabado">Cuidado del acabado</);
+assert.match(article, /Antes de realizar un retoque/);
 assert.match(article, /contribuye a proteger el acero frente a la exposición ambiental/i);
-assert.match(article, /Para pequeños desgastes,\s+roces o desconchados localizados puede realizarse un mantenimiento del acabado/i);
+assert.match(article, /Para conservar el acabado en buen estado, recomendamos realizar una limpieza periódica/i);
+assert.match(article, /Si durante estas revisiones observas pequeños roces, desgastes o desconchados/i);
 assert.match(article, /P320–P400/);
 assert.match(article, /elimina completamente el polvo/i);
 assert.match(article, /superficie debe quedar limpia y seca/i);

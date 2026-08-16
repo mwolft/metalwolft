@@ -22,10 +22,10 @@ export default function MaintenanceAndTouchUpGuidePage() {
     <BlogArticleShell
       article={article}
       keyPoints={[
-        "Cómo limpiar el acabado sin utilizar productos agresivos.",
-        "Qué revisar después de roces, golpes u obras cercanas.",
-        "Cuándo puede hacerse un retoque localizado.",
-        "Cuándo conviene parar y valorar el estado de la reja."
+        "Cómo limpiar y conservar correctamente el acabado.",
+        "Qué revisar periódicamente en la reja.",
+        "Cómo actuar ante pequeños roces o desconchados localizados.",
+        "Cuándo conviene parar y valorar el estado antes de intervenir."
       ]}
       heroMedia={
         <figure className="mw-media-frame">
@@ -39,7 +39,7 @@ export default function MaintenanceAndTouchUpGuidePage() {
         <h2 id="maintenance-toc-title">Índice de mantenimiento</h2>
         <nav aria-label="Índice de la guía de mantenimiento y acabado">
           <ol>
-            <li><a href="#antes-de-intervenir">Antes de intervenir</a></li>
+            <li><a href="#cuidado-del-acabado">Cuidado del acabado</a></li>
             <li><a href="#limpieza">Limpieza ordinaria</a></li>
             <li><a href="#revision">Revisión periódica</a></li>
             <li><a href="#retoque">Retoque localizado</a></li>
@@ -50,31 +50,20 @@ export default function MaintenanceAndTouchUpGuidePage() {
         </nav>
       </section>
 
-      <section className="mw-section" id="antes-de-intervenir">
-        <h2>Antes de intervenir</h2>
+      <section className="mw-section" id="cuidado-del-acabado">
+        <h2>Cuidado del acabado</h2>
         <p>
-          Las rejas MetalWolft utilizan un sistema de esmalte sintético antioxidante TITAN Oxirón, que además de
-          proporcionar el acabado contribuye a proteger el acero frente a la exposición ambiental.
+          Las rejas MetalWolft están acabadas con esmalte sintético antioxidante TITAN Oxirón, que proporciona el
+          acabado superficial y contribuye a proteger el acero frente a la exposición ambiental.
         </p>
         <p>
-          Antes de realizar cualquier intervención, revisa el estado de la zona afectada. Para pequeños desgastes,
-          roces o desconchados localizados puede realizarse un mantenimiento del acabado siguiendo las indicaciones
-          de esta guía.
+          Para conservar el acabado en buen estado, recomendamos realizar una limpieza periódica y revisar visualmente
+          la reja, prestando especial atención a las zonas más expuestas al uso y a la intemperie.
         </p>
-        <aside className="mw-maintenance-callout" aria-label="Posible incidencia al desembalar">
-          <p className="mw-maintenance-callout__title">¿Has recibido la reja con una posible incidencia?</p>
-          <p>
-            Si al desembalar observas un golpe, desconchado o cualquier posible defecto que quieras comunicarnos,
-            haz fotografías antes de realizar ninguna intervención y utiliza nuestro{" "}
-            <Link className="mw-inline-link" href="/formulario-incidencias">formulario de incidencias</Link>.
-            De este modo podremos valorar el estado original de la zona.
-          </p>
-          <p>
-            Consulta también la{" "}
-            <Link className="mw-inline-link" href="/recepcion-pedidos-revisar-antes-firmar">guía de recepción</Link>{" "}
-            y la <Link className="mw-inline-link" href="/politica-devolucion">política vigente</Link>.
-          </p>
-        </aside>
+        <p>
+          Si durante estas revisiones observas pequeños roces, desgastes o desconchados, en los siguientes apartados
+          encontrarás cómo valorar y mantener esas zonas.
+        </p>
       </section>
 
       <section className="mw-section" id="limpieza">
@@ -116,6 +105,20 @@ export default function MaintenanceAndTouchUpGuidePage() {
           Este procedimiento es adecuado para un daño puntual, pequeño y localizado. Si la pintura presenta una
           degradación amplia, recurrente o difícil de valorar, no lo trates como un simple retoque.
         </p>
+        <aside className="mw-maintenance-callout" aria-label="Antes de realizar un retoque">
+          <p className="mw-maintenance-callout__title">Antes de realizar un retoque</p>
+          <p>
+            Si quieres comunicarnos una posible incidencia observada al recibir la reja, no intervengas previamente
+            sobre esa zona. Haz fotografías claras y utiliza nuestro{" "}
+            <Link className="mw-inline-link" href="/formulario-incidencias">formulario de incidencias</Link> para que
+            podamos valorar su estado antes de realizar cualquier retoque.
+          </p>
+          <p>
+            Consulta también la{" "}
+            <Link className="mw-inline-link" href="/recepcion-pedidos-revisar-antes-firmar">guía de recepción</Link>{" "}
+            y la <Link className="mw-inline-link" href="/politica-devolucion">política vigente</Link>.
+          </p>
+        </aside>
         <ol className="mw-steps">
           <li><strong>Inspecciona la zona.</strong> Comprueba si existe acero expuesto, pintura levantada o material suelto.</li>
           <li>
