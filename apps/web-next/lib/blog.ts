@@ -60,8 +60,8 @@ export const blogArticles: BlogArticle[] = [
     excerpt:
       "Limpieza cotidiana, revisión visual y retoque localizado del acabado cuando el daño es pequeño y posterior a la instalación.",
     image:
-      "https://res.cloudinary.com/dewanllxn/image/upload/v1733562840/rejas-de-seguridad-para-ventanas_buzhg0.avif",
-    imageAlt: "Reja metálica para ventana con acabado protector",
+      "https://res.cloudinary.com/dewanllxn/image/upload/v1786869818/mantenimiento-rejas-para-ventanas_u3cjgp.webp",
+    imageAlt: "Mantenimiento y limpieza del acabado de una reja metálica para ventana",
     readingTime: "8 min",
     topic: "Mantenimiento"
   },

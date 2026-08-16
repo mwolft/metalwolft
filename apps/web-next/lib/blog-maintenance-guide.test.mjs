@@ -19,6 +19,12 @@ const installationGuide = readFileSync(
 assert.match(blog, /slug: "mantenimiento-acabado-rejas-metalicas"/);
 assert.match(blog, /title: "Mantenimiento y acabado de rejas metálicas"/);
 assert.match(blog, /metadataTitle: "Mantenimiento y acabado de rejas metálicas \| MetalWolft"/);
+assert.match(blog, /mantenimiento-rejas-para-ventanas_u3cjgp\.webp/);
+assert.match(blog, /imageAlt: "Mantenimiento y limpieza del acabado de una reja metálica para ventana"/);
+assert.doesNotMatch(
+  blog.match(/slug: "mantenimiento-acabado-rejas-metalicas"[\s\S]*?topic: "Mantenimiento"/)?.[0] ?? "",
+  /rejas-de-seguridad-para-ventanas_buzhg0\.avif/
+);
 assert.match(
   blog,
   /metadataDescription:\s*"Consejos para limpiar, revisar y conservar el acabado de tu reja, además de actuar correctamente ante pequeños roces, desconchados o puntos localizados de corrosión\."/
