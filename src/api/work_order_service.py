@@ -42,6 +42,9 @@ def _format_status(value):
     if not value:
         return "-"
 
+    if str(value).strip().lower() == "pendiente":
+        return "Recibido"
+
     normalized = str(value).strip().replace("_", " ")
     return normalized[:1].upper() + normalized[1:]
 

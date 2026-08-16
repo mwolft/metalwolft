@@ -22,7 +22,7 @@ import {
 import { FaFileAlt, FaFileInvoice } from "react-icons/fa";
 
 const ORDER_STATUS_CHOICES = [
-  { id: "pendiente", name: "Pendiente" },
+  { id: "pendiente", name: "Recibido" },
   { id: "fabricacion", name: "En fabricacion" },
   { id: "pintura", name: "En pintura" },
   { id: "embalaje", name: "En embalaje" },

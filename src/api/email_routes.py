@@ -292,6 +292,7 @@ def enviar_correo_cambio_estado_o_entrega(mapper, connection, target: Orders):
         # Detecta cambios reales en este UPDATE
         insp = sqla_inspect(target)
         changed = {attr.key for attr in insp.attrs if attr.history.has_changes()}
+        sent_email_options = target.__dict__.pop('_admin_sent_status_email_options', None)
 
         # Campos de entrega (solo si existen ya en el modelo)
         campos_entrega = set()
@@ -318,7 +319,7 @@ def enviar_correo_cambio_estado_o_entrega(mapper, connection, target: Orders):
 
         # Estados en el mismo orden que usas en frontend/admin
         estados = [
-            ('pendiente', 'Pendiente'),
+            ('pendiente', 'Recibido'),
             ('fabricacion', 'Fabricación'),
             ('pintura', 'Pintura'),
             ('embalaje', 'Embalaje'),
@@ -353,6 +354,18 @@ def enviar_correo_cambio_estado_o_entrega(mapper, connection, target: Orders):
             if indice_actual == -1:
                 return  # estado no reconocido
 
+            if estado_actual == 'enviado' and isinstance(sent_email_options, dict):
+                if not sent_email_options.get('send_email', True):
+                    return
+                include_receipt_guide = bool(sent_email_options.get('include_receipt_guide', True))
+                include_installation_guide = bool(sent_email_options.get('include_installation_guide', True))
+                include_incident_form = bool(sent_email_options.get('include_incident_form', True))
+            else:
+                # Preserve the existing automatic email outside the explicit Admin controls.
+                include_receipt_guide = False
+                include_installation_guide = True
+                include_incident_form = False
+
             circulos = ""
             etiquetas = ""
             for i, (valor, texto) in enumerate(estados):
@@ -386,6 +399,9 @@ def enviar_correo_cambio_estado_o_entrega(mapper, connection, target: Orders):
                     if hasattr(target, 'estimated_delivery_note')
                     else None
                 ),
+                include_receipt_guide=include_receipt_guide,
+                include_installation_guide=include_installation_guide,
+                include_incident_form=include_incident_form,
             )
 
             html_body = f"""

@@ -7,7 +7,7 @@ from api.order_shipping import shipping_address_from_order_details
 
 
 PUBLIC_ORDER_STATUS = {
-    "pendiente": {"code": "pendiente", "label": "Pendiente"},
+    "pendiente": {"code": "pendiente", "label": "Recibido"},
     "fabricacion": {"code": "fabricacion", "label": "En fabricación"},
     "pintura": {"code": "pintura", "label": "En pintura"},
     "embalaje": {"code": "embalaje", "label": "En embalaje"},

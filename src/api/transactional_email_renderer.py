@@ -14,6 +14,8 @@ COLOR_SURFACE_ALT = "#fff6f7"
 COLOR_ACCENT = "#cf1c35"
 INSTALLATION_GUIDE_URL = "https://www.metalwolft.com/instalation-rejas-para-ventanas"
 MAINTENANCE_GUIDE_URL = "https://www.metalwolft.com/mantenimiento-acabado-rejas-metalicas"
+RECEIPT_GUIDE_URL = "https://www.metalwolft.com/recepcion-pedidos-revisar-antes-firmar"
+INCIDENT_FORM_URL = "https://www.metalwolft.com/formulario-incidencias"
 
 
 class TransactionalEmailRenderError(ValueError):
@@ -188,6 +190,9 @@ def render_order_status_update_email(
     statuses,
     estimated_delivery_date=None,
     estimated_delivery_note=None,
+    include_receipt_guide=False,
+    include_installation_guide=True,
+    include_incident_form=False,
 ):
     order_reference_text = _required_text(order_reference, "order_reference")
     current_status_text = _required_text(current_status, "current_status")
@@ -211,7 +216,12 @@ def render_order_status_update_email(
         f"{'Completado' if index < current_index else 'Actual' if index == current_index else 'Pendiente'}: {label}"
         for index, (_, label) in enumerate(normalized_statuses)
     )
-    guidance_text, guidance_html = _render_order_status_guidance(current_status_text)
+    guidance_text, guidance_html = _render_order_status_guidance(
+        current_status_text,
+        include_receipt_guide=include_receipt_guide,
+        include_installation_guide=include_installation_guide,
+        include_incident_form=include_incident_form,
+    )
 
     text_body = (
         "METALWOLFT\n"
@@ -271,21 +281,48 @@ def render_order_status_update_email(
     )
 
 
-def _render_order_status_guidance(current_status):
+def _render_order_status_guidance(
+    current_status,
+    *,
+    include_receipt_guide=False,
+    include_installation_guide=True,
+    include_incident_form=False,
+):
     if current_status == "enviado":
+        guidance_links = []
+        if include_receipt_guide:
+            guidance_links.append(("Guía de recepción del pedido", RECEIPT_GUIDE_URL))
+        if include_installation_guide:
+            guidance_links.append(("Ver guía de instalación", INSTALLATION_GUIDE_URL))
+        if include_incident_form:
+            guidance_links.append(("Formulario de incidencias", INCIDENT_FORM_URL))
+
+        if not guidance_links:
+            return "", ""
+
+        if include_installation_guide:
+            title = "Prepárate para la instalación"
+            description = (
+                "Antes de instalar tu reja, consulta nuestra guía de instalación y manipulación. "
+                "Encontrarás cómo desembalarla, proteger el acabado y realizar correctamente la fijación."
+            )
+        else:
+            title = "Información útil para tu pedido"
+            description = "Consulta los recursos seleccionados para la recepción y el cuidado de tu reja."
+
+        links_text = "".join(f"{label}: {url}\n" for label, url in guidance_links)
+        links_html = "<br>".join(
+            f'<a href="{url}" style="color:{COLOR_ACCENT};font-size:14px;line-height:1.4;font-weight:700;">{label}</a>'
+            for label, url in guidance_links
+        )
         return (
-            "Prepárate para la instalación\n"
-            "Antes de instalar tu reja, consulta nuestra guía de instalación y manipulación. "
-            "Encontrarás cómo desembalarla, proteger el acabado y realizar correctamente la fijación.\n"
-            f"Ver guía de instalación: {INSTALLATION_GUIDE_URL}\n\n",
+            f"{title}\n{description}\n{links_text}\n",
             f'<div style="margin:0 0 24px;padding:16px;background:{COLOR_SURFACE_ALT};border-left:3px solid {COLOR_ACCENT};">'
             f'<p style="margin:0 0 6px;color:{COLOR_TEXT};font-size:15px;line-height:1.45;font-weight:700;">'
-            "Prepárate para la instalación</p>"
+            f"{title}</p>"
             f'<p style="margin:0 0 9px;color:{COLOR_MUTED};font-size:14px;line-height:1.55;">'
-            "Antes de instalar tu reja, consulta nuestra guía de instalación y manipulación. Encontrarás cómo "
-            "desembalarla, proteger el acabado y realizar correctamente la fijación.</p>"
-            f'<a href="{INSTALLATION_GUIDE_URL}" style="color:{COLOR_ACCENT};font-size:14px;line-height:1.4;font-weight:700;">'
-            "Ver guía de instalación</a></div>",
+            f"{description}</p>"
+            f"{links_html}</div>",
         )
 
     if current_status == "entregado":
