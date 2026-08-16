@@ -54,9 +54,9 @@ export const blogArticles: BlogArticle[] = [
     title: "Mantenimiento y acabado de rejas metálicas",
     metadataTitle: "Mantenimiento y acabado de rejas metálicas | MetalWolft",
     description:
-      "Cómo limpiar, revisar y retocar pequeños roces, desconchados o puntos localizados de corrosión en rejas metálicas con acabado de esmalte sintético antioxidante.",
+      "Consejos para limpiar, revisar y conservar el acabado de tu reja, además de actuar correctamente ante pequeños roces, desconchados o puntos localizados de corrosión.",
     metadataDescription:
-      "Cómo limpiar, revisar y retocar pequeños roces, desconchados o puntos localizados de corrosión en rejas metálicas con acabado de esmalte sintético antioxidante.",
+      "Consejos para limpiar, revisar y conservar el acabado de tu reja, además de actuar correctamente ante pequeños roces, desconchados o puntos localizados de corrosión.",
     excerpt:
       "Limpieza cotidiana, revisión visual y retoque localizado del acabado cuando el daño es pequeño y posterior a la instalación.",
     image:
