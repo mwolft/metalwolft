@@ -119,6 +119,25 @@ class FlaskAdminOrderViewInvoiceNumberTest(unittest.TestCase):
         self.assertIn("'shipping_address_summary'", self.view_source)
         self.assertIn("'invoice_number': _format_order_invoice_detail", self.view_source)
 
+    def test_sent_status_email_controls_are_grouped_and_transient(self):
+        for field_name in (
+            "send_sent_status_email",
+            "include_receipt_guide_in_sent_email",
+            "include_installation_guide_in_sent_email",
+            "include_incident_form_in_sent_email",
+        ):
+            self.assertIn(field_name, self.view_source)
+
+        self.assertIn("Notificaciones al cambiar el estado a Enviado", self.view_source)
+        on_model_change_source = method_source("OrderAdminView", "on_model_change")
+        self.assertIn("form.order_status.data == 'enviado'", on_model_change_source)
+        self.assertIn("_admin_sent_status_email_options", on_model_change_source)
+        self.assertIn("model.__dict__.pop(field_name, None)", on_model_change_source)
+
+    def test_pending_order_status_keeps_its_code_and_uses_received_label(self):
+        self.assertIn("('pendiente', 'Recibido')", self.view_source)
+        self.assertNotIn("('recibido',", self.view_source)
+
 
 if __name__ == "__main__":
     unittest.main()

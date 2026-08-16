@@ -12,7 +12,7 @@ from flask_admin.contrib.sqla import ModelView
 from flask_admin.contrib.sqla.form import InlineModelConverter, InlineModelFormList
 from flask_admin.form import RenderTemplateWidget
 from wtforms import validators
-from wtforms.fields import DecimalField, SelectField, StringField, DateField, TextAreaField
+from wtforms.fields import BooleanField, DecimalField, SelectField, StringField, DateField, TextAreaField
 from .models import (
     db, Users, Products, ProductImages,
     Categories, Subcategories, Cart,
@@ -693,6 +693,13 @@ def _admin_issue_invoice_success_message(result):
 class OrderAdminView(SafeModelView):
     can_view_details = True
 
+    _SENT_EMAIL_OPTION_FIELDS = (
+        'send_sent_status_email',
+        'include_receipt_guide_in_sent_email',
+        'include_installation_guide_in_sent_email',
+        'include_incident_form_in_sent_email',
+    )
+
     form_columns = [
         'user_id',
         'total_amount',
@@ -701,9 +708,33 @@ class OrderAdminView(SafeModelView):
         'order_date',
         'locator',
         'order_status',
+        'send_sent_status_email',
+        'include_receipt_guide_in_sent_email',
+        'include_installation_guide_in_sent_email',
+        'include_incident_form_in_sent_email',
         'estimated_delivery_at',
         'estimated_delivery_note',
     ]
+
+    form_groups = (
+        ('Pedido', [
+            'user_id',
+            'total_amount',
+            'discount_code',
+            'discount_value',
+            'order_date',
+            'locator',
+            'order_status',
+            'estimated_delivery_at',
+            'estimated_delivery_note',
+        ]),
+        ('Notificaciones al cambiar el estado a Enviado', [
+            'send_sent_status_email',
+            'include_receipt_guide_in_sent_email',
+            'include_installation_guide_in_sent_email',
+            'include_incident_form_in_sent_email',
+        ]),
+    )
 
     # Columnas visibles en la tabla
     column_list = [
@@ -769,13 +800,29 @@ class OrderAdminView(SafeModelView):
         'order_status': SelectField(
             'Estado del Pedido',
             choices=[
-                ('pendiente', 'Pendiente'),
+                ('pendiente', 'Recibido'),
                 ('fabricacion', 'En fabricación'),
                 ('pintura', 'En pintura'),
                 ('embalaje', 'En embalaje'),
                 ('enviado', 'Enviado'),
                 ('entregado', 'Entregado')
             ]
+        ),
+        'send_sent_status_email': BooleanField(
+            'Enviar email estándar de pedido enviado',
+            default=True,
+        ),
+        'include_receipt_guide_in_sent_email': BooleanField(
+            'Incluir enlace a la guía de recepción del pedido',
+            default=True,
+        ),
+        'include_installation_guide_in_sent_email': BooleanField(
+            'Incluir enlace a la guía de instalación de rejas',
+            default=True,
+        ),
+        'include_incident_form_in_sent_email': BooleanField(
+            'Incluir enlace al formulario de incidencias',
+            default=True,
         ),
 
         'estimated_delivery_at': DateField(
@@ -794,6 +841,21 @@ class OrderAdminView(SafeModelView):
         if not form.locator.data:
             form.locator.data = Orders.generate_locator()
         return form
+
+    def on_model_change(self, form, model, is_created):
+        if not is_created and form.order_status.data == 'enviado':
+            # These controls affect only the pending status email and are never persisted on Orders.
+            model.__dict__['_admin_sent_status_email_options'] = {
+                'send_email': bool(form.send_sent_status_email.data),
+                'include_receipt_guide': bool(form.include_receipt_guide_in_sent_email.data),
+                'include_installation_guide': bool(form.include_installation_guide_in_sent_email.data),
+                'include_incident_form': bool(form.include_incident_form_in_sent_email.data),
+            }
+
+        for field_name in self._SENT_EMAIL_OPTION_FIELDS:
+            model.__dict__.pop(field_name, None)
+
+        return super().on_model_change(form, model, is_created)
 
     @expose('/issue-invoice/<int:order_id>', methods=['POST'])
     def issue_invoice(self, order_id):

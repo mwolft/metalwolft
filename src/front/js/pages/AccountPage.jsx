@@ -4,7 +4,7 @@ import { Helmet } from "react-helmet";
 
 const ORDER_STEPS = ["pendiente", "fabricacion", "pintura", "embalaje", "enviado", "entregado"];
 const ORDER_STEP_LABELS = {
-    pendiente: "Pendiente",
+    pendiente: "Recibido",
     fabricacion: "Fabricación",
     pintura: "Pintura",
     embalaje: "Embalaje",

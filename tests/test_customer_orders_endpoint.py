@@ -43,6 +43,10 @@ if HAS_ENDPOINT_DEPS:
 class CustomerOrderSerializerTest(unittest.TestCase):
     def test_public_status_mapping_uses_safe_fallback(self):
         self.assertEqual(
+            public_order_status("pendiente"),
+            {"code": "pendiente", "label": "Recibido"},
+        )
+        self.assertEqual(
             public_order_status("fabricacion"),
             {"code": "fabricacion", "label": "En fabricación"},
         )
@@ -72,7 +76,7 @@ class CustomerOrderSerializerTest(unittest.TestCase):
                 "created_at": "2026-07-20T08:30:00",
                 "total": "245.90",
                 "currency": "EUR",
-                "status": {"code": "pendiente", "label": "Pendiente"},
+                "status": {"code": "pendiente", "label": "Recibido"},
                 "estimated_delivery_at": "2026-08-14",
             },
         )

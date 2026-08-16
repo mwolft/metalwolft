@@ -83,10 +83,14 @@ export default function InstallationGuidePage() {
           <li>Estado visible general de la reja y del embalaje.</li>
         </ul>
         <aside className="mw-installation-callout" aria-label="Aviso antes de instalar">
-          <p><strong>Si al desembalar observas un golpe, desconchado o posible defecto:</strong> no lo retoques todavía.</p>
           <p>
-            Haz fotografías claras, conserva el embalaje y las protecciones cuando corresponda y comunícalo
-            mediante el <Link className="mw-inline-link" href="/formulario-incidencias">formulario de incidencias</Link>.
+            <strong>Si al recibir el pedido observas algún golpe, daño en el embalaje, desconchado o posible defecto,
+            documéntalo antes de manipularlo.</strong>
+          </p>
+          <p>
+            Haz fotografías claras del paquete y del producto, conserva el embalaje y las protecciones cuando
+            corresponda y comunícalo mediante el{" "}
+            <Link className="mw-inline-link" href="/formulario-incidencias">formulario de incidencias</Link>.
             Puedes consultar también la{" "}
             <Link className="mw-inline-link" href="/recepcion-pedidos-revisar-antes-firmar">guía de recepción</Link>{" "}
             y la <Link className="mw-inline-link" href="/politica-devolucion">política vigente</Link>.

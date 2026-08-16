@@ -150,7 +150,7 @@ class TransactionalOrderStatusEmailRendererTest(unittest.TestCase):
             order_reference="QE2885",
             current_status="pintura",
             statuses=(
-                ("pendiente", "Pendiente"),
+                ("pendiente", "Recibido"),
                 ("fabricacion", "Fabricaci\u00f3n"),
                 ("pintura", "Pintura"),
                 ("embalaje", "Embalaje"),
@@ -165,7 +165,7 @@ class TransactionalOrderStatusEmailRendererTest(unittest.TestCase):
             "QE2885",
             "15/09/2026",
             "Preparaci\u00f3n de la expedici\u00f3n",
-            "Completado: Pendiente",
+            "Completado: Recibido",
             "Actual: Pintura",
         ):
             self.assertIn(expected, rendered.text)
@@ -189,7 +189,7 @@ class TransactionalOrderStatusEmailRendererTest(unittest.TestCase):
         rendered = render_order_status_update_email(
             order_reference="QE2885",
             current_status="enviado",
-            statuses=(("pendiente", "Pendiente"), ("enviado", "Enviado"), ("entregado", "Entregado")),
+            statuses=(("pendiente", "Recibido"), ("enviado", "Enviado"), ("entregado", "Entregado")),
         )
 
         for body in (rendered.text, rendered.html):
@@ -204,11 +204,44 @@ class TransactionalOrderStatusEmailRendererTest(unittest.TestCase):
             rendered.html.index("Si tienes cualquier duda"),
         )
 
+    def test_sent_status_can_include_the_selected_receipt_installation_and_incident_links(self):
+        rendered = render_order_status_update_email(
+            order_reference="QE2885",
+            current_status="enviado",
+            statuses=(("pendiente", "Recibido"), ("enviado", "Enviado")),
+            include_receipt_guide=True,
+            include_installation_guide=True,
+            include_incident_form=True,
+        )
+
+        for body in (rendered.text, rendered.html):
+            self.assertIn("Guía de recepción del pedido", body)
+            self.assertIn("https://www.metalwolft.com/recepcion-pedidos-revisar-antes-firmar", body)
+            self.assertIn("Ver guía de instalación", body)
+            self.assertIn("https://www.metalwolft.com/instalation-rejas-para-ventanas", body)
+            self.assertIn("Formulario de incidencias", body)
+            self.assertIn("https://www.metalwolft.com/formulario-incidencias", body)
+
+    def test_sent_status_omits_guidance_when_no_additional_link_is_selected(self):
+        rendered = render_order_status_update_email(
+            order_reference="QE2885",
+            current_status="enviado",
+            statuses=(("pendiente", "Recibido"), ("enviado", "Enviado")),
+            include_receipt_guide=False,
+            include_installation_guide=False,
+            include_incident_form=False,
+        )
+
+        for body in (rendered.text, rendered.html):
+            self.assertNotIn("Prepárate para la instalación", body)
+            self.assertNotIn("Guía de recepción del pedido", body)
+            self.assertNotIn("Formulario de incidencias", body)
+
     def test_delivered_status_includes_installation_and_maintenance_guides(self):
         rendered = render_order_status_update_email(
             order_reference="QE2885",
             current_status="entregado",
-            statuses=(("pendiente", "Pendiente"), ("enviado", "Enviado"), ("entregado", "Entregado")),
+            statuses=(("pendiente", "Recibido"), ("enviado", "Enviado"), ("entregado", "Entregado")),
         )
 
         for body in (rendered.text, rendered.html):
@@ -221,7 +254,7 @@ class TransactionalOrderStatusEmailRendererTest(unittest.TestCase):
 
     def test_non_post_sale_statuses_do_not_include_guides(self):
         statuses = (
-            ("pendiente", "Pendiente"),
+            ("pendiente", "Recibido"),
             ("fabricacion", "Fabricación"),
             ("pintura", "Pintura"),
             ("embalaje", "Embalaje"),
