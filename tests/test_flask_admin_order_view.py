@@ -129,10 +129,26 @@ class FlaskAdminOrderViewInvoiceNumberTest(unittest.TestCase):
             self.assertIn(field_name, self.view_source)
 
         self.assertIn("Notificaciones al cambiar el estado a Enviado", self.view_source)
+        self.assertIn('extra_css = ["/static/admin/order_sent_email_options.css"]', self.view_source)
+        self.assertIn('extra_js = ["/static/admin/order_sent_email_options.js"]', self.view_source)
         on_model_change_source = method_source("OrderAdminView", "on_model_change")
-        self.assertIn("form.order_status.data == 'enviado'", on_model_change_source)
+        self.assertIn("is_transition_to_sent", on_model_change_source)
+        self.assertIn("status_history.has_changes()", on_model_change_source)
         self.assertIn("_admin_sent_status_email_options", on_model_change_source)
         self.assertIn("model.__dict__.pop(field_name, None)", on_model_change_source)
+
+    def test_sent_status_notification_assets_are_csp_safe_and_group_the_secondary_controls(self):
+        script = (SRC_DIR / "static" / "admin" / "order_sent_email_options.js").read_text(encoding="utf-8")
+        stylesheet = (SRC_DIR / "static" / "admin" / "order_sent_email_options.css").read_text(encoding="utf-8")
+
+        self.assertIn("Incluir en este email:", script)
+        self.assertIn("Estas opciones se incluyen dentro del email de pedido enviado.", script)
+        self.assertIn("entry.field.disabled = !enabled", script)
+        self.assertIn("master.addEventListener(\"change\", syncSecondaryFields)", script)
+        self.assertNotIn("javascript:", script.lower())
+        self.assertNotIn("onclick", script.lower())
+        self.assertIn("margin: -6px 0 18px 26px", stylesheet)
+        self.assertIn("mw-order-sent-email-options--disabled", stylesheet)
 
     def test_pending_order_status_keeps_its_code_and_uses_received_label(self):
         self.assertIn("('pendiente', 'Recibido')", self.view_source)

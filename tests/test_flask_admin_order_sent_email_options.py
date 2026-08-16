@@ -1,0 +1,132 @@
+import importlib.util
+import sys
+import unittest
+from pathlib import Path
+from unittest.mock import patch
+
+
+ROOT_DIR = Path(__file__).resolve().parents[1]
+SRC_DIR = ROOT_DIR / "src"
+if str(SRC_DIR) not in sys.path:
+    sys.path.insert(0, str(SRC_DIR))
+
+
+def has_package(package):
+    try:
+        return importlib.util.find_spec(package) is not None
+    except (ImportError, ValueError):
+        return False
+
+
+HAS_ADMIN_DEPS = all(
+    has_package(package)
+    for package in ("flask", "flask_admin", "flask_sqlalchemy", "sqlalchemy", "slugify")
+)
+
+if HAS_ADMIN_DEPS:
+    from flask import Flask  # noqa: E402
+    from sqlalchemy.orm import configure_mappers  # noqa: E402
+
+    import api.admin as admin_module  # noqa: E402
+    from api.models import Orders, Users, db  # noqa: E402
+
+
+@unittest.skipUnless(HAS_ADMIN_DEPS, "Flask Admin test dependencies are not installed.")
+class FlaskAdminOrderSentEmailOptionsTest(unittest.TestCase):
+    def setUp(self):
+        configure_mappers()
+        self.app = Flask(__name__)
+        self.app.config.update(
+            SECRET_KEY="test-secret",
+            SQLALCHEMY_DATABASE_URI="sqlite:///:memory:",
+            SQLALCHEMY_TRACK_MODIFICATIONS=False,
+        )
+        db.init_app(self.app)
+        self.view = admin_module.OrderAdminView(Orders, db.session)
+
+        with self.app.app_context():
+            db.create_all()
+            user = Users(email="cliente@example.com", password="secret")
+            self.order = Orders(
+                user=user,
+                total_amount=10,
+                locator="QE2885",
+                order_status="pendiente",
+            )
+            db.session.add_all((user, self.order))
+            db.session.commit()
+            self.order_id = self.order.id
+
+    def tearDown(self):
+        with self.app.app_context():
+            db.session.remove()
+            db.drop_all()
+
+    def _edit_form(self, *, status="enviado", master=True, receipt=True, installation=True, incidents=True):
+        order = db.session.get(Orders, self.order_id)
+        form = self.view.edit_form(order)
+        form.order_status.data = status
+        form.send_sent_status_email.data = master
+        form.include_receipt_guide_in_sent_email.data = receipt
+        form.include_installation_guide_in_sent_email.data = installation
+        form.include_incident_form_in_sent_email.data = incidents
+        return order, form
+
+    def _update(self, form, order):
+        sent = []
+        with patch("api.email_routes.send_email", side_effect=lambda **kwargs: sent.append(kwargs) or True):
+            self.assertTrue(self.view.update_model(form, order))
+        return sent
+
+    def test_real_transition_to_sent_forwards_the_selected_links_to_the_renderer(self):
+        with self.app.app_context():
+            order, form = self._edit_form(receipt=True, installation=False, incidents=True)
+            sent = self._update(form, order)
+
+            self.assertEqual(len(sent), 1)
+            self.assertEqual(sent[0]["subject"], "Actualización de tu pedido: Enviado")
+            self.assertIn("Guía de recepción del pedido", sent[0]["body"])
+            self.assertIn("Formulario de incidencias", sent[0]["body"])
+            self.assertNotIn("Ver guía de instalación", sent[0]["body"])
+
+    def test_master_false_suppresses_the_status_email_even_with_links_selected(self):
+        with self.app.app_context():
+            order, form = self._edit_form(master=False, receipt=True, installation=True, incidents=True)
+            sent = self._update(form, order)
+
+            self.assertEqual(sent, [])
+
+    def test_notification_fields_default_to_true_without_persisting_on_orders(self):
+        with self.app.app_context():
+            order = db.session.get(Orders, self.order_id)
+            form = self.view.edit_form(order)
+
+            for field_name in self.view._SENT_EMAIL_OPTION_FIELDS:
+                self.assertTrue(getattr(form, field_name).data)
+                self.assertNotIn(field_name, order.__dict__)
+
+    def test_editing_an_already_sent_order_does_not_recapture_options(self):
+        with self.app.app_context():
+            order = db.session.get(Orders, self.order_id)
+            order.order_status = "enviado"
+            with patch("api.email_routes.send_email", return_value=True):
+                db.session.commit()
+
+            order, form = self._edit_form(status="enviado", master=False, installation=True)
+            sent = self._update(form, order)
+
+            self.assertEqual(sent, [])
+            self.assertNotIn("_admin_sent_status_email_options", order.__dict__)
+
+    def test_notification_fields_remain_transient_after_an_admin_update(self):
+        with self.app.app_context():
+            order, form = self._edit_form()
+            self._update(form, order)
+
+            for field_name in self.view._SENT_EMAIL_OPTION_FIELDS:
+                self.assertNotIn(field_name, order.__dict__)
+            self.assertNotIn("_admin_sent_status_email_options", order.__dict__)
+
+
+if __name__ == "__main__":
+    unittest.main()
