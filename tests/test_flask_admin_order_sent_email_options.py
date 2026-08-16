@@ -62,14 +62,28 @@ class FlaskAdminOrderSentEmailOptionsTest(unittest.TestCase):
             db.session.remove()
             db.drop_all()
 
-    def _edit_form(self, *, status="enviado", master=True, receipt=True, installation=True, incidents=True):
+    def _edit_form(
+        self,
+        *,
+        status="enviado",
+        sent_master=True,
+        receipt=True,
+        sent_installation=True,
+        incidents=True,
+        delivered_master=True,
+        delivered_installation=True,
+        maintenance=True,
+    ):
         order = db.session.get(Orders, self.order_id)
         form = self.view.edit_form(order)
         form.order_status.data = status
-        form.send_sent_status_email.data = master
+        form.send_sent_status_email.data = sent_master
         form.include_receipt_guide_in_sent_email.data = receipt
-        form.include_installation_guide_in_sent_email.data = installation
+        form.include_installation_guide_in_sent_email.data = sent_installation
         form.include_incident_form_in_sent_email.data = incidents
+        form.send_delivered_status_email.data = delivered_master
+        form.include_installation_guide_in_delivered_email.data = delivered_installation
+        form.include_maintenance_guide_in_delivered_email.data = maintenance
         return order, form
 
     def _update(self, form, order):
@@ -80,7 +94,7 @@ class FlaskAdminOrderSentEmailOptionsTest(unittest.TestCase):
 
     def test_real_transition_to_sent_forwards_the_selected_links_to_the_renderer(self):
         with self.app.app_context():
-            order, form = self._edit_form(receipt=True, installation=False, incidents=True)
+            order, form = self._edit_form(receipt=True, sent_installation=False, incidents=True)
             sent = self._update(form, order)
 
             self.assertEqual(len(sent), 1)
@@ -91,7 +105,54 @@ class FlaskAdminOrderSentEmailOptionsTest(unittest.TestCase):
 
     def test_master_false_suppresses_the_status_email_even_with_links_selected(self):
         with self.app.app_context():
-            order, form = self._edit_form(master=False, receipt=True, installation=True, incidents=True)
+            order, form = self._edit_form(sent_master=False, receipt=True, sent_installation=True, incidents=True)
+            sent = self._update(form, order)
+
+            self.assertEqual(sent, [])
+
+    def test_real_transition_to_delivered_forwards_installation_and_maintenance_once(self):
+        with self.app.app_context():
+            order, form = self._edit_form(status="entregado", delivered_installation=True, maintenance=True)
+            sent = self._update(form, order)
+
+            self.assertEqual(len(sent), 1)
+            self.assertEqual(sent[0]["subject"], "Actualización de tu pedido: Entregado")
+            self.assertEqual(sent[0]["body"].count("Guía de instalación:"), 1)
+            self.assertEqual(sent[0]["body"].count("Mantenimiento y acabado:"), 1)
+
+    def test_delivered_can_include_only_maintenance(self):
+        with self.app.app_context():
+            order, form = self._edit_form(
+                status="entregado",
+                delivered_installation=False,
+                maintenance=True,
+            )
+            sent = self._update(form, order)
+
+            self.assertEqual(len(sent), 1)
+            self.assertIn("Mantenimiento y acabado", sent[0]["body"])
+            self.assertNotIn("Guía de instalación:", sent[0]["body"])
+
+    def test_delivered_without_guides_omits_the_guidance_block(self):
+        with self.app.app_context():
+            order, form = self._edit_form(
+                status="entregado",
+                delivered_installation=False,
+                maintenance=False,
+            )
+            sent = self._update(form, order)
+
+            self.assertEqual(len(sent), 1)
+            self.assertNotIn("Ya tienes tu reja", sent[0]["body"])
+
+    def test_delivered_master_false_suppresses_the_status_email(self):
+        with self.app.app_context():
+            order, form = self._edit_form(
+                status="entregado",
+                delivered_master=False,
+                delivered_installation=True,
+                maintenance=True,
+            )
             sent = self._update(form, order)
 
             self.assertEqual(sent, [])
@@ -101,31 +162,35 @@ class FlaskAdminOrderSentEmailOptionsTest(unittest.TestCase):
             order = db.session.get(Orders, self.order_id)
             form = self.view.edit_form(order)
 
-            for field_name in self.view._SENT_EMAIL_OPTION_FIELDS:
+            for field_name in self.view._ORDER_STATUS_EMAIL_OPTION_FIELDS:
                 self.assertTrue(getattr(form, field_name).data)
                 self.assertNotIn(field_name, order.__dict__)
 
-    def test_editing_an_already_sent_order_does_not_recapture_options(self):
+    def test_editing_an_already_delivered_order_does_not_recapture_options(self):
         with self.app.app_context():
             order = db.session.get(Orders, self.order_id)
-            order.order_status = "enviado"
+            order.order_status = "entregado"
             with patch("api.email_routes.send_email", return_value=True):
                 db.session.commit()
 
-            order, form = self._edit_form(status="enviado", master=False, installation=True)
+            order, form = self._edit_form(
+                status="entregado",
+                delivered_master=False,
+                maintenance=True,
+            )
             sent = self._update(form, order)
 
             self.assertEqual(sent, [])
-            self.assertNotIn("_admin_sent_status_email_options", order.__dict__)
+            self.assertNotIn("_admin_order_status_email_options", order.__dict__)
 
     def test_notification_fields_remain_transient_after_an_admin_update(self):
         with self.app.app_context():
             order, form = self._edit_form()
             self._update(form, order)
 
-            for field_name in self.view._SENT_EMAIL_OPTION_FIELDS:
+            for field_name in self.view._ORDER_STATUS_EMAIL_OPTION_FIELDS:
                 self.assertNotIn(field_name, order.__dict__)
-            self.assertNotIn("_admin_sent_status_email_options", order.__dict__)
+            self.assertNotIn("_admin_order_status_email_options", order.__dict__)
 
 
 if __name__ == "__main__":

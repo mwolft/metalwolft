@@ -193,6 +193,7 @@ def render_order_status_update_email(
     include_receipt_guide=False,
     include_installation_guide=True,
     include_incident_form=False,
+    include_maintenance_guide=True,
 ):
     order_reference_text = _required_text(order_reference, "order_reference")
     current_status_text = _required_text(current_status, "current_status")
@@ -221,6 +222,7 @@ def render_order_status_update_email(
         include_receipt_guide=include_receipt_guide,
         include_installation_guide=include_installation_guide,
         include_incident_form=include_incident_form,
+        include_maintenance_guide=include_maintenance_guide,
     )
 
     text_body = (
@@ -287,6 +289,7 @@ def _render_order_status_guidance(
     include_receipt_guide=False,
     include_installation_guide=True,
     include_incident_form=False,
+    include_maintenance_guide=True,
 ):
     if current_status == "enviado":
         guidance_links = []
@@ -326,23 +329,40 @@ def _render_order_status_guidance(
         )
 
     if current_status == "entregado":
+        guidance_links = []
+        if include_installation_guide:
+            guidance_links.append(("Guía de instalación", INSTALLATION_GUIDE_URL))
+        if include_maintenance_guide:
+            guidance_links.append(("Mantenimiento y acabado", MAINTENANCE_GUIDE_URL))
+
+        if not guidance_links:
+            return "", ""
+
+        if include_installation_guide and include_maintenance_guide:
+            description = (
+                "Consulta la guía de instalación antes de montarla y guarda la guía de mantenimiento para la limpieza "
+                "y conservación del acabado."
+            )
+        elif include_installation_guide:
+            description = "Consulta la guía de instalación antes de montar tu reja."
+        else:
+            description = "Guarda la guía de mantenimiento para la limpieza y conservación del acabado."
+
+        links_text = "".join(f"{label}: {url}\n" for label, url in guidance_links)
+        links_html = f'<span style="color:{COLOR_MUTED};font-size:14px;">&nbsp;·&nbsp;</span>'.join(
+            f'<a href="{url}" style="color:{COLOR_ACCENT};font-size:14px;line-height:1.4;font-weight:700;">{label}</a>'
+            for label, url in guidance_links
+        )
         return (
             "Ya tienes tu reja\n"
-            "Consulta la guía de instalación antes de montarla y guarda la guía de mantenimiento para la limpieza "
-            "y conservación del acabado.\n"
-            f"Guía de instalación: {INSTALLATION_GUIDE_URL}\n"
-            f"Mantenimiento y acabado: {MAINTENANCE_GUIDE_URL}\n\n",
+            f"{description}\n"
+            f"{links_text}\n",
             f'<div style="margin:0 0 24px;padding:16px;background:{COLOR_SURFACE_ALT};border-left:3px solid {COLOR_ACCENT};">'
             f'<p style="margin:0 0 6px;color:{COLOR_TEXT};font-size:15px;line-height:1.45;font-weight:700;">'
             "Ya tienes tu reja</p>"
             f'<p style="margin:0 0 9px;color:{COLOR_MUTED};font-size:14px;line-height:1.55;">'
-            "Consulta la guía de instalación antes de montarla y guarda la guía de mantenimiento para la limpieza "
-            "y conservación del acabado.</p>"
-            f'<a href="{INSTALLATION_GUIDE_URL}" style="color:{COLOR_ACCENT};font-size:14px;line-height:1.4;font-weight:700;">'
-            "Guía de instalación</a>"
-            f'<span style="color:{COLOR_MUTED};font-size:14px;">&nbsp;·&nbsp;</span>'
-            f'<a href="{MAINTENANCE_GUIDE_URL}" style="color:{COLOR_ACCENT};font-size:14px;line-height:1.4;font-weight:700;">'
-            "Mantenimiento y acabado</a></div>",
+            f"{description}</p>"
+            f"{links_html}</div>",
         )
 
     return "", ""

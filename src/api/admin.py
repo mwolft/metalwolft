@@ -695,11 +695,14 @@ class OrderAdminView(SafeModelView):
     extra_css = ["/static/admin/order_sent_email_options.css"]
     extra_js = ["/static/admin/order_sent_email_options.js"]
 
-    _SENT_EMAIL_OPTION_FIELDS = (
+    _ORDER_STATUS_EMAIL_OPTION_FIELDS = (
         'send_sent_status_email',
         'include_receipt_guide_in_sent_email',
         'include_installation_guide_in_sent_email',
         'include_incident_form_in_sent_email',
+        'send_delivered_status_email',
+        'include_installation_guide_in_delivered_email',
+        'include_maintenance_guide_in_delivered_email',
     )
 
     form_columns = [
@@ -714,6 +717,9 @@ class OrderAdminView(SafeModelView):
         'include_receipt_guide_in_sent_email',
         'include_installation_guide_in_sent_email',
         'include_incident_form_in_sent_email',
+        'send_delivered_status_email',
+        'include_installation_guide_in_delivered_email',
+        'include_maintenance_guide_in_delivered_email',
         'estimated_delivery_at',
         'estimated_delivery_note',
     ]
@@ -730,11 +736,14 @@ class OrderAdminView(SafeModelView):
             'estimated_delivery_at',
             'estimated_delivery_note',
         ]),
-        ('Notificaciones al cambiar el estado a Enviado', [
+        ('Notificaciones del email de estado', [
             'send_sent_status_email',
             'include_receipt_guide_in_sent_email',
             'include_installation_guide_in_sent_email',
             'include_incident_form_in_sent_email',
+            'send_delivered_status_email',
+            'include_installation_guide_in_delivered_email',
+            'include_maintenance_guide_in_delivered_email',
         ]),
     )
 
@@ -826,6 +835,18 @@ class OrderAdminView(SafeModelView):
             'Incluir enlace al formulario de incidencias',
             default=True,
         ),
+        'send_delivered_status_email': BooleanField(
+            'Enviar email de pedido entregado',
+            default=True,
+        ),
+        'include_installation_guide_in_delivered_email': BooleanField(
+            'Guía de instalación',
+            default=True,
+        ),
+        'include_maintenance_guide_in_delivered_email': BooleanField(
+            'Mantenimiento y acabado',
+            default=True,
+        ),
 
         'estimated_delivery_at': DateField(
             'Fecha estimada de entrega',
@@ -846,22 +867,33 @@ class OrderAdminView(SafeModelView):
 
     def on_model_change(self, form, model, is_created):
         status_history = inspect(model).attrs.order_status.history
-        is_transition_to_sent = (
+        new_status = form.order_status.data
+        is_real_status_transition = (
             not is_created
-            and form.order_status.data == 'enviado'
             and status_history.has_changes()
-            and all(str(previous_status).strip().lower() != 'enviado' for previous_status in status_history.deleted)
+            and all(
+                str(previous_status).strip().lower() != new_status
+                for previous_status in status_history.deleted
+            )
         )
-        if is_transition_to_sent:
+        if is_real_status_transition and new_status == 'enviado':
             # These controls affect only the pending status email and are never persisted on Orders.
-            model.__dict__['_admin_sent_status_email_options'] = {
+            model.__dict__['_admin_order_status_email_options'] = {
+                'status': 'enviado',
                 'send_email': bool(form.send_sent_status_email.data),
                 'include_receipt_guide': bool(form.include_receipt_guide_in_sent_email.data),
                 'include_installation_guide': bool(form.include_installation_guide_in_sent_email.data),
                 'include_incident_form': bool(form.include_incident_form_in_sent_email.data),
             }
+        elif is_real_status_transition and new_status == 'entregado':
+            model.__dict__['_admin_order_status_email_options'] = {
+                'status': 'entregado',
+                'send_email': bool(form.send_delivered_status_email.data),
+                'include_installation_guide': bool(form.include_installation_guide_in_delivered_email.data),
+                'include_maintenance_guide': bool(form.include_maintenance_guide_in_delivered_email.data),
+            }
 
-        for field_name in self._SENT_EMAIL_OPTION_FIELDS:
+        for field_name in self._ORDER_STATUS_EMAIL_OPTION_FIELDS:
             model.__dict__.pop(field_name, None)
 
         return super().on_model_change(form, model, is_created)

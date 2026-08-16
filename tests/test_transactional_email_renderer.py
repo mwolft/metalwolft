@@ -252,6 +252,33 @@ class TransactionalOrderStatusEmailRendererTest(unittest.TestCase):
             self.assertIn("https://www.metalwolft.com/mantenimiento-acabado-rejas-metalicas", body)
             self.assertIn("y conservación del acabado.", body)
 
+    def test_delivered_status_can_include_only_maintenance(self):
+        rendered = render_order_status_update_email(
+            order_reference="QE2885",
+            current_status="entregado",
+            statuses=(("pendiente", "Recibido"), ("enviado", "Enviado"), ("entregado", "Entregado")),
+            include_installation_guide=False,
+            include_maintenance_guide=True,
+        )
+
+        for body in (rendered.text, rendered.html):
+            self.assertIn("Mantenimiento y acabado", body)
+            self.assertIn("https://www.metalwolft.com/mantenimiento-acabado-rejas-metalicas", body)
+            self.assertNotIn("https://www.metalwolft.com/instalation-rejas-para-ventanas", body)
+
+    def test_delivered_status_omits_guidance_when_no_guide_is_selected(self):
+        rendered = render_order_status_update_email(
+            order_reference="QE2885",
+            current_status="entregado",
+            statuses=(("pendiente", "Recibido"), ("enviado", "Enviado"), ("entregado", "Entregado")),
+            include_installation_guide=False,
+            include_maintenance_guide=False,
+        )
+
+        for body in (rendered.text, rendered.html):
+            self.assertNotIn("Ya tienes tu reja", body)
+            self.assertNotIn("mantenimiento-acabado-rejas-metalicas", body)
+
     def test_non_post_sale_statuses_do_not_include_guides(self):
         statuses = (
             ("pendiente", "Recibido"),
