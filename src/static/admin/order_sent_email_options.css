@@ -1,31 +1,35 @@
-.mw-order-sent-email-options {
-  margin: -6px 0 18px 26px;
+.mw-order-status-email-options {
+  margin-bottom: 18px;
+}
+
+.mw-order-status-email-options__nested {
+  margin: -6px 0 0 26px;
   padding: 10px 0 0 16px;
   border-left: 2px solid #e5e7eb;
 }
 
-.mw-order-sent-email-options__title {
+.mw-order-status-email-options__title {
   margin: 0 0 4px;
   color: #374151;
   font-size: 13px;
   font-weight: 600;
 }
 
-.mw-order-sent-email-options__help {
+.mw-order-status-email-options__help {
   margin: 0 0 8px;
   color: #6b7280;
   font-size: 12px;
   line-height: 1.4;
 }
 
-.mw-order-sent-email-options .form-group {
+.mw-order-status-email-options__nested .form-group {
   margin-bottom: 6px;
 }
 
-.mw-order-sent-email-options--disabled {
+.mw-order-status-email-options__nested--disabled {
   opacity: 0.55;
 }
 
-.mw-order-sent-email-options--disabled label {
+.mw-order-status-email-options__nested--disabled label {
   cursor: not-allowed;
 }

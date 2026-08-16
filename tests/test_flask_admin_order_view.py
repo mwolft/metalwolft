@@ -119,22 +119,25 @@ class FlaskAdminOrderViewInvoiceNumberTest(unittest.TestCase):
         self.assertIn("'shipping_address_summary'", self.view_source)
         self.assertIn("'invoice_number': _format_order_invoice_detail", self.view_source)
 
-    def test_sent_status_email_controls_are_grouped_and_transient(self):
+    def test_status_email_controls_are_grouped_and_transient(self):
         for field_name in (
             "send_sent_status_email",
             "include_receipt_guide_in_sent_email",
             "include_installation_guide_in_sent_email",
             "include_incident_form_in_sent_email",
+            "send_delivered_status_email",
+            "include_installation_guide_in_delivered_email",
+            "include_maintenance_guide_in_delivered_email",
         ):
             self.assertIn(field_name, self.view_source)
 
-        self.assertIn("Notificaciones al cambiar el estado a Enviado", self.view_source)
+        self.assertIn("Notificaciones del email de estado", self.view_source)
         self.assertIn('extra_css = ["/static/admin/order_sent_email_options.css"]', self.view_source)
         self.assertIn('extra_js = ["/static/admin/order_sent_email_options.js"]', self.view_source)
         on_model_change_source = method_source("OrderAdminView", "on_model_change")
-        self.assertIn("is_transition_to_sent", on_model_change_source)
+        self.assertIn("is_real_status_transition", on_model_change_source)
         self.assertIn("status_history.has_changes()", on_model_change_source)
-        self.assertIn("_admin_sent_status_email_options", on_model_change_source)
+        self.assertIn("_admin_order_status_email_options", on_model_change_source)
         self.assertIn("model.__dict__.pop(field_name, None)", on_model_change_source)
 
     def test_sent_status_notification_assets_are_csp_safe_and_group_the_secondary_controls(self):
@@ -142,13 +145,15 @@ class FlaskAdminOrderViewInvoiceNumberTest(unittest.TestCase):
         stylesheet = (SRC_DIR / "static" / "admin" / "order_sent_email_options.css").read_text(encoding="utf-8")
 
         self.assertIn("Incluir en este email:", script)
-        self.assertIn("Estas opciones se incluyen dentro del email de pedido enviado.", script)
+        self.assertIn("Estas opciones se incluyen dentro del email de pedido ", script)
         self.assertIn("entry.field.disabled = !enabled", script)
         self.assertIn("master.addEventListener(\"change\", syncSecondaryFields)", script)
+        self.assertIn("container.hidden = container.dataset.orderStatus !== statusField.value", script)
+        self.assertIn("include_maintenance_guide_in_delivered_email", script)
         self.assertNotIn("javascript:", script.lower())
         self.assertNotIn("onclick", script.lower())
-        self.assertIn("margin: -6px 0 18px 26px", stylesheet)
-        self.assertIn("mw-order-sent-email-options--disabled", stylesheet)
+        self.assertIn("margin: -6px 0 0 26px", stylesheet)
+        self.assertIn("mw-order-status-email-options__nested--disabled", stylesheet)
 
     def test_pending_order_status_keeps_its_code_and_uses_received_label(self):
         self.assertIn("('pendiente', 'Recibido')", self.view_source)
