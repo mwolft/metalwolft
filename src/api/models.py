@@ -558,14 +558,19 @@ class Invoices(db.Model):
         db.CheckConstraint(
             "("
             "invoice_type IS NULL AND original_invoice_id IS NULL AND "
+            "external_original_invoice_number IS NULL AND external_original_issue_date IS NULL AND "
             "rectification_type IS NULL AND rectification_reason IS NULL"
             ") OR ("
             "invoice_type = 'ordinary' AND original_invoice_id IS NULL AND "
+            "external_original_invoice_number IS NULL AND external_original_issue_date IS NULL AND "
             "rectification_type IS NULL AND rectification_reason IS NULL"
             ") OR ("
-            "invoice_type = 'corrective' AND original_invoice_id IS NOT NULL AND "
-            "original_invoice_id != id AND rectification_type IS NOT NULL AND "
-            "rectification_reason IS NOT NULL"
+            "invoice_type = 'corrective' AND rectification_type IS NOT NULL AND "
+            "rectification_reason IS NOT NULL AND ((original_invoice_id IS NOT NULL AND "
+            "original_invoice_id != id AND external_original_invoice_number IS NULL AND "
+            "external_original_issue_date IS NULL) OR (original_invoice_id IS NULL AND "
+            "external_original_invoice_number IS NOT NULL AND external_original_invoice_number <> '' AND "
+            "external_original_issue_date IS NOT NULL))"
             ")",
             name="ck_invoices_rectification_consistency",
         ),
@@ -615,6 +620,8 @@ class Invoices(db.Model):
     order_id = db.Column(db.Integer, db.ForeignKey('orders.id'), nullable=True)
     invoice_type = db.Column(db.String(20), nullable=True)
     original_invoice_id = db.Column(db.Integer, db.ForeignKey('invoices.id'), nullable=True)
+    external_original_invoice_number = db.Column(db.String(50), nullable=True)
+    external_original_issue_date = db.Column(db.Date, nullable=True)
     rectification_type = db.Column(db.String(30), nullable=True)
     rectification_reason = db.Column(db.String(50), nullable=True)
     rectification_aeat_type = db.Column(db.String(2), nullable=True)
@@ -714,7 +721,7 @@ class Invoices(db.Model):
 
 
 class ManualInvoiceDraft(db.Model):
-    """Mutable input for an ordinary invoice issued outside an order."""
+    """Mutable input for an ordinary invoice or a corrective manual credit."""
 
     __tablename__ = "manual_invoice_drafts"
     __table_args__ = (
@@ -730,11 +737,21 @@ class ManualInvoiceDraft(db.Model):
             "client_country_code = 'ES'",
             name="ck_manual_invoice_drafts_client_country_es",
         ),
+        db.CheckConstraint(
+            "document_nature IN ('ordinary', 'corrective')",
+            name="ck_manual_invoice_drafts_document_nature_valid",
+        ),
+        db.CheckConstraint(
+            "rectification_aeat_type IS NULL OR rectification_aeat_type IN ('R1', 'R4')",
+            name="ck_manual_invoice_drafts_rectification_aeat_valid",
+        ),
     )
 
     STATUS_DRAFT = "draft"
     STATUS_ISSUED = "issued"
     STATUS_CANCELLED = "cancelled"
+    NATURE_ORDINARY = "ordinary"
+    NATURE_CORRECTIVE = "corrective"
 
     id = db.Column(db.Integer, primary_key=True)
     status = db.Column(db.String(20), nullable=False, default=STATUS_DRAFT, server_default=STATUS_DRAFT)
@@ -751,6 +768,12 @@ class ManualInvoiceDraft(db.Model):
     external_reference = db.Column(db.String(255), nullable=True)
     internal_notes = db.Column(db.Text, nullable=True)
     currency = db.Column(db.String(3), nullable=False, default="EUR", server_default="EUR")
+    document_nature = db.Column(db.String(20), nullable=False, default=NATURE_ORDINARY, server_default=NATURE_ORDINARY)
+    original_invoice_id = db.Column(db.Integer, db.ForeignKey("invoices.id"), nullable=True)
+    external_original_invoice_number = db.Column(db.String(50), nullable=True)
+    external_original_issue_date = db.Column(db.Date, nullable=True)
+    rectification_reason = db.Column(db.String(50), nullable=True)
+    rectification_aeat_type = db.Column(db.String(2), nullable=True)
     issuance_key = db.Column(db.String(36), nullable=False, unique=True, default=lambda: str(uuid.uuid4()))
     issued_invoice_id = db.Column(db.Integer, db.ForeignKey("invoices.id"), nullable=True, unique=True)
     created_at = db.Column(db.DateTime, nullable=False, server_default=db.func.now())
@@ -760,6 +783,7 @@ class ManualInvoiceDraft(db.Model):
     issued_by = db.Column(db.String(255), nullable=True)
 
     issued_invoice = db.relationship("Invoices", foreign_keys=[issued_invoice_id], lazy=True)
+    original_invoice = db.relationship("Invoices", foreign_keys=[original_invoice_id], lazy=True)
     lines = db.relationship(
         "ManualInvoiceDraftLine",
         backref="draft",
@@ -782,7 +806,7 @@ class ManualInvoiceDraftLine(db.Model):
     __tablename__ = "manual_invoice_draft_lines"
     __table_args__ = (
         db.UniqueConstraint("manual_invoice_draft_id", "position", name="uq_manual_invoice_draft_lines_position"),
-        db.CheckConstraint("tax_base > 0", name="ck_manual_invoice_draft_lines_tax_base_positive"),
+        db.CheckConstraint("tax_base IS NULL OR tax_base <> 0", name="ck_manual_invoice_draft_lines_tax_base_nonzero"),
         db.CheckConstraint("tax_rate >= 0", name="ck_manual_invoice_draft_lines_tax_rate_nonnegative"),
     )
 

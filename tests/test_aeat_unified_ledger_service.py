@@ -43,6 +43,8 @@ class InvoiceDouble:
     rectification_aeat_classified_at: datetime | None = None
     rectification_aeat_classified_by: str | None = None
     original_invoice: object | None = None
+    external_original_invoice_number: str | None = None
+    external_original_issue_date: date | None = None
 
 
 @dataclass
@@ -149,6 +151,55 @@ def legacy_corrective_entry():
         taxable_base=Decimal("-100.00"),
         vat_amount=Decimal("-21.00"),
         total_amount=Decimal("-121.00"),
+    )
+
+
+def manual_external_partial_entry():
+    snapshot = sales_snapshot("2026-08-17")
+    snapshot["schema_version"] = 3
+    snapshot["metadata"] = {"generator": "manual_invoice_snapshot_builder_v3"}
+    snapshot["operation"] = {
+        **snapshot["operation"],
+        "invoice_type": "corrective",
+        "order_id": None,
+        "order_locator": None,
+        "order_date": None,
+        "rectification": {
+            "rectification_type": "differences",
+            "rectification_scope": "partial",
+            "rectification_reason": "other",
+            "rectification_reason_text": "Otro motivo",
+            "aeat_type": "R4",
+            "original_reference_type": "external",
+            "original_invoice_id": None,
+            "original_invoice_number": "JUL-2026-002",
+            "original_invoice_issued_at": "2026-07-14",
+            "affected_line_numbers": [1],
+        },
+    }
+    snapshot["lines"][0].update(tax_base="-41.32", tax_amount="-8.68", line_total="-50.00")
+    snapshot["totals"] = {
+        "tax_base": "-41.32", "tax_amount": "-8.68", "total_amount": "-50.00",
+    }
+    invoice = InvoiceDouble(
+        id=91,
+        invoice_number="R2026000091",
+        invoice_snapshot=snapshot,
+        invoice_snapshot_hash=calculate_invoice_snapshot_hash(snapshot),
+        issued_at=datetime(2026, 8, 17, 10, 0, 0),
+        invoice_type="corrective",
+        rectification_aeat_type="R4",
+        external_original_invoice_number="JUL-2026-002",
+        external_original_issue_date=date(2026, 7, 14),
+    )
+    return AccountingEntryDouble(
+        id=91,
+        invoice_date=date(2026, 8, 17),
+        invoice_number=invoice.invoice_number,
+        invoice=invoice,
+        taxable_base=Decimal("-41.32"),
+        vat_amount=Decimal("-8.68"),
+        total_amount=Decimal("-50.00"),
     )
 
 
@@ -278,6 +329,16 @@ class AeatUnifiedLedgerServiceTest(unittest.TestCase):
         legacy.invoice.rectification_aeat_classified_by = None
         with self.assertRaisesRegex(AeatUnifiedLedgerValidationError, "requiere clasificación AEAT manual"):
             generate_aeat_unified_ledger_workbook([legacy], [], year=2026, period="2T")
+
+    def test_manual_external_partial_rectification_is_included_in_sales_sheet(self):
+        workbook, sales_rows, _ = generate_aeat_unified_ledger_workbook(
+            [manual_external_partial_entry()], [], year=2026, period="3T"
+        )
+
+        self.assertEqual(len(sales_rows), 1)
+        self.assertEqual(workbook["EXPEDIDAS_INGRESOS"]["F3"].value, "R4")
+        self.assertEqual(workbook["EXPEDIDAS_INGRESOS"]["AJ3"].value, "JUL-2026-002")
+        self.assertEqual(workbook["EXPEDIDAS_INGRESOS"]["V3"].value, Decimal("-41.32"))
 
     def test_invalid_snapshot_in_either_domain_aborts_the_whole_workbook(self):
         invalid_sale = sales_entry()

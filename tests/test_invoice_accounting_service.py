@@ -6,6 +6,7 @@ import unittest
 from datetime import date, datetime
 from decimal import Decimal
 from pathlib import Path
+from types import SimpleNamespace
 
 
 ROOT_DIR = Path(__file__).resolve().parents[1]
@@ -45,6 +46,7 @@ if HAS_DB_TEST_DEPENDENCIES:
         create_accounting_entry,
     )
     from api.invoice_snapshot_integrity import calculate_invoice_snapshot_hash  # noqa: E402
+    from api.manual_invoice_snapshot_builder import build_manual_invoice_snapshot  # noqa: E402
     from api.models import AccountingEntry, Invoices, db  # noqa: E402
 
 
@@ -338,6 +340,63 @@ class AccountingEntryServiceSQLiteTest(unittest.TestCase):
         db.session.commit()
         return original, rectification
 
+    def make_manual_external_partial_rectification(self):
+        draft = SimpleNamespace(
+            id=88,
+            document_nature="corrective",
+            client_name="Aritz Elizegi",
+            client_tax_id="44169382K",
+            client_address="Calle Cliente 1",
+            client_postal_code="20001",
+            client_city="San Sebastián",
+            client_province=None,
+            client_country_code="ES",
+            client_email=None,
+            issue_date=date(2026, 8, 17),
+            operation_date=date(2026, 8, 17),
+            currency="EUR",
+            external_reference="JUL-2026-002",
+            original_invoice_id=None,
+            external_original_invoice_number="JUL-2026-002",
+            external_original_issue_date=date(2026, 7, 14),
+            rectification_reason="other",
+            rectification_aeat_type="R4",
+            lines=[SimpleNamespace(
+                id=1,
+                position=1,
+                concept="Compensación parcial factura JUL-2026-002",
+                tax_base=Decimal("-41.32"),
+                tax_rate=Decimal("21.00"),
+            )],
+        )
+        issuer = {
+            "legal_name": "MetalWolft", "tax_id": "B00000000", "address": "Calle Taller",
+            "postal_code": "13000", "city": "Ciudad Real", "country_code": "ES",
+        }
+        fiscal_snapshot = build_manual_invoice_snapshot(draft, issuer, issue_date=draft.issue_date)
+        invoice = Invoices(
+            invoice_number="R2026000003",
+            invoice_type="corrective",
+            external_original_invoice_number="JUL-2026-002",
+            external_original_issue_date=date(2026, 7, 14),
+            rectification_type="differences",
+            rectification_reason="other",
+            rectification_aeat_type="R4",
+            amount=-50.00,
+            client_name="Aritz Elizegi",
+            client_address="Calle Cliente 1",
+            client_cif="44169382K",
+            client_phone=None,
+            order_details=fiscal_snapshot["lines"],
+            invoice_snapshot=fiscal_snapshot,
+            invoice_snapshot_schema_version=3,
+            invoice_snapshot_hash=calculate_invoice_snapshot_hash(fiscal_snapshot),
+            issued_at=datetime(2026, 8, 17, 12, 0, 0),
+        )
+        db.session.add(invoice)
+        db.session.commit()
+        return invoice
+
     def fiscal_state(self, invoice):
         return {
             "invoice_number": invoice.invoice_number,
@@ -400,6 +459,20 @@ class AccountingEntryServiceSQLiteTest(unittest.TestCase):
         self.assertEqual(original_entry.taxable_base, Decimal("100.00"))
         self.assert_invoice_fiscal_state_unchanged(original, original_before)
         self.assertEqual(rectification.invoice_snapshot, rectification_before)
+
+    def test_manual_external_partial_rectification_copies_exact_negative_snapshot_amounts(self):
+        rectification = self.make_manual_external_partial_rectification()
+        snapshot_before = copy.deepcopy(rectification.invoice_snapshot)
+        hash_before = rectification.invoice_snapshot_hash
+
+        entry = create_accounting_entry(rectification, db_session=db.session)
+
+        self.assertEqual(entry.invoice_number, "R2026000003")
+        self.assertEqual(entry.taxable_base, Decimal("-41.32"))
+        self.assertEqual(entry.vat_amount, Decimal("-8.68"))
+        self.assertEqual(entry.total_amount, Decimal("-50.00"))
+        self.assertEqual(rectification.invoice_snapshot, snapshot_before)
+        self.assertEqual(rectification.invoice_snapshot_hash, hash_before)
 
     def test_total_rectification_v3_is_idempotent(self):
         _, rectification = self.make_total_rectification()

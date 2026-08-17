@@ -8,6 +8,7 @@ from api.invoice_legacy_rectification_aeat_service import (
     LegacyRectificationAeatClassificationError,
     legacy_manual_aeat_type_for_export,
 )
+from api.manual_invoice_snapshot_builder import MANUAL_CORRECTIVE_SNAPSHOT_GENERATOR
 
 
 AEAT_SALES_LEDGER_SHEET_NAME = "EXPEDIDAS_INGRESOS"
@@ -346,8 +347,9 @@ def _validate_corrective_invoice(invoice, snapshot):
     rectification = snapshot["operation"].get("rectification")
     if not isinstance(rectification, dict):
         raise AeatSalesLedgerValidationError("La rectificativa no contiene su referencia fiscal congelada.")
-    if rectification.get("rectification_scope") != "total":
-        raise AeatSalesLedgerValidationError("El libro AEAT no admite rectificativas parciales.")
+    scope = rectification.get("rectification_scope")
+    if scope not in {"total", "partial"}:
+        raise AeatSalesLedgerValidationError("La rectificativa no tiene un alcance fiscal válido.")
 
     invoice_number = _required_text(getattr(invoice, "invoice_number", None), "invoice.invoice_number")
     if "aeat_type" in rectification:
@@ -371,6 +373,96 @@ def _validate_corrective_invoice(invoice, snapshot):
         except LegacyRectificationAeatClassificationError as exc:
             raise AeatSalesLedgerValidationError(str(exc)) from exc
 
+    original_number = _required_text(
+        rectification.get("original_invoice_number"),
+        "operation.rectification.original_invoice_number",
+    )
+    original_issued_at = _snapshot_date(
+        rectification.get("original_invoice_issued_at"),
+        "operation.rectification.original_invoice_issued_at",
+    )
+    if scope == "partial":
+        _validate_manual_partial_reference(
+            invoice,
+            snapshot,
+            rectification,
+            invoice_number=invoice_number,
+            original_number=original_number,
+            original_issued_at=original_issued_at,
+        )
+    else:
+        _validate_persisted_original_reference(
+            invoice,
+            rectification,
+            invoice_number=invoice_number,
+            original_number=original_number,
+            original_issued_at=original_issued_at,
+        )
+
+    return {
+        "invoice_type": CORRECTIVE_INVOICE_TYPE,
+        "aeat_invoice_type": model_aeat_type,
+        "reference": original_number,
+    }
+
+
+def _validate_manual_partial_reference(
+    invoice,
+    snapshot,
+    rectification,
+    *,
+    invoice_number,
+    original_number,
+    original_issued_at,
+):
+    metadata = snapshot.get("metadata")
+    if not isinstance(metadata, dict) or metadata.get("generator") != MANUAL_CORRECTIVE_SNAPSHOT_GENERATOR:
+        raise AeatSalesLedgerValidationError("El libro AEAT solo admite rectificativas parciales manuales válidas.")
+    if rectification.get("rectification_type") != "differences":
+        raise AeatSalesLedgerValidationError("La rectificativa parcial manual debe ser por diferencias.")
+    reference_type = rectification.get("original_reference_type")
+    if reference_type == "external":
+        if rectification.get("original_invoice_id") is not None or getattr(invoice, "original_invoice_id", None) is not None:
+            raise AeatSalesLedgerValidationError(
+                f"La factura rectificativa {invoice_number} mezcla referencias original y externa."
+            )
+        if _required_text(
+            getattr(invoice, "external_original_invoice_number", None),
+            "invoice.external_original_invoice_number",
+        ) != original_number:
+            raise AeatSalesLedgerValidationError(
+                f"La factura rectificativa {invoice_number} no coincide con la referencia externa congelada."
+            )
+        if _snapshot_date(
+            getattr(invoice, "external_original_issue_date", None),
+            "invoice.external_original_issue_date",
+        ) != original_issued_at:
+            raise AeatSalesLedgerValidationError(
+                f"La factura rectificativa {invoice_number} no coincide con la fecha externa congelada."
+            )
+        return
+    if reference_type == "invoice":
+        _validate_persisted_original_reference(
+            invoice,
+            rectification,
+            invoice_number=invoice_number,
+            original_number=original_number,
+            original_issued_at=original_issued_at,
+        )
+        return
+    raise AeatSalesLedgerValidationError(
+        f"La factura rectificativa {invoice_number} no tiene un tipo de referencia original válido."
+    )
+
+
+def _validate_persisted_original_reference(
+    invoice,
+    rectification,
+    *,
+    invoice_number,
+    original_number,
+    original_issued_at,
+):
     original_invoice_id = _positive_int(
         rectification.get("original_invoice_id"),
         "operation.rectification.original_invoice_id",
@@ -382,15 +474,6 @@ def _validate_corrective_invoice(invoice, snapshot):
         raise AeatSalesLedgerValidationError(
             f"La factura rectificativa {invoice_number} no coincide con su factura original persistida."
         )
-
-    original_number = _required_text(
-        rectification.get("original_invoice_number"),
-        "operation.rectification.original_invoice_number",
-    )
-    original_issued_at = _snapshot_date(
-        rectification.get("original_invoice_issued_at"),
-        "operation.rectification.original_invoice_issued_at",
-    )
     original_invoice = getattr(invoice, "original_invoice", None)
     if original_invoice is None:
         raise AeatSalesLedgerValidationError(
@@ -408,12 +491,6 @@ def _validate_corrective_invoice(invoice, snapshot):
         raise AeatSalesLedgerValidationError(
             f"La factura rectificativa {invoice_number} no coincide con la fecha congelada de la original."
         )
-
-    return {
-        "invoice_type": CORRECTIVE_INVOICE_TYPE,
-        "aeat_invoice_type": model_aeat_type,
-        "reference": original_number,
-    }
 
 
 def select_aeat_sales_ledger_rows(rows, *, year, period):

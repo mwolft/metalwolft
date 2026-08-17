@@ -2,8 +2,15 @@
 
 {% block body %}
 <div class="container-fluid" style="max-width: 760px; margin-top: 20px;">
+  {% set rectification = snapshot.operation.rectification if snapshot.operation.invoice_type == 'corrective' else none %}
   <h3>Confirmar emisión de factura manual</h3>
-  <p class="text-muted">Se emitirá una factura ordinaria F sin pedido asociado. El número fiscal se asignará al confirmar.</p>
+  <p class="text-muted">
+    {% if rectification %}
+    Se emitirá un abono fiscal rectificativo en serie R. El número fiscal se asignará al confirmar.
+    {% else %}
+    Se emitirá una factura ordinaria F sin pedido asociado. El número fiscal se asignará al confirmar.
+    {% endif %}
+  </p>
 
   <div class="panel panel-default">
     <div class="panel-heading"><strong>Cliente</strong></div>
@@ -12,6 +19,15 @@
       <div>{{ snapshot.customer.address }}, {{ snapshot.customer.postal_code }} {{ snapshot.customer.city }}</div>
     </div>
   </div>
+  {% if rectification %}
+  <div class="panel panel-default">
+    <div class="panel-heading"><strong>Factura rectificada</strong></div>
+    <div class="panel-body">
+      <div>{{ rectification.original_invoice_number }} · {{ rectification.original_invoice_issued_at }}</div>
+      <div class="text-muted">{{ rectification.rectification_reason_text }} · {{ rectification.aeat_type }} · Rectificación por diferencias</div>
+    </div>
+  </div>
+  {% endif %}
   <div class="panel panel-default">
     <div class="panel-heading"><strong>Resumen fiscal</strong></div>
     <div class="panel-body">

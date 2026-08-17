@@ -2379,14 +2379,16 @@ class ManualInvoiceDraftAdminView(SafeModelView):
     inline_model_form_converter = ManualInvoiceDraftInlineModelConverter
     extra_js = ["/static/admin/manual_invoice_draft.js"]
     column_list = [
-        "id", "status", "client_name", "client_tax_id", "issue_date",
+        "id", "status", "document_nature", "client_name", "client_tax_id", "issue_date",
         "currency", "issued_invoice", "created_at",
     ]
     column_details_list = [
         "id", "status", "client_name", "client_tax_id", "client_address",
         "client_postal_code", "client_city", "client_province", "client_country_code",
         "client_email", "issue_date", "operation_date", "external_reference",
-        "internal_notes", "currency", "lines", "issued_invoice", "issued_at",
+        "internal_notes", "currency", "document_nature", "original_invoice",
+        "external_original_invoice_number", "external_original_issue_date",
+        "rectification_reason", "rectification_aeat_type", "lines", "issued_invoice", "issued_at",
         "created_by", "issued_by", "created_at", "updated_at", "issue_action",
     ]
     column_labels = {
@@ -2402,6 +2404,12 @@ class ManualInvoiceDraftAdminView(SafeModelView):
         "operation_date": "Fecha operación",
         "external_reference": "Referencia externa",
         "internal_notes": "Notas internas",
+        "document_nature": "Tipo de documento",
+        "original_invoice": "Factura original moderna",
+        "external_original_invoice_number": "N.º factura original externa",
+        "external_original_issue_date": "Fecha factura original externa",
+        "rectification_reason": "Motivo de corrección",
+        "rectification_aeat_type": "Tipo fiscal AEAT (R1/R4)",
         "issued_invoice": "Factura emitida",
         "lines": "Concepto e IVA",
         "issued_at": "Emitida el",
@@ -2410,17 +2418,44 @@ class ManualInvoiceDraftAdminView(SafeModelView):
     column_searchable_list = ["client_name", "client_tax_id", "external_reference"]
     column_filters = ["status", "issue_date", "created_at"]
     form_columns = [
+        "document_nature",
         "client_name", "client_tax_id", "client_address", "client_postal_code",
         "client_city", "client_province", "client_country_code", "client_email",
         "issue_date", "operation_date", "external_reference", "internal_notes", "currency",
+        "original_invoice", "external_original_invoice_number", "external_original_issue_date",
+        "rectification_reason", "rectification_aeat_type",
     ]
     form_excluded_columns = ["issuance_key", "issued_invoice", "issued_at", "created_by", "issued_by"]
-    form_overrides = {"issue_date": DateField, "operation_date": DateField, "internal_notes": TextAreaField}
+    form_overrides = {
+        "issue_date": DateField,
+        "operation_date": DateField,
+        "external_original_issue_date": DateField,
+        "internal_notes": TextAreaField,
+        "document_nature": SelectField,
+        "rectification_reason": SelectField,
+        "rectification_aeat_type": SelectField,
+    }
     form_args = {
         "issue_date": {"format": "%Y-%m-%d", "validators": [validators.Optional()], "render_kw": {"placeholder": "YYYY-MM-DD"}},
         "operation_date": {"format": "%Y-%m-%d", "validators": [validators.Optional()], "render_kw": {"placeholder": "YYYY-MM-DD"}},
+        "external_original_issue_date": {"format": "%Y-%m-%d", "validators": [validators.Optional()], "render_kw": {"placeholder": "YYYY-MM-DD"}},
         "client_country_code": {"default": "ES", "render_kw": {"readonly": True}},
         "currency": {"default": "EUR", "render_kw": {"readonly": True}},
+        "document_nature": {
+            "choices": [
+                (ManualInvoiceDraft.NATURE_ORDINARY, "Factura ordinaria"),
+                (ManualInvoiceDraft.NATURE_CORRECTIVE, "Abono / corrección de factura anterior"),
+            ],
+            "default": ManualInvoiceDraft.NATURE_ORDINARY,
+        },
+        "rectification_reason": {
+            "choices": [("", "Selecciona un motivo")] + list(RECTIFICATION_REASON_TEXTS.items()),
+            "validators": [validators.Optional()],
+        },
+        "rectification_aeat_type": {
+            "choices": [("", "Selecciona tipo AEAT"), ("R1", "R1"), ("R4", "R4")],
+            "validators": [validators.Optional()],
+        },
     }
     column_formatters = {
         "issue_action": lambda view, context, model, name: (

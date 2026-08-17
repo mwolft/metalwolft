@@ -405,18 +405,28 @@ def _build_invoice_header(*, invoice_number, issued_at, operation, available_wid
     issue_value = issued_at or operation.get("issue_date")
     rectification = operation.get("rectification") if operation.get("invoice_type") == "corrective" else None
     metadata = [
-        "<font size='12'><b>Factura rectificativa</b></font>"
+        "<font size='12'><b>Factura rectificativa / abono</b></font>"
+        if isinstance(rectification, dict) and rectification.get("rectification_scope") == "partial"
+        else "<font size='12'><b>Factura rectificativa</b></font>"
         if isinstance(rectification, dict)
         else "<font size='12'><b>FACTURA</b></font>",
         f"<font size='7' color='{BRAND_MUTED}'>NÚMERO</font><br/><b>{_pdf_text(invoice_number)}</b>",
         f"<font size='7' color='{BRAND_MUTED}'>FECHA DE EXPEDICIÓN</font><br/>{_pdf_text(_display_date(issue_value))}",
     ]
     if isinstance(rectification, dict):
-        metadata.append(
-            f"<font size='7' color='{BRAND_MUTED}'>RECTIFICA LA FACTURA</font><br/>"
-            f"<b>{_pdf_text(rectification['original_invoice_number'])}</b> emitida el "
-            f"{_pdf_text(_display_date(rectification['original_invoice_issued_at']))}"
-        )
+        if rectification.get("rectification_scope") == "partial":
+            metadata.append(
+                f"<font size='7' color='{BRAND_MUTED}'>FACTURA RECTIFICADA</font><br/>"
+                f"<b>{_pdf_text(rectification['original_invoice_number'])}</b><br/>"
+                f"<font size='7' color='{BRAND_MUTED}'>FECHA FACTURA RECTIFICADA</font> "
+                f"{_pdf_text(_display_date(rectification['original_invoice_issued_at']))}"
+            )
+        else:
+            metadata.append(
+                f"<font size='7' color='{BRAND_MUTED}'>RECTIFICA LA FACTURA</font><br/>"
+                f"<b>{_pdf_text(rectification['original_invoice_number'])}</b> emitida el "
+                f"{_pdf_text(_display_date(rectification['original_invoice_issued_at']))}"
+            )
     operation_date = operation.get("operation_date")
     if operation_date and _date_key(operation_date) != _date_key(issue_value):
         metadata.append(

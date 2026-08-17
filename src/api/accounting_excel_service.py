@@ -218,15 +218,20 @@ def _document_context(entry):
 
     original_invoice_id = getattr(invoice, "original_invoice_id", None)
     original_invoice = getattr(invoice, "original_invoice", None)
-    if not original_invoice_id or original_invoice is None:
-        raise AccountingExcelValidationError("La factura rectificativa no tiene factura original valida.")
+    if original_invoice_id and original_invoice is not None:
+        rectified_invoice_number = _required_text(
+            getattr(original_invoice, "invoice_number", None),
+            "original_invoice.invoice_number",
+        )
+    else:
+        rectified_invoice_number = _required_text(
+            getattr(invoice, "external_original_invoice_number", None),
+            "invoice.external_original_invoice_number",
+        )
 
     return {
         "invoice_type": "Rectificativa",
-        "rectified_invoice_number": _required_text(
-            getattr(original_invoice, "invoice_number", None),
-            "original_invoice.invoice_number",
-        ),
+        "rectified_invoice_number": rectified_invoice_number,
     }
 
 

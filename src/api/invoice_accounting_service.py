@@ -2,6 +2,7 @@ from datetime import date, datetime
 from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 
 from api.invoice_snapshot_integrity import calculate_invoice_snapshot_hash
+from api.manual_invoice_snapshot_builder import MANUAL_CORRECTIVE_SNAPSHOT_GENERATOR
 from api.models import AccountingEntry, db
 
 
@@ -102,12 +103,12 @@ def _validated_snapshot(invoice):
             raise AccountingEntryValidationError(f"Invoice snapshot block {block} is required.")
 
     if schema_version == 3:
-        _validate_total_rectification_snapshot(invoice, snapshot)
+        _validate_rectification_snapshot(invoice, snapshot)
 
     return snapshot
 
 
-def _validate_total_rectification_snapshot(invoice, snapshot):
+def _validate_rectification_snapshot(invoice, snapshot):
     operation = snapshot["operation"]
     if operation.get("invoice_type") != "corrective":
         raise AccountingEntryValidationError("Corrective snapshot invoice type is required.")
@@ -117,8 +118,12 @@ def _validate_total_rectification_snapshot(invoice, snapshot):
     rectification = operation.get("rectification")
     if not isinstance(rectification, dict):
         raise AccountingEntryValidationError("Corrective snapshot reference is required.")
-    if rectification.get("rectification_scope") != "total":
-        raise AccountingEntryValidationError("Only total rectifications are supported.")
+    scope = rectification.get("rectification_scope")
+    if scope not in {"total", "partial"}:
+        raise AccountingEntryValidationError("Corrective rectification scope is required.")
+    if scope == "partial":
+        _validate_manual_partial_rectification(invoice, snapshot, rectification)
+        return
 
     original_invoice_id = _positive_integer(
         rectification.get("original_invoice_id"),
@@ -133,6 +138,50 @@ def _validate_total_rectification_snapshot(invoice, snapshot):
         rectification.get("original_invoice_issued_at"),
         "Corrective original invoice issue date is required.",
     )
+
+
+def _validate_manual_partial_rectification(invoice, snapshot, rectification):
+    metadata = snapshot.get("metadata")
+    if not isinstance(metadata, dict) or metadata.get("generator") != MANUAL_CORRECTIVE_SNAPSHOT_GENERATOR:
+        raise AccountingEntryValidationError("Only manual partial rectifications are supported.")
+    if rectification.get("rectification_type") != "differences":
+        raise AccountingEntryValidationError("Manual partial rectifications must use differences.")
+    if rectification.get("aeat_type") not in {"R1", "R4"}:
+        raise AccountingEntryValidationError("Manual partial rectifications require AEAT type R1 or R4.")
+    if getattr(invoice, "rectification_aeat_type", None) != rectification.get("aeat_type"):
+        raise AccountingEntryValidationError("Corrective AEAT type does not match the snapshot.")
+
+    reference_type = rectification.get("original_reference_type")
+    original_number = str(rectification.get("original_invoice_number") or "").strip()
+    original_date = rectification.get("original_invoice_issued_at")
+    if not original_number:
+        raise AccountingEntryValidationError("Corrective original invoice number is required.")
+    _invoice_date_value(original_date, "Corrective original invoice issue date is required.")
+
+    if reference_type == "invoice":
+        original_invoice_id = _positive_integer(
+            rectification.get("original_invoice_id"),
+            "Corrective original invoice id is required.",
+        )
+        if original_invoice_id != getattr(invoice, "original_invoice_id", None):
+            raise AccountingEntryValidationError("Corrective original invoice reference does not match.")
+        if getattr(invoice, "external_original_invoice_number", None) or getattr(invoice, "external_original_issue_date", None):
+            raise AccountingEntryValidationError("Modern corrective references cannot include an external original.")
+        return
+
+    if reference_type == "external":
+        if rectification.get("original_invoice_id") is not None or getattr(invoice, "original_invoice_id", None) is not None:
+            raise AccountingEntryValidationError("External corrective references cannot include an invoice id.")
+        if getattr(invoice, "external_original_invoice_number", None) != original_number:
+            raise AccountingEntryValidationError("External corrective invoice number does not match the snapshot.")
+        if _invoice_date_value(
+            getattr(invoice, "external_original_issue_date", None),
+            "External corrective invoice issue date is required.",
+        ) != _invoice_date_value(original_date, "Corrective original invoice issue date is required."):
+            raise AccountingEntryValidationError("External corrective invoice date does not match the snapshot.")
+        return
+
+    raise AccountingEntryValidationError("Corrective original reference type is required.")
 
 
 def _positive_integer(value, message):
