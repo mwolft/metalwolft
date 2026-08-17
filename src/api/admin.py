@@ -2362,6 +2362,9 @@ class SupplierInvoiceAdminView(SafeModelView):
 class ManualInvoiceDraftAdminView(SafeModelView):
     """Admin-only mutable staging area for ordinary, order-independent invoices."""
 
+    can_create = True
+    can_edit = True
+    can_delete = True
     can_view_details = True
     list_template = "admin/manual_invoice_draft_list.html"
     inline_models = (ManualInvoiceDraftLine,)
@@ -2426,10 +2429,13 @@ class ManualInvoiceDraftAdminView(SafeModelView):
         elif model.status != ManualInvoiceDraft.STATUS_DRAFT:
             raise ValueError("Una factura manual emitida no puede editarse.")
 
+    @expose("/edit/", methods=("GET", "POST"))
     def edit_view(self):
         draft = self.get_one(request.args.get("id"))
         if draft and draft.status != ManualInvoiceDraft.STATUS_DRAFT:
             flash("Una factura manual emitida no puede editarse.", "error")
+            if draft.issued_invoice_id:
+                return redirect(url_for("invoices.details_view", id=draft.issued_invoice_id))
             return redirect(self.get_url(".details_view", id=draft.id))
         return super().edit_view()
 

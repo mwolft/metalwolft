@@ -221,5 +221,110 @@ class ManualInvoiceAdminContractTest(unittest.TestCase):
         self.assertIn("PDF, registrar contabilidad y enviar el email", template)
 
 
+def _has_admin_dependencies():
+    try:
+        import flask  # noqa: F401
+        import flask_admin  # noqa: F401
+        import flask_sqlalchemy  # noqa: F401
+        import sqlalchemy  # noqa: F401
+    except ImportError:
+        return False
+    return True
+
+
+HAS_ADMIN_DEPENDENCIES = _has_admin_dependencies()
+
+
+@unittest.skipUnless(HAS_ADMIN_DEPENDENCIES, "Flask-Admin dependencies are not installed.")
+class ManualInvoiceDraftAdminViewTest(unittest.TestCase):
+    def setUp(self):
+        from flask import Flask
+        from flask_admin import Admin
+        from sqlalchemy.orm import configure_mappers
+
+        import api.admin as admin_module
+        from api.models import ManualInvoiceDraft, ManualInvoiceDraftLine, db
+
+        self.admin_module = admin_module
+        self.ManualInvoiceDraft = ManualInvoiceDraft
+        self.ManualInvoiceDraftLine = ManualInvoiceDraftLine
+        self.db = db
+        admin_module.ADMIN_USER = "admin"
+        admin_module.ADMIN_PW = "secret"
+        configure_mappers()
+        self.app = Flask(__name__, template_folder=str(SRC_DIR / "templates"))
+        self.app.config.update(
+            SECRET_KEY="test-secret",
+            SQLALCHEMY_DATABASE_URI="sqlite:///:memory:",
+            SQLALCHEMY_TRACK_MODIFICATIONS=False,
+        )
+        db.init_app(self.app)
+        self.admin = Admin(self.app, url="/admin")
+        self.view = admin_module.ManualInvoiceDraftAdminView(
+            ManualInvoiceDraft, db.session, name="Facturas manuales"
+        )
+        self.admin.add_view(self.view)
+        with self.app.app_context():
+            db.create_all()
+            self.draft = ManualInvoiceDraft(
+                client_name="Cliente", client_tax_id="B12345678", client_address="Calle 1",
+                client_postal_code="13001", client_city="Ciudad Real", issue_date=date(2026, 8, 17),
+            )
+            db.session.add(self.draft)
+            db.session.flush()
+            db.session.add(ManualInvoiceDraftLine(
+                manual_invoice_draft_id=self.draft.id, concept="Servicio", tax_base=Decimal("100.00"), tax_rate=Decimal("21.00")
+            ))
+            db.session.commit()
+            self.draft_id = self.draft.id
+        self.client = self.app.test_client()
+
+    def tearDown(self):
+        with self.app.app_context():
+            self.db.session.remove()
+            self.db.drop_all()
+
+    @property
+    def auth(self):
+        import base64
+        return {"Authorization": "Basic " + base64.b64encode(b"admin:secret").decode("ascii")}
+
+    def _route(self, suffix, *, draft_id=None):
+        for rule in self.app.url_map.iter_rules():
+            if rule.endpoint == f"{self.view.endpoint}{suffix}":
+                path = rule.rule.replace("<int:id>", str(draft_id)).replace("<int:draft_id>", str(draft_id))
+                if suffix == ".edit_view":
+                    return f"{path}?id={draft_id}"
+                return path
+        self.fail(f"Route {suffix} was not registered")
+
+    def test_list_loads_and_draft_has_edit_route(self):
+        response = self.client.get(self._route(".index_view"), headers=self.auth)
+        self.assertEqual(response.status_code, 200)
+        edit_url = self._route(".edit_view", draft_id=self.draft_id)
+        self.assertIn(edit_url.encode(), response.data)
+
+    def test_draft_edit_route_accepts_get(self):
+        response = self.client.get(self._route(".edit_view", draft_id=self.draft_id), headers=self.auth)
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(b"Cliente / raz", response.data)
+
+    def test_issued_and_cancelled_drafts_cannot_be_edited(self):
+        with self.app.app_context():
+            draft = self.db.session.get(self.ManualInvoiceDraft, self.draft_id)
+            draft.status = self.ManualInvoiceDraft.STATUS_ISSUED
+            draft.issued_invoice_id = None
+            self.db.session.commit()
+        response = self.client.get(self._route(".edit_view", draft_id=self.draft_id), headers=self.auth)
+        self.assertEqual(response.status_code, 302)
+
+        with self.app.app_context():
+            draft = self.db.session.get(self.ManualInvoiceDraft, self.draft_id)
+            draft.status = self.ManualInvoiceDraft.STATUS_CANCELLED
+            self.db.session.commit()
+        response = self.client.get(self._route(".edit_view", draft_id=self.draft_id), headers=self.auth)
+        self.assertEqual(response.status_code, 302)
+
+
 if __name__ == "__main__":
     unittest.main()
