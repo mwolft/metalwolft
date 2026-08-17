@@ -1,0 +1,31 @@
+{% extends 'admin/master.html' %}
+
+{% block body %}
+<div class="container-fluid" style="max-width: 760px; margin-top: 20px;">
+  <h3>Confirmar emisión de factura manual</h3>
+  <p class="text-muted">Se emitirá una factura ordinaria F sin pedido asociado. El número fiscal se asignará al confirmar.</p>
+
+  <div class="panel panel-default">
+    <div class="panel-heading"><strong>Cliente</strong></div>
+    <div class="panel-body">
+      <div>{{ snapshot.customer.legal_name }} · {{ snapshot.customer.tax_id }}</div>
+      <div>{{ snapshot.customer.address }}, {{ snapshot.customer.postal_code }} {{ snapshot.customer.city }}</div>
+    </div>
+  </div>
+  <div class="panel panel-default">
+    <div class="panel-heading"><strong>Resumen fiscal</strong></div>
+    <div class="panel-body">
+      {% for line in snapshot.lines %}
+      <p style="margin-bottom: 8px;">{{ line.description }} · Base {{ line.tax_base }} € · IVA {{ line.tax_rate }}% ({{ line.tax_amount }} €)</p>
+      {% endfor %}
+      <p style="margin: 0;"><strong>Total: {{ snapshot.totals.total_amount }} €</strong></p>
+    </div>
+  </div>
+  <form method="post" action="{{ action_url }}">
+    <input type="hidden" name="confirm_issue" value="confirmed">
+    <p class="text-muted">Esta acción emite y congela el snapshot fiscal. Después podrás generar PDF, registrar contabilidad y enviar el email desde el detalle de factura.</p>
+    <button type="submit" class="btn btn-primary">CONFIRMAR EMISIÓN</button>
+    <a class="btn btn-default" href="{{ cancel_url }}">Cancelar</a>
+  </form>
+</div>
+{% endblock %}

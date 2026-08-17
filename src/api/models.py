@@ -713,6 +713,94 @@ class Invoices(db.Model):
         return self.serialize_admin()
 
 
+class ManualInvoiceDraft(db.Model):
+    """Mutable input for an ordinary invoice issued outside an order."""
+
+    __tablename__ = "manual_invoice_drafts"
+    __table_args__ = (
+        db.CheckConstraint(
+            "status IN ('draft', 'issued', 'cancelled')",
+            name="ck_manual_invoice_drafts_status_valid",
+        ),
+        db.CheckConstraint(
+            "currency = 'EUR'",
+            name="ck_manual_invoice_drafts_currency_eur",
+        ),
+        db.CheckConstraint(
+            "client_country_code = 'ES'",
+            name="ck_manual_invoice_drafts_client_country_es",
+        ),
+    )
+
+    STATUS_DRAFT = "draft"
+    STATUS_ISSUED = "issued"
+    STATUS_CANCELLED = "cancelled"
+
+    id = db.Column(db.Integer, primary_key=True)
+    status = db.Column(db.String(20), nullable=False, default=STATUS_DRAFT, server_default=STATUS_DRAFT)
+    client_name = db.Column(db.String(255), nullable=True)
+    client_tax_id = db.Column(db.String(50), nullable=True)
+    client_address = db.Column(db.String(255), nullable=True)
+    client_postal_code = db.Column(db.String(20), nullable=True)
+    client_city = db.Column(db.String(100), nullable=True)
+    client_province = db.Column(db.String(100), nullable=True)
+    client_country_code = db.Column(db.String(2), nullable=False, default="ES", server_default="ES")
+    client_email = db.Column(db.String(255), nullable=True)
+    issue_date = db.Column(db.Date, nullable=True)
+    operation_date = db.Column(db.Date, nullable=True)
+    external_reference = db.Column(db.String(255), nullable=True)
+    internal_notes = db.Column(db.Text, nullable=True)
+    currency = db.Column(db.String(3), nullable=False, default="EUR", server_default="EUR")
+    issuance_key = db.Column(db.String(36), nullable=False, unique=True, default=lambda: str(uuid.uuid4()))
+    issued_invoice_id = db.Column(db.Integer, db.ForeignKey("invoices.id"), nullable=True, unique=True)
+    created_at = db.Column(db.DateTime, nullable=False, server_default=db.func.now())
+    updated_at = db.Column(db.DateTime, nullable=False, server_default=db.func.now(), onupdate=db.func.now())
+    issued_at = db.Column(db.DateTime, nullable=True)
+    created_by = db.Column(db.String(255), nullable=True)
+    issued_by = db.Column(db.String(255), nullable=True)
+
+    issued_invoice = db.relationship("Invoices", foreign_keys=[issued_invoice_id], lazy=True)
+    lines = db.relationship(
+        "ManualInvoiceDraftLine",
+        backref="draft",
+        lazy=True,
+        cascade="all, delete-orphan",
+        order_by="ManualInvoiceDraftLine.position",
+    )
+
+    def __repr__(self):
+        return f"<ManualInvoiceDraft {self.id} {self.status}>"
+
+    @property
+    def issue_action(self):
+        return self.status == self.STATUS_DRAFT and self.issued_invoice_id is None
+
+
+class ManualInvoiceDraftLine(db.Model):
+    """Single-tax fiscal line captured before manual invoice issuance."""
+
+    __tablename__ = "manual_invoice_draft_lines"
+    __table_args__ = (
+        db.UniqueConstraint("manual_invoice_draft_id", "position", name="uq_manual_invoice_draft_lines_position"),
+        db.CheckConstraint("tax_base > 0", name="ck_manual_invoice_draft_lines_tax_base_positive"),
+        db.CheckConstraint("tax_rate >= 0", name="ck_manual_invoice_draft_lines_tax_rate_nonnegative"),
+    )
+
+    id = db.Column(db.Integer, primary_key=True)
+    manual_invoice_draft_id = db.Column(
+        db.Integer,
+        db.ForeignKey("manual_invoice_drafts.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    position = db.Column(db.Integer, nullable=False, default=1, server_default="1")
+    concept = db.Column(db.String(500), nullable=True)
+    tax_base = db.Column(db.Numeric(12, 2), nullable=True)
+    tax_rate = db.Column(db.Numeric(5, 2), nullable=True)
+
+    def __repr__(self):
+        return f"<ManualInvoiceDraftLine {self.id} draft={self.manual_invoice_draft_id}>"
+
+
 class InvoiceFiscalSubmission(db.Model):
     __tablename__ = "invoice_fiscal_submissions"
     __table_args__ = (

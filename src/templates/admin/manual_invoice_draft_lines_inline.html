@@ -1,0 +1,55 @@
+{% macro render_field(field) %}
+  {{ field }}
+  {% if h.is_field_error(field.errors) %}
+  <ul class="input-errors">
+    {% for error in field.errors if error is string %}
+    <li>{{ error }}</li>
+    {% endfor %}
+  </ul>
+  {% endif %}
+{% endmacro %}
+
+<div class="inline-field" id="{{ field.id }}" data-manual-invoice-lines>
+  <div class="inline-field-list">
+    {% for subfield in field %}
+    <div id="{{ subfield.id }}" class="inline-field well well-small">
+      {% if not check or check(subfield) %}
+      <legend>
+        Concepto e IVA #{{ loop.index }}
+        <div class="pull-right">
+          {% if subfield.get_pk and subfield.get_pk() %}
+          <input type="checkbox" name="del-{{ subfield.id }}" id="del-{{ subfield.id }}" />
+          <label for="del-{{ subfield.id }}" style="display: inline">Eliminar</label>
+          {% else %}
+          <button type="button" class="inline-remove-field" value="Eliminar esta línea" aria-label="Eliminar línea">
+            <i class="fa fa-times icon-remove" aria-hidden="true"></i>
+          </button>
+          {% endif %}
+        </div>
+      </legend>
+      {% endif %}
+      {{ render_field(subfield) }}
+    </div>
+    {% endfor %}
+  </div>
+
+  <div class="inline-field-template hide">
+    {% filter forceescape %}
+    <div class="inline-field well well-small">
+      <legend>
+        Nuevo concepto e IVA
+        <div class="pull-right">
+          <button type="button" class="inline-remove-field" value="Eliminar esta línea" aria-label="Eliminar línea">
+            <i class="fa fa-times icon-remove" aria-hidden="true"></i>
+          </button>
+        </div>
+      </legend>
+      {{ render_field(template) }}
+    </div>
+    {% endfilter %}
+  </div>
+
+  <button id="{{ field.id }}-button" type="button" class="btn" data-manual-invoice-inline-add="{{ field.id }}">
+    Añadir concepto e IVA
+  </button>
+</div>
