@@ -4,7 +4,7 @@ import secrets
 from collections.abc import Mapping
 from io import BytesIO
 
-from flask import request, Response, current_app, send_file, flash, redirect, session
+from flask import request, Response, current_app, send_file, flash, redirect, session, url_for
 from flask_admin import Admin, AdminIndexView, expose
 from flask_admin.actions import action
 from markupsafe import Markup, escape
@@ -20,6 +20,7 @@ from .models import (
     Posts, Comments, Invoices, VeriFactuRecord, DeliveryEstimateConfig,
     AccountingEntry, SupplierInvoice, SupplierInvoiceDocument, SupplierInvoiceExtraction,
     SupplierInvoiceTaxBreakdown,
+    ManualInvoiceDraft, ManualInvoiceDraftLine,
 )
 from api.accounting_excel_service import (
     AccountingExcelExportError,
@@ -128,6 +129,8 @@ from api.invoice_issue_service import (
     issue_invoice_for_order,
     issue_total_rectification_for_invoice,
 )
+from api.manual_invoice_issue_service import issue_manual_invoice
+from api.manual_invoice_snapshot_builder import build_manual_invoice_snapshot
 from api.invoice_legacy_rectification_aeat_service import (
     LegacyRectificationAeatClassificationError,
     SUPPORTED_LEGACY_AEAT_TYPES,
@@ -2356,6 +2359,147 @@ class SupplierInvoiceAdminView(SafeModelView):
         return redirect(self.get_url(".details_view", id=supplier_invoice.id))
 
 
+class ManualInvoiceDraftAdminView(SafeModelView):
+    """Admin-only mutable staging area for ordinary, order-independent invoices."""
+
+    can_view_details = True
+    list_template = "admin/manual_invoice_draft_list.html"
+    inline_models = (ManualInvoiceDraftLine,)
+    column_list = [
+        "id", "status", "client_name", "client_tax_id", "issue_date",
+        "currency", "issued_invoice", "created_at",
+    ]
+    column_details_list = [
+        "id", "status", "client_name", "client_tax_id", "client_address",
+        "client_postal_code", "client_city", "client_province", "client_country_code",
+        "client_email", "issue_date", "operation_date", "external_reference",
+        "internal_notes", "currency", "lines", "issued_invoice", "issued_at",
+        "created_by", "issued_by", "created_at", "updated_at", "issue_action",
+    ]
+    column_labels = {
+        "client_name": "Cliente / razón social",
+        "client_tax_id": "NIF/CIF",
+        "client_address": "Dirección",
+        "client_postal_code": "Código postal",
+        "client_city": "Ciudad",
+        "client_province": "Provincia",
+        "client_country_code": "País",
+        "client_email": "Email para enviar la factura",
+        "issue_date": "Fecha expedición",
+        "operation_date": "Fecha operación",
+        "external_reference": "Referencia externa",
+        "internal_notes": "Notas internas",
+        "issued_invoice": "Factura emitida",
+        "lines": "Concepto e IVA",
+        "issued_at": "Emitida el",
+        "issue_action": "Emisión",
+    }
+    column_searchable_list = ["client_name", "client_tax_id", "external_reference"]
+    column_filters = ["status", "issue_date", "created_at"]
+    form_columns = [
+        "client_name", "client_tax_id", "client_address", "client_postal_code",
+        "client_city", "client_province", "client_country_code", "client_email",
+        "issue_date", "operation_date", "external_reference", "internal_notes", "currency",
+    ]
+    form_excluded_columns = ["issuance_key", "issued_invoice", "issued_at", "created_by", "issued_by"]
+    form_overrides = {"issue_date": DateField, "operation_date": DateField, "internal_notes": TextAreaField}
+    form_args = {
+        "issue_date": {"format": "%Y-%m-%d", "validators": [validators.Optional()], "render_kw": {"placeholder": "YYYY-MM-DD"}},
+        "operation_date": {"format": "%Y-%m-%d", "validators": [validators.Optional()], "render_kw": {"placeholder": "YYYY-MM-DD"}},
+        "client_country_code": {"default": "ES", "render_kw": {"readonly": True}},
+        "currency": {"default": "EUR", "render_kw": {"readonly": True}},
+    }
+    column_formatters = {
+        "issue_action": lambda view, context, model, name: (
+            Markup(
+                f'<a class="btn btn-primary btn-xs" href="{view.get_url(".confirm_issue", draft_id=model.id)}">'
+                "CONFIRMAR EMISIÓN</a>"
+            ) if model.issue_action else "-"
+        ),
+    }
+    column_formatters_detail = column_formatters
+
+    def on_model_change(self, form, model, is_created):
+        if is_created:
+            model.status = ManualInvoiceDraft.STATUS_DRAFT
+            model.created_by = invoice_admin_actor_from_basic_auth(request.authorization)
+        elif model.status != ManualInvoiceDraft.STATUS_DRAFT:
+            raise ValueError("Una factura manual emitida no puede editarse.")
+
+    def edit_view(self):
+        draft = self.get_one(request.args.get("id"))
+        if draft and draft.status != ManualInvoiceDraft.STATUS_DRAFT:
+            flash("Una factura manual emitida no puede editarse.", "error")
+            return redirect(self.get_url(".details_view", id=draft.id))
+        return super().edit_view()
+
+    def delete_model(self, model):
+        if model.status != ManualInvoiceDraft.STATUS_DRAFT:
+            flash("Un borrador emitido no puede borrarse.", "error")
+            return False
+        return super().delete_model(model)
+
+    @expose("/confirm-issue/<int:draft_id>", methods=["GET", "POST"])
+    def confirm_issue(self, draft_id):
+        draft = self.session.get(ManualInvoiceDraft, draft_id)
+        if not draft:
+            flash("Borrador de factura manual no encontrado.", "error")
+            return redirect(self.get_url(".index_view"))
+        if draft.issued_invoice_id:
+            flash("Este borrador ya se ha emitido.", "info")
+            return redirect(url_for("invoices.details_view", id=draft.issued_invoice_id))
+        if draft.status != ManualInvoiceDraft.STATUS_DRAFT:
+            flash("Este borrador no está disponible para emitir.", "error")
+            return redirect(self.get_url(".details_view", id=draft.id))
+
+        if request.method == "GET":
+            try:
+                preview = build_manual_invoice_snapshot(
+                    draft,
+                    build_invoice_issuer_from_config(),
+                    issue_date=draft.issue_date,
+                    actor=invoice_admin_actor_from_basic_auth(request.authorization),
+                )
+            except Exception as exc:
+                flash(f"El borrador no está listo para emitir: {exc}", "error")
+                return redirect(self.get_url(".details_view", id=draft.id))
+            return self.render(
+                "admin/manual_invoice_draft_confirm.html",
+                draft=draft,
+                snapshot=preview,
+                action_url=self.get_url(".confirm_issue", draft_id=draft.id),
+                cancel_url=self.get_url(".details_view", id=draft.id),
+            )
+
+        if request.form.get("confirm_issue") != "confirmed":
+            flash("Confirma la emisión fiscal para continuar.", "error")
+            return redirect(self.get_url(".confirm_issue", draft_id=draft.id))
+        try:
+            result = issue_manual_invoice(
+                db_session=self.session,
+                draft_id=draft.id,
+                issuer=build_invoice_issuer_from_config(),
+                actor=invoice_admin_actor_from_basic_auth(request.authorization),
+            )
+        except (InvoiceIssueError, InvoiceSnapshotValidationError, InvoiceNumberError, IntegrityError) as exc:
+            self.session.rollback()
+            current_app.logger.warning("Manual invoice issuance rejected draft_id=%s", draft.id)
+            flash(f"No se ha podido emitir la factura manual: {exc}", "error")
+            return redirect(self.get_url(".details_view", id=draft.id))
+        except Exception:
+            self.session.rollback()
+            current_app.logger.exception("Unexpected manual invoice issuance error draft_id=%s", draft.id)
+            flash("No se ha podido emitir la factura manual.", "error")
+            return redirect(self.get_url(".details_view", id=draft.id))
+
+        flash(
+            f"Factura manual {result.invoice_number} emitida correctamente."
+            if result.created else f"La factura manual {result.invoice_number} ya estaba emitida.",
+            "success" if result.created else "info",
+        )
+        return redirect(url_for("invoices.details_view", id=result.invoice.id))
+
+
 class InvoiceAdminView(SafeModelView):
     can_create = False
     can_edit = False
@@ -3214,6 +3358,7 @@ def setup_admin(app):
     admin.add_view(SafeModelView(Posts, db.session))
     admin.add_view(SafeModelView(Comments, db.session))
     admin.add_view(SupplierInvoiceAdminView(SupplierInvoice, db.session, name="Facturas recibidas"))
+    admin.add_view(ManualInvoiceDraftAdminView(ManualInvoiceDraft, db.session, name="Facturas manuales"))
     admin.add_view(InvoiceAdminView(Invoices, db.session))
     admin.add_view(VeriFactuRecordAdminView(VeriFactuRecord, db.session, name="VeriFactu"))
     admin.add_view(SafeModelView(DeliveryEstimateConfig, db.session))
