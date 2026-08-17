@@ -1,6 +1,6 @@
 import sys
 import unittest
-from datetime import date
+from datetime import date, datetime
 from decimal import Decimal
 from pathlib import Path
 from types import SimpleNamespace
@@ -13,6 +13,7 @@ if str(SRC_DIR) not in sys.path:
     sys.path.insert(0, str(SRC_DIR))
 
 from api.invoice_issue_service import InvoiceIssueError
+from api.invoice_snapshot_builder import build_rectification_snapshot_from_invoice
 from api.invoice_snapshot_integrity import calculate_invoice_snapshot_hash
 from api.manual_invoice_issue_service import issue_manual_invoice
 from api.manual_invoice_snapshot_builder import build_manual_invoice_snapshot
@@ -145,6 +146,33 @@ class ManualInvoiceSnapshotTest(unittest.TestCase):
 
         with self.assertRaisesRegex(ValueError, "base imponible debe ser mayor"):
             build_manual_invoice_snapshot(draft(total_base=Decimal("0.00")), issuer(), issue_date=date(2026, 8, 17))
+
+    def test_total_rectification_inverts_a_manual_v2_invoice(self):
+        original_snapshot = build_manual_invoice_snapshot(
+            draft(total_base=Decimal("41.32")), issuer(), issue_date=date(2026, 8, 17)
+        )
+        original = SimpleNamespace(
+            id=300,
+            invoice_number="F2026000004",
+            invoice_type="ordinary",
+            issued_at=datetime(2026, 8, 17, 9, 0),
+            invoice_snapshot=original_snapshot,
+        )
+
+        rectification = build_rectification_snapshot_from_invoice(
+            original,
+            issue_date=datetime(2026, 8, 17, 10, 0),
+            rectification_type="differences",
+            rectification_reason="invoice_error",
+            aeat_type="R4",
+        )
+
+        self.assertEqual(rectification["totals"]["tax_base"], "-41.32")
+        self.assertEqual(rectification["totals"]["tax_amount"], "-8.68")
+        self.assertEqual(rectification["totals"]["total_amount"], "-50.00")
+        self.assertEqual(rectification["operation"]["rectification"]["original_invoice_id"], 300)
+        self.assertEqual(rectification["operation"]["rectification"]["original_invoice_number"], "F2026000004")
+        self.assertEqual(len(calculate_invoice_snapshot_hash(rectification)), 64)
 
 
 class ManualInvoiceIssueServiceTest(unittest.TestCase):

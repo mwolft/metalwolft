@@ -939,30 +939,60 @@ def _invert_rectification_totals(original_totals, inverted_lines):
 
     product_line_sum = _quantize_money(
         sum(
-            _to_decimal(line["line_amount_before_discount"], f"lines.{line['line_number']}.line_amount_before_discount")
-            for line in inverted_lines
-            if line.get("line_type") == "product"
+            (
+                _to_decimal(line["line_amount_before_discount"], f"lines.{line['line_number']}.line_amount_before_discount")
+                for line in inverted_lines
+                if line.get("line_type") == "product"
+            ),
+            Decimal("0.00"),
         )
     )
     shipping_line_sum = _quantize_money(
         sum(
-            _to_decimal(line["line_amount_before_discount"], f"lines.{line['line_number']}.line_amount_before_discount")
-            for line in inverted_lines
-            if line.get("line_type") == "shipping"
+            (
+                _to_decimal(line["line_amount_before_discount"], f"lines.{line['line_number']}.line_amount_before_discount")
+                for line in inverted_lines
+                if line.get("line_type") == "shipping"
+            ),
+            Decimal("0.00"),
         )
     )
     if _quantize_money(
-        sum(_to_decimal(line["tax_base"], f"lines.{line['line_number']}.tax_base") for line in inverted_lines)
+        sum(
+            (_to_decimal(line["tax_base"], f"lines.{line['line_number']}.tax_base") for line in inverted_lines),
+            Decimal("0.00"),
+        )
     ) != _to_decimal(expected["tax_base"], "totals.tax_base"):
         raise InvoiceSnapshotValidationError("totals.tax_base", "La base rectificativa no reconcilia.")
     if _quantize_money(
-        sum(_to_decimal(line["tax_amount"], f"lines.{line['line_number']}.tax_amount") for line in inverted_lines)
+        sum(
+            (_to_decimal(line["tax_amount"], f"lines.{line['line_number']}.tax_amount") for line in inverted_lines),
+            Decimal("0.00"),
+        )
     ) != _to_decimal(expected["tax_amount"], "totals.tax_amount"):
         raise InvoiceSnapshotValidationError("totals.tax_amount", "El IVA rectificativo no reconcilia.")
     if _quantize_money(
-        sum(_to_decimal(line["line_total"], f"lines.{line['line_number']}.line_total") for line in inverted_lines)
+        sum(
+            (_to_decimal(line["line_total"], f"lines.{line['line_number']}.line_total") for line in inverted_lines),
+            Decimal("0.00"),
+        )
     ) != _to_decimal(expected["total_amount"], "totals.total_amount"):
         raise InvoiceSnapshotValidationError("totals.total_amount", "El total rectificativo no reconcilia.")
+
+    manual_snapshot = any(line.get("line_type") == "manual" for line in inverted_lines)
+    if manual_snapshot:
+        # Manual v2 snapshots have no product/shipping allocation. Their fiscal
+        # authority is the reconciled tax base, tax and total validated above.
+        if shipping_line_sum != _to_decimal(
+            expected["shipping_amount_before_discount"],
+            "totals.shipping_amount_before_discount",
+        ):
+            raise InvoiceSnapshotValidationError(
+                "totals.shipping_amount_before_discount",
+                "El envio rectificativo no reconcilia.",
+            )
+        return expected
+
     if product_line_sum != _to_decimal(
         expected["products_amount_before_discount"],
         "totals.products_amount_before_discount",
