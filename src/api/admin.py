@@ -1621,6 +1621,14 @@ class SupplierInvoiceInlineModelConverter(InlineModelConverter):
     inline_field_list_type = SupplierInvoiceTaxBreakdownInlineFieldList
 
 
+class ManualInvoiceDraftLineInlineFieldList(InlineModelFormList):
+    widget = RenderTemplateWidget("admin/manual_invoice_draft_lines_inline.html")
+
+
+class ManualInvoiceDraftInlineModelConverter(InlineModelConverter):
+    inline_field_list_type = ManualInvoiceDraftLineInlineFieldList
+
+
 def _supplier_invoice_registration_error_message(error):
     message = str(error)
     known_messages = {
@@ -2368,6 +2376,8 @@ class ManualInvoiceDraftAdminView(SafeModelView):
     can_view_details = True
     list_template = "admin/manual_invoice_draft_list.html"
     inline_models = (ManualInvoiceDraftLine,)
+    inline_model_form_converter = ManualInvoiceDraftInlineModelConverter
+    extra_js = ["/static/admin/manual_invoice_draft.js"]
     column_list = [
         "id", "status", "client_name", "client_tax_id", "issue_date",
         "currency", "issued_invoice", "created_at",

@@ -309,6 +309,22 @@ class ManualInvoiceDraftAdminViewTest(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertIn(b"Cliente / raz", response.data)
 
+    def test_inline_line_controls_are_csp_safe_and_load_external_script(self):
+        response = self.client.get(self._route(".edit_view", draft_id=self.draft_id), headers=self.auth)
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(b"data-manual-invoice-inline-add", response.data)
+        self.assertIn(b"/static/admin/manual_invoice_draft.js", response.data)
+        self.assertNotIn(b"onclick=", response.data.lower())
+
+        inline_template = (SRC_DIR / "templates" / "admin" / "manual_invoice_draft_lines_inline.html").read_text(encoding="utf-8")
+        script = (SRC_DIR / "static" / "admin" / "manual_invoice_draft.js").read_text(encoding="utf-8")
+        self.assertNotIn("onclick=", inline_template.lower())
+        self.assertNotIn("javascript:", inline_template.lower())
+        self.assertIn("addEventListener", script)
+        self.assertIn("window.faForm.addInlineField", script)
+        self.assertNotIn("onclick", script.lower())
+        self.assertNotIn("javascript:", script.lower())
+
     def test_issued_and_cancelled_drafts_cannot_be_edited(self):
         with self.app.app_context():
             draft = self.db.session.get(self.ManualInvoiceDraft, self.draft_id)
