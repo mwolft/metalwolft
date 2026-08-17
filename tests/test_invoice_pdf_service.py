@@ -5,7 +5,8 @@ import sys
 import unittest
 import uuid
 from contextlib import contextmanager
-from datetime import datetime
+from datetime import date, datetime
+from decimal import Decimal
 from pathlib import Path
 
 from pypdf import PdfReader
@@ -25,6 +26,7 @@ from api.invoice_pdf_service import (  # noqa: E402
     _line_description,
 )
 from api.invoice_snapshot_integrity import calculate_invoice_snapshot_hash  # noqa: E402
+from api.manual_invoice_snapshot_builder import build_manual_invoice_snapshot  # noqa: E402
 
 
 def snapshot(overrides=None):
@@ -394,6 +396,40 @@ class InvoicePdfServiceTest(unittest.TestCase):
         self.assertIn("Precio unitario sin IVA", text)
         self.assertIn("Descuento s/base", text)
         self.assertEqual(fiscal_snapshot, original_snapshot)
+
+    def test_pdf_manual_partial_credit_shows_external_original_reference(self):
+        line = type("Line", (), {
+            "id": 1, "position": 1, "concept": "Compensación parcial factura JUL-2026-002",
+            "tax_base": Decimal("-41.32"), "tax_rate": Decimal("21.00"),
+        })()
+        draft = type("Draft", (), {
+            "id": 42, "client_name": "Aritz Elizegi", "client_tax_id": "44169382K",
+            "client_address": "Calle Cliente 1", "client_postal_code": "20001", "client_city": "Donostia",
+            "client_province": None, "client_country_code": "ES", "client_email": None,
+            "operation_date": date(2026, 8, 17), "external_reference": "JUL-2026-002", "currency": "EUR",
+            "document_nature": "corrective", "original_invoice_id": None,
+            "external_original_invoice_number": "JUL-2026-002",
+            "external_original_issue_date": date(2026, 7, 14), "rectification_reason": "other",
+            "rectification_aeat_type": "R4", "lines": [line],
+        })()
+        issuer = {
+            "legal_name": "MetalWolft", "trade_name": "MetalWolft", "tax_id": "B00000000",
+            "address": "Calle Taller", "postal_code": "13000", "city": "Ciudad Real", "country_code": "ES",
+            "province": None, "email": None, "phone": None,
+        }
+        fiscal_snapshot = build_manual_invoice_snapshot(draft, issuer, issue_date=date(2026, 8, 17))
+        invoice = SnapshotOnlyInvoice(invoice_number="R2026000091", invoice_snapshot=fiscal_snapshot)
+
+        with temp_invoice_dir() as tmpdir:
+            result = generate_invoice_pdf(invoice, output_dir=tmpdir)
+            text = normalized_pdf_text(Path(tmpdir) / result.filename)
+
+        self.assertIn("Factura rectificativa / abono", text)
+        self.assertIn("JUL-2026-002", text)
+        self.assertIn("14/07/2026", text)
+        self.assertIn("-41,32 €", text)
+        self.assertIn("-8,68 €", text)
+        self.assertIn("-50,00 €", text)
 
     def test_pdf_v3_rejects_a_rectification_without_original_reference(self):
         fiscal_snapshot = rectification_snapshot_v3()

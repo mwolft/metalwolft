@@ -44,6 +44,8 @@ class InvoiceDouble:
     issued_at: datetime | None = datetime(2026, 7, 18, 10, 0, 0)
     invoice_type: str | None = "ordinary"
     original_invoice_id: int | None = None
+    external_original_invoice_number: str | None = None
+    external_original_issue_date: date | None = None
     rectification_aeat_type: str | None = None
     rectification_aeat_classified_at: datetime | None = None
     rectification_aeat_classified_by: str | None = None
@@ -158,6 +160,8 @@ def invoice(
     stored_hash=None,
     invoice_type="ordinary",
     original_invoice_id=None,
+    external_original_invoice_number=None,
+    external_original_issue_date=None,
     rectification_aeat_type=None,
     rectification_aeat_classified_at=None,
     rectification_aeat_classified_by=None,
@@ -175,6 +179,8 @@ def invoice(
         ),
         invoice_type=invoice_type,
         original_invoice_id=original_invoice_id,
+        external_original_invoice_number=external_original_invoice_number,
+        external_original_issue_date=external_original_issue_date,
         rectification_aeat_type=rectification_aeat_type,
         rectification_aeat_classified_at=rectification_aeat_classified_at,
         rectification_aeat_classified_by=rectification_aeat_classified_by,
@@ -273,6 +279,58 @@ def legacy_corrective_entry(*, aeat_type=None, classified_at=None, classified_by
     return accounting_entry
 
 
+def manual_external_partial_entry():
+    fiscal_snapshot = {
+        "schema_version": 3,
+        "metadata": {"generator": "manual_invoice_snapshot_builder_v3"},
+        "issuer": {"legal_name": "MetalWolft", "tax_id": "B00000000", "country_code": "ES"},
+        "customer": {"legal_name": "Aritz Elizegi", "tax_id": "44169382K", "country_code": "ES"},
+        "operation": {
+            "invoice_type": "corrective",
+            "issue_date": "2026-08-17",
+            "operation_date": "2026-08-17",
+            "currency": "EUR",
+            "order_id": None,
+            "rectification": {
+                "rectification_type": "differences",
+                "rectification_scope": "partial",
+                "rectification_reason": "other",
+                "rectification_reason_text": "Otro motivo",
+                "aeat_type": "R4",
+                "original_reference_type": "external",
+                "original_invoice_id": None,
+                "original_invoice_number": "JUL-2026-002",
+                "original_invoice_issued_at": "2026-07-14",
+                "affected_line_numbers": [1],
+            },
+        },
+        "lines": [{"line_number": 1, "tax_rate": "21.00", "tax_base": "-41.32", "tax_amount": "-8.68", "line_total": "-50.00"}],
+        "totals": {"tax_base": "-41.32", "tax_amount": "-8.68", "total_amount": "-50.00"},
+        "payment": {"provider": "manual"},
+        "references": {"source": "manual_invoice_draft", "original_reference_type": "external"},
+    }
+    corrective = invoice(
+        invoice_id=55,
+        invoice_number="R2026000003",
+        invoice_snapshot=fiscal_snapshot,
+        invoice_type="corrective",
+        rectification_aeat_type="R4",
+        external_original_invoice_number="JUL-2026-002",
+        external_original_issue_date=date(2026, 7, 14),
+    )
+    return AccountingEntryDouble(
+        id=55,
+        invoice_date=date(2026, 8, 17),
+        invoice_number="R2026000003",
+        invoice=corrective,
+        taxable_base=Decimal("-41.32"),
+        vat_amount=Decimal("-8.68"),
+        total_amount=Decimal("-50.00"),
+        payment_provider="manual",
+        order_id=None,
+    )
+
+
 def export_and_open(entries, path):
     result = export_aeat_sales_ledger(entries, output_path=path)
     workbook = load_workbook(path, data_only=True)
@@ -324,6 +382,29 @@ class AeatSalesLedgerServiceTest(unittest.TestCase):
                 self.assertEqual(sheet["U3"].value, Decimal("-121.00"))
                 self.assertEqual(accounting_entry.invoice.invoice_snapshot, before_snapshot)
                 self.assertEqual(accounting_entry.status, "pending")
+
+    def test_manual_external_partial_rectification_exports_with_negative_amounts(self):
+        accounting_entry = manual_external_partial_entry()
+        with temp_export_dir() as tmpdir:
+            _, workbook = export_and_open([accounting_entry], tmpdir / "aeat.xlsx")
+            sheet = workbook[AEAT_SALES_LEDGER_SHEET_NAME]
+
+        self.assertEqual(sheet["F3"].value, "R4")
+        self.assertEqual(sheet["L3"].value, "R2026000003")
+        self.assertEqual(sheet["AJ3"].value, "JUL-2026-002")
+        self.assertEqual(sheet["H3"].value, -41.32)
+        self.assertEqual(sheet["V3"].value, -41.32)
+        self.assertEqual(sheet["W3"].value, 21)
+        self.assertEqual(sheet["X3"].value, -8.68)
+        self.assertEqual(sheet["U3"].value, -50)
+
+    def test_manual_external_partial_rectification_rejects_an_invalid_hash(self):
+        accounting_entry = manual_external_partial_entry()
+        accounting_entry.invoice.invoice_snapshot_hash = "invalid"
+
+        with temp_export_dir() as tmpdir:
+            with self.assertRaisesRegex(AeatSalesLedgerValidationError, "integridad"):
+                export_aeat_sales_ledger([accounting_entry], output_path=tmpdir / "aeat.xlsx")
 
     def test_legacy_total_rectificatives_require_audited_manual_r1_or_r4(self):
         for aeat_type in ("R1", "R4"):

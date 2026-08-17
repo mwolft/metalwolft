@@ -16,7 +16,10 @@ from api.invoice_issue_service import InvoiceIssueError
 from api.invoice_snapshot_builder import build_rectification_snapshot_from_invoice
 from api.invoice_snapshot_integrity import calculate_invoice_snapshot_hash
 from api.manual_invoice_issue_service import issue_manual_invoice
-from api.manual_invoice_snapshot_builder import build_manual_invoice_snapshot
+from api.manual_invoice_snapshot_builder import (
+    MANUAL_CORRECTIVE_SNAPSHOT_GENERATOR,
+    build_manual_invoice_snapshot,
+)
 
 
 class FakeSession:
@@ -73,8 +76,26 @@ def draft(*, total_base=Decimal("100.00"), tax_rate=Decimal("21.00"), email="cli
         operation_date=date(2026, 8, 17),
         external_reference="REF-1",
         currency="EUR",
+        document_nature="ordinary",
+        original_invoice_id=None,
+        external_original_invoice_number=None,
+        external_original_issue_date=None,
+        rectification_reason=None,
+        rectification_aeat_type=None,
         lines=[line],
     )
+
+
+def corrective_draft():
+    target = draft(total_base=Decimal("-41.32"))
+    target.document_nature = "corrective"
+    target.external_original_invoice_number = "JUL-2026-002"
+    target.external_original_issue_date = date(2026, 7, 14)
+    target.rectification_reason = "other"
+    target.rectification_aeat_type = "R4"
+    target.external_reference = "JUL-2026-002"
+    target.lines[0].concept = "Compensación parcial factura JUL-2026-002"
+    return target
 
 
 class ManualInvoiceSnapshotTest(unittest.TestCase):
@@ -174,6 +195,77 @@ class ManualInvoiceSnapshotTest(unittest.TestCase):
         self.assertEqual(rectification["operation"]["rectification"]["original_invoice_number"], "F2026000004")
         self.assertEqual(len(calculate_invoice_snapshot_hash(rectification)), 64)
 
+    def test_corrective_snapshot_freezes_external_partial_reference_and_negative_amounts(self):
+        snapshot = build_manual_invoice_snapshot(
+            corrective_draft(), issuer(), issue_date=date(2026, 8, 17), actor="admin@example.test"
+        )
+
+        self.assertEqual(snapshot["schema_version"], 3)
+        self.assertEqual(snapshot["metadata"]["generator"], MANUAL_CORRECTIVE_SNAPSHOT_GENERATOR)
+        self.assertEqual(snapshot["operation"]["invoice_type"], "corrective")
+        self.assertEqual(snapshot["totals"]["tax_base"], "-41.32")
+        self.assertEqual(snapshot["totals"]["tax_amount"], "-8.68")
+        self.assertEqual(snapshot["totals"]["total_amount"], "-50.00")
+        self.assertEqual(snapshot["lines"][0]["tax_rate"], "21.00")
+        self.assertEqual(snapshot["operation"]["rectification"], {
+            "rectification_type": "differences",
+            "rectification_scope": "partial",
+            "rectification_reason": "other",
+            "rectification_reason_text": "Otro motivo",
+            "aeat_type": "R4",
+            "original_reference_type": "external",
+            "original_invoice_id": None,
+            "original_invoice_number": "JUL-2026-002",
+            "original_invoice_issued_at": "2026-07-14",
+            "affected_line_numbers": [1],
+        })
+        self.assertEqual(len(calculate_invoice_snapshot_hash(snapshot)), 64)
+
+    def test_corrective_snapshot_rejects_incomplete_external_reference_and_wrong_sign(self):
+        incomplete = corrective_draft()
+        incomplete.external_original_issue_date = None
+        with self.assertRaisesRegex(ValueError, "referencia externa"):
+            build_manual_invoice_snapshot(incomplete, issuer(), issue_date=incomplete.issue_date)
+
+        missing_aeat_type = corrective_draft()
+        missing_aeat_type.rectification_aeat_type = None
+        with self.assertRaisesRegex(ValueError, "R1/R4 obligatorio"):
+            build_manual_invoice_snapshot(missing_aeat_type, issuer(), issue_date=missing_aeat_type.issue_date)
+
+        ordinary_negative = corrective_draft()
+        ordinary_negative.document_nature = "ordinary"
+        ordinary_negative.external_original_invoice_number = None
+        ordinary_negative.external_original_issue_date = None
+        ordinary_negative.rectification_reason = None
+        ordinary_negative.rectification_aeat_type = None
+        with self.assertRaisesRegex(ValueError, "base imponible debe ser mayor"):
+            build_manual_invoice_snapshot(ordinary_negative, issuer(), issue_date=ordinary_negative.issue_date)
+
+    def test_corrective_snapshot_uses_the_linked_modern_original_when_present(self):
+        linked = corrective_draft()
+        linked.original_invoice_id = 301
+        linked.external_original_invoice_number = None
+        linked.external_original_issue_date = None
+        original = SimpleNamespace(
+            id=301,
+            invoice_type="ordinary",
+            invoice_number="F2026000301",
+            issued_at=datetime(2026, 7, 14, 9, 0),
+            invoice_snapshot=build_manual_invoice_snapshot(
+                draft(total_base=Decimal("100.00")), issuer(), issue_date=date(2026, 7, 14)
+            ),
+            invoice_snapshot_schema_version=2,
+        )
+
+        snapshot = build_manual_invoice_snapshot(
+            linked, issuer(), issue_date=linked.issue_date, original_invoice=original
+        )
+
+        rectification = snapshot["operation"]["rectification"]
+        self.assertEqual(rectification["original_reference_type"], "invoice")
+        self.assertEqual(rectification["original_invoice_id"], 301)
+        self.assertEqual(rectification["original_invoice_number"], "F2026000301")
+
 
 class ManualInvoiceIssueServiceTest(unittest.TestCase):
     def test_issues_once_with_null_order_and_fiscal_snapshot(self):
@@ -212,6 +304,34 @@ class ManualInvoiceIssueServiceTest(unittest.TestCase):
         self.assertFalse(result.created)
         self.assertIs(result.invoice, existing)
         allocate.assert_not_called()
+
+    def test_issues_external_corrective_once_in_r_series(self):
+        session = FakeSession()
+        target = corrective_draft()
+        allocation = SimpleNamespace(invoice_number="R2026000003")
+
+        with patch("api.manual_invoice_issue_service._lock_draft_for_update", return_value=target), patch(
+            "api.manual_invoice_issue_service.acquire_next_invoice_number", return_value=allocation
+        ) as allocate, patch("api.manual_invoice_issue_service._invoice_model", return_value=FakeInvoice):
+            result = issue_manual_invoice(db_session=session, draft_id=target.id, issuer=issuer(), actor="admin@example.test")
+
+        self.assertTrue(result.created)
+        self.assertEqual(result.invoice_number, "R2026000003")
+        self.assertEqual(result.invoice.invoice_type, "corrective")
+        self.assertIsNone(result.invoice.order_id)
+        self.assertIsNone(result.invoice.original_invoice_id)
+        self.assertEqual(result.invoice.external_original_invoice_number, "JUL-2026-002")
+        self.assertEqual(result.invoice.external_original_issue_date, date(2026, 7, 14))
+        self.assertEqual(result.invoice.invoice_snapshot_schema_version, 3)
+        self.assertEqual(result.invoice.invoice_snapshot["totals"]["total_amount"], "-50.00")
+        self.assertEqual(allocate.call_args.kwargs["series"], "R")
+
+        target.issued_invoice = result.invoice
+        with patch("api.manual_invoice_issue_service._lock_draft_for_update", return_value=target):
+            retry = issue_manual_invoice(db_session=session, draft_id=target.id, issuer=issuer(), actor="admin@example.test")
+        self.assertFalse(retry.created)
+        self.assertEqual(retry.invoice_number, "R2026000003")
+        self.assertEqual(allocate.call_count, 1)
 
     def test_validation_happens_before_number_allocation(self):
         session = FakeSession()
