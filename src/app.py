@@ -25,6 +25,7 @@ from api.email_routes import email_bp
 from api.password_recovery_endpoints import auth_bp
 from api.invoice_preview import api_invoice_preview
 from api.budget_routes import budget_bp
+from api.security_routes import security_bp
 from api.product_lifecycle import resolve_publicly_accessible_product_by_slugs
 from legacy_public_routes import REDIRECT_MAP, GONE_PATHS
 
@@ -313,6 +314,7 @@ app.register_blueprint(email_bp, url_prefix="/api/email")
 app.register_blueprint(auth_bp, url_prefix="/api/auth")
 app.register_blueprint(api_invoice_preview, url_prefix="/api")
 app.register_blueprint(budget_bp, url_prefix="/api")
+app.register_blueprint(security_bp, url_prefix="/api")
 app.register_blueprint(seo_bp)
 
 
