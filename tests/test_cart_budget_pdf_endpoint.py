@@ -2,6 +2,7 @@ import importlib.util
 import sys
 import unittest
 from datetime import datetime, timezone
+from decimal import Decimal
 from io import BytesIO
 from pathlib import Path
 
@@ -38,6 +39,7 @@ if HAS_ENDPOINT_DEPS:
     from pypdf import PdfReader
 
     from api.models import (AccountingEntry, Cart, Categories, CheckoutSessions, Invoices, Orders, Products, Users, db)
+    from api.cart_budget_pdf_service import render_cart_budget_pdf
     from api.routes import api
     from api.utils import ANCHORAGE_INTERIOR_HOLES, ANCHORAGE_METAL_CLAWS
 
@@ -153,7 +155,10 @@ class CartBudgetPdfEndpointTest(unittest.TestCase):
         self.assertIn("Tornillos: 80 mm incluidos", text)
         self.assertIn("Color: Blanco liso · Acabado: esmalte sintético", text)
         self.assertIn("121,00 €", text)
-        self.assertIn("Precios con IVA incluido", text)
+        self.assertIn("Base imponible", text)
+        self.assertIn("100,00 €", text)
+        self.assertIn("IVA 21 %", text)
+        self.assertIn("21,00 €", text)
         self.assertIn("Documento informativo.", text)
         self.assertNotIn("999.999", text)
         self.assertNotIn("FACTURA", text)
@@ -186,6 +191,48 @@ class CartBudgetPdfEndpointTest(unittest.TestCase):
         text = self.budget_pdf_text(response)
         self.assertIn("Anclaje: Con obra: con garras metálicas", text)
         self.assertNotIn("Tornillos:", text)
+
+    def test_renders_tax_breakdowns_from_authoritative_gross_totals(self):
+        scenarios = (
+            ("envio de pago", "100.00", "12.00", "0.00", "112.00", "92,56 €", "19,44 €"),
+            ("envio gratis", "100.00", "0.00", "0.00", "100.00", "82,64 €", "17,36 €"),
+            ("cupon", "100.00", "10.00", "11.00", "99.00", "81,82 €", "17,18 €"),
+            ("redondeo", "0.01", "0.00", "0.00", "0.01", "0,01 €", "0,00 €"),
+        )
+        for name, subtotal, shipping, discount, total, expected_base, expected_tax in scenarios:
+            with self.subTest(name=name):
+                pdf = render_cart_budget_pdf(
+                    quote={
+                        "lines": [{
+                            "product_name": "Reja presupuestada",
+                            "quantity": 1,
+                            "unit_price": subtotal,
+                            "line_total": subtotal,
+                            "alto": 100,
+                            "ancho": 100,
+                            "anclaje": ANCHORAGE_INTERIOR_HOLES,
+                            "color": "satinado_blanco",
+                            "screw_length_mm": 80,
+                            "screw_supplement": "0.00",
+                        }],
+                        "subtotal": subtotal,
+                        "shipping_cost": shipping,
+                        "discount_amount": discount,
+                        "discount_percent": "10.00" if discount != "0.00" else "0.00",
+                        "discount_code": "REJAS10" if discount != "0.00" else None,
+                        "total_amount": total,
+                    },
+                    issued_at=datetime(2026, 8, 24, tzinfo=timezone.utc),
+                )
+                text = "\n".join(page.extract_text() or "" for page in PdfReader(BytesIO(pdf)).pages)
+                self.assertIn(expected_base, text)
+                self.assertIn(expected_tax, text)
+                self.assertIn(f"TOTAL\n {Decimal(total):.2f}".replace(".", ","), text)
+                self.assertEqual(
+                    Decimal(expected_base.replace(",", ".").replace(" €", ""))
+                    + Decimal(expected_tax.replace(",", ".").replace(" €", "")),
+                    Decimal(total),
+                )
 
 
 if __name__ == "__main__":

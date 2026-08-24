@@ -597,12 +597,15 @@ export function CartView({ deliveryEstimate }: { deliveryEstimate?: ReactNode })
         <div className="mw-cart-summary__actions">
           {checkoutQuote !== null ? (
             <button
-              className="mw-button mw-button--secondary"
+              className="mw-button mw-cart-budget-download"
               disabled={isDownloadingBudget}
               onClick={handleDownloadBudget}
               type="button"
             >
-              {isDownloadingBudget ? "Generando presupuesto..." : "Descargar presupuesto PDF"}
+              <svg aria-hidden="true" focusable="false" viewBox="0 0 24 24">
+                <path d="M12 3v11m0 0 4-4m-4 4-4-4M5 19h14" />
+              </svg>
+              {isDownloadingBudget ? "Generando presupuesto..." : "Descargar presupuesto en PDF"}
             </button>
           ) : null}
           {isBusy || hasUnavailableItems ? (

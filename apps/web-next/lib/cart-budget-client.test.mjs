@@ -12,7 +12,9 @@ assert.match(client, /JSON\.stringify\(discountCode \? \{ discount_code: discoun
 assert.doesNotMatch(client, /line_total|shipping_cost|total_amount|precio_total/);
 assert.match(cartView, /downloadCartBudget\(/);
 assert.match(cartView, /loadStoredCheckoutDiscountCode\(\)/);
-assert.match(cartView, /Descargar presupuesto PDF/);
+assert.match(cartView, /Descargar presupuesto en PDF/);
+assert.match(cartView, /mw-cart-budget-download/);
+assert.match(cartView, /<svg aria-hidden="true"/);
 assert.match(cartView, /checkoutQuote !== null/);
 
-console.log("8 cart budget client assertions passed");
+console.log("10 cart budget client assertions passed");

@@ -6,6 +6,7 @@ from io import BytesIO
 from pathlib import Path
 from xml.sax.saxutils import escape
 
+from api.invoice_snapshot_builder import SUPPORTED_TAX_RATE, _tax_from_gross
 from api.utils import CONFIGURATOR_ANCHORAGES, CONFIGURATOR_COLORS, format_screw_configuration
 
 
@@ -182,6 +183,7 @@ def _line_table(lines, styles, Table, TableStyle, Paragraph, colors, available_w
 
 
 def _totals(quote, styles, Table, TableStyle, Paragraph, colors, available_width):
+    tax_base, tax_amount = _tax_from_gross(quote["total_amount"], SUPPORTED_TAX_RATE)
     entries = [
         ("Subtotal", _currency(quote["subtotal"]), "total_value"),
         ("Envío", "GRATIS" if quote["shipping_cost"] == 0 else _currency(quote["shipping_cost"]), "total_value"),
@@ -190,14 +192,15 @@ def _totals(quote, styles, Table, TableStyle, Paragraph, colors, available_width
         coupon = f"Descuento ({escape(quote['discount_code'])})" if quote["discount_code"] else "Descuento"
         entries.append((coupon, f"-{_currency(quote['discount_amount'])}", "total_value"))
     entries.extend([
+        ("Base imponible", _currency(tax_base), "total_value_secondary"),
+        (f"IVA {_display_number(SUPPORTED_TAX_RATE)} %", _currency(tax_amount), "total_value_secondary"),
         ("TOTAL", _currency(quote["total_amount"]), "total_strong"),
-        ("Precios con IVA incluido", "", "disclaimer_right"),
     ])
     rows = [[Paragraph(label, styles["total_label"]), Paragraph(value, styles[style])] for label, value, style in entries]
     table = Table(rows, colWidths=[available_width * 0.72, available_width * 0.28], hAlign="RIGHT")
     table.setStyle(TableStyle([
         ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#ffffff")),
-        ("LINEABOVE", (0, len(entries) - 2), (-1, len(entries) - 2), 1, colors.HexColor(BRAND_RED)),
+        ("LINEABOVE", (0, len(entries) - 1), (-1, len(entries) - 1), 1, colors.HexColor(BRAND_RED)),
         ("TOPPADDING", (0, 0), (-1, -1), 4),
         ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
         ("LEFTPADDING", (0, 0), (-1, -1), 0),
@@ -235,6 +238,7 @@ def _styles(colors, sample, right_alignment):
         "section": ParagraphStyle("budget-section", parent=body, fontName="Helvetica-Bold", fontSize=9.5, leading=11, spaceAfter=6),
         "total_label": ParagraphStyle("budget-total-label", parent=body, fontSize=8.4),
         "total_value": ParagraphStyle("budget-total-value", parent=body, fontSize=8.4, alignment=right_alignment),
+        "total_value_secondary": ParagraphStyle("budget-total-value-secondary", parent=small, alignment=right_alignment),
         "total_strong": ParagraphStyle("budget-total-strong", parent=body, fontName="Helvetica-Bold", fontSize=10, alignment=right_alignment, textColor=colors.HexColor(BRAND_RED)),
         "disclaimer": ParagraphStyle("budget-disclaimer", parent=small, leading=10),
         "disclaimer_right": ParagraphStyle("budget-disclaimer-right", parent=small, alignment=right_alignment),
