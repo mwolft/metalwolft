@@ -13,15 +13,26 @@ function getCspApiOrigin() {
   }
 }
 
-function buildContentSecurityPolicy() {
+function buildContentSecurityPolicy({ allowInlineScripts = true, reportEndpoint } = {}) {
   const apiOrigin = getCspApiOrigin();
+  const scriptSources = [
+    "'self'",
+    ...(allowInlineScripts ? ["'unsafe-inline'"] : []),
+    "https://www.googletagmanager.com",
+    "https://js.stripe.com",
+    "https://*.js.stripe.com",
+    "https://maps.googleapis.com",
+    "https://*.paypal.com",
+    "https://*.paypalobjects.com",
+    "https://*.venmo.com"
+  ];
   const directives = [
     "default-src 'self'",
     "base-uri 'self'",
     "object-src 'none'",
     "form-action 'self'",
     "frame-ancestors 'self'",
-    "script-src 'self' 'unsafe-inline' https://www.googletagmanager.com https://js.stripe.com https://*.js.stripe.com https://maps.googleapis.com https://*.paypal.com https://*.paypalobjects.com https://*.venmo.com",
+    `script-src ${scriptSources.join(" ")}`,
     "style-src 'self' 'unsafe-inline' https://*.paypal.com https://*.paypalobjects.com https://*.venmo.com",
     "img-src 'self' data: blob: https://res.cloudinary.com https://www.google.es https://*.stripe.com https://*.paypal.com https://*.paypalobjects.com https://*.venmo.com",
     "font-src 'self' data:",
@@ -31,8 +42,13 @@ function buildContentSecurityPolicy() {
     "media-src 'self' blob: https://res.cloudinary.com"
   ];
 
-  if (process.env.NODE_ENV !== "production") {
+  if (allowInlineScripts && process.env.NODE_ENV !== "production") {
     directives[5] += " 'unsafe-eval'";
+  }
+
+  if (reportEndpoint) {
+    directives.push(`report-uri ${reportEndpoint}`);
+    directives.push("report-to mw-csp");
   }
 
   return directives.join("; ");
@@ -97,6 +113,18 @@ const nextConfig = {
       headers.push({
         key: "Strict-Transport-Security",
         value: "max-age=63072000; includeSubDomains"
+      });
+      const reportEndpoint = `${getCspApiOrigin()}/api/security/csp-report`;
+      headers.push({
+        key: "Content-Security-Policy-Report-Only",
+        value: buildContentSecurityPolicy({
+          allowInlineScripts: false,
+          reportEndpoint
+        })
+      });
+      headers.push({
+        key: "Reporting-Endpoints",
+        value: `mw-csp="${reportEndpoint}"`
       });
     }
 
