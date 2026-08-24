@@ -3474,6 +3474,41 @@ textarea:focus-visible {
   width: 100%;
 }
 
+.mw-cart-summary__actions .mw-cart-budget-download {
+  width: fit-content;
+  min-height: 0;
+  justify-self: center;
+  gap: 0.35rem;
+  padding: 0.3rem 0.45rem;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  box-shadow: none;
+  color: var(--mw-accent);
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.mw-cart-budget-download svg {
+  width: 0.95rem;
+  height: 0.95rem;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 2;
+}
+
+.mw-cart-summary__actions .mw-cart-budget-download:hover {
+  background: rgba(207, 28, 53, 0.06);
+  box-shadow: none;
+}
+
+.mw-cart-summary__actions .mw-cart-budget-download:focus-visible {
+  outline: 2px solid var(--mw-accent);
+  outline-offset: 2px;
+}
+
 .mw-cart-state {
   margin: 1.5rem 0 4rem;
   padding: clamp(1.6rem, 4vw, 3rem);

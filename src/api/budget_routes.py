@@ -11,6 +11,11 @@ budget_bp = Blueprint("budget", __name__)
 
 @budget_bp.route("/budget/pdf", methods=["POST"])
 def generate_budget_pdf():
+    """Legacy client-priced budget endpoint; retained only for legacy SPA compatibility.
+
+    New Next clients must use the authenticated ``/api/cart/budget/pdf`` route,
+    which rebuilds the quote from the persisted cart before rendering.
+    """
 
     data = request.get_json()
 

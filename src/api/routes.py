@@ -40,6 +40,7 @@ from api.checkout_service import (
     build_checkout_quote,
     build_product_configuration_quote,
 )
+from api.cart_budget_pdf_service import CartBudgetPdfError, render_cart_budget_pdf
 from api.product_lifecycle import (
     ensure_product_available_for_sale,
     publicly_accessible_products_query,
@@ -2390,6 +2391,47 @@ def checkout_quote():
     except Exception as e:
         logger.exception("Unexpected error calculating checkout quote: %s", str(e))
         return jsonify({"message": "No hemos podido calcular el resumen del checkout."}), 500
+
+
+@api.route('/cart/budget/pdf', methods=['POST'])
+@jwt_required()
+def download_cart_budget_pdf():
+    """Download a non-fiscal budget from the authenticated user's live cart quote."""
+    current_user = get_jwt_identity()
+    data = request.get_json(silent=True) or {}
+    if not isinstance(data, dict):
+        return jsonify({"message": "La solicitud de presupuesto no es válida."}), 400
+
+    discount_code = data.get("discount_code")
+    if discount_code is not None and not isinstance(discount_code, str):
+        return jsonify({"message": "El código de descuento no es válido."}), 400
+
+    try:
+        # Do not accept client-provided cart lines or amounts: quote the persisted cart again.
+        quote = _build_checkout_quote_from_request(
+            current_user,
+            {"discount_code": discount_code},
+        )
+        if not quote.get("lines"):
+            return jsonify({"message": "El carrito está vacío."}), 400
+
+        pdf_bytes = render_cart_budget_pdf(quote=quote)
+    except (ValueError, CartBudgetPdfError) as exc:
+        return jsonify({"message": str(exc)}), 400
+    except Exception:
+        logger.exception("Unexpected error generating cart budget PDF")
+        return jsonify({"message": "No se ha podido generar el presupuesto."}), 500
+
+    filename = f"presupuesto-metalwolft-{datetime.now(timezone.utc).date().isoformat()}.pdf"
+    response = send_file(
+        BytesIO(pdf_bytes),
+        mimetype="application/pdf",
+        as_attachment=True,
+        download_name=filename,
+        max_age=0,
+    )
+    response.headers["Cache-Control"] = "no-store"
+    return response
 
 
 @api.route('/checkout/status', methods=['GET'])
