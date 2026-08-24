@@ -191,6 +191,7 @@ def _totals(quote, styles, Table, TableStyle, Paragraph, colors, available_width
     if quote["discount_amount"] > 0:
         coupon = f"Descuento ({escape(quote['discount_code'])})" if quote["discount_code"] else "Descuento"
         entries.append((coupon, f"-{_currency(quote['discount_amount'])}", "total_value"))
+    fiscal_start = len(entries)
     entries.extend([
         ("Base imponible", _currency(tax_base), "total_value_secondary"),
         (f"IVA {_display_number(SUPPORTED_TAX_RATE)} %", _currency(tax_amount), "total_value_secondary"),
@@ -201,9 +202,11 @@ def _totals(quote, styles, Table, TableStyle, Paragraph, colors, available_width
     table = Table(rows, colWidths=[totals_width * 0.62, totals_width * 0.38], hAlign="RIGHT")
     table.setStyle(TableStyle([
         ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#ffffff")),
+        ("LINEABOVE", (0, fiscal_start), (-1, fiscal_start), 0.45, colors.HexColor(BRAND_BORDER)),
         ("LINEABOVE", (0, len(entries) - 1), (-1, len(entries) - 1), 1, colors.HexColor(BRAND_RED)),
         ("TOPPADDING", (0, 0), (-1, -1), 4),
         ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+        ("TOPPADDING", (0, fiscal_start), (-1, fiscal_start), 8),
         ("LEFTPADDING", (0, 0), (-1, -1), 0),
         ("RIGHTPADDING", (0, 0), (-1, -1), 0),
     ]))
