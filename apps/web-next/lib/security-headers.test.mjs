@@ -29,9 +29,10 @@ try {
   assert.doesNotMatch(csp, /trusted-types|require-trusted-types-for/);
   assert.equal(headers["X-Frame-Options"], "SAMEORIGIN");
   assert.equal(headers["Cross-Origin-Opener-Policy"], "same-origin-allow-popups");
-  assert.equal(headers["Strict-Transport-Security"], "max-age=31536000");
+  assert.equal(headers["Strict-Transport-Security"], "max-age=63072000; includeSubDomains");
+  assert.doesNotMatch(headers["Strict-Transport-Security"], /preload/);
 
-  console.log("17 security header assertions passed");
+  console.log("18 security header assertions passed");
 } finally {
   if (originalNodeEnv === undefined) {
     delete process.env.NODE_ENV;

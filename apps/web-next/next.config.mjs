@@ -96,7 +96,7 @@ const nextConfig = {
     if (process.env.NODE_ENV === "production") {
       headers.push({
         key: "Strict-Transport-Security",
-        value: "max-age=31536000"
+        value: "max-age=63072000; includeSubDomains"
       });
     }
 
