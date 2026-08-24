@@ -197,7 +197,8 @@ def _totals(quote, styles, Table, TableStyle, Paragraph, colors, available_width
         ("TOTAL", _currency(quote["total_amount"]), "total_strong"),
     ])
     rows = [[Paragraph(label, styles["total_label"]), Paragraph(value, styles[style])] for label, value, style in entries]
-    table = Table(rows, colWidths=[available_width * 0.72, available_width * 0.28], hAlign="RIGHT")
+    totals_width = min(available_width, 255)
+    table = Table(rows, colWidths=[totals_width * 0.62, totals_width * 0.38], hAlign="RIGHT")
     table.setStyle(TableStyle([
         ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#ffffff")),
         ("LINEABOVE", (0, len(entries) - 1), (-1, len(entries) - 1), 1, colors.HexColor(BRAND_RED)),
