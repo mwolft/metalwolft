@@ -14,6 +14,8 @@ try {
   const csp = headers["Content-Security-Policy"];
   const reportOnlyCsp = headers["Content-Security-Policy-Report-Only"];
   const reportOnlyScriptSrc = reportOnlyCsp.split("; ").find((directive) => directive.startsWith("script-src "));
+  const enforcedImgSrc = csp.split("; ").find((directive) => directive.startsWith("img-src "));
+  const reportOnlyImgSrc = reportOnlyCsp.split("; ").find((directive) => directive.startsWith("img-src "));
 
   assert.equal(rules[0].source, "/:path*");
   assert.match(csp, /default-src 'self'/);
@@ -36,6 +38,8 @@ try {
   assert.doesNotMatch(headers["Strict-Transport-Security"], /preload/);
   assert.ok(reportOnlyCsp);
   assert.ok(reportOnlyScriptSrc);
+  assert.match(enforcedImgSrc, /https:\/\/www\.googletagmanager\.com/);
+  assert.match(reportOnlyImgSrc, /https:\/\/www\.googletagmanager\.com/);
   assert.doesNotMatch(reportOnlyScriptSrc, /'unsafe-inline'/);
   assert.match(reportOnlyScriptSrc, /https:\/\/www\.googletagmanager\.com/);
   assert.match(reportOnlyCsp, /report-uri https:\/\/api\.metalwolft\.com\/api\/security\/csp-report/);
