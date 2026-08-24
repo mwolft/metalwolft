@@ -22,6 +22,8 @@ import {
   updateCartItemQuantity
 } from "@/lib/cart-client";
 import { getCheckoutQuote, type CheckoutQuote } from "@/lib/checkout-client";
+import { downloadCartBudget } from "@/lib/cart-budget-client";
+import { loadStoredCheckoutDiscountCode } from "@/lib/checkout-discount";
 import {
   PRODUCT_UNAVAILABLE_MESSAGE,
   isAvailableForSale
@@ -93,6 +95,7 @@ export function CartView({ deliveryEstimate }: { deliveryEstimate?: ReactNode })
   const [feedback, setFeedback] = useState<{ type: "success" | "error"; message: string } | null>(
     null
   );
+  const [isDownloadingBudget, setIsDownloadingBudget] = useState(false);
   const checkoutQuoteRequestVersion = useRef(0);
   const isBusy = pendingAction !== null;
   const hasUnavailableItems = items.some((item) => !isAvailableForSale(item));
@@ -294,6 +297,46 @@ export function CartView({ deliveryEstimate }: { deliveryEstimate?: ReactNode })
       handleCartError(error);
     } finally {
       setPendingAction(null);
+    }
+  }
+
+  async function handleDownloadBudget() {
+    if (isDownloadingBudget || checkoutQuote === null) {
+      return;
+    }
+
+    const token = getToken();
+    if (!token) {
+      redirectToLogin("Inicia sesión para descargar el presupuesto.");
+      return;
+    }
+
+    setIsDownloadingBudget(true);
+    setFeedback(null);
+    try {
+      const { blob, filename } = await downloadCartBudget(
+        token,
+        loadStoredCheckoutDiscountCode()
+      );
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      if (isSessionError(error)) {
+        redirectToLogin();
+        return;
+      }
+      setFeedback({
+        type: "error",
+        message: error instanceof CartClientError ? error.message : "No se pudo generar el presupuesto."
+      });
+    } finally {
+      setIsDownloadingBudget(false);
     }
   }
 
@@ -552,6 +595,16 @@ export function CartView({ deliveryEstimate }: { deliveryEstimate?: ReactNode })
           </p>
         ) : null}
         <div className="mw-cart-summary__actions">
+          {checkoutQuote !== null ? (
+            <button
+              className="mw-button mw-button--secondary"
+              disabled={isDownloadingBudget}
+              onClick={handleDownloadBudget}
+              type="button"
+            >
+              {isDownloadingBudget ? "Generando presupuesto..." : "Descargar presupuesto PDF"}
+            </button>
+          ) : null}
           {isBusy || hasUnavailableItems ? (
             <button className="mw-button mw-button--primary" disabled type="button">
               {hasUnavailableItems ? "Revisa el carrito" : "Preparando checkout"}
