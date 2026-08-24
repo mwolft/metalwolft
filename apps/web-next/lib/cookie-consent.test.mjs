@@ -21,10 +21,12 @@ assert.match(banner, /saveConsent\("necessary"\)/);
 assert.match(banner, /href="\/politica-de-cookies"/);
 assert.match(gtm, /addEventListener\(ANALYTICS_CONSENT_CHANGED_EVENT, updateConsent\)/);
 assert.match(gtm, /setIsEnabled\(hasAnalyticsConsent\(\)\)/);
+assert.match(gtm, /if \(!isEnabled \|\| !gtmId\)/);
+assert.match(gtm, /src="\/scripts\/gtm-bootstrap\.js"/);
 assert.match(footer, /<CookieConsentSettingsButton \/>/);
 assert.match(styles, /\.mw-cookie-consent\s*{[^}]*right: 0;[^}]*bottom: 0;[^}]*left: 0;/s);
 assert.match(styles, /\.mw-cookie-consent__content\s*{[^}]*justify-content: center;[^}]*width: 100%;[^}]*linear-gradient\(135deg, #757575 0%, #666666 100%\)/s);
 assert.match(styles, /\.mw-cookie-consent__actions \.mw-button--primary\s*{[^}]*background: #cf1c35/s);
 assert.match(styles, /\.mw-cookie-consent__actions \.mw-button--secondary\s*{[^}]*background: transparent/s);
 
-console.log("16 cookie consent assertions passed");
+console.log("18 cookie consent assertions passed");

@@ -1,10 +1,11 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 
-const [layout, analytics, gtm, configurator] = await Promise.all([
+const [layout, analytics, gtm, bootstrap, configurator] = await Promise.all([
   readFile(new URL("../app/layout.tsx", import.meta.url), "utf8"),
   readFile(new URL("./analytics.ts", import.meta.url), "utf8"),
   readFile(new URL("../components/analytics/GtmAnalytics.tsx", import.meta.url), "utf8"),
+  readFile(new URL("../public/scripts/gtm-bootstrap.js", import.meta.url), "utf8"),
   readFile(new URL("../components/product/ProductConfigurator.tsx", import.meta.url), "utf8")
 ]);
 
@@ -13,7 +14,18 @@ assert.match(analytics, /ANALYTICS_CONSENT_STORAGE_KEY = "cookiesConsent"/);
 assert.match(analytics, /storedConsent === "all"/);
 assert.match(analytics, /storedConsent === "necessary" \|\| storedConsent === "essential"/);
 assert.match(gtm, /NEXT_PUBLIC_GTM_ID.*GTM-P5Z39HKV/);
-assert.match(gtm, /googletagmanager\.com\/gtm\.js/);
+assert.match(gtm, /src="\/scripts\/gtm-bootstrap\.js"/);
+assert.match(gtm, /data-gtm-id=\{gtmId\}/);
+assert.match(gtm, /if \(!isEnabled \|\| !gtmId\)/);
+assert.doesNotMatch(gtm, /googletagmanager\.com\/gtm\.js/);
+assert.doesNotMatch(gtm, /window\.dataLayer/);
+assert.match(bootstrap, /document\.currentScript/);
+assert.match(bootstrap, /bootstrapScript\.dataset\.gtmId/);
+assert.match(bootstrap, /window\.dataLayer = window\.dataLayer \|\| \[\]/);
+assert.match(bootstrap, /event: "gtm\.js"/);
+assert.match(bootstrap, /window\.__mwGtmBootstrapLoaded/);
+assert.match(bootstrap, /https:\/\/www\.googletagmanager\.com\/gtm\.js\?id=/);
+assert.match(bootstrap, /encodeURIComponent\(gtmId\)/);
 assert.match(configurator, /pushGtmEvent\(\{[\s\S]*?event: "calcular_precio"/);
 for (const field of [
   "product_name: productName",
@@ -28,4 +40,4 @@ for (const field of [
 assert.match(configurator, /lastTrackedQuoteKey/);
 assert.doesNotMatch(configurator, /event: "purchase"/);
 
-console.log("13 GTM configurator analytics assertions passed");
+console.log("23 GTM configurator analytics assertions passed");
