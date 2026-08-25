@@ -35,6 +35,7 @@ from datetime import timedelta
 import requests
 import uuid
 from urllib.parse import urljoin
+import hashlib
 from api.email_routes import send_email, get_admin_recipients
 from api.checkout_service import (
     build_checkout_quote,
@@ -50,6 +51,7 @@ from api.design_service import (
     assert_order_accepts_physical_detail,
     order_contains_design_service,
 )
+from api.public_rate_limiter import SlidingWindowRateLimiter
 from api.cart_budget_pdf_service import CartBudgetPdfError, render_cart_budget_pdf
 from api.product_lifecycle import (
     ensure_product_available_for_sale,
@@ -129,6 +131,15 @@ from api.invoice_workflow_service import (
 
 
 logger = logging.getLogger(__name__)
+
+DESIGN_QUOTE_RATE_LIMIT_REQUESTS = 30
+DESIGN_QUOTE_RATE_LIMIT_WINDOW_SECONDS = 60
+DESIGN_QUOTE_GLOBAL_RATE_LIMIT_REQUESTS = 300
+_design_quote_rate_limiter = SlidingWindowRateLimiter(
+    requests=DESIGN_QUOTE_RATE_LIMIT_REQUESTS,
+    window_seconds=DESIGN_QUOTE_RATE_LIMIT_WINDOW_SECONDS,
+    global_requests=DESIGN_QUOTE_GLOBAL_RATE_LIMIT_REQUESTS,
+)
 
 api = Blueprint('api', __name__)
 
@@ -2451,20 +2462,34 @@ def stripe_webhook():
         return jsonify({'error': 'unexpected error'}), 500
 
 
+def _design_quote_client_key():
+    client_address = (
+        request.headers.get("CF-Connecting-IP")
+        or request.headers.get("X-Forwarded-For", "").split(",", 1)[0].strip()
+        or request.remote_addr
+        or "unknown"
+    )
+    return hashlib.sha256(client_address.encode("utf-8")).hexdigest()
+
+
 @api.route('/design-requests/quote', methods=['POST'])
-@jwt_required()
 def quote_design_request():
-    current_user = get_jwt_identity()
+    allowed, retry_after = _design_quote_rate_limiter.allow(_design_quote_client_key())
+    if not allowed:
+        response = jsonify({"message": "Demasiadas solicitudes de presupuesto. Inténtalo de nuevo en breve."})
+        response.status_code = 429
+        response.headers["Retry-After"] = str(retry_after)
+        return response
+
     data = request.get_json(silent=True) or {}
     try:
         quote = build_design_service_quote(
             db_session=db.session,
-            product_id=data.get("product_id"),
             items=data.get("items"),
         )
         return jsonify(quote), 200
     except DesignServiceError as exc:
-        logger.info("Design quote rejected user_id=%s reason=%s", current_user.get("user_id"), type(exc).__name__)
+        logger.info("Design quote rejected reason=%s", type(exc).__name__)
         return jsonify({"message": str(exc)}), 400
 
 

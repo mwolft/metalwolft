@@ -329,8 +329,9 @@ def _validate_request_items(*, db_session, items):
         if width + height > Decimal(str(CONFIGURATOR_MAX_DIMENSION_SUM_CM)):
             raise DesignServiceValidationError("La suma de las medidas supera el máximo permitido.")
         key = (product.id, width, height)
+        # A repeated model with the same normalized dimensions is one design, not two billable items.
         if key in seen:
-            raise DesignServiceValidationError("No se puede repetir el mismo modelo con las mismas medidas.")
+            continue
         seen.add(key)
         validated.append({
             "product_id": int(product.id),

@@ -131,16 +131,17 @@ class DesignServiceQuoteTest(unittest.TestCase):
         self.assertEqual(quote["discount_amount"], "0.00")
 
     @patch("api.design_service.ensure_product_available_for_sale")
-    def test_exact_duplicate_is_rejected_but_different_measurements_and_models_are_valid(self, _availability):
-        with self.assertRaises(DesignServiceValidationError):
-            build_design_service_quote(
-                db_session=self.session,
-                items=[
-                    {"product_id": 7, "width_cm": 200, "height_cm": 120},
-                    {"product_id": 7, "width_cm": 200, "height_cm": 120},
-                    {"product_id": 7, "width_cm": 200, "height_cm": 120},
-                ],
-            )
+    def test_exact_duplicates_are_deduplicated_but_different_measurements_and_models_are_valid(self, _availability):
+        duplicate_quote = build_design_service_quote(
+            db_session=self.session,
+            items=[
+                {"product_id": 7, "width_cm": 200, "height_cm": 120},
+                {"product_id": 7, "width_cm": 200, "height_cm": 120},
+                {"product_id": 7, "width_cm": 200, "height_cm": 120},
+            ],
+        )
+        self.assertEqual(len(duplicate_quote["items"]), 1)
+        self.assertEqual(duplicate_quote["total_amount"], "24.95")
         quote = build_design_service_quote(db_session=self.session, items=_items())
         self.assertEqual([line["product_name"] for line in quote["lines"]], [
             "Reja Maryland", "Reja Maryland", "Reja Vermont",
