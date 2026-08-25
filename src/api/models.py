@@ -43,6 +43,148 @@ class DeliveryEstimateConfig(db.Model):
         return build_delivery_estimate(self)
 
 
+class DesignServiceConfig(db.Model):
+    """Single persisted configuration for the paid design-preview service."""
+
+    __tablename__ = "design_service_config"
+    __table_args__ = (
+        db.CheckConstraint("id = 1", name="ck_design_service_config_singleton"),
+        db.CheckConstraint("base_price_gross > 0", name="ck_design_service_config_price_positive"),
+        db.CheckConstraint("currency = 'EUR'", name="ck_design_service_config_currency_eur"),
+        db.CheckConstraint("lead_time_hours > 0", name="ck_design_service_config_lead_time_positive"),
+    )
+
+    id = db.Column(db.Integer, primary_key=True)
+    is_active = db.Column(db.Boolean, nullable=False, default=True, server_default=db.true())
+    base_price_gross = db.Column(db.Numeric(12, 2), nullable=False, server_default="24.95")
+    currency = db.Column(db.String(3), nullable=False, default="EUR", server_default="EUR")
+    lead_time_hours = db.Column(db.Integer, nullable=False, default=24, server_default="24")
+    updated_at = db.Column(
+        db.DateTime,
+        nullable=False,
+        server_default=db.func.now(),
+        onupdate=db.func.now(),
+    )
+    price_tiers = db.relationship(
+        "DesignServicePriceTier",
+        backref="config",
+        lazy=True,
+        cascade="all, delete-orphan",
+        order_by="DesignServicePriceTier.min_design_count.asc()",
+    )
+
+
+class DesignServicePriceTier(db.Model):
+    """Optional quantity tier. The largest matching minimum wins."""
+
+    __tablename__ = "design_service_price_tiers"
+    __table_args__ = (
+        db.CheckConstraint("min_design_count > 1", name="ck_design_price_tier_min_count"),
+        db.CheckConstraint("unit_price_gross > 0", name="ck_design_price_tier_unit_positive"),
+    )
+
+    id = db.Column(db.Integer, primary_key=True)
+    config_id = db.Column(
+        db.Integer,
+        db.ForeignKey("design_service_config.id"),
+        nullable=False,
+        default=1,
+        server_default="1",
+    )
+    min_design_count = db.Column(db.Integer, nullable=False, unique=True)
+    unit_price_gross = db.Column(db.Numeric(12, 2), nullable=False)
+
+
+class DesignRequest(db.Model):
+    """Operational request for a paid, non-shippable design preview."""
+
+    __tablename__ = "design_requests"
+    __table_args__ = (
+        db.CheckConstraint(
+            "status IN ('pending_payment', 'pending', 'in_progress', 'delivered', 'cancelled')",
+            name="ck_design_requests_status_valid",
+        ),
+        db.CheckConstraint("price_gross > 0", name="ck_design_requests_price_positive"),
+        db.CheckConstraint("subtotal_gross > 0", name="ck_design_requests_subtotal_positive"),
+        db.CheckConstraint("discount_amount >= 0", name="ck_design_requests_discount_nonnegative"),
+        db.CheckConstraint("currency = 'EUR'", name="ck_design_requests_currency_eur"),
+        db.UniqueConstraint("user_id", "creation_key", name="uq_design_requests_user_creation_key"),
+    )
+
+    STATUS_PENDING_PAYMENT = "pending_payment"
+    STATUS_PENDING = "pending"
+    STATUS_IN_PROGRESS = "in_progress"
+    STATUS_DELIVERED = "delivered"
+    STATUS_CANCELLED = "cancelled"
+
+    id = db.Column(db.Integer, primary_key=True)
+    reference = db.Column(db.String(32), nullable=False, unique=True)
+    creation_key = db.Column(db.String(64), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False, index=True)
+    order_id = db.Column(db.Integer, db.ForeignKey("orders.id"), nullable=True, unique=True)
+    subtotal_gross = db.Column(db.Numeric(12, 2), nullable=False)
+    price_gross = db.Column(db.Numeric(12, 2), nullable=False)
+    discount_amount = db.Column(db.Numeric(12, 2), nullable=False, default=0, server_default="0")
+    pricing_tier_min_design_count = db.Column(db.Integer, nullable=True)
+    currency = db.Column(db.String(3), nullable=False, default="EUR", server_default="EUR")
+    lead_time_hours = db.Column(db.Integer, nullable=False)
+    status = db.Column(db.String(24), nullable=False, default=STATUS_PENDING_PAYMENT, server_default=STATUS_PENDING_PAYMENT)
+    requested_at = db.Column(db.DateTime, nullable=False, server_default=db.func.now())
+    paid_at = db.Column(db.DateTime, nullable=True)
+    started_at = db.Column(db.DateTime, nullable=True)
+    delivered_at = db.Column(db.DateTime, nullable=True)
+    cancelled_at = db.Column(db.DateTime, nullable=True)
+    result_storage_key = db.Column(db.String(500), nullable=True)
+    result_filename = db.Column(db.String(255), nullable=True)
+    result_mime = db.Column(db.String(100), nullable=True)
+    result_size = db.Column(db.Integer, nullable=True)
+    result_sha256 = db.Column(db.String(64), nullable=True)
+
+    user = db.relationship("Users", backref="design_requests", lazy=True)
+    order = db.relationship("Orders", backref=db.backref("design_request", uselist=False), lazy=True)
+    items = db.relationship(
+        "DesignRequestItem",
+        backref="design_request",
+        lazy=True,
+        cascade="all, delete-orphan",
+        order_by="DesignRequestItem.id.asc()",
+    )
+
+    def __repr__(self):
+        return f"<DesignRequest {self.reference} {self.status}>"
+
+
+class DesignRequestItem(db.Model):
+    """One unique model and dimension pair included in a design request."""
+
+    __tablename__ = "design_request_items"
+    __table_args__ = (
+        db.CheckConstraint("width_cm > 0", name="ck_design_request_items_width_positive"),
+        db.CheckConstraint("height_cm > 0", name="ck_design_request_items_height_positive"),
+        db.UniqueConstraint(
+            "design_request_id",
+            "product_id",
+            "width_cm",
+            "height_cm",
+            name="uq_design_request_items_model_dimensions",
+        ),
+    )
+
+    id = db.Column(db.Integer, primary_key=True)
+    design_request_id = db.Column(db.Integer, db.ForeignKey("design_requests.id"), nullable=False, index=True)
+    product_id = db.Column(db.Integer, db.ForeignKey("products.id"), nullable=False)
+    product_name = db.Column(db.String(255), nullable=False)
+    width_cm = db.Column(db.Numeric(8, 2), nullable=False)
+    height_cm = db.Column(db.Numeric(8, 2), nullable=False)
+    order_detail_id = db.Column(db.Integer, db.ForeignKey("order_details.id"), nullable=True, unique=True)
+
+    product = db.relationship("Products", backref="design_request_items", lazy=True)
+    order_detail = db.relationship("OrderDetails", foreign_keys=[order_detail_id], lazy=True)
+
+    def __repr__(self):
+        return f"<DesignRequestItem {self.design_request_id} {self.product_id}>"
+
+
 class Users(db.Model):
     __tablename__ = 'users'
     id = db.Column(db.Integer, primary_key=True)
@@ -417,6 +559,7 @@ class CheckoutSessions(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True)
     order_id = db.Column(db.Integer, db.ForeignKey('orders.id'), nullable=True, unique=True)
+    design_request_id = db.Column(db.Integer, db.ForeignKey("design_requests.id"), nullable=True, index=True)
     payment_intent_id = db.Column(db.String(255), nullable=True, unique=True, index=True)
     payment_provider = db.Column(db.String(50), nullable=False, default="stripe")
     provider_order_id = db.Column(db.String(255), nullable=True, index=True)
@@ -443,6 +586,7 @@ class CheckoutSessions(db.Model):
 
     user = db.relationship('Users', backref='checkout_sessions', lazy=True)
     order = db.relationship('Orders', backref=db.backref('checkout_session', uselist=False), lazy=True)
+    design_request = db.relationship("DesignRequest", backref="checkout_sessions", lazy=True)
 
     @staticmethod
     def generate_public_checkout_token():
@@ -480,10 +624,22 @@ class CheckoutSessions(db.Model):
 
 class OrderDetails(db.Model):
     __tablename__ = "order_details"
+    __table_args__ = (
+        db.CheckConstraint(
+            "line_type IN ('physical', 'design_service')",
+            name="ck_order_details_line_type_valid",
+        ),
+    )
     id = db.Column(db.Integer, primary_key=True)
     order_id = db.Column(db.Integer, db.ForeignKey('orders.id'), nullable=False)
     product_id = db.Column(db.Integer, db.ForeignKey('products.id'), nullable=False)
     quantity = db.Column(db.Integer, nullable=False)
+    line_type = db.Column(
+        db.String(24),
+        nullable=False,
+        default="physical",
+        server_default="physical",
+    )
     alto = db.Column(db.Float, nullable=True)  
     ancho = db.Column(db.Float, nullable=True)  
     anclaje = db.Column(db.String(50), nullable=True)  
@@ -507,6 +663,19 @@ class OrderDetails(db.Model):
     def __repr__(self):
         return f'<OrderDetail {self.id}: Order {self.order_id} - Product {self.product_id}>'
     def serialize(self):
+        if self.line_type == "design_service":
+            return {
+                "id": self.id,
+                "order_id": self.order_id,
+                "product_id": self.product_id,
+                "quantity": self.quantity,
+                "line_type": self.line_type,
+                "alto": self.alto,
+                "ancho": self.ancho,
+                "precio_total": self.precio_total,
+                "locator": self.order.locator if self.order else None,
+                "invoice_number": self.order.invoice_number if self.order else None,
+            }
         screw_configuration = _serialize_screw_configuration(
             self.anclaje,
             self.screw_option,
@@ -518,6 +687,7 @@ class OrderDetails(db.Model):
             "order_id": self.order_id,
             "product_id": self.product_id,
             "quantity": self.quantity,
+            "line_type": self.line_type,
             "alto": self.alto,
             "ancho": self.ancho,
             "anclaje": self.anclaje,

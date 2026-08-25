@@ -9,6 +9,7 @@ from reportlab.platypus import Paragraph, Table, TableStyle
 
 from api.utils import format_screw_configuration
 from api.order_shipping import shipping_address_from_order_details, shipping_address_lines
+from api.design_service import order_contains_design_service
 
 
 COLOR_PRIMARY = colors.Color(1, 0.196, 0.302)
@@ -126,6 +127,9 @@ def _build_line_rows(order, paragraph_style):
 
 
 def generate_work_order_pdf(order):
+    if order_contains_design_service(order):
+        raise ValueError("Los servicios de diseño previo no generan orden de trabajo de fabricación.")
+
     buffer = BytesIO()
     pdf = canvas.Canvas(buffer, pagesize=A4)
     width, height = A4

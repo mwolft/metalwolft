@@ -6,6 +6,9 @@ from api.utils import DEFAULT_CONFIGURATOR_SCREW_OPTION, resolve_screw_configura
 from api.order_shipping import shipping_address_from_order_details
 
 
+DESIGN_SERVICE_LINE_TYPE = "design_service"
+
+
 PUBLIC_ORDER_STATUS = {
     "pendiente": {"code": "pendiente", "label": "Recibido"},
     "fabricacion": {"code": "fabricacion", "label": "En fabricación"},
@@ -40,9 +43,13 @@ def serialize_customer_order_summary(order):
 
 
 def serialize_customer_order_detail(order, invoice=None, *, invoice_pdf_available=False):
+    is_design_service_only = bool(order.order_details) and all(
+        getattr(detail, "line_type", "physical") == DESIGN_SERVICE_LINE_TYPE
+        for detail in order.order_details
+    )
     return {
         **serialize_customer_order_summary(order),
-        "shipping_address": _serialize_shipping_address(order.order_details),
+        "shipping_address": None if is_design_service_only else _serialize_shipping_address(order.order_details),
         "lines": [
             _serialize_customer_order_line(detail)
             for detail in sorted(order.order_details, key=lambda item: item.id or 0)
@@ -62,6 +69,18 @@ def _serialize_shipping_address(order_details):
 
 
 def _serialize_customer_order_line(detail):
+    if getattr(detail, "line_type", "physical") == DESIGN_SERVICE_LINE_TYPE:
+        return {
+            "id": detail.id,
+            "line_type": DESIGN_SERVICE_LINE_TYPE,
+            "product_name": detail.product.nombre if detail.product else None,
+            "quantity": detail.quantity,
+            "configuration": {
+                "alto": _format_optional_number(detail.alto),
+                "ancho": _format_optional_number(detail.ancho),
+            },
+        }
+
     screw_option = getattr(detail, "screw_option", None) or DEFAULT_CONFIGURATOR_SCREW_OPTION
     screw_length_mm = getattr(detail, "screw_length_mm", None)
     screw_supplement = getattr(detail, "screw_supplement", 0.0)

@@ -1,6 +1,6 @@
 from flask import request, jsonify, Blueprint, send_file, send_from_directory, current_app, abort, Response
 from flask_jwt_extended import jwt_required
-from api.models import db, Users, Products, ProductImages, Categories, Subcategories, Orders, CheckoutSessions, OrderDetails, Favorites, Cart, Posts, Comments, Invoices, DeliveryEstimateConfig, AccountingEntry
+from api.models import db, Users, Products, ProductImages, Categories, Subcategories, Orders, CheckoutSessions, OrderDetails, Favorites, Cart, Posts, Comments, Invoices, DeliveryEstimateConfig, AccountingEntry, DesignRequest
 from api.utils import (
     DEFAULT_CONFIGURATOR_SCREW_OPTION,
     build_configured_reja_quote,
@@ -39,6 +39,16 @@ from api.email_routes import send_email, get_admin_recipients
 from api.checkout_service import (
     build_checkout_quote,
     build_product_configuration_quote,
+)
+from api.design_service import (
+    SERVICE_LINE_TYPE,
+    DesignServiceError,
+    build_design_checkout_quote,
+    build_design_service_quote,
+    create_design_request,
+    mark_design_request_paid,
+    assert_order_accepts_physical_detail,
+    order_contains_design_service,
 )
 from api.cart_budget_pdf_service import CartBudgetPdfError, render_cart_budget_pdf
 from api.product_lifecycle import (
@@ -787,9 +797,36 @@ def _build_checkout_comparison_from_request(checkout_quote, data):
 def _build_order_details_from_checkout_quote(checkout_quote):
     order_details = []
     for line in (checkout_quote.get("lines") or []):
+        line_type = line.get("line_type") or "physical"
+        if line_type not in {"physical", SERVICE_LINE_TYPE}:
+            raise ValueError("El tipo de línea del pedido no es válido.")
+        if line_type == SERVICE_LINE_TYPE:
+            design_request_id = line.get("design_request_id") or checkout_quote.get("design_request_id")
+            design_request_item_id = line.get("design_request_item_id")
+            if design_request_id is None or design_request_item_id is None:
+                raise ValueError("La solicitud de diseño es obligatoria para finalizar el pago.")
+            order_details.append({
+                "line_type": SERVICE_LINE_TYPE,
+                "design_request_id": design_request_id,
+                "design_request_item_id": design_request_item_id,
+                "producto_id": line["product_id"],
+                "quantity": 1,
+                "alto": line["alto"],
+                "ancho": line["ancho"],
+                "anclaje": None,
+                "color": None,
+                "screw_option": "not_applicable",
+                "screw_length_mm": None,
+                "screw_supplement": 0.0,
+                "precio_total": line["unit_price"],
+                "shipping_type": None,
+                "shipping_cost": 0.0,
+            })
+            continue
         screw_option = line.get("screw_option") or DEFAULT_CONFIGURATOR_SCREW_OPTION
         resolved_screws = resolve_screw_configuration(line.get("anclaje"), screw_option) or {}
         order_details.append({
+            "line_type": "physical",
             "producto_id": line["product_id"],
             "quantity": line["quantity"],
             "alto": line["alto"],
@@ -803,7 +840,14 @@ def _build_order_details_from_checkout_quote(checkout_quote):
             "shipping_type": line.get("shipping_type"),
             "shipping_cost": line.get("shipping_cost")
         })
+    _assert_homogeneous_order_details(order_details)
     return order_details
+
+
+def _assert_homogeneous_order_details(order_details):
+    line_types = {detail.get("line_type") or "physical" for detail in order_details}
+    if len(line_types) > 1:
+        raise ValueError("Un pedido no puede mezclar productos físicos y diseños previos.")
 
 
 def _get_customer_value(request_data, customer_snapshot, field_name):
@@ -1292,6 +1336,22 @@ def _finalize_order_from_checkout_quote(user, checkout_quote, customer_snapshot,
         raise ValueError("Checkout snapshot not available for this payment intent.")
 
     order_details = _build_order_details_from_checkout_quote(checkout_quote)
+    is_design_service_checkout = checkout_quote.get("checkout_kind") == SERVICE_LINE_TYPE
+    contains_design_service_line = any(
+        detail.get("line_type") == SERVICE_LINE_TYPE for detail in order_details
+    )
+    if contains_design_service_line and not is_design_service_checkout:
+        raise ValueError("Las líneas de diseño previo requieren un checkout exclusivo de diseño.")
+    if is_design_service_checkout and (
+        not order_details
+        or any(detail.get("line_type") != SERVICE_LINE_TYPE for detail in order_details)
+        or len({detail.get("design_request_id") for detail in order_details}) != 1
+    ):
+        raise ValueError("El checkout de diseño previo debe contener únicamente sus líneas de servicio.")
+    if is_design_service_checkout and checkout_session and (
+        checkout_session.design_request_id != order_details[0].get("design_request_id")
+    ):
+        raise ValueError("La sesión de checkout no coincide con la solicitud de diseño.")
     customer_snapshot = customer_snapshot or {}
     customer_context = _build_customer_context({}, customer_snapshot)
 
@@ -1319,17 +1379,21 @@ def _finalize_order_from_checkout_quote(user, checkout_quote, customer_snapshot,
     discount_percent = float(checkout_quote.get('discount_percent') or 0)
     discount_code = checkout_quote.get('discount_code') or None
 
+    design_item_order_details = {}
     for detail in order_details:
         precio_recalculado = float(detail.get('precio_total') or 0.0)
-        existing_detail = OrderDetails.query.filter_by(
-            order_id=new_order.id,
-            product_id=detail['producto_id'],
-            alto=detail.get('alto'),
-            ancho=detail.get('ancho'),
-            anclaje=detail.get('anclaje'),
-            color=detail.get('color'),
-            screw_option=detail.get('screw_option') or DEFAULT_CONFIGURATOR_SCREW_OPTION,
-        ).first()
+        existing_detail = None
+        if detail.get("line_type") == "physical":
+            existing_detail = OrderDetails.query.filter_by(
+                order_id=new_order.id,
+                product_id=detail['producto_id'],
+                alto=detail.get('alto'),
+                ancho=detail.get('ancho'),
+                anclaje=detail.get('anclaje'),
+                color=detail.get('color'),
+                screw_option=detail.get('screw_option') or DEFAULT_CONFIGURATOR_SCREW_OPTION,
+                line_type="physical",
+            ).first()
 
         if existing_detail:
             logger.info(f"Detalle ya existente: {existing_detail.serialize()}")
@@ -1342,6 +1406,7 @@ def _finalize_order_from_checkout_quote(user, checkout_quote, customer_snapshot,
             order_id=new_order.id,
             product_id=detail['producto_id'],
             quantity=detail['quantity'],
+            line_type=detail.get("line_type") or "physical",
             alto=detail.get('alto'),
             ancho=detail.get('ancho'),
             anclaje=detail.get('anclaje'),
@@ -1352,9 +1417,9 @@ def _finalize_order_from_checkout_quote(user, checkout_quote, customer_snapshot,
             precio_total=precio_recalculado,
             firstname=customer_firstname,
             lastname=customer_lastname,
-            shipping_address=customer_shipping_address,
-            shipping_city=customer_shipping_city,
-            shipping_postal_code=customer_shipping_postal_code,
+            shipping_address=customer_shipping_address if detail.get("line_type") == "physical" else None,
+            shipping_city=customer_shipping_city if detail.get("line_type") == "physical" else None,
+            shipping_postal_code=customer_shipping_postal_code if detail.get("line_type") == "physical" else None,
             billing_address=customer_billing_address,
             billing_city=customer_billing_city,
             billing_postal_code=customer_billing_postal_code,
@@ -1364,6 +1429,9 @@ def _finalize_order_from_checkout_quote(user, checkout_quote, customer_snapshot,
         )
 
         db.session.add(new_detail)
+        db.session.flush()
+        if detail.get("line_type") == SERVICE_LINE_TYPE:
+            design_item_order_details[detail["design_request_item_id"]] = new_detail.id
         subtotal += precio_recalculado * detail.get("quantity", 1)
 
     shipping_cost = float(checkout_quote["shipping_cost"])
@@ -1376,6 +1444,14 @@ def _finalize_order_from_checkout_quote(user, checkout_quote, customer_snapshot,
     new_order.shipping_cost = round(float(shipping_cost or 0.0), 2)
     new_order.total_amount = round(backend_total, 2)
 
+    if is_design_service_checkout:
+        mark_design_request_paid(
+            db_session=db.session,
+            design_request_id=order_details[0]["design_request_id"],
+            order_id=new_order.id,
+            item_order_detail_ids=design_item_order_details,
+        )
+
     logger.info(
         "Cálculo final autoritativo backend → "
         f"Bruto: {gross_sum:.2f} € | Descuento: {discount_value_iva:.2f} € | "
@@ -1387,8 +1463,10 @@ def _finalize_order_from_checkout_quote(user, checkout_quote, customer_snapshot,
             checkout_session.customer_snapshot = customer_snapshot
         checkout_session.order_id = new_order.id
         checkout_session.status = "order_created"
+        if is_design_service_checkout:
+            checkout_session.design_request_id = order_details[0]["design_request_id"]
 
-    if checkout_session and checkout_session.payment_provider == "stripe":
+    if checkout_session and checkout_session.payment_provider == "stripe" and not is_design_service_checkout:
         cleanup_cart_lines_from_checkout_quote(
             db_session=db.session,
             cart_model=Cart,
@@ -2371,6 +2449,71 @@ def stripe_webhook():
         db.session.rollback()
         logger.error("Error inesperado procesando webhook Stripe: %s", str(e))
         return jsonify({'error': 'unexpected error'}), 500
+
+
+@api.route('/design-requests/quote', methods=['POST'])
+@jwt_required()
+def quote_design_request():
+    current_user = get_jwt_identity()
+    data = request.get_json(silent=True) or {}
+    try:
+        quote = build_design_service_quote(
+            db_session=db.session,
+            product_id=data.get("product_id"),
+            items=data.get("items"),
+        )
+        return jsonify(quote), 200
+    except DesignServiceError as exc:
+        logger.info("Design quote rejected user_id=%s reason=%s", current_user.get("user_id"), type(exc).__name__)
+        return jsonify({"message": str(exc)}), 400
+
+
+@api.route('/design-requests', methods=['POST'])
+@jwt_required()
+def create_design_request_endpoint():
+    current_user = get_jwt_identity()
+    data = request.get_json(silent=True) or {}
+    creation_key = request.headers.get("Idempotency-Key")
+    try:
+        result = create_design_request(
+            db_session=db.session,
+            user_id=current_user["user_id"],
+            product_id=data.get("product_id"),
+            items=data.get("items"),
+            creation_key=creation_key,
+        )
+        db.session.commit()
+        design_request = result.design_request
+        return jsonify({
+            "id": design_request.id,
+            "reference": design_request.reference,
+            "status": design_request.status,
+            "created": result.created,
+        }), 201 if result.created else 200
+    except DesignServiceError as exc:
+        db.session.rollback()
+        logger.info("Design request rejected user_id=%s reason=%s", current_user.get("user_id"), type(exc).__name__)
+        return jsonify({"message": str(exc)}), 400
+    except Exception:
+        db.session.rollback()
+        logger.exception("Unexpected design request creation failure user_id=%s", current_user.get("user_id"))
+        return jsonify({"message": "No se ha podido crear la solicitud de diseño."}), 500
+
+
+@api.route('/design-requests/<int:design_request_id>/checkout-quote', methods=['POST'])
+@jwt_required()
+def design_request_checkout_quote(design_request_id):
+    current_user = get_jwt_identity()
+    design_request = db.session.get(DesignRequest, design_request_id)
+    try:
+        quote = build_design_checkout_quote(
+            design_request=design_request,
+            user_id=current_user["user_id"],
+        )
+        return jsonify(quote), 200
+    except DesignServiceError as exc:
+        logger.info("Design checkout quote rejected user_id=%s request_id=%s reason=%s", current_user.get("user_id"), design_request_id, type(exc).__name__)
+        return jsonify({"message": str(exc)}), 400
 
 
 @api.route('/checkout/quote', methods=['POST'])
@@ -4290,6 +4433,8 @@ def handle_order(order_id):
 
         if "order_status" in data:
             next_status = (data.get("order_status") or "").strip()
+            if order_contains_design_service(order) and (next_status or "pendiente") != "pendiente":
+                return jsonify({"message": "Las solicitudes de diseño no usan estados logísticos."}), 409
             order.order_status = next_status or "pendiente"
 
         if "estimated_delivery_at" in data:
@@ -4495,6 +4640,8 @@ def download_work_order(order_id):
 
         if not order:
             return jsonify({"message": "Order not found"}), 404
+        if order_contains_design_service(order):
+            return jsonify({"message": "El diseño previo no genera orden de trabajo de fabricación."}), 409
 
         pdf_bytes = generate_work_order_pdf(order)
         locator = (order.locator or f"pedido-{order.id}").strip()
@@ -4591,6 +4738,10 @@ def add_order_details():
         shipping_assigned = False 
 
         for detail in data:
+            order = db.session.get(Orders, detail["order_id"])
+            if not order:
+                raise ValueError("Pedido no encontrado.")
+            assert_order_accepts_physical_detail(order)
             # Verifica si el detalle ya existe
             existing_detail = OrderDetails.query.filter_by(
                 order_id=detail['order_id'],

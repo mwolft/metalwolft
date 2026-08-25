@@ -39,6 +39,7 @@ class OrderEmailLine:
     line_total: object
     image_url: str | None = None
     total_label: str | None = None
+    line_type: str = "physical"
 
 
 def render_order_confirmation_email(
@@ -51,6 +52,7 @@ def render_order_confirmation_email(
     discount_amount,
     total_amount,
     shipping_address=None,
+    is_design_service=False,
 ):
     order_reference_text = _required_text(order_reference, "order_reference")
     customer_name = _text(customer_firstname)
@@ -70,21 +72,27 @@ def render_order_confirmation_email(
     if not plain_lines:
         plain_lines = "Pedido sin líneas disponibles."
 
-    totals = [
-        f"Subtotal: {subtotal_text}",
-        f"Envío: {shipping_text}",
-    ]
+    totals = [f"Subtotal: {subtotal_text}"]
+    if not is_design_service:
+        totals.append(f"Envío: {shipping_text}")
     if discount_value > 0:
         totals.append(f"Descuento: −{discount_text}")
     totals.append(f"TOTAL: {total_text}")
     totals_text = "\n".join(totals)
-    shipping_text_body = _render_order_shipping_text(shipping_address)
+    shipping_text_body = "" if is_design_service else _render_order_shipping_text(shipping_address)
+    confirmation_title = "Hemos recibido tu solicitud de diseño" if is_design_service else "¡Gracias por tu pedido!"
+    confirmation_message = (
+        "Hemos recibido correctamente tu solicitud de diseño previo. "
+        "Te avisaremos cuando esté preparada."
+        if is_design_service
+        else "Ahora comenzaremos a preparar y fabricar tu pedido.\nTe informaremos cuando avance su estado."
+    )
 
     text_body = (
         "METALWOLFT\n"
         f"{BRAND_TAGLINE}\n\n"
         f"{greeting}\n\n"
-        "¡Gracias por tu pedido!\n\n"
+        f"{confirmation_title}\n\n"
         f"Hemos recibido correctamente tu pedido {order_reference_text}.\n\n"
         f"Pedido: {order_reference_text}\n"
         "Estado del pago: confirmado\n\n"
@@ -92,8 +100,7 @@ def render_order_confirmation_email(
         f"{plain_lines}\n\n"
         f"{totals_text}\n\n"
         f"{shipping_text_body}"
-        "Ahora comenzaremos a preparar y fabricar tu pedido.\n"
-        "Te informaremos cuando avance su estado.\n\n"
+        f"{confirmation_message}\n\n"
         "Gracias por confiar en MetalWolft.\n\n"
         "MetalWolft\n"
         "Fabricación de rejas a medida"
@@ -111,16 +118,29 @@ def render_order_confirmation_email(
     if discount_value > 0:
         discount_row = _render_total_row("Descuento", f"−{discount_text}")
 
-    shipping_html = _render_order_shipping_html(shipping_address)
+    shipping_html = "" if is_design_service else _render_order_shipping_html(shipping_address)
+    shipping_total_row = "" if is_design_service else _render_total_row("Envío", shipping_text)
+    html_title = "Hemos recibido tu solicitud de diseño" if is_design_service else "¡Gracias por tu pedido!"
+    html_confirmation = (
+        "Hemos recibido correctamente tu solicitud de diseño previo. Te avisaremos cuando esté preparada."
+        if is_design_service
+        else "Hemos recibido correctamente tu pedido"
+    )
+    html_next_step = (
+        "Revisaremos la configuración solicitada y te avisaremos cuando el diseño esté preparado."
+        if is_design_service
+        else "Ahora comenzaremos a preparar y fabricar tu pedido."
+    )
+    html_next_detail = "" if is_design_service else "Te informaremos cuando avance su estado."
 
     content_html = (
         f'<p style="margin:0 0 18px;color:{COLOR_MUTED};font-size:15px;line-height:1.6;">'
         f"{_html(greeting)}"
         "</p>"
         f'<h1 style="margin:0 0 10px;color:{COLOR_TEXT};font-family:Arial,Helvetica,sans-serif;'
-        'font-size:28px;line-height:1.2;font-weight:700;">¡Gracias por tu pedido!</h1>'
+        f'font-size:28px;line-height:1.2;font-weight:700;">{_html(html_title)}</h1>'
         f'<p style="margin:0 0 22px;color:{COLOR_TEXT};font-size:16px;line-height:1.6;">'
-        f"Hemos recibido correctamente tu pedido <strong>{_html(order_reference_text)}</strong>."
+        f"{_html(html_confirmation)} <strong>{_html(order_reference_text)}</strong>."
         "</p>"
         '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" '
         'style="width:100%;margin:0 0 28px;border-collapse:separate;">'
@@ -138,16 +158,16 @@ def render_order_confirmation_email(
         '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" '
         f'style="width:100%;margin:20px 0 24px;border-top:1px solid {COLOR_BORDER};border-collapse:collapse;">'
         f"{_render_total_row('Subtotal', subtotal_text)}"
-        f"{_render_total_row('Envío', shipping_text)}"
+        f"{shipping_total_row}"
         f"{discount_row}"
         f"{_render_total_row('TOTAL', total_text, emphasized=True)}"
         "</table>"
         f"{shipping_html}"
         f'<div style="padding:18px;background:{COLOR_SURFACE_ALT};border-left:3px solid {COLOR_ACCENT};">'
         f'<p style="margin:0 0 5px;color:{COLOR_TEXT};font-size:15px;line-height:1.5;font-weight:600;">'
-        "Ahora comenzaremos a preparar y fabricar tu pedido.</p>"
+        f"{_html(html_next_step)}</p>"
         f'<p style="margin:0;color:{COLOR_MUTED};font-size:14px;line-height:1.5;">'
-        "Te informaremos cuando avance su estado.</p>"
+        f"{_html(html_next_detail)}</p>"
         "</div>"
     )
 
@@ -677,7 +697,15 @@ def _render_order_line(line):
     text_total_label = total_label or "Importe"
     html_total_label = total_label or "Importe de línea"
 
-    plain = (
+    if line.line_type == "design_service":
+        plain = (
+            f"{product_name} ×{quantity}\n"
+            f"Medidas: {measurements}\n"
+            f"{text_total_label}: {line_total}"
+        )
+        html_details = _html(measurements)
+    else:
+        plain = (
         f"{product_name} ×{quantity}\n"
         f"Medidas: {measurements}\n"
         f"Instalación: {anchorage}\n"
@@ -686,6 +714,10 @@ def _render_order_line(line):
         + f"Cantidad: {quantity}\n"
         + f"{text_total_label}: {line_total}"
     )
+        html_details = (
+            f"{_html(measurements)} · {_html(anchorage)}<br>{_html(color)}"
+            + (f"<br>Tornillos {_html(screw_configuration)}" if screw_configuration else "")
+        )
 
     image_cell = ""
     if image_url:
@@ -709,10 +741,8 @@ def _render_order_line(line):
         f'font-size:15px;line-height:1.4;font-weight:600;white-space:nowrap;">×{_html(quantity)}</td>'
         "</tr><tr>"
         f'<td colspan="{3 if image_cell else 2}" style="padding:0 0 5px;color:{COLOR_MUTED};font-size:14px;line-height:1.55;">'
-        f"{_html(measurements)} · {_html(anchorage)}<br>"
-        f"{_html(color)}"
+        f"{html_details}"
         )
-        + (f"<br>Tornillos {_html(screw_configuration)}" if screw_configuration else "")
         + (
         "</td></tr><tr>"
         f'<td colspan="{2 if image_cell else 1}" style="padding:4px 0 16px;color:{COLOR_MUTED};font-size:13px;line-height:1.4;">'
