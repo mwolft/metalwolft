@@ -9,6 +9,7 @@ import {
   useRef,
   useState
 } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { clearSession, getToken } from "@/lib/auth-client";
@@ -940,24 +941,33 @@ export function ProductConfigurator({
         </p>
         {designPreviewHref ? (
           <aside className="mw-configurator-design-preview" aria-label="Diseño previo a medida">
-            <div>
-              <p className="mw-configurator-design-preview__title">¿Quieres ver cómo quedará tu reja?</p>
-              <p>
-                Te preparamos un diseño previo de este modelo en{" "}
+            <div className="mw-configurator-design-preview__body">
+              <div className="mw-configurator-design-preview__icon" aria-hidden="true">
+                <Image
+                  src="/icons/diseno-previo-rejas.webp"
+                  alt=""
+                  width={44}
+                  height={44}
+                />
+              </div>
+              <div className="mw-configurator-design-preview__copy">
+                <p className="mw-configurator-design-preview__title">¿Quieres ver cómo quedará tu reja?</p>
+                <p>Te preparamos un diseño previo de este modelo en</p>
                 <strong className="mw-configurator-design-preview__dimensions">
                   {designPreviewHeight} × {designPreviewWidth} cm
                 </strong>
-                .
-              </p>
-              {designServiceQuoteStatus === "loading" && !designServiceQuote ? (
-                <span className="mw-configurator-design-preview__status">Calculando precio…</span>
-              ) : null}
+                {designServiceQuoteStatus === "loading" && !designServiceQuote ? (
+                  <span className="mw-configurator-design-preview__status">Calculando precio…</span>
+                ) : null}
+              </div>
             </div>
-            <Link className="mw-configurator-design-preview__link" href={designPreviewHref}>
-              Ver diseño previo{designServiceQuote
-                ? ` · ${formatCurrency(Number(designServiceQuote.total_amount))} €`
-                : ""} →
-            </Link>
+            <div className="mw-configurator-design-preview__footer">
+              <Link className="mw-configurator-design-preview__link" href={designPreviewHref}>
+                Ver diseño previo{designServiceQuote
+                  ? ` · ${formatCurrency(Number(designServiceQuote.total_amount))} €`
+                  : ""} →
+              </Link>
+            </div>
           </aside>
         ) : null}
         {configurationMessage ? (
