@@ -12,15 +12,23 @@ const [analytics, banner, gtm, footer, styles] = await Promise.all([
 assert.match(analytics, /storedConsent === "all"/);
 assert.match(analytics, /storedConsent === "necessary" \|\| storedConsent === "essential"/);
 assert.match(analytics, /setItem\(ANALYTICS_CONSENT_STORAGE_KEY, consent\)/);
-assert.match(analytics, /event: "consent_update"/);
+assert.match(analytics, /gtag\?\.\("consent", "default", googleConsentSettings\("denied"\)\)/);
+assert.match(analytics, /gtag\?\.\("consent", "update", googleConsentSettings\(storage\)\)/);
+assert.match(analytics, /ad_storage: storage/);
 assert.match(analytics, /analytics_storage: storage/);
+assert.match(analytics, /ad_user_data: storage/);
+assert.match(analytics, /ad_personalization: storage/);
+assert.match(analytics, /applyGoogleConsentMode\(consent\)/);
+assert.doesNotMatch(analytics, /event: "consent_update"/);
 assert.match(analytics, /dispatchEvent\(new Event\(ANALYTICS_CONSENT_CHANGED_EVENT\)\)/);
 assert.match(banner, /getAnalyticsConsent\(\) === null/);
 assert.match(banner, /saveConsent\("all"\)/);
 assert.match(banner, /saveConsent\("necessary"\)/);
 assert.match(banner, /href="\/politica-de-cookies"/);
 assert.match(gtm, /addEventListener\(ANALYTICS_CONSENT_CHANGED_EVENT, updateConsent\)/);
-assert.match(gtm, /setIsEnabled\(hasAnalyticsConsent\(\)\)/);
+assert.match(gtm, /applyGoogleConsentMode\("all"\)/);
+assert.match(gtm, /setIsEnabled\(hasConsent\)/);
+assert.ok(gtm.indexOf('applyGoogleConsentMode("all")') < gtm.indexOf("setIsEnabled(hasConsent)"));
 assert.match(gtm, /if \(!isEnabled \|\| !gtmId\)/);
 assert.match(gtm, /src="\/scripts\/gtm-bootstrap\.js"/);
 assert.match(footer, /<CookieConsentSettingsButton \/>/);
@@ -29,4 +37,4 @@ assert.match(styles, /\.mw-cookie-consent__content\s*{[^}]*justify-content: cent
 assert.match(styles, /\.mw-cookie-consent__actions \.mw-button--primary\s*{[^}]*background: #cf1c35/s);
 assert.match(styles, /\.mw-cookie-consent__actions \.mw-button--secondary\s*{[^}]*background: transparent/s);
 
-console.log("18 cookie consent assertions passed");
+console.log("27 cookie consent assertions passed");
