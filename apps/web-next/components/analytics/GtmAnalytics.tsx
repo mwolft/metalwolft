@@ -4,6 +4,7 @@ import Script from "next/script";
 import { useEffect, useState } from "react";
 import {
   ANALYTICS_CONSENT_CHANGED_EVENT,
+  applyGoogleConsentMode,
   hasAnalyticsConsent
 } from "@/lib/analytics";
 
@@ -14,7 +15,14 @@ export function GtmAnalytics() {
 
   useEffect(() => {
     const updateConsent = () => {
-      setIsEnabled(hasAnalyticsConsent());
+      const hasConsent = hasAnalyticsConsent();
+
+      // Returning visitors can already have consent before this client component mounts.
+      if (hasConsent) {
+        applyGoogleConsentMode("all");
+      }
+
+      setIsEnabled(hasConsent);
     };
 
     updateConsent();

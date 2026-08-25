@@ -13,6 +13,11 @@ assert.match(layout, /<GtmAnalytics \/>/);
 assert.match(analytics, /ANALYTICS_CONSENT_STORAGE_KEY = "cookiesConsent"/);
 assert.match(analytics, /storedConsent === "all"/);
 assert.match(analytics, /storedConsent === "necessary" \|\| storedConsent === "essential"/);
+assert.match(analytics, /window\.gtag = function gtag/);
+assert.match(analytics, /window\.dataLayer\?\.push\(arguments\)/);
+assert.match(analytics, /"consent", "default", googleConsentSettings\("denied"\)/);
+assert.match(analytics, /"consent", "update", googleConsentSettings\(storage\)/);
+assert.doesNotMatch(analytics, /event: "consent_update"/);
 assert.match(gtm, /NEXT_PUBLIC_GTM_ID.*GTM-P5Z39HKV/);
 assert.match(gtm, /src="\/scripts\/gtm-bootstrap\.js"/);
 assert.match(gtm, /data-gtm-id=\{gtmId\}/);
@@ -40,4 +45,4 @@ for (const field of [
 assert.match(configurator, /lastTrackedQuoteKey/);
 assert.doesNotMatch(configurator, /event: "purchase"/);
 
-console.log("23 GTM configurator analytics assertions passed");
+console.log("28 GTM configurator analytics assertions passed");
