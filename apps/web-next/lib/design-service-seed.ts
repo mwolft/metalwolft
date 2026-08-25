@@ -36,3 +36,19 @@ export function parseDesignServiceSeed(searchParams: SearchParamsReader): Design
 
   return { product_slug, width_cm, height_cm };
 }
+
+export function buildDesignServiceSeedHref(seed: DesignServiceSeed) {
+  const product_slug = parseProductSlug(seed.product_slug);
+  const width_cm = parsePositiveNumber(String(seed.width_cm));
+  const height_cm = parsePositiveNumber(String(seed.height_cm));
+  if (!product_slug || width_cm === null || height_cm === null) {
+    return null;
+  }
+
+  const query = new URLSearchParams({
+    producto: product_slug,
+    ancho: String(width_cm),
+    alto: String(height_cm)
+  });
+  return `/diseno-previo?${query.toString()}`;
+}

@@ -2213,6 +2213,45 @@ textarea:focus-visible {
   line-height: 1.6;
 }
 
+.mw-configurator-design-preview {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.9rem 1rem;
+  border: 1px solid rgba(255, 50, 77, 0.18);
+  border-radius: 14px;
+  background: rgba(255, 246, 247, 0.52);
+}
+
+.mw-configurator-design-preview p {
+  margin: 0;
+  color: #4b5563;
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.mw-configurator-design-preview .mw-configurator-design-preview__title {
+  margin-bottom: 0.2rem;
+  color: var(--mw-text);
+  font-weight: 800;
+}
+
+.mw-configurator-design-preview__link {
+  flex: 0 0 auto;
+  color: var(--mw-accent-dark);
+  font-size: 0.9rem;
+  font-weight: 800;
+  line-height: 1.35;
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.18em;
+}
+
+.mw-configurator-design-preview__link:hover {
+  color: var(--mw-accent);
+}
+
 .mw-configurator-help {
   padding: 0.85rem 0.95rem;
   border-radius: 14px;
@@ -4952,6 +4991,11 @@ textarea:focus-visible {
 
   .mw-configurator-screws__options {
     grid-template-columns: 1fr;
+  }
+
+  .mw-configurator-design-preview {
+    align-items: flex-start;
+    flex-direction: column;
   }
 
   .mw-category-feature-grid__icon {

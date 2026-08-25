@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { parseDesignServiceSeed } from "./design-service-seed.ts";
+import { buildDesignServiceSeedHref, parseDesignServiceSeed } from "./design-service-seed.ts";
 
 assert.deepEqual(
   parseDesignServiceSeed(new URLSearchParams("producto=maryland&ancho=200&alto=120")),
@@ -20,4 +20,13 @@ for (const query of [
   assert.equal(parseDesignServiceSeed(new URLSearchParams(query)), null);
 }
 
-console.log("7 design service seed assertions passed");
+assert.equal(
+  buildDesignServiceSeedHref({ product_slug: "maryland", width_cm: 200, height_cm: 120 }),
+  "/diseno-previo?producto=maryland&ancho=200&alto=120"
+);
+assert.equal(
+  buildDesignServiceSeedHref({ product_slug: "Maryland", width_cm: 200, height_cm: 120 }),
+  null
+);
+
+console.log("9 design service seed assertions passed");
