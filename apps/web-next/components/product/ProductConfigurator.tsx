@@ -941,15 +941,22 @@ export function ProductConfigurator({
         {designPreviewHref ? (
           <aside className="mw-configurator-design-preview" aria-label="Diseño previo a medida">
             <div>
-              <p className="mw-configurator-design-preview__title">¿No sabes cómo quedará tu reja?</p>
-              <p>Te preparamos un diseño previo con estas medidas antes de comprarla.</p>
+              <p className="mw-configurator-design-preview__title">¿Quieres ver cómo quedará tu reja?</p>
+              <p>
+                Te preparamos un diseño previo de este modelo en{" "}
+                <strong className="mw-configurator-design-preview__dimensions">
+                  {designPreviewHeight} × {designPreviewWidth} cm
+                </strong>
+                .
+              </p>
+              {designServiceQuoteStatus === "loading" && !designServiceQuote ? (
+                <span className="mw-configurator-design-preview__status">Calculando precio…</span>
+              ) : null}
             </div>
             <Link className="mw-configurator-design-preview__link" href={designPreviewHref}>
-              {designServiceQuote
-                ? `Ver diseño previo · ${formatCurrency(Number(designServiceQuote.total_amount))} € →`
-                : designServiceQuoteStatus === "loading"
-                  ? "Calculando precio…"
-                  : "Ver diseño previo →"}
+              Ver diseño previo{designServiceQuote
+                ? ` · ${formatCurrency(Number(designServiceQuote.total_amount))} €`
+                : ""} →
             </Link>
           </aside>
         ) : null}

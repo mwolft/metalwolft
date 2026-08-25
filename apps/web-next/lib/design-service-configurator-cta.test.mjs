@@ -14,6 +14,8 @@ assert.match(configurator, /height_cm: designPreviewHeight/);
 assert.match(configurator, /requestDesignServiceQuote/);
 assert.match(configurator, /designPreviewHref \? \(/);
 assert.match(configurator, /Ver diseño previo/);
+assert.match(configurator, /¿Quieres ver cómo quedará tu reja\?/);
+assert.match(configurator, /designPreviewHeight} × {designPreviewWidth} cm/);
 assert.match(configurator, /designServiceQuote\.total_amount/);
 assert.doesNotMatch(configurator, /anclaje.*designPreviewHref|color.*designPreviewHref|screw_option.*designPreviewHref/);
 assert.doesNotMatch(configurator, /pushGtmEvent\(\{[\s\S]*?design_preview/);

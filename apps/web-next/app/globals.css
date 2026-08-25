@@ -2219,9 +2219,9 @@ textarea:focus-visible {
   justify-content: space-between;
   gap: 1rem;
   padding: 0.9rem 1rem;
-  border: 1px solid rgba(255, 50, 77, 0.18);
+  border: 1px solid rgba(209, 213, 219, 0.92);
   border-radius: 14px;
-  background: rgba(255, 246, 247, 0.52);
+  background: rgba(249, 250, 251, 0.82);
 }
 
 .mw-configurator-design-preview p {
@@ -2237,8 +2237,23 @@ textarea:focus-visible {
   font-weight: 800;
 }
 
+.mw-configurator-design-preview__dimensions {
+  color: var(--mw-text);
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.mw-configurator-design-preview__status {
+  display: block;
+  margin-top: 0.35rem;
+  color: var(--mw-muted);
+  font-size: 0.8rem;
+  line-height: 1.35;
+}
+
 .mw-configurator-design-preview__link {
   flex: 0 0 auto;
+  min-width: 11.6rem;
   color: var(--mw-accent-dark);
   font-size: 0.9rem;
   font-weight: 800;
@@ -4996,6 +5011,10 @@ textarea:focus-visible {
   .mw-configurator-design-preview {
     align-items: flex-start;
     flex-direction: column;
+  }
+
+  .mw-configurator-design-preview__link {
+    min-width: 0;
   }
 
   .mw-category-feature-grid__icon {
