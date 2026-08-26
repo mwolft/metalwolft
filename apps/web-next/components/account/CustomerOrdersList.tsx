@@ -185,7 +185,8 @@ export function CustomerOrdersList() {
 
       <div className="mw-customer-orders__list">
         {orders.map((order) => {
-          const estimatedDeliveryDate = order.estimated_delivery_at
+          const isDesignService = order.order_type === "design_service";
+          const estimatedDeliveryDate = !isDesignService && order.estimated_delivery_at
             ? formatCivilDateEs(order.estimated_delivery_at)
             : null;
 
@@ -193,9 +194,14 @@ export function CustomerOrdersList() {
             <article className="mw-customer-order-card" key={order.id}>
               <div>
                 <p className="mw-customer-order-card__reference">
-                  {order.reference || `Pedido #${order.id}`}
+                  {isDesignService ? "Diseño previo a medida" : (order.reference || `Pedido #${order.id}`)}
                 </p>
                 <p className="mw-customer-order-card__date">{formatOrderDate(order.created_at)}</p>
+                {isDesignService ? (
+                  <p className="mw-customer-order-card__service-summary">
+                    {order.design_count} {order.design_count === 1 ? "diseño" : "diseños"}
+                  </p>
+                ) : null}
                 {estimatedDeliveryDate ? (
                   <div className="mw-customer-order-estimate">
                     <p>

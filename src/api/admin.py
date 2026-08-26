@@ -885,6 +885,7 @@ class OrderAdminView(SafeModelView):
     column_list = [
         'id',
         'user_id',
+        'order_type_label',
         'total_amount',
         'discount_code',
         'discount_value',
@@ -909,6 +910,7 @@ class OrderAdminView(SafeModelView):
     column_labels = {
         'discount_code': 'Código',
         'discount_value': 'Importe',
+        'order_type_label': 'Tipo',
         'total_amount': 'Total (€)',
         'order_date': 'Fecha pedido',
         'invoice_number': 'Factura',
@@ -1177,7 +1179,7 @@ class CartAdminView(SafeModelView):
 
 class OrderDetailsAdminView(SafeModelView):
     column_list = [
-        'order_id', 'locator', 'cliente', 'product_name',
+        'order_id', 'locator', 'cliente', 'line_type_label', 'product_name',
         'quantity', 'alto', 'ancho', 'anclaje', 'color',
         'precio_total', 'shipping_cost', 'total_con_envio'
     ]
@@ -1186,6 +1188,7 @@ class OrderDetailsAdminView(SafeModelView):
         'order_id': 'Pedido ID',
         'locator': 'Localizador',
         'cliente': 'Cliente',
+        'line_type_label': 'Tipo',
         'product_name': 'Producto',
         'quantity': 'Ud.',
         'alto': 'Alto',
@@ -1200,11 +1203,20 @@ class OrderDetailsAdminView(SafeModelView):
     column_formatters = {
         'locator': lambda v, c, m, p: m.order.locator if m.order else '',
         'cliente': lambda v, c, m, p: f"{m.order.user.email}" if m.order and m.order.user else '',
-        'product_name': lambda v, c, m, p: m.product.nombre if m.product else '',
+        'product_name': lambda v, c, m, p: (
+            f"Diseño previo · {m.product.nombre}" if m.line_type == "design_service" and m.product
+            else (m.product.nombre if m.product else '')
+        ),
+        'anclaje': lambda v, c, m, p: "—" if m.line_type == "design_service" else (m.anclaje or "—"),
+        'color': lambda v, c, m, p: "—" if m.line_type == "design_service" else (m.color or "—"),
         'precio_total': lambda v, c, m, p: f"{m.precio_total * m.quantity:.2f} €" if m.precio_total and m.quantity else '0.00 €',
-        'shipping_cost': lambda v, c, m, p: f"{m.shipping_cost:.2f} €" if m.shipping_cost else "0.00 €",
-        'total_con_envio': lambda v, c, m, p: f"{(m.precio_total * m.quantity + (m.shipping_cost or 0)):.2f} €"
+        'shipping_cost': lambda v, c, m, p: "—" if m.line_type == "design_service" else (f"{m.shipping_cost:.2f} €" if m.shipping_cost else "0.00 €"),
+        'total_con_envio': lambda v, c, m, p: (
+            f"{m.precio_total * m.quantity:.2f} €" if m.line_type == "design_service"
+            else f"{(m.precio_total * m.quantity + (m.shipping_cost or 0)):.2f} €"
+        ),
     }
+    column_details_list = column_list
 
     def scaffold_list_columns(self):
         columns = super().scaffold_list_columns()

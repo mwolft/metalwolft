@@ -3836,6 +3836,7 @@ def get_customer_orders():
 
     orders = (
         Orders.query
+        .options(joinedload(Orders.design_request))
         .filter(Orders.user_id == customer_id)
         .order_by(Orders.order_date.desc(), Orders.id.desc())
         .all()
@@ -3855,7 +3856,10 @@ def get_customer_order_detail(order_id):
 
     order = (
         Orders.query
-        .options(joinedload(Orders.order_details).joinedload(OrderDetails.product))
+        .options(
+            joinedload(Orders.order_details).joinedload(OrderDetails.product),
+            joinedload(Orders.design_request),
+        )
         .filter(Orders.id == order_id, Orders.user_id == customer_id)
         .first()
     )

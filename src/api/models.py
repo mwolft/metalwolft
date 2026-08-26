@@ -478,6 +478,17 @@ class Orders(db.Model):
         shipping_address = shipping_address_from_order_details(self.order_details)
         return "\n".join(shipping_address_lines(shipping_address)) or None
 
+    @property
+    def order_type_label(self):
+        line_types = {
+            (detail.line_type or "physical") for detail in (self.order_details or [])
+        }
+        if line_types == {"design_service"}:
+            return "Diseño previo"
+        if line_types == {"physical"}:
+            return "Reja física"
+        return "—"
+
     def __repr__(self):
         return f'<Order {self.id} by User {self.user_id}>'
 
@@ -660,6 +671,11 @@ class OrderDetails(db.Model):
     shipping_cost = db.Column(db.Float, nullable=True)
     CIF = db.Column(db.String(20), nullable=True)
     product = db.relationship('Products', backref='order_details', lazy=True)  
+
+    @property
+    def line_type_label(self):
+        return "Diseño previo" if self.line_type == "design_service" else "Reja física"
+
     def __repr__(self):
         return f'<OrderDetail {self.id}: Order {self.order_id} - Product {self.product_id}>'
     def serialize(self):
