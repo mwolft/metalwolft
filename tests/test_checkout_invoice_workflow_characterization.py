@@ -231,7 +231,8 @@ class CheckoutOrderConfirmationEmailCharacterizationTest(unittest.TestCase):
         renderer_source = transactional_renderer_source()
 
         self.assertIn("def send_order_confirmation_email(", source)
-        self.assertIn('subject=f"Hemos recibido tu pedido {order.locator}"', source)
+        self.assertIn('f"Hemos recibido tu pedido {order.locator}"', source)
+        self.assertIn('f"Hemos recibido tu solicitud de diseño {order.locator}"', source)
         self.assertIn("recipients=[user.email, mail_username]", source)
         self.assertIn("body=rendered_email.text", source)
         self.assertIn("html=rendered_email.html", source)

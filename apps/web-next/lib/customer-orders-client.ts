@@ -6,7 +6,9 @@ export type CustomerOrderStatus = {
   label: string;
 };
 
-export type CustomerOrderSummary = {
+export type CustomerOrderType = "physical" | "design_service";
+
+type CustomerOrderCommon = {
   id: number;
   reference: string | null;
   created_at: string | null;
@@ -15,6 +17,29 @@ export type CustomerOrderSummary = {
   status: CustomerOrderStatus;
   estimated_delivery_at: string | null;
 };
+
+export type CustomerOrderDesignService = {
+  reference: string;
+  status: CustomerOrderStatus;
+  lead_time_hours: number;
+};
+
+export type CustomerPhysicalOrderSummary = CustomerOrderCommon & {
+  order_type: "physical";
+  design_service: null;
+  design_count: null;
+};
+
+export type CustomerDesignServiceOrderSummary = CustomerOrderCommon & {
+  order_type: "design_service";
+  estimated_delivery_at: null;
+  design_service: CustomerOrderDesignService;
+  design_count: number;
+};
+
+export type CustomerOrderSummary =
+  | CustomerPhysicalOrderSummary
+  | CustomerDesignServiceOrderSummary;
 
 export type CustomerOrdersResponse = {
   orders: CustomerOrderSummary[];
@@ -33,7 +58,7 @@ export type CustomerOrderShippingAddress = {
   city: string | null;
 };
 
-export type CustomerOrderLineConfiguration = {
+export type CustomerPhysicalOrderLineConfiguration = {
   alto: string | null;
   ancho: string | null;
   color: string | null;
@@ -43,18 +68,43 @@ export type CustomerOrderLineConfiguration = {
   screw_supplement: string | null;
 };
 
-export type CustomerOrderLine = {
-  id: number;
-  product_name: string | null;
-  quantity: number;
-  configuration: CustomerOrderLineConfiguration;
+export type CustomerDesignServiceLineConfiguration = {
+  alto: string | null;
+  ancho: string | null;
 };
 
-export type CustomerOrderDetail = CustomerOrderSummary & {
+export type CustomerPhysicalOrderLine = {
+  id: number;
+  line_type: "physical";
+  product_name: string | null;
+  quantity: number;
+  configuration: CustomerPhysicalOrderLineConfiguration;
+};
+
+export type CustomerDesignServiceOrderLine = {
+  id: number;
+  line_type: "design_service";
+  product_name: string | null;
+  quantity: number;
+  configuration: CustomerDesignServiceLineConfiguration;
+};
+
+export type CustomerOrderLine = CustomerPhysicalOrderLine | CustomerDesignServiceOrderLine;
+export type CustomerOrderLineConfiguration = CustomerPhysicalOrderLineConfiguration;
+
+export type CustomerPhysicalOrderDetail = CustomerPhysicalOrderSummary & {
   shipping_address: CustomerOrderShippingAddress;
-  lines: CustomerOrderLine[];
+  lines: CustomerPhysicalOrderLine[];
   invoice: CustomerOrderInvoice;
 };
+
+export type CustomerDesignServiceOrderDetail = CustomerDesignServiceOrderSummary & {
+  shipping_address: null;
+  lines: CustomerDesignServiceOrderLine[];
+  invoice: CustomerOrderInvoice;
+};
+
+export type CustomerOrderDetail = CustomerPhysicalOrderDetail | CustomerDesignServiceOrderDetail;
 
 export type CustomerOrderDetailResponse = {
   order: CustomerOrderDetail;
@@ -99,7 +149,7 @@ function isCustomerOrderStatus(value: unknown): value is CustomerOrderStatus {
   );
 }
 
-function isCustomerOrderSummary(value: unknown): value is CustomerOrderSummary {
+function isCustomerOrderCommon(value: unknown): value is CustomerOrderCommon {
   return (
     isRecord(value) &&
     typeof value.id === "number" &&
@@ -110,6 +160,36 @@ function isCustomerOrderSummary(value: unknown): value is CustomerOrderSummary {
     typeof value.currency === "string" &&
     isCustomerOrderStatus(value.status) &&
     isNullableCivilDate(value.estimated_delivery_at)
+  );
+}
+
+function isCustomerOrderDesignService(value: unknown): value is CustomerOrderDesignService {
+  return (
+    isRecord(value) &&
+    typeof value.reference === "string" &&
+    isCustomerOrderStatus(value.status) &&
+    typeof value.lead_time_hours === "number" &&
+    Number.isFinite(value.lead_time_hours)
+  );
+}
+
+function isCustomerOrderSummary(value: unknown): value is CustomerOrderSummary {
+  if (!isCustomerOrderCommon(value)) {
+    return false;
+  }
+  const fields = value as CustomerOrderCommon & Record<string, unknown>;
+
+  if (fields.order_type === "physical") {
+    return fields.design_service === null && fields.design_count === null;
+  }
+
+  return (
+    fields.order_type === "design_service" &&
+    fields.estimated_delivery_at === null &&
+    isCustomerOrderDesignService(fields.design_service) &&
+    typeof fields.design_count === "number" &&
+    Number.isInteger(fields.design_count) &&
+    fields.design_count > 0
   );
 }
 
@@ -132,9 +212,9 @@ function isCustomerOrderShippingAddress(value: unknown): value is CustomerOrderS
   );
 }
 
-function isCustomerOrderLineConfiguration(
+function isCustomerPhysicalOrderLineConfiguration(
   value: unknown
-): value is CustomerOrderLineConfiguration {
+): value is CustomerPhysicalOrderLineConfiguration {
   return (
     isRecord(value) &&
     isNullableString(value.alto) &&
@@ -148,7 +228,13 @@ function isCustomerOrderLineConfiguration(
   );
 }
 
-function isCustomerOrderLine(value: unknown): value is CustomerOrderLine {
+function isCustomerDesignServiceLineConfiguration(
+  value: unknown
+): value is CustomerDesignServiceLineConfiguration {
+  return isRecord(value) && isNullableString(value.alto) && isNullableString(value.ancho);
+}
+
+function isCustomerPhysicalOrderLine(value: unknown): value is CustomerPhysicalOrderLine {
   return (
     isRecord(value) &&
     typeof value.id === "number" &&
@@ -156,7 +242,21 @@ function isCustomerOrderLine(value: unknown): value is CustomerOrderLine {
     isNullableString(value.product_name) &&
     typeof value.quantity === "number" &&
     Number.isFinite(value.quantity) &&
-    isCustomerOrderLineConfiguration(value.configuration)
+    value.line_type === "physical" &&
+    isCustomerPhysicalOrderLineConfiguration(value.configuration)
+  );
+}
+
+function isCustomerDesignServiceOrderLine(value: unknown): value is CustomerDesignServiceOrderLine {
+  return (
+    isRecord(value) &&
+    typeof value.id === "number" &&
+    Number.isFinite(value.id) &&
+    value.line_type === "design_service" &&
+    isNullableString(value.product_name) &&
+    typeof value.quantity === "number" &&
+    Number.isFinite(value.quantity) &&
+    isCustomerDesignServiceLineConfiguration(value.configuration)
   );
 }
 
@@ -164,15 +264,20 @@ function isCustomerOrderDetail(value: unknown): value is CustomerOrderDetail {
   if (!isRecord(value) || !isCustomerOrderSummary(value)) {
     return false;
   }
+  const fields = value as CustomerOrderSummary & Record<string, unknown>;
+  if (!Array.isArray(fields.lines) || !isCustomerOrderInvoice(fields.invoice)) {
+    return false;
+  }
+  const lines = fields.lines;
 
-  const detailFields = value as Record<string, unknown>;
+  if (fields.order_type === "physical") {
+    return (
+      isCustomerOrderShippingAddress(fields.shipping_address) &&
+      lines.every(isCustomerPhysicalOrderLine)
+    );
+  }
 
-  return (
-    isCustomerOrderShippingAddress(detailFields.shipping_address) &&
-    Array.isArray(detailFields.lines) &&
-    detailFields.lines.every(isCustomerOrderLine) &&
-    isCustomerOrderInvoice(detailFields.invoice)
-  );
+  return fields.shipping_address === null && lines.every(isCustomerDesignServiceOrderLine);
 }
 
 function parseCustomerOrdersResponse(payload: unknown): CustomerOrdersResponse {

@@ -7,6 +7,7 @@ type SitemapEntry = MetadataRoute.Sitemap[number];
 const STATIC_ROUTES = [
   { path: "/", changeFrequency: "weekly", priority: 1 },
   { path: "/rejas-para-ventanas", changeFrequency: "weekly", priority: 0.95 },
+  { path: "/diseno-previo", changeFrequency: "monthly", priority: 0.7 },
   { path: "/contact", changeFrequency: "monthly", priority: 0.75 },
   { path: "/blogs", changeFrequency: "weekly", priority: 0.85 },
   { path: "/medir-hueco-rejas-para-ventanas", changeFrequency: "monthly", priority: 0.75 },

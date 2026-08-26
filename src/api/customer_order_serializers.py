@@ -6,6 +6,10 @@ from api.utils import DEFAULT_CONFIGURATOR_SCREW_OPTION, resolve_screw_configura
 from api.order_shipping import shipping_address_from_order_details
 
 
+DESIGN_SERVICE_LINE_TYPE = "design_service"
+PHYSICAL_LINE_TYPE = "physical"
+
+
 PUBLIC_ORDER_STATUS = {
     "pendiente": {"code": "pendiente", "label": "Recibido"},
     "fabricacion": {"code": "fabricacion", "label": "En fabricación"},
@@ -17,32 +21,73 @@ PUBLIC_ORDER_STATUS = {
 
 UNKNOWN_PUBLIC_ORDER_STATUS = {"code": "revision", "label": "En revisión"}
 
+PUBLIC_DESIGN_REQUEST_STATUS = {
+    "pending_payment": {"code": "pending_payment", "label": "Pendiente de pago"},
+    "pending": {"code": "pending", "label": "Solicitud recibida"},
+    "in_progress": {"code": "in_progress", "label": "En preparación"},
+    "delivered": {"code": "delivered", "label": "Entregado"},
+}
+
+UNKNOWN_PUBLIC_DESIGN_REQUEST_STATUS = {"code": "revision", "label": "En revisión"}
+
 
 def public_order_status(order_status):
     status_code = str(order_status or "").strip().lower()
     return PUBLIC_ORDER_STATUS.get(status_code, UNKNOWN_PUBLIC_ORDER_STATUS).copy()
 
 
+def public_design_request_status(design_request_status):
+    status_code = str(design_request_status or "").strip().lower()
+    return PUBLIC_DESIGN_REQUEST_STATUS.get(
+        status_code, UNKNOWN_PUBLIC_DESIGN_REQUEST_STATUS
+    ).copy()
+
+
+def _order_line_type(order):
+    lines = tuple(getattr(order, "order_details", ()) or ())
+    line_types = {getattr(line, "line_type", PHYSICAL_LINE_TYPE) or PHYSICAL_LINE_TYPE for line in lines}
+    if not lines or len(line_types) != 1 or not line_types <= {PHYSICAL_LINE_TYPE, DESIGN_SERVICE_LINE_TYPE}:
+        raise ValueError("El pedido no tiene una composición de líneas pública válida.")
+    return line_types.pop()
+
+
+def _serialize_design_service(order):
+    design_request = getattr(order, "design_request", None)
+    if design_request is None:
+        raise ValueError("El pedido de diseño no tiene una solicitud asociada.")
+    return {
+        "reference": design_request.reference,
+        "status": public_design_request_status(design_request.status),
+        "lead_time_hours": design_request.lead_time_hours,
+    }
+
+
 def serialize_customer_order_summary(order):
+    order_type = _order_line_type(order)
+    design_service = _serialize_design_service(order) if order_type == DESIGN_SERVICE_LINE_TYPE else None
     return {
         "id": order.id,
         "reference": order.locator,
         "created_at": order.order_date.isoformat() if order.order_date else None,
         "total": _format_decimal_amount(order.total_amount),
         "currency": "EUR",
-        "status": public_order_status(order.order_status),
+        "order_type": order_type,
+        "status": design_service["status"] if design_service else public_order_status(order.order_status),
         "estimated_delivery_at": (
             order.estimated_delivery_at.isoformat()
-            if order.estimated_delivery_at
+            if order_type == PHYSICAL_LINE_TYPE and order.estimated_delivery_at
             else None
         ),
+        "design_service": design_service,
+        "design_count": len(order.order_details) if order_type == DESIGN_SERVICE_LINE_TYPE else None,
     }
 
 
 def serialize_customer_order_detail(order, invoice=None, *, invoice_pdf_available=False):
+    is_design_service_only = _order_line_type(order) == DESIGN_SERVICE_LINE_TYPE
     return {
         **serialize_customer_order_summary(order),
-        "shipping_address": _serialize_shipping_address(order.order_details),
+        "shipping_address": None if is_design_service_only else _serialize_shipping_address(order.order_details),
         "lines": [
             _serialize_customer_order_line(detail)
             for detail in sorted(order.order_details, key=lambda item: item.id or 0)
@@ -62,6 +107,18 @@ def _serialize_shipping_address(order_details):
 
 
 def _serialize_customer_order_line(detail):
+    if getattr(detail, "line_type", "physical") == DESIGN_SERVICE_LINE_TYPE:
+        return {
+            "id": detail.id,
+            "line_type": DESIGN_SERVICE_LINE_TYPE,
+            "product_name": detail.product.nombre if detail.product else None,
+            "quantity": detail.quantity,
+            "configuration": {
+                "alto": _format_optional_number(detail.alto),
+                "ancho": _format_optional_number(detail.ancho),
+            },
+        }
+
     screw_option = getattr(detail, "screw_option", None) or DEFAULT_CONFIGURATOR_SCREW_OPTION
     screw_length_mm = getattr(detail, "screw_length_mm", None)
     screw_supplement = getattr(detail, "screw_supplement", 0.0)
@@ -74,6 +131,7 @@ def _serialize_customer_order_line(detail):
 
     return {
         "id": detail.id,
+        "line_type": PHYSICAL_LINE_TYPE,
         "product_name": detail.product.nombre if detail.product else None,
         "quantity": detail.quantity,
         "configuration": {

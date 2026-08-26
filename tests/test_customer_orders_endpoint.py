@@ -14,6 +14,7 @@ if str(SRC_DIR) not in sys.path:
     sys.path.insert(0, str(SRC_DIR))
 
 from api.customer_order_serializers import (  # noqa: E402
+    public_design_request_status,
     public_order_status,
     serialize_customer_order_detail,
     serialize_customer_order_summary,
@@ -36,7 +37,10 @@ if HAS_ENDPOINT_DEPS:
     from flask import Flask  # noqa: E402
     from flask_jwt_extended import JWTManager, create_access_token  # noqa: E402
 
-    from api.models import Categories, Invoices, OrderDetails, Orders, Products, Users, db  # noqa: E402
+    from api.models import (  # noqa: E402
+        Categories, DesignRequest, DesignRequestItem, Invoices, OrderDetails,
+        Orders, Products, Users, db,
+    )
     from api.routes import api  # noqa: E402
 
 
@@ -58,8 +62,15 @@ class CustomerOrderSerializerTest(unittest.TestCase):
             public_order_status(None),
             {"code": "revision", "label": "En revisión"},
         )
+        self.assertEqual(
+            public_design_request_status("in_progress"),
+            {"code": "in_progress", "label": "En preparación"},
+        )
 
     def test_customer_order_summary_uses_stable_public_fields(self):
+        class Detail:
+            line_type = "physical"
+
         class Order:
             id = 123
             locator = "UW0586"
@@ -67,6 +78,7 @@ class CustomerOrderSerializerTest(unittest.TestCase):
             total_amount = 245.9
             order_status = "pendiente"
             estimated_delivery_at = date(2026, 8, 14)
+            order_details = [Detail()]
 
         self.assertEqual(
             serialize_customer_order_summary(Order()),
@@ -76,8 +88,11 @@ class CustomerOrderSerializerTest(unittest.TestCase):
                 "created_at": "2026-07-20T08:30:00",
                 "total": "245.90",
                 "currency": "EUR",
+                "order_type": "physical",
                 "status": {"code": "pendiente", "label": "Recibido"},
                 "estimated_delivery_at": "2026-08-14",
+                "design_service": None,
+                "design_count": None,
             },
         )
 
@@ -116,8 +131,11 @@ class CustomerOrderSerializerTest(unittest.TestCase):
                 "created_at": "2026-07-20T08:30:00",
                 "total": "245.90",
                 "currency": "EUR",
+                "order_type": "physical",
                 "status": {"code": "fabricacion", "label": "En fabricación"},
                 "estimated_delivery_at": None,
+                "design_service": None,
+                "design_count": None,
                 "shipping_address": {
                     "recipient": "Ana Cliente",
                     "address": "Calle de entrega 12",
@@ -127,6 +145,7 @@ class CustomerOrderSerializerTest(unittest.TestCase):
                 "lines": [
                     {
                         "id": 7,
+                        "line_type": "physical",
                         "product_name": "Reja Essex",
                         "quantity": 2,
                         "configuration": {
@@ -256,6 +275,8 @@ class CustomerOrdersEndpointTest(unittest.TestCase):
             self.user_a_old_order_id = self.user_a_old_order.id
             self.user_a_new_order_id = self.user_a_new_order.id
             self.user_b_order_id = self.user_b_order.id
+            self.user_a_id = self.user_a.id
+            self.product_id = self.product.id
 
             self.user_a_token = self._token_for(self.user_a)
             self.user_b_token = self._token_for(self.user_b)
@@ -355,6 +376,55 @@ class CustomerOrdersEndpointTest(unittest.TestCase):
         )
         db.session.add(detail)
         return detail
+
+    def _create_design_order(self):
+        user = db.session.get(Users, self.user_a_id)
+        product = db.session.get(Products, self.product_id)
+        order = self._create_order(
+            user,
+            locator="DP0001",
+            total_amount=24.95,
+            order_status="pendiente",
+            order_date=datetime(2026, 7, 18, 8, 30, 0),
+        )
+        detail = OrderDetails(
+            order_id=order.id,
+            product_id=product.id,
+            quantity=1,
+            line_type="design_service",
+            alto=122,
+            ancho=105,
+            precio_total=24.95,
+            screw_option="not_applicable",
+            screw_supplement=0,
+            shipping_cost=0,
+        )
+        db.session.add(detail)
+        db.session.flush()
+        request = DesignRequest(
+            reference="DP-0001",
+            creation_key="design-order-customer-test",
+            user_id=user.id,
+            order_id=order.id,
+            subtotal_gross=24.95,
+            price_gross=24.95,
+            discount_amount=0,
+            currency="EUR",
+            lead_time_hours=24,
+            status=DesignRequest.STATUS_PENDING,
+        )
+        db.session.add(request)
+        db.session.flush()
+        db.session.add(DesignRequestItem(
+            design_request_id=request.id,
+            product_id=product.id,
+            product_name=product.nombre,
+            width_cm=105,
+            height_cm=122,
+            order_detail_id=detail.id,
+        ))
+        db.session.commit()
+        return order
 
     def _create_invoice(
         self,
@@ -469,8 +539,11 @@ class CustomerOrdersEndpointTest(unittest.TestCase):
                 "created_at",
                 "total",
                 "currency",
+                "order_type",
                 "status",
                 "estimated_delivery_at",
+                "design_service",
+                "design_count",
             },
         )
         self.assertEqual(set(order["status"].keys()), {"code", "label"})
@@ -561,6 +634,63 @@ class CustomerOrdersEndpointTest(unittest.TestCase):
         self.assertEqual(payload["order"]["status"], {"code": "fabricacion", "label": "En fabricación"})
         self.assertEqual(payload["order"]["estimated_delivery_at"], "2026-08-14")
 
+    def test_design_service_order_uses_digital_contract_without_shipping(self):
+        with self.app.app_context():
+            order = self._create_design_order()
+            order_id = order.id
+
+        response = self.client.get(
+            f"/api/customer/orders/{order_id}",
+            headers=self._auth(self.user_a_token),
+        )
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.get_json()["order"]
+        self.assertEqual(payload["order_type"], "design_service")
+        self.assertEqual(payload["shipping_address"], None)
+        self.assertEqual(payload["estimated_delivery_at"], None)
+        self.assertEqual(payload["status"], {"code": "pending", "label": "Solicitud recibida"})
+        self.assertEqual(payload["design_service"], {
+            "reference": "DP-0001",
+            "status": {"code": "pending", "label": "Solicitud recibida"},
+            "lead_time_hours": 24,
+        })
+        self.assertEqual(payload["design_count"], 1)
+        self.assertEqual(payload["lines"], [{
+            "id": payload["lines"][0]["id"],
+            "line_type": "design_service",
+            "product_name": "Reja Essex",
+            "quantity": 1,
+            "configuration": {"alto": "122", "ancho": "105"},
+        }])
+
+        summary_response = self.client.get(
+            "/api/customer/orders", headers=self._auth(self.user_a_token)
+        )
+        self.assertEqual(summary_response.status_code, 200)
+        summary = next(
+            item for item in summary_response.get_json()["orders"] if item["id"] == order_id
+        )
+        self.assertEqual(summary["order_type"], "design_service")
+        self.assertEqual(summary["design_count"], 1)
+
+    def test_customer_order_serializer_rejects_mixed_line_types(self):
+        class Detail:
+            def __init__(self, line_type):
+                self.line_type = line_type
+
+        class Order:
+            id = 999
+            locator = "MIXED1"
+            order_date = datetime(2026, 7, 20, 8, 30, 0)
+            total_amount = 10
+            order_status = "pendiente"
+            estimated_delivery_at = None
+            order_details = [Detail("physical"), Detail("design_service")]
+
+        with self.assertRaisesRegex(ValueError, "composición de líneas"):
+            serialize_customer_order_summary(Order())
+
     def test_detail_foreign_order_returns_404(self):
         response = self.client.get(
             f"/api/customer/orders/{self.user_b_order_id}",
@@ -596,11 +726,14 @@ class CustomerOrdersEndpointTest(unittest.TestCase):
                 "created_at",
                 "total",
                 "currency",
+                "order_type",
                 "status",
                 "estimated_delivery_at",
                 "shipping_address",
                 "lines",
                 "invoice",
+                "design_service",
+                "design_count",
             },
         )
         self.assertEqual(
@@ -609,7 +742,7 @@ class CustomerOrdersEndpointTest(unittest.TestCase):
         )
         self.assertEqual(
             set(order["lines"][0].keys()),
-            {"id", "product_name", "quantity", "configuration"},
+            {"id", "line_type", "product_name", "quantity", "configuration"},
         )
         self.assertEqual(
             set(order["lines"][0]["configuration"].keys()),
@@ -651,6 +784,7 @@ class CustomerOrdersEndpointTest(unittest.TestCase):
             [
                 {
                     "id": order["lines"][0]["id"],
+                    "line_type": "physical",
                     "product_name": "Reja Essex",
                     "quantity": 2,
                     "configuration": {

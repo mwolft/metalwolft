@@ -486,7 +486,10 @@ def _build_lines_before_discount(quote):
     for index, source_line in enumerate(source_lines, start=1):
         if not isinstance(source_line, dict):
             raise InvoiceSnapshotValidationError(f"lines.{index}", "Linea invalida.")
-        line = _build_product_line(index, source_line)
+        if source_line.get("line_type") == "design_service":
+            line = _build_design_service_line(index, source_line)
+        else:
+            line = _build_product_line(index, source_line)
         products_total += line["line_amount_before_discount"]
         lines.append(line)
 
@@ -559,6 +562,52 @@ def _build_product_line(line_number, source_line):
     }
 
 
+def _build_design_service_line(line_number, source_line):
+    product_id = source_line.get("product_id")
+    if product_id is None:
+        raise InvoiceSnapshotValidationError(
+            f"lines.{line_number}.product_id",
+            "Modelo de referencia obligatorio ausente.",
+        )
+
+    model = source_line.get("product_name")
+    if not model:
+        raise InvoiceSnapshotValidationError(
+            f"lines.{line_number}.product_name",
+            "Modelo de referencia obligatorio ausente.",
+        )
+
+    quantity = _quantity_string(source_line.get("quantity", 1), f"lines.{line_number}.quantity")
+    if quantity != "1":
+        raise InvoiceSnapshotValidationError(
+            f"lines.{line_number}.quantity",
+            "El servicio de diseño previo solo admite una unidad.",
+        )
+
+    unit_total = _to_decimal(source_line.get("unit_price"), f"lines.{line_number}.unit_amount_before_discount")
+    line_total = _to_decimal(source_line.get("line_total"), f"lines.{line_number}.line_amount_before_discount")
+    if _quantize_money(unit_total) != _quantize_money(line_total):
+        raise InvoiceSnapshotValidationError(
+            f"lines.{line_number}.line_amount_before_discount",
+            "El total del servicio no coincide con su precio unitario.",
+        )
+
+    return {
+        "line_number": line_number,
+        "line_type": "design_service",
+        "product_id": product_id,
+        "model": model,
+        "description": f"Diseño previo a medida - {model}",
+        "quantity": quantity,
+        "unit_amount_before_discount": _quantize_money(unit_total),
+        "line_amount_before_discount": _quantize_money(line_total),
+        "configuration": {
+            "height_cm": _measurement_string(source_line.get("alto"), f"lines.{line_number}.configuration.height_cm"),
+            "width_cm": _measurement_string(source_line.get("ancho"), f"lines.{line_number}.configuration.width_cm"),
+        },
+    }
+
+
 def _measurement_string(value, field):
     measurement = _to_decimal(value, field)
     if measurement <= 0:
@@ -620,7 +669,7 @@ def _build_totals(quote, lines_before_discount):
     product_line_sum = sum(
         line["line_amount_before_discount"]
         for line in lines_before_discount
-        if line["line_type"] == "product"
+        if line["line_type"] in {"product", "design_service"}
     )
     if _quantize_money(product_line_sum) != products_total:
         raise InvoiceSnapshotValidationError(
@@ -942,7 +991,7 @@ def _invert_rectification_totals(original_totals, inverted_lines):
             (
                 _to_decimal(line["line_amount_before_discount"], f"lines.{line['line_number']}.line_amount_before_discount")
                 for line in inverted_lines
-                if line.get("line_type") == "product"
+                if line.get("line_type") in {"product", "design_service"}
             ),
             Decimal("0.00"),
         )

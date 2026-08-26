@@ -17,7 +17,7 @@ from .models import (
     db, Users, Products, ProductImages,
     Categories, Subcategories, Cart,
     Orders, OrderDetails, Favorites,
-    Posts, Comments, Invoices, VeriFactuRecord, DeliveryEstimateConfig,
+    Posts, Comments, Invoices, VeriFactuRecord, DeliveryEstimateConfig, DesignServiceConfig, DesignServicePriceTier, DesignRequest,
     AccountingEntry, SupplierInvoice, SupplierInvoiceDocument, SupplierInvoiceExtraction,
     SupplierInvoiceTaxBreakdown,
     ManualInvoiceDraft, ManualInvoiceDraftLine,
@@ -130,6 +130,12 @@ from api.invoice_issue_service import (
     issue_total_rectification_for_invoice,
 )
 from api.manual_invoice_issue_service import issue_manual_invoice
+from api.design_service import (
+    DesignServiceValidationError,
+    assert_order_accepts_physical_detail,
+    order_contains_design_service,
+    transition_design_request_status,
+)
 from api.manual_invoice_snapshot_builder import build_manual_invoice_snapshot
 from api.invoice_legacy_rectification_aeat_service import (
     LegacyRectificationAeatClassificationError,
@@ -152,7 +158,7 @@ from api.verifactu_record_service import (
     prepare_verifactu_record_for_submission,
     verifactu_system_identity_from_config,
 )
-from datetime import timedelta
+from datetime import datetime, timezone, timedelta
 from sqlalchemy import inspect 
 from sqlalchemy.exc import IntegrityError
 
@@ -693,6 +699,131 @@ def _admin_issue_invoice_success_message(result):
     return f"El pedido ya tenía emitida la factura {result.invoice_number}."
 
 
+class DesignServiceConfigAdminView(SafeModelView):
+    can_create = False
+    can_delete = False
+    can_view_details = True
+    form_columns = ("is_active", "base_price_gross", "currency", "lead_time_hours")
+    column_list = ("is_active", "base_price_gross", "currency", "lead_time_hours", "updated_at")
+    column_labels = {
+        "is_active": "Servicio activo",
+        "base_price_gross": "Precio base por diseño (IVA incluido)",
+        "currency": "Moneda",
+        "lead_time_hours": "Plazo orientativo (horas)",
+        "updated_at": "Actualizado",
+    }
+    form_widget_args = {
+        "currency": {"readonly": True},
+    }
+
+    def on_model_change(self, form, model, is_created):
+        if model.id not in (None, 1):
+            raise ValueError("Solo puede existir una configuración de diseño previo.")
+        model.id = 1
+        model.currency = "EUR"
+        return super().on_model_change(form, model, is_created)
+
+
+class DesignServicePriceTierAdminView(SafeModelView):
+    column_list = ("min_design_count", "unit_price_gross")
+    form_columns = ("min_design_count", "unit_price_gross")
+    column_labels = {
+        "min_design_count": "Desde diseños",
+        "unit_price_gross": "Precio por diseño (IVA incluido)",
+    }
+
+    def on_model_change(self, form, model, is_created):
+        model.config_id = 1
+        config = db.session.get(DesignServiceConfig, 1)
+        if config and model.unit_price_gross is not None and model.unit_price_gross > config.base_price_gross:
+            raise ValueError("Un tramo no puede superar el precio base por diseño.")
+        return super().on_model_change(form, model, is_created)
+
+
+class DesignRequestAdminView(SafeModelView):
+    can_create = False
+    can_delete = False
+    can_view_details = True
+    column_list = (
+        "reference",
+        "status",
+        "user",
+        "items",
+        "price_gross",
+        "currency",
+        "requested_at",
+        "paid_at",
+    )
+    column_details_list = (
+        *column_list,
+        "lead_time_hours",
+        "started_at",
+        "delivered_at",
+        "cancelled_at",
+        "order_id",
+        "result_filename",
+        "result_mime",
+        "result_size",
+        "result_sha256",
+    )
+    column_filters = ("status", "requested_at", "paid_at")
+    column_searchable_list = ("reference",)
+    column_default_sort = ("requested_at", True)
+    form_columns = ("status",)
+    form_extra_fields = {
+        "status": SelectField(
+            "Estado",
+            choices=[
+                (DesignRequest.STATUS_PENDING_PAYMENT, "Pendiente de pago"),
+                (DesignRequest.STATUS_PENDING, "Pendiente"),
+                (DesignRequest.STATUS_IN_PROGRESS, "En curso"),
+                (DesignRequest.STATUS_DELIVERED, "Entregado"),
+            ],
+        ),
+    }
+    column_labels = {
+        "reference": "Referencia",
+        "status": "Estado",
+        "user": "Cliente",
+        "items": "Diseños",
+        "price_gross": "Precio bruto",
+        "currency": "Moneda",
+        "requested_at": "Solicitada",
+        "paid_at": "Pagada",
+        "started_at": "Iniciada",
+        "delivered_at": "Entregada",
+        "cancelled_at": "Cancelada",
+        "lead_time_hours": "Plazo orientativo (horas)",
+        "order_id": "Pedido",
+        "result_filename": "Resultado",
+        "result_mime": "Tipo de resultado",
+        "result_size": "Tamaño",
+        "result_sha256": "Hash SHA-256",
+    }
+
+    _ALLOWED_TRANSITIONS = {
+        DesignRequest.STATUS_PENDING_PAYMENT: set(),
+        DesignRequest.STATUS_PENDING: {DesignRequest.STATUS_IN_PROGRESS},
+        DesignRequest.STATUS_IN_PROGRESS: {DesignRequest.STATUS_DELIVERED},
+        DesignRequest.STATUS_DELIVERED: set(),
+        DesignRequest.STATUS_CANCELLED: set(),
+    }
+
+    def on_model_change(self, form, model, is_created):
+        if is_created:
+            raise ValueError("Las solicitudes de diseño se crean desde el flujo de compra.")
+
+        history = inspect(model).attrs.status.history
+        previous_status = history.deleted[0] if history.deleted else model.status
+        new_status = form.status.data
+        if previous_status != new_status:
+            try:
+                transition_design_request_status(design_request=model, new_status=new_status)
+            except DesignServiceValidationError as exc:
+                raise ValueError(str(exc)) from exc
+        return super().on_model_change(form, model, is_created)
+
+
 class OrderAdminView(SafeModelView):
     can_view_details = True
     extra_css = ["/static/admin/order_sent_email_options.css"]
@@ -754,6 +885,7 @@ class OrderAdminView(SafeModelView):
     column_list = [
         'id',
         'user_id',
+        'order_type_label',
         'total_amount',
         'discount_code',
         'discount_value',
@@ -778,6 +910,7 @@ class OrderAdminView(SafeModelView):
     column_labels = {
         'discount_code': 'Código',
         'discount_value': 'Importe',
+        'order_type_label': 'Tipo',
         'total_amount': 'Total (€)',
         'order_date': 'Fecha pedido',
         'invoice_number': 'Factura',
@@ -871,6 +1004,8 @@ class OrderAdminView(SafeModelView):
     def on_model_change(self, form, model, is_created):
         status_history = inspect(model).attrs.order_status.history
         new_status = form.order_status.data
+        if not is_created and order_contains_design_service(model) and new_status != "pendiente":
+            raise ValueError("Las solicitudes de diseño no usan estados de fabricación, envío o entrega.")
         is_real_status_transition = (
             not is_created
             and status_history.has_changes()
@@ -1044,7 +1179,7 @@ class CartAdminView(SafeModelView):
 
 class OrderDetailsAdminView(SafeModelView):
     column_list = [
-        'order_id', 'locator', 'cliente', 'product_name',
+        'order_id', 'locator', 'cliente', 'line_type_label', 'product_name',
         'quantity', 'alto', 'ancho', 'anclaje', 'color',
         'precio_total', 'shipping_cost', 'total_con_envio'
     ]
@@ -1053,6 +1188,7 @@ class OrderDetailsAdminView(SafeModelView):
         'order_id': 'Pedido ID',
         'locator': 'Localizador',
         'cliente': 'Cliente',
+        'line_type_label': 'Tipo',
         'product_name': 'Producto',
         'quantity': 'Ud.',
         'alto': 'Alto',
@@ -1067,11 +1203,20 @@ class OrderDetailsAdminView(SafeModelView):
     column_formatters = {
         'locator': lambda v, c, m, p: m.order.locator if m.order else '',
         'cliente': lambda v, c, m, p: f"{m.order.user.email}" if m.order and m.order.user else '',
-        'product_name': lambda v, c, m, p: m.product.nombre if m.product else '',
+        'product_name': lambda v, c, m, p: (
+            f"Diseño previo · {m.product.nombre}" if m.line_type == "design_service" and m.product
+            else (m.product.nombre if m.product else '')
+        ),
+        'anclaje': lambda v, c, m, p: "—" if m.line_type == "design_service" else (m.anclaje or "—"),
+        'color': lambda v, c, m, p: "—" if m.line_type == "design_service" else (m.color or "—"),
         'precio_total': lambda v, c, m, p: f"{m.precio_total * m.quantity:.2f} €" if m.precio_total and m.quantity else '0.00 €',
-        'shipping_cost': lambda v, c, m, p: f"{m.shipping_cost:.2f} €" if m.shipping_cost else "0.00 €",
-        'total_con_envio': lambda v, c, m, p: f"{(m.precio_total * m.quantity + (m.shipping_cost or 0)):.2f} €"
+        'shipping_cost': lambda v, c, m, p: "—" if m.line_type == "design_service" else (f"{m.shipping_cost:.2f} €" if m.shipping_cost else "0.00 €"),
+        'total_con_envio': lambda v, c, m, p: (
+            f"{m.precio_total * m.quantity:.2f} €" if m.line_type == "design_service"
+            else f"{(m.precio_total * m.quantity + (m.shipping_cost or 0)):.2f} €"
+        ),
     }
+    column_details_list = column_list
 
     def scaffold_list_columns(self):
         columns = super().scaffold_list_columns()
@@ -1082,6 +1227,17 @@ class OrderDetailsAdminView(SafeModelView):
         if 'product_name' not in columns:
             columns.append('product_name')
         return columns
+
+    def on_model_change(self, form, model, is_created):
+        if model.line_type == "design_service":
+            raise ValueError("Las líneas de diseño previo solo se crean desde su checkout exclusivo.")
+        order = db.session.get(Orders, model.order_id) if model.order_id else None
+        if order:
+            try:
+                assert_order_accepts_physical_detail(order)
+            except DesignServiceValidationError as exc:
+                raise ValueError(str(exc)) from exc
+        return super().on_model_change(form, model, is_created)
 
     column_default_sort = ('order_id', True)
 
@@ -3403,6 +3559,9 @@ def setup_admin(app):
     admin.add_view(ProductAdminView(Products, db.session))
     admin.add_view(SafeModelView(ProductImages, db.session))
     admin.add_view(CartAdminView(Cart, db.session))
+    admin.add_view(DesignServiceConfigAdminView(DesignServiceConfig, db.session, name="Configuración diseño previo"))
+    admin.add_view(DesignServicePriceTierAdminView(DesignServicePriceTier, db.session, name="Tarifas diseño previo"))
+    admin.add_view(DesignRequestAdminView(DesignRequest, db.session, name="Solicitudes de diseño"))
     admin.add_view(OrderAdminView(Orders, db.session))
     admin.add_view(OrderDetailsAdminView(OrderDetails, db.session))
     admin.add_view(FavoritesAdminView(Favorites, db.session, name="Favoritos"))

@@ -215,6 +215,24 @@ class PublicProductRouteStatusTest(unittest.TestCase):
         self.assertEqual(options_response.status_code, 200)
         resolve_product.assert_not_called()
 
+    def test_design_request_preflight_allows_idempotency_key(self):
+        origin = "https://example-3002.app.github.dev"
+        response = self.client.options(
+            "/api/design-requests",
+            headers={
+                "Origin": origin,
+                "Access-Control-Request-Method": "POST",
+                "Access-Control-Request-Headers": "authorization, content-type, idempotency-key",
+            },
+        )
+
+        self.assertIn(response.status_code, {200, 204})
+        self.assertEqual(response.headers.get("Access-Control-Allow-Origin"), origin)
+        allowed_headers = response.headers.get("Access-Control-Allow-Headers", "").lower()
+        self.assertIn("authorization", allowed_headers)
+        self.assertIn("content-type", allowed_headers)
+        self.assertIn("idempotency-key", allowed_headers)
+
     def test_static_public_private_transactional_and_category_routes_reach_shell(self):
         paths = (
             "/",

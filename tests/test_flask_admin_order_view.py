@@ -119,6 +119,16 @@ class FlaskAdminOrderViewInvoiceNumberTest(unittest.TestCase):
         self.assertIn("'shipping_address_summary'", self.view_source)
         self.assertIn("'invoice_number': _format_order_invoice_detail", self.view_source)
 
+    def test_order_admin_distinguishes_design_service_without_hiding_physical_fields(self):
+        detail_source = class_source("OrderDetailsAdminView")
+        self.assertIn("'order_type_label'", self.view_source)
+        self.assertIn("'line_type_label'", detail_source)
+        self.assertIn('"Diseño previo · {m.product.nombre}"', detail_source)
+        self.assertIn('m.line_type == "design_service"', detail_source)
+        self.assertIn("'anclaje'", detail_source)
+        self.assertIn("'color'", detail_source)
+        self.assertIn("'shipping_cost'", detail_source)
+
     def test_status_email_controls_are_grouped_and_transient(self):
         for field_name in (
             "send_sent_status_email",

@@ -9,6 +9,7 @@ import {
   useRef,
   useState
 } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { clearSession, getToken } from "@/lib/auth-client";
@@ -55,6 +56,11 @@ import {
   isTemporaryQuoteNetworkError,
   requestProductQuote
 } from "@/lib/product-quote-client";
+import {
+  requestDesignServiceQuote,
+  type DesignServiceQuote
+} from "@/lib/design-service-client";
+import { buildDesignServiceSeedHref } from "@/lib/design-service-seed";
 import { pushGtmEvent } from "@/lib/analytics";
 
 type ProductConfiguratorProps = {
@@ -121,6 +127,7 @@ type RenderedColorGroup = {
 };
 
 const QUOTE_DEBOUNCE_MS = 400;
+const DESIGN_SERVICE_QUOTE_DEBOUNCE_MS = 500;
 
 function normalizeDecimalInput(value: string) {
   return value.replace(",", ".");
@@ -268,6 +275,9 @@ export function ProductConfigurator({
   const [quoteRequestVersion, setQuoteRequestVersion] = useState(0);
   const [needsRecalculation, setNeedsRecalculation] = useState(false);
   const activeQuoteController = useRef<AbortController | null>(null);
+  const [designServiceQuote, setDesignServiceQuote] = useState<DesignServiceQuote | null>(null);
+  const [designServiceQuoteStatus, setDesignServiceQuoteStatus] = useState<"idle" | "loading" | "error">("idle");
+  const designServiceQuoteController = useRef<AbortController | null>(null);
   const lastTrackedQuoteKey = useRef<string | null>(null);
   const [cartStatus, setCartStatus] = useState<"idle" | "adding" | "success" | "error">("idle");
   const [cartFeedback, setCartFeedback] = useState("");
@@ -339,6 +349,15 @@ export function ProductConfigurator({
     (option) => option.value === anchorage
   );
   const selectedAnchorageRequiresScrews = selectedAnchorage?.screw_required ?? true;
+  const physicalOptionsReadyForQuote = Boolean(
+    selectedAnchorage?.enabled &&
+      configuredColors.some((option) => option.value === color) &&
+      (
+        !selectedAnchorageRequiresScrews
+          ? screwOption === NOT_APPLICABLE_SCREW_OPTION
+          : configuredScrewOptions.some((option) => option.value === screwOption)
+      )
+  );
   const configurationReady =
     configurationStatus === "ready" || configurationStatus === "fallback";
   const controlsDisabled = !configurationReady;
@@ -348,6 +367,16 @@ export function ProductConfigurator({
     ? getDimensionValidationError(height, width, productConfiguration.dimensions)
     : "";
   const dimensionsReadyForQuote = Boolean(productConfiguration) && !dimensionError;
+  const designPreviewHeight = parseQuoteDimension(height);
+  const designPreviewWidth = parseQuoteDimension(width);
+  const designPreviewHref =
+    dimensionsReadyForQuote && designPreviewHeight !== null && designPreviewWidth !== null
+      ? buildDesignServiceSeedHref({
+          product_slug: productSlug,
+          width_cm: designPreviewWidth,
+          height_cm: designPreviewHeight
+        })
+      : null;
   const effectivePricePerM2 =
     discountedPricePerM2 && discountedPricePerM2 > 0 ? discountedPricePerM2 : pricePerM2;
   const hasDiscount = Boolean(discountedPricePerM2 && discountedPricePerM2 > 0);
@@ -438,6 +467,46 @@ export function ProductConfigurator({
 
     return () => controller.abort();
   }, [availableForSale, productId]);
+
+  useEffect(() => {
+    if (!availableForSale || !designPreviewHref || designPreviewHeight === null || designPreviewWidth === null) {
+      designServiceQuoteController.current?.abort();
+      designServiceQuoteController.current = null;
+      setDesignServiceQuote(null);
+      setDesignServiceQuoteStatus("idle");
+      return;
+    }
+
+    const controller = new AbortController();
+    designServiceQuoteController.current = controller;
+    const timer = window.setTimeout(() => {
+      setDesignServiceQuoteStatus("loading");
+      requestDesignServiceQuote(
+        [{ product_id: productId, width_cm: designPreviewWidth, height_cm: designPreviewHeight }],
+        { signal: controller.signal }
+      )
+        .then((quote) => {
+          if (!controller.signal.aborted) {
+            setDesignServiceQuote(quote);
+            setDesignServiceQuoteStatus("idle");
+          }
+        })
+        .catch((error: unknown) => {
+          if (!controller.signal.aborted && !isAbortError(error)) {
+            setDesignServiceQuote(null);
+            setDesignServiceQuoteStatus("error");
+          }
+        });
+    }, DESIGN_SERVICE_QUOTE_DEBOUNCE_MS);
+
+    return () => {
+      window.clearTimeout(timer);
+      controller.abort();
+      if (designServiceQuoteController.current === controller) {
+        designServiceQuoteController.current = null;
+      }
+    };
+  }, [availableForSale, designPreviewHeight, designPreviewHref, designPreviewWidth, productId]);
 
   useEffect(() => {
     if (!configurationReady || !productConfiguration) {
@@ -536,6 +605,14 @@ export function ProductConfigurator({
           ? getDimensionValidationError(height, width, productConfiguration.dimensions)
           : ""
       );
+      return;
+    }
+
+    if (!physicalOptionsReadyForQuote) {
+      setCalculatedQuote(null);
+      setQuoteNotice("");
+      setQuoteStatus("idle");
+      setCalculationError("");
       return;
     }
 
@@ -657,6 +734,7 @@ export function ProductConfigurator({
     pricePerM2,
     productId,
     productConfiguration,
+    physicalOptionsReadyForQuote,
     quoteRequestVersion,
     screwOption,
     width
@@ -879,6 +957,37 @@ export function ProductConfigurator({
         <p className="mw-configurator-helper" id={dimensionHelpId}>
           Introduce alto y ancho en centímetros para calcular el precio exacto de tu reja.
         </p>
+        {designPreviewHref ? (
+          <aside className="mw-configurator-design-preview" aria-label="Diseño previo a medida">
+            <div className="mw-configurator-design-preview__body">
+              <div className="mw-configurator-design-preview__icon" aria-hidden="true">
+                <Image
+                  src="/icons/diseno-previo-rejas.webp"
+                  alt=""
+                  width={44}
+                  height={44}
+                />
+              </div>
+              <div className="mw-configurator-design-preview__copy">
+                <p className="mw-configurator-design-preview__title">¿Quieres ver cómo quedará tu reja?</p>
+                <p>Te preparamos un diseño previo de este modelo en</p>
+                <strong className="mw-configurator-design-preview__dimensions">
+                  {designPreviewHeight} × {designPreviewWidth} cm
+                </strong>
+                {designServiceQuoteStatus === "loading" && !designServiceQuote ? (
+                  <span className="mw-configurator-design-preview__status">Calculando precio…</span>
+                ) : null}
+              </div>
+            </div>
+            <div className="mw-configurator-design-preview__footer">
+              <Link className="mw-configurator-design-preview__link" href={designPreviewHref}>
+                Ver diseño previo{designServiceQuote
+                  ? ` · ${formatCurrency(Number(designServiceQuote.total_amount))} €`
+                  : ""} →
+              </Link>
+            </div>
+          </aside>
+        ) : null}
         {configurationMessage ? (
           <p
             className={

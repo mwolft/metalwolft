@@ -256,12 +256,16 @@ export function CustomerOrderDetailView({ orderId }: { orderId: number }) {
     );
   }
 
-  const hasShippingAddress =
-    hasText(order.shipping_address.recipient) ||
-    hasText(order.shipping_address.address) ||
-    hasText(order.shipping_address.postal_code) ||
-    hasText(order.shipping_address.city);
-  const estimatedDeliveryDate = order.estimated_delivery_at
+  const isDesignService = order.order_type === "design_service";
+  const shippingAddress = order.order_type === "physical" ? order.shipping_address : null;
+  const designService = order.order_type === "design_service" ? order.design_service : null;
+  const hasShippingAddress = shippingAddress !== null && (
+    hasText(shippingAddress.recipient) ||
+    hasText(shippingAddress.address) ||
+    hasText(shippingAddress.postal_code) ||
+    hasText(shippingAddress.city)
+  );
+  const estimatedDeliveryDate = !isDesignService && order.estimated_delivery_at
     ? formatCivilDateEs(order.estimated_delivery_at)
     : null;
 
@@ -273,9 +277,18 @@ export function CustomerOrderDetailView({ orderId }: { orderId: number }) {
 
       <header className="mw-customer-order-detail__header">
         <div>
-          <p className="mw-note">Pedido</p>
-          <h2 id="customer-order-title">{order.reference || `Pedido #${order.id}`}</h2>
+          <p className="mw-note">{isDesignService ? "Servicio" : "Pedido"}</p>
+          <h2 id="customer-order-title">
+            {isDesignService ? "Diseño previo a medida" : (order.reference || `Pedido #${order.id}`)}
+          </h2>
           <p>{formatOrderDate(order.created_at)}</p>
+          {isDesignService ? (
+            <div className="mw-customer-order-service-detail">
+              <p>Referencia: {designService?.reference}</p>
+              <p>Entrega: correo asociado a tu cuenta.</p>
+              <p>Plazo estimado: {designService?.lead_time_hours} h.</p>
+            </div>
+          ) : null}
           {estimatedDeliveryDate ? (
             <div className="mw-customer-order-estimate">
               <p>
@@ -297,19 +310,29 @@ export function CustomerOrderDetailView({ orderId }: { orderId: number }) {
 
       <section className="mw-account-card" aria-labelledby="customer-order-lines-title">
         <div className="mw-account-section-heading">
-          <p className="mw-note">Productos</p>
-          <h3 id="customer-order-lines-title">Productos comprados</h3>
+          <p className="mw-note">{isDesignService ? "Solicitud" : "Productos"}</p>
+          <h3 id="customer-order-lines-title">
+            {isDesignService ? "Diseños incluidos" : "Productos comprados"}
+          </h3>
         </div>
 
         <div className="mw-customer-order-lines">
           {order.lines.map((line) => {
-            const rows = configurationRows(line.configuration);
+            const rows = line.line_type === "design_service"
+              ? [
+                  { label: "Alto", value: formatDimension(line.configuration.alto) },
+                  { label: "Ancho", value: formatDimension(line.configuration.ancho) }
+                ].filter((row): row is { label: string; value: string } => Boolean(row.value))
+              : configurationRows(line.configuration);
 
             return (
               <div className="mw-customer-order-line" key={line.id}>
                 <div className="mw-customer-order-line__heading">
-                  <h4>{line.product_name || "Producto"}</h4>
-                  <span>Cantidad: {line.quantity}</span>
+                  <h4>
+                    {line.line_type === "design_service" ? "Diseño previo · " : ""}
+                    {line.product_name || "Producto"}
+                  </h4>
+                  {line.line_type === "design_service" ? null : <span>Cantidad: {line.quantity}</span>}
                 </div>
 
                 {rows.length > 0 ? (
@@ -328,7 +351,7 @@ export function CustomerOrderDetailView({ orderId }: { orderId: number }) {
         </div>
       </section>
 
-      {hasShippingAddress ? (
+      {hasShippingAddress && shippingAddress ? (
         <section className="mw-account-card" aria-labelledby="customer-order-shipping-title">
           <div className="mw-account-section-heading">
             <p className="mw-note">Entrega</p>
@@ -336,35 +359,35 @@ export function CustomerOrderDetailView({ orderId }: { orderId: number }) {
           </div>
 
           <dl className="mw-customer-order-shipping">
-            {hasText(order.shipping_address.recipient) ? (
+            {hasText(shippingAddress.recipient) ? (
               <div>
                 <dt>Destinatario</dt>
-                <dd>{order.shipping_address.recipient}</dd>
+                <dd>{shippingAddress.recipient}</dd>
               </div>
             ) : null}
-            {hasText(order.shipping_address.address) ? (
+            {hasText(shippingAddress.address) ? (
               <div>
                 <dt>{"Direcci\u00f3n"}</dt>
-                <dd>{order.shipping_address.address}</dd>
+                <dd>{shippingAddress.address}</dd>
               </div>
             ) : null}
-            {hasText(order.shipping_address.postal_code) ? (
+            {hasText(shippingAddress.postal_code) ? (
               <div>
                 <dt>{"C\u00f3digo postal"}</dt>
-                <dd>{order.shipping_address.postal_code}</dd>
+                <dd>{shippingAddress.postal_code}</dd>
               </div>
             ) : null}
-            {hasText(order.shipping_address.city) ? (
+            {hasText(shippingAddress.city) ? (
               <div>
                 <dt>Ciudad</dt>
-                <dd>{order.shipping_address.city}</dd>
+                <dd>{shippingAddress.city}</dd>
               </div>
             ) : null}
           </dl>
         </section>
       ) : null}
 
-      <section className="mw-customer-order-guides" aria-labelledby="customer-order-guides-title">
+      {!isDesignService ? <section className="mw-customer-order-guides" aria-labelledby="customer-order-guides-title">
         <div>
           <p className="mw-note">Ayuda con tu reja</p>
           <h3 id="customer-order-guides-title">Instalación y cuidado</h3>
@@ -373,7 +396,7 @@ export function CustomerOrderDetailView({ orderId }: { orderId: number }) {
           <Link href="/instalation-rejas-para-ventanas">Guía de instalación y manipulación</Link>
           <Link href="/mantenimiento-acabado-rejas-metalicas">Mantenimiento y acabado</Link>
         </nav>
-      </section>
+      </section> : null}
 
       <section className="mw-account-card" aria-labelledby="customer-order-invoice-title">
         <div className="mw-account-section-heading">

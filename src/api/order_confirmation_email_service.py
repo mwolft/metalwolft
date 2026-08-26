@@ -70,28 +70,35 @@ def _build_order_line(line):
         product_name=str(product_name).strip(),
         quantity=line.get("quantity", 1),
         measurements=_format_measurements(line),
-        anchorage=_humanize_anchorage(line.get("anclaje")),
+        anchorage=(
+            "" if (line.get("line_type") or "physical") == "design_service"
+            else _humanize_anchorage(line.get("anclaje"))
+        ),
         color=_format_color_with_finish(line.get("color")),
         screw_configuration=screw_configuration,
         line_total=line.get("line_total"),
+        line_type=line.get("line_type") or "physical",
     )
 
 
 def _build_order_confirmation_email(
     *, order, checkout_quote, customer_firstname, customer_snapshot=None
 ):
+    lines = tuple(
+        _build_order_line(line)
+        for line in (checkout_quote.get("lines") or [])
+    )
+    is_design_service = bool(lines) and all(line.line_type == "design_service" for line in lines)
     return render_order_confirmation_email(
         order_reference=order.locator,
         customer_firstname=customer_firstname,
-        lines=tuple(
-            _build_order_line(line)
-            for line in (checkout_quote.get("lines") or [])
-        ),
+        lines=lines,
         subtotal=checkout_quote.get("subtotal"),
         shipping_cost=checkout_quote.get("shipping_cost"),
         discount_amount=checkout_quote.get("discount_amount"),
         total_amount=order.total_amount,
-        shipping_address=shipping_address_from_customer_snapshot(customer_snapshot),
+        shipping_address=None if is_design_service else shipping_address_from_customer_snapshot(customer_snapshot),
+        is_design_service=is_design_service,
     )
 
 
@@ -122,8 +129,16 @@ def send_order_confirmation_email(
             customer_firstname=customer_firstname,
             customer_snapshot=customer_snapshot,
         )
+        is_design_service = bool(checkout_quote.get("lines")) and all(
+            (line.get("line_type") or "physical") == "design_service"
+            for line in checkout_quote["lines"]
+        )
         email_sent = send_email_func(
-            subject=f"Hemos recibido tu pedido {order.locator}",
+            subject=(
+                f"Hemos recibido tu solicitud de diseño {order.locator}"
+                if is_design_service
+                else f"Hemos recibido tu pedido {order.locator}"
+            ),
             recipients=[user.email, mail_username],
             body=rendered_email.text,
             html=rendered_email.html,
