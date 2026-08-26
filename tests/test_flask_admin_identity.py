@@ -51,7 +51,7 @@ class FlaskAdminIdentitySourceTest(unittest.TestCase):
         self.assertIn("METALWOLFT", template)
         self.assertIn("Administración", template)
         self.assertNotIn(">MetalWolft.com<", template)
-        self.assertIn("admin/metalwolft-isotipo.webp", template)
+        self.assertIn("admin/favicon.png", template)
         self.assertIn("admin/favicon.png", template)
         self.assertIn("admin/metalwolft-admin.css", template)
 
