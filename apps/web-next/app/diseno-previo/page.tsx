@@ -111,8 +111,11 @@ export default async function DesignServicePage({ searchParams }: DesignServiceP
         )}
         {products.length && returnToConfiguratorHref ? (
           <nav className="mw-design-page__return" aria-label="Navegación de retorno">
-            <Link href={returnToConfiguratorHref}>
-              <span aria-hidden="true">←</span> Volver al configurador
+            <Link className="mw-design-page__return-link" href={returnToConfiguratorHref}>
+              <svg aria-hidden="true" focusable="false" viewBox="0 0 20 20">
+                <path d="M11.5 4.5 6 10l5.5 5.5M6.75 10h7.5" />
+              </svg>
+              Volver al configurador
             </Link>
           </nav>
         ) : null}
