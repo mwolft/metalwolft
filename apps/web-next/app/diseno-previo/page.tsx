@@ -82,11 +82,6 @@ export default async function DesignServicePage({ searchParams }: DesignServiceP
   return (
     <PageContainer>
       <div className="mw-design-page">
-        {returnToConfiguratorHref ? (
-          <Link className="mw-design-page__return" href={returnToConfiguratorHref}>
-            <span aria-hidden="true">←</span> Volver al configurador
-          </Link>
-        ) : null}
         <header className="mw-design-hero">
           <div className="mw-design-hero__copy">
             <p className="mw-eyebrow">Diseño previo a medida</p>
@@ -114,6 +109,13 @@ export default async function DesignServicePage({ searchParams }: DesignServiceP
             <p>Vuelve a intentarlo en unos minutos para preparar tu diseño previo.</p>
           </section>
         )}
+        {products.length && returnToConfiguratorHref ? (
+          <nav className="mw-design-page__return" aria-label="Navegación de retorno">
+            <Link href={returnToConfiguratorHref}>
+              <span aria-hidden="true">←</span> Volver al configurador
+            </Link>
+          </nav>
+        ) : null}
       </div>
     </PageContainer>
   );

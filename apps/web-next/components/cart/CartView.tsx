@@ -565,13 +565,14 @@ export function CartView({ deliveryEstimate }: { deliveryEstimate?: ReactNode })
                       />
                     </div>
                     <div className="mw-cart-design-preview__copy">
-                      <p className="mw-cart-design-preview__title">¿Quieres verla antes de encargarla?</p>
-                      <p>Visualiza esta reja en {designPreviewDimensions} antes de hacer el pedido.</p>
-                      <Link className="mw-cart-design-preview__link" href={designPreviewLink}>
-                        Preparar diseño previo <span aria-hidden="true">→</span>
-                      </Link>
-                      <p className="mw-cart-design-preview__note">
-                        {DESIGN_SERVICE_MARKETING.startingPrice.replace(" IVA incluido", "")} · Descuento al añadir varios
+                      <div className="mw-cart-design-preview__heading">
+                        <p className="mw-cart-design-preview__title">¿Quieres verla antes de encargarla?</p>
+                        <Link className="mw-cart-design-preview__link" href={designPreviewLink}>
+                          Preparar diseño previo <span aria-hidden="true">→</span>
+                        </Link>
+                      </div>
+                      <p className="mw-cart-design-preview__detail">
+                        Diseño previo de esta reja en {designPreviewDimensions} · {DESIGN_SERVICE_MARKETING.startingPrice.replace(" IVA incluido", "")}
                       </p>
                     </div>
                   </aside>
