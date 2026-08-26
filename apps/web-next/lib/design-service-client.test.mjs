@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import {
   DesignServiceClientError,
   createDesignServiceRequest,
+  getDesignServiceCheckoutQuote,
   requestDesignServiceQuote
 } from "./design-service-client.ts";
 
@@ -50,6 +51,22 @@ const quote = {
 
 {
   let request;
+  const result = await getDesignServiceCheckoutQuote("jwt-token", 12, {
+    apiBaseUrl: "https://api.example.test/",
+    fetcher: async (url, init) => {
+      request = { url: String(url), init };
+      return Response.json({ ...quote, design_request_id: 12 });
+    }
+  });
+
+  assert.equal(result.design_request_id, 12);
+  assert.equal(request.url, "https://api.example.test/api/design-requests/12/checkout-quote");
+  assert.equal(request.init.method, "POST");
+  assert.equal(request.init.headers.Authorization, "Bearer jwt-token");
+}
+
+{
+  let request;
   const result = await createDesignServiceRequest("jwt-token", items, "creation-key", {
     apiBaseUrl: "https://api.example.test",
     fetcher: async (_url, init) => {
@@ -80,4 +97,9 @@ await assert.rejects(
   (error) => error instanceof DesignServiceClientError && error.kind === "authentication"
 );
 
-console.log("10 design service client assertions passed");
+await assert.rejects(
+  getDesignServiceCheckoutQuote("jwt-token", 0, { apiBaseUrl: "https://api.example.test" }),
+  (error) => error instanceof DesignServiceClientError && error.kind === "validation"
+);
+
+console.log("14 design service client assertions passed");

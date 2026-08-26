@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useId, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   builderInputsToDraftItems,
   draftItemToBuilderInput,
@@ -16,9 +17,15 @@ import {
 } from "@/lib/design-service-draft";
 import {
   DesignServiceClientError,
+  createDesignServiceRequest,
   requestDesignServiceQuote,
   type DesignServiceQuote
 } from "@/lib/design-service-client";
+import { clearSession, getStoredUser, getToken } from "@/lib/auth-client";
+import {
+  getOrCreateDesignServiceCreationKey,
+  rememberDesignServiceRequest
+} from "@/lib/design-service-request-session";
 
 type DesignServiceBuilderProps = {
   products: DesignServiceProductOption[];
@@ -59,6 +66,23 @@ function errorMessage(error: unknown) {
   }
 }
 
+function creationErrorMessage(error: unknown) {
+  if (!(error instanceof DesignServiceClientError)) {
+    return "No hemos podido preparar tu solicitud ahora mismo. Inténtalo de nuevo.";
+  }
+
+  switch (error.kind) {
+    case "service_unavailable":
+      return "El servicio de diseño previo no está disponible en este momento.";
+    case "validation":
+      return "Revisa los modelos y las medidas antes de continuar.";
+    case "rate_limited":
+      return "Has realizado varias consultas seguidas. Espera un momento antes de continuar.";
+    default:
+      return "No hemos podido preparar tu solicitud ahora mismo. Inténtalo de nuevo.";
+  }
+}
+
 function mergeSeed(
   restored: DesignServiceDraftItem[],
   initialSeed: DesignServiceDraftItem | null | undefined
@@ -68,11 +92,14 @@ function mergeSeed(
 }
 
 export function DesignServiceBuilder({ products, initialSeed = null }: DesignServiceBuilderProps) {
+  const router = useRouter();
   const [designs, setDesigns] = useState<DesignServiceBuilderInput[]>([emptyDesign()]);
   const [hydrated, setHydrated] = useState(false);
   const [quote, setQuote] = useState<DesignServiceQuote | null>(null);
   const [quoteError, setQuoteError] = useState<string | null>(null);
   const [isQuoting, setIsQuoting] = useState(false);
+  const [isContinuing, setIsContinuing] = useState(false);
+  const [continuationError, setContinuationError] = useState<string | null>(null);
   const headingId = useId();
   const requestVersion = useRef(0);
 
@@ -146,6 +173,52 @@ export function DesignServiceBuilder({ products, initialSeed = null }: DesignSer
   function removeDesign(id: string) {
     setDesigns((current) => (current.length > 1 ? current.filter((design) => design.id !== id) : current));
   }
+
+  async function continueToCheckout() {
+    if (!quote || hasIncompleteDesign || !validItems.length || isContinuing) {
+      return;
+    }
+
+    const token = getToken();
+    const user = getStoredUser();
+    if (!token || !user?.id) {
+      router.push(`/login?next=${encodeURIComponent("/diseno-previo")}`);
+      return;
+    }
+
+    setIsContinuing(true);
+    setContinuationError(null);
+    try {
+      // Revalidate prices and active configuration immediately before creating the request.
+      const freshQuote = await requestDesignServiceQuote(validItems);
+      setQuote(freshQuote);
+
+      const sessionRequest = getOrCreateDesignServiceCreationKey(user.id, validItems);
+      if (sessionRequest.design_request_id) {
+        router.push(`/diseno-previo/checkout?design_request_id=${sessionRequest.design_request_id}`);
+        return;
+      }
+
+      const result = await createDesignServiceRequest(
+        token,
+        validItems,
+        sessionRequest.creation_key
+      );
+      rememberDesignServiceRequest(user.id, validItems, result.id);
+      router.push(`/diseno-previo/checkout?design_request_id=${result.id}`);
+    } catch (error) {
+      if (error instanceof DesignServiceClientError && error.kind === "authentication") {
+        clearSession();
+        router.push(`/login?next=${encodeURIComponent("/diseno-previo")}`);
+        return;
+      }
+      setContinuationError(creationErrorMessage(error));
+    } finally {
+      setIsContinuing(false);
+    }
+  }
+
+  const canContinue = Boolean(quote && validItems.length && !hasIncompleteDesign && !isQuoting && !quoteError);
 
   return (
     <section className="mw-design-builder" aria-labelledby={headingId}>
@@ -279,9 +352,15 @@ export function DesignServiceBuilder({ products, initialSeed = null }: DesignSer
               <p className="mw-design-summary__tax">IVA incluido. Entrega estimada: {quote.lead_time_hours} h.</p>
             </div>
           ) : null}
-          <button className="mw-button mw-button--primary mw-design-summary__continue" type="button" disabled>
-            Continuar
+          <button
+            className="mw-button mw-button--primary mw-design-summary__continue"
+            type="button"
+            disabled={!canContinue || isContinuing}
+            onClick={continueToCheckout}
+          >
+            {isContinuing ? "Preparando solicitud…" : "Continuar"}
           </button>
+          {continuationError ? <p className="mw-alert mw-alert--error">{continuationError}</p> : null}
         </aside>
       </div>
     </section>

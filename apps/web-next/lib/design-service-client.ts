@@ -36,6 +36,10 @@ export type CreateDesignRequestResponse = {
   created: boolean;
 };
 
+export type DesignServiceCheckoutQuote = DesignServiceQuote & {
+  design_request_id: number;
+};
+
 type DesignServiceClientErrorKind =
   | "configuration"
   | "network"
@@ -121,6 +125,13 @@ function isQuote(value: unknown): value is DesignServiceQuote {
     Array.isArray(value.items) &&
     value.items.every(isQuoteItem)
   );
+}
+
+function isCheckoutQuote(value: unknown): value is DesignServiceCheckoutQuote {
+  if (!isRecord(value)) return false;
+  const designRequestId = value["design_request_id"];
+  return isQuote(value) && typeof designRequestId === "number" &&
+    Number.isInteger(designRequestId) && designRequestId > 0;
 }
 
 function responseMessage(payload: unknown, fallback: string) {
@@ -224,4 +235,46 @@ export async function createDesignServiceRequest(
     );
   }
   return payload as CreateDesignRequestResponse;
+}
+
+export async function getDesignServiceCheckoutQuote(
+  token: string,
+  designRequestId: number,
+  options: RequestOptions = {}
+) {
+  if (!Number.isInteger(designRequestId) || designRequestId <= 0) {
+    throw new DesignServiceClientError("La solicitud de diseño no es válida.", "validation");
+  }
+
+  const fetcher = options.fetcher ?? fetch;
+  let response: Response;
+  try {
+    response = await fetcher(
+      `${designServiceApiUrl(options.apiBaseUrl)}/api/design-requests/${designRequestId}/checkout-quote`,
+      {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+        signal: options.signal
+      }
+    );
+  } catch {
+    throw new DesignServiceClientError(
+      "No se pudo preparar la compra del diseño previo.",
+      "network"
+    );
+  }
+
+  const payload = (await response.json().catch(() => null)) as unknown;
+  if (!response.ok) {
+    const message = responseMessage(payload, "No se pudo preparar la compra del diseño previo.");
+    throw new DesignServiceClientError(message, errorKind(response.status, message), response.status);
+  }
+  if (!isCheckoutQuote(payload)) {
+    throw new DesignServiceClientError(
+      "El servicio de diseño previo devolvió una respuesta no válida.",
+      "contract",
+      response.status
+    );
+  }
+  return payload;
 }
