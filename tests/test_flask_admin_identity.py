@@ -54,6 +54,9 @@ class FlaskAdminIdentitySourceTest(unittest.TestCase):
         self.assertIn("admin/favicon.png", template)
         self.assertIn("admin/favicon.png", template)
         self.assertIn("admin/metalwolft-admin.css", template)
+        self.assertIn("mw-admin-topbar", template)
+        self.assertIn("mw-admin-user--desktop", template)
+        self.assertIn("mw-admin-user--mobile", template)
 
     def test_identity_assets_and_css_are_admin_scoped(self):
         self.assertGreater(ADMIN_FAVICON.stat().st_size, 0)
@@ -111,6 +114,7 @@ class FlaskAdminIdentityRenderTest(unittest.TestCase):
         self.assertIn(b"METALWOLFT", response.data)
         self.assertIn("Administración".encode("utf-8"), response.data)
         self.assertIn(b"glyphicon-user", response.data)
+        self.assertIn(b"mw-admin-user--desktop", response.data)
         self.assertIn(b">admin</li>", response.data)
         self.assertIn(b"/static/admin/favicon.png", response.data)
         self.assertIn(b"/static/admin/metalwolft-admin.css", response.data)
