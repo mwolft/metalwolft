@@ -70,6 +70,9 @@
 
           {% block menu_links %}
           <ul class="nav navbar-nav navbar-right">
+            {% if request.authorization and request.authorization.username %}
+            <li class="mw-admin-user"><span class="glyphicon glyphicon-user" aria-hidden="true"></span>{{ request.authorization.username }}</li>
+            {% endif %}
             {{ layout.menu_links() }}
           </ul>
           {% endblock %}

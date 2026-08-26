@@ -110,6 +110,8 @@ class FlaskAdminIdentityRenderTest(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertIn(b"METALWOLFT", response.data)
         self.assertIn("Administración".encode("utf-8"), response.data)
+        self.assertIn(b"glyphicon-user", response.data)
+        self.assertIn(b">admin</li>", response.data)
         self.assertIn(b"/static/admin/favicon.png", response.data)
         self.assertIn(b"/static/admin/metalwolft-admin.css", response.data)
         for label in ("Resumen", "Catálogo", "Ventas", "Diseño previo", "Clientes", "Facturación"):
