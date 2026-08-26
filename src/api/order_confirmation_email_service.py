@@ -129,8 +129,16 @@ def send_order_confirmation_email(
             customer_firstname=customer_firstname,
             customer_snapshot=customer_snapshot,
         )
+        is_design_service = bool(checkout_quote.get("lines")) and all(
+            (line.get("line_type") or "physical") == "design_service"
+            for line in checkout_quote["lines"]
+        )
         email_sent = send_email_func(
-            subject=f"Hemos recibido tu pedido {order.locator}",
+            subject=(
+                f"Hemos recibido tu solicitud de diseño {order.locator}"
+                if is_design_service
+                else f"Hemos recibido tu pedido {order.locator}"
+            ),
             recipients=[user.email, mail_username],
             body=rendered_email.text,
             html=rendered_email.html,

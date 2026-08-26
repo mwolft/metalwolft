@@ -10,6 +10,7 @@ import {
   getDesignServiceCheckoutQuote,
   type DesignServiceCheckoutQuote
 } from "@/lib/design-service-client";
+import { DesignServicePaymentSection } from "@/components/design-service/DesignServicePaymentSection";
 
 type DesignServiceCheckoutViewProps = {
   designRequestId: number | null;
@@ -127,10 +128,10 @@ export function DesignServiceCheckoutView({ designRequestId }: DesignServiceChec
               </li>
             ))}
           </ul>
-          <section className="mw-design-checkout__contact" aria-label="Datos de contacto">
-            <h2>Datos de contacto</h2>
+          <section className="mw-design-checkout__contact" aria-label="Entrega del diseño">
+            <h2>Entrega del diseño</h2>
             <p>{user?.email || "Correo de contacto"}</p>
-            <p>Los datos de facturación se revisarán antes del pago. No necesitamos dirección de envío para este servicio.</p>
+            <p>Enviaremos el diseño terminado a este correo electrónico cuando esté listo.</p>
           </section>
         </div>
         <aside className="mw-design-checkout__summary" aria-label="Resumen de la solicitud">
@@ -154,12 +155,17 @@ export function DesignServiceCheckoutView({ designRequestId }: DesignServiceChec
             <strong>{formatCurrency(quote.total_amount, quote.currency)}</strong>
           </div>
           <p className="mw-design-checkout__lead-time">Entrega estimada: {quote.lead_time_hours} h</p>
-          <div className="mw-design-checkout__payment-placeholder">
-            <strong>Pago</strong>
-            <p>Prepararemos el pago seguro en el siguiente paso.</p>
-          </div>
         </aside>
       </div>
+      <DesignServicePaymentSection
+        designRequestId={designRequestId}
+        onSessionExpired={() => {
+          clearSession();
+          router.replace(checkoutLoginHref(designRequestId));
+        }}
+        quote={quote}
+        user={user}
+      />
     </section>
   );
 }

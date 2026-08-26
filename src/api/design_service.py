@@ -132,21 +132,59 @@ def build_design_checkout_quote(*, design_request, user_id):
 def prepare_design_checkout_session(
     *, db_session, design_request, user_id, payment_provider, idempotency_key, customer_snapshot=None
 ):
-    """Persist the canonical quote; Phase 2 will attach the provider payment."""
+    """Persist one provider checkout session for a pending design request.
+
+    The request row is locked before selecting or creating the session.  This
+    keeps two browser tabs from opening competing provider checkouts for the
+    same DesignRequest while preserving retries for the same user.
+    """
     normalized_key = _required_text(idempotency_key, "idempotency_key")
-    quote = build_design_checkout_quote(design_request=design_request, user_id=user_id)
-    existing = (
-        db_session.query(CheckoutSessions)
-        .filter_by(user_id=user_id, design_request_id=design_request.id, idempotency_key=normalized_key)
+    normalized_provider = _required_text(payment_provider, "payment_provider")
+    locked_request = (
+        db_session.query(DesignRequest)
+        .filter_by(id=getattr(design_request, "id", None))
+        .with_for_update()
         .one_or_none()
     )
+    quote = build_design_checkout_quote(design_request=locked_request, user_id=user_id)
+    existing = (
+        db_session.query(CheckoutSessions)
+        .filter_by(
+            user_id=user_id,
+            design_request_id=locked_request.id,
+        )
+        .filter(CheckoutSessions.order_id.is_(None))
+        .order_by(CheckoutSessions.id.desc())
+        .first()
+    )
     if existing is not None:
+        if (
+            existing.payment_provider != normalized_provider
+            and existing.status not in {"payment_failed", "canceled"}
+        ):
+            raise DesignServiceValidationError(
+                "Ya existe un pago en curso para esta solicitud de diseño."
+            )
+        if existing.payment_provider != normalized_provider:
+            existing.payment_provider = normalized_provider
+            existing.payment_intent_id = None
+            existing.provider_order_id = None
+            existing.provider_capture_id = None
+            existing.provider_status = None
+            existing.status = "pending_payment"
+        existing.quote_snapshot = quote
+        existing.subtotal = float(_decimal(quote["subtotal"], "subtotal"))
+        existing.shipping_cost = 0.0
+        existing.discount_amount = float(_decimal(quote["discount_amount"], "discount_amount"))
+        existing.total_amount = float(_decimal(quote["total_amount"], "total_amount"))
+        if customer_snapshot:
+            existing.customer_snapshot = customer_snapshot
         return existing, False
 
     checkout_session = CheckoutSessions(
         user_id=user_id,
-        design_request_id=design_request.id,
-        payment_provider=_required_text(payment_provider, "payment_provider"),
+        design_request_id=locked_request.id,
+        payment_provider=normalized_provider,
         public_checkout_token=CheckoutSessions.generate_public_checkout_token(),
         idempotency_key=normalized_key,
         status="pending_payment",

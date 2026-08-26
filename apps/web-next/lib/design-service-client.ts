@@ -40,6 +40,48 @@ export type DesignServiceCheckoutQuote = DesignServiceQuote & {
   design_request_id: number;
 };
 
+export type DesignServiceCustomerData = {
+  firstname: string;
+  lastname: string;
+  email: string;
+  phone: string;
+  legal_name: string;
+  tax_id: string;
+  billing_address: string;
+  billing_city: string;
+  billing_postal_code: string;
+};
+
+export type DesignServicePaymentSession = {
+  checkout_session_id: number;
+  checkout_session_status: string;
+  payment_provider: "stripe" | "paypal";
+  payment_intent_id: string | null;
+  provider_order_id: string | null;
+  provider_capture_id: string | null;
+  provider_status: string | null;
+  public_checkout_token: string | null;
+  checkout_summary: DesignServiceCheckoutQuote;
+};
+
+export type DesignServiceStripePaymentResponse = DesignServicePaymentSession & {
+  clientSecret: string;
+  paymentIntent: { id: string; status: string };
+  amount_used_cents: number;
+};
+
+export type DesignServiceConfirmation = {
+  id: number;
+  reference: string;
+  status: "pending_payment" | "pending" | "in_progress" | "delivered";
+  lead_time_hours: number;
+  total_amount: string;
+  currency: "EUR";
+  items: Array<{ product_name: string; width_cm: string; height_cm: string }>;
+  order: { id: number; locator: string } | null;
+  checkout_status: string | null;
+};
+
 type DesignServiceClientErrorKind =
   | "configuration"
   | "network"
@@ -132,6 +174,16 @@ function isCheckoutQuote(value: unknown): value is DesignServiceCheckoutQuote {
   const designRequestId = value["design_request_id"];
   return isQuote(value) && typeof designRequestId === "number" &&
     Number.isInteger(designRequestId) && designRequestId > 0;
+}
+
+function isPaymentSession(value: unknown): value is DesignServicePaymentSession {
+  return (
+    isRecord(value) &&
+    typeof value.checkout_session_id === "number" &&
+    typeof value.checkout_session_status === "string" &&
+    (value.payment_provider === "stripe" || value.payment_provider === "paypal") &&
+    isCheckoutQuote(value.checkout_summary)
+  );
 }
 
 function responseMessage(payload: unknown, fallback: string) {
@@ -277,4 +329,91 @@ export async function getDesignServiceCheckoutQuote(
     );
   }
   return payload;
+}
+
+async function requestPrivateDesignService<T>(
+  token: string,
+  path: string,
+  body: Record<string, unknown> | undefined,
+  options: RequestOptions = {}
+) {
+  const fetcher = options.fetcher ?? fetch;
+  let response: Response;
+  try {
+    response = await fetcher(`${designServiceApiUrl(options.apiBaseUrl)}${path}`, {
+      method: body === undefined ? "GET" : "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        ...(body === undefined ? {} : { "Content-Type": "application/json" })
+      },
+      ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+      signal: options.signal
+    });
+  } catch {
+    throw new DesignServiceClientError("No se pudo conectar con el pago del diseño previo.", "network");
+  }
+  const payload = (await response.json().catch(() => null)) as unknown;
+  if (!response.ok) {
+    const message = responseMessage(payload, "No se pudo completar el pago del diseño previo.");
+    throw new DesignServiceClientError(message, errorKind(response.status, message), response.status);
+  }
+  return payload as T;
+}
+
+export async function createDesignServiceStripePaymentIntent(
+  token: string,
+  designRequestId: number,
+  input: { payment_method_id: string; idempotency_key: string; customer_data: DesignServiceCustomerData },
+  options: RequestOptions = {}
+) {
+  const payload = await requestPrivateDesignService<unknown>(
+    token,
+    `/api/design-requests/${designRequestId}/stripe/payment-intent`,
+    input,
+    options
+  );
+  if (!isRecord(payload) || typeof payload.clientSecret !== "string" || !isPaymentSession(payload)) {
+    throw new DesignServiceClientError("El pago del diseño previo devolvió una respuesta no válida.", "contract");
+  }
+  return payload as DesignServiceStripePaymentResponse;
+}
+
+export async function createDesignServicePayPalOrder(
+  token: string,
+  designRequestId: number,
+  input: { idempotency_key: string; customer_data: DesignServiceCustomerData },
+  options: RequestOptions = {}
+) {
+  const payload = await requestPrivateDesignService<unknown>(
+    token,
+    `/api/design-requests/${designRequestId}/paypal/create-order`,
+    input,
+    options
+  );
+  if (!isPaymentSession(payload)) {
+    throw new DesignServiceClientError("El pago del diseño previo devolvió una respuesta no válida.", "contract");
+  }
+  return payload;
+}
+
+export async function getDesignServiceConfirmation(
+  token: string,
+  designRequestId: number,
+  options: RequestOptions = {}
+) {
+  const payload = await requestPrivateDesignService<unknown>(
+    token,
+    `/api/design-requests/${designRequestId}/confirmation`,
+    undefined,
+    options
+  );
+  if (
+    !isRecord(payload) ||
+    typeof payload.reference !== "string" ||
+    typeof payload.total_amount !== "string" ||
+    !Array.isArray(payload.items)
+  ) {
+    throw new DesignServiceClientError("La confirmación del diseño previo no es válida.", "contract");
+  }
+  return payload as DesignServiceConfirmation;
 }

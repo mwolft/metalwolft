@@ -48,6 +48,7 @@ from api.design_service import (
     build_design_service_quote,
     create_design_request,
     mark_design_request_paid,
+    prepare_design_checkout_session,
     assert_order_accepts_physical_detail,
     order_contains_design_service,
 )
@@ -155,6 +156,34 @@ load_dotenv()
 
 def _customer_snapshot_validation_response(error):
     return jsonify(error.to_dict()), 400
+
+
+def _extract_design_customer_snapshot(payload, current_user):
+    """Validate fiscal data for a digital purchase without inventing shipping."""
+    snapshot = _extract_customer_snapshot(
+        payload,
+        require_checkout_fields=True,
+        fallback_snapshot={"email": current_user.get("email")},
+    )
+    for field in (
+        "shipping_address",
+        "shipping_postal_code",
+        "shipping_city",
+        "shipping_province",
+        "shipping_country_code",
+    ):
+        snapshot.pop(field, None)
+    return snapshot
+
+
+def _get_owned_design_request_for_payment(current_user, design_request_id):
+    design_request = db.session.get(DesignRequest, design_request_id)
+    # build_design_checkout_quote owns the state and ownership validation.
+    build_design_checkout_quote(
+        design_request=design_request,
+        user_id=current_user["user_id"],
+    )
+    return design_request
 
 
 def _split_invoice_client_name(client_name):
@@ -2540,6 +2569,190 @@ def design_request_checkout_quote(design_request_id):
     except DesignServiceError as exc:
         logger.info("Design checkout quote rejected user_id=%s request_id=%s reason=%s", current_user.get("user_id"), design_request_id, type(exc).__name__)
         return jsonify({"message": str(exc)}), 400
+
+
+@api.route('/design-requests/<int:design_request_id>/stripe/payment-intent', methods=['POST'])
+@jwt_required()
+def create_design_stripe_payment_intent(design_request_id):
+    import stripe
+
+    stripe.api_key = os.getenv('STRIPE_SECRET_KEY')
+    current_user = get_jwt_identity()
+    data = request.get_json(silent=True) or {}
+    allowed_fields = {"payment_method_id", "idempotency_key", "customer_data"}
+    if not isinstance(data, dict) or set(data) - allowed_fields:
+        return jsonify({"message": "La solicitud de pago contiene campos no permitidos."}), 400
+
+    try:
+        payment_method_id = data.get("payment_method_id")
+        if not isinstance(payment_method_id, str) or not payment_method_id.strip():
+            return jsonify({"message": "El método de pago es obligatorio."}), 400
+
+        design_request = _get_owned_design_request_for_payment(current_user, design_request_id)
+        customer_snapshot = _extract_design_customer_snapshot(data, current_user)
+        checkout_session, _created = prepare_design_checkout_session(
+            db_session=db.session,
+            design_request=design_request,
+            user_id=current_user["user_id"],
+            payment_provider="stripe",
+            idempotency_key=data.get("idempotency_key"),
+            customer_snapshot=customer_snapshot,
+        )
+        checkout_quote = checkout_session.quote_snapshot
+        validate_payment_amount("stripe", checkout_quote["total_amount"], currency="eur")
+        amount = int(round(float(checkout_quote["total_amount"]) * 100))
+        metadata = {
+            "user_id": str(current_user["user_id"]),
+            "design_request_id": str(design_request.id),
+            "checkout_session_id": str(checkout_session.id),
+            "checkout_kind": SERVICE_LINE_TYPE,
+        }
+
+        if checkout_session.payment_intent_id:
+            intent = stripe.PaymentIntent.modify(
+                checkout_session.payment_intent_id,
+                amount=amount,
+                payment_method=payment_method_id.strip(),
+                metadata=metadata,
+                receipt_email=customer_snapshot["email"],
+            )
+        else:
+            intent = stripe.PaymentIntent.create(
+                amount=amount,
+                currency="eur",
+                payment_method=payment_method_id.strip(),
+                confirm=False,
+                metadata=metadata,
+                receipt_email=customer_snapshot["email"],
+                idempotency_key=f"design-{checkout_session.public_checkout_token}",
+            )
+
+        checkout_session.payment_intent_id = intent["id"]
+        checkout_session.provider_status = intent.get("status")
+        checkout_session.status = _normalize_checkout_session_status(intent.get("status"), "stripe")
+        db.session.commit()
+        return jsonify({
+            "clientSecret": intent["client_secret"],
+            "paymentIntent": intent,
+            "amount_source": "design_request_snapshot",
+            "amount_used_cents": amount,
+            "checkout_summary": checkout_quote,
+            **_serialize_checkout_session_payment_state(checkout_session),
+        }), 200
+    except CustomerSnapshotValidationError as exc:
+        db.session.rollback()
+        return _customer_snapshot_validation_response(exc)
+    except (DesignServiceError, PaymentAmountValidationError) as exc:
+        db.session.rollback()
+        logger.info("Design Stripe payment rejected user_id=%s request_id=%s reason=%s", current_user.get("user_id"), design_request_id, type(exc).__name__)
+        return jsonify({"message": str(exc)}), 400
+    except stripe.error.StripeError:
+        db.session.rollback()
+        logger.exception("Design Stripe provider error request_id=%s", design_request_id)
+        return jsonify({"message": "No hemos podido preparar el pago. Inténtalo de nuevo."}), 502
+    except Exception:
+        db.session.rollback()
+        logger.exception("Unexpected design Stripe payment failure request_id=%s", design_request_id)
+        return jsonify({"message": "No hemos podido preparar el pago. Inténtalo de nuevo."}), 500
+
+
+@api.route('/design-requests/<int:design_request_id>/paypal/create-order', methods=['POST'])
+@jwt_required()
+def create_design_paypal_order(design_request_id):
+    current_user = get_jwt_identity()
+    data = request.get_json(silent=True) or {}
+    allowed_fields = {"idempotency_key", "customer_data"}
+    if not isinstance(data, dict) or set(data) - allowed_fields:
+        return jsonify({"message": "La solicitud de pago contiene campos no permitidos."}), 400
+
+    try:
+        design_request = _get_owned_design_request_for_payment(current_user, design_request_id)
+        customer_snapshot = _extract_design_customer_snapshot(data, current_user)
+        checkout_session, _created = prepare_design_checkout_session(
+            db_session=db.session,
+            design_request=design_request,
+            user_id=current_user["user_id"],
+            payment_provider="paypal",
+            idempotency_key=data.get("idempotency_key"),
+            customer_snapshot=customer_snapshot,
+        )
+        validate_payment_amount("paypal", checkout_session.total_amount, currency="eur")
+        existing_status = str(checkout_session.provider_status or "").upper()
+        if checkout_session.provider_order_id and existing_status not in {
+            "VOIDED", "CANCELED", "CANCELLED", "FAILED", "DECLINED", "DENIED"
+        }:
+            db.session.commit()
+            return jsonify({
+                **_serialize_checkout_session_payment_state(checkout_session),
+                "provider": "paypal",
+                "created_via": "existing_checkout_session",
+            }), 200
+
+        paypal_order = _paypal_request(
+            "POST",
+            "/v2/checkout/orders",
+            payload=_build_paypal_order_request(checkout_session),
+            request_id=f"paypal-design-{checkout_session.public_checkout_token}",
+        )
+        checkout_session.provider_order_id = paypal_order.get("id")
+        checkout_session.provider_capture_id = None
+        checkout_session.provider_status = paypal_order.get("status")
+        checkout_session.status = _normalize_checkout_session_status(
+            checkout_session.provider_status,
+            payment_provider="paypal",
+        )
+        db.session.commit()
+        return jsonify({
+            **_serialize_checkout_session_payment_state(checkout_session),
+            "approve_url": _get_paypal_approve_url(paypal_order),
+            "provider": "paypal",
+        }), 200
+    except CustomerSnapshotValidationError as exc:
+        db.session.rollback()
+        return _customer_snapshot_validation_response(exc)
+    except (DesignServiceError, PaymentAmountValidationError) as exc:
+        db.session.rollback()
+        return jsonify({"message": str(exc)}), 400
+    except RuntimeError:
+        db.session.rollback()
+        logger.exception("Design PayPal provider error request_id=%s", design_request_id)
+        return jsonify({"message": "No se ha podido iniciar el pago con PayPal."}), 502
+    except Exception:
+        db.session.rollback()
+        logger.exception("Unexpected design PayPal payment failure request_id=%s", design_request_id)
+        return jsonify({"message": "No se ha podido iniciar el pago con PayPal."}), 500
+
+
+@api.route('/design-requests/<int:design_request_id>/confirmation', methods=['GET'])
+@jwt_required()
+def design_request_confirmation(design_request_id):
+    current_user = get_jwt_identity()
+    design_request = db.session.get(DesignRequest, design_request_id)
+    if design_request is None or design_request.user_id != current_user["user_id"]:
+        return jsonify({"message": "La solicitud de diseño no está disponible."}), 404
+
+    checkout_session = (
+        CheckoutSessions.query
+        .filter_by(user_id=current_user["user_id"], design_request_id=design_request.id)
+        .order_by(CheckoutSessions.id.desc())
+        .first()
+    )
+    order = design_request.order
+    return jsonify({
+        "id": design_request.id,
+        "reference": design_request.reference,
+        "status": design_request.status,
+        "lead_time_hours": design_request.lead_time_hours,
+        "total_amount": f"{design_request.price_gross:.2f}",
+        "currency": design_request.currency,
+        "items": [{
+            "product_name": item.product_name,
+            "width_cm": f"{item.width_cm:g}",
+            "height_cm": f"{item.height_cm:g}",
+        } for item in design_request.items],
+        "order": {"id": order.id, "locator": order.locator} if order else None,
+        "checkout_status": checkout_session.status if checkout_session else None,
+    }), 200
 
 
 @api.route('/checkout/quote', methods=['POST'])

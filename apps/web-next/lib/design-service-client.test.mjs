@@ -1,7 +1,9 @@
 import assert from "node:assert/strict";
 import {
   DesignServiceClientError,
+  createDesignServiceStripePaymentIntent,
   createDesignServiceRequest,
+  getDesignServiceConfirmation,
   getDesignServiceCheckoutQuote,
   requestDesignServiceQuote
 } from "./design-service-client.ts";
@@ -102,4 +104,56 @@ await assert.rejects(
   (error) => error instanceof DesignServiceClientError && error.kind === "validation"
 );
 
-console.log("14 design service client assertions passed");
+{
+  let request;
+  const result = await createDesignServiceStripePaymentIntent(
+    "jwt-token",
+    12,
+    {
+      payment_method_id: "pm_test",
+      idempotency_key: "payment-key",
+      customer_data: {
+        firstname: "Ana", lastname: "Cliente", email: "ana@example.test", phone: "600000000",
+        legal_name: "Ana Cliente", tax_id: "00000000T", billing_address: "Calle 1",
+        billing_city: "Ciudad Real", billing_postal_code: "13001"
+      }
+    },
+    {
+      apiBaseUrl: "https://api.example.test",
+      fetcher: async (url, init) => {
+        request = { url, init };
+        return Response.json({
+          clientSecret: "pi_secret",
+          paymentIntent: { id: "pi_1", status: "requires_payment_method" },
+          amount_used_cents: 5985,
+          checkout_session_id: 8,
+          checkout_session_status: "pending_payment",
+          payment_provider: "stripe",
+          payment_intent_id: "pi_1",
+          provider_order_id: null,
+          provider_capture_id: null,
+          provider_status: "requires_payment_method",
+          public_checkout_token: "token",
+          checkout_summary: { ...quote, design_request_id: 12 }
+        });
+      }
+    }
+  );
+  assert.equal(result.amount_used_cents, 5985);
+  assert.equal(request.url, "https://api.example.test/api/design-requests/12/stripe/payment-intent");
+  assert.equal(JSON.parse(request.init.body).total_amount, undefined);
+}
+
+{
+  const result = await getDesignServiceConfirmation("jwt-token", 12, {
+    apiBaseUrl: "https://api.example.test",
+    fetcher: async () => Response.json({
+      id: 12, reference: "DR-12", status: "pending", lead_time_hours: 24,
+      total_amount: "59.85", currency: "EUR", items: [], order: { id: 7, locator: "AB1234" },
+      checkout_status: "order_created"
+    })
+  });
+  assert.equal(result.reference, "DR-12");
+}
+
+console.log("18 design service client assertions passed");

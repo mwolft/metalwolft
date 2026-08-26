@@ -1797,6 +1797,28 @@ textarea:focus-visible {
   line-height: 1.5;
 }
 
+.mw-design-payment {
+  margin-top: 1.5rem;
+  padding: 1.35rem;
+  border: 1px solid rgba(229, 231, 235, 0.92);
+  border-radius: var(--mw-radius);
+  background: rgba(255, 255, 255, 0.94);
+}
+
+.mw-design-payment > h2 {
+  margin: 0 0 0.35rem;
+}
+
+.mw-design-payment > p {
+  margin: 0 0 1.2rem;
+  color: #4b5563;
+  line-height: 1.55;
+}
+
+.mw-design-payment .mw-payment-methods {
+  margin-top: 1.25rem;
+}
+
 .mw-design-checkout-state {
   margin: 2rem 0 4rem;
 }
