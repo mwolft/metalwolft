@@ -20,6 +20,7 @@ export type CartItem = {
   quantity: number;
   added_at: string;
   available_for_sale: boolean;
+  line_type?: "physical" | "design_service";
 };
 
 export type AddCartItemInput = {

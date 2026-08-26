@@ -14,6 +14,11 @@ assert.match(page, /path: "\/diseno-previo"/);
 assert.match(page, /parseDesignServiceSeed/);
 assert.match(page, /resumeDraftAfterAuth/);
 assert.match(page, /Visualiza tu reja antes de encargarla/);
+assert.match(page, /Volver al configurador/);
+assert.match(page, /buildDesignServiceProductHref/);
+assert.match(page, /returnToConfiguratorHref/);
+assert.match(page, /DESIGN_CATEGORY_SLUG/);
+assert.doesNotMatch(page, /history\.back/);
 assert.match(sitemap, /path: "\/diseno-previo"/);
 assert.match(builder, /requestDesignServiceQuote/);
 assert.match(builder, /startDesignServiceDraft/);
@@ -24,4 +29,4 @@ assert.match(builder, /Este diseño ya está incluido en tu solicitud/);
 assert.match(builder, /disabled/);
 assert.doesNotMatch(builder, /anclaje|torniller[ií]a|color|env[ií]o/i);
 
-console.log("8 design service page contract assertions passed");
+console.log("13 design service page contract assertions passed");

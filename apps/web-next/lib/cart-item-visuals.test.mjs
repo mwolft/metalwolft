@@ -16,13 +16,13 @@ assert.match(configuratorVisuals, /satinado_verde:\s*\{ hex: "#183022" \}/);
 assert.match(configuratorVisuals, /export function getColorVisual/);
 
 assert.match(cartView, /import Image from "next\/image"/);
-assert.equal((cartView.match(/<Image/g) || []).length, 3);
+assert.equal((cartView.match(/<Image/g) || []).length, 4);
 assert.match(cartView, /<span>Alto<\/span>[\s\S]*?src="\/icons\/alto\.webp"/);
 assert.match(cartView, /<span>Ancho<\/span>[\s\S]*?src="\/icons\/ancho\.webp"/);
 assert.match(cartView, /<span>Instalación<\/span>[\s\S]*?src="\/icons\/anclaje\.webp"/);
 assert.equal((cartView.match(/height=\{35\}/g) || []).length, 3);
 assert.equal((cartView.match(/width=\{35\}/g) || []).length, 3);
-assert.equal((cartView.match(/alt=""/g) || []).length, 3);
+assert.equal((cartView.match(/alt=""/g) || []).length, 4);
 assert.match(cartView, /getColorVisual\(item\.color \?\? ""\)/);
 assert.match(cartView, /colorVisual\.swatchClass === "forja"/);
 assert.match(cartView, /"--mw-cart-config-color": colorVisual\.hex/);

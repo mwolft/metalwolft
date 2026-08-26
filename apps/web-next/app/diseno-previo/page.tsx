@@ -1,11 +1,13 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { DesignServiceBuilder } from "@/components/design-service/DesignServiceBuilder";
 import { PageContainer } from "@/components/layout/PageContainer";
 import { fetchCategoryProducts, type ApiProduct } from "@/lib/api";
 import { type DesignServiceProductOption } from "@/lib/design-service-builder";
 import { type DesignServiceDraftItem } from "@/lib/design-service-draft";
+import { DESIGN_SERVICE_MARKETING } from "@/lib/design-service-marketing";
 import { buildMetadata } from "@/lib/metadata";
-import { parseDesignServiceSeed } from "@/lib/design-service-seed";
+import { buildDesignServiceProductHref, parseDesignServiceSeed } from "@/lib/design-service-seed";
 
 const DESIGN_CATEGORY_SLUG = "rejas-para-ventanas";
 
@@ -73,10 +75,18 @@ export default async function DesignServicePage({ searchParams }: DesignServiceP
   const [products, resolvedSearchParams] = await Promise.all([getDesignProducts(), searchParams]);
   const initialSeed = seedFromSearchParams(resolvedSearchParams, products);
   const resumeDraftAfterAuth = !initialSeed && isAuthResume(resolvedSearchParams);
+  const returnToConfiguratorHref = initialSeed
+    ? buildDesignServiceProductHref(DESIGN_CATEGORY_SLUG, initialSeed)
+    : null;
 
   return (
     <PageContainer>
       <div className="mw-design-page">
+        {returnToConfiguratorHref ? (
+          <Link className="mw-design-page__return" href={returnToConfiguratorHref}>
+            <span aria-hidden="true">←</span> Volver al configurador
+          </Link>
+        ) : null}
         <header className="mw-design-hero">
           <div className="mw-design-hero__copy">
             <p className="mw-eyebrow">Diseño previo a medida</p>
@@ -87,8 +97,8 @@ export default async function DesignServicePage({ searchParams }: DesignServiceP
             </p>
           </div>
           <div className="mw-design-hero__facts" aria-label="Información del servicio">
-            <p><strong>Desde 24,95 € IVA incluido</strong></p>
-            <p><strong>Entrega estimada: 24 h</strong></p>
+            <p><strong>{DESIGN_SERVICE_MARKETING.startingPrice}</strong></p>
+            <p><strong>{DESIGN_SERVICE_MARKETING.leadTime}</strong></p>
             <p>No es un plano técnico ni una simulación exacta de la instalación.</p>
           </div>
         </header>

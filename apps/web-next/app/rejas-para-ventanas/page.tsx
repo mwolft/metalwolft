@@ -1,3 +1,5 @@
+import { Fragment } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import type { Metadata } from "next";
 import {
@@ -22,6 +24,7 @@ import {
   getApiBaseUrl
 } from "@/lib/api";
 import { fetchDeliveryEstimate } from "@/lib/delivery-estimate";
+import { DESIGN_SERVICE_MARKETING } from "@/lib/design-service-marketing";
 
 type RejasCategoryData = {
   categoryName: string;
@@ -233,17 +236,48 @@ export default async function RejasParaVentanasPage() {
             </p>
           ) : (
             <div className="mw-product-grid">
-              {data.products.map((product) => {
+              {data.products.map((product, index) => {
                 const productHref = `/${CATEGORY_SLUG}/${product.slug}`;
 
                 return (
-                  <ProductCard
-                    href={productHref}
-                    isBestSeller={product.es_mas_vendido}
-                    isNewDesign={product.es_nuevo_diseno}
-                    key={product.id}
-                    product={product}
-                  />
+                  <Fragment key={product.id}>
+                    <ProductCard
+                      href={productHref}
+                      isBestSeller={product.es_mas_vendido}
+                      isNewDesign={product.es_nuevo_diseno}
+                      product={product}
+                    />
+                    {index === 5 ? (
+                      <aside className="mw-category-design-service" aria-label="Diseño previo a medida">
+                        <div className="mw-category-design-service__intro">
+                          <div className="mw-category-design-service__icon" aria-hidden="true">
+                            <Image
+                              src="/icons/diseno-previo-rejas.webp"
+                              alt=""
+                              width={48}
+                              height={48}
+                            />
+                          </div>
+                          <div>
+                            <p className="mw-eyebrow">Diseño previo a medida</p>
+                            <h3>¿Dudas entre varios modelos?</h3>
+                            <p>
+                              Visualízalos con las medidas de tu ventana antes de decidir. Puedes
+                              preparar uno o varios diseños y comparar mejor sus proporciones.
+                            </p>
+                          </div>
+                        </div>
+                        <div className="mw-category-design-service__action">
+                          <p><strong>{DESIGN_SERVICE_MARKETING.startingPrice}</strong></p>
+                          <p>Descuento al añadir varios diseños</p>
+                          <p>{DESIGN_SERVICE_MARKETING.leadTime}</p>
+                          <Link className="mw-button mw-button--secondary" href="/diseno-previo">
+                            Comparar con diseño previo
+                          </Link>
+                        </div>
+                      </aside>
+                    ) : null}
+                  </Fragment>
                 );
               })}
             </div>

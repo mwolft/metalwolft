@@ -29,6 +29,8 @@ import {
   isAvailableForSale
 } from "@/lib/product-lifecycle";
 import { getColorVisual } from "@/lib/configurator-options";
+import { DESIGN_SERVICE_MARKETING } from "@/lib/design-service-marketing";
+import { buildDesignServiceSeedHref } from "@/lib/design-service-seed";
 
 type CartColorStyle = CSSProperties & {
   "--mw-cart-config-color": string;
@@ -82,6 +84,33 @@ function cartLineKey(item: CartItem) {
 
 function productHref(item: CartItem) {
   return item.category_slug && item.slug ? `/${item.category_slug}/${item.slug}` : null;
+}
+
+function designPreviewHref(item: CartItem) {
+  if (
+    (item.line_type !== undefined && item.line_type !== "physical") ||
+    !item.slug ||
+    !Number.isFinite(item.alto) ||
+    !Number.isFinite(item.ancho) ||
+    item.alto === null ||
+    item.ancho === null
+  ) {
+    return null;
+  }
+
+  return buildDesignServiceSeedHref({
+    product_slug: item.slug,
+    width_cm: item.ancho,
+    height_cm: item.alto
+  });
+}
+
+function formatDesignPreviewDimensions(item: CartItem) {
+  if (!Number.isFinite(item.alto) || !Number.isFinite(item.ancho) || item.alto === null || item.ancho === null) {
+    return null;
+  }
+
+  return `${item.alto.toLocaleString("es-ES")} × ${item.ancho.toLocaleString("es-ES")} cm`;
 }
 
 export function CartView({ deliveryEstimate }: { deliveryEstimate?: ReactNode }) {
@@ -418,6 +447,8 @@ export function CartView({ deliveryEstimate }: { deliveryEstimate?: ReactNode })
         {items.map((item) => {
           const key = cartLineKey(item);
           const href = productHref(item);
+          const designPreviewLink = designPreviewHref(item);
+          const designPreviewDimensions = formatDesignPreviewDimensions(item);
           const quantity = Number(item.quantity || 1);
           const lineTotal = Number(item.precio_total || 0) * quantity;
           const availableForSale = isAvailableForSale(item);
@@ -522,6 +553,29 @@ export function CartView({ deliveryEstimate }: { deliveryEstimate?: ReactNode })
                     />
                   </div>
                 </dl>
+
+                {designPreviewLink && designPreviewDimensions ? (
+                  <aside className="mw-cart-design-preview" aria-label="Diseño previo a medida">
+                    <div className="mw-cart-design-preview__icon" aria-hidden="true">
+                      <Image
+                        src="/icons/diseno-previo-rejas.webp"
+                        alt=""
+                        width={40}
+                        height={40}
+                      />
+                    </div>
+                    <div className="mw-cart-design-preview__copy">
+                      <p className="mw-cart-design-preview__title">¿Quieres verla antes de encargarla?</p>
+                      <p>Visualiza esta reja en {designPreviewDimensions} antes de hacer el pedido.</p>
+                      <Link className="mw-cart-design-preview__link" href={designPreviewLink}>
+                        Preparar diseño previo <span aria-hidden="true">→</span>
+                      </Link>
+                      <p className="mw-cart-design-preview__note">
+                        {DESIGN_SERVICE_MARKETING.startingPrice.replace(" IVA incluido", "")} · Descuento al añadir varios
+                      </p>
+                    </div>
+                  </aside>
+                ) : null}
 
                 <div className="mw-cart-line__actions">
                   <div className="mw-cart-quantity" aria-label={`Cantidad de ${item.nombre}`}>

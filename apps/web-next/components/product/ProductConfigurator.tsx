@@ -957,37 +957,44 @@ export function ProductConfigurator({
         <p className="mw-configurator-helper" id={dimensionHelpId}>
           Introduce alto y ancho en centímetros para calcular el precio exacto de tu reja.
         </p>
-        {designPreviewHref ? (
-          <aside className="mw-configurator-design-preview" aria-label="Diseño previo a medida">
-            <div className="mw-configurator-design-preview__body">
-              <div className="mw-configurator-design-preview__icon" aria-hidden="true">
-                <Image
-                  src="/icons/diseno-previo-rejas.webp"
-                  alt=""
-                  width={44}
-                  height={44}
-                />
-              </div>
-              <div className="mw-configurator-design-preview__copy">
-                <p className="mw-configurator-design-preview__title">¿Quieres ver cómo quedará tu reja?</p>
-                <p>Te preparamos un diseño previo de este modelo en</p>
-                <strong className="mw-configurator-design-preview__dimensions">
-                  {designPreviewHeight} × {designPreviewWidth} cm
-                </strong>
-                {designServiceQuoteStatus === "loading" && !designServiceQuote ? (
-                  <span className="mw-configurator-design-preview__status">Calculando precio…</span>
-                ) : null}
-              </div>
+        <aside className="mw-configurator-design-preview" aria-label="Diseño previo a medida">
+          <div className="mw-configurator-design-preview__body">
+            <div className="mw-configurator-design-preview__icon" aria-hidden="true">
+              <Image
+                src="/icons/diseno-previo-rejas.webp"
+                alt=""
+                width={44}
+                height={44}
+              />
             </div>
-            <div className="mw-configurator-design-preview__footer">
-              <Link className="mw-configurator-design-preview__link" href={designPreviewHref}>
-                Ver diseño previo{designServiceQuote
-                  ? ` · ${formatCurrency(Number(designServiceQuote.total_amount))} €`
-                  : ""} →
-              </Link>
+            <div className="mw-configurator-design-preview__copy">
+              <p className="mw-configurator-design-preview__title">¿Quieres ver cómo quedará tu reja?</p>
+              {designPreviewHref ? (
+                <>
+                  <p>Te preparamos un diseño previo de este modelo en</p>
+                  <strong className="mw-configurator-design-preview__dimensions">
+                    {designPreviewHeight} × {designPreviewWidth} cm
+                  </strong>
+                  {designServiceQuoteStatus === "loading" && !designServiceQuote ? (
+                    <span className="mw-configurator-design-preview__status">Calculando precio…</span>
+                  ) : null}
+                </>
+              ) : (
+                <p>Introduce alto y ancho para poder visualizar este modelo con tus proporciones.</p>
+              )}
             </div>
-          </aside>
-        ) : null}
+          </div>
+          <div className="mw-configurator-design-preview__footer">
+            <Link
+              className="mw-configurator-design-preview__link"
+              href={designPreviewHref ?? "/diseno-previo"}
+            >
+              {designPreviewHref
+                ? `Ver diseño previo${designServiceQuote ? ` · ${formatCurrency(Number(designServiceQuote.total_amount))} €` : ""}`
+                : "Conocer el diseño previo"} →
+            </Link>
+          </div>
+        </aside>
         {configurationMessage ? (
           <p
             className={

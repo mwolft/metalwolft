@@ -52,3 +52,13 @@ export function buildDesignServiceSeedHref(seed: DesignServiceSeed) {
   });
   return `/diseno-previo?${query.toString()}`;
 }
+
+export function buildDesignServiceProductHref(categorySlug: string, seed: DesignServiceSeed) {
+  const category = parseProductSlug(categorySlug);
+  const productSlug = parseProductSlug(seed.product_slug);
+  if (!category || !productSlug) {
+    return null;
+  }
+
+  return `/${category}/${productSlug}`;
+}

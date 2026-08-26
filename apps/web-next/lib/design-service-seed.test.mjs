@@ -1,5 +1,9 @@
 import assert from "node:assert/strict";
-import { buildDesignServiceSeedHref, parseDesignServiceSeed } from "./design-service-seed.ts";
+import {
+  buildDesignServiceProductHref,
+  buildDesignServiceSeedHref,
+  parseDesignServiceSeed
+} from "./design-service-seed.ts";
 
 assert.deepEqual(
   parseDesignServiceSeed(new URLSearchParams("producto=maryland&ancho=200&alto=120")),
@@ -29,4 +33,21 @@ assert.equal(
   null
 );
 
-console.log("9 design service seed assertions passed");
+assert.equal(
+  buildDesignServiceProductHref("rejas-para-ventanas", {
+    product_slug: "maryland",
+    width_cm: 200,
+    height_cm: 120
+  }),
+  "/rejas-para-ventanas/maryland"
+);
+assert.equal(
+  buildDesignServiceProductHref("rejas-para-ventanas", {
+    product_slug: "maryland?price=24.95",
+    width_cm: 200,
+    height_cm: 120
+  }),
+  null
+);
+
+console.log("11 design service seed assertions passed");
