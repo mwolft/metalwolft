@@ -349,6 +349,15 @@ export function ProductConfigurator({
     (option) => option.value === anchorage
   );
   const selectedAnchorageRequiresScrews = selectedAnchorage?.screw_required ?? true;
+  const physicalOptionsReadyForQuote = Boolean(
+    selectedAnchorage?.enabled &&
+      configuredColors.some((option) => option.value === color) &&
+      (
+        !selectedAnchorageRequiresScrews
+          ? screwOption === NOT_APPLICABLE_SCREW_OPTION
+          : configuredScrewOptions.some((option) => option.value === screwOption)
+      )
+  );
   const configurationReady =
     configurationStatus === "ready" || configurationStatus === "fallback";
   const controlsDisabled = !configurationReady;
@@ -599,6 +608,14 @@ export function ProductConfigurator({
       return;
     }
 
+    if (!physicalOptionsReadyForQuote) {
+      setCalculatedQuote(null);
+      setQuoteNotice("");
+      setQuoteStatus("idle");
+      setCalculationError("");
+      return;
+    }
+
     const controller = new AbortController();
     activeQuoteController.current = controller;
     const timer = window.setTimeout(async () => {
@@ -717,6 +734,7 @@ export function ProductConfigurator({
     pricePerM2,
     productId,
     productConfiguration,
+    physicalOptionsReadyForQuote,
     quoteRequestVersion,
     screwOption,
     width

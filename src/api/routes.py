@@ -2499,11 +2499,12 @@ def create_design_request_endpoint():
     current_user = get_jwt_identity()
     data = request.get_json(silent=True) or {}
     creation_key = request.headers.get("Idempotency-Key")
+    if not isinstance(data, dict) or set(data) - {"items"}:
+        return jsonify({"message": "La solicitud contiene campos no permitidos."}), 400
     try:
         result = create_design_request(
             db_session=db.session,
             user_id=current_user["user_id"],
-            product_id=data.get("product_id"),
             items=data.get("items"),
             creation_key=creation_key,
         )

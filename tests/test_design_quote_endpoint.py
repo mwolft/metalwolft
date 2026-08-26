@@ -26,7 +26,7 @@ HAS_ENDPOINT_DEPS = all(
 
 if HAS_ENDPOINT_DEPS:
     from flask import Flask
-    from flask_jwt_extended import JWTManager
+    from flask_jwt_extended import JWTManager, create_access_token
 
     from api.models import (
         Categories,
@@ -36,6 +36,7 @@ if HAS_ENDPOINT_DEPS:
         DesignServicePriceTier,
         Orders,
         Products,
+        Users,
         db,
     )
     from api.routes import (
@@ -69,6 +70,8 @@ class DesignQuoteEndpointTest(unittest.TestCase):
                 Products(nombre="Vermont", descripcion="Modelo", precio=100.0, categoria_id=category.id, slug="vermont"),
             ]
             db.session.add_all(products)
+            user = Users(email="design-request@example.test", password="test-password")
+            db.session.add(user)
             db.session.add(DesignServiceConfig(
                 id=1,
                 is_active=True,
@@ -84,6 +87,7 @@ class DesignQuoteEndpointTest(unittest.TestCase):
             db.session.commit()
             self.maryland_id = products[0].id
             self.vermont_id = products[1].id
+            self.user_id = user.id
 
         self.client = self.app.test_client()
         _design_quote_rate_limiter.reset()
@@ -106,6 +110,17 @@ class DesignQuoteEndpointTest(unittest.TestCase):
 
     def quote(self, payload):
         return self.client.post("/api/design-requests/quote", json=payload)
+
+    def design_request_headers(self, creation_key):
+        with self.app.app_context():
+            token = create_access_token(
+                identity=str(self.user_id),
+                additional_claims={"email": "design-request@example.test", "is_admin": False},
+            )
+        return {
+            "Authorization": f"Bearer {token}",
+            "Idempotency-Key": creation_key,
+        }
 
     def test_anonymous_quote_is_read_only_and_uses_authoritative_price(self):
         with self.app.app_context():
@@ -171,6 +186,52 @@ class DesignQuoteEndpointTest(unittest.TestCase):
             self.client.post("/api/design-requests/1/checkout-quote", json={}).status_code,
             401,
         )
+
+    def test_authenticated_multidesign_creation_is_authoritative_and_idempotent(self):
+        items = [
+            {"product_id": self.maryland_id, "width_cm": 200, "height_cm": 120},
+            {"product_id": self.maryland_id, "width_cm": 150, "height_cm": 120},
+            {"product_id": self.vermont_id, "width_cm": 100, "height_cm": 80},
+        ]
+        headers = self.design_request_headers("design-request-retry-key")
+
+        created = self.client.post("/api/design-requests", json={"items": items}, headers=headers)
+        retried = self.client.post("/api/design-requests", json={"items": items}, headers=headers)
+
+        self.assertEqual(created.status_code, 201)
+        self.assertEqual(retried.status_code, 200)
+        self.assertTrue(created.get_json()["created"])
+        self.assertFalse(retried.get_json()["created"])
+        self.assertEqual(created.get_json()["id"], retried.get_json()["id"])
+        self.assertEqual(created.get_json()["status"], "pending_payment")
+
+        with self.app.app_context():
+            self.assertEqual(DesignRequest.query.count(), 1)
+            design_request = DesignRequest.query.one()
+            self.assertEqual(design_request.status, "pending_payment")
+            self.assertEqual(design_request.subtotal_gross, Decimal("74.85"))
+            self.assertEqual(design_request.discount_amount, Decimal("15.00"))
+            self.assertEqual(design_request.price_gross, Decimal("59.85"))
+            self.assertEqual(len(design_request.items), 3)
+            self.assertEqual(
+                {(item.product_id, str(item.width_cm), str(item.height_cm)) for item in design_request.items},
+                {
+                    (self.maryland_id, "200.00", "120.00"),
+                    (self.maryland_id, "150.00", "120.00"),
+                    (self.vermont_id, "100.00", "80.00"),
+                },
+            )
+
+    def test_design_request_rejects_client_commercial_fields(self):
+        response = self.client.post(
+            "/api/design-requests",
+            json={"items": self.items(1), "total_amount": "0.01"},
+            headers=self.design_request_headers("design-request-commercial-fields"),
+        )
+
+        self.assertEqual(response.status_code, 400)
+        with self.app.app_context():
+            self.assertEqual(DesignRequest.query.count(), 0)
 
     def test_public_quote_rate_limit_returns_retry_after(self):
         for _ in range(DESIGN_QUOTE_RATE_LIMIT_REQUESTS):
