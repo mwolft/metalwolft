@@ -34,7 +34,7 @@ if HAS_FLASK_ADMIN_DEPS:
         AeatUnifiedLedgerExportResult,
         AeatUnifiedLedgerValidationError,
     )
-    from api.models import db  # noqa: E402
+    from api.models import ManualInvoiceDraft, SupplierInvoice, db  # noqa: E402
 
 
 @unittest.skipUnless(HAS_FLASK_ADMIN_DEPS, "Flask Admin test dependencies are not installed.")
@@ -54,6 +54,21 @@ class FlaskAdminAeatUnifiedLedgerTest(unittest.TestCase):
             self.app,
             url="/admin",
             index_view=admin_module.SecureAdminIndexView(),
+            template_mode="bootstrap3",
+        )
+        self.admin.add_view(
+            admin_module.SupplierInvoiceAdminView(
+                SupplierInvoice,
+                db.session,
+                name="Facturas recibidas",
+            )
+        )
+        self.admin.add_view(
+            admin_module.ManualInvoiceDraftAdminView(
+                ManualInvoiceDraft,
+                db.session,
+                name="Facturas manuales",
+            )
         )
         with self.app.app_context():
             db.create_all()
