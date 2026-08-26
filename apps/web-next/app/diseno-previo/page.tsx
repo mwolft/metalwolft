@@ -7,7 +7,11 @@ import { type DesignServiceProductOption } from "@/lib/design-service-builder";
 import { type DesignServiceDraftItem } from "@/lib/design-service-draft";
 import { DESIGN_SERVICE_MARKETING } from "@/lib/design-service-marketing";
 import { buildMetadata } from "@/lib/metadata";
-import { buildDesignServiceProductHref, parseDesignServiceSeed } from "@/lib/design-service-seed";
+import {
+  parseDesignServiceOrigin,
+  parseDesignServiceSeed,
+  resolveDesignServiceReturnNavigation
+} from "@/lib/design-service-seed";
 
 const DESIGN_CATEGORY_SLUG = "rejas-para-ventanas";
 
@@ -75,9 +79,14 @@ export default async function DesignServicePage({ searchParams }: DesignServiceP
   const [products, resolvedSearchParams] = await Promise.all([getDesignProducts(), searchParams]);
   const initialSeed = seedFromSearchParams(resolvedSearchParams, products);
   const resumeDraftAfterAuth = !initialSeed && isAuthResume(resolvedSearchParams);
-  const returnToConfiguratorHref = initialSeed
-    ? buildDesignServiceProductHref(DESIGN_CATEGORY_SLUG, initialSeed)
-    : null;
+  const explicitOrigin = parseDesignServiceOrigin(
+    new URLSearchParams({ from: valueFromSearchParams(resolvedSearchParams.from) || "" })
+  );
+  const returnNavigation = resolveDesignServiceReturnNavigation(
+    explicitOrigin,
+    initialSeed,
+    DESIGN_CATEGORY_SLUG
+  );
 
   return (
     <PageContainer>
@@ -109,13 +118,13 @@ export default async function DesignServicePage({ searchParams }: DesignServiceP
             <p>Vuelve a intentarlo en unos minutos para preparar tu diseño previo.</p>
           </section>
         )}
-        {products.length && returnToConfiguratorHref ? (
+        {products.length && returnNavigation?.href ? (
           <nav className="mw-design-page__return" aria-label="Navegación de retorno">
-            <Link className="mw-design-page__return-link" href={returnToConfiguratorHref}>
+            <Link className="mw-design-page__return-link" href={returnNavigation.href}>
               <svg aria-hidden="true" focusable="false" viewBox="0 0 20 20">
                 <path d="M11.5 4.5 6 10l5.5 5.5M6.75 10h7.5" />
               </svg>
-              Volver al configurador
+              {returnNavigation.label}
             </Link>
           </nav>
         ) : null}

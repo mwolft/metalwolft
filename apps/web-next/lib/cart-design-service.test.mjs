@@ -12,6 +12,7 @@ assert.match(cartView, /buildDesignServiceSeedHref/);
 assert.match(cartView, /product_slug: item\.slug/);
 assert.match(cartView, /width_cm: item\.ancho/);
 assert.match(cartView, /height_cm: item\.alto/);
+assert.match(cartView, /\}, "cart"\);/);
 assert.match(cartView, /¿Quieres verla antes de encargarla\?/);
 assert.match(cartView, /Diseño previo \{designPreviewDimensions\}/);
 assert.match(cartView, /Preparar diseño previo/);

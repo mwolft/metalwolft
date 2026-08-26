@@ -11,6 +11,7 @@ assert.match(configurator, /buildDesignServiceSeedHref/);
 assert.match(configurator, /product_slug: productSlug/);
 assert.match(configurator, /width_cm: designPreviewWidth/);
 assert.match(configurator, /height_cm: designPreviewHeight/);
+assert.match(configurator, /\}, "configurator"\)/);
 assert.match(configurator, /requestDesignServiceQuote/);
 assert.match(configurator, /<aside className="mw-configurator-design-preview"/);
 assert.match(configurator, /designPreviewHref \? \(/);

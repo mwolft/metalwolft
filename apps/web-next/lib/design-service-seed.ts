@@ -4,6 +4,13 @@ export type DesignServiceSeed = {
   height_cm: number;
 };
 
+export type DesignServiceOrigin = "configurator" | "cart" | "direct";
+
+export type DesignServiceReturnNavigation = {
+  href: string;
+  label: "Volver al configurador" | "Volver al carrito";
+};
+
 type SearchParamsReader = Pick<URLSearchParams, "get">;
 
 function parsePositiveNumber(value: string | null) {
@@ -37,7 +44,42 @@ export function parseDesignServiceSeed(searchParams: SearchParamsReader): Design
   return { product_slug, width_cm, height_cm };
 }
 
-export function buildDesignServiceSeedHref(seed: DesignServiceSeed) {
+export function parseDesignServiceOrigin(searchParams: SearchParamsReader): DesignServiceOrigin | null {
+  const origin = searchParams.get("from");
+  if (origin === null || origin === "") {
+    return null;
+  }
+
+  if (origin === "configurator" || origin === "cart" || origin === "direct") {
+    return origin;
+  }
+
+  return "direct";
+}
+
+export function resolveDesignServiceReturnNavigation(
+  origin: DesignServiceOrigin | null,
+  seed: DesignServiceSeed | null,
+  categorySlug: string
+): DesignServiceReturnNavigation | null {
+  const resolvedOrigin = origin || (seed ? "configurator" : "direct");
+
+  if (resolvedOrigin === "cart") {
+    return { href: "/cart", label: "Volver al carrito" };
+  }
+
+  if (resolvedOrigin !== "configurator" || !seed) {
+    return null;
+  }
+
+  const href = buildDesignServiceProductHref(categorySlug, seed);
+  return href ? { href, label: "Volver al configurador" } : null;
+}
+
+export function buildDesignServiceSeedHref(
+  seed: DesignServiceSeed,
+  origin?: Exclude<DesignServiceOrigin, "direct">
+) {
   const product_slug = parseProductSlug(seed.product_slug);
   const width_cm = parsePositiveNumber(String(seed.width_cm));
   const height_cm = parsePositiveNumber(String(seed.height_cm));
@@ -50,6 +92,9 @@ export function buildDesignServiceSeedHref(seed: DesignServiceSeed) {
     ancho: String(width_cm),
     alto: String(height_cm)
   });
+  if (origin) {
+    query.set("from", origin);
+  }
   return `/diseno-previo?${query.toString()}`;
 }
 

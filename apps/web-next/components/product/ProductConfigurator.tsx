@@ -375,7 +375,7 @@ export function ProductConfigurator({
           product_slug: productSlug,
           width_cm: designPreviewWidth,
           height_cm: designPreviewHeight
-        })
+        }, "configurator")
       : null;
   const effectivePricePerM2 =
     discountedPricePerM2 && discountedPricePerM2 > 0 ? discountedPricePerM2 : pricePerM2;

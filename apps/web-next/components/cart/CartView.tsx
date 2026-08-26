@@ -102,7 +102,7 @@ function designPreviewHref(item: CartItem) {
     product_slug: item.slug,
     width_cm: item.ancho,
     height_cm: item.alto
-  });
+  }, "cart");
 }
 
 function formatDesignPreviewDimensions(item: CartItem) {
