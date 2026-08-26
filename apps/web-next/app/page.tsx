@@ -4,6 +4,7 @@ import type { Metadata } from "next";
 import { PageContainer } from "@/components/layout/PageContainer";
 import { JsonLd } from "@/components/seo/JsonLd";
 import { contactDetails, contactLinks } from "@/lib/contact";
+import { DESIGN_SERVICE_MARKETING } from "@/lib/design-service-marketing";
 import {
   ApiRequestError,
   ApiProduct,
@@ -457,6 +458,40 @@ export default async function HomePage() {
               ))}
             </div>
           )}
+        </section>
+
+        <section className="mw-section mw-home-design-service" aria-labelledby="diseno-previo-title">
+          <div className="mw-home-design-service__box">
+            <div className="mw-home-design-service__copy">
+              <p className="mw-eyebrow">Diseño previo a medida</p>
+              <h2 id="diseno-previo-title">Visualiza tu reja antes de encargarla</h2>
+              <p>
+                ¿Ya tienes un modelo en mente? Indica el modelo y las medidas de tu ventana y te
+                preparamos una representación previa para que puedas valorar sus proporciones antes
+                de hacer el pedido.
+              </p>
+              <div className="mw-actions">
+                <Link className="mw-button mw-button--secondary" href="/diseno-previo">
+                  Preparar mi diseño
+                </Link>
+              </div>
+            </div>
+            <aside className="mw-home-design-service__facts" aria-label="Información del diseño previo">
+              <div className="mw-home-design-service__icon" aria-hidden="true">
+                <Image
+                  src="/icons/diseno-previo-rejas.webp"
+                  alt=""
+                  width={56}
+                  height={56}
+                />
+              </div>
+              <p><strong>{DESIGN_SERVICE_MARKETING.startingPrice}</strong></p>
+              <p><strong>{DESIGN_SERVICE_MARKETING.leadTime}</strong></p>
+              <p className="mw-home-design-service__note">
+                No es un plano técnico ni una simulación exacta de la instalación.
+              </p>
+            </aside>
+          </div>
         </section>
 
         <section className="mw-section">

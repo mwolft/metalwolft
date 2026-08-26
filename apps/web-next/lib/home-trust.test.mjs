@@ -22,6 +22,7 @@ assert.match(
 );
 assert.doesNotMatch(home, /Sin instalación incluida/);
 assert.doesNotMatch(home, /Se instala fácilmente/);
+const trustSection = home.match(/<section className="mw-home-trust"[\s\S]*?<\/section>/)?.[0] ?? "";
 
 for (const imagePath of [
   "/icons/rejas-a-medida.webp",
@@ -32,11 +33,10 @@ for (const imagePath of [
   assert.match(home, new RegExp(`src="${imagePath.replace(".", "\\.")}"`));
 }
 assert.equal((home.match(/className="mw-home-trust__icon"/g) || []).length, 4);
-assert.equal((home.match(/alt=""/g) || []).length >= 4, true);
-assert.equal((home.match(/width=\{84\}/g) || []).length, 4);
-assert.equal((home.match(/height=\{56\}/g) || []).length, 4);
+assert.equal((trustSection.match(/width=\{84\}/g) || []).length, 4);
+assert.equal((trustSection.match(/height=\{56\}/g) || []).length, 4);
 assert.doesNotMatch(home, /lucide-react/);
-const trustSection = home.match(/<section className="mw-home-trust"[\s\S]*?<\/section>/)?.[0] ?? "";
+assert.equal((trustSection.match(/alt=""/g) || []).length, 4);
 assert.match(trustSection, /href=\{contactLinks\.whatsapp\}/);
 assert.match(trustSection, /rel="noopener noreferrer"/);
 assert.match(trustSection, /target="_blank"/);

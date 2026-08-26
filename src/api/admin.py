@@ -3546,29 +3546,35 @@ def setup_admin(app):
     # Monta Flask-Admin en /admin
     admin = Admin(
         app,
-        name='MetalWolft.com',
-        index_view=SecureAdminIndexView(),
+        name='MetalWolft Administración',
+        index_view=SecureAdminIndexView(name='Resumen'),
         template_mode='bootstrap3',
         url='/admin'
     )
 
-    # Registra vistas
-    admin.add_view(UsersAdminView(Users, db.session))
-    admin.add_view(SafeModelView(Categories, db.session))
-    admin.add_view(SafeModelView(Subcategories, db.session))
-    admin.add_view(ProductAdminView(Products, db.session))
-    admin.add_view(SafeModelView(ProductImages, db.session))
-    admin.add_view(CartAdminView(Cart, db.session))
-    admin.add_view(DesignServiceConfigAdminView(DesignServiceConfig, db.session, name="Configuración diseño previo"))
-    admin.add_view(DesignServicePriceTierAdminView(DesignServicePriceTier, db.session, name="Tarifas diseño previo"))
-    admin.add_view(DesignRequestAdminView(DesignRequest, db.session, name="Solicitudes de diseño"))
-    admin.add_view(OrderAdminView(Orders, db.session))
-    admin.add_view(OrderDetailsAdminView(OrderDetails, db.session))
-    admin.add_view(FavoritesAdminView(Favorites, db.session, name="Favoritos"))
-    admin.add_view(SafeModelView(Posts, db.session))
-    admin.add_view(SafeModelView(Comments, db.session))
-    admin.add_view(SupplierInvoiceAdminView(SupplierInvoice, db.session, name="Facturas recibidas"))
-    admin.add_view(ManualInvoiceDraftAdminView(ManualInvoiceDraft, db.session, name="Facturas manuales"))
-    admin.add_view(InvoiceAdminView(Invoices, db.session))
-    admin.add_view(VeriFactuRecordAdminView(VeriFactuRecord, db.session, name="VeriFactu"))
-    admin.add_view(SafeModelView(DeliveryEstimateConfig, db.session))
+    # Native Flask-Admin categories keep all view endpoints and URLs unchanged.
+    admin.add_view(SafeModelView(Categories, db.session, name="Categorías", category="Catálogo"))
+    admin.add_view(SafeModelView(Subcategories, db.session, name="Subcategorías", category="Catálogo"))
+    admin.add_view(ProductAdminView(Products, db.session, name="Productos", category="Catálogo"))
+    admin.add_view(SafeModelView(ProductImages, db.session, name="Imágenes de producto", category="Catálogo"))
+
+    admin.add_view(OrderAdminView(Orders, db.session, name="Pedidos", category="Ventas"))
+    admin.add_view(OrderDetailsAdminView(OrderDetails, db.session, name="Líneas de pedido", category="Ventas"))
+    admin.add_view(CartAdminView(Cart, db.session, name="Carritos", category="Ventas"))
+
+    admin.add_view(DesignRequestAdminView(DesignRequest, db.session, name="Solicitudes", category="Diseño previo"))
+    admin.add_view(DesignServiceConfigAdminView(DesignServiceConfig, db.session, name="Configuración", category="Diseño previo"))
+    admin.add_view(DesignServicePriceTierAdminView(DesignServicePriceTier, db.session, name="Tarifas", category="Diseño previo"))
+
+    admin.add_view(UsersAdminView(Users, db.session, name="Usuarios", category="Clientes"))
+    admin.add_view(FavoritesAdminView(Favorites, db.session, name="Favoritos", category="Clientes"))
+    admin.add_view(SafeModelView(Comments, db.session, name="Comentarios", category="Clientes"))
+
+    admin.add_view(InvoiceAdminView(Invoices, db.session, name="Facturas", category="Facturación"))
+    admin.add_view(ManualInvoiceDraftAdminView(ManualInvoiceDraft, db.session, name="Facturas manuales", category="Facturación"))
+    admin.add_view(SupplierInvoiceAdminView(SupplierInvoice, db.session, name="Facturas recibidas", category="Facturación"))
+    admin.add_view(VeriFactuRecordAdminView(VeriFactuRecord, db.session, name="VeriFactu", category="Facturación"))
+
+    admin.add_view(SafeModelView(Posts, db.session, name="Publicaciones", category="Contenido"))
+
+    admin.add_view(SafeModelView(DeliveryEstimateConfig, db.session, name="Entrega estimada", category="Configuración"))

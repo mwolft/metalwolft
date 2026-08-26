@@ -1,0 +1,139 @@
+/* Header identity only: preserve Flask-Admin's Bootstrap navigation and views. */
+.navbar .mw-admin-topbar {
+  display: flex;
+  min-height: 80px;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.navbar .mw-admin-topbar .navbar-header {
+  display: flex;
+  float: none;
+  min-width: 0;
+  align-items: center;
+}
+
+.navbar .mw-admin-topbar .navbar-brand {
+  float: none;
+}
+
+.navbar .mw-admin-brand {
+  display: flex;
+  min-height: 80px;
+  height: 80px;
+  align-items: center;
+  gap: 8px;
+  padding-top: 0;
+  padding-bottom: 0;
+  color: #f8fafc;
+  line-height: 1;
+}
+
+.navbar .mw-admin-brand:hover,
+.navbar .mw-admin-brand:focus {
+  color: #ffffff;
+  text-decoration: none;
+}
+
+.mw-admin-brand__icon {
+  display: block;
+  width: 55px;
+  height: 55px;
+  flex: 0 0 55px;
+  object-fit: contain;
+}
+
+.mw-admin-brand__copy {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  min-width: 0;
+  gap: 2px;
+}
+
+.mw-admin-brand__name {
+  color: inherit;
+  font-size: 30px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  line-height: 1;
+}
+
+.mw-admin-brand__subtitle {
+  color: rgba(248, 250, 252, 0.72);
+  font-size: 18px;
+  font-weight: 500;
+  line-height: 1.1;
+}
+
+.navbar .mw-admin-user {
+  display: flex;
+  align-items: center;
+  height: 80px;
+  padding: 0 15px;
+  color: rgba(248, 250, 252, 0.82);
+  font-size: 14px;
+}
+
+.navbar .mw-admin-user .glyphicon {
+  margin-right: 6px;
+  font-size: 13px;
+}
+
+.navbar .mw-admin-user--mobile {
+  display: none;
+}
+
+@media (max-width: 767px) {
+  .navbar .mw-admin-topbar {
+    min-height: 72px;
+  }
+
+  .navbar .mw-admin-topbar .navbar-header {
+    width: 100%;
+  }
+
+  .navbar .mw-admin-brand {
+    min-height: 72px;
+    height: 72px;
+  }
+
+  .navbar .mw-admin-user--desktop {
+    display: none;
+  }
+
+  .navbar .mw-admin-user--mobile {
+    display: flex;
+    height: auto;
+    min-height: 44px;
+  }
+
+  .navbar .navbar-toggle {
+    order: 2;
+    margin-left: auto;
+  }
+
+  .navbar .mw-admin-brand {
+    gap: 7px;
+  }
+
+  .mw-admin-brand__icon {
+    width: 42px;
+    height: 42px;
+    flex-basis: 42px;
+  }
+
+  .mw-admin-brand__name {
+    font-size: 22px;
+  }
+
+  .mw-admin-brand__subtitle {
+    font-size: 14px;
+  }
+
+  .navbar .mw-admin-user {
+    font-size: 13px;
+  }
+}
