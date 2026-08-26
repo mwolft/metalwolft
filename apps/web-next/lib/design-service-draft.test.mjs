@@ -3,9 +3,11 @@ import {
   DESIGN_SERVICE_DRAFT_STORAGE_KEY,
   DESIGN_SERVICE_DRAFT_VERSION,
   clearDesignServiceDraft,
+  consumeDesignServiceDraft,
   loadDesignServiceDraft,
   normalizeDesignServiceDraftItems,
-  saveDesignServiceDraft
+  saveDesignServiceDraft,
+  startDesignServiceDraft
 } from "./design-service-draft.ts";
 
 class MemoryStorage {
@@ -48,6 +50,22 @@ assert.deepEqual(JSON.parse(storage.getItem(DESIGN_SERVICE_DRAFT_STORAGE_KEY)), 
 });
 assert.deepEqual(loadDesignServiceDraft(), [maryland]);
 
+assert.deepEqual(consumeDesignServiceDraft(), [maryland]);
+assert.equal(storage.getItem(DESIGN_SERVICE_DRAFT_STORAGE_KEY), null);
+
+const albany = { ...maryland, product_id: 8, product_slug: "albany", product_name: "Albany" };
+saveDesignServiceDraft([albany]);
+assert.deepEqual(startDesignServiceDraft(maryland, false), [maryland]);
+assert.equal(storage.getItem(DESIGN_SERVICE_DRAFT_STORAGE_KEY), null);
+
+saveDesignServiceDraft([albany]);
+assert.deepEqual(startDesignServiceDraft(null, false), []);
+assert.equal(storage.getItem(DESIGN_SERVICE_DRAFT_STORAGE_KEY), null);
+
+saveDesignServiceDraft([maryland, albany]);
+assert.deepEqual(startDesignServiceDraft(null, true), [maryland, albany]);
+assert.equal(storage.getItem(DESIGN_SERVICE_DRAFT_STORAGE_KEY), null);
+
 storage.setItem(DESIGN_SERVICE_DRAFT_STORAGE_KEY, "not-json");
 assert.deepEqual(loadDesignServiceDraft(), []);
 assert.equal(storage.getItem(DESIGN_SERVICE_DRAFT_STORAGE_KEY), null);
@@ -60,4 +78,4 @@ saveDesignServiceDraft([maryland]);
 clearDesignServiceDraft();
 assert.equal(storage.getItem(DESIGN_SERVICE_DRAFT_STORAGE_KEY), null);
 
-console.log("12 design service draft assertions passed");
+console.log("20 design service draft assertions passed");

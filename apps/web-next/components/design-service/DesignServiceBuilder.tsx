@@ -11,8 +11,8 @@ import {
 } from "@/lib/design-service-builder";
 import {
   clearDesignServiceDraft,
-  loadDesignServiceDraft,
   saveDesignServiceDraft,
+  startDesignServiceDraft,
   type DesignServiceDraftItem
 } from "@/lib/design-service-draft";
 import {
@@ -30,6 +30,7 @@ import {
 type DesignServiceBuilderProps = {
   products: DesignServiceProductOption[];
   initialSeed?: DesignServiceDraftItem | null;
+  resumeDraftAfterAuth?: boolean;
 };
 
 const QUOTE_DEBOUNCE_MS = 450;
@@ -83,15 +84,11 @@ function creationErrorMessage(error: unknown) {
   }
 }
 
-function mergeSeed(
-  restored: DesignServiceDraftItem[],
-  initialSeed: DesignServiceDraftItem | null | undefined
-) {
-  const items = initialSeed ? [initialSeed, ...restored] : restored;
-  return saveDesignServiceDraft(items);
-}
-
-export function DesignServiceBuilder({ products, initialSeed = null }: DesignServiceBuilderProps) {
+export function DesignServiceBuilder({
+  products,
+  initialSeed = null,
+  resumeDraftAfterAuth = false
+}: DesignServiceBuilderProps) {
   const router = useRouter();
   const [designs, setDesigns] = useState<DesignServiceBuilderInput[]>([emptyDesign()]);
   const [hydrated, setHydrated] = useState(false);
@@ -104,26 +101,22 @@ export function DesignServiceBuilder({ products, initialSeed = null }: DesignSer
   const requestVersion = useRef(0);
 
   useEffect(() => {
-    const restored = loadDesignServiceDraft();
-    const merged = mergeSeed(restored, initialSeed);
-    setDesigns(merged.length ? merged.map((item) => draftItemToBuilderInput(item, makeInputId())) : [emptyDesign()]);
+    // A seeded URL always starts a fresh request. Normal visits never revive abandoned selections.
+    const initialItems = startDesignServiceDraft(initialSeed, resumeDraftAfterAuth);
+
+    setDesigns(
+      initialItems.length
+        ? initialItems.map((item) => draftItemToBuilderInput(item, makeInputId()))
+        : [emptyDesign()]
+    );
     setHydrated(true);
-  }, [initialSeed]);
+  }, [initialSeed, resumeDraftAfterAuth]);
 
   const { items: validItems, duplicateInputIds } = builderInputsToDraftItems(designs, products);
   const validItemsKey = JSON.stringify(validItems);
   const hasIncompleteDesign = designs.some(
     (design) => !isCompleteDesignServiceBuilderInput(design, products)
   );
-
-  useEffect(() => {
-    if (!hydrated) return;
-    if (validItems.length) {
-      saveDesignServiceDraft(validItems);
-    } else {
-      clearDesignServiceDraft();
-    }
-  }, [hydrated, validItemsKey]);
 
   useEffect(() => {
     const version = ++requestVersion.current;
@@ -182,7 +175,8 @@ export function DesignServiceBuilder({ products, initialSeed = null }: DesignSer
     const token = getToken();
     const user = getStoredUser();
     if (!token || !user?.id) {
-      router.push(`/login?next=${encodeURIComponent("/diseno-previo")}`);
+      saveDesignServiceDraft(validItems);
+      router.push(`/login?next=${encodeURIComponent("/diseno-previo?resume=auth")}`);
       return;
     }
 
@@ -195,6 +189,7 @@ export function DesignServiceBuilder({ products, initialSeed = null }: DesignSer
 
       const sessionRequest = getOrCreateDesignServiceCreationKey(user.id, validItems);
       if (sessionRequest.design_request_id) {
+        clearDesignServiceDraft();
         router.push(`/diseno-previo/checkout?design_request_id=${sessionRequest.design_request_id}`);
         return;
       }
@@ -205,11 +200,13 @@ export function DesignServiceBuilder({ products, initialSeed = null }: DesignSer
         sessionRequest.creation_key
       );
       rememberDesignServiceRequest(user.id, validItems, result.id);
+      clearDesignServiceDraft();
       router.push(`/diseno-previo/checkout?design_request_id=${result.id}`);
     } catch (error) {
       if (error instanceof DesignServiceClientError && error.kind === "authentication") {
         clearSession();
-        router.push(`/login?next=${encodeURIComponent("/diseno-previo")}`);
+        saveDesignServiceDraft(validItems);
+        router.push(`/login?next=${encodeURIComponent("/diseno-previo?resume=auth")}`);
         return;
       }
       setContinuationError(creationErrorMessage(error));

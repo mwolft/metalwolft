@@ -1,5 +1,5 @@
 export const DESIGN_SERVICE_DRAFT_STORAGE_KEY = "mw:design-service-draft:v1";
-export const DESIGN_SERVICE_DRAFT_VERSION = 1;
+export const DESIGN_SERVICE_DRAFT_VERSION = 2;
 
 export type DesignServiceDraftItem = {
   product_id: number;
@@ -104,6 +104,30 @@ export function loadDesignServiceDraft(): DesignServiceDraftItem[] {
     window.sessionStorage.removeItem(DESIGN_SERVICE_DRAFT_STORAGE_KEY);
     return [];
   }
+}
+
+// Authentication is the only cross-page transition that may restore this temporary draft.
+export function consumeDesignServiceDraft(): DesignServiceDraftItem[] {
+  const items = loadDesignServiceDraft();
+  clearDesignServiceDraft();
+  return items;
+}
+
+export function startDesignServiceDraft(
+  initialSeed: DesignServiceDraftItem | null | undefined,
+  resumeAfterAuth: boolean
+) {
+  if (initialSeed) {
+    clearDesignServiceDraft();
+    return [initialSeed];
+  }
+
+  if (resumeAfterAuth) {
+    return consumeDesignServiceDraft();
+  }
+
+  clearDesignServiceDraft();
+  return [];
 }
 
 export function saveDesignServiceDraft(items: unknown): DesignServiceDraftItem[] {

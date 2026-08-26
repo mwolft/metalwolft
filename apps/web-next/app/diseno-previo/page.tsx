@@ -40,6 +40,10 @@ function valueFromSearchParams(value: string | string[] | undefined) {
   return typeof value === "string" ? value : null;
 }
 
+function isAuthResume(searchParams: Record<string, string | string[] | undefined>) {
+  return valueFromSearchParams(searchParams.resume) === "auth";
+}
+
 function seedFromSearchParams(
   searchParams: Record<string, string | string[] | undefined>,
   products: DesignServiceProductOption[]
@@ -68,6 +72,7 @@ function seedFromSearchParams(
 export default async function DesignServicePage({ searchParams }: DesignServicePageProps) {
   const [products, resolvedSearchParams] = await Promise.all([getDesignProducts(), searchParams]);
   const initialSeed = seedFromSearchParams(resolvedSearchParams, products);
+  const resumeDraftAfterAuth = !initialSeed && isAuthResume(resolvedSearchParams);
 
   return (
     <PageContainer>
@@ -88,7 +93,11 @@ export default async function DesignServicePage({ searchParams }: DesignServiceP
           </div>
         </header>
         {products.length ? (
-          <DesignServiceBuilder products={products} initialSeed={initialSeed} />
+          <DesignServiceBuilder
+            products={products}
+            initialSeed={initialSeed}
+            resumeDraftAfterAuth={resumeDraftAfterAuth}
+          />
         ) : (
           <section className="mw-section mw-design-page__unavailable">
             <h2>No podemos cargar los modelos en este momento</h2>
