@@ -1,4 +1,5 @@
 const DEFAULT_LOCAL_API_URL = "http://127.0.0.1:3001";
+export const CATALOG_REVALIDATE_SECONDS = 86_400;
 
 export class ApiRequestError extends Error {
   status: number;
@@ -152,7 +153,7 @@ export async function fetchProductBySlug(categorySlug: string, productSlug: stri
   const payload = await fetchApi<ApiProduct | { results?: ApiProduct | ApiProduct[] } | ApiProduct[]>(
     `/api/${categorySlug}/${productSlug}`,
     {
-    next: { revalidate: 300 }
+    next: { revalidate: CATALOG_REVALIDATE_SECONDS }
     }
   );
 
@@ -169,7 +170,7 @@ export async function fetchProductBySlug(categorySlug: string, productSlug: stri
 
 export async function fetchCategories() {
   const payload = await fetchApi<ApiCategory[] | { results?: ApiCategory[] }>(`/api/categories`, {
-    next: { revalidate: 300 }
+    next: { revalidate: CATALOG_REVALIDATE_SECONDS }
   });
 
   return pickEntityList<ApiCategory>(payload);
@@ -179,7 +180,7 @@ export async function fetchCategoryProducts(categorySlug: string) {
   const payload = await fetchApi<ApiProduct[] | { results?: ApiProduct[] }>(
     `/api/category/${categorySlug}/products`,
     {
-      next: { revalidate: 300 }
+      next: { revalidate: CATALOG_REVALIDATE_SECONDS }
     }
   );
 
@@ -190,7 +191,7 @@ export async function fetchSitemapProducts() {
   const payload = await fetchApi<ApiSitemapProduct[] | { results?: ApiSitemapProduct[] }>(
     "/api/sitemap/products",
     {
-      next: { revalidate: 300 }
+      next: { revalidate: CATALOG_REVALIDATE_SECONDS }
     }
   );
 

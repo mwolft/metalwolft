@@ -23,6 +23,7 @@ type FetchDeliveryEstimateOptions = {
 };
 
 const LOCAL_API_URL = "http://127.0.0.1:3001";
+export const DELIVERY_ESTIMATE_REVALIDATE_SECONDS = 3_600;
 const ISO_CIVIL_DATE = /^(\d{4})-(\d{2})-(\d{2})$/;
 const MONTHS_ES = [
   "enero",
@@ -245,7 +246,7 @@ export async function fetchDeliveryEstimate(
   try {
     const response = await (options.fetcher ?? fetch)(
       `${apiBaseUrl.replace(/\/$/, "")}/api/delivery-estimate`,
-      { next: { revalidate: 300 } }
+      { next: { revalidate: DELIVERY_ESTIMATE_REVALIDATE_SECONDS } }
     );
 
     if (!response.ok) {

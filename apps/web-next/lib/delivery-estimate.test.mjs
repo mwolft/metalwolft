@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import {
+  DELIVERY_ESTIMATE_REVALIDATE_SECONDS,
   fetchDeliveryEstimate,
   formatCartDeliveryDateRangeEs,
   formatCivilDateEs,
@@ -29,7 +30,7 @@ const validEstimate = {
 
   assert.deepEqual(estimate, validEstimate);
   assert.equal(capturedUrl, "https://api.example.test/api/delivery-estimate");
-  assert.deepEqual(capturedInit.next, { revalidate: 300 });
+  assert.deepEqual(capturedInit.next, { revalidate: DELIVERY_ESTIMATE_REVALIDATE_SECONDS });
 }
 
 for (const status of [404, 500, 503]) {
