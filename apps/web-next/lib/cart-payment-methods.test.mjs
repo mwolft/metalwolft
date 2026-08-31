@@ -14,11 +14,19 @@ assert.match(paymentStep, /aria-pressed=\{paymentMethod === "paypal"\}/);
 assert.match(paymentStep, /onClick=\{\(\) => setPaymentMethod\("card"\)\}/);
 assert.match(paymentStep, /onClick=\{\(\) => setPaymentMethod\("paypal"\)\}/);
 assert.match(paymentStep, /paymentMethod === "paypal" && paypalClientId/);
+assert.match(paymentStep, /PayPalScriptProvider/);
+assert.match(paymentStep, /components: "buttons,messages"/);
+assert.match(paymentStep, /<PayPalMessages/);
+assert.equal((paymentStep.match(/<PayPalMessages/g) || []).length, 1);
 assert.doesNotMatch(paymentStep, /PayPal Sandbox/);
 
-assert.match(paypalForm, /PayPalMessages/);
-assert.match(paypalForm, /components: "buttons,messages"/);
-assert.match(paypalForm, /placement="payment"/);
+assert.match(paypalForm, /<PayPalButtons/);
+assert.doesNotMatch(paypalForm, /PayPalMessages/);
+assert.doesNotMatch(paypalForm, /Flask capture/);
+assert.match(
+  paypalForm,
+  /Pagarás \{formatCurrency\(quote\.total_amount\)\} mediante PayPal\. Tu pedido se confirmará\s+automáticamente cuando el pago se complete\./
+);
 assert.doesNotMatch(paypalForm, /PayPal Sandbox/);
 
 for (const selector of [
