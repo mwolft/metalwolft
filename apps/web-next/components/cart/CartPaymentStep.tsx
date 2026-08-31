@@ -169,15 +169,17 @@ export function CartPaymentStep({ deliveryEstimate }: { deliveryEstimate?: React
   const paymentControls = (
     <>
       <div className="mw-payment-methods" aria-label="Método de pago">
-        <button
-          aria-pressed={paymentMethod === "card"}
-          className={`mw-payment-method ${paymentMethod === "card" ? "is-active" : ""}`}
-          onClick={() => setPaymentMethod("card")}
-          type="button"
-        >
-          <PaymentMethodIcon />
-          Tarjeta
-        </button>
+        <div className="mw-payment-method-option">
+          <button
+            aria-pressed={paymentMethod === "card"}
+            className={`mw-payment-method ${paymentMethod === "card" ? "is-active" : ""}`}
+            onClick={() => setPaymentMethod("card")}
+            type="button"
+          >
+            <PaymentMethodIcon />
+            Tarjeta
+          </button>
+        </div>
         <div className="mw-payment-method-option">
           <button
             aria-pressed={paymentMethod === "paypal"}
