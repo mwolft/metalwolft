@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import dynamic from "next/dynamic";
+import { PayPalMessages, PayPalScriptProvider } from "@paypal/react-paypal-js";
 import { useEffect, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { clearSession, getToken } from "@/lib/auth-client";
@@ -165,6 +166,88 @@ export function CartPaymentStep({ deliveryEstimate }: { deliveryEstimate?: React
     );
   }
 
+  const paymentControls = (
+    <>
+      <div className="mw-payment-methods" aria-label="Método de pago">
+        <div className="mw-payment-method-option">
+          <button
+            aria-pressed={paymentMethod === "card"}
+            className={`mw-payment-method ${paymentMethod === "card" ? "is-active" : ""}`}
+            onClick={() => setPaymentMethod("card")}
+            type="button"
+          >
+            <PaymentMethodIcon />
+            Tarjeta
+          </button>
+        </div>
+        <div className="mw-payment-method-option">
+          <button
+            aria-pressed={paymentMethod === "paypal"}
+            className={`mw-payment-method ${paymentMethod === "paypal" ? "is-active" : ""}`}
+            onClick={() => setPaymentMethod("paypal")}
+            type="button"
+          >
+            <img
+              alt=""
+              aria-hidden="true"
+              className="mw-payment-method__paypal-logo"
+              height="23"
+              src="https://www.paypalobjects.com/webstatic/mktg/logo/pp_cc_mark_37x23.jpg"
+              width="37"
+            />
+            PayPal
+          </button>
+          {paypalClientId ? (
+            <div className="mw-paypal-pay-later" aria-label="Opciones de pago aplazado de PayPal">
+              <PayPalMessages
+                amount={quote.total_amount}
+                currency="EUR"
+                placement="payment"
+                style={{
+                  layout: "text",
+                  logo: { type: "inline" },
+                  text: { align: "left", color: "black", size: 12 }
+                }}
+              />
+            </div>
+          ) : null}
+        </div>
+      </div>
+
+      {discountNotice ? (
+        <p className="mw-alert mw-alert--error" aria-live="polite">
+          {discountNotice}
+        </p>
+      ) : null}
+
+      {paymentMethod === "card" ? (
+        <StripePaymentSection
+          customerDetails={customerDetails}
+          discountCode={discountCode}
+          initialQuote={quote}
+          onQuoteUpdated={updateCheckoutQuote}
+          onSessionExpired={redirectToLogin}
+        />
+      ) : null}
+
+      {paymentMethod === "paypal" && !paypalClientId ? (
+        <p className="mw-alert mw-alert--error">
+          PayPal no está configurado en este entorno. Puedes continuar con tarjeta.
+        </p>
+      ) : null}
+
+      {paymentMethod === "paypal" && paypalClientId ? (
+        <PayPalPaymentForm
+          customerDetails={customerDetails}
+          discountCode={discountCode}
+          initialQuote={quote}
+          onQuoteUpdated={updateCheckoutQuote}
+          onSessionExpired={redirectToLogin}
+        />
+      ) : null}
+    </>
+  );
+
   return (
     <section className="mw-checkout-layout" aria-label="Pago seguro">
       <div className="mw-checkout-panel">
@@ -172,62 +255,25 @@ export function CartPaymentStep({ deliveryEstimate }: { deliveryEstimate?: React
           <p className="mw-note">Paso 3 de 3</p>
           <h2>Elige método de pago</h2>
           <p>
-            Puedes pagar con tarjeta mediante Stripe o con PayPal Sandbox. MetalWolft no almacena
+            Puedes pagar con tarjeta mediante Stripe o con PayPal. MetalWolft no almacena
             datos de tarjeta.
           </p>
         </div>
 
-        <div className="mw-payment-methods" aria-label="Método de pago">
-          <button
-            aria-pressed={paymentMethod === "card"}
-            className={`mw-payment-method ${paymentMethod === "card" ? "is-active" : ""}`}
-            onClick={() => setPaymentMethod("card")}
-            type="button"
+        {paypalClientId ? (
+          <PayPalScriptProvider
+            options={{
+              clientId: paypalClientId,
+              components: "buttons,messages",
+              currency: "EUR",
+              intent: "capture"
+            }}
           >
-            Tarjeta
-          </button>
-          <button
-            aria-pressed={paymentMethod === "paypal"}
-            className={`mw-payment-method ${paymentMethod === "paypal" ? "is-active" : ""}`}
-            onClick={() => setPaymentMethod("paypal")}
-            type="button"
-          >
-            PayPal
-          </button>
-        </div>
-
-        {discountNotice ? (
-          <p className="mw-alert mw-alert--error" aria-live="polite">
-            {discountNotice}
-          </p>
-        ) : null}
-
-        {paymentMethod === "card" ? (
-          <StripePaymentSection
-            customerDetails={customerDetails}
-            discountCode={discountCode}
-            initialQuote={quote}
-            onQuoteUpdated={updateCheckoutQuote}
-            onSessionExpired={redirectToLogin}
-          />
-        ) : null}
-
-        {paymentMethod === "paypal" && !paypalClientId ? (
-          <p className="mw-alert mw-alert--error">
-            PayPal no está configurado en este entorno. Puedes continuar con tarjeta.
-          </p>
-        ) : null}
-
-        {paymentMethod === "paypal" && paypalClientId ? (
-          <PayPalPaymentForm
-            clientId={paypalClientId}
-            customerDetails={customerDetails}
-            discountCode={discountCode}
-            initialQuote={quote}
-            onQuoteUpdated={updateCheckoutQuote}
-            onSessionExpired={redirectToLogin}
-          />
-        ) : null}
+            {paymentControls}
+          </PayPalScriptProvider>
+        ) : (
+          paymentControls
+        )}
       </div>
 
       <aside className="mw-checkout-summary" aria-label="Resumen final del pago">
@@ -245,6 +291,23 @@ export function CartPaymentStep({ deliveryEstimate }: { deliveryEstimate?: React
         </div>
       </aside>
     </section>
+  );
+}
+
+function PaymentMethodIcon() {
+  return (
+    <svg
+      aria-hidden="true"
+      className="mw-payment-method__icon"
+      fill="none"
+      focusable="false"
+      height="24"
+      viewBox="0 0 24 24"
+      width="24"
+    >
+      <rect height="14" rx="2" width="20" x="2" y="5" />
+      <path d="M2 10h20M6 15h4" />
+    </svg>
   );
 }
 

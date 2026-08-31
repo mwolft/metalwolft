@@ -1,6 +1,6 @@
 "use client";
 
-import { PayPalButtons, PayPalScriptProvider } from "@paypal/react-paypal-js";
+import { PayPalButtons } from "@paypal/react-paypal-js";
 import { useRef, useState, type ComponentProps } from "react";
 import { useRouter } from "next/navigation";
 import { getToken } from "@/lib/auth-client";
@@ -15,7 +15,6 @@ import {
 import { buildCustomerData, type CheckoutCustomerDetails } from "@/lib/checkout-details";
 
 type PayPalPaymentFormProps = {
-  clientId: string;
   customerDetails: CheckoutCustomerDetails;
   discountCode?: string | null;
   initialQuote: CheckoutQuote;
@@ -72,7 +71,6 @@ function buildThankYouUrl(checkoutToken: string | null) {
 }
 
 export function PayPalPaymentForm({
-  clientId,
   customerDetails,
   discountCode,
   initialQuote,
@@ -234,46 +232,38 @@ export function PayPalPaymentForm({
     <div className="mw-payment-form">
       <div className="mw-payment-card">
         <p className="mw-payment-method-note">
-          Pagarás {formatCurrency(quote.total_amount)} mediante PayPal Sandbox. El pedido se
-          confirmará cuando Flask capture el pago.
+          Pagarás {formatCurrency(quote.total_amount)} mediante PayPal. Tu pedido se confirmará
+          automáticamente cuando el pago se complete.
         </p>
-        <PayPalScriptProvider
-          options={{
-            clientId,
-            currency: "EUR",
-            intent: "capture"
+        <PayPalButtons
+          createOrder={handleCreateOrder}
+          disabled={isCreatingOrder || isProcessing}
+          forceReRender={[quote.total_amount, checkoutToken, discountCode]}
+          onApprove={handleApprove}
+          onCancel={() => {
+            setFeedback({
+              type: "info",
+              message: "Pago con PayPal cancelado. Tu carrito sigue intacto."
+            });
           }}
-        >
-          <PayPalButtons
-            createOrder={handleCreateOrder}
-            disabled={isCreatingOrder || isProcessing}
-            forceReRender={[clientId, quote.total_amount, checkoutToken, discountCode]}
-            onApprove={handleApprove}
-            onCancel={() => {
-              setFeedback({
-                type: "info",
-                message: "Pago con PayPal cancelado. Tu carrito sigue intacto."
-              });
-            }}
-            onError={() => {
-              if (suppressNextSdkError.current) {
-                suppressNextSdkError.current = false;
-                return;
-              }
+          onError={() => {
+            if (suppressNextSdkError.current) {
+              suppressNextSdkError.current = false;
+              return;
+            }
 
-              setFeedback({
-                type: "error",
-                message: "PayPal no pudo completar la operación. Inténtalo de nuevo."
-              });
-            }}
-            style={{
-              color: "gold",
-              layout: "vertical",
-              shape: "rect",
-              label: "paypal"
-            }}
-          />
-        </PayPalScriptProvider>
+            setFeedback({
+              type: "error",
+              message: "PayPal no pudo completar la operación. Inténtalo de nuevo."
+            });
+          }}
+          style={{
+            color: "gold",
+            layout: "vertical",
+            shape: "rect",
+            label: "paypal"
+          }}
+        />
       </div>
 
       {feedback ? (

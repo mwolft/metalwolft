@@ -75,6 +75,30 @@ class OrderConfirmationEmailServiceTest(unittest.TestCase):
         self.assertIn("Blanco liso · Esmalte sintético", sent[0]["html"])
         self.assertIn("Pago confirmado", sent[0]["html"])
 
+    def test_physical_line_labels_height_and_width_without_inverting_them(self):
+        sent = []
+        quote = checkout_quote()
+        quote["lines"][0].update({"alto": 109, "ancho": 198})
+
+        send_order_confirmation_email(
+            user=SimpleNamespace(email="cliente@example.com"),
+            order=SimpleNamespace(locator="AB1234", total_amount=180.5),
+            checkout_quote=quote,
+            customer_firstname="Sergio",
+            mail_username="admin@example.com",
+            logger=SimpleNamespace(info=lambda *args, **kwargs: None, error=lambda *args, **kwargs: None),
+            send_email_func=lambda **kwargs: sent.append(kwargs) or True,
+        )
+
+        expected_measurements = "Alto: 109 cm · Ancho: 198 cm"
+        self.assertIn(expected_measurements, sent[0]["body"])
+        self.assertIn(expected_measurements, sent[0]["html"])
+        self.assertNotIn("Alto: 198 cm · Ancho: 109 cm", sent[0]["body"])
+        self.assertIn("Instalación: Agujeros interiores", sent[0]["body"])
+        self.assertIn("Color: Blanco liso · Esmalte sintético", sent[0]["body"])
+        self.assertIn("Tornillos: 150 mm (+8,95 €)", sent[0]["body"])
+        self.assertIn("Importe: 190,00 €", sent[0]["body"])
+
     def test_missing_line_total_is_not_recalculated_from_unit_price(self):
         sent = []
         errors = []
