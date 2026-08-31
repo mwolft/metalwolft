@@ -5174,6 +5174,10 @@ textarea:focus-visible {
 }
 
 .mw-payment-method {
+  align-items: center;
+  display: inline-flex;
+  gap: 0.55rem;
+  justify-content: center;
   min-height: 48px;
   border: 1px solid rgba(209, 213, 219, 0.95);
   border-radius: 999px;
@@ -5183,6 +5187,23 @@ textarea:focus-visible {
   font-weight: 800;
   cursor: pointer;
   transition: border-color 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
+}
+
+.mw-payment-method__icon {
+  color: #1f2937;
+  flex: 0 0 auto;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.8;
+}
+
+.mw-payment-method__paypal-logo {
+  display: block;
+  flex: 0 0 auto;
+  height: 23px;
+  object-fit: contain;
+  width: 37px;
 }
 
 .mw-payment-method:hover,
@@ -5198,6 +5219,11 @@ textarea:focus-visible {
   margin: 0 0 1rem;
   color: var(--mw-muted);
   line-height: 1.55;
+}
+
+.mw-paypal-pay-later {
+  margin: 0 0 0.7rem;
+  min-height: 20px;
 }
 
 .mw-stripe-card {

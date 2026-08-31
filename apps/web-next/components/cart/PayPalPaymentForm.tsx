@@ -1,6 +1,6 @@
 "use client";
 
-import { PayPalButtons, PayPalScriptProvider } from "@paypal/react-paypal-js";
+import { PayPalButtons, PayPalMessages, PayPalScriptProvider } from "@paypal/react-paypal-js";
 import { useRef, useState, type ComponentProps } from "react";
 import { useRouter } from "next/navigation";
 import { getToken } from "@/lib/auth-client";
@@ -234,16 +234,29 @@ export function PayPalPaymentForm({
     <div className="mw-payment-form">
       <div className="mw-payment-card">
         <p className="mw-payment-method-note">
-          Pagarás {formatCurrency(quote.total_amount)} mediante PayPal Sandbox. El pedido se
+          Pagarás {formatCurrency(quote.total_amount)} mediante PayPal. El pedido se
           confirmará cuando Flask capture el pago.
         </p>
         <PayPalScriptProvider
           options={{
             clientId,
+            components: "buttons,messages",
             currency: "EUR",
             intent: "capture"
           }}
         >
+          <div className="mw-paypal-pay-later" aria-label="Opciones de pago aplazado de PayPal">
+            <PayPalMessages
+              amount={quote.total_amount}
+              currency="EUR"
+              placement="payment"
+              style={{
+                layout: "text",
+                logo: { type: "inline" },
+                text: { align: "left", color: "black", size: 12 }
+              }}
+            />
+          </div>
           <PayPalButtons
             createOrder={handleCreateOrder}
             disabled={isCreatingOrder || isProcessing}

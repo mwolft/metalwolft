@@ -172,7 +172,7 @@ export function CartPaymentStep({ deliveryEstimate }: { deliveryEstimate?: React
           <p className="mw-note">Paso 3 de 3</p>
           <h2>Elige método de pago</h2>
           <p>
-            Puedes pagar con tarjeta mediante Stripe o con PayPal Sandbox. MetalWolft no almacena
+            Puedes pagar con tarjeta mediante Stripe o con PayPal. MetalWolft no almacena
             datos de tarjeta.
           </p>
         </div>
@@ -184,6 +184,7 @@ export function CartPaymentStep({ deliveryEstimate }: { deliveryEstimate?: React
             onClick={() => setPaymentMethod("card")}
             type="button"
           >
+            <PaymentMethodIcon />
             Tarjeta
           </button>
           <button
@@ -192,6 +193,14 @@ export function CartPaymentStep({ deliveryEstimate }: { deliveryEstimate?: React
             onClick={() => setPaymentMethod("paypal")}
             type="button"
           >
+            <img
+              alt=""
+              aria-hidden="true"
+              className="mw-payment-method__paypal-logo"
+              height="23"
+              src="https://www.paypalobjects.com/webstatic/mktg/logo/pp_cc_mark_37x23.jpg"
+              width="37"
+            />
             PayPal
           </button>
         </div>
@@ -245,6 +254,23 @@ export function CartPaymentStep({ deliveryEstimate }: { deliveryEstimate?: React
         </div>
       </aside>
     </section>
+  );
+}
+
+function PaymentMethodIcon() {
+  return (
+    <svg
+      aria-hidden="true"
+      className="mw-payment-method__icon"
+      fill="none"
+      focusable="false"
+      height="24"
+      viewBox="0 0 24 24"
+      width="24"
+    >
+      <rect height="14" rx="2" width="20" x="2" y="5" />
+      <path d="M2 10h20M6 15h4" />
+    </svg>
   );
 }
 
