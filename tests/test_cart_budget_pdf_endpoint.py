@@ -159,6 +159,9 @@ class CartBudgetPdfEndpointTest(unittest.TestCase):
         self.assertIn("100,00 €", text)
         self.assertIn("IVA 21 %", text)
         self.assertIn("21,00 €", text)
+        self.assertIn("¿Prefieres pagar por transferencia bancaria?", text)
+        self.assertIn("ES89 2100 4565 8701 0015 8358", text)
+        self.assertIn("no crea un pedido", text)
         self.assertIn("Documento informativo.", text)
         self.assertNotIn("999.999", text)
         self.assertNotIn("FACTURA", text)
@@ -169,6 +172,47 @@ class CartBudgetPdfEndpointTest(unittest.TestCase):
             self.assertEqual(CheckoutSessions.query.count(), before["checkout"])
             self.assertEqual(Invoices.query.count(), before["invoices"])
             self.assertEqual(AccountingEntry.query.count(), before["accounting"])
+
+    def test_transfer_details_preserve_totals_and_fit_multiple_lines(self):
+        lines = [
+            {
+                "product_name": f"Reja presupuestada {index}",
+                "quantity": 1,
+                "unit_price": "100.00",
+                "line_total": "100.00",
+                "alto": 100,
+                "ancho": 100,
+                "anclaje": ANCHORAGE_INTERIOR_HOLES,
+                "color": "satinado_blanco",
+                "screw_length_mm": 80,
+                "screw_supplement": "0.00",
+            }
+            for index in range(1, 4)
+        ]
+        pdf = render_cart_budget_pdf(
+            quote={
+                "lines": lines,
+                "subtotal": "300.00",
+                "shipping_cost": "0.00",
+                "discount_amount": "0.00",
+                "discount_percent": "0.00",
+                "discount_code": None,
+                "total_amount": "300.00",
+            },
+            issued_at=datetime(2026, 8, 31, tzinfo=timezone.utc),
+        )
+        reader = PdfReader(BytesIO(pdf))
+        text = "\n".join(page.extract_text() or "" for page in reader.pages)
+
+        self.assertEqual(len(reader.pages), 1)
+        self.assertIn("TOTAL\n 300,00 €", text)
+        self.assertIn("Base imponible", text)
+        self.assertIn("247,93 €", text)
+        self.assertIn("IVA 21 %", text)
+        self.assertIn("52,07 €", text)
+        self.assertIn("¿Prefieres pagar por transferencia bancaria?", text)
+        self.assertIn("ES89 2100 4565 8701 0015 8358", text)
+        self.assertNotIn("FACTURA", text)
 
     def test_uses_a_valid_coupon_from_the_authoritative_quote(self):
         self.add_cart_line()

@@ -17,6 +17,7 @@ BRAND_BORDER = "#e5e7eb"
 BRAND_SURFACE = "#f8f7f7"
 BRAND_ICON_PATH = Path(__file__).resolve().parents[2] / "apps" / "web-next" / "app" / "icon.png"
 MONEY = Decimal("0.01")
+BANK_TRANSFER_IBAN = "ES89 2100 4565 8701 0015 8358"
 
 
 class CartBudgetPdfError(ValueError):
@@ -66,6 +67,8 @@ def render_cart_budget_pdf(*, quote, issued_at=None):
         _line_table(normalized_quote["lines"], styles, Table, TableStyle, Paragraph, colors, available_width),
         Spacer(1, 14),
         KeepTogether(_totals(normalized_quote, styles, Table, TableStyle, Paragraph, colors, available_width)),
+        Spacer(1, 10),
+        KeepTogether(_bank_transfer_details(styles, Table, TableStyle, Paragraph, available_width)),
         Spacer(1, 14),
         Paragraph(
             "Documento informativo. Los precios corresponden a la configuración y condiciones vigentes en la fecha de emisión.",
@@ -213,6 +216,21 @@ def _totals(quote, styles, Table, TableStyle, Paragraph, colors, available_width
     return [table]
 
 
+def _bank_transfer_details(styles, Table, TableStyle, Paragraph, available_width):
+    transfer_width = min(available_width, 255)
+    content = Paragraph(
+        "<b>¿Prefieres pagar por transferencia bancaria?</b><br/>"
+        "<font size='7' color='#6b7280'>Este presupuesto es informativo y no crea un pedido. "
+        "Contacta con MetalWolft antes de realizar la transferencia para confirmar el importe y la disponibilidad.</font>"
+        "<br/><br/><font size='7' color='#6b7280'>IBAN</font><br/>"
+        f"<font size='10' color='{BRAND_TEXT}'><b>{BANK_TRANSFER_IBAN}</b></font>",
+        styles["transfer"],
+    )
+    table = Table([[content]], colWidths=[transfer_width], hAlign="RIGHT")
+    table.setStyle(TableStyle(_no_padding_style()))
+    return [table]
+
+
 def _line_description(line):
     anchorage = _anchorage_label(line.get("anclaje"))
     color = _color_label(line.get("color"))
@@ -244,6 +262,7 @@ def _styles(colors, sample, right_alignment):
         "total_value": ParagraphStyle("budget-total-value", parent=body, fontSize=8.4, alignment=right_alignment),
         "total_value_secondary": ParagraphStyle("budget-total-value-secondary", parent=small, alignment=right_alignment),
         "total_strong": ParagraphStyle("budget-total-strong", parent=body, fontName="Helvetica-Bold", fontSize=10, alignment=right_alignment, textColor=colors.HexColor(BRAND_RED)),
+        "transfer": ParagraphStyle("budget-transfer", parent=body, fontSize=8.4, leading=10.4),
         "disclaimer": ParagraphStyle("budget-disclaimer", parent=small, leading=10),
         "disclaimer_right": ParagraphStyle("budget-disclaimer-right", parent=small, alignment=right_alignment),
     }
