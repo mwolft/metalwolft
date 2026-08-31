@@ -12,12 +12,16 @@ from api.utils import (
 )
 
 
-def _format_measurements(line):
+def _format_measurements(line, *, include_labels=False):
     alto = line.get("alto")
     ancho = line.get("ancho")
     if alto is None or ancho is None:
         return "-"
-    return f"{_format_measurement(alto)} × {_format_measurement(ancho)} cm"
+    formatted_alto = _format_measurement(alto)
+    formatted_ancho = _format_measurement(ancho)
+    if include_labels:
+        return f"Alto: {formatted_alto} cm · Ancho: {formatted_ancho} cm"
+    return f"{formatted_alto} × {formatted_ancho} cm"
 
 
 def _format_measurement(value):
@@ -66,18 +70,22 @@ def _build_order_line(line):
         line.get("screw_supplement"),
     )
 
+    line_type = line.get("line_type") or "physical"
     return OrderEmailLine(
         product_name=str(product_name).strip(),
         quantity=line.get("quantity", 1),
-        measurements=_format_measurements(line),
+        measurements=_format_measurements(
+            line,
+            include_labels=line_type == "physical",
+        ),
         anchorage=(
-            "" if (line.get("line_type") or "physical") == "design_service"
+            "" if line_type == "design_service"
             else _humanize_anchorage(line.get("anclaje"))
         ),
         color=_format_color_with_finish(line.get("color")),
         screw_configuration=screw_configuration,
         line_total=line.get("line_total"),
-        line_type=line.get("line_type") or "physical",
+        line_type=line_type,
     )
 
 
