@@ -21,11 +21,18 @@ assert.match(paymentStep, /paymentMethod === "paypal" && paypalClientId/);
 assert.match(paymentStep, /PayPalScriptProvider/);
 assert.match(paymentStep, /components: "buttons,messages"/);
 assert.match(paymentStep, /<PayPalMessages/);
-assert.match(paymentStep, /function useCompactPayPalMessage\(\)/);
-assert.match(paymentStep, /color: isCompactPayPalMessage \? "grayscale" : "black"/);
-assert.match(paymentStep, /size: isCompactPayPalMessage \? 10 : 12/);
-assert.match(paymentStep, /forceReRender=\{\[isCompactPayPalMessage\]\}/);
+assert.match(paymentStep, /function useMobilePayPalFinancing\(\)/);
+assert.match(paymentStep, /useState<boolean \| null>\(null\)/);
+assert.match(paymentStep, /paypalClientId && isMobilePayPalFinancing !== null/);
+assert.match(paymentStep, /isMobilePayPalFinancing \? \(/);
+assert.match(paymentStep, /mw-paypal-pay-later-mobile/);
+assert.match(paymentStep, /Consulta las opciones de financiación de/);
+assert.match(
+  paymentStep,
+  /https:\/\/www\.paypal\.com\/es\/digital-wallet\/ways-to-pay\/buy-now-pay-later/
+);
 assert.equal((paymentStep.match(/<PayPalMessages/g) || []).length, 1);
+assert.doesNotMatch(paymentStep, /TAE|3 plazos|6, 12 o 24/);
 assert.doesNotMatch(paymentStep, /PayPal Sandbox/);
 
 assert.match(paypalForm, /<PayPalButtons/);
@@ -41,7 +48,8 @@ for (const selector of [
   ".mw-payment-method-option",
   ".mw-payment-method__icon",
   ".mw-payment-method__paypal-logo",
-  ".mw-paypal-pay-later"
+  ".mw-paypal-pay-later",
+  ".mw-paypal-pay-later-mobile"
 ]) {
   assert.match(styles, new RegExp(`\\${selector}`));
 }

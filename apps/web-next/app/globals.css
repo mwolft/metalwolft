@@ -5243,15 +5243,32 @@ textarea:focus-visible {
   padding: 0 0.25rem;
 }
 
+.mw-paypal-pay-later-mobile {
+  margin: 0.25rem 0 0;
+  padding: 0 0.1rem;
+  color: var(--mw-muted);
+  font-size: 0.72rem;
+  line-height: 1.35;
+}
+
+.mw-paypal-pay-later-mobile strong {
+  color: #4b5563;
+  font-weight: 700;
+}
+
+.mw-paypal-pay-later-mobile a {
+  color: #2563eb;
+  text-decoration: underline;
+  text-underline-offset: 0.14em;
+}
+
 @media (max-width: 640px) {
   .mw-payment-method-option--paypal {
     display: flex;
   }
 
-  .mw-paypal-pay-later {
-    margin: 0.25rem 0 0;
+  .mw-paypal-pay-later-mobile {
     min-height: 0;
-    padding: 0 0.1rem;
     width: 100%;
   }
 }
