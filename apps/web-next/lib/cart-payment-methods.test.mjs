@@ -9,7 +9,10 @@ const [paymentStep, paypalForm, styles] = await Promise.all([
 
 assert.match(paymentStep, /<PaymentMethodIcon \/>/);
 assert.match(paymentStep, /pp_cc_mark_37x23\.jpg/);
-assert.equal((paymentStep.match(/className="mw-payment-method-option"/g) || []).length, 2);
+assert.match(
+  paymentStep,
+  /className="mw-payment-method-option mw-payment-method-option--paypal"/
+);
 assert.match(paymentStep, /aria-pressed=\{paymentMethod === "card"\}/);
 assert.match(paymentStep, /aria-pressed=\{paymentMethod === "paypal"\}/);
 assert.match(paymentStep, /onClick=\{\(\) => setPaymentMethod\("card"\)\}/);
@@ -40,5 +43,7 @@ for (const selector of [
 }
 assert.match(styles, /--mw-payment-method-height: 48px/);
 assert.match(styles, /height: var\(--mw-payment-method-height\)/);
+assert.match(styles, /@media \(max-width: 640px\)[\s\S]*\.mw-payment-method-option--paypal/);
+assert.match(styles, /grid-column: 1 \/ -1/);
 
 console.log("12 cart payment method assertions passed");

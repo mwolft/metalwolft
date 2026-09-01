@@ -180,7 +180,7 @@ export function CartPaymentStep({ deliveryEstimate }: { deliveryEstimate?: React
             Tarjeta
           </button>
         </div>
-        <div className="mw-payment-method-option">
+        <div className="mw-payment-method-option mw-payment-method-option--paypal">
           <button
             aria-pressed={paymentMethod === "paypal"}
             className={`mw-payment-method ${paymentMethod === "paypal" ? "is-active" : ""}`}

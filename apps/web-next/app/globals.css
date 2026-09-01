@@ -5243,6 +5243,29 @@ textarea:focus-visible {
   padding: 0 0.25rem;
 }
 
+@media (max-width: 640px) {
+  .mw-payment-methods {
+    row-gap: 0.35rem;
+  }
+
+  .mw-payment-method-option--paypal {
+    display: contents;
+  }
+
+  .mw-payment-method-option--paypal .mw-payment-method {
+    grid-column: 2;
+    grid-row: 1;
+  }
+
+  .mw-paypal-pay-later {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    margin: 0;
+    min-height: 0;
+    padding: 0 0.15rem;
+  }
+}
+
 .mw-stripe-card {
   padding: 1rem;
   border: 1px solid rgba(209, 213, 219, 0.95);
