@@ -34,6 +34,21 @@ const paypalClientId = process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID?.trim();
 type PaymentStatus = "loading" | "empty" | "missing-details" | "ready" | "error";
 type PaymentMethod = "card" | "paypal";
 
+function useMobilePayPalFinancing() {
+  const [isMobile, setIsMobile] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    const mediaQuery = window.matchMedia("(max-width: 640px)");
+    const update = () => setIsMobile(mediaQuery.matches);
+
+    update();
+    mediaQuery.addEventListener("change", update);
+    return () => mediaQuery.removeEventListener("change", update);
+  }, []);
+
+  return isMobile;
+}
+
 function isApiSessionError(error: unknown) {
   return isSessionError(error) || isCheckoutSessionError(error);
 }
@@ -47,6 +62,7 @@ export function CartPaymentStep({ deliveryEstimate }: { deliveryEstimate?: React
   const [discountNotice, setDiscountNotice] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("card");
+  const isMobilePayPalFinancing = useMobilePayPalFinancing();
 
   function redirectToLogin() {
     clearSession();
@@ -180,7 +196,7 @@ export function CartPaymentStep({ deliveryEstimate }: { deliveryEstimate?: React
             Tarjeta
           </button>
         </div>
-        <div className="mw-payment-method-option">
+        <div className="mw-payment-method-option mw-payment-method-option--paypal">
           <button
             aria-pressed={paymentMethod === "paypal"}
             className={`mw-payment-method ${paymentMethod === "paypal" ? "is-active" : ""}`}
@@ -197,19 +213,31 @@ export function CartPaymentStep({ deliveryEstimate }: { deliveryEstimate?: React
             />
             PayPal
           </button>
-          {paypalClientId ? (
-            <div className="mw-paypal-pay-later" aria-label="Opciones de pago aplazado de PayPal">
-              <PayPalMessages
-                amount={quote.total_amount}
-                currency="EUR"
-                placement="payment"
-                style={{
-                  layout: "text",
-                  logo: { type: "inline" },
-                  text: { align: "left", color: "black", size: 12 }
-                }}
-              />
-            </div>
+          {paypalClientId && isMobilePayPalFinancing !== null ? (
+            isMobilePayPalFinancing ? (
+              <p className="mw-paypal-pay-later-mobile">
+                Consulta las opciones de financiación de <strong>PayPal</strong> ·{" "}
+                <a href="https://www.paypal.com/es/digital-wallet/ways-to-pay/buy-now-pay-later">
+                  Más información
+                </a>
+              </p>
+            ) : (
+              <div
+                className="mw-paypal-pay-later"
+                aria-label="Opciones de pago aplazado de PayPal"
+              >
+                <PayPalMessages
+                  amount={quote.total_amount}
+                  currency="EUR"
+                  placement="payment"
+                  style={{
+                    layout: "text",
+                    logo: { type: "inline" },
+                    text: { align: "left", color: "black", size: 12 }
+                  }}
+                />
+              </div>
+            )
           ) : null}
         </div>
       </div>
