@@ -34,6 +34,21 @@ const paypalClientId = process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID?.trim();
 type PaymentStatus = "loading" | "empty" | "missing-details" | "ready" | "error";
 type PaymentMethod = "card" | "paypal";
 
+function useCompactPayPalMessage() {
+  const [isCompact, setIsCompact] = useState(false);
+
+  useEffect(() => {
+    const mediaQuery = window.matchMedia("(max-width: 640px)");
+    const update = () => setIsCompact(mediaQuery.matches);
+
+    update();
+    mediaQuery.addEventListener("change", update);
+    return () => mediaQuery.removeEventListener("change", update);
+  }, []);
+
+  return isCompact;
+}
+
 function isApiSessionError(error: unknown) {
   return isSessionError(error) || isCheckoutSessionError(error);
 }
@@ -47,6 +62,7 @@ export function CartPaymentStep({ deliveryEstimate }: { deliveryEstimate?: React
   const [discountNotice, setDiscountNotice] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("card");
+  const isCompactPayPalMessage = useCompactPayPalMessage();
 
   function redirectToLogin() {
     clearSession();
@@ -202,11 +218,16 @@ export function CartPaymentStep({ deliveryEstimate }: { deliveryEstimate?: React
               <PayPalMessages
                 amount={quote.total_amount}
                 currency="EUR"
+                forceReRender={[isCompactPayPalMessage]}
                 placement="payment"
                 style={{
                   layout: "text",
                   logo: { type: "inline" },
-                  text: { align: "left", color: "black", size: 12 }
+                  text: {
+                    align: "left",
+                    color: isCompactPayPalMessage ? "grayscale" : "black",
+                    size: isCompactPayPalMessage ? 10 : 12
+                  }
                 }}
               />
             </div>

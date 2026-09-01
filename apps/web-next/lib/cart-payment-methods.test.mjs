@@ -21,6 +21,10 @@ assert.match(paymentStep, /paymentMethod === "paypal" && paypalClientId/);
 assert.match(paymentStep, /PayPalScriptProvider/);
 assert.match(paymentStep, /components: "buttons,messages"/);
 assert.match(paymentStep, /<PayPalMessages/);
+assert.match(paymentStep, /function useCompactPayPalMessage\(\)/);
+assert.match(paymentStep, /color: isCompactPayPalMessage \? "grayscale" : "black"/);
+assert.match(paymentStep, /size: isCompactPayPalMessage \? 10 : 12/);
+assert.match(paymentStep, /forceReRender=\{\[isCompactPayPalMessage\]\}/);
 assert.equal((paymentStep.match(/<PayPalMessages/g) || []).length, 1);
 assert.doesNotMatch(paymentStep, /PayPal Sandbox/);
 
@@ -43,7 +47,12 @@ for (const selector of [
 }
 assert.match(styles, /--mw-payment-method-height: 48px/);
 assert.match(styles, /height: var\(--mw-payment-method-height\)/);
-assert.match(styles, /@media \(max-width: 640px\)[\s\S]*\.mw-payment-method-option--paypal/);
-assert.match(styles, /grid-column: 1 \/ -1/);
+const paymentStylesOffset = styles.lastIndexOf(".mw-payment-methods {");
+const mobilePaymentStyles = styles.slice(
+  styles.indexOf("@media (max-width: 640px)", paymentStylesOffset),
+  styles.indexOf(".mw-stripe-card", paymentStylesOffset)
+);
+assert.match(mobilePaymentStyles, /\.mw-payment-method-option--paypal/);
+assert.doesNotMatch(mobilePaymentStyles, /grid-column: 1 \/ -1/);
 
 console.log("12 cart payment method assertions passed");
