@@ -343,7 +343,7 @@ def _render_invoice_snapshot_pdf(*, invoice_number, issued_at, snapshot, snapsho
             [[
                 _build_party_card("Emisor", issuer, box_width, style_map),
                 "",
-                _build_party_card("Cliente", customer, box_width, style_map),
+                _build_party_card("Cliente", customer, box_width, style_map, include_phone=True),
             ]],
             colWidths=[box_width, box_gap, box_width],
             style=TableStyle([
@@ -451,7 +451,7 @@ def _build_invoice_header(*, invoice_number, issued_at, operation, available_wid
     return table
 
 
-def _build_party_card(title, party, width, styles):
+def _build_party_card(title, party, width, styles, *, include_phone=False):
     from reportlab.lib import colors
     from reportlab.platypus import Paragraph, Table, TableStyle
 
@@ -471,6 +471,8 @@ def _build_party_card(title, party, width, styles):
     ).strip()
     if region_line:
         details.append(_pdf_text(region_line))
+    if include_phone and party.get("phone"):
+        details.append(f"<font color='{BRAND_MUTED}'>Teléfono</font> {_pdf_text(party.get('phone'))}")
 
     table = Table(
         [

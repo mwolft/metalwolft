@@ -218,6 +218,7 @@ class InvoiceSnapshotBuilderTest(unittest.TestCase):
         self.assertEqual(snapshot["issuer"]["trade_name"], "MetalWolft")
         self.assertEqual(snapshot["customer"]["legal_name"], "Sergio Arias")
         self.assertEqual(snapshot["customer"]["email"], "cliente@example.com")
+        self.assertEqual(snapshot["customer"]["phone"], "600000000")
         self.assertEqual(snapshot["operation"]["order_id"], 123)
         self.assertEqual(snapshot["operation"]["order_locator"], "AB1234")
         self.assertEqual(snapshot["operation"]["order_date"], "2026-07-15")

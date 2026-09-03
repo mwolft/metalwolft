@@ -479,6 +479,17 @@ class Orders(db.Model):
         return "\n".join(shipping_address_lines(shipping_address)) or None
 
     @property
+    def customer_phone_snapshot(self):
+        """Return the telephone frozen by the checkout, never the live profile value."""
+        checkout_session = getattr(self, "checkout_session", None)
+        customer_snapshot = getattr(checkout_session, "customer_snapshot", None)
+        if not isinstance(customer_snapshot, dict):
+            return None
+
+        phone = customer_snapshot.get("phone")
+        return phone.strip() if isinstance(phone, str) and phone.strip() else None
+
+    @property
     def order_type_label(self):
         line_types = {
             (detail.line_type or "physical") for detail in (self.order_details or [])

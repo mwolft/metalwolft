@@ -490,6 +490,7 @@ class UsersAdminView(SafeModelView):
         'email',
         'firstname',
         'lastname',
+        'phone',
         'is_active',
         'is_admin',
         'shipping_address',
@@ -501,6 +502,10 @@ class UsersAdminView(SafeModelView):
         'CIF',
     )
     form_excluded_columns = ('password', 'orders', 'favorites', 'cart')
+
+    column_labels = {
+        'phone': 'Teléfono',
+    }
 
     column_formatters = {
         'email': lambda v, c, m, p: Markup(f'<a href="mailto:{m.email}">{m.email}</a>') if m.email else '',
@@ -896,7 +901,7 @@ class OrderAdminView(SafeModelView):
         'estimated_delivery_at',
         'estimated_delivery_note',
     ]
-    column_details_list = [*column_list, 'shipping_address_summary']
+    column_details_list = [*column_list, 'customer_phone_snapshot', 'shipping_address_summary']
 
     column_editable_list = ['total_amount', 'order_status']
     column_searchable_list = ['invoice_number', 'locator', 'discount_code']
@@ -918,6 +923,7 @@ class OrderAdminView(SafeModelView):
         'order_status': 'Estado',
         'estimated_delivery_at': 'Entrega estimada',
         'estimated_delivery_note': 'Nota entrega',
+        'customer_phone_snapshot': 'Teléfono',
         'shipping_address_summary': 'Direcci\u00f3n de env\u00edo',
     }
 
@@ -935,6 +941,7 @@ class OrderAdminView(SafeModelView):
     column_formatters_detail = {
         **column_formatters,
         'invoice_number': _format_order_invoice_detail,
+        'customer_phone_snapshot': lambda v, c, m, p: m.customer_phone_snapshot or "—",
         'shipping_address_summary': lambda v, c, m, p: (
             Markup("<br>").join(
                 escape(part) for part in (m.shipping_address_summary or "").splitlines()
@@ -2723,6 +2730,7 @@ class InvoiceAdminView(SafeModelView):
         'order_id',
         'client_name',
         'client_cif',
+        'client_phone',
         'amount',
         'created_at',
         'issued_at',
@@ -2742,6 +2750,7 @@ class InvoiceAdminView(SafeModelView):
         'client_name',
         'client_address',
         'client_cif',
+        'client_phone',
         'amount',
         'created_at',
         'issued_at',
@@ -2786,6 +2795,7 @@ class InvoiceAdminView(SafeModelView):
         'order_id': 'Pedido',
         'client_name': 'Cliente',
         'client_cif': 'NIF/CIF',
+        'client_phone': 'Teléfono',
         'amount': 'Total',
         'created_at': 'Creada',
         'issued_at': 'Emitida',
@@ -2800,6 +2810,7 @@ class InvoiceAdminView(SafeModelView):
         'order_id': _format_admin_invoice_value,
         'client_name': _format_admin_invoice_value,
         'client_cif': _format_admin_invoice_value,
+        'client_phone': _format_admin_invoice_value,
         'amount': _format_admin_invoice_amount,
         'created_at': _format_admin_invoice_datetime,
         'issued_at': _format_admin_invoice_datetime,
