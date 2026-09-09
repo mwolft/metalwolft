@@ -20,7 +20,7 @@ from .models import (
     Posts, Comments, Invoices, VeriFactuRecord, DeliveryEstimateConfig, DesignServiceConfig, DesignServicePriceTier, DesignRequest,
     AccountingEntry, SupplierInvoice, SupplierInvoiceDocument, SupplierInvoiceExtraction,
     SupplierInvoiceTaxBreakdown,
-    ManualInvoiceDraft, ManualInvoiceDraftLine,
+    ManualInvoiceDraft, ManualInvoiceDraftLine, WorkOrder,
 )
 from api.accounting_excel_service import (
     AccountingExcelExportError,
@@ -137,6 +137,11 @@ from api.design_service import (
     transition_design_request_status,
 )
 from api.manual_invoice_snapshot_builder import build_manual_invoice_snapshot
+from api.work_order_builder import (
+    WorkOrderBuilder,
+    WorkOrderValidationError,
+    get_or_create_work_order,
+)
 from api.invoice_legacy_rectification_aeat_service import (
     LegacyRectificationAeatClassificationError,
     SUPPORTED_LEGACY_AEAT_TYPES,
@@ -829,6 +834,36 @@ class DesignRequestAdminView(SafeModelView):
         return super().on_model_change(form, model, is_created)
 
 
+WORK_ORDER_CSRF_SESSION_KEY = "work_order_csrf"
+
+
+def _issue_work_order_csrf_token():
+    token = session.get(WORK_ORDER_CSRF_SESSION_KEY)
+    if not token:
+        token = secrets.token_urlsafe(32)
+        session[WORK_ORDER_CSRF_SESSION_KEY] = token
+    return token
+
+
+def _valid_work_order_csrf_token(token):
+    expected_token = session.get(WORK_ORDER_CSRF_SESSION_KEY)
+    return bool(
+        isinstance(token, str)
+        and isinstance(expected_token, str)
+        and hmac.compare_digest(token, expected_token)
+    )
+
+
+def _format_work_order_action(view, context, model, name):
+    if order_contains_design_service(model):
+        return Markup("<span class='text-muted'>No disponible para diseño previo</span>")
+
+    action_url = view.get_url(".work_order_view", order_id=model.id)
+    return Markup(
+        '<a class="btn btn-default btn-sm" href="{url}">PARTE DE TRABAJO</a>'
+    ).format(url=escape(action_url))
+
+
 class OrderAdminView(SafeModelView):
     can_view_details = True
     extra_css = ["/static/admin/order_sent_email_options.css"]
@@ -901,7 +936,12 @@ class OrderAdminView(SafeModelView):
         'estimated_delivery_at',
         'estimated_delivery_note',
     ]
-    column_details_list = [*column_list, 'customer_phone_snapshot', 'shipping_address_summary']
+    column_details_list = [
+        *column_list,
+        'customer_phone_snapshot',
+        'shipping_address_summary',
+        'work_order_action',
+    ]
 
     column_editable_list = ['total_amount', 'order_status']
     column_searchable_list = ['invoice_number', 'locator', 'discount_code']
@@ -925,6 +965,7 @@ class OrderAdminView(SafeModelView):
         'estimated_delivery_note': 'Nota entrega',
         'customer_phone_snapshot': 'Teléfono',
         'shipping_address_summary': 'Direcci\u00f3n de env\u00edo',
+        'work_order_action': 'Fabricación',
     }
 
     column_formatters = {
@@ -947,6 +988,7 @@ class OrderAdminView(SafeModelView):
                 escape(part) for part in (m.shipping_address_summary or "").splitlines()
             ) if m.shipping_address_summary else "—"
         ),
+        'work_order_action': lambda v, c, m, p: _format_work_order_action(v, c, m, p),
     }
 
     form_extra_fields = {
@@ -1109,9 +1151,91 @@ class OrderAdminView(SafeModelView):
 
         return redirect(redirect_url)
 
+    @expose('/<int:order_id>/parte-trabajo/', methods=['GET'])
+    def work_order_view(self, order_id):
+        order = self.session.get(Orders, order_id)
+        if not order:
+            flash('Pedido no encontrado.', 'error')
+            return redirect(self.get_url('.index_view'))
+        if order_contains_design_service(order):
+            flash('Los servicios de diseño previo no generan parte de fabricación.', 'error')
+            return redirect(self.get_url('.details_view', id=order.id))
+
+        try:
+            actor = request.authorization.username if request.authorization else None
+            work_order, _created = get_or_create_work_order(
+                db_session=self.session,
+                order=order,
+                created_by=actor,
+            )
+            self.session.commit()
+            data = WorkOrderBuilder.from_work_order(work_order).to_template_context()
+        except WorkOrderValidationError as exc:
+            self.session.rollback()
+            flash(str(exc), 'error')
+            return redirect(self.get_url('.details_view', id=order.id))
+        except IntegrityError:
+            # The unique order_id constraint makes concurrent first access idempotent.
+            self.session.rollback()
+            work_order = self.session.query(WorkOrder).filter_by(order_id=order_id).one_or_none()
+            if work_order is None:
+                current_app.logger.exception('Work-order creation conflict without persisted snapshot order_id=%s', order_id)
+                flash('No se ha podido generar el parte de fabricación.', 'error')
+                return redirect(self.get_url('.details_view', id=order_id))
+            data = WorkOrderBuilder.from_work_order(work_order).to_template_context()
+        except Exception:
+            self.session.rollback()
+            current_app.logger.exception('Unexpected work-order generation failure order_id=%s', order_id)
+            flash('No se ha podido generar el parte de fabricación.', 'error')
+            return redirect(self.get_url('.details_view', id=order.id))
+
+        return self.render(
+            'admin/order_work_order.html',
+            data=data,
+            csrf_token=_issue_work_order_csrf_token(),
+            observations_url=self.get_url('.update_work_order_observations', order_id=order.id),
+            order_detail_url=self.get_url('.details_view', id=order.id),
+        )
+
+    @expose('/<int:order_id>/parte-trabajo/observaciones/', methods=['POST'])
+    def update_work_order_observations(self, order_id):
+        order = self.session.get(Orders, order_id)
+        redirect_url = self.get_url('.work_order_view', order_id=order_id)
+        if not order:
+            flash('Pedido no encontrado.', 'error')
+            return redirect(self.get_url('.index_view'))
+        if order_contains_design_service(order):
+            flash('Los servicios de diseño previo no generan parte de fabricación.', 'error')
+            return redirect(self.get_url('.details_view', id=order.id))
+        if not _valid_work_order_csrf_token(request.form.get('csrf_token')):
+            flash('La sesión del formulario ha caducado. Vuelve a intentarlo.', 'error')
+            return redirect(redirect_url)
+
+        work_order = self.session.query(WorkOrder).filter_by(order_id=order.id).one_or_none()
+        if work_order is None:
+            flash('Genera primero el parte de fabricación.', 'error')
+            return redirect(redirect_url)
+
+        notes = (request.form.get('internal_notes') or '').strip()
+        if len(notes) > 4000:
+            flash('Las observaciones de fabricación no pueden superar 4000 caracteres.', 'error')
+            return redirect(redirect_url)
+
+        work_order.internal_notes = notes or None
+        try:
+            self.session.commit()
+        except Exception:
+            self.session.rollback()
+            current_app.logger.exception('Unexpected work-order observation update failure order_id=%s', order_id)
+            flash('No se han podido guardar las observaciones de fabricación.', 'error')
+        else:
+            flash('Observaciones de fabricación guardadas.', 'success')
+        return redirect(redirect_url)
+
 
     # Hook para evitar errores al borrar por FK: eliminar detalles primero
     def on_model_delete(self, model):
+        self.session.query(WorkOrder).filter_by(order_id=model.id).delete(synchronize_session=False)
         self.session.query(OrderDetails).filter_by(order_id=model.id).delete(synchronize_session=False)
 
     column_default_sort = ('order_date', True)
