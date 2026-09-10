@@ -35,14 +35,19 @@
     .admin-production-queue__item {
         align-items: center;
         border-bottom: 1px solid #e5e7eb;
-        display: flex;
-        gap: 14px;
-        justify-content: space-between;
+        display: grid;
+        gap: 14px 26px;
+        grid-template-columns: minmax(180px, 1.1fr) minmax(220px, 1.6fr) auto;
+        grid-template-areas: "identity configuration action";
         padding: 13px 0;
     }
 
     .admin-production-queue__item:last-child { border-bottom: 0; padding-bottom: 0; }
+    .admin-production-queue__identity { grid-area: identity; min-width: 0; }
+    .admin-production-queue__configuration { grid-area: configuration; min-width: 0; }
+    .admin-production-queue__action { grid-area: action; justify-self: end; white-space: nowrap; }
     .admin-production-queue__locator { display: block; font-weight: 700; }
+    .admin-production-queue__customer { display: block; }
     .admin-production-queue__summary { color: #64748b; display: block; font-size: 12px; margin-top: 2px; }
 
     @media (max-width: 767px) {
@@ -60,7 +65,17 @@
             align-self: flex-start;
         }
 
-        .admin-production-queue__item { align-items: flex-start; flex-direction: column; }
+        .admin-production-queue__item {
+            align-items: flex-start;
+            grid-template-columns: minmax(0, 1fr);
+            grid-template-areas:
+                "identity"
+                "configuration"
+                "action";
+            gap: 8px;
+        }
+
+        .admin-production-queue__action { justify-self: start; }
     }
 </style>
 <div class="container-fluid" style="margin-top:10px;">
@@ -87,12 +102,16 @@
         <div class="panel-body">
             {% for item in pending_manufacturing %}
             <div class="admin-production-queue__item">
-                <div>
+                <div class="admin-production-queue__identity">
                     <span class="admin-production-queue__locator">{{ item.locator }}</span>
-                    <span>{{ item.customer_name }}</span>
+                    <span class="admin-production-queue__customer">{{ item.customer_name }}</span>
+                </div>
+                <div class="admin-production-queue__configuration">
                     <span class="admin-production-queue__summary">{{ item.summary }}</span>
                 </div>
-                <a class="btn btn-default btn-sm" href="{{ item.work_order_url }}">ABRIR PARTE</a>
+                <div class="admin-production-queue__action">
+                    <a class="btn btn-default btn-sm" href="{{ item.work_order_url }}">ABRIR PARTE</a>
+                </div>
             </div>
             {% else %}
             <p class="text-muted" style="margin:0;">No hay pedidos pendientes de fabricación.</p>
