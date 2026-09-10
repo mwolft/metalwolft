@@ -39,6 +39,9 @@ _COLOR_MUTED = colors.HexColor("#64748b")
 _COLOR_BORDER = colors.HexColor("#d9dee5")
 _COLOR_SURFACE = colors.HexColor("#f8fafc")
 
+_CARD_CELL_PADDING = 8
+_CARD_IMAGE_WIDTH = 3.8 * cm
+
 
 class WorkOrderPdfError(ValueError):
     """Raised when a work-order PDF cannot be rendered from its frozen data."""
@@ -76,7 +79,7 @@ def generate_work_order_pdf(data: WorkOrderData) -> bytes:
     ]
 
     for line in data.lines:
-        story.append(KeepTogether(_line_card(line, styles)))
+        story.append(KeepTogether(_line_card(line, styles, document.width)))
         story.append(Spacer(1, 0.26 * cm))
 
     if data.internal_notes:
@@ -190,7 +193,12 @@ def _customer_table(customer: Mapping[str, Any], styles):
     return table
 
 
-def _line_card(line: Mapping[str, Any], styles):
+def _line_card(line: Mapping[str, Any], styles, available_width: float):
+    image_column_width = _CARD_IMAGE_WIDTH + (2 * _CARD_CELL_PADDING)
+    technical_column_width = available_width - image_column_width
+    technical_content_width = technical_column_width - (2 * _CARD_CELL_PADDING)
+    technical_column_widths = [technical_content_width / 2, technical_content_width / 2]
+
     image = _image_or_placeholder(line.get("image_url"), styles)
     dimensions = line.get("dimensions") or {}
     unit = dimensions.get("unit") or "cm"
@@ -210,7 +218,7 @@ def _line_card(line: Mapping[str, Any], styles):
                 _label_value("TIPO", _nested_text(line, "opening_type", "label"), styles),
             ],
         ],
-        colWidths=[6.675 * cm, 6.675 * cm],
+        colWidths=technical_column_widths,
     )
     technical.setStyle(
         TableStyle(
@@ -228,16 +236,19 @@ def _line_card(line: Mapping[str, Any], styles):
             ]
         )
     )
-    card = Table([[image, technical]], colWidths=[4.25 * cm, 13.35 * cm])
+    card = Table(
+        [[image, technical]],
+        colWidths=[image_column_width, technical_column_width],
+    )
     card.setStyle(
         TableStyle(
             [
                 ("BOX", (0, 0), (-1, -1), 0.9, _COLOR_BORDER),
                 ("VALIGN", (0, 0), (-1, -1), "TOP"),
-                ("LEFTPADDING", (0, 0), (-1, -1), 8),
-                ("RIGHTPADDING", (0, 0), (-1, -1), 8),
-                ("TOPPADDING", (0, 0), (-1, -1), 8),
-                ("BOTTOMPADDING", (0, 0), (-1, -1), 8),
+                ("LEFTPADDING", (0, 0), (-1, -1), _CARD_CELL_PADDING),
+                ("RIGHTPADDING", (0, 0), (-1, -1), _CARD_CELL_PADDING),
+                ("TOPPADDING", (0, 0), (-1, -1), _CARD_CELL_PADDING),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), _CARD_CELL_PADDING),
             ]
         )
     )
