@@ -19,6 +19,47 @@
         min-width: 190px;
     }
 
+    .admin-production-queue .panel-heading {
+        align-items: center;
+        display: flex;
+        justify-content: space-between;
+    }
+
+    .admin-production-queue__count {
+        background: rgba(255, 255, 255, .2);
+        border-radius: 10px;
+        font-size: 12px;
+        padding: 2px 8px;
+    }
+
+    .admin-production-queue__item {
+        align-items: center;
+        border-bottom: 1px solid #e5e7eb;
+        display: grid;
+        gap: 14px;
+        grid-template-columns: minmax(130px, 1fr) minmax(150px, 1.35fr) minmax(145px, 1.15fr) minmax(120px, .9fr) auto;
+        grid-template-areas: "identity configuration dimensions schedule action";
+        padding: 13px 0;
+    }
+
+    .admin-production-queue__item:last-child { border-bottom: 0; padding-bottom: 0; }
+    .admin-production-queue__identity { grid-area: identity; min-width: 0; }
+    .admin-production-queue__configuration { grid-area: configuration; min-width: 0; }
+    .admin-production-queue__dimensions { grid-area: dimensions; min-width: 0; }
+    .admin-production-queue__schedule { grid-area: schedule; min-width: 0; }
+    .admin-production-queue__action { grid-area: action; justify-self: end; white-space: nowrap; }
+    .admin-production-queue__locator { display: block; font-weight: 700; }
+    .admin-production-queue__customer { display: block; }
+    .admin-production-queue__configuration-line,
+    .admin-production-queue__dimension-line,
+    .admin-production-queue__entry,
+    .admin-production-queue__countdown { display: block; }
+    .admin-production-queue__configuration-line { font-weight: 600; }
+    .admin-production-queue__dimension-line,
+    .admin-production-queue__entry,
+    .admin-production-queue__countdown { color: #64748b; font-size: 12px; }
+    .admin-production-queue__countdown { margin-top: 2px; }
+
     @media (max-width: 767px) {
         .admin-dashboard-action .panel-body {
             align-items: stretch;
@@ -33,6 +74,20 @@
         .admin-dashboard-action .btn {
             align-self: flex-start;
         }
+
+        .admin-production-queue__item {
+            align-items: flex-start;
+            grid-template-columns: minmax(0, 1fr);
+            grid-template-areas:
+                "identity"
+                "configuration"
+                "dimensions"
+                "schedule"
+                "action";
+            gap: 8px;
+        }
+
+        .admin-production-queue__action { justify-self: start; }
     }
 </style>
 <div class="container-fluid" style="margin-top:10px;">
@@ -51,6 +106,43 @@
             Ver
         </button>
     </form>
+    <div class="panel panel-primary admin-production-queue" style="margin-bottom:15px;">
+        <div class="panel-heading">
+            <strong>PENDIENTES DE FABRICAR</strong>
+            <span class="admin-production-queue__count">{{ pending_manufacturing|length }}</span>
+        </div>
+        <div class="panel-body">
+            {% for item in pending_manufacturing %}
+            <div class="admin-production-queue__item">
+                <div class="admin-production-queue__identity">
+                    <span class="admin-production-queue__locator">{{ item.locator }}</span>
+                    <span class="admin-production-queue__customer">{{ item.customer_name }}</span>
+                </div>
+                <div class="admin-production-queue__configuration">
+                    {% for configuration in item.configurations %}
+                    <span class="admin-production-queue__configuration-line">{{ configuration.model_name }} · {{ configuration.quantity_label }}</span>
+                    {% endfor %}
+                </div>
+                <div class="admin-production-queue__dimensions">
+                    {% for configuration in item.configurations %}
+                    <span class="admin-production-queue__dimension-line">Alto {{ configuration.height }} cm × Ancho {{ configuration.width }} cm</span>
+                    {% endfor %}
+                </div>
+                <div class="admin-production-queue__schedule">
+                    <span class="admin-production-queue__entry">Entrada {{ item.entry_date }}</span>
+                    {% if item.delivery_countdown %}
+                    <span class="admin-production-queue__countdown">{{ item.delivery_countdown }}</span>
+                    {% endif %}
+                </div>
+                <div class="admin-production-queue__action">
+                    <a class="btn btn-default btn-sm" href="{{ item.work_order_url }}">ABRIR PARTE</a>
+                </div>
+            </div>
+            {% else %}
+            <p class="text-muted" style="margin:0;">No hay pedidos pendientes de fabricación.</p>
+            {% endfor %}
+        </div>
+    </div>
     <div class="panel panel-default admin-dashboard-action" style="margin-bottom:15px;">
         <div class="panel-body">
             <div class="admin-dashboard-action__copy">

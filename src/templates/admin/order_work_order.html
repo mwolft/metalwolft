@@ -1,0 +1,116 @@
+{% extends 'admin/master.html' %}
+
+{% block head_css %}
+  {{ super() }}
+  <link href="{{ url_for('static', filename='admin/work_order.css') }}" rel="stylesheet">
+{% endblock %}
+
+{% block body %}
+  <main class="mw-work-order" aria-labelledby="work-order-title">
+    <header class="mw-work-order__header">
+      <div>
+        <p class="mw-work-order__brand">METALWOLFT</p>
+        <h1 id="work-order-title">Parte de fabricación</h1>
+      </div>
+      <div class="mw-work-order__actions">
+        <a class="btn btn-default btn-sm" href="{{ pdf_url }}">DESCARGAR PDF</a>
+        <a class="btn btn-default btn-sm mw-work-order__back" href="{{ order_detail_url }}">Volver al pedido</a>
+      </div>
+    </header>
+
+    <section class="mw-work-order__meta" aria-label="Identificación del parte">
+      <div><span>Pedido</span><strong>{{ data.order.locator }}</strong></div>
+      <div><span>Fecha pedido</span><strong>{{ data.order.ordered_at or 'No consta' }}</strong></div>
+      <div><span>Parte generado</span><strong>{{ data.generated_at or 'No consta' }}</strong></div>
+    </section>
+
+    <section class="mw-work-order__customer" aria-labelledby="work-order-customer-title">
+      <h2 id="work-order-customer-title">Cliente / entrega</h2>
+      <dl>
+        <div><dt>Nombre</dt><dd>{{ data.customer.name or 'No consta' }}</dd></div>
+        {% if data.customer.phone %}
+          <div><dt>Teléfono</dt><dd>{{ data.customer.phone }}</dd></div>
+        {% endif %}
+        {% if data.customer.delivery_address %}
+          <div class="mw-work-order__address"><dt>Dirección de entrega</dt><dd>{% for address_line in data.customer.delivery_address %}<span>{{ address_line }}</span>{% endfor %}</dd></div>
+        {% endif %}
+      </dl>
+    </section>
+
+    <section aria-labelledby="work-order-lines-title">
+      <h2 id="work-order-lines-title" class="mw-work-order__section-title">Configuraciones a fabricar</h2>
+      <div class="mw-work-order__lines">
+        {% for line in data.lines %}
+          <article class="mw-work-order-line">
+            <header class="mw-work-order-line__header">
+              <span>Línea {{ '%02d'|format(line.line_number) }}</span>
+              <strong>Cantidad: {{ line.quantity if line.quantity is not none else 'No consta' }}</strong>
+            </header>
+            <div class="mw-work-order-line__body">
+              <div class="mw-work-order-line__image">
+                {% if line.image_url %}
+                  <img src="{{ line.image_url }}" alt="{{ line.model_name }}" loading="eager">
+                {% else %}
+                  <span>Sin imagen</span>
+                {% endif %}
+              </div>
+              <div class="mw-work-order-line__specs">
+                <p class="mw-work-order-line__model">{{ line.model_name }}</p>
+                {% if line.product_id is not none %}<p class="mw-work-order-line__reference">Referencia técnica: {{ line.product_id }}</p>{% endif %}
+                <div class="mw-work-order-line__dimensions">
+                  <div><span>Alto</span><strong>{{ line.dimensions.height or 'No consta' }}{% if line.dimensions.height %} {{ line.dimensions.unit }}{% endif %}</strong></div>
+                  <div><span>Ancho</span><strong>{{ line.dimensions.width or 'No consta' }}{% if line.dimensions.width %} {{ line.dimensions.unit }}{% endif %}</strong></div>
+                </div>
+                <dl class="mw-work-order-line__details">
+                  <div><dt>Anclaje</dt><dd>{{ line.anchorage.label or 'No consta' }}</dd></div>
+                  <div><dt>Color / acabado</dt><dd>{% if line.color.label %}{{ line.color.label }}{% else %}No consta{% endif %}{% if line.color.finish_label %} · {{ line.color.finish_label }}{% endif %}</dd></div>
+                  <div><dt>Tornillería</dt><dd>{{ line.screws.display }}</dd></div>
+                  <div><dt>Tipo</dt><dd>{{ line.opening_type.label }}</dd></div>
+                </dl>
+              </div>
+            </div>
+          </article>
+        {% endfor %}
+      </div>
+    </section>
+
+    <section class="mw-work-order__manufactured" aria-labelledby="work-order-manufactured-title">
+      <h2 id="work-order-manufactured-title">Estado de fabricación</h2>
+      {% if data.manufactured_at %}
+        <p class="mw-work-order__manufactured-state"><strong>✓ FABRICADO</strong><span>{{ data.manufactured_at }}{% if data.manufactured_by %} · {{ data.manufactured_by }}{% endif %}</span></p>
+        <form method="post" action="{{ unmark_manufactured_url }}" class="mw-work-order__manufactured-form">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+          <label><input type="checkbox" name="confirm_manufactured" value="yes" required> Confirmo que el parte debe volver a pendiente.</label>
+          <button type="submit" class="btn btn-default">DESMARCAR FABRICADO</button>
+        </form>
+      {% else %}
+        <p class="text-muted">Pendiente de fabricación.</p>
+        <form method="post" action="{{ mark_manufactured_url }}" class="mw-work-order__manufactured-form">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+          <label><input type="checkbox" name="confirm_manufactured" value="yes" required> Confirmo que esta configuración está fabricada.</label>
+          <button type="submit" class="btn btn-primary">MARCAR COMO FABRICADO</button>
+        </form>
+      {% endif %}
+    </section>
+
+    <section class="mw-work-order__notes" aria-labelledby="work-order-notes-title">
+      <h2 id="work-order-notes-title">Observaciones de fabricación</h2>
+      <form method="post" action="{{ observations_url }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <label class="sr-only" for="work-order-internal-notes">Observaciones internas de fabricación</label>
+        <textarea id="work-order-internal-notes" name="internal_notes" rows="4" maxlength="4000" placeholder="Añade una observación interna para taller.">{{ data.internal_notes or '' }}</textarea>
+        <button type="submit" class="btn btn-primary">Guardar observaciones</button>
+      </form>
+    </section>
+
+    <section class="mw-work-order__checklist" aria-labelledby="work-order-checklist-title">
+      <h2 id="work-order-checklist-title">Control de taller</h2>
+      <div>
+        <label><input type="checkbox"> Medidas verificadas</label>
+        <label><input type="checkbox"> Acabado verificado</label>
+        <label><input type="checkbox"> Tornillería preparada</label>
+        <label><input type="checkbox"> Embalaje revisado</label>
+      </div>
+    </section>
+  </main>
+{% endblock %}

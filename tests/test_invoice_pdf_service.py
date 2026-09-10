@@ -349,6 +349,8 @@ class InvoicePdfServiceTest(unittest.TestCase):
             "B00000000",
             "Sergio Arias",
             "00000000T",
+            "Teléfono",
+            "600000000",
             "AB1234",
             "Reja fija Pittsburgh",
             "30 × 30 cm",
@@ -463,7 +465,7 @@ class InvoicePdfServiceTest(unittest.TestCase):
         source = (SRC_DIR / "api/invoice_pdf_service.py").read_text(encoding="utf-8")
         self.assertIn('BRAND_RED = "#cf1c35"', source)
 
-    def test_pdf_hides_internal_hash_and_customer_contact_but_keeps_integrity_validation(self):
+    def test_pdf_hides_internal_hash_and_customer_email_but_renders_frozen_phone(self):
         invoice = SnapshotOnlyInvoice()
         original_hash = invoice.invoice_snapshot_hash
 
@@ -477,10 +479,29 @@ class InvoicePdfServiceTest(unittest.TestCase):
         self.assertNotIn(original_hash, text)
         self.assertNotIn(original_hash, str(metadata))
         self.assertNotIn("cliente@example.com", text)
-        self.assertNotIn("600000000", text)
+        self.assertIn("Teléfono", text)
+        self.assertIn("600000000", text)
         self.assertNotIn("600111222", text)
         self.assertIn("admin@metalwolft.com", text)
         self.assertEqual(invoice.invoice_snapshot_hash, original_hash)
+
+    def test_historical_snapshot_without_phone_remains_renderable_without_phone_line(self):
+        historical_snapshot = snapshot()
+        historical_snapshot["customer"] = {
+            **historical_snapshot["customer"],
+            "phone": None,
+        }
+        invoice = SnapshotOnlyInvoice(
+            invoice_snapshot=historical_snapshot,
+            stored_hash=calculate_invoice_snapshot_hash(historical_snapshot),
+        )
+
+        with temp_invoice_dir() as tmpdir:
+            result = generate_invoice_pdf(invoice, output_dir=tmpdir)
+            text = normalized_pdf_text(Path(tmpdir) / result.filename)
+
+        self.assertNotIn("Teléfono", text)
+        self.assertEqual(invoice.invoice_snapshot, historical_snapshot)
 
     def test_pdf_shows_operation_date_only_when_it_differs_from_issue_date(self):
         invoice = SnapshotOnlyInvoice()

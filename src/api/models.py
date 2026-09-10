@@ -467,6 +467,12 @@ class Orders(db.Model):
 
     user = db.relationship('Users', backref='orders', lazy=True)
     order_details = db.relationship('OrderDetails', backref='order', lazy=True)
+    work_order = db.relationship(
+        'WorkOrder',
+        back_populates='order',
+        uselist=False,
+        cascade='all, delete-orphan',
+    )
 
     @property
     def shipping_address_summary(self):
@@ -479,6 +485,17 @@ class Orders(db.Model):
         return "\n".join(shipping_address_lines(shipping_address)) or None
 
     @property
+    def customer_phone_snapshot(self):
+        """Return the telephone frozen by the checkout, never the live profile value."""
+        checkout_session = getattr(self, "checkout_session", None)
+        customer_snapshot = getattr(checkout_session, "customer_snapshot", None)
+        if not isinstance(customer_snapshot, dict):
+            return None
+
+        phone = customer_snapshot.get("phone")
+        return phone.strip() if isinstance(phone, str) and phone.strip() else None
+
+    @property
     def order_type_label(self):
         line_types = {
             (detail.line_type or "physical") for detail in (self.order_details or [])
@@ -488,6 +505,11 @@ class Orders(db.Model):
         if line_types == {"physical"}:
             return "Reja física"
         return "—"
+
+    @property
+    def work_order_action(self):
+        """Virtual Flask-Admin detail column used for the internal work-order action."""
+        return None
 
     def __repr__(self):
         return f'<Order {self.id} by User {self.user_id}>'
@@ -725,6 +747,48 @@ class OrderDetails(db.Model):
             "shipping_type": self.shipping_type,
             "shipping_cost": self.shipping_cost
         }
+
+
+class WorkOrder(db.Model):
+    """Immutable manufacturing snapshot plus mutable internal workshop observations."""
+
+    __tablename__ = "work_orders"
+    __table_args__ = (
+        db.CheckConstraint(
+            "schema_version > 0",
+            name="ck_work_orders_schema_version_positive",
+        ),
+        db.UniqueConstraint("order_id", name="uq_work_orders_order_id"),
+    )
+
+    id = db.Column(db.Integer, primary_key=True)
+    order_id = db.Column(
+        db.Integer,
+        db.ForeignKey("orders.id"),
+        nullable=False,
+    )
+    schema_version = db.Column(db.Integer, nullable=False)
+    snapshot = db.Column(db.JSON, nullable=False)
+    created_at = db.Column(db.DateTime, nullable=False, server_default=db.func.now())
+    created_by = db.Column(db.String(100), nullable=False)
+    internal_notes = db.Column(db.Text, nullable=True)
+    manufactured_at = db.Column(db.DateTime, nullable=True)
+    manufactured_by = db.Column(db.String(100), nullable=True)
+
+    order = db.relationship("Orders", back_populates="work_order")
+
+    def __repr__(self):
+        return f"<WorkOrder {self.id} for Order {self.order_id}>"
+
+
+@event.listens_for(WorkOrder, "before_update")
+def prevent_work_order_snapshot_mutation(mapper, connection, target):
+    """Observations stay editable, while the manufacturing source remains immutable."""
+    from sqlalchemy import inspect
+
+    for field_name in ("snapshot", "schema_version", "order_id", "created_by"):
+        if inspect(target).attrs[field_name].history.has_changes():
+            raise ValueError("El snapshot del parte de fabricación es inmutable.")
 
 
 class Invoices(db.Model):

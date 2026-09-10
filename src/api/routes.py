@@ -1337,6 +1337,7 @@ def _sync_user_from_customer_context(user, customer_context):
     field_mapping = [
         ("firstname", "firstname"),
         ("lastname", "lastname"),
+        ("phone", "phone"),
         ("shipping_address", "shipping_address"),
         ("shipping_city", "shipping_city"),
         ("shipping_postal_code", "shipping_postal_code"),
