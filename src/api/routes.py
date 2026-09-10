@@ -81,6 +81,14 @@ from api.customer_profile import (
     serialize_customer_profile,
 )
 from api.payment_amounts import PaymentAmountValidationError, validate_payment_amount
+from api.confirmed_order_context_service import build_web_checkout_confirmation_input
+from api.order_creation_service import (
+    assert_homogeneous_order_details as _assert_homogeneous_order_details,
+    build_customer_context as _build_customer_context,
+    build_order_details_from_checkout_quote as _build_order_details_from_checkout_quote,
+    create_order_from_confirmed_input,
+    get_customer_value as _get_customer_value,
+)
 from api.order_confirmation_email_service import send_order_confirmation_email
 from api.transactional_email_renderer import render_account_welcome_email
 from api.post_order_invoice_hook import handle_post_order_invoice_workflow
@@ -88,7 +96,7 @@ from api.original_invoice_renderer import render_original_order_invoice_pdf
 from api.invoice_admin_helpers import (
     build_invoice_issuer_from_config as _build_invoice_issuer_from_config,
     invoice_admin_actor_from_jwt as _invoice_admin_actor,
-    select_checkout_session_for_invoice as _select_checkout_session_for_invoice,
+    select_invoice_confirmation_context_for_invoice as _select_invoice_confirmation_context_for_invoice,
 )
 from api.invoice_pdf_download_service import (
     InvoicePdfDownloadFileMissing,
@@ -834,69 +842,6 @@ def _build_checkout_comparison_from_request(checkout_quote, data):
     return comparison
 
 
-def _build_order_details_from_checkout_quote(checkout_quote):
-    order_details = []
-    for line in (checkout_quote.get("lines") or []):
-        line_type = line.get("line_type") or "physical"
-        if line_type not in {"physical", SERVICE_LINE_TYPE}:
-            raise ValueError("El tipo de línea del pedido no es válido.")
-        if line_type == SERVICE_LINE_TYPE:
-            design_request_id = line.get("design_request_id") or checkout_quote.get("design_request_id")
-            design_request_item_id = line.get("design_request_item_id")
-            if design_request_id is None or design_request_item_id is None:
-                raise ValueError("La solicitud de diseño es obligatoria para finalizar el pago.")
-            order_details.append({
-                "line_type": SERVICE_LINE_TYPE,
-                "design_request_id": design_request_id,
-                "design_request_item_id": design_request_item_id,
-                "producto_id": line["product_id"],
-                "quantity": 1,
-                "alto": line["alto"],
-                "ancho": line["ancho"],
-                "anclaje": None,
-                "color": None,
-                "screw_option": "not_applicable",
-                "screw_length_mm": None,
-                "screw_supplement": 0.0,
-                "precio_total": line["unit_price"],
-                "shipping_type": None,
-                "shipping_cost": 0.0,
-            })
-            continue
-        screw_option = line.get("screw_option") or DEFAULT_CONFIGURATOR_SCREW_OPTION
-        resolved_screws = resolve_screw_configuration(line.get("anclaje"), screw_option) or {}
-        order_details.append({
-            "line_type": "physical",
-            "producto_id": line["product_id"],
-            "quantity": line["quantity"],
-            "alto": line["alto"],
-            "ancho": line["ancho"],
-            "anclaje": line.get("anclaje"),
-            "color": line.get("color"),
-            "screw_option": screw_option,
-            "screw_length_mm": line.get("screw_length_mm") or resolved_screws.get("screw_length_mm"),
-            "screw_supplement": line.get("screw_supplement", resolved_screws.get("screw_supplement", 0.0)),
-            "precio_total": line["unit_price"],
-            "shipping_type": line.get("shipping_type"),
-            "shipping_cost": line.get("shipping_cost")
-        })
-    _assert_homogeneous_order_details(order_details)
-    return order_details
-
-
-def _assert_homogeneous_order_details(order_details):
-    line_types = {detail.get("line_type") or "physical" for detail in order_details}
-    if len(line_types) > 1:
-        raise ValueError("Un pedido no puede mezclar productos físicos y diseños previos.")
-
-
-def _get_customer_value(request_data, customer_snapshot, field_name):
-    request_value = request_data.get(field_name)
-    if request_value is not None and request_value != "":
-        return request_value
-    return (customer_snapshot or {}).get(field_name)
-
-
 def _normalize_checkout_session_status(provider_status, payment_provider="stripe"):
     if payment_provider == "stripe":
         if provider_status == "succeeded":
@@ -1314,21 +1259,6 @@ def _serialize_checkout_session_payment_state(checkout_session):
     }
 
 
-def _build_customer_context(request_data, customer_snapshot):
-    return {
-        "firstname": _get_customer_value(request_data, customer_snapshot, 'firstname'),
-        "lastname": _get_customer_value(request_data, customer_snapshot, 'lastname'),
-        "phone": _get_customer_value(request_data, customer_snapshot, 'phone'),
-        "shipping_address": _get_customer_value(request_data, customer_snapshot, 'shipping_address'),
-        "shipping_city": _get_customer_value(request_data, customer_snapshot, 'shipping_city'),
-        "shipping_postal_code": _get_customer_value(request_data, customer_snapshot, 'shipping_postal_code'),
-        "billing_address": _get_customer_value(request_data, customer_snapshot, 'billing_address'),
-        "billing_city": _get_customer_value(request_data, customer_snapshot, 'billing_city'),
-        "billing_postal_code": _get_customer_value(request_data, customer_snapshot, 'billing_postal_code'),
-        "CIF": _get_customer_value(request_data, customer_snapshot, 'CIF'),
-    }
-
-
 def _sync_user_from_customer_context(user, customer_context):
     if not user:
         return False
@@ -1373,150 +1303,59 @@ def _finalize_order_from_checkout_quote(user, checkout_quote, customer_snapshot,
         )
         checkout_session.order_id = None
 
-    if not checkout_quote or not checkout_quote.get("lines"):
-        raise ValueError("Checkout snapshot not available for this payment intent.")
+    try:
+        customer_snapshot = customer_snapshot or {}
+        confirmation = None
+        if checkout_session:
+            if customer_snapshot:
+                checkout_session.customer_snapshot = customer_snapshot
+            confirmation = build_web_checkout_confirmation_input(checkout_session)
 
-    order_details = _build_order_details_from_checkout_quote(checkout_quote)
-    is_design_service_checkout = checkout_quote.get("checkout_kind") == SERVICE_LINE_TYPE
-    contains_design_service_line = any(
-        detail.get("line_type") == SERVICE_LINE_TYPE for detail in order_details
-    )
-    if contains_design_service_line and not is_design_service_checkout:
-        raise ValueError("Las líneas de diseño previo requieren un checkout exclusivo de diseño.")
-    if is_design_service_checkout and (
-        not order_details
-        or any(detail.get("line_type") != SERVICE_LINE_TYPE for detail in order_details)
-        or len({detail.get("design_request_id") for detail in order_details}) != 1
-    ):
-        raise ValueError("El checkout de diseño previo debe contener únicamente sus líneas de servicio.")
-    if is_design_service_checkout and checkout_session and (
-        checkout_session.design_request_id != order_details[0].get("design_request_id")
-    ):
-        raise ValueError("La sesión de checkout no coincide con la solicitud de diseño.")
-    customer_snapshot = customer_snapshot or {}
-    customer_context = _build_customer_context({}, customer_snapshot)
+        creation = create_order_from_confirmed_input(
+            db_session=db.session,
+            user=user,
+            quote_snapshot=checkout_quote,
+            customer_snapshot=customer_snapshot,
+            confirmation=confirmation,
+        )
+        new_order = creation.order
+        customer_context = creation.customer_context
 
-    customer_firstname = customer_context["firstname"]
-    customer_lastname = customer_context["lastname"]
-    customer_phone = customer_context["phone"]
-    customer_shipping_address = customer_context["shipping_address"]
-    customer_shipping_city = customer_context["shipping_city"]
-    customer_shipping_postal_code = customer_context["shipping_postal_code"]
-    customer_billing_address = customer_context["billing_address"]
-    customer_billing_city = customer_context["billing_city"]
-    customer_billing_postal_code = customer_context["billing_postal_code"]
-    customer_cif = customer_context["CIF"]
-
-    new_order = Orders(
-        user_id=user.id,
-        total_amount=0,
-        locator=Orders.generate_locator(),
-        order_status="pendiente"
-    )
-    db.session.add(new_order)
-    db.session.flush()
-
-    subtotal = 0.0
-    discount_percent = float(checkout_quote.get('discount_percent') or 0)
-    discount_code = checkout_quote.get('discount_code') or None
-
-    design_item_order_details = {}
-    for detail in order_details:
-        precio_recalculado = float(detail.get('precio_total') or 0.0)
-        existing_detail = None
-        if detail.get("line_type") == "physical":
-            existing_detail = OrderDetails.query.filter_by(
+        if creation.is_design_service_checkout:
+            if checkout_session and (
+                checkout_session.design_request_id != creation.design_request_id
+            ):
+                raise ValueError("La sesión de checkout no coincide con la solicitud de diseño.")
+            mark_design_request_paid(
+                db_session=db.session,
+                design_request_id=creation.design_request_id,
                 order_id=new_order.id,
-                product_id=detail['producto_id'],
-                alto=detail.get('alto'),
-                ancho=detail.get('ancho'),
-                anclaje=detail.get('anclaje'),
-                color=detail.get('color'),
-                screw_option=detail.get('screw_option') or DEFAULT_CONFIGURATOR_SCREW_OPTION,
-                line_type="physical",
-            ).first()
+                item_order_detail_ids=creation.design_item_order_detail_ids,
+            )
 
-        if existing_detail:
-            logger.info(f"Detalle ya existente: {existing_detail.serialize()}")
-            existing_detail.quantity += detail['quantity']
-            existing_detail.precio_total = precio_recalculado
-            subtotal += precio_recalculado * detail['quantity']
-            continue
+        if checkout_session:
+            checkout_session.order_id = new_order.id
+            checkout_session.status = "order_created"
+            if creation.is_design_service_checkout:
+                checkout_session.design_request_id = creation.design_request_id
 
-        new_detail = OrderDetails(
-            order_id=new_order.id,
-            product_id=detail['producto_id'],
-            quantity=detail['quantity'],
-            line_type=detail.get("line_type") or "physical",
-            alto=detail.get('alto'),
-            ancho=detail.get('ancho'),
-            anclaje=detail.get('anclaje'),
-            color=detail.get('color'),
-            screw_option=detail.get('screw_option') or DEFAULT_CONFIGURATOR_SCREW_OPTION,
-            screw_length_mm=detail.get('screw_length_mm'),
-            screw_supplement=detail.get('screw_supplement', 0.0),
-            precio_total=precio_recalculado,
-            firstname=customer_firstname,
-            lastname=customer_lastname,
-            shipping_address=customer_shipping_address if detail.get("line_type") == "physical" else None,
-            shipping_city=customer_shipping_city if detail.get("line_type") == "physical" else None,
-            shipping_postal_code=customer_shipping_postal_code if detail.get("line_type") == "physical" else None,
-            billing_address=customer_billing_address,
-            billing_city=customer_billing_city,
-            billing_postal_code=customer_billing_postal_code,
-            CIF=customer_cif,
-            shipping_type=detail.get('shipping_type'),
-            shipping_cost=detail.get('shipping_cost')
-        )
+        if (
+            checkout_session
+            and checkout_session.payment_provider == "stripe"
+            and not creation.is_design_service_checkout
+        ):
+            cleanup_cart_lines_from_checkout_quote(
+                db_session=db.session,
+                cart_model=Cart,
+                user_id=user.id,
+                checkout_quote=checkout_quote,
+                logger=logger
+            )
 
-        db.session.add(new_detail)
-        db.session.flush()
-        if detail.get("line_type") == SERVICE_LINE_TYPE:
-            design_item_order_details[detail["design_request_item_id"]] = new_detail.id
-        subtotal += precio_recalculado * detail.get("quantity", 1)
-
-    shipping_cost = float(checkout_quote["shipping_cost"])
-    backend_total = float(checkout_quote["total_amount"])
-    gross_sum = subtotal + float(shipping_cost or 0.0)
-    discount_value_iva = round(float(checkout_quote["discount_amount"]), 2)
-
-    new_order.discount_code = discount_code
-    new_order.discount_value = discount_value_iva
-    new_order.shipping_cost = round(float(shipping_cost or 0.0), 2)
-    new_order.total_amount = round(backend_total, 2)
-
-    if is_design_service_checkout:
-        mark_design_request_paid(
-            db_session=db.session,
-            design_request_id=order_details[0]["design_request_id"],
-            order_id=new_order.id,
-            item_order_detail_ids=design_item_order_details,
-        )
-
-    logger.info(
-        "Cálculo final autoritativo backend → "
-        f"Bruto: {gross_sum:.2f} € | Descuento: {discount_value_iva:.2f} € | "
-        f"Envío: {shipping_cost:.2f} € | Total guardado: {backend_total:.2f} €"
-    )
-
-    if checkout_session:
-        if customer_snapshot:
-            checkout_session.customer_snapshot = customer_snapshot
-        checkout_session.order_id = new_order.id
-        checkout_session.status = "order_created"
-        if is_design_service_checkout:
-            checkout_session.design_request_id = order_details[0]["design_request_id"]
-
-    if checkout_session and checkout_session.payment_provider == "stripe" and not is_design_service_checkout:
-        cleanup_cart_lines_from_checkout_quote(
-            db_session=db.session,
-            cart_model=Cart,
-            user_id=user.id,
-            checkout_quote=checkout_quote,
-            logger=logger
-        )
-
-    db.session.commit()
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+        raise
 
     try:
         handle_post_order_invoice_workflow(
@@ -1548,7 +1387,7 @@ def _finalize_order_from_checkout_quote(user, checkout_quote, customer_snapshot,
         user=user,
         order=new_order,
         checkout_quote=checkout_quote,
-        customer_firstname=customer_firstname,
+        customer_firstname=customer_context["firstname"],
         customer_snapshot=customer_snapshot,
         mail_username=current_app.config['MAIL_USERNAME'],
         logger=logger,
@@ -4748,7 +4587,7 @@ def admin_issue_invoice_for_order(order_id):
             "code": "ORDER_NOT_FOUND",
         }), 404
 
-    checkout_session, invoiceability_error = _select_checkout_session_for_invoice(order)
+    confirmation_context, invoiceability_error = _select_invoice_confirmation_context_for_invoice(order)
     if invoiceability_error:
         return jsonify({
             "message": invoiceability_error,
@@ -4759,7 +4598,7 @@ def admin_issue_invoice_for_order(order_id):
         result = issue_invoice_for_order(
             db_session=db.session,
             order_id=order.id,
-            checkout_session=checkout_session,
+            confirmation_context=confirmation_context,
             issuer=_build_invoice_issuer_from_config(),
             actor=_invoice_admin_actor(current_user),
             source="manual",
@@ -4821,7 +4660,7 @@ def admin_run_invoice_workflow_for_order(order_id):
             "code": "ORDER_NOT_FOUND",
         }), 404
 
-    checkout_session, invoiceability_error = _select_checkout_session_for_invoice(order)
+    confirmation_context, invoiceability_error = _select_invoice_confirmation_context_for_invoice(order)
     if invoiceability_error:
         return jsonify({
             "message": invoiceability_error,
@@ -4836,7 +4675,7 @@ def admin_run_invoice_workflow_for_order(order_id):
         result = run_invoice_workflow_for_order(
             order.id,
             issuer=_build_invoice_issuer_from_config(),
-            checkout_session=checkout_session,
+            confirmation_context=confirmation_context,
             actor=_invoice_admin_actor(current_user),
             invoice_output_dir=invoice_folder,
             mailer=FlaskMailInvoiceAdapter(mail),

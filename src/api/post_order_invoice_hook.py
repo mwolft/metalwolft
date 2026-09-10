@@ -1,5 +1,7 @@
 from dataclasses import dataclass
 
+from api.invoice_admin_helpers import select_invoice_confirmation_context_for_invoice
+from api.invoice_confirmation_context import WEB_CHECKOUT_SOURCE
 
 FEATURE_DISABLED_REASON = "feature_disabled"
 CONFIGURATION_ERROR_STEP = "configuration"
@@ -30,6 +32,7 @@ def handle_post_order_invoice_workflow(
     mailer_factory,
     logger,
     workflow_runner=None,
+    confirmation_context=None,
 ):
     enabled = enabled is True
     if not enabled:
@@ -43,9 +46,16 @@ def handle_post_order_invoice_workflow(
     checkout_session_id = getattr(checkout_session, "id", None)
 
     try:
+        if confirmation_context is None:
+            confirmation_context, invoiceability_error = (
+                select_invoice_confirmation_context_for_invoice(order)
+            )
+            if invoiceability_error:
+                raise ValueError(invoiceability_error)
         _validate_hook_configuration(
             order_id=order_id,
             checkout_session=checkout_session,
+            confirmation_context=confirmation_context,
             db_session=db_session,
             issuer_factory=issuer_factory,
             invoice_output_dir=invoice_output_dir,
@@ -74,7 +84,7 @@ def handle_post_order_invoice_workflow(
         result = workflow_runner(
             order_id,
             issuer=issuer,
-            checkout_session=checkout_session,
+            confirmation_context=confirmation_context,
             actor=CHECKOUT_AUTO_ACTOR,
             source=CHECKOUT_AUTO_SOURCE,
             invoice_output_dir=invoice_output_dir,
@@ -119,6 +129,7 @@ def _validate_hook_configuration(
     *,
     order_id,
     checkout_session,
+    confirmation_context,
     db_session,
     issuer_factory,
     invoice_output_dir,
@@ -128,6 +139,10 @@ def _validate_hook_configuration(
         raise ValueError("Order is required.")
     if checkout_session is None:
         raise ValueError("Checkout session is required.")
+    if confirmation_context is None:
+        raise ValueError("Invoice confirmation context is required.")
+    if getattr(confirmation_context, "source", None) != WEB_CHECKOUT_SOURCE:
+        raise ValueError("Automatic checkout invoicing requires web confirmation evidence.")
     if db_session is None:
         raise ValueError("Database session is required.")
     if issuer_factory is None:

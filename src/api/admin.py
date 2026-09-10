@@ -21,6 +21,7 @@ from .models import (
     AccountingEntry, SupplierInvoice, SupplierInvoiceDocument, SupplierInvoiceExtraction,
     SupplierInvoiceTaxBreakdown,
     ManualInvoiceDraft, ManualInvoiceDraftLine, WorkOrder, CheckoutSessions,
+    ConfirmedOrderContext,
 )
 from api.accounting_excel_service import (
     AccountingExcelExportError,
@@ -119,7 +120,7 @@ from api.cart_reminder_service import (
 from api.invoice_admin_helpers import (
     build_invoice_issuer_from_config,
     invoice_admin_actor_from_basic_auth,
-    select_checkout_session_for_invoice,
+    select_invoice_confirmation_context_for_invoice,
 )
 from api.invoice_issue_service import (
     CORRECTIVE_INVOICE_TYPE,
@@ -166,9 +167,14 @@ from api.verifactu_record_service import (
     verifactu_system_identity_from_config,
 )
 from datetime import date, datetime, timezone, timedelta
-from sqlalchemy import inspect, or_
+from sqlalchemy import and_, inspect, or_
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import selectinload
+
+from api.order_confirmation_context import (
+    get_order_customer_snapshot,
+    get_order_quote_snapshot,
+)
 
 
 # Credenciales desde ENV
@@ -870,13 +876,24 @@ def _pending_manufacturing_queue(db_session):
         .outerjoin(WorkOrder, WorkOrder.order_id == Orders.id)
         .where(
             Orders.order_status.in_(_PRODUCTION_QUEUE_STATUSES),
-            Orders.checkout_session.has(CheckoutSessions.status.in_(FINAL_CHECKOUT_STATUSES)),
+            or_(
+                Orders.confirmed_order_context.has(
+                    ConfirmedOrderContext.payment_status == "confirmed"
+                ),
+                and_(
+                    ~Orders.confirmed_order_context.has(),
+                    Orders.checkout_session.has(
+                        CheckoutSessions.status.in_(FINAL_CHECKOUT_STATUSES)
+                    ),
+                ),
+            ),
             Orders.order_details.any(OrderDetails.line_type == "physical"),
             ~Orders.order_details.any(OrderDetails.line_type != "physical"),
             or_(WorkOrder.id.is_(None), WorkOrder.manufactured_at.is_(None)),
         )
         .options(
             selectinload(Orders.order_details).selectinload(OrderDetails.product),
+            selectinload(Orders.confirmed_order_context),
             selectinload(Orders.checkout_session),
         )
         .order_by(Orders.order_date.asc(), Orders.id.asc())
@@ -886,9 +903,8 @@ def _pending_manufacturing_queue(db_session):
 
 def _pending_manufacturing_item(order, *, today=None):
     details = tuple(order.order_details or ())
-    checkout_session = getattr(order, "checkout_session", None)
-    customer_snapshot = getattr(checkout_session, "customer_snapshot", None)
-    customer_snapshot = customer_snapshot if isinstance(customer_snapshot, Mapping) else {}
+    customer_snapshot = get_order_customer_snapshot(order)
+    quote_snapshot = get_order_quote_snapshot(order)
     customer_name = " ".join(
         part
         for part in (
@@ -908,7 +924,7 @@ def _pending_manufacturing_item(order, *, today=None):
         )
 
     configurations = tuple(
-        _pending_manufacturing_configuration(checkout_session, detail)
+        _pending_manufacturing_configuration(quote_snapshot, detail)
         for detail in details
     )
     total_units = sum(configuration["quantity"] for configuration in configurations)
@@ -936,10 +952,10 @@ def _pending_manufacturing_item(order, *, today=None):
     }
 
 
-def _pending_manufacturing_configuration(checkout_session, detail):
+def _pending_manufacturing_configuration(quote_snapshot, detail):
     quantity = _queue_quantity(getattr(detail, "quantity", None))
     return {
-        "model_name": _queue_product_name(checkout_session, detail),
+        "model_name": _queue_product_name(quote_snapshot, detail),
         "quantity": quantity,
         "quantity_label": f"{quantity} {'ud.' if quantity == 1 else 'uds.'}",
         "height": _queue_dimension(getattr(detail, "alto", None)),
@@ -947,8 +963,7 @@ def _pending_manufacturing_configuration(checkout_session, detail):
     }
 
 
-def _queue_product_name(checkout_session, detail):
-    quote_snapshot = getattr(checkout_session, "quote_snapshot", None)
+def _queue_product_name(quote_snapshot, detail):
     quote_lines = quote_snapshot.get("lines") if isinstance(quote_snapshot, Mapping) else None
     product_id = getattr(detail, "product_id", None)
     if isinstance(quote_lines, list):
@@ -1247,7 +1262,7 @@ class OrderAdminView(SafeModelView):
             flash('Esta acción no acepta datos fiscales desde el navegador.', 'error')
             return redirect(redirect_url)
 
-        checkout_session, invoiceability_error = select_checkout_session_for_invoice(order)
+        confirmation_context, invoiceability_error = select_invoice_confirmation_context_for_invoice(order)
         if invoiceability_error:
             flash(invoiceability_error, 'error')
             return redirect(redirect_url)
@@ -1255,7 +1270,7 @@ class OrderAdminView(SafeModelView):
         try:
             result = issue_invoice_for_order(
                 db_session=self.session,
-                checkout_session=checkout_session,
+                confirmation_context=confirmation_context,
                 issuer=build_invoice_issuer_from_config(),
                 order=order,
                 source="manual",

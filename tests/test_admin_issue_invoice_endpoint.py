@@ -67,7 +67,7 @@ class AdminIssueInvoiceEndpointSourceTest(unittest.TestCase):
     def test_not_invoiceable_order_returns_409(self):
         source = issue_endpoint_source()
 
-        self.assertIn("_select_checkout_session_for_invoice(order)", source)
+        self.assertIn("_select_invoice_confirmation_context_for_invoice(order)", source)
         self.assertIn("ORDER_NOT_INVOICEABLE", source)
         self.assertIn("), 409", source)
 
@@ -77,7 +77,7 @@ class AdminIssueInvoiceEndpointSourceTest(unittest.TestCase):
         self.assertIn("issue_invoice_for_order(", source)
         self.assertIn("db_session=db.session", source)
         self.assertIn("order_id=order.id", source)
-        self.assertIn("checkout_session=checkout_session", source)
+        self.assertIn("confirmation_context=confirmation_context", source)
         self.assertIn("issuer=_build_invoice_issuer_from_config()", source)
         self.assertIn("actor=_invoice_admin_actor(current_user)", source)
         self.assertIn('source="manual"', source)
@@ -131,22 +131,27 @@ class AdminIssueInvoiceEndpointSourceTest(unittest.TestCase):
         self.assertNotIn("db.session.commit()", source)
         self.assertNotIn("db.session.rollback()", source)
 
-    def test_checkout_session_selector_only_reads_final_checkout_sessions(self):
+    def test_confirmation_selector_prefers_context_and_keeps_legacy_fallback_read_only(self):
         helper_source = helpers_source()
-        source_start = helper_source.index("def select_checkout_session_for_invoice")
+        source_start = helper_source.index("def select_invoice_confirmation_context_for_invoice")
+        legacy_start = helper_source.index("def _select_legacy_checkout_confirmation_context_for_invoice")
         source_end = helper_source.index("def is_checkout_session_usable_for_invoice")
-        source = helper_source[source_start:source_end]
+        source = helper_source[source_start:legacy_start]
+        legacy_source = helper_source[legacy_start:source_end]
         usability_source = helper_source[source_end:]
 
-        self.assertIn("CheckoutSessions.query.filter_by(order_id=order.id).all()", source)
+        self.assertIn("confirmed_order_context", source)
+        self.assertIn("validate_invoice_customer_snapshot", source)
+        self.assertIn("return _select_legacy_checkout_confirmation_context_for_invoice(order)", source)
+        self.assertIn("CheckoutSessions.query.filter_by(order_id=order.id).all()", legacy_source)
         self.assertIn("FINAL_CHECKOUT_STATUSES", usability_source)
         self.assertIn("payment_provider == \"stripe\"", usability_source)
         self.assertIn("payment_intent_id", usability_source)
         self.assertIn("payment_provider == \"paypal\"", usability_source)
         self.assertIn("provider_capture_id", usability_source)
         self.assertIn("provider_order_id", usability_source)
-        self.assertNotIn(".status =", source)
-        self.assertNotIn("db.session.add", source)
+        self.assertNotIn(".status =", legacy_source)
+        self.assertNotIn("db.session.add", legacy_source)
 
 
 if __name__ == "__main__":

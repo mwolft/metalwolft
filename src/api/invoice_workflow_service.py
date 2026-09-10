@@ -92,7 +92,8 @@ def run_invoice_workflow_for_order(
     order_id,
     *,
     issuer,
-    checkout_session,
+    confirmation_context=None,
+    checkout_session=None,
     actor,
     source="manual",
     invoice_output_dir,
@@ -109,6 +110,7 @@ def run_invoice_workflow_for_order(
     _validate_workflow_configuration(
         order_id=order_id,
         issuer=issuer,
+        confirmation_context=confirmation_context,
         checkout_session=checkout_session,
         invoice_output_dir=invoice_output_dir,
         mailer=mailer,
@@ -122,6 +124,7 @@ def run_invoice_workflow_for_order(
         issued_result = issue_invoice_for_order(
             db_session=db_session,
             order_id=order_id,
+            confirmation_context=confirmation_context,
             checkout_session=checkout_session,
             issuer=issuer,
             actor=actor,
@@ -174,6 +177,7 @@ def _validate_workflow_configuration(
     *,
     order_id,
     issuer,
+    confirmation_context,
     checkout_session,
     invoice_output_dir,
     mailer,
@@ -183,8 +187,14 @@ def _validate_workflow_configuration(
         raise InvoiceWorkflowConfigurationError("El pedido es obligatorio.")
     if not issuer:
         raise InvoiceWorkflowConfigurationError("La configuracion del emisor es obligatoria.")
-    if checkout_session is None:
-        raise InvoiceWorkflowConfigurationError("La sesion de checkout es obligatoria.")
+    if confirmation_context is not None and checkout_session is not None:
+        raise InvoiceWorkflowConfigurationError(
+            "Solo se puede indicar un contexto de confirmacion."
+        )
+    if confirmation_context is None and checkout_session is None:
+        raise InvoiceWorkflowConfigurationError(
+            "El contexto de confirmacion es obligatorio."
+        )
     if not invoice_output_dir:
         raise InvoiceWorkflowConfigurationError("La carpeta de facturas es obligatoria.")
     if mailer is None:

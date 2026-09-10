@@ -27,7 +27,18 @@ if HAS_DEPS:
     from flask import Flask
     from flask_jwt_extended import JWTManager, create_access_token
 
-    from api.models import Categories, CheckoutSessions, DesignRequest, DesignServiceConfig, OrderDetails, Orders, Products, Users, db
+    from api.models import (
+        Categories,
+        CheckoutSessions,
+        ConfirmedOrderContext,
+        DesignRequest,
+        DesignServiceConfig,
+        OrderDetails,
+        Orders,
+        Products,
+        Users,
+        db,
+    )
     from api.routes import _finalize_order_from_checkout_quote, api
     from api.design_service import create_design_request
 
@@ -217,6 +228,10 @@ class DesignPaymentEndpointTest(unittest.TestCase):
             self.assertEqual(len(details), 1)
             self.assertEqual(details[0].line_type, "design_service")
             self.assertIsNone(details[0].shipping_address)
+            context = ConfirmedOrderContext.query.one()
+            self.assertEqual(context.order_id, order.id)
+            self.assertEqual(context.source, "web_checkout")
+            self.assertEqual(context.source_checkout_session_id, checkout_session.id)
             self.assertEqual(db.session.get(DesignRequest, self.request_id).status, "pending")
             retried_order, retried_created = _finalize_order_from_checkout_quote(
                 user=db.session.get(Users, self.user_id),

@@ -2,6 +2,7 @@ import copy
 import sys
 import unittest
 from datetime import datetime
+from decimal import Decimal
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import patch
@@ -20,6 +21,8 @@ from api.invoice_issue_service import (
     issue_invoice_for_order,
     issue_total_rectification_for_invoice,
 )
+from api.invoice_confirmation_context import InvoiceConfirmationContext
+from api.invoice_snapshot_builder import InvoiceSnapshotValidationError
 
 
 class FakeDbSession:
@@ -78,6 +81,10 @@ def checkout_session():
         id=456,
         order_id=123,
         status="paid",
+        payment_provider="stripe",
+        payment_intent_id="pi_456",
+        provider_order_id=None,
+        provider_capture_id=None,
         customer_snapshot={
             "firstname": "Sergio",
             "lastname": "Arias",
@@ -86,8 +93,38 @@ def checkout_session():
             "shipping_address": "Calle envio",
             "CIF": "00000000T",
         },
-        quote_snapshot={"total": "116.00"},
+        quote_snapshot={"total_amount": "116.00", "currency": "EUR"},
     )
+
+
+def confirmation_context(**overrides):
+    data = {
+        "order_id": 123,
+        "quote_snapshot": {"total_amount": "116.00", "currency": "EUR"},
+        "customer_snapshot": {
+            "firstname": "Sergio",
+            "lastname": "Arias",
+            "phone": "600000000",
+            "billing_address": "Calle factura",
+            "shipping_address": "Calle envio",
+            "CIF": "00000000T",
+        },
+        "payment_method": "bank_transfer",
+        "payment_reference": "TRF-2026-001",
+        "payment_status": "confirmed",
+        "payment_amount": Decimal("116.00"),
+        "currency": "EUR",
+        "payment_confirmed_at": datetime(2026, 7, 15, 10, 30),
+        "source": "admin_external",
+        "confirmed_by": "flask_admin:sergio",
+        "provider_identifiers": None,
+        "confirmation_context_id": 77,
+        "source_checkout_session_id": None,
+        "source_manual_draft_id": None,
+        "internal_note": "Transferencia confirmada por banco.",
+    }
+    data.update(overrides)
+    return InvoiceConfirmationContext(**data)
 
 
 def issuer_snapshot():
@@ -191,6 +228,8 @@ class InvoiceIssueServiceTest(unittest.TestCase):
         )
         build_snapshot.assert_called_once()
         self.assertEqual(build_snapshot.call_args.args[0], order)
+        self.assertEqual(build_snapshot.call_args.args[1].payment_method, "stripe")
+        self.assertEqual(build_snapshot.call_args.args[1].payment_reference, "pi_456")
         self.assertEqual(build_snapshot.call_args.kwargs["issue_date"], issued_at)
         self.assertEqual(build_snapshot.call_args.kwargs["source"], "admin_manual")
         self.assertEqual(build_snapshot.call_args.kwargs["actor"], {"email": "admin@example.com"})
@@ -218,6 +257,72 @@ class InvoiceIssueServiceTest(unittest.TestCase):
         self.assertEqual(session.flush_count, 1)
         self.assertEqual(session.commit_count, 1)
         self.assertEqual(session.rollback_count, 0)
+
+    def test_service_issues_from_normalized_context_without_checkout_session(self):
+        order = build_order()
+        session = FakeDbSession()
+        context = confirmation_context()
+
+        with patch("api.invoice_issue_service._lock_order_for_update", return_value=order), patch(
+            "api.invoice_issue_service._find_existing_ordinary_invoice", return_value=None
+        ), patch(
+            "api.invoice_issue_service._invoice_model", return_value=FakeInvoice
+        ), patch(
+            "api.invoice_issue_service.acquire_next_invoice_number",
+            return_value=SimpleNamespace(invoice_number="F2026000001"),
+        ), patch(
+            "api.invoice_issue_service.build_invoice_snapshot", return_value=invoice_snapshot()
+        ) as build_snapshot, patch(
+            "api.invoice_issue_service.calculate_invoice_snapshot_hash", return_value="snapshot-hash"
+        ):
+            result = issue_invoice_for_order(
+                db_session=session,
+                order_id=123,
+                confirmation_context=context,
+                issuer=issuer_snapshot(),
+                issue_date=datetime(2026, 7, 15),
+            )
+
+        self.assertTrue(result.created)
+        self.assertEqual(build_snapshot.call_args.args[1], context)
+        self.assertEqual(result.invoice.client_name, "Sergio Arias")
+        self.assertEqual(result.invoice.client_cif, "00000000T")
+
+    def test_invalid_persisted_context_blocks_legacy_checkout_fallback(self):
+        order = build_order()
+        order.confirmed_order_context = SimpleNamespace(
+            id=88,
+            order_id=123,
+            quote_snapshot={"total_amount": "116.00", "currency": "EUR"},
+            customer_snapshot=confirmation_context().customer_snapshot,
+            payment_method="stripe",
+            payment_reference="pi_context",
+            payment_status="confirmed",
+            payment_amount=Decimal("10.00"),
+            currency="EUR",
+            payment_confirmed_at=None,
+            source="web_checkout",
+            confirmed_by=None,
+            provider_identifiers={"payment_intent_id": "pi_context"},
+            source_checkout_session_id=456,
+            source_manual_draft_id=None,
+            internal_note=None,
+        )
+        session = FakeDbSession()
+
+        with patch("api.invoice_issue_service._lock_order_for_update", return_value=order), patch(
+            "api.invoice_issue_service._find_existing_ordinary_invoice", return_value=None
+        ), patch("api.invoice_issue_service.acquire_next_invoice_number") as acquire_number:
+            with self.assertRaises(InvoiceSnapshotValidationError):
+                issue_invoice_for_order(
+                    db_session=session,
+                    order_id=123,
+                    checkout_session=checkout_session(),
+                    issuer=issuer_snapshot(),
+                )
+
+        acquire_number.assert_not_called()
+        self.assertEqual(session.rollback_count, 1)
 
     def test_service_returns_existing_ordinary_invoice_without_consuming_number(self):
         order = build_order()
@@ -653,11 +758,15 @@ class InvoiceFinalizerSourceRegressionTest(unittest.TestCase):
 
     def test_order_and_lines_are_still_created(self):
         finalizer_source = self._finalizer_source()
+        canonical_source = (ROOT_DIR / "src/api/order_creation_service.py").read_text(
+            encoding="utf-8",
+        )
 
-        self.assertIn("new_order = Orders(", finalizer_source)
-        self.assertIn("new_detail = OrderDetails(", finalizer_source)
-        self.assertIn("db.session.add(new_order)", finalizer_source)
-        self.assertIn("db.session.add(new_detail)", finalizer_source)
+        self.assertIn("create_order_from_confirmed_input(", finalizer_source)
+        self.assertIn("new_order = Orders(", canonical_source)
+        self.assertIn("new_detail = OrderDetails(", canonical_source)
+        self.assertIn("db_session.add(new_order)", canonical_source)
+        self.assertIn("db_session.add(new_detail)", canonical_source)
 
     def test_checkout_session_and_selective_cart_cleanup_are_preserved(self):
         finalizer_source = self._finalizer_source()

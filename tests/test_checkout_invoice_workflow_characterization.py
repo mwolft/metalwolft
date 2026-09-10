@@ -52,6 +52,10 @@ def finalizer_source():
     return source[start:end]
 
 
+def canonical_order_creation_source():
+    return (ROOT_DIR / "src/api/order_creation_service.py").read_text(encoding="utf-8")
+
+
 def orders_stripe_fallback_source():
     source = function_source("handle_orders")
     start = source.index("if request.method == 'POST':")
@@ -136,11 +140,15 @@ class PayPalCheckoutInvoiceWorkflowCharacterizationTest(unittest.TestCase):
 class CheckoutFinalizerInvoiceWorkflowCharacterizationTest(unittest.TestCase):
     def test_finalizer_creates_order_lines_and_links_checkout_session(self):
         source = finalizer_source()
+        canonical_source = canonical_order_creation_source()
 
-        self.assertIn("new_order = Orders(", source)
-        self.assertIn("new_detail = OrderDetails(", source)
-        self.assertIn("db.session.add(new_order)", source)
-        self.assertIn("db.session.add(new_detail)", source)
+        self.assertIn("create_order_from_confirmed_input(", source)
+        self.assertIn("new_order = Orders(", canonical_source)
+        self.assertIn("new_detail = OrderDetails(", canonical_source)
+        self.assertIn("db_session.add(new_order)", canonical_source)
+        self.assertIn("db_session.add(new_detail)", canonical_source)
+        self.assertIn("persist_confirmed_order_context(", canonical_source)
+        self.assertNotIn("db_session.commit(", canonical_source)
         self.assertIn("checkout_session.order_id = new_order.id", source)
         self.assertIn('checkout_session.status = "order_created"', source)
 
@@ -163,7 +171,7 @@ class CheckoutFinalizerInvoiceWorkflowCharacterizationTest(unittest.TestCase):
             source.index("send_order_confirmation_email("),
         )
         self.assertIn("checkout_quote=checkout_quote", source)
-        self.assertIn("customer_firstname=customer_firstname", source)
+        self.assertIn('customer_firstname=customer_context["firstname"]', source)
 
     def test_finalizer_does_not_depend_on_invoice_pdf_or_document_workflow(self):
         source = finalizer_source()
@@ -191,9 +199,9 @@ class CheckoutFinalizerInvoiceWorkflowCharacterizationTest(unittest.TestCase):
         self.assertIn("db_session=db.session", source)
 
     def test_finalizer_keeps_order_valid_without_invoice_number(self):
-        source = finalizer_source()
+        source = canonical_order_creation_source()
 
-        order_constructor = source[source.index("new_order = Orders("):source.index("db.session.add(new_order)")]
+        order_constructor = source[source.index("new_order = Orders("):source.index("db_session.add(new_order)")]
         self.assertIn("user_id=user.id", order_constructor)
         self.assertIn("total_amount=0", order_constructor)
         self.assertIn("locator=Orders.generate_locator()", order_constructor)

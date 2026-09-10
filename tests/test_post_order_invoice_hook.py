@@ -2,7 +2,7 @@ import sys
 import unittest
 from pathlib import Path
 from types import SimpleNamespace
-from unittest.mock import Mock
+from unittest.mock import Mock, patch
 
 
 ROOT_DIR = Path(__file__).resolve().parents[1]
@@ -71,6 +71,10 @@ def make_checkout_session():
     return SimpleNamespace(id=456, order_id=123, status="order_created")
 
 
+def make_confirmation_context():
+    return SimpleNamespace(source="web_checkout")
+
+
 class PostOrderInvoiceHookTest(unittest.TestCase):
     def call_hook(self, **overrides):
         values = {
@@ -82,6 +86,7 @@ class PostOrderInvoiceHookTest(unittest.TestCase):
             "invoice_output_dir": "/tmp/invoices",
             "mailer_factory": Mock(return_value=SimpleNamespace(name="mailer")),
             "logger": FakeLogger(),
+            "confirmation_context": make_confirmation_context(),
             "workflow_runner": Mock(return_value=SimpleNamespace(
                 completed=True,
                 failed_step=None,
@@ -149,6 +154,7 @@ class PostOrderInvoiceHookTest(unittest.TestCase):
     def test_flag_true_executes_workflow_once_with_expected_contract(self):
         order = make_order()
         checkout_session = make_checkout_session()
+        confirmation_context = make_confirmation_context()
         session = FakeSession()
         issuer = {"legal_name": "MetalWolft"}
         mailer = SimpleNamespace(name="mailer")
@@ -171,6 +177,7 @@ class PostOrderInvoiceHookTest(unittest.TestCase):
             invoice_output_dir="/tmp/invoices",
             mailer_factory=mailer_factory,
             logger=logger,
+            confirmation_context=confirmation_context,
             workflow_runner=workflow_runner,
         )
 
@@ -179,7 +186,7 @@ class PostOrderInvoiceHookTest(unittest.TestCase):
         workflow_runner.assert_called_once_with(
             123,
             issuer=issuer,
-            checkout_session=checkout_session,
+            confirmation_context=confirmation_context,
             actor=CHECKOUT_AUTO_ACTOR,
             source=CHECKOUT_AUTO_SOURCE,
             invoice_output_dir="/tmp/invoices",
@@ -194,6 +201,45 @@ class PostOrderInvoiceHookTest(unittest.TestCase):
         self.assertIsNone(result.failed_step)
         self.assertEqual(result.invoice_id, 789)
         self.assertEqual(result.invoice_number, "F2026000001")
+
+    def test_hook_does_not_run_for_non_web_confirmation_evidence(self):
+        workflow_runner = Mock()
+
+        result, _ = self.call_hook(
+            enabled=True,
+            confirmation_context=SimpleNamespace(source="admin_external"),
+            workflow_runner=workflow_runner,
+        )
+
+        workflow_runner.assert_not_called()
+        self.assertFalse(result.executed)
+        self.assertEqual(result.failed_step, CONFIGURATION_ERROR_STEP)
+
+    def test_hook_selects_canonical_context_for_checkout_when_not_provided(self):
+        confirmation_context = make_confirmation_context()
+        workflow_runner = Mock(return_value=SimpleNamespace(
+            completed=True,
+            failed_step=None,
+            invoice_id=789,
+            invoice_number="F2026000001",
+        ))
+
+        with patch(
+            "api.post_order_invoice_hook.select_invoice_confirmation_context_for_invoice",
+            return_value=(confirmation_context, None),
+        ) as selector:
+            result, values = self.call_hook(
+                enabled=True,
+                confirmation_context=None,
+                workflow_runner=workflow_runner,
+            )
+
+        selector.assert_called_once_with(values["order"])
+        self.assertTrue(result.completed)
+        self.assertIs(
+            workflow_runner.call_args.kwargs["confirmation_context"],
+            confirmation_context,
+        )
 
     def test_configuration_error_is_controlled_and_does_not_execute_workflow(self):
         workflow_runner = Mock()

@@ -14,6 +14,7 @@ from api.order_shipping import (
     shipping_address_from_order_details,
     shipping_address_lines,
 )
+from api.order_confirmation_context import get_order_customer_snapshot
 from api.utils import CONFIGURATOR_ANCHORAGES, CONFIGURATOR_COLORS
 
 
@@ -82,8 +83,7 @@ class WorkOrderBuilder:
                 "Los servicios de diseño previo no generan parte de fabricación."
             )
 
-        checkout_session = getattr(order, "checkout_session", None)
-        customer_snapshot = getattr(checkout_session, "customer_snapshot", None)
+        customer_snapshot = get_order_customer_snapshot(order)
         return {
             "schema_version": WORK_ORDER_SCHEMA_VERSION,
             "order": {

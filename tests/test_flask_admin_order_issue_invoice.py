@@ -70,11 +70,11 @@ class FlaskAdminOrderIssueInvoiceSourceTest(unittest.TestCase):
 
     def test_new_issue_delegates_once_to_invoice_issue_service(self):
         self.assertIn("order = self.session.get(Orders, order_id)", self.issue_source)
-        self.assertIn("select_checkout_session_for_invoice(order)", self.issue_source)
+        self.assertIn("select_invoice_confirmation_context_for_invoice(order)", self.issue_source)
         self.assertIn("build_invoice_issuer_from_config()", self.issue_source)
         self.assertEqual(self.issue_source.count("issue_invoice_for_order("), 1)
         self.assertIn("db_session=self.session", self.issue_source)
-        self.assertIn("checkout_session=checkout_session", self.issue_source)
+        self.assertIn("confirmation_context=confirmation_context", self.issue_source)
         self.assertIn("order=order", self.issue_source)
         self.assertIn('source="manual"', self.issue_source)
         self.assertIn("actor=invoice_admin_actor_from_basic_auth(request.authorization)", self.issue_source)
@@ -148,7 +148,10 @@ class FlaskAdminOrderIssueInvoiceSourceTest(unittest.TestCase):
     def test_existing_rest_endpoint_still_uses_shared_helpers(self):
         routes = source(ROUTES_PATH)
 
-        self.assertIn("select_checkout_session_for_invoice as _select_checkout_session_for_invoice", routes)
+        self.assertIn(
+            "select_invoice_confirmation_context_for_invoice as _select_invoice_confirmation_context_for_invoice",
+            routes,
+        )
         self.assertIn("build_invoice_issuer_from_config as _build_invoice_issuer_from_config", routes)
         self.assertIn("invoice_admin_actor_from_jwt as _invoice_admin_actor", routes)
 

@@ -532,7 +532,7 @@ class ConfirmedPaymentSnapshotRegressionTest(unittest.TestCase):
         end = source.index("@api.route('/delivery-estimate'", start)
         finalizer = source[start:end]
 
-        self.assertIn("_build_order_details_from_checkout_quote(checkout_quote)", finalizer)
+        self.assertIn("create_order_from_confirmed_input(", finalizer)
         self.assertNotIn("ensure_product_available_for_sale", finalizer)
         self.assertNotIn("build_checkout_quote", finalizer)
 

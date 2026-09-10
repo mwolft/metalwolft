@@ -473,6 +473,12 @@ class Orders(db.Model):
         uselist=False,
         cascade='all, delete-orphan',
     )
+    confirmed_order_context = db.relationship(
+        "ConfirmedOrderContext",
+        back_populates="order",
+        uselist=False,
+        cascade="all, delete-orphan",
+    )
 
     @property
     def shipping_address_summary(self):
@@ -620,6 +626,11 @@ class CheckoutSessions(db.Model):
     user = db.relationship('Users', backref='checkout_sessions', lazy=True)
     order = db.relationship('Orders', backref=db.backref('checkout_session', uselist=False), lazy=True)
     design_request = db.relationship("DesignRequest", backref="checkout_sessions", lazy=True)
+    confirmed_order_context = db.relationship(
+        "ConfirmedOrderContext",
+        back_populates="source_checkout_session",
+        uselist=False,
+    )
 
     @staticmethod
     def generate_public_checkout_token():
@@ -653,6 +664,102 @@ class CheckoutSessions(db.Model):
             "created_at": self.created_at,
             "updated_at": self.updated_at
         }
+
+
+class ConfirmedOrderContext(db.Model):
+    """Immutable canonical confirmation data for one newly created order."""
+
+    __tablename__ = "confirmed_order_contexts"
+    __table_args__ = (
+        db.CheckConstraint(
+            "source IN ('web_checkout', 'admin_external')",
+            name="ck_confirmed_order_contexts_source_valid",
+        ),
+        db.CheckConstraint(
+            "payment_method IN ('stripe', 'paypal', 'bank_transfer', 'cash', 'external_other')",
+            name="ck_confirmed_order_contexts_payment_method_valid",
+        ),
+        db.CheckConstraint(
+            "payment_status = 'confirmed'",
+            name="ck_confirmed_order_contexts_payment_status_confirmed",
+        ),
+        db.CheckConstraint(
+            "currency = 'EUR'",
+            name="ck_confirmed_order_contexts_currency_eur",
+        ),
+        db.CheckConstraint(
+            "payment_amount >= 0",
+            name="ck_confirmed_order_contexts_payment_amount_nonnegative",
+        ),
+    )
+
+    id = db.Column(db.Integer, primary_key=True)
+    order_id = db.Column(db.Integer, db.ForeignKey("orders.id"), nullable=False, unique=True)
+    source = db.Column(db.String(30), nullable=False, default="web_checkout", server_default="web_checkout")
+    quote_snapshot = db.Column(db.JSON, nullable=False)
+    customer_snapshot = db.Column(db.JSON, nullable=False)
+    payment_method = db.Column(db.String(50), nullable=False)
+    payment_status = db.Column(
+        db.String(30),
+        nullable=False,
+        default="confirmed",
+        server_default="confirmed",
+    )
+    payment_reference = db.Column(db.String(255), nullable=True)
+    provider_identifiers = db.Column(db.JSON, nullable=True)
+    payment_confirmed_at = db.Column(db.DateTime, nullable=True)
+    payment_amount = db.Column(db.Numeric(12, 2), nullable=False)
+    currency = db.Column(db.String(3), nullable=False, default="EUR", server_default="EUR")
+    confirmed_at = db.Column(db.DateTime, nullable=False, server_default=db.func.now())
+    confirmed_by = db.Column(db.String(255), nullable=True)
+    source_checkout_session_id = db.Column(
+        db.Integer,
+        db.ForeignKey("checkout_sessions.id"),
+        nullable=True,
+        unique=True,
+    )
+    # Reserved for the later manual-order draft model, which does not exist in this hito.
+    source_manual_draft_id = db.Column(db.Integer, nullable=True, unique=True)
+    internal_note = db.Column(db.Text, nullable=True)
+    created_at = db.Column(db.DateTime, nullable=False, server_default=db.func.now())
+
+    order = db.relationship("Orders", back_populates="confirmed_order_context")
+    source_checkout_session = db.relationship(
+        "CheckoutSessions",
+        back_populates="confirmed_order_context",
+    )
+
+    def __repr__(self):
+        return f"<ConfirmedOrderContext {self.id} for Order {self.order_id}>"
+
+
+@event.listens_for(ConfirmedOrderContext, "before_update")
+def prevent_confirmed_order_context_mutation(mapper, connection, target):
+    """A confirmed context is a historical record, not an editable order draft."""
+    from sqlalchemy import inspect
+
+    immutable_fields = (
+        "order_id",
+        "source",
+        "quote_snapshot",
+        "customer_snapshot",
+        "payment_method",
+        "payment_status",
+        "payment_reference",
+        "provider_identifiers",
+        "payment_confirmed_at",
+        "payment_amount",
+        "currency",
+        "confirmed_at",
+        "confirmed_by",
+        "source_checkout_session_id",
+        "source_manual_draft_id",
+        "internal_note",
+        "created_at",
+    )
+    inspection = inspect(target)
+    if any(inspection.attrs[field].history.has_changes() for field in immutable_fields):
+        raise ValueError("El contexto de pedido confirmado es inmutable.")
 
 
 class OrderDetails(db.Model):

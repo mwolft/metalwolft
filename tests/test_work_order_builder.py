@@ -5,6 +5,7 @@ import re
 import sys
 import unittest
 from datetime import date, datetime
+from decimal import Decimal
 from pathlib import Path
 from unittest.mock import patch
 
@@ -42,6 +43,7 @@ if HAS_DEPS:
     from api.models import (
         Categories,
         CheckoutSessions,
+        ConfirmedOrderContext,
         OrderDetails,
         Orders,
         Products,
@@ -94,7 +96,13 @@ class WorkOrderBuilderTest(unittest.TestCase):
             db.session.remove()
             db.drop_all()
 
-    def _create_physical_order(self, *, include_second_line=False, image=True):
+    def _create_physical_order(
+        self,
+        *,
+        include_second_line=False,
+        image=True,
+        with_checkout_session=True,
+    ):
         category = Categories(
             nombre="Rejas",
             descripcion="Categoría de pruebas",
@@ -170,26 +178,87 @@ class WorkOrderBuilderTest(unittest.TestCase):
                 )
             )
         db.session.flush()
-        db.session.add(
-            CheckoutSessions(
-                user_id=user.id,
-                order_id=order.id,
-                public_checkout_token=f"checkout-{category.id}",
-                quote_snapshot={"lines": [{"product_name": "Reja Essex"}]},
-                customer_snapshot={
-                    "firstname": "María",
-                    "lastname": "Taller",
-                    "phone": "600 123 123",
-                    "shipping_address": "Calle de prueba 1",
-                    "shipping_postal_code": "13001",
-                    "shipping_city": "Ciudad Real",
-                    "shipping_province": "Ciudad Real",
-                    "shipping_country_code": "ES",
-                },
+        if with_checkout_session:
+            db.session.add(
+                CheckoutSessions(
+                    user_id=user.id,
+                    order_id=order.id,
+                    public_checkout_token=f"checkout-{category.id}",
+                    quote_snapshot={"lines": [{"product_name": "Reja Essex"}]},
+                    customer_snapshot={
+                        "firstname": "María",
+                        "lastname": "Taller",
+                        "phone": "600 123 123",
+                        "shipping_address": "Calle de prueba 1",
+                        "shipping_postal_code": "13001",
+                        "shipping_city": "Ciudad Real",
+                        "shipping_province": "Ciudad Real",
+                        "shipping_country_code": "ES",
+                    },
+                )
             )
-        )
         db.session.flush()
         return order
+
+    def _create_confirmed_context(
+        self,
+        order,
+        *,
+        source="web_checkout",
+        payment_status="confirmed",
+        quote_snapshot=None,
+        customer_snapshot=None,
+    ):
+        checkout_session = getattr(order, "checkout_session", None)
+        details = tuple(order.order_details or ())
+        if quote_snapshot is None:
+            quote_snapshot = {
+                "lines": [
+                    {
+                        "product_id": detail.product_id,
+                        "product_name": detail.product.nombre,
+                    }
+                    for detail in details
+                ]
+            }
+        if customer_snapshot is None:
+            customer_snapshot = {
+                "firstname": "María",
+                "lastname": "Contexto",
+                "phone": "600 999 999",
+                "shipping_address": "Calle de contexto 1",
+                "shipping_postal_code": "13001",
+                "shipping_city": "Ciudad Real",
+                "shipping_province": "Ciudad Real",
+                "shipping_country_code": "ES",
+            }
+
+        context = ConfirmedOrderContext(
+            order_id=order.id,
+            source=source,
+            quote_snapshot=quote_snapshot,
+            customer_snapshot=customer_snapshot,
+            payment_method="stripe" if source == "web_checkout" else "cash",
+            payment_status=payment_status,
+            payment_reference=(f"pi-context-{order.id}" if source == "web_checkout" else None),
+            provider_identifiers=(
+                {"payment_intent_id": f"pi-context-{order.id}"}
+                if source == "web_checkout"
+                else None
+            ),
+            payment_amount=Decimal(str(order.total_amount)).quantize(Decimal("0.01")),
+            currency="EUR",
+            confirmed_by=(None if source == "web_checkout" else "admin"),
+            source_checkout_session_id=(
+                checkout_session.id if source == "web_checkout" and checkout_session else None
+            ),
+            internal_note=(
+                None if source == "web_checkout" else "Pago externo confirmado para la prueba."
+            ),
+        )
+        db.session.add(context)
+        db.session.flush()
+        return context
 
     def _auth_header(self):
         token = base64.b64encode(b"admin:secret").decode("ascii")
@@ -262,6 +331,34 @@ class WorkOrderBuilderTest(unittest.TestCase):
             snapshot_json = json.dumps(work_order.snapshot, ensure_ascii=False).lower()
             for forbidden in ("precio", "subtotal", "descuento", "iva", "stripe", "paypal", "factura"):
                 self.assertNotIn(forbidden, snapshot_json)
+
+    def test_work_order_prefers_confirmed_context_customer_snapshot(self):
+        with self.app.app_context():
+            order = db.session.get(Orders, self.order_id)
+            self._create_confirmed_context(
+                order,
+                customer_snapshot={
+                    "firstname": "Ana",
+                    "lastname": "Confirmada",
+                    "phone": "600 777 777",
+                    "shipping_address": "Avenida del contexto 10",
+                    "shipping_postal_code": "13002",
+                    "shipping_city": "Ciudad Real",
+                    "shipping_province": "Ciudad Real",
+                    "shipping_country_code": "ES",
+                },
+            )
+            work_order, _created = get_or_create_work_order(
+                db_session=db.session,
+                order=order,
+                created_by="admin",
+            )
+            db.session.commit()
+
+            customer = work_order.snapshot["customer"]
+            self.assertEqual(customer["name"], "Ana Confirmada")
+            self.assertEqual(customer["phone"], "600 777 777")
+            self.assertIn("Avenida del contexto 10", customer["delivery_address"])
 
     def test_existing_work_order_is_unique_and_catalog_changes_do_not_change_it(self):
         with self.app.app_context():
@@ -525,7 +622,52 @@ class WorkOrderBuilderTest(unittest.TestCase):
             self.assertIsNone(work_order.manufactured_at)
             self.assertIsNone(work_order.manufactured_by)
 
-    def test_production_queue_filters_paid_physical_orders_without_creating_work_orders(self):
+    def test_production_queue_accepts_confirmed_web_context_without_final_checkout_status(self):
+        with self.app.app_context():
+            order = db.session.get(Orders, self.order_id)
+            order.checkout_session.status = "pending_payment"
+            context = self._create_confirmed_context(order)
+            db.session.commit()
+
+            with self.app.test_request_context("/admin/"):
+                queue = admin_module._pending_manufacturing_queue(db.session)
+
+            self.assertEqual([item["locator"] for item in queue], [order.locator])
+            self.assertEqual(context.payment_status, "confirmed")
+            self.assertEqual(db.session.query(WorkOrder).filter_by(order_id=order.id).count(), 0)
+
+    def test_production_queue_accepts_confirmed_context_without_checkout_session(self):
+        with self.app.app_context():
+            order = self._create_physical_order(with_checkout_session=False)
+            context = self._create_confirmed_context(order, source="admin_external")
+            db.session.commit()
+
+            with self.app.test_request_context("/admin/"):
+                queue = admin_module._pending_manufacturing_queue(db.session)
+
+            self.assertIsNone(order.checkout_session)
+            self.assertEqual(context.source, "admin_external")
+            self.assertEqual([item["locator"] for item in queue], [order.locator])
+            self.assertEqual(db.session.query(WorkOrder).filter_by(order_id=order.id).count(), 0)
+
+    def test_production_queue_excludes_nonconfirmed_context_despite_final_checkout_status(self):
+        with self.app.app_context():
+            order = db.session.get(Orders, self.order_id)
+            order.checkout_session.status = "paid"
+            connection = db.session.connection()
+            connection.exec_driver_sql("PRAGMA ignore_check_constraints = ON")
+            try:
+                self._create_confirmed_context(order, payment_status="pending")
+
+                with self.app.test_request_context("/admin/"):
+                    queue = admin_module._pending_manufacturing_queue(db.session)
+
+                self.assertNotIn(order.locator, [item["locator"] for item in queue])
+            finally:
+                db.session.rollback()
+                db.session.connection().exec_driver_sql("PRAGMA ignore_check_constraints = OFF")
+
+    def test_production_queue_preserves_historical_checkout_fallback_without_creating_work_orders(self):
         with self.app.app_context():
             order = db.session.get(Orders, self.order_id)
             order.checkout_session.status = "order_created"
@@ -537,6 +679,8 @@ class WorkOrderBuilderTest(unittest.TestCase):
             cancelled_order.order_status = "cancelado"
             unpaid_order = self._create_physical_order()
             unpaid_order.checkout_session.status = "pending_payment"
+            paid_historical_order = self._create_physical_order()
+            paid_historical_order.checkout_session.status = "paid"
             multiple_order = self._create_physical_order(include_second_line=True)
             multiple_order.checkout_session.status = "order_created"
             db.session.commit()
@@ -545,10 +689,10 @@ class WorkOrderBuilderTest(unittest.TestCase):
                 queue = admin_module._pending_manufacturing_queue(db.session)
             self.assertEqual(
                 [item["locator"] for item in queue],
-                [order.locator, multiple_order.locator],
+                [order.locator, paid_historical_order.locator, multiple_order.locator],
             )
             self.assertIn("2 ud.", queue[0]["summary"])
-            self.assertEqual(queue[1]["summary"], "2 configuraciones · 3 unidades")
+            self.assertEqual(queue[2]["summary"], "2 configuraciones · 3 unidades")
             self.assertNotIn(design_order.locator, [item["locator"] for item in queue])
             self.assertNotIn(cancelled_order.locator, [item["locator"] for item in queue])
             self.assertNotIn(unpaid_order.locator, [item["locator"] for item in queue])
@@ -560,7 +704,7 @@ class WorkOrderBuilderTest(unittest.TestCase):
                 remaining_after_unpaid = admin_module._pending_manufacturing_queue(db.session)
             self.assertEqual(
                 [item["locator"] for item in remaining_after_unpaid],
-                [multiple_order.locator],
+                [paid_historical_order.locator, multiple_order.locator],
             )
 
             order.checkout_session.status = "order_created"
@@ -571,7 +715,10 @@ class WorkOrderBuilderTest(unittest.TestCase):
             db.session.commit()
             with self.app.test_request_context("/admin/"):
                 remaining = admin_module._pending_manufacturing_queue(db.session)
-            self.assertEqual([item["locator"] for item in remaining], [multiple_order.locator])
+            self.assertEqual(
+                [item["locator"] for item in remaining],
+                [paid_historical_order.locator, multiple_order.locator],
+            )
 
     def test_production_queue_exposes_frozen_configurations_and_delivery_countdown(self):
         with self.app.app_context():
@@ -622,6 +769,21 @@ class WorkOrderBuilderTest(unittest.TestCase):
                 self.assertEqual(
                     admin_module._pending_manufacturing_item(order, today=date(2026, 9, 9))["configurations"][0]["model_name"],
                     "Nombre vivo del catálogo",
+                )
+
+                self._create_confirmed_context(
+                    order,
+                    quote_snapshot={
+                        "lines": [{
+                            "product_id": detail.product_id,
+                            "product_name": "Reja fija Essex congelada desde contexto",
+                        }]
+                    },
+                )
+                db.session.expire(order, ["confirmed_order_context"])
+                self.assertEqual(
+                    admin_module._pending_manufacturing_item(order, today=date(2026, 9, 9))["configurations"][0]["model_name"],
+                    "Reja fija Essex congelada desde contexto",
                 )
 
             multiple_order = self._create_physical_order(include_second_line=True)
