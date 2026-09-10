@@ -1,0 +1,17 @@
+{% extends 'admin/master.html' %}
+
+{% block body %}
+  <div class="mw-manual-order-draft mw-manual-order-draft--confirmation">
+    <div class="page-header"><h2>Confirmar creación del pedido manual</h2></div>
+    <div class="alert alert-warning">
+      Se creará un pedido comercial canónico a partir del borrador revisado y del pago externo confirmado. Esta acción no emite factura ni envía emails.
+    </div>
+    {% include 'admin/_manual_order_draft_quote.html' %}
+    <form method="post" action="{{ action_url }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <input type="hidden" name="confirm_issue" value="confirmed">
+      <button type="submit" class="btn btn-success">CONFIRMAR Y CREAR PEDIDO</button>
+      <a class="btn btn-default" href="{{ cancel_url }}">Volver al borrador</a>
+    </form>
+  </div>
+{% endblock %}

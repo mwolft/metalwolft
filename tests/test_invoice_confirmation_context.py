@@ -166,7 +166,9 @@ class InvoiceConfirmationContextTest(unittest.TestCase):
         self.assertEqual(coc_snapshot["references"], legacy_snapshot["references"])
 
     def test_admin_external_context_builds_v2_without_checkout_identifiers(self):
-        order = make_order()
+        # A manual guest order has no account, so fiscal identity must come from
+        # the immutable confirmed-order customer snapshot.
+        order = make_order(user=None)
         confirmed_context = make_confirmed_context(
             id=45,
             source="admin_external",
@@ -194,6 +196,8 @@ class InvoiceConfirmationContextTest(unittest.TestCase):
         self.assertEqual(snapshot["payment"]["provider"], "bank_transfer")
         self.assertEqual(snapshot["payment"]["provider_reference"], "TRF-2026-0001")
         self.assertEqual(snapshot["payment"]["paid_at"], "2026-09-10T09:45:00")
+        self.assertEqual(snapshot["customer"]["email"], "cliente@example.com")
+        self.assertEqual(snapshot["customer"]["legal_name"], "Sergio Arias")
         self.assertNotIn("checkout_session_id", snapshot["references"])
         self.assertEqual(snapshot["references"]["confirmation_context_id"], 45)
         self.assertEqual(snapshot["references"]["confirmation_source"], "admin_external")

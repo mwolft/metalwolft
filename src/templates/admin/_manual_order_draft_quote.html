@@ -1,0 +1,40 @@
+{% if quote_view %}
+  <div class="panel panel-default mw-manual-order-draft-quote">
+    <div class="panel-heading"><strong>Resumen calculado</strong></div>
+    <div class="panel-body">
+      <div class="table-responsive">
+        <table class="table table-condensed">
+          <thead>
+            <tr>
+              <th>Configuración</th>
+              <th class="text-right">Precio unitario</th>
+              <th class="text-right">Supl. tornillería</th>
+              <th class="text-right">Total línea</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for line in quote_view.lines %}
+              <tr>
+                <td>
+                  <strong>{{ line.product_name }}</strong> · {{ line.quantity }} ud.<br>
+                  <span class="text-muted">{{ line.alto }} × {{ line.ancho }} cm · {{ line.anclaje }} · {{ line.color }} · {{ line.screw_option }}</span>
+                </td>
+                <td class="text-right">{{ line.unit_price }}</td>
+                <td class="text-right">{{ line.screw_supplement }}</td>
+                <td class="text-right"><strong>{{ line.line_total }}</strong></td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      <dl class="dl-horizontal mw-manual-order-draft-quote__totals">
+        <dt>Subtotal</dt><dd>{{ quote_view.subtotal }}</dd>
+        <dt>Envío</dt><dd>{{ quote_view.shipping_cost }}</dd>
+        {% if quote_view.discount_code %}
+          <dt>Descuento {{ quote_view.discount_code }}{% if quote_view.discount_percent is not none %} ({{ quote_view.discount_percent }} %){% endif %}</dt><dd>-{{ quote_view.discount_amount }}</dd>
+        {% endif %}
+        <dt>Total</dt><dd><strong>{{ quote_view.total_amount }}</strong></dd>
+      </dl>
+    </div>
+  </div>
+{% endif %}

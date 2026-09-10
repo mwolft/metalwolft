@@ -97,16 +97,45 @@ class CustomerPhonePropagationTest(unittest.TestCase):
         self.assertFalse(updated)
         self.assertIsNone(user.phone)
 
-    def test_order_phone_uses_only_the_checkout_snapshot(self):
+    def test_order_phone_uses_the_manual_confirmation_snapshot_first(self):
         order = SimpleNamespace(
+            confirmed_order_context=SimpleNamespace(customer_snapshot={"phone": "600 123 123"}),
+            checkout_session=SimpleNamespace(customer_snapshot={"phone": "611 111 111"}),
+            user=SimpleNamespace(phone="622 222 222"),
+        )
+
+        self.assertEqual(Orders.customer_phone_snapshot.fget(order), "600 123 123")
+
+    def test_order_phone_uses_the_web_confirmation_snapshot_first(self):
+        order = SimpleNamespace(
+            confirmed_order_context=SimpleNamespace(customer_snapshot={"phone": "600 123 123"}),
+            checkout_session=SimpleNamespace(customer_snapshot={"phone": "611 111 111"}),
+            user=SimpleNamespace(phone="622 222 222"),
+        )
+
+        self.assertEqual(Orders.customer_phone_snapshot.fget(order), "600 123 123")
+
+    def test_order_phone_falls_back_to_the_legacy_checkout_snapshot_without_context(self):
+        order = SimpleNamespace(
+            confirmed_order_context=None,
             checkout_session=SimpleNamespace(customer_snapshot={"phone": "600 123 123"}),
             user=SimpleNamespace(phone="611 111 111"),
         )
 
         self.assertEqual(Orders.customer_phone_snapshot.fget(order), "600 123 123")
 
+    def test_malformed_confirmation_snapshot_does_not_silently_fall_back_to_checkout(self):
+        order = SimpleNamespace(
+            confirmed_order_context=SimpleNamespace(customer_snapshot=None),
+            checkout_session=SimpleNamespace(customer_snapshot={"phone": "600 123 123"}),
+            user=SimpleNamespace(phone="611 111 111"),
+        )
+
+        self.assertIsNone(Orders.customer_phone_snapshot.fget(order))
+
     def test_order_without_snapshot_never_falls_back_to_live_user_phone(self):
         order = SimpleNamespace(
+            confirmed_order_context=None,
             checkout_session=None,
             user=SimpleNamespace(phone="611 111 111"),
         )

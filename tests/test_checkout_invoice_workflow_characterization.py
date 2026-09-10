@@ -202,7 +202,9 @@ class CheckoutFinalizerInvoiceWorkflowCharacterizationTest(unittest.TestCase):
         source = canonical_order_creation_source()
 
         order_constructor = source[source.index("new_order = Orders("):source.index("db_session.add(new_order)")]
-        self.assertIn("user_id=user.id", order_constructor)
+        # The canonical creator resolves the account identity before constructing
+        # the order. Web checkout still supplies its authenticated user here.
+        self.assertIn("user_id=order_user_id", order_constructor)
         self.assertIn("total_amount=0", order_constructor)
         self.assertIn("locator=Orders.generate_locator()", order_constructor)
         self.assertIn('order_status="pendiente"', order_constructor)

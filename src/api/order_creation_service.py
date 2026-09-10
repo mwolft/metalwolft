@@ -6,9 +6,10 @@ import logging
 from dataclasses import dataclass
 from typing import Mapping
 
-from api.confirmed_order_context_service import persist_confirmed_order_context
+from api.confirmed_order_context_service import ADMIN_EXTERNAL_SOURCE, persist_confirmed_order_context
+from api.customer_snapshot import CustomerSnapshotValidationError, extract_manual_customer_snapshot
 from api.design_service import SERVICE_LINE_TYPE
-from api.models import OrderDetails, Orders
+from api.models import ManualOrderDraft, OrderDetails, Orders
 from api.utils import DEFAULT_CONFIGURATOR_SCREW_OPTION, resolve_screw_configuration
 
 
@@ -33,6 +34,8 @@ def create_order_from_confirmed_input(
     quote_snapshot,
     customer_snapshot,
     confirmation=None,
+    estimated_delivery_at=None,
+    estimated_delivery_note=None,
 ):
     """Create an Order, details and optional context without committing."""
     if not quote_snapshot or not quote_snapshot.get("lines"):
@@ -52,13 +55,20 @@ def create_order_from_confirmed_input(
     ):
         raise ValueError("El checkout de diseño previo debe contener únicamente sus líneas de servicio.")
 
-    customer_snapshot = customer_snapshot or {}
+    order_user_id, customer_snapshot = _resolve_order_customer_identity(
+        db_session=db_session,
+        user=user,
+        customer_snapshot=customer_snapshot,
+        confirmation=confirmation,
+    )
     customer_context = build_customer_context({}, customer_snapshot)
     new_order = Orders(
-        user_id=user.id,
+        user_id=order_user_id,
         total_amount=0,
         locator=Orders.generate_locator(),
         order_status="pendiente",
+        estimated_delivery_at=estimated_delivery_at,
+        estimated_delivery_note=estimated_delivery_note,
     )
     db_session.add(new_order)
     db_session.flush()
@@ -169,6 +179,46 @@ def create_order_from_confirmed_input(
         design_request_id=design_request_id,
         design_item_order_detail_ids=design_item_order_details,
     )
+
+
+def _resolve_order_customer_identity(*, db_session, user, customer_snapshot, confirmation):
+    """Allow an accountless customer only through the locked manual-order flow."""
+    if user is not None:
+        user_id = getattr(user, "id", None)
+        if isinstance(user_id, bool) or not isinstance(user_id, int) or user_id < 1:
+            raise ValueError("El usuario del pedido confirmado no es válido.")
+        return user_id, customer_snapshot or {}
+
+    if confirmation is None or getattr(confirmation, "source", None) != ADMIN_EXTERNAL_SOURCE:
+        raise ValueError("Los pedidos web confirmados requieren un usuario existente.")
+
+    draft_id = getattr(confirmation, "source_manual_draft_id", None)
+    if isinstance(draft_id, bool) or not isinstance(draft_id, int) or draft_id < 1:
+        raise ValueError("El pedido manual sin cuenta debe conservar su borrador de origen.")
+
+    manual_draft = (
+        db_session.query(ManualOrderDraft)
+        .filter(ManualOrderDraft.id == draft_id)
+        .with_for_update()
+        .one_or_none()
+    )
+    if (
+        manual_draft is None
+        or manual_draft.status != ManualOrderDraft.STATUS_DRAFT
+        or manual_draft.issued_order_id is not None
+        or manual_draft.customer_mode != ManualOrderDraft.CUSTOMER_MODE_MANUAL_CUSTOMER
+        or manual_draft.user_id is not None
+    ):
+        raise ValueError("El contexto del cliente sin cuenta no procede de un borrador manual válido.")
+
+    try:
+        draft_customer_snapshot = extract_manual_customer_snapshot(manual_draft.customer_draft)
+        supplied_customer_snapshot = extract_manual_customer_snapshot(customer_snapshot)
+    except CustomerSnapshotValidationError as exc:
+        raise ValueError("El cliente sin cuenta no tiene un snapshot completo válido.") from exc
+    if draft_customer_snapshot != supplied_customer_snapshot:
+        raise ValueError("El snapshot del cliente no coincide con el borrador manual validado.")
+    return None, supplied_customer_snapshot
 
 
 def build_order_details_from_checkout_quote(checkout_quote):

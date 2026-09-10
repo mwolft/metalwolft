@@ -88,31 +88,40 @@ class FlaskAdminOrderViewInvoiceNumberTest(unittest.TestCase):
         self.assertIn("invoice_number", searchable_columns)
         self.assertIn("invoice_number", labels)
 
-    def test_create_form_generates_locator_but_never_invoice_number(self):
-        create_form_source = method_source("OrderAdminView", "create_form")
-
-        self.assertIn("Orders.generate_locator()", create_form_source)
-        self.assertNotIn("Orders.generate_next_invoice_number()", create_form_source)
-        self.assertNotIn("form.invoice_number", create_form_source)
-
-    def test_create_form_does_not_call_fiscal_issue_or_document_services(self):
-        create_form_source = method_source("OrderAdminView", "create_form")
-
-        for forbidden_call in (
-            "issue_invoice_for_order",
-            "generate_invoice_pdf",
-            "create_accounting_entry",
-            "send_invoice_email",
-            "create_pending_submission",
-            "run_invoice_workflow",
-        ):
-            self.assertNotIn(forbidden_call, create_form_source)
+    def test_order_admin_blocks_direct_creation_and_keeps_fiscal_sequence_out_of_the_view(self):
+        self.assertIn("can_create = False", self.view_source)
+        self.assertIn("can_delete = False", self.view_source)
+        self.assertNotIn("def create_form", self.view_source)
+        self.assertNotIn("Orders.generate_locator()", self.view_source)
+        self.assertNotIn("Orders.generate_next_invoice_number()", self.view_source)
 
     def test_order_admin_view_does_not_create_invoices_or_consume_fiscal_sequence(self):
         self.assertNotIn("Invoices(", self.view_source)
         self.assertNotIn("InvoiceSequence", self.view_source)
         self.assertNotIn("acquire_next_invoice_number", self.view_source)
         self.assertNotIn("generate_next_invoice_number", self.view_source)
+
+    def test_order_admin_exposes_only_operational_fields_for_editing(self):
+        form_columns = class_assignment_value("OrderAdminView", "form_columns")
+        editable_columns = class_assignment_value("OrderAdminView", "column_editable_list")
+
+        for protected_field in (
+            "user_id",
+            "total_amount",
+            "discount_code",
+            "discount_value",
+            "order_date",
+            "locator",
+        ):
+            self.assertNotIn(protected_field, form_columns)
+        self.assertEqual(editable_columns, [])
+
+    def test_order_details_admin_blocks_direct_mutation_of_confirmed_lines(self):
+        detail_source = class_source("OrderDetailsAdminView")
+
+        self.assertIn("can_create = False", detail_source)
+        self.assertIn("can_edit = False", detail_source)
+        self.assertIn("can_delete = False", detail_source)
 
     def test_order_admin_view_exposes_details_for_contextual_invoice_action(self):
         self.assertIn("can_view_details = True", self.view_source)

@@ -1,0 +1,7 @@
+{% extends 'admin/model/list.html' %}
+
+{% block model_menu_bar %}
+  <p class="mw-manual-order-draft-list-cta">
+    <a class="btn btn-primary" href="{{ url_for('.create_view') }}">NUEVO PEDIDO MANUAL</a>
+  </p>
+{% endblock %}

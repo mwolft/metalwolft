@@ -41,7 +41,11 @@ if HAS_DEPS:
         ManualOrderDraftReviewStaleError,
         issue_manual_order_draft,
     )
-    from api.manual_order_draft_service import review_manual_order_draft
+    from api.manual_order_draft_service import (
+        ManualOrderDraftValidationError,
+        review_manual_order_draft,
+    )
+    from api.order_creation_service import create_order_from_confirmed_input
     from api.models import (
         Categories,
         CheckoutSessions,
@@ -131,6 +135,17 @@ class ManualOrderDraftIssueServiceTest(unittest.TestCase):
             "shipping_postal_code": "13001",
             "shipping_city": "Ciudad Real",
         }
+        customer.update(overrides)
+        return customer
+
+    def guest_customer_draft(self, **overrides):
+        customer = self.customer_draft(
+            email="manual@example.test",
+            billing_province="Ciudad Real",
+            billing_country_code="ES",
+            shipping_province="Ciudad Real",
+            shipping_country_code="ES",
+        )
         customer.update(overrides)
         return customer
 
@@ -244,6 +259,76 @@ class ManualOrderDraftIssueServiceTest(unittest.TestCase):
                 original_profile,
             )
             db.session.rollback()
+
+    def test_guest_manual_customer_reviews_and_issues_without_creating_a_user_or_checkout(self):
+        with self.app.app_context():
+            users_before = Users.query.count()
+            draft = self.create_draft(
+                customer_mode=ManualOrderDraft.CUSTOMER_MODE_MANUAL_CUSTOMER,
+                user_id=None,
+                customer=self.guest_customer_draft(),
+            )
+
+            reviewed_quote = self.review(draft)
+            order = self.issue(draft)
+            context = order.confirmed_order_context
+
+            self.assertIsNone(order.user_id)
+            self.assertIsNone(order.user)
+            self.assertEqual(Users.query.count(), users_before)
+            self.assertEqual(CheckoutSessions.query.count(), 0)
+            self.assertEqual(
+                OrderDetails.query.filter_by(order_id=order.id).count(),
+                1,
+            )
+            self.assertEqual(context.source, "admin_external")
+            self.assertEqual(context.source_manual_draft_id, draft.id)
+            self.assertIsNone(context.source_checkout_session_id)
+            self.assertEqual(context.customer_snapshot, draft.customer_draft)
+            self.assertEqual(context.customer_snapshot["tax_id"], "00000000T")
+            self.assertEqual(context.customer_snapshot["CIF"], "00000000T")
+            self.assertEqual(
+                context.payment_amount,
+                Decimal(str(reviewed_quote["total_amount"])),
+            )
+            self.assertEqual(draft.status, ManualOrderDraft.STATUS_ISSUED)
+            self.assertEqual(draft.issued_order_id, order.id)
+
+            db.session.commit()
+            retry = self.issue(draft)
+            self.assertEqual(retry.id, order.id)
+            self.assertEqual(Orders.query.count(), 1)
+            self.assertEqual(ConfirmedOrderContext.query.count(), 1)
+
+    def test_guest_manual_customer_requires_a_complete_frozen_identity_before_review(self):
+        with self.app.app_context():
+            draft = self.create_draft(
+                customer_mode=ManualOrderDraft.CUSTOMER_MODE_MANUAL_CUSTOMER,
+                user_id=None,
+                customer=self.guest_customer_draft(billing_country_code=""),
+            )
+
+            with self.assertRaisesRegex(ManualOrderDraftValidationError, "billing_country_code"):
+                review_manual_order_draft(db_session=db.session, draft=draft)
+
+            self.assertEqual(Orders.query.count(), 0)
+            self.assertEqual(CheckoutSessions.query.count(), 0)
+
+    def test_canonical_order_creation_rejects_an_accountless_web_input(self):
+        with self.app.app_context():
+            draft = self.create_draft()
+            quote = self.review(draft)
+
+            with self.assertRaisesRegex(ValueError, "web"):
+                create_order_from_confirmed_input(
+                    db_session=db.session,
+                    user=None,
+                    quote_snapshot=quote,
+                    customer_snapshot=draft.customer_draft,
+                    confirmation=None,
+                )
+
+            self.assertEqual(Orders.query.count(), 0)
 
     def test_multiple_draft_lines_create_multiple_order_details(self):
         with self.app.app_context():

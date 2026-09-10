@@ -36,6 +36,16 @@ REQUIRED_CHECKOUT_FIELDS = (
     "billing_city",
 )
 
+# Manual orders created for a customer without an account must retain enough
+# identity and address data to remain operational after the draft is issued.
+REQUIRED_MANUAL_CUSTOMER_FIELDS = (
+    *REQUIRED_CHECKOUT_FIELDS,
+    "billing_province",
+    "billing_country_code",
+    "shipping_province",
+    "shipping_country_code",
+)
+
 _BILLING_ADDRESS_FIELDS = (
     "billing_address",
     "billing_postal_code",
@@ -109,6 +119,21 @@ def extract_customer_snapshot(
         require_checkout_fields=require_checkout_fields,
         validate_address_groups=require_checkout_fields,
     )
+
+
+def extract_manual_customer_snapshot(payload):
+    """Normalize the complete frozen identity required for a guest manual order."""
+    customer_snapshot = extract_customer_snapshot(
+        payload,
+        require_checkout_fields=True,
+    )
+    for field in REQUIRED_MANUAL_CUSTOMER_FIELDS:
+        if not customer_snapshot.get(field):
+            raise CustomerSnapshotValidationError(
+                field,
+                f"El campo '{field}' es obligatorio para un cliente sin cuenta.",
+            )
+    return customer_snapshot
 
 
 def _require_explicit_checkout_legal_name(payload, nested_source):

@@ -22,8 +22,9 @@ from api.manual_order_draft_service import (
     is_manual_order_draft_review_current,
     manual_order_draft_quote_snapshots_match,
     normalize_manual_order_draft_customer,
+    resolve_manual_order_draft_user,
 )
-from api.models import ConfirmedOrderContext, ManualOrderDraft, Orders, Users
+from api.models import ConfirmedOrderContext, ManualOrderDraft, Orders
 from api.order_creation_service import create_order_from_confirmed_input
 
 
@@ -130,6 +131,8 @@ def issue_manual_order_draft(*, db_session, draft_id, actor):
             quote_snapshot=current_quote,
             customer_snapshot=customer_snapshot,
             confirmation=confirmation,
+            estimated_delivery_at=draft.estimated_delivery_at,
+            estimated_delivery_note=draft.estimated_delivery_note,
         )
     except (ConfirmedOrderContextError, ValueError) as exc:
         raise ManualOrderDraftOrderCreationError(
@@ -137,8 +140,6 @@ def issue_manual_order_draft(*, db_session, draft_id, actor):
         ) from exc
 
     order = creation.order
-    order.estimated_delivery_at = draft.estimated_delivery_at
-    order.estimated_delivery_note = draft.estimated_delivery_note
     draft.status = ManualOrderDraft.STATUS_ISSUED
     draft.issued_order_id = order.id
     db_session.flush()
@@ -192,14 +193,12 @@ def _require_complete_current_review(draft):
 
 
 def _resolve_draft_user(*, db_session, draft):
-    user_id = _required_positive_integer(
-        getattr(draft, "user_id", None),
-        "El usuario del borrador",
-    )
-    user = db_session.get(Users, user_id)
-    if user is None:
-        raise ManualOrderDraftCustomerError("El usuario asociado al borrador no existe.")
-    return user
+    try:
+        return resolve_manual_order_draft_user(db_session, draft)
+    except ManualOrderDraftValidationError as exc:
+        raise ManualOrderDraftCustomerError(
+            "Los datos de cliente del borrador no son válidos."
+        ) from exc
 
 
 def _normalize_customer_snapshot(*, draft, user):

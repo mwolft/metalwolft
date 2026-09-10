@@ -308,11 +308,9 @@ def enviar_correo_cambio_estado_o_entrega(mapper, connection, target: Orders):
         if not cambio_estado and not cambio_entrega:
             return
 
-        # Datos comunes
-        try:
-            email = target.user.email  # relación ya cargada normalmente
-        except Exception:
-            email = None
+        # Accountless manual orders do not send automatic emails in this hito.
+        user = getattr(target, "user", None)
+        email = getattr(user, "email", None)
 
         locator = getattr(target, 'locator', None) or '—'
         estado_actual = getattr(target, 'order_status', None)

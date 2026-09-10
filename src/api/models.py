@@ -453,7 +453,7 @@ class Subcategories(db.Model):
 class Orders(db.Model):
     __tablename__ = "orders"
     id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
     order_date = db.Column(db.DateTime, default=db.func.current_timestamp())
     total_amount = db.Column(db.Float, nullable=False)
     shipping_cost = db.Column(db.Float, nullable=True, default=0.0)
@@ -492,9 +492,10 @@ class Orders(db.Model):
 
     @property
     def customer_phone_snapshot(self):
-        """Return the telephone frozen by the checkout, never the live profile value."""
-        checkout_session = getattr(self, "checkout_session", None)
-        customer_snapshot = getattr(checkout_session, "customer_snapshot", None)
+        """Return the canonical frozen telephone, retaining the legacy checkout fallback."""
+        from api.order_confirmation_context import get_order_customer_snapshot
+
+        customer_snapshot = get_order_customer_snapshot(self)
         if not isinstance(customer_snapshot, dict):
             return None
 
@@ -786,6 +787,15 @@ class ManualOrderDraft(db.Model):
             "('bank_transfer', 'cash', 'external_other')",
             name="ck_manual_order_drafts_payment_method_valid",
         ),
+        db.CheckConstraint(
+            "customer_mode IN ('registered_user', 'manual_customer')",
+            name="ck_manual_order_drafts_customer_mode_valid",
+        ),
+        db.CheckConstraint(
+            "(customer_mode = 'registered_user' AND user_id IS NOT NULL) OR "
+            "(customer_mode = 'manual_customer' AND user_id IS NULL)",
+            name="ck_manual_order_drafts_customer_mode_user",
+        ),
         db.UniqueConstraint("issuance_key", name="uq_manual_order_drafts_issuance_key"),
         db.UniqueConstraint("issued_order_id", name="uq_manual_order_drafts_issued_order_id"),
         db.Index("ix_manual_order_drafts_user_status", "user_id", "status"),
@@ -794,9 +804,17 @@ class ManualOrderDraft(db.Model):
     STATUS_DRAFT = "draft"
     STATUS_ISSUED = "issued"
     STATUS_CANCELLED = "cancelled"
+    CUSTOMER_MODE_REGISTERED_USER = "registered_user"
+    CUSTOMER_MODE_MANUAL_CUSTOMER = "manual_customer"
 
     id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=True)
+    customer_mode = db.Column(
+        db.String(24),
+        nullable=False,
+        default=CUSTOMER_MODE_REGISTERED_USER,
+        server_default=CUSTOMER_MODE_REGISTERED_USER,
+    )
     status = db.Column(
         db.String(20),
         nullable=False,
@@ -857,6 +875,16 @@ class ManualOrderDraft(db.Model):
     @property
     def is_cancelled(self):
         return self.status == self.STATUS_CANCELLED
+
+    @property
+    def customer_email(self):
+        """Show the draft contact while the confirmed context remains the final authority."""
+        customer_draft = self.customer_draft if isinstance(self.customer_draft, dict) else {}
+        email = customer_draft.get("email")
+        if isinstance(email, str) and email.strip():
+            return email.strip()
+        user = getattr(self, "user", None)
+        return getattr(user, "email", None)
 
     def __repr__(self):
         return f"<ManualOrderDraft {self.id} {self.status}>"

@@ -11,6 +11,10 @@ MIGRATION_PATH = (
     ROOT_DIR
     / "src/migrations/versions/c9d0e1f2a3b4_add_manual_order_drafts.py"
 )
+GUEST_CUSTOMER_MIGRATION_PATH = (
+    ROOT_DIR
+    / "src/migrations/versions/d1e2f3a4b5c6_add_manual_order_guest_customers.py"
+)
 if str(SRC_DIR) not in sys.path:
     sys.path.insert(0, str(SRC_DIR))
 
@@ -61,6 +65,16 @@ def load_migration_module():
     spec = importlib.util.spec_from_file_location(
         "manual_order_drafts_migration",
         MIGRATION_PATH,
+    )
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def load_guest_customer_migration_module():
+    spec = importlib.util.spec_from_file_location(
+        "manual_order_guest_customers_migration",
+        GUEST_CUSTOMER_MIGRATION_PATH,
     )
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
@@ -148,12 +162,45 @@ class ManualOrderDraftModelsTest(unittest.TestCase):
             self.assertEqual(draft.user.id, self.user_id)
             self.assertIn(draft, draft.user.manual_order_drafts)
 
-    def test_user_is_required(self):
+    def test_customer_mode_enforces_the_registered_and_manual_user_invariants(self):
         with self.app.app_context():
-            db.session.add(ManualOrderDraft())
+            db.session.add(
+                ManualOrderDraft(
+                    customer_mode=ManualOrderDraft.CUSTOMER_MODE_REGISTERED_USER,
+                )
+            )
             with self.assertRaises(IntegrityError):
                 db.session.commit()
             db.session.rollback()
+
+            db.session.add(
+                ManualOrderDraft(
+                    user_id=self.user_id,
+                    customer_mode=ManualOrderDraft.CUSTOMER_MODE_MANUAL_CUSTOMER,
+                )
+            )
+            with self.assertRaises(IntegrityError):
+                db.session.commit()
+            db.session.rollback()
+
+            guest = ManualOrderDraft(
+                customer_mode=ManualOrderDraft.CUSTOMER_MODE_MANUAL_CUSTOMER,
+                customer_draft={"email": "manual@example.test"},
+            )
+            guest_order = Orders(
+                user_id=None,
+                locator="MG1001",
+                total_amount=100.0,
+                order_status="pendiente",
+            )
+            db.session.add_all((guest, guest_order))
+            db.session.commit()
+
+            self.assertIsNone(guest.user_id)
+            self.assertIsNone(guest.user)
+            self.assertEqual(guest.customer_email, "manual@example.test")
+            self.assertIsNone(guest_order.user_id)
+            self.assertIsNone(guest_order.user)
 
     def test_payment_method_database_constraint(self):
         with self.app.app_context():
@@ -370,3 +417,70 @@ class ManualOrderDraftMigrationTest(unittest.TestCase):
                 for column in inspector.get_columns("confirmed_order_contexts")
             })
             self.assertFalse(inspector.get_foreign_keys("confirmed_order_contexts"))
+
+    def test_guest_customer_upgrade_backfills_existing_drafts_and_allows_null_users(self):
+        migration = load_guest_customer_migration_module()
+        engine = sa.create_engine("sqlite:///:memory:")
+
+        with engine.begin() as connection:
+            connection.execute(sa.text("CREATE TABLE users (id INTEGER PRIMARY KEY)"))
+            connection.execute(
+                sa.text(
+                    "CREATE TABLE orders ("
+                    "id INTEGER PRIMARY KEY, "
+                    "user_id INTEGER NOT NULL, "
+                    "FOREIGN KEY(user_id) REFERENCES users(id)"
+                    ")"
+                )
+            )
+            connection.execute(
+                sa.text(
+                    "CREATE TABLE manual_order_drafts ("
+                    "id INTEGER PRIMARY KEY, "
+                    "user_id INTEGER NOT NULL, "
+                    "FOREIGN KEY(user_id) REFERENCES users(id)"
+                    ")"
+                )
+            )
+            connection.execute(sa.text("INSERT INTO users (id) VALUES (1)"))
+            connection.execute(
+                sa.text("INSERT INTO manual_order_drafts (id, user_id) VALUES (1, 1)")
+            )
+            context = MigrationContext.configure(connection)
+            migration.op = Operations(context)
+
+            migration.upgrade()
+
+            inspector = sa.inspect(connection)
+            order_columns = {
+                column["name"]: column for column in inspector.get_columns("orders")
+            }
+            draft_columns = {
+                column["name"]: column
+                for column in inspector.get_columns("manual_order_drafts")
+            }
+            self.assertTrue(order_columns["user_id"]["nullable"])
+            self.assertTrue(draft_columns["user_id"]["nullable"])
+            self.assertFalse(draft_columns["customer_mode"]["nullable"])
+            self.assertEqual(
+                connection.execute(
+                    sa.text("SELECT customer_mode FROM manual_order_drafts WHERE id = 1")
+                ).scalar_one(),
+                "registered_user",
+            )
+            check_names = {
+                constraint["name"]
+                for constraint in inspector.get_check_constraints("manual_order_drafts")
+            }
+            self.assertIn("ck_manual_order_drafts_customer_mode_valid", check_names)
+            self.assertIn("ck_manual_order_drafts_customer_mode_user", check_names)
+
+            migration.downgrade()
+
+            inspector = sa.inspect(connection)
+            self.assertFalse(
+                {
+                    column["name"]
+                    for column in inspector.get_columns("manual_order_drafts")
+                }.__contains__("customer_mode")
+            )

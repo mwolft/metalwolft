@@ -14,6 +14,27 @@ from api.email_routes import enviar_correo_cambio_estado_o_entrega  # noqa: E402
 
 
 class OrderStatusEmailTest(unittest.TestCase):
+    def test_accountless_manual_order_does_not_send_an_automatic_status_email(self):
+        target = SimpleNamespace(
+            user=None,
+            locator="MG0001",
+            order_status="fabricacion",
+            estimated_delivery_at=None,
+            estimated_delivery_note=None,
+        )
+        changed_attribute = SimpleNamespace(
+            key="order_status",
+            history=SimpleNamespace(has_changes=lambda: True),
+        )
+
+        with (
+            patch("api.email_routes.sqla_inspect", return_value=SimpleNamespace(attrs=[changed_attribute])),
+            patch("api.email_routes.send_email") as send_email,
+        ):
+            enviar_correo_cambio_estado_o_entrega(None, None, target)
+
+        send_email.assert_not_called()
+
     def test_status_update_uses_transactional_renderer_without_changing_subject_or_recipient(self):
         target = SimpleNamespace(
             user=SimpleNamespace(email="cliente@example.com"),

@@ -650,6 +650,53 @@ class WorkOrderBuilderTest(unittest.TestCase):
             self.assertEqual([item["locator"] for item in queue], [order.locator])
             self.assertEqual(db.session.query(WorkOrder).filter_by(order_id=order.id).count(), 0)
 
+    def test_guest_manual_order_reaches_production_and_uses_its_frozen_customer_snapshot(self):
+        with self.app.app_context():
+            order = self._create_physical_order(with_checkout_session=False)
+            order.user_id = None
+            self._create_confirmed_context(
+                order,
+                source="admin_external",
+                customer_snapshot={
+                    "firstname": "Ana",
+                    "lastname": "Sin Cuenta",
+                    "email": "manual@example.test",
+                    "phone": "600 888 888",
+                    "billing_address": "Calle Fiscal 1",
+                    "billing_postal_code": "13001",
+                    "billing_city": "Ciudad Real",
+                    "billing_province": "Ciudad Real",
+                    "billing_country_code": "ES",
+                    "shipping_address": "Calle Entrega 2",
+                    "shipping_postal_code": "13002",
+                    "shipping_city": "Ciudad Real",
+                    "shipping_province": "Ciudad Real",
+                    "shipping_country_code": "ES",
+                },
+            )
+            db.session.commit()
+            db.session.expire(order, ["user"])
+            order_id = order.id
+
+            with self.app.test_request_context("/admin/"):
+                queue = admin_module._pending_manufacturing_queue(db.session)
+            self.assertIn(order.locator, [item["locator"] for item in queue])
+
+        html = self.client.get(self._work_order_url(order_id), headers=self._auth_header())
+        self.assertEqual(html.status_code, 200)
+        self.assertIn(b"Ana Sin Cuenta", html.data)
+
+        with patch("api.work_order_pdf_service.requests.get", side_effect=Timeout):
+            pdf = self.client.get(self._pdf_url(order_id), headers=self._auth_header())
+        self.assertEqual(pdf.status_code, 200)
+        self.assertEqual(pdf.mimetype, "application/pdf")
+        self.assertTrue(pdf.data.startswith(b"%PDF"))
+
+        with self.app.app_context():
+            work_order = db.session.query(WorkOrder).filter_by(order_id=order_id).one()
+            self.assertEqual(work_order.snapshot["customer"]["name"], "Ana Sin Cuenta")
+            self.assertEqual(work_order.snapshot["customer"]["phone"], "600 888 888")
+
     def test_production_queue_excludes_nonconfirmed_context_despite_final_checkout_status(self):
         with self.app.app_context():
             order = db.session.get(Orders, self.order_id)

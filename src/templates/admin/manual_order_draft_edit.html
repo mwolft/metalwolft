@@ -1,0 +1,254 @@
+{% extends 'admin/master.html' %}
+
+{% macro render_field(field, input_class='form-control') -%}
+  <div class="form-group{% if field.errors %} has-error{% endif %}">
+    {{ field.label(class_='control-label') }}
+    {{ field(class_=input_class) }}
+    {% for error in field.errors %}<p class="help-block">{{ error }}</p>{% endfor %}
+  </div>
+{%- endmacro %}
+
+{% macro render_line(row) -%}
+  <div class="mw-manual-order-draft-line" data-manual-order-line>
+    <div class="mw-manual-order-draft-line__header">
+      <strong>Configuración</strong>
+      <div class="mw-manual-order-draft-line__actions" aria-label="Orden de la configuración">
+        <button type="button" class="btn btn-default btn-xs" data-manual-order-line-action="up">Subir</button>
+        <button type="button" class="btn btn-default btn-xs" data-manual-order-line-action="down">Bajar</button>
+        <button type="button" class="btn btn-link btn-xs" data-manual-order-line-action="remove">Eliminar</button>
+      </div>
+    </div>
+    <div class="row">
+      <div class="col-sm-6">
+        <div class="form-group">
+          <label>Producto</label>
+          <select class="form-control" name="line_product_id[]">
+            <option value="">Selecciona un producto</option>
+            {% for product in products %}
+              <option value="{{ product.id }}"{% if row.get('product_id')|int == product.id %} selected{% endif %}>{{ product.nombre }}</option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+      <div class="col-sm-2">
+        <div class="form-group"><label>Cantidad</label><input class="form-control" type="number" min="1" step="1" name="line_quantity[]" value="{{ row.get('quantity', '') }}"></div>
+      </div>
+      <div class="col-sm-2">
+        <div class="form-group"><label>Alto (cm)</label><input class="form-control" type="number" min="0.01" step="0.01" name="line_alto[]" value="{{ row.get('alto', '') }}"></div>
+      </div>
+      <div class="col-sm-2">
+        <div class="form-group"><label>Ancho (cm)</label><input class="form-control" type="number" min="0.01" step="0.01" name="line_ancho[]" value="{{ row.get('ancho', '') }}"></div>
+      </div>
+    </div>
+    <div class="row">
+      <div class="col-sm-5">
+        <div class="form-group">
+          <label>Anclaje</label>
+          <select class="form-control" name="line_anclaje[]">
+            <option value="">Selecciona un anclaje</option>
+            {% for value, rule in configurator_anchorages.items() %}
+              <option value="{{ value }}"{% if row.get('anclaje') == value %} selected{% endif %}>{{ rule.label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+      <div class="col-sm-4">
+        <div class="form-group">
+          <label>Color</label>
+          <select class="form-control" name="line_color[]">
+            <option value="">Selecciona un color</option>
+            {% for value, rule in configurator_colors.items() %}
+              <option value="{{ value }}"{% if row.get('color') == value %} selected{% endif %}>{{ rule.label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+      <div class="col-sm-3">
+        <div class="form-group">
+          <label>Tornillería</label>
+          <select class="form-control" name="line_screw_option[]">
+            <option value="">Selecciona una opción</option>
+            {% for value, label in screw_options %}
+              <option value="{{ value }}"{% if row.get('screw_option') == value %} selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+    </div>
+  </div>
+{%- endmacro %}
+
+{% block body %}
+  <div class="mw-manual-order-draft" data-manual-order-draft-editor>
+    <div class="page-header">
+      <h2>{% if draft %}Pedido manual #{{ draft.id }}{% else %}Nuevo pedido manual{% endif %}</h2>
+      <p class="text-muted">El borrador no crea un pedido, factura ni movimiento contable hasta su confirmación explícita.</p>
+    </div>
+
+    <form method="post" action="{{ form_action }}" id="manual-order-draft-form">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+
+      <div class="panel panel-default">
+        <div class="panel-heading"><strong>Cliente</strong></div>
+        <div class="panel-body">
+          <div class="row">
+            <div class="col-sm-4">
+              <div class="form-group{% if form.customer_mode.errors %} has-error{% endif %}">
+                {{ form.customer_mode.label(class_='control-label') }}
+                {{ form.customer_mode(class_='form-control', data_manual_order_customer_mode='true') }}
+                {% for error in form.customer_mode.errors %}<p class="help-block">{{ error }}</p>{% endfor %}
+              </div>
+            </div>
+            <div class="col-sm-4" data-manual-order-registered-user-fields>
+              <div class="form-group{% if form.user_id.errors %} has-error{% endif %}">
+                {{ form.user_id.label(class_='control-label') }}
+                <select class="form-control" id="{{ form.user_id.id }}" name="{{ form.user_id.name }}" data-manual-order-user-select>
+                  {% for value, label in form.user_id.choices %}
+                    {% set profile = user_profiles.get(value, {}) %}
+                    <option value="{{ value }}"
+                      data-email="{{ user_emails.get(value, '') }}"
+                      data-firstname="{{ profile.get('firstname', '') }}"
+                      data-lastname="{{ profile.get('lastname', '') }}"
+                      data-phone="{{ profile.get('phone', '') }}"
+                      data-legal-name="{{ profile.get('legal_name', '') }}"
+                      data-tax-id="{{ profile.get('tax_id', '') }}"
+                      data-billing-address="{{ profile.get('billing_address', '') }}"
+                      data-billing-postal-code="{{ profile.get('billing_postal_code', '') }}"
+                      data-billing-city="{{ profile.get('billing_city', '') }}"
+                      data-shipping-address="{{ profile.get('shipping_address', '') }}"
+                      data-shipping-postal-code="{{ profile.get('shipping_postal_code', '') }}"
+                      data-shipping-city="{{ profile.get('shipping_city', '') }}"
+                      {% if form.user_id.data == value %} selected{% endif %}>{{ label }}</option>
+                  {% endfor %}
+                </select>
+                {% for error in form.user_id.errors %}<p class="help-block">{{ error }}</p>{% endfor %}
+              </div>
+            </div>
+            <div class="col-sm-4">
+              <div class="form-group{% if form.user_email.errors %} has-error{% endif %}">
+                {{ form.user_email.label(class_='control-label') }}
+                {{ form.user_email(class_='form-control', data_manual_order_customer_email='true') }}
+                {% for error in form.user_email.errors %}<p class="help-block">{{ error }}</p>{% endfor %}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel panel-default">
+        <div class="panel-heading"><strong>Identificación y contacto</strong></div>
+        <div class="panel-body">
+          <div class="row">
+            <div class="col-sm-4">{{ render_field(form.firstname) }}</div>
+            <div class="col-sm-4">{{ render_field(form.lastname) }}</div>
+            <div class="col-sm-4">{{ render_field(form.phone) }}</div>
+          </div>
+          <div class="row">
+            <div class="col-sm-8">{{ render_field(form.legal_name) }}</div>
+            <div class="col-sm-4">{{ render_field(form.tax_id) }}</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel panel-default">
+        <div class="panel-heading"><strong>Dirección fiscal</strong></div>
+        <div class="panel-body">
+          <div class="row">
+            <div class="col-sm-6">{{ render_field(form.billing_address) }}</div>
+            <div class="col-sm-2">{{ render_field(form.billing_postal_code) }}</div>
+            <div class="col-sm-2">{{ render_field(form.billing_city) }}</div>
+            <div class="col-sm-2">{{ render_field(form.billing_province) }}</div>
+          </div>
+          <div class="row"><div class="col-sm-2">{{ render_field(form.billing_country_code) }}</div></div>
+        </div>
+      </div>
+
+      <div class="panel panel-default">
+        <div class="panel-heading"><strong>Dirección de envío</strong></div>
+        <div class="panel-body">
+          <div class="checkbox">
+            <label>{{ form.shipping_same_as_billing(data_manual_order_shipping_same='true') }} {{ form.shipping_same_as_billing.label.text }}</label>
+          </div>
+          <div data-manual-order-shipping-fields>
+            <div class="row">
+              <div class="col-sm-6">{{ render_field(form.shipping_address) }}</div>
+              <div class="col-sm-2">{{ render_field(form.shipping_postal_code) }}</div>
+              <div class="col-sm-2">{{ render_field(form.shipping_city) }}</div>
+              <div class="col-sm-2">{{ render_field(form.shipping_province) }}</div>
+            </div>
+            <div class="row"><div class="col-sm-2">{{ render_field(form.shipping_country_code) }}</div></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel panel-default">
+        <div class="panel-heading"><strong>Productos</strong></div>
+        <div class="panel-body">
+          <p class="text-muted">Las configuraciones se validan y valoran únicamente al recalcular el borrador.</p>
+          <div data-manual-order-lines>
+            {% for row in line_rows %}{{ render_line(row) }}{% endfor %}
+          </div>
+          <template data-manual-order-line-template>{{ render_line({}) }}</template>
+          <button type="button" class="btn btn-default" data-manual-order-line-action="add">AÑADIR CONFIGURACIÓN</button>
+        </div>
+      </div>
+
+      <div class="panel panel-default">
+        <div class="panel-heading"><strong>Entrega y descuento</strong></div>
+        <div class="panel-body">
+          <div class="row">
+            <div class="col-sm-4">{{ render_field(form.discount_code) }}</div>
+            <div class="col-sm-4">{{ render_field(form.estimated_delivery_at) }}</div>
+            <div class="col-sm-4">{{ render_field(form.estimated_delivery_note) }}</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel panel-default">
+        <div class="panel-heading"><strong>Pago externo confirmado</strong></div>
+        <div class="panel-body">
+          <p class="text-muted" data-manual-order-payment-help>Selecciona un método para ver la evidencia requerida al confirmar.</p>
+          <div class="row">
+            <div class="col-sm-4">{{ render_field(form.payment_method) }}</div>
+            <div class="col-sm-4">{{ render_field(form.payment_reference) }}</div>
+            <div class="col-sm-4">{{ render_field(form.payment_confirmed_at) }}</div>
+          </div>
+          <div class="row">
+            <div class="col-sm-6">{{ render_field(form.payment_note) }}</div>
+            <div class="col-sm-6">{{ render_field(form.internal_note) }}</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="mw-manual-order-draft__form-actions">
+        <button type="submit" class="btn btn-primary">GUARDAR BORRADOR</button>
+        {% if detail_url %}<a class="btn btn-default" href="{{ detail_url }}">Ver detalle</a>{% endif %}
+        <a class="btn btn-link" href="{{ url_for('.index_view') }}">Volver al listado</a>
+      </div>
+    </form>
+
+    {% if draft %}
+      <section class="mw-manual-order-draft__review">
+        <h3>Revisión del presupuesto</h3>
+        {% if review_current %}
+          <p class="text-success"><strong>Revisión vigente.</strong> El resumen procede del último cálculo autoritativo.</p>
+        {% else %}
+          <p class="text-warning"><strong>Necesita recalcular.</strong> Guarda los cambios y valida de nuevo antes de crear el pedido.</p>
+        {% endif %}
+        {% include 'admin/_manual_order_draft_quote.html' %}
+        <div class="mw-manual-order-draft__actions">
+          <form method="post" action="{{ review_url }}" class="mw-manual-order-draft__inline-form">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <button type="submit" class="btn btn-default">RECALCULAR Y VALIDAR</button>
+          </form>
+          <a class="btn btn-danger" href="{{ cancel_url }}">CANCELAR BORRADOR</a>
+          {% if review_current %}
+            <a class="btn btn-success" href="{{ issue_url }}">CONFIRMAR Y CREAR PEDIDO</a>
+          {% else %}
+            <span class="btn btn-success disabled" aria-disabled="true">CONFIRMAR Y CREAR PEDIDO</span>
+          {% endif %}
+        </div>
+      </section>
+    {% endif %}
+  </div>
+{% endblock %}

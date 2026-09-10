@@ -14,8 +14,9 @@ from api.checkout_service import build_checkout_quote
 from api.customer_snapshot import (
     CustomerSnapshotValidationError,
     extract_customer_snapshot,
+    extract_manual_customer_snapshot,
 )
-from api.models import Users
+from api.models import ManualOrderDraft, Users
 
 
 class ManualOrderDraftError(ValueError):
@@ -37,7 +38,7 @@ class ManualOrderDraftQuoteError(ManualOrderDraftError):
 def review_manual_order_draft(*, db_session, draft):
     """Persist a fresh authoritative quote on one editable draft without committing."""
     _require_editable_draft(draft)
-    user = _resolve_draft_user(db_session, draft)
+    user = resolve_manual_order_draft_user(db_session, draft)
     customer_snapshot = normalize_manual_order_draft_customer(draft=draft, user=user)
     quote_snapshot = calculate_manual_order_draft_quote(draft)
     draft.customer_draft = customer_snapshot
@@ -83,7 +84,15 @@ def normalize_manual_order_draft_customer(*, draft, user):
             "El borrador debe incluir los datos de cliente y facturación."
         )
 
+    customer_mode = manual_order_draft_customer_mode(draft)
     try:
+        if customer_mode == ManualOrderDraft.CUSTOMER_MODE_MANUAL_CUSTOMER:
+            if user is not None or getattr(draft, "user_id", None) is not None:
+                raise ManualOrderDraftValidationError(
+                    "Un cliente sin cuenta no puede tener un usuario asociado."
+                )
+            return extract_manual_customer_snapshot(customer_draft)
+
         customer_snapshot = extract_customer_snapshot(
             customer_draft,
             require_checkout_fields=True,
@@ -93,6 +102,8 @@ def normalize_manual_order_draft_customer(*, draft, user):
 
     user_email = _canonical_email(getattr(user, "email", None))
     customer_email = _canonical_email(customer_snapshot.get("email"))
+    if user is None or getattr(user, "id", None) != getattr(draft, "user_id", None):
+        raise ManualOrderDraftValidationError("El usuario del borrador no es válido.")
     if user_email is None:
         raise ManualOrderDraftValidationError(
             "El usuario del borrador no tiene un email válido."
@@ -102,6 +113,26 @@ def normalize_manual_order_draft_customer(*, draft, user):
             "El email del cliente debe coincidir con el email del usuario asociado."
         )
     return customer_snapshot
+
+
+def manual_order_draft_customer_mode(draft):
+    """Return one allowed customer mode and enforce its user association invariant."""
+    customer_mode = getattr(draft, "customer_mode", None) or ManualOrderDraft.CUSTOMER_MODE_REGISTERED_USER
+    if customer_mode not in {
+        ManualOrderDraft.CUSTOMER_MODE_REGISTERED_USER,
+        ManualOrderDraft.CUSTOMER_MODE_MANUAL_CUSTOMER,
+    }:
+        raise ManualOrderDraftValidationError("El tipo de cliente del borrador no es válido.")
+
+    user_id = getattr(draft, "user_id", None)
+    if customer_mode == ManualOrderDraft.CUSTOMER_MODE_REGISTERED_USER:
+        if isinstance(user_id, bool) or not isinstance(user_id, int) or user_id < 1:
+            raise ManualOrderDraftValidationError("Selecciona un usuario existente.")
+    elif user_id is not None:
+        raise ManualOrderDraftValidationError(
+            "Un cliente sin cuenta no puede tener un usuario asociado."
+        )
+    return customer_mode
 
 
 def build_manual_order_draft_quote_input(draft):
@@ -154,8 +185,6 @@ def build_manual_order_draft_fingerprint(
     _require_editable_draft(draft)
     if customer_snapshot is None:
         user = getattr(draft, "user", None)
-        if user is None:
-            raise ManualOrderDraftValidationError("El usuario del borrador no es válido.")
         customer_snapshot = normalize_manual_order_draft_customer(draft=draft, user=user)
     if quote_snapshot is None:
         quote_snapshot = getattr(draft, "last_quote_snapshot", None)
@@ -166,6 +195,7 @@ def build_manual_order_draft_fingerprint(
 
     payload = {
         "version": 1,
+        "customer_mode": manual_order_draft_customer_mode(draft),
         "user_id": getattr(draft, "user_id", None),
         "customer_draft": customer_snapshot,
         "discount_code": _normalize_discount_code(getattr(draft, "discount_code", None)),
@@ -236,7 +266,12 @@ def _require_editable_draft(draft):
         )
 
 
-def _resolve_draft_user(db_session, draft):
+def resolve_manual_order_draft_user(db_session, draft):
+    """Resolve an account customer, or return None for a validated manual customer."""
+    customer_mode = manual_order_draft_customer_mode(draft)
+    if customer_mode == ManualOrderDraft.CUSTOMER_MODE_MANUAL_CUSTOMER:
+        return None
+
     user_id = getattr(draft, "user_id", None)
     if isinstance(user_id, bool) or not isinstance(user_id, int) or user_id < 1:
         raise ManualOrderDraftValidationError("El usuario del borrador no es válido.")
