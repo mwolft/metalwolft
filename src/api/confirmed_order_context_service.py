@@ -50,6 +50,8 @@ class ConfirmedOrderInput:
 class _ValidatedConfirmation:
     payment_reference: str | None
     provider_identifiers: dict[str, str] | None
+    confirmed_by: str | None
+    internal_note: str | None
 
 
 def build_web_checkout_confirmation_input(checkout_session):
@@ -138,10 +140,10 @@ def persist_confirmed_order_context(
         payment_confirmed_at=confirmation.payment_confirmed_at,
         payment_amount=confirmation.payment_amount,
         currency=confirmation.currency,
-        confirmed_by=confirmation.confirmed_by,
+        confirmed_by=validated_confirmation.confirmed_by,
         source_checkout_session_id=confirmation.source_checkout_session_id,
         source_manual_draft_id=confirmation.source_manual_draft_id,
-        internal_note=confirmation.internal_note,
+        internal_note=validated_confirmation.internal_note,
     )
     db_session.add(context)
     db_session.flush()
@@ -218,6 +220,8 @@ def _validate_confirmation_against_quote(confirmation, quote_snapshot):
 
     payment_reference = _optional_payment_reference(confirmation.payment_reference)
     provider_identifiers = _normalized_provider_identifiers(confirmation.provider_identifiers)
+    confirmed_by = _optional_text(confirmation.confirmed_by, "La persona que confirmó el pago no es válida.")
+    internal_note = _optional_text(confirmation.internal_note, "La nota interna del pago no es válida.")
 
     if confirmation.source == WEB_CHECKOUT_SOURCE:
         _validate_web_checkout_confirmation(
@@ -226,11 +230,20 @@ def _validate_confirmation_against_quote(confirmation, quote_snapshot):
             provider_identifiers,
         )
     else:
-        _validate_admin_external_confirmation(confirmation, payment_reference)
+        validate_admin_external_payment_evidence(
+            payment_method=confirmation.payment_method,
+            payment_reference=payment_reference,
+            payment_confirmed_at=confirmation.payment_confirmed_at,
+            confirmed_by=confirmed_by,
+            internal_note=internal_note,
+            source_checkout_session_id=confirmation.source_checkout_session_id,
+        )
 
     return _ValidatedConfirmation(
         payment_reference=payment_reference,
         provider_identifiers=provider_identifiers,
+        confirmed_by=confirmed_by,
+        internal_note=internal_note,
     )
 
 
@@ -267,22 +280,64 @@ def _validate_web_checkout_confirmation(
         raise ConfirmedOrderContextError("El contexto PayPal no conserva la referencia real del proveedor.")
 
 
-def _validate_admin_external_confirmation(confirmation, payment_reference):
-    if confirmation.source_checkout_session_id is not None:
+def validate_admin_external_payment_evidence(
+    *,
+    payment_method,
+    payment_reference,
+    payment_confirmed_at,
+    confirmed_by,
+    internal_note,
+    source_checkout_session_id=None,
+):
+    """Validate the durable evidence required for any admin-external payment.
+
+    This is intentionally shared by confirmation persistence and invoice-context
+    validation so an issued order cannot pass one boundary and fail the other.
+    """
+    if source_checkout_session_id is not None:
         raise ConfirmedOrderContextError("Un contexto administrativo no puede reutilizar una CheckoutSession.")
-    if confirmation.payment_method in SUPPORTED_WEB_PAYMENT_METHODS and payment_reference is None:
-        raise ConfirmedOrderContextError("Stripe y PayPal requieren una referencia de pago real.")
-    if (
-        confirmation.payment_method in {"cash", "external_other"}
-        and payment_reference is None
-        and (
-            not _has_nonempty_text(confirmation.confirmed_by)
-            or not _has_nonempty_text(confirmation.internal_note)
-        )
-    ):
+    if not isinstance(payment_confirmed_at, datetime):
         raise ConfirmedOrderContextError(
-            "Un pago externo sin referencia requiere quien lo confirmó y una nota interna."
+            "Un pago administrativo requiere la fecha real de confirmación."
         )
+    if not _has_nonempty_text(confirmed_by):
+        raise ConfirmedOrderContextError(
+            "Un pago administrativo requiere quién lo confirmó."
+        )
+
+    if payment_method == "bank_transfer":
+        if payment_reference is None:
+            raise ConfirmedOrderContextError(
+                "Una transferencia requiere una referencia bancaria real."
+            )
+        return
+
+    if payment_method == "cash":
+        if not _has_nonempty_text(internal_note):
+            raise ConfirmedOrderContextError(
+                "Un pago en efectivo requiere una nota interna."
+            )
+        return
+
+    if payment_method == "external_other":
+        if payment_reference is None and not _has_nonempty_text(internal_note):
+            raise ConfirmedOrderContextError(
+                "Un pago externo requiere referencia o nota interna de evidencia."
+            )
+        return
+
+    if payment_method in SUPPORTED_WEB_PAYMENT_METHODS and payment_reference is None:
+        raise ConfirmedOrderContextError("Stripe y PayPal requieren una referencia de pago real.")
+
+
+def confirmation_payment_amount_from_quote(quote_snapshot):
+    """Return the canonical, cent-quantized payment amount from a frozen quote."""
+    return _payment_amount(quote_snapshot)
+
+
+def confirmation_currency_from_quote(quote_snapshot):
+    """Return the supported canonical currency from a frozen quote."""
+    return _currency(quote_snapshot)
 
 
 def _optional_payment_reference(value):
@@ -292,6 +347,15 @@ def _optional_payment_reference(value):
         raise ConfirmedOrderContextError("La referencia de pago no es válida.")
     reference = value.strip()
     return reference or None
+
+
+def _optional_text(value, error_message):
+    if value is None:
+        return None
+    if not isinstance(value, str):
+        raise ConfirmedOrderContextError(error_message)
+    normalized = value.strip()
+    return normalized or None
 
 
 def _normalized_provider_identifiers(value):

@@ -6,18 +6,19 @@ from dataclasses import dataclass
 from datetime import datetime
 from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 
+from api.confirmed_order_context_service import (
+    ADMIN_EXTERNAL_SOURCE,
+    CONFIRMED_PAYMENT_STATUS,
+    SUPPORTED_CONFIRMATION_SOURCES,
+    SUPPORTED_CURRENCY,
+    SUPPORTED_PAYMENT_METHODS,
+    WEB_CHECKOUT_SOURCE,
+    ConfirmedOrderContextError,
+    validate_admin_external_payment_evidence,
+)
+
 
 FINAL_CHECKOUT_STATUSES = frozenset({"paid", "order_created"})
-SUPPORTED_CURRENCY = "EUR"
-CONFIRMED_PAYMENT_STATUS = "confirmed"
-WEB_CHECKOUT_SOURCE = "web_checkout"
-ADMIN_EXTERNAL_SOURCE = "admin_external"
-SUPPORTED_CONFIRMATION_SOURCES = frozenset(
-    {WEB_CHECKOUT_SOURCE, ADMIN_EXTERNAL_SOURCE}
-)
-SUPPORTED_PAYMENT_METHODS = frozenset(
-    {"stripe", "paypal", "bank_transfer", "cash", "external_other"}
-)
 MONEY_QUANTUM = Decimal("0.01")
 
 
@@ -260,44 +261,17 @@ def _validate_web_checkout_context(context):
 
 
 def _validate_admin_external_context(context):
-    if context.source_checkout_session_id is not None:
-        raise InvoiceConfirmationContextError(
-            "Un contexto administrativo no puede reutilizar una sesion de checkout."
+    try:
+        validate_admin_external_payment_evidence(
+            payment_method=context.payment_method,
+            payment_reference=context.payment_reference,
+            payment_confirmed_at=context.payment_confirmed_at,
+            confirmed_by=context.confirmed_by,
+            internal_note=context.internal_note,
+            source_checkout_session_id=context.source_checkout_session_id,
         )
-    if context.payment_confirmed_at is None:
-        raise InvoiceConfirmationContextError(
-            "Un pago administrativo requiere la fecha real de confirmacion."
-        )
-    if not context.confirmed_by:
-        raise InvoiceConfirmationContextError(
-            "Un pago administrativo requiere quien lo confirmo."
-        )
-
-    if context.payment_method == "bank_transfer":
-        if context.payment_reference is None:
-            raise InvoiceConfirmationContextError(
-                "Una transferencia requiere una referencia bancaria real."
-            )
-        return
-
-    if context.payment_method == "cash":
-        if not context.internal_note:
-            raise InvoiceConfirmationContextError(
-                "Un pago en efectivo requiere una nota interna."
-            )
-        return
-
-    if context.payment_method == "external_other":
-        if context.payment_reference is None and not context.internal_note:
-            raise InvoiceConfirmationContextError(
-                "Un pago externo requiere referencia o nota interna de evidencia."
-            )
-        return
-
-    if context.payment_method in {"stripe", "paypal"} and context.payment_reference is None:
-        raise InvoiceConfirmationContextError(
-            "Stripe y PayPal requieren una referencia de pago real."
-        )
+    except ConfirmedOrderContextError as exc:
+        raise InvoiceConfirmationContextError(str(exc)) from exc
 
 
 def _legacy_payment_evidence(checkout_session, payment_method):

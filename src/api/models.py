@@ -719,7 +719,12 @@ class ConfirmedOrderContext(db.Model):
         unique=True,
     )
     # Reserved for the later manual-order draft model, which does not exist in this hito.
-    source_manual_draft_id = db.Column(db.Integer, nullable=True, unique=True)
+    source_manual_draft_id = db.Column(
+        db.Integer,
+        db.ForeignKey("manual_order_drafts.id"),
+        nullable=True,
+        unique=True,
+    )
     internal_note = db.Column(db.Text, nullable=True)
     created_at = db.Column(db.DateTime, nullable=False, server_default=db.func.now())
 
@@ -727,6 +732,11 @@ class ConfirmedOrderContext(db.Model):
     source_checkout_session = db.relationship(
         "CheckoutSessions",
         back_populates="confirmed_order_context",
+    )
+    source_manual_draft = db.relationship(
+        "ManualOrderDraft",
+        back_populates="confirmed_order_context",
+        foreign_keys="ConfirmedOrderContext.source_manual_draft_id",
     )
 
     def __repr__(self):
@@ -760,6 +770,145 @@ def prevent_confirmed_order_context_mutation(mapper, connection, target):
     inspection = inspect(target)
     if any(inspection.attrs[field].history.has_changes() for field in immutable_fields):
         raise ValueError("El contexto de pedido confirmado es inmutable.")
+
+
+class ManualOrderDraft(db.Model):
+    """Mutable physical-order input that exists before a canonical Order."""
+
+    __tablename__ = "manual_order_drafts"
+    __table_args__ = (
+        db.CheckConstraint(
+            "status IN ('draft', 'issued', 'cancelled')",
+            name="ck_manual_order_drafts_status_valid",
+        ),
+        db.CheckConstraint(
+            "payment_method IS NULL OR payment_method IN "
+            "('bank_transfer', 'cash', 'external_other')",
+            name="ck_manual_order_drafts_payment_method_valid",
+        ),
+        db.UniqueConstraint("issuance_key", name="uq_manual_order_drafts_issuance_key"),
+        db.UniqueConstraint("issued_order_id", name="uq_manual_order_drafts_issued_order_id"),
+        db.Index("ix_manual_order_drafts_user_status", "user_id", "status"),
+    )
+
+    STATUS_DRAFT = "draft"
+    STATUS_ISSUED = "issued"
+    STATUS_CANCELLED = "cancelled"
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
+    status = db.Column(
+        db.String(20),
+        nullable=False,
+        default=STATUS_DRAFT,
+        server_default=STATUS_DRAFT,
+    )
+    customer_draft = db.Column(db.JSON, nullable=True)
+    discount_code = db.Column(db.String(50), nullable=True)
+    estimated_delivery_at = db.Column(db.Date, nullable=True)
+    estimated_delivery_note = db.Column(db.String(255), nullable=True)
+    payment_method = db.Column(db.String(50), nullable=True)
+    payment_reference = db.Column(db.String(255), nullable=True)
+    payment_confirmed_at = db.Column(db.DateTime, nullable=True)
+    payment_note = db.Column(db.Text, nullable=True)
+    internal_note = db.Column(db.Text, nullable=True)
+    # Mutable review cache only; the confirmed context becomes fiscal authority.
+    last_quote_snapshot = db.Column(db.JSON, nullable=True)
+    quote_fingerprint = db.Column(db.String(64), nullable=True)
+    issuance_key = db.Column(db.String(36), nullable=True)
+    issued_order_id = db.Column(db.Integer, db.ForeignKey("orders.id"), nullable=True)
+    created_by = db.Column(db.String(255), nullable=True)
+    created_at = db.Column(db.DateTime, nullable=False, server_default=db.func.now())
+    updated_at = db.Column(
+        db.DateTime,
+        nullable=False,
+        server_default=db.func.now(),
+        onupdate=db.func.now(),
+    )
+
+    user = db.relationship(
+        "Users",
+        backref=db.backref("manual_order_drafts", lazy=True),
+        lazy=True,
+    )
+    issued_order = db.relationship("Orders", foreign_keys=[issued_order_id], lazy=True)
+    lines = db.relationship(
+        "ManualOrderDraftLine",
+        back_populates="draft",
+        lazy=True,
+        cascade="all, delete-orphan",
+        order_by="ManualOrderDraftLine.position",
+    )
+    confirmed_order_context = db.relationship(
+        "ConfirmedOrderContext",
+        back_populates="source_manual_draft",
+        uselist=False,
+        foreign_keys=[ConfirmedOrderContext.source_manual_draft_id],
+    )
+
+    @property
+    def is_editable(self):
+        return self.status == self.STATUS_DRAFT and self.issued_order_id is None
+
+    @property
+    def is_issued(self):
+        return self.status == self.STATUS_ISSUED
+
+    @property
+    def is_cancelled(self):
+        return self.status == self.STATUS_CANCELLED
+
+    def __repr__(self):
+        return f"<ManualOrderDraft {self.id} {self.status}>"
+
+
+class ManualOrderDraftLine(db.Model):
+    """One mutable physical configuration before the authoritative quote."""
+
+    __tablename__ = "manual_order_draft_lines"
+    __table_args__ = (
+        db.UniqueConstraint("draft_id", "position", name="uq_manual_order_draft_lines_position"),
+        db.CheckConstraint(
+            "quantity > 0",
+            name="ck_manual_order_draft_lines_quantity_positive",
+        ),
+        db.CheckConstraint(
+            "position >= 0",
+            name="ck_manual_order_draft_lines_position_nonnegative",
+        ),
+    )
+
+    id = db.Column(db.Integer, primary_key=True)
+    draft_id = db.Column(
+        db.Integer,
+        db.ForeignKey("manual_order_drafts.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    position = db.Column(db.Integer, nullable=False)
+    product_id = db.Column(db.Integer, db.ForeignKey("products.id"), nullable=False)
+    quantity = db.Column(db.Integer, nullable=False)
+    alto = db.Column(db.Float, nullable=True)
+    ancho = db.Column(db.Float, nullable=True)
+    anclaje = db.Column(db.String(50), nullable=True)
+    color = db.Column(db.String(50), nullable=True)
+    screw_option = db.Column(db.String(20), nullable=True)
+    created_at = db.Column(db.DateTime, nullable=False, server_default=db.func.now())
+    updated_at = db.Column(
+        db.DateTime,
+        nullable=False,
+        server_default=db.func.now(),
+        onupdate=db.func.now(),
+    )
+
+    draft = db.relationship("ManualOrderDraft", back_populates="lines", lazy=True)
+    product = db.relationship(
+        "Products",
+        backref=db.backref("manual_order_draft_lines", lazy=True),
+        lazy=True,
+    )
+
+    def __repr__(self):
+        return f"<ManualOrderDraftLine {self.id} draft={self.draft_id}>"
 
 
 class OrderDetails(db.Model):

@@ -3,6 +3,7 @@ import sys
 import unittest
 import importlib.util
 from copy import deepcopy
+from datetime import datetime
 from decimal import Decimal
 from pathlib import Path
 from unittest.mock import patch
@@ -181,6 +182,7 @@ class ConfirmedOrderContextTest(unittest.TestCase):
         payment_status="confirmed",
         payment_reference=None,
         provider_identifiers=None,
+        payment_confirmed_at=datetime(2026, 9, 10, 9, 45),
         confirmed_by="admin@example.test",
         internal_note="Pago externo confirmado por administración.",
     ):
@@ -190,7 +192,7 @@ class ConfirmedOrderContextTest(unittest.TestCase):
             payment_status=payment_status,
             payment_reference=payment_reference,
             provider_identifiers=provider_identifiers,
-            payment_confirmed_at=None,
+            payment_confirmed_at=payment_confirmed_at,
             payment_amount=Decimal("100.00"),
             currency="EUR",
             confirmed_by=confirmed_by,
@@ -311,6 +313,32 @@ class ConfirmedOrderContextTest(unittest.TestCase):
                         customer_snapshot=self.customer_snapshot(),
                         confirmation=self.external_confirmation(**values),
                     )
+
+    def test_external_payment_evidence_requires_real_date_and_actor_for_every_method(self):
+        with self.app.app_context():
+            invalid_inputs = (
+                self.external_confirmation(
+                    payment_method="bank_transfer",
+                    payment_reference="TRF-2026-0001",
+                    payment_confirmed_at=None,
+                ),
+                self.external_confirmation(
+                    payment_method="bank_transfer",
+                    payment_reference="TRF-2026-0001",
+                    confirmed_by=" ",
+                ),
+            )
+            for index, confirmation in enumerate(invalid_inputs, start=1):
+                with self.subTest(confirmation=confirmation):
+                    order = self.persisted_order(f"CX15{index:02d}")
+                    with self.assertRaisesRegex(ConfirmedOrderContextError, "requiere"):
+                        persist_confirmed_order_context(
+                            db_session=db.session,
+                            order=order,
+                            quote_snapshot=self.checkout_quote(),
+                            customer_snapshot=self.customer_snapshot(),
+                            confirmation=confirmation,
+                        )
 
     def test_future_external_other_without_reference_requires_actor_and_note(self):
         with self.app.app_context():
