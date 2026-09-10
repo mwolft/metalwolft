@@ -212,6 +212,7 @@ talisman_csp = {
     ],
     "style-src": ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
     "font-src": ["'self'", "https://fonts.gstatic.com"],
+    "img-src": ["'self'", "https://res.cloudinary.com"],
 }
 force_https = should_force_https()
 Talisman(app, content_security_policy=talisman_csp, force_https=force_https)

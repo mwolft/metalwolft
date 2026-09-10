@@ -18,6 +18,7 @@ from api.utils import CONFIGURATOR_ANCHORAGES, CONFIGURATOR_COLORS
 
 
 WORK_ORDER_SCHEMA_VERSION = 1
+WORK_ORDER_IMAGE_HOSTS = frozenset({"res.cloudinary.com"})
 _FORBIDDEN_ECONOMIC_KEYS = frozenset(
     {
         "price",
@@ -52,6 +53,8 @@ class WorkOrderData:
     lines: tuple[Mapping[str, Any], ...]
     generated_at: str | None
     internal_notes: str | None
+    manufactured_at: str | None
+    manufactured_by: str | None
 
     def to_template_context(self):
         return {
@@ -61,6 +64,8 @@ class WorkOrderData:
             "lines": tuple(deepcopy(dict(line)) for line in self.lines),
             "generated_at": self.generated_at,
             "internal_notes": self.internal_notes,
+            "manufactured_at": self.manufactured_at,
+            "manufactured_by": self.manufactured_by,
         }
 
 
@@ -157,6 +162,8 @@ class WorkOrderBuilder:
             lines=tuple(deepcopy(dict(line)) for line in lines if isinstance(line, Mapping)),
             generated_at=_date_text(getattr(work_order, "created_at", None)),
             internal_notes=_text(getattr(work_order, "internal_notes", None)),
+            manufactured_at=_datetime_text(getattr(work_order, "manufactured_at", None)),
+            manufactured_by=_text(getattr(work_order, "manufactured_by", None)),
         )
 
 
@@ -242,7 +249,10 @@ def _safe_image_url(product):
         if not candidate:
             continue
         parsed = urlparse(candidate)
-        if parsed.scheme == "https" and parsed.netloc:
+        if (
+            parsed.scheme == "https"
+            and parsed.hostname in WORK_ORDER_IMAGE_HOSTS
+        ):
             return candidate
     return None
 
@@ -263,6 +273,14 @@ def _normalized_dimension(value):
 def _date_text(value):
     if isinstance(value, datetime):
         return value.strftime("%d/%m/%Y")
+    if isinstance(value, date):
+        return value.strftime("%d/%m/%Y")
+    return None
+
+
+def _datetime_text(value):
+    if isinstance(value, datetime):
+        return value.strftime("%d/%m/%Y %H:%M UTC")
     if isinstance(value, date):
         return value.strftime("%d/%m/%Y")
     return None

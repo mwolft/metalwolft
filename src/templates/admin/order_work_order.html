@@ -12,7 +12,10 @@
         <p class="mw-work-order__brand">METALWOLFT</p>
         <h1 id="work-order-title">Parte de fabricación</h1>
       </div>
-      <a class="btn btn-default btn-sm mw-work-order__back" href="{{ order_detail_url }}">Volver al pedido</a>
+      <div class="mw-work-order__actions">
+        <a class="btn btn-default btn-sm" href="{{ pdf_url }}">DESCARGAR PDF</a>
+        <a class="btn btn-default btn-sm mw-work-order__back" href="{{ order_detail_url }}">Volver al pedido</a>
+      </div>
     </header>
 
     <section class="mw-work-order__meta" aria-label="Identificación del parte">
@@ -69,6 +72,25 @@
           </article>
         {% endfor %}
       </div>
+    </section>
+
+    <section class="mw-work-order__manufactured" aria-labelledby="work-order-manufactured-title">
+      <h2 id="work-order-manufactured-title">Estado de fabricación</h2>
+      {% if data.manufactured_at %}
+        <p class="mw-work-order__manufactured-state"><strong>✓ FABRICADO</strong><span>{{ data.manufactured_at }}{% if data.manufactured_by %} · {{ data.manufactured_by }}{% endif %}</span></p>
+        <form method="post" action="{{ unmark_manufactured_url }}" class="mw-work-order__manufactured-form">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+          <label><input type="checkbox" name="confirm_manufactured" value="yes" required> Confirmo que el parte debe volver a pendiente.</label>
+          <button type="submit" class="btn btn-default">DESMARCAR FABRICADO</button>
+        </form>
+      {% else %}
+        <p class="text-muted">Pendiente de fabricación.</p>
+        <form method="post" action="{{ mark_manufactured_url }}" class="mw-work-order__manufactured-form">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+          <label><input type="checkbox" name="confirm_manufactured" value="yes" required> Confirmo que esta configuración está fabricada.</label>
+          <button type="submit" class="btn btn-primary">MARCAR COMO FABRICADO</button>
+        </form>
+      {% endif %}
     </section>
 
     <section class="mw-work-order__notes" aria-labelledby="work-order-notes-title">

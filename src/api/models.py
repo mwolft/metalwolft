@@ -772,6 +772,8 @@ class WorkOrder(db.Model):
     created_at = db.Column(db.DateTime, nullable=False, server_default=db.func.now())
     created_by = db.Column(db.String(100), nullable=False)
     internal_notes = db.Column(db.Text, nullable=True)
+    manufactured_at = db.Column(db.DateTime, nullable=True)
+    manufactured_by = db.Column(db.String(100), nullable=True)
 
     order = db.relationship("Orders", back_populates="work_order")
 

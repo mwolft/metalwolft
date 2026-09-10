@@ -19,6 +19,32 @@
         min-width: 190px;
     }
 
+    .admin-production-queue .panel-heading {
+        align-items: center;
+        display: flex;
+        justify-content: space-between;
+    }
+
+    .admin-production-queue__count {
+        background: rgba(255, 255, 255, .2);
+        border-radius: 10px;
+        font-size: 12px;
+        padding: 2px 8px;
+    }
+
+    .admin-production-queue__item {
+        align-items: center;
+        border-bottom: 1px solid #e5e7eb;
+        display: flex;
+        gap: 14px;
+        justify-content: space-between;
+        padding: 13px 0;
+    }
+
+    .admin-production-queue__item:last-child { border-bottom: 0; padding-bottom: 0; }
+    .admin-production-queue__locator { display: block; font-weight: 700; }
+    .admin-production-queue__summary { color: #64748b; display: block; font-size: 12px; margin-top: 2px; }
+
     @media (max-width: 767px) {
         .admin-dashboard-action .panel-body {
             align-items: stretch;
@@ -33,6 +59,8 @@
         .admin-dashboard-action .btn {
             align-self: flex-start;
         }
+
+        .admin-production-queue__item { align-items: flex-start; flex-direction: column; }
     }
 </style>
 <div class="container-fluid" style="margin-top:10px;">
@@ -51,6 +79,26 @@
             Ver
         </button>
     </form>
+    <div class="panel panel-primary admin-production-queue" style="margin-bottom:15px;">
+        <div class="panel-heading">
+            <strong>PENDIENTES DE FABRICAR</strong>
+            <span class="admin-production-queue__count">{{ pending_manufacturing|length }}</span>
+        </div>
+        <div class="panel-body">
+            {% for item in pending_manufacturing %}
+            <div class="admin-production-queue__item">
+                <div>
+                    <span class="admin-production-queue__locator">{{ item.locator }}</span>
+                    <span>{{ item.customer_name }}</span>
+                    <span class="admin-production-queue__summary">{{ item.summary }}</span>
+                </div>
+                <a class="btn btn-default btn-sm" href="{{ item.work_order_url }}">ABRIR PARTE</a>
+            </div>
+            {% else %}
+            <p class="text-muted" style="margin:0;">No hay pedidos pendientes de fabricación.</p>
+            {% endfor %}
+        </div>
+    </div>
     <div class="panel panel-default admin-dashboard-action" style="margin-bottom:15px;">
         <div class="panel-body">
             <div class="admin-dashboard-action__copy">

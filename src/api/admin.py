@@ -20,7 +20,7 @@ from .models import (
     Posts, Comments, Invoices, VeriFactuRecord, DeliveryEstimateConfig, DesignServiceConfig, DesignServicePriceTier, DesignRequest,
     AccountingEntry, SupplierInvoice, SupplierInvoiceDocument, SupplierInvoiceExtraction,
     SupplierInvoiceTaxBreakdown,
-    ManualInvoiceDraft, ManualInvoiceDraftLine, WorkOrder,
+    ManualInvoiceDraft, ManualInvoiceDraftLine, WorkOrder, CheckoutSessions,
 )
 from api.accounting_excel_service import (
     AccountingExcelExportError,
@@ -142,6 +142,7 @@ from api.work_order_builder import (
     WorkOrderValidationError,
     get_or_create_work_order,
 )
+from api.work_order_pdf_service import generate_work_order_pdf
 from api.invoice_legacy_rectification_aeat_service import (
     LegacyRectificationAeatClassificationError,
     SUPPORTED_LEGACY_AEAT_TYPES,
@@ -150,6 +151,7 @@ from api.invoice_legacy_rectification_aeat_service import (
     legacy_rectification_details,
 )
 from api.invoice_snapshot_builder import (
+    FINAL_CHECKOUT_STATUSES,
     SUPPORTED_TOTAL_RECTIFICATION_AEAT_TYPES,
     RECTIFICATION_REASON_TEXTS,
     InvoiceSnapshotValidationError,
@@ -164,8 +166,9 @@ from api.verifactu_record_service import (
     verifactu_system_identity_from_config,
 )
 from datetime import datetime, timezone, timedelta
-from sqlalchemy import inspect 
+from sqlalchemy import inspect, or_
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy.orm import selectinload
 
 
 # Credenciales desde ENV
@@ -340,6 +343,8 @@ class SecureAdminIndexView(AdminIndexView):
             "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
         ]
 
+        pending_manufacturing = _pending_manufacturing_queue(db.session)
+
         recent_orders = db.session.execute(
             db.select(Orders).order_by(Orders.id.desc()).limit(10)
         ).scalars().all()
@@ -378,6 +383,7 @@ class SecureAdminIndexView(AdminIndexView):
             tz_es=tz_es,
             break_even_kpi=break_even_kpi,
             aeat_unified_url=self.get_url('.unified_aeat_ledger'),
+            pending_manufacturing=pending_manufacturing,
         )
 
     @expose('/libro-aeat', methods=['GET', 'POST'])
@@ -854,6 +860,78 @@ def _valid_work_order_csrf_token(token):
     )
 
 
+_PRODUCTION_QUEUE_STATUSES = frozenset({"pendiente", "fabricacion", "pintura", "embalaje"})
+
+
+def _pending_manufacturing_queue(db_session):
+    """Return paid physical orders without creating manufacturing work orders."""
+    orders = db_session.execute(
+        db.select(Orders)
+        .outerjoin(WorkOrder, WorkOrder.order_id == Orders.id)
+        .where(
+            Orders.order_status.in_(_PRODUCTION_QUEUE_STATUSES),
+            Orders.checkout_session.has(CheckoutSessions.status.in_(FINAL_CHECKOUT_STATUSES)),
+            Orders.order_details.any(OrderDetails.line_type == "physical"),
+            ~Orders.order_details.any(OrderDetails.line_type != "physical"),
+            or_(WorkOrder.id.is_(None), WorkOrder.manufactured_at.is_(None)),
+        )
+        .options(
+            selectinload(Orders.order_details),
+            selectinload(Orders.checkout_session),
+        )
+        .order_by(Orders.order_date.asc(), Orders.id.asc())
+    ).scalars().all()
+    return tuple(_pending_manufacturing_item(order) for order in orders)
+
+
+def _pending_manufacturing_item(order):
+    details = tuple(order.order_details or ())
+    checkout_session = getattr(order, "checkout_session", None)
+    customer_snapshot = getattr(checkout_session, "customer_snapshot", None)
+    customer_snapshot = customer_snapshot if isinstance(customer_snapshot, Mapping) else {}
+    customer_name = " ".join(
+        part
+        for part in (
+            str(customer_snapshot.get("firstname") or "").strip(),
+            str(customer_snapshot.get("lastname") or "").strip(),
+        )
+        if part
+    )
+    if not customer_name and details:
+        customer_name = " ".join(
+            part
+            for part in (
+                str(getattr(details[0], "firstname", "") or "").strip(),
+                str(getattr(details[0], "lastname", "") or "").strip(),
+            )
+            if part
+        )
+
+    total_units = sum(int(getattr(detail, "quantity", 0) or 0) for detail in details)
+    if len(details) == 1:
+        line = details[0]
+        summary = "{units} ud. · {height} × {width} cm".format(
+            units=total_units or "No consta",
+            height=_queue_dimension(getattr(line, "alto", None)),
+            width=_queue_dimension(getattr(line, "ancho", None)),
+        )
+    else:
+        summary = f"{len(details)} configuraciones · {total_units} unidades"
+
+    return {
+        "locator": order.locator or f"Pedido {order.id}",
+        "customer_name": customer_name or "Cliente no identificado",
+        "summary": summary,
+        "work_order_url": url_for("orders.work_order_view", order_id=order.id),
+    }
+
+
+def _queue_dimension(value):
+    if value is None:
+        return "No consta"
+    return f"{value:g}" if isinstance(value, (float, int)) else str(value)
+
+
 def _format_work_order_action(view, context, model, name):
     if order_contains_design_service(model):
         return Markup("<span class='text-muted'>No disponible para diseño previo</span>")
@@ -1194,8 +1272,95 @@ class OrderAdminView(SafeModelView):
             data=data,
             csrf_token=_issue_work_order_csrf_token(),
             observations_url=self.get_url('.update_work_order_observations', order_id=order.id),
+            mark_manufactured_url=self.get_url('.mark_work_order_manufactured', order_id=order.id),
+            unmark_manufactured_url=self.get_url('.unmark_work_order_manufactured', order_id=order.id),
+            pdf_url=self.get_url('.work_order_pdf_view', order_id=order.id),
             order_detail_url=self.get_url('.details_view', id=order.id),
         )
+
+    @expose('/<int:order_id>/parte-trabajo.pdf', methods=['GET'])
+    def work_order_pdf_view(self, order_id):
+        order = self.session.get(Orders, order_id)
+        if not order:
+            flash('Pedido no encontrado.', 'error')
+            return redirect(self.get_url('.index_view'))
+        if order_contains_design_service(order):
+            flash('Los servicios de diseño previo no generan parte de fabricación.', 'error')
+            return redirect(self.get_url('.details_view', id=order.id))
+
+        work_order = self.session.query(WorkOrder).filter_by(order_id=order.id).one_or_none()
+        if work_order is None:
+            flash('Genera primero el parte de fabricación.', 'error')
+            return redirect(self.get_url('.work_order_view', order_id=order.id))
+        try:
+            data = WorkOrderBuilder.from_work_order(work_order)
+            pdf_bytes = generate_work_order_pdf(data)
+        except (WorkOrderValidationError, ValueError) as exc:
+            current_app.logger.warning('Invalid work-order PDF request order_id=%s: %s', order_id, exc)
+            flash('No se ha podido generar el PDF del parte.', 'error')
+            return redirect(self.get_url('.work_order_view', order_id=order.id))
+        except Exception:
+            current_app.logger.exception('Unexpected work-order PDF failure order_id=%s', order_id)
+            flash('No se ha podido generar el PDF del parte.', 'error')
+            return redirect(self.get_url('.work_order_view', order_id=order.id))
+
+        locator = ''.join(
+            char for char in (data.order.get('locator') or f'pedido-{order.id}')
+            if char.isalnum() or char in ('-', '_')
+        ) or f'pedido-{order.id}'
+        return send_file(
+            BytesIO(pdf_bytes),
+            mimetype='application/pdf',
+            as_attachment=True,
+            download_name=f'parte-fabricacion-{locator}.pdf',
+        )
+
+    @expose('/<int:order_id>/parte-trabajo/marcar-fabricado/', methods=['POST'])
+    def mark_work_order_manufactured(self, order_id):
+        return self._update_work_order_manufactured(order_id, manufactured=True)
+
+    @expose('/<int:order_id>/parte-trabajo/desmarcar-fabricado/', methods=['POST'])
+    def unmark_work_order_manufactured(self, order_id):
+        return self._update_work_order_manufactured(order_id, manufactured=False)
+
+    def _update_work_order_manufactured(self, order_id, *, manufactured):
+        redirect_url = self.get_url('.work_order_view', order_id=order_id)
+        order = self.session.get(Orders, order_id)
+        if not order:
+            flash('Pedido no encontrado.', 'error')
+            return redirect(self.get_url('.index_view'))
+        if order_contains_design_service(order):
+            flash('Los servicios de diseño previo no generan parte de fabricación.', 'error')
+            return redirect(self.get_url('.details_view', id=order.id))
+        if not _valid_work_order_csrf_token(request.form.get('csrf_token')):
+            flash('La sesión del formulario ha caducado. Vuelve a intentarlo.', 'error')
+            return redirect(redirect_url)
+        if request.form.get('confirm_manufactured') != 'yes':
+            flash('Confirma la operación de fabricación antes de continuar.', 'error')
+            return redirect(redirect_url)
+
+        work_order = self.session.query(WorkOrder).filter_by(order_id=order.id).one_or_none()
+        if work_order is None:
+            flash('Genera primero el parte de fabricación.', 'error')
+            return redirect(redirect_url)
+
+        if manufactured:
+            work_order.manufactured_at = datetime.now(timezone.utc)
+            work_order.manufactured_by = (request.authorization or {}).get('username')
+            message = 'Parte marcado como fabricado.'
+        else:
+            work_order.manufactured_at = None
+            work_order.manufactured_by = None
+            message = 'Parte desmarcado como fabricado.'
+        try:
+            self.session.commit()
+        except Exception:
+            self.session.rollback()
+            current_app.logger.exception('Work-order manufactured state update failed order_id=%s', order_id)
+            flash('No se ha podido actualizar el estado de fabricación.', 'error')
+        else:
+            flash(message, 'success')
+        return redirect(redirect_url)
 
     @expose('/<int:order_id>/parte-trabajo/observaciones/', methods=['POST'])
     def update_work_order_observations(self, order_id):

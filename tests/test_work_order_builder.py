@@ -6,6 +6,7 @@ import sys
 import unittest
 from datetime import datetime
 from pathlib import Path
+from unittest.mock import patch
 
 
 ROOT_DIR = Path(__file__).resolve().parents[1]
@@ -23,13 +24,17 @@ def has_package(package):
 
 HAS_DEPS = all(
     has_package(package)
-    for package in ("flask", "flask_admin", "flask_sqlalchemy", "sqlalchemy", "slugify")
+    for package in (
+        "flask", "flask_admin", "flask_sqlalchemy", "sqlalchemy", "slugify", "PIL", "reportlab",
+    )
 )
 
 
 if HAS_DEPS:
     from flask import Flask
     from flask_admin import Admin
+    from PIL import Image
+    from requests import Timeout
     from sqlalchemy.exc import IntegrityError
     from sqlalchemy.orm import configure_mappers
 
@@ -52,6 +57,7 @@ if HAS_DEPS:
         assert_snapshot_has_no_economic_data,
         get_or_create_work_order,
     )
+    from api.work_order_pdf_service import generate_work_order_pdf
 
 
 @unittest.skipUnless(HAS_DEPS, "Flask Admin test dependencies are not installed.")
@@ -203,6 +209,21 @@ class WorkOrderBuilderTest(unittest.TestCase):
                 return rule.rule.replace("<int:order_id>", str(order_id))
         raise AssertionError("Work-order observation route was not registered")
 
+    def _pdf_url(self, order_id=None):
+        order_id = order_id or self.order_id
+        for rule in self.app.url_map.iter_rules():
+            if rule.endpoint.endswith(".work_order_pdf_view"):
+                return rule.rule.replace("<int:order_id>", str(order_id))
+        raise AssertionError("Work-order PDF route was not registered")
+
+    def _manufactured_url(self, *, manufactured, order_id=None):
+        order_id = order_id or self.order_id
+        endpoint_suffix = ".mark_work_order_manufactured" if manufactured else ".unmark_work_order_manufactured"
+        for rule in self.app.url_map.iter_rules():
+            if rule.endpoint.endswith(endpoint_suffix):
+                return rule.rule.replace("<int:order_id>", str(order_id))
+        raise AssertionError("Work-order manufactured route was not registered")
+
     def _detail_url(self, order_id=None):
         order_id = order_id or self.order_id
         for rule in self.app.url_map.iter_rules():
@@ -292,6 +313,26 @@ class WorkOrderBuilderTest(unittest.TestCase):
             self.assertEqual(lines[1]["screws"]["display"], "No aplica")
             self.assertEqual(lines[1]["opening_type"]["label"], "Abatible")
 
+    def test_snapshot_rejects_untrusted_image_urls_without_using_live_catalog_afterwards(self):
+        with self.app.app_context():
+            order = db.session.get(Orders, self.order_id)
+            order.order_details[0].product.imagen = "https://example.test/untrusted-image.png"
+            db.session.commit()
+            work_order, _created = get_or_create_work_order(
+                db_session=db.session, order=order, created_by="admin"
+            )
+            db.session.commit()
+            self.assertIsNone(work_order.snapshot["lines"][0]["image_url"])
+
+            order.order_details[0].product.imagen = "https://res.cloudinary.com/dewanllxn/image/upload/new.png"
+            db.session.commit()
+            data = WorkOrderBuilder.from_work_order(work_order)
+            self.assertIsNone(data.lines[0]["image_url"])
+
+    def test_html_work_order_image_host_is_permitted_by_flask_csp(self):
+        app_source = (SRC_DIR / "app.py").read_text(encoding="utf-8")
+        self.assertIn('"img-src": ["\'self\'", "https://res.cloudinary.com"]', app_source)
+
     def test_design_service_orders_are_rejected_without_persisting_a_work_order(self):
         with self.app.app_context():
             order = db.session.get(Orders, self.order_id)
@@ -361,6 +402,172 @@ class WorkOrderBuilderTest(unittest.TestCase):
             work_order = db.session.query(WorkOrder).filter_by(order_id=self.order_id).one()
             self.assertEqual(work_order.internal_notes, "Preparar embalaje reforzado.")
             self.assertEqual(work_order.snapshot, original_snapshot)
+
+    def test_pdf_uses_frozen_work_order_data_and_safe_cloudinary_png_rendering(self):
+        class FakeImageResponse:
+            status_code = 200
+            headers = {"Content-Type": "image/png", "Content-Length": "70"}
+
+            def __init__(self, content):
+                self._content = content
+
+            def iter_content(self, chunk_size):
+                yield self._content
+
+        png = Path(__file__).read_bytes()[:0]
+        image_buffer = __import__("io").BytesIO()
+        Image.new("RGB", (4, 4), "white").save(image_buffer, format="PNG")
+        png = image_buffer.getvalue()
+
+        with self.app.app_context():
+            order = db.session.get(Orders, self.order_id)
+            work_order, _created = get_or_create_work_order(
+                db_session=db.session, order=order, created_by="admin"
+            )
+            db.session.commit()
+            data = WorkOrderBuilder.from_work_order(work_order)
+            original_snapshot = deepcopy_json(work_order.snapshot)
+            order.order_details[0].product.nombre = "Nombre vivo que no debe usarse"
+            db.session.commit()
+
+            with patch(
+                "api.work_order_pdf_service.requests.get",
+                return_value=FakeImageResponse(png),
+            ) as request_get:
+                pdf = generate_work_order_pdf(data)
+
+            self.assertTrue(pdf.startswith(b"%PDF"))
+            self.assertIn(b"Reja Essex", pdf)
+            self.assertNotIn(b"308.94", pdf)
+            self.assertNotIn(b"PayPal", pdf)
+            self.assertEqual(work_order.snapshot, original_snapshot)
+            self.assertIn("/image/upload/f_png/", request_get.call_args.args[0])
+
+    def test_pdf_endpoint_is_protected_and_handles_missing_images(self):
+        with self.app.app_context():
+            order = self._create_physical_order(image=False)
+            db.session.commit()
+            order_id = order.id
+            get_or_create_work_order(db_session=db.session, order=order, created_by="admin")
+            db.session.commit()
+
+        unauthenticated = self.client.get(self._pdf_url(order_id))
+        self.assertEqual(unauthenticated.status_code, 401)
+        response = self.client.get(self._pdf_url(order_id), headers=self._auth_header())
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.mimetype, "application/pdf")
+        self.assertIn(b"Imagen no disponible", response.data)
+        self.assertNotIn(b"precio_total", response.data)
+
+    def test_pdf_handles_image_download_failure_and_multiple_frozen_lines(self):
+        with self.app.app_context():
+            order = self._create_physical_order(include_second_line=True)
+            db.session.commit()
+            work_order, _created = get_or_create_work_order(
+                db_session=db.session, order=order, created_by="admin"
+            )
+            db.session.commit()
+            data = WorkOrderBuilder.from_work_order(work_order)
+            with patch("api.work_order_pdf_service.requests.get", side_effect=Timeout):
+                pdf = generate_work_order_pdf(data)
+
+            self.assertTrue(pdf.startswith(b"%PDF"))
+            self.assertIn(b"Reja Essex", pdf)
+            self.assertIn(b"Reja Vermont", pdf)
+            self.assertIn(b"Imagen no disponible", pdf)
+            self.assertNotIn(b"precio_total", pdf)
+            self.assertNotIn(b"308.94", pdf)
+
+    def test_manufactured_state_requires_csrf_preserves_order_and_can_be_reversed(self):
+        view = self.client.get(self._work_order_url(), headers=self._auth_header())
+        csrf_token = re.search(rb'name="csrf_token" value="([^"]+)"', view.data).group(1).decode()
+        with self.app.app_context():
+            order = db.session.get(Orders, self.order_id)
+            initial_status = order.order_status
+            initial_snapshot = deepcopy_json(order.work_order.snapshot)
+
+        unauthenticated = self.client.post(
+            self._manufactured_url(manufactured=True),
+            data={"csrf_token": csrf_token, "confirm_manufactured": "yes"},
+        )
+        self.assertEqual(unauthenticated.status_code, 401)
+        rejected = self.client.post(
+            self._manufactured_url(manufactured=True),
+            data={"confirm_manufactured": "yes"},
+            headers=self._auth_header(),
+        )
+        self.assertEqual(rejected.status_code, 302)
+        marked = self.client.post(
+            self._manufactured_url(manufactured=True),
+            data={"csrf_token": csrf_token, "confirm_manufactured": "yes"},
+            headers=self._auth_header(),
+        )
+        self.assertEqual(marked.status_code, 302)
+        with self.app.app_context():
+            order = db.session.get(Orders, self.order_id)
+            self.assertEqual(order.order_status, initial_status)
+            self.assertEqual(order.work_order.snapshot, initial_snapshot)
+            self.assertIsNotNone(order.work_order.manufactured_at)
+            self.assertEqual(order.work_order.manufactured_by, "admin")
+
+        unmarked = self.client.post(
+            self._manufactured_url(manufactured=False),
+            data={"csrf_token": csrf_token, "confirm_manufactured": "yes"},
+            headers=self._auth_header(),
+        )
+        self.assertEqual(unmarked.status_code, 302)
+        with self.app.app_context():
+            work_order = db.session.query(WorkOrder).filter_by(order_id=self.order_id).one()
+            self.assertIsNone(work_order.manufactured_at)
+            self.assertIsNone(work_order.manufactured_by)
+
+    def test_production_queue_filters_paid_physical_orders_without_creating_work_orders(self):
+        with self.app.app_context():
+            order = db.session.get(Orders, self.order_id)
+            order.checkout_session.status = "order_created"
+            design_order = self._create_physical_order()
+            design_order.order_details[0].line_type = "design_service"
+            design_order.checkout_session.status = "order_created"
+            cancelled_order = self._create_physical_order()
+            cancelled_order.checkout_session.status = "order_created"
+            cancelled_order.order_status = "cancelado"
+            unpaid_order = self._create_physical_order()
+            unpaid_order.checkout_session.status = "pending_payment"
+            multiple_order = self._create_physical_order(include_second_line=True)
+            multiple_order.checkout_session.status = "order_created"
+            db.session.commit()
+
+            with self.app.test_request_context("/admin/"):
+                queue = admin_module._pending_manufacturing_queue(db.session)
+            self.assertEqual(
+                [item["locator"] for item in queue],
+                [order.locator, multiple_order.locator],
+            )
+            self.assertIn("2 ud.", queue[0]["summary"])
+            self.assertEqual(queue[1]["summary"], "2 configuraciones · 3 unidades")
+            self.assertNotIn(design_order.locator, [item["locator"] for item in queue])
+            self.assertNotIn(cancelled_order.locator, [item["locator"] for item in queue])
+            self.assertNotIn(unpaid_order.locator, [item["locator"] for item in queue])
+            self.assertEqual(db.session.query(WorkOrder).filter_by(order_id=order.id).count(), 0)
+
+            order.checkout_session.status = "pending_payment"
+            db.session.commit()
+            with self.app.test_request_context("/admin/"):
+                remaining_after_unpaid = admin_module._pending_manufacturing_queue(db.session)
+            self.assertEqual(
+                [item["locator"] for item in remaining_after_unpaid],
+                [multiple_order.locator],
+            )
+
+            order.checkout_session.status = "order_created"
+            get_or_create_work_order(db_session=db.session, order=order, created_by="admin")
+            db.session.commit()
+            order.work_order.manufactured_at = datetime.now()
+            order.work_order.manufactured_by = "admin"
+            db.session.commit()
+            with self.app.test_request_context("/admin/"):
+                remaining = admin_module._pending_manufacturing_queue(db.session)
+            self.assertEqual([item["locator"] for item in remaining], [multiple_order.locator])
 
     def test_order_detail_action_is_only_available_for_physical_orders(self):
         physical_response = self.client.get(self._detail_url(), headers=self._auth_header())
