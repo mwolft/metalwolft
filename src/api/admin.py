@@ -165,7 +165,7 @@ from api.verifactu_record_service import (
     prepare_verifactu_record_for_submission,
     verifactu_system_identity_from_config,
 )
-from datetime import datetime, timezone, timedelta
+from datetime import date, datetime, timezone, timedelta
 from sqlalchemy import inspect, or_
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import selectinload
@@ -876,7 +876,7 @@ def _pending_manufacturing_queue(db_session):
             or_(WorkOrder.id.is_(None), WorkOrder.manufactured_at.is_(None)),
         )
         .options(
-            selectinload(Orders.order_details),
+            selectinload(Orders.order_details).selectinload(OrderDetails.product),
             selectinload(Orders.checkout_session),
         )
         .order_by(Orders.order_date.asc(), Orders.id.asc())
@@ -884,7 +884,7 @@ def _pending_manufacturing_queue(db_session):
     return tuple(_pending_manufacturing_item(order) for order in orders)
 
 
-def _pending_manufacturing_item(order):
+def _pending_manufacturing_item(order, *, today=None):
     details = tuple(order.order_details or ())
     checkout_session = getattr(order, "checkout_session", None)
     customer_snapshot = getattr(checkout_session, "customer_snapshot", None)
@@ -907,13 +907,17 @@ def _pending_manufacturing_item(order):
             if part
         )
 
-    total_units = sum(int(getattr(detail, "quantity", 0) or 0) for detail in details)
+    configurations = tuple(
+        _pending_manufacturing_configuration(checkout_session, detail)
+        for detail in details
+    )
+    total_units = sum(configuration["quantity"] for configuration in configurations)
     if len(details) == 1:
-        line = details[0]
+        configuration = configurations[0]
         summary = "{units} ud. · {height} × {width} cm".format(
             units=total_units or "No consta",
-            height=_queue_dimension(getattr(line, "alto", None)),
-            width=_queue_dimension(getattr(line, "ancho", None)),
+            height=configuration["height"],
+            width=configuration["width"],
         )
     else:
         summary = f"{len(details)} configuraciones · {total_units} unidades"
@@ -922,14 +926,79 @@ def _pending_manufacturing_item(order):
         "locator": order.locator or f"Pedido {order.id}",
         "customer_name": customer_name or "Cliente no identificado",
         "summary": summary,
+        "configurations": configurations,
+        "entry_date": _queue_entry_date(getattr(order, "order_date", None)),
+        "delivery_countdown": _queue_delivery_countdown(
+            getattr(order, "estimated_delivery_at", None),
+            today=today,
+        ),
         "work_order_url": url_for("orders.work_order_view", order_id=order.id),
     }
+
+
+def _pending_manufacturing_configuration(checkout_session, detail):
+    quantity = _queue_quantity(getattr(detail, "quantity", None))
+    return {
+        "model_name": _queue_product_name(checkout_session, detail),
+        "quantity": quantity,
+        "quantity_label": f"{quantity} {'ud.' if quantity == 1 else 'uds.'}",
+        "height": _queue_dimension(getattr(detail, "alto", None)),
+        "width": _queue_dimension(getattr(detail, "ancho", None)),
+    }
+
+
+def _queue_product_name(checkout_session, detail):
+    quote_snapshot = getattr(checkout_session, "quote_snapshot", None)
+    quote_lines = quote_snapshot.get("lines") if isinstance(quote_snapshot, Mapping) else None
+    product_id = getattr(detail, "product_id", None)
+    if isinstance(quote_lines, list):
+        for quote_line in quote_lines:
+            if not isinstance(quote_line, Mapping):
+                continue
+            quoted_product_id = quote_line.get("product_id", quote_line.get("producto_id"))
+            if str(quoted_product_id) != str(product_id):
+                continue
+            product_name = str(quote_line.get("product_name") or "").strip()
+            if product_name:
+                return product_name
+
+    product = getattr(detail, "product", None)
+    product_name = str(getattr(product, "nombre", "") or "").strip()
+    if product_name:
+        return product_name
+    return f"Producto #{product_id}" if product_id is not None else "Producto no identificado"
+
+
+def _queue_quantity(value):
+    try:
+        return max(int(value or 0), 0)
+    except (TypeError, ValueError):
+        return 0
 
 
 def _queue_dimension(value):
     if value is None:
         return "No consta"
     return f"{value:g}" if isinstance(value, (float, int)) else str(value)
+
+
+def _queue_entry_date(value):
+    return value.strftime("%d/%m/%Y") if hasattr(value, "strftime") else "No consta"
+
+
+def _queue_delivery_countdown(estimated_delivery_at, *, today=None):
+    if not estimated_delivery_at:
+        return None
+
+    current_date = today or date.today()
+    days_remaining = (estimated_delivery_at - current_date).days
+    if days_remaining > 1:
+        return f"Faltan {days_remaining} días"
+    if days_remaining == 1:
+        return "Falta 1 día"
+    if days_remaining == 0:
+        return "Entrega hoy"
+    return f"Retraso: {abs(days_remaining)} días"
 
 
 def _format_work_order_action(view, context, model, name):

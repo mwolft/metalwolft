@@ -4,7 +4,7 @@ import json
 import re
 import sys
 import unittest
-from datetime import datetime
+from datetime import date, datetime
 from pathlib import Path
 from unittest.mock import patch
 
@@ -568,6 +568,84 @@ class WorkOrderBuilderTest(unittest.TestCase):
             with self.app.test_request_context("/admin/"):
                 remaining = admin_module._pending_manufacturing_queue(db.session)
             self.assertEqual([item["locator"] for item in remaining], [multiple_order.locator])
+
+    def test_production_queue_exposes_frozen_configurations_and_delivery_countdown(self):
+        with self.app.app_context():
+            order = db.session.get(Orders, self.order_id)
+            detail = order.order_details[0]
+            detail.product.nombre = "Nombre vivo del catálogo"
+            order.checkout_session.quote_snapshot = {
+                "lines": [{
+                    "product_id": detail.product_id,
+                    "product_name": "Reja fija Essex congelada",
+                }]
+            }
+            order.estimated_delivery_at = date(2026, 9, 16)
+
+            with self.app.test_request_context("/admin/"):
+                item = admin_module._pending_manufacturing_item(order, today=date(2026, 9, 9))
+                self.assertEqual(item["entry_date"], "09/09/2026")
+                self.assertEqual(item["delivery_countdown"], "Faltan 7 días")
+                self.assertEqual(item["configurations"], ({
+                    "model_name": "Reja fija Essex congelada",
+                    "quantity": 2,
+                    "quantity_label": "2 uds.",
+                    "height": "109",
+                    "width": "198",
+                },))
+
+                order.estimated_delivery_at = date(2026, 9, 10)
+                self.assertEqual(
+                    admin_module._pending_manufacturing_item(order, today=date(2026, 9, 9))["delivery_countdown"],
+                    "Falta 1 día",
+                )
+                order.estimated_delivery_at = date(2026, 9, 9)
+                self.assertEqual(
+                    admin_module._pending_manufacturing_item(order, today=date(2026, 9, 9))["delivery_countdown"],
+                    "Entrega hoy",
+                )
+                order.estimated_delivery_at = date(2026, 9, 7)
+                self.assertEqual(
+                    admin_module._pending_manufacturing_item(order, today=date(2026, 9, 9))["delivery_countdown"],
+                    "Retraso: 2 días",
+                )
+                order.estimated_delivery_at = None
+                self.assertIsNone(
+                    admin_module._pending_manufacturing_item(order, today=date(2026, 9, 9))["delivery_countdown"]
+                )
+
+                order.checkout_session.quote_snapshot = {"lines": []}
+                self.assertEqual(
+                    admin_module._pending_manufacturing_item(order, today=date(2026, 9, 9))["configurations"][0]["model_name"],
+                    "Nombre vivo del catálogo",
+                )
+
+            multiple_order = self._create_physical_order(include_second_line=True)
+            multiple_order.checkout_session.quote_snapshot = {
+                "lines": [
+                    {
+                        "product_id": multiple_order.order_details[0].product_id,
+                        "product_name": "Reja fija Essex",
+                    },
+                    {
+                        "product_id": multiple_order.order_details[1].product_id,
+                        "product_name": "Reja Vermont",
+                    },
+                ]
+            }
+            with self.app.test_request_context("/admin/"):
+                multiple_item = admin_module._pending_manufacturing_item(
+                    multiple_order,
+                    today=date(2026, 9, 9),
+                )
+            self.assertEqual(
+                [(line["model_name"], line["quantity_label"]) for line in multiple_item["configurations"]],
+                [("Reja fija Essex", "2 uds."), ("Reja Vermont", "1 ud.")],
+            )
+            self.assertEqual(
+                [(line["height"], line["width"]) for line in multiple_item["configurations"]],
+                [("109", "198"), ("80.5", "100")],
+            )
 
     def test_order_detail_action_is_only_available_for_physical_orders(self):
         physical_response = self.client.get(self._detail_url(), headers=self._auth_header())
