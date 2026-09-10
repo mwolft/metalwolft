@@ -421,6 +421,8 @@ class WorkOrderBuilderTest(unittest.TestCase):
 
         with self.app.app_context():
             order = db.session.get(Orders, self.order_id)
+            order.order_details[0].quantity = 12
+            db.session.flush()
             work_order, _created = get_or_create_work_order(
                 db_session=db.session, order=order, created_by="admin"
             )
@@ -438,6 +440,8 @@ class WorkOrderBuilderTest(unittest.TestCase):
 
             self.assertTrue(pdf.startswith(b"%PDF"))
             self.assertIn(b"Reja Essex", pdf)
+            self.assertIn(b"Unidades: 12", pdf)
+            self.assertNotIn(b"CANTIDAD", pdf)
             self.assertNotIn(b"308.94", pdf)
             self.assertNotIn(b"PayPal", pdf)
             self.assertEqual(work_order.snapshot, original_snapshot)

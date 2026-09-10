@@ -154,7 +154,7 @@ def _styles():
             fontName="Helvetica-Bold",
             fontSize=12,
             leading=14,
-            textColor=colors.white,
+            textColor=_COLOR_TEXT,
         ),
         "dimension": ParagraphStyle(
             "work-order-dimension",
@@ -225,7 +225,6 @@ def _line_card(line: Mapping[str, Any], styles, available_width: float):
             [
                 ("BACKGROUND", (0, 0), (-1, 0), _COLOR_SURFACE),
                 ("SPAN", (0, 0), (0, 0)),
-                ("BACKGROUND", (1, 0), (1, 0), _COLOR_PRIMARY),
                 ("BOX", (0, 0), (-1, -1), 0.7, _COLOR_BORDER),
                 ("INNERGRID", (0, 1), (-1, -1), 0.4, _COLOR_BORDER),
                 ("LEFTPADDING", (0, 0), (-1, -1), 9),
@@ -257,7 +256,7 @@ def _line_card(line: Mapping[str, Any], styles, available_width: float):
 
 def _quantity(line: Mapping[str, Any], styles):
     value = line.get("quantity")
-    display = f"CANTIDAD: {value if value is not None else 'No consta'}"
+    display = f"Unidades: {value if value is not None else 'No consta'}"
     return Paragraph(display, styles["quantity"])
 
 
