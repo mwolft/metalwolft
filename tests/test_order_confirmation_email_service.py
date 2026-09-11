@@ -3,7 +3,7 @@ import sys
 import unittest
 from pathlib import Path
 from types import SimpleNamespace
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 from flask import Flask
 
@@ -75,6 +75,80 @@ class OrderConfirmationEmailServiceTest(unittest.TestCase):
         self.assertIn("Blanco liso · Esmalte sintético", sent[0]["html"])
         self.assertIn("Pago confirmado", sent[0]["html"])
 
+    def test_recipient_and_greeting_prefer_frozen_confirmation_context(self):
+        sent = []
+        frozen_quote = checkout_quote()
+        order = SimpleNamespace(
+            locator="AB1234",
+            total_amount=180.5,
+            user=SimpleNamespace(email="account@example.com", firstname="Cuenta"),
+            confirmed_order_context=SimpleNamespace(
+                quote_snapshot=frozen_quote,
+                customer_snapshot={
+                    "email": "frozen@example.com",
+                    "firstname": "Congelado",
+                },
+            ),
+        )
+
+        send_order_confirmation_email(
+            user=order.user,
+            order=order,
+            checkout_quote={"lines": []},
+            customer_firstname="Formulario",
+            mail_username="admin@example.com",
+            logger=SimpleNamespace(info=lambda *args, **kwargs: None, error=lambda *args, **kwargs: None),
+            send_email_func=lambda **kwargs: sent.append(kwargs) or True,
+        )
+
+        self.assertEqual(sent[0]["recipients"], ["frozen@example.com", "admin@example.com"])
+        self.assertIn("Hola Congelado", sent[0]["body"])
+        self.assertIn("Reja fija Pittsburgh", sent[0]["body"])
+
+    def test_recipient_falls_back_to_legacy_checkout_customer_snapshot(self):
+        sent = []
+        order = SimpleNamespace(
+            locator="AB1234",
+            total_amount=180.5,
+            user=SimpleNamespace(email="account@example.com", firstname="Cuenta"),
+            checkout_session=SimpleNamespace(
+                quote_snapshot=checkout_quote(),
+                customer_snapshot={"email": "legacy@example.com", "firstname": "Legacy"},
+            ),
+        )
+
+        send_order_confirmation_email(
+            user=order.user,
+            order=order,
+            mail_username="admin@example.com",
+            logger=SimpleNamespace(info=lambda *args, **kwargs: None, error=lambda *args, **kwargs: None),
+            send_email_func=lambda **kwargs: sent.append(kwargs) or True,
+        )
+
+        self.assertEqual(sent[0]["recipients"], ["legacy@example.com", "admin@example.com"])
+        self.assertIn("Hola Legacy", sent[0]["body"])
+
+    def test_recipient_uses_order_user_only_when_no_snapshot_exists(self):
+        sent = []
+        order = SimpleNamespace(
+            locator="AB1234",
+            total_amount=180.5,
+            user=SimpleNamespace(email="historical@example.com", firstname="Historico"),
+        )
+
+        send_order_confirmation_email(
+            user=order.user,
+            order=order,
+            checkout_quote=checkout_quote(),
+            customer_firstname="Formulario",
+            mail_username="admin@example.com",
+            logger=SimpleNamespace(info=lambda *args, **kwargs: None, error=lambda *args, **kwargs: None),
+            send_email_func=lambda **kwargs: sent.append(kwargs) or True,
+        )
+
+        self.assertEqual(sent[0]["recipients"], ["historical@example.com", "admin@example.com"])
+        self.assertIn("Hola Historico", sent[0]["body"])
+
     def test_physical_line_labels_height_and_width_without_inverting_them(self):
         sent = []
         quote = checkout_quote()
@@ -97,7 +171,76 @@ class OrderConfirmationEmailServiceTest(unittest.TestCase):
         self.assertIn("Instalación: Agujeros interiores", sent[0]["body"])
         self.assertIn("Color: Blanco liso · Esmalte sintético", sent[0]["body"])
         self.assertIn("Tornillos: 150 mm (+8,95 €)", sent[0]["body"])
-        self.assertIn("Importe: 190,00 €", sent[0]["body"])
+        self.assertIn("Total: 190,00 €", sent[0]["body"])
+
+    def test_email_uses_the_frozen_line_image_without_looking_up_a_product(self):
+        sent = []
+        quote = checkout_quote()
+        quote["lines"][0]["image_url"] = "https://cdn.example.com/products/pittsburgh.webp"
+
+        send_order_confirmation_email(
+            user=SimpleNamespace(email="cliente@example.com"),
+            order=SimpleNamespace(locator="AB1234", total_amount=180.5),
+            checkout_quote=quote,
+            customer_firstname="Sergio",
+            mail_username="admin@example.com",
+            logger=SimpleNamespace(info=lambda *args, **kwargs: None, error=lambda *args, **kwargs: None),
+            send_email_func=lambda **kwargs: sent.append(kwargs) or True,
+        )
+
+        self.assertIn('src="https://cdn.example.com/products/pittsburgh.webp"', sent[0]["html"])
+        self.assertIn('width="96"', sent[0]["html"])
+        self.assertIn("Total", sent[0]["html"])
+        self.assertNotIn("Importe de línea", sent[0]["html"])
+
+    def test_email_without_product_image_keeps_the_existing_line_content(self):
+        sent = []
+
+        send_order_confirmation_email(
+            user=SimpleNamespace(email="cliente@example.com"),
+            order=SimpleNamespace(locator="AB1234", total_amount=180.5),
+            checkout_quote=checkout_quote(),
+            customer_firstname="Sergio",
+            mail_username="admin@example.com",
+            logger=SimpleNamespace(info=lambda *args, **kwargs: None, error=lambda *args, **kwargs: None),
+            send_email_func=lambda **kwargs: sent.append(kwargs) or True,
+        )
+
+        self.assertNotIn("<img src=", sent[0]["html"])
+        self.assertIn("Reja fija Pittsburgh", sent[0]["html"])
+        self.assertIn("Total: 190,00 €", sent[0]["body"])
+
+    def test_email_uses_the_matching_product_image_when_the_quote_has_no_frozen_url(self):
+        sent = []
+        product = SimpleNamespace(
+            id=7,
+            imagen="https://cdn.example.com/products/pittsburgh-live.webp",
+            images=(),
+        )
+        query = MagicMock()
+        query.options.return_value.filter.return_value.all.return_value = [product]
+        fake_products = SimpleNamespace(
+            id=SimpleNamespace(in_=lambda values: values),
+            images=object(),
+            query=query,
+        )
+
+        with (
+            patch("api.order_confirmation_email_service.has_app_context", return_value=True),
+            patch("api.order_confirmation_email_service.selectinload", return_value=None),
+            patch("api.order_confirmation_email_service.Products", fake_products),
+        ):
+            send_order_confirmation_email(
+                user=SimpleNamespace(email="cliente@example.com"),
+                order=SimpleNamespace(locator="AB1234", total_amount=180.5),
+                checkout_quote=checkout_quote(),
+                customer_firstname="Sergio",
+                mail_username="admin@example.com",
+                logger=SimpleNamespace(info=lambda *args, **kwargs: None, error=lambda *args, **kwargs: None),
+                send_email_func=lambda **kwargs: sent.append(kwargs) or True,
+            )
+
+        self.assertIn('src="https://cdn.example.com/products/pittsburgh-live.webp"', sent[0]["html"])
 
     def test_missing_line_total_is_not_recalculated_from_unit_price(self):
         sent = []
@@ -177,10 +320,10 @@ class OrderConfirmationEmailServiceTest(unittest.TestCase):
             send_email_func=lambda **kwargs: sent.append(kwargs) or True,
         )
 
-        self.assertIn("Importe: 191,23 €", sent[0]["body"])
+        self.assertIn("Total: 191,23 €", sent[0]["body"])
         self.assertIn("Tornillos: 100 mm incluidos", sent[0]["body"])
         self.assertIn("Color: Blanco liso · Esmalte sintético", sent[0]["body"])
-        self.assertNotIn("Importe: 2,00 €", sent[0]["body"])
+        self.assertNotIn("Total: 2,00 €", sent[0]["body"])
 
     def test_forge_color_includes_synthetic_enamel_in_text_and_html(self):
         sent = []

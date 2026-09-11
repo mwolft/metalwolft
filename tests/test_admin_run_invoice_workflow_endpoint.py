@@ -67,7 +67,7 @@ class AdminRunInvoiceWorkflowEndpointSourceTest(unittest.TestCase):
         self.assertIn("order = Orders.query.get(order_id)", source)
         self.assertIn("ORDER_NOT_FOUND", source)
         self.assertIn("), 404", source)
-        self.assertIn("_select_checkout_session_for_invoice(order)", source)
+        self.assertIn("_select_invoice_confirmation_context_for_invoice(order)", source)
         self.assertIn("ORDER_NOT_INVOICEABLE", source)
         self.assertIn("), 409", source)
 
@@ -76,7 +76,7 @@ class AdminRunInvoiceWorkflowEndpointSourceTest(unittest.TestCase):
 
         self.assertIn("invoice_folder = current_app.config.get(\"INVOICE_FOLDER\") or os.getenv(\"INVOICE_FOLDER\")", source)
         self.assertIn("issuer=_build_invoice_issuer_from_config()", source)
-        self.assertIn("checkout_session=checkout_session", source)
+        self.assertIn("confirmation_context=confirmation_context", source)
         self.assertIn("actor=_invoice_admin_actor(current_user)", source)
         self.assertIn("invoice_output_dir=invoice_folder", source)
         self.assertIn("mailer=FlaskMailInvoiceAdapter(mail)", source)

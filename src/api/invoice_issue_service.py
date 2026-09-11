@@ -4,9 +4,15 @@ from datetime import datetime, timezone
 from decimal import Decimal, InvalidOperation
 from typing import Mapping
 
+from api.invoice_confirmation_context import (
+    InvoiceConfirmationContextError,
+    build_invoice_confirmation_context_from_confirmed_order_context,
+    coerce_invoice_confirmation_context,
+)
 from api.invoice_number_service import InvoiceNumberError, acquire_next_invoice_number
 from api.invoice_snapshot_builder import (
     SUPPORTED_TOTAL_RECTIFICATION_AEAT_TYPES,
+    InvoiceSnapshotValidationError,
     build_invoice_snapshot,
     build_rectification_snapshot_from_invoice,
 )
@@ -35,7 +41,8 @@ class IssuedInvoiceResult:
 def issue_invoice_for_order(
     *,
     db_session,
-    checkout_session,
+    confirmation_context=None,
+    checkout_session=None,
     issuer,
     order=None,
     order_id=None,
@@ -70,6 +77,12 @@ def issue_invoice_for_order(
                 created=False,
             )
 
+        resolved_confirmation_context = _resolve_invoice_confirmation_context(
+            order=locked_order,
+            confirmation_context=confirmation_context,
+            checkout_session=checkout_session,
+        )
+
         allocation = acquire_next_invoice_number(
             db_session,
             series=series,
@@ -77,7 +90,7 @@ def issue_invoice_for_order(
         )
         snapshot = build_invoice_snapshot(
             locked_order,
-            checkout_session,
+            resolved_confirmation_context,
             issuer,
             issue_date=issued_at,
             source=source,
@@ -87,7 +100,7 @@ def issue_invoice_for_order(
 
         invoice = _build_invoice_record(
             locked_order,
-            checkout_session,
+            resolved_confirmation_context,
             invoice_number=allocation.invoice_number,
             snapshot=snapshot,
             snapshot_hash=snapshot_hash,
@@ -216,6 +229,53 @@ def _resolve_order_id(*, order, order_id):
     return resolved_order_id
 
 
+def _resolve_invoice_confirmation_context(
+    *,
+    order,
+    confirmation_context,
+    checkout_session,
+):
+    """Prefer canonical evidence and retain checkout only for historical orders."""
+    if confirmation_context is not None and checkout_session is not None:
+        raise InvoiceSnapshotValidationError(
+            "confirmation_context",
+            "Solo se puede indicar un contexto de confirmacion.",
+        )
+
+    persisted_context = getattr(order, "confirmed_order_context", None)
+    try:
+        if persisted_context is not None:
+            canonical_context = build_invoice_confirmation_context_from_confirmed_order_context(
+                order=order,
+                confirmed_order_context=persisted_context,
+            )
+            if confirmation_context is not None:
+                supplied_context = coerce_invoice_confirmation_context(
+                    order=order,
+                    confirmation_context=confirmation_context,
+                )
+                if (
+                    supplied_context.confirmation_context_id
+                    != canonical_context.confirmation_context_id
+                ):
+                    raise InvoiceConfirmationContextError(
+                        "El contexto de facturacion no coincide con el pedido confirmado."
+                    )
+            # A persisted context is authoritative; never fall back to checkout.
+            return canonical_context
+
+        return coerce_invoice_confirmation_context(
+            order=order,
+            confirmation_context=(
+                confirmation_context
+                if confirmation_context is not None
+                else checkout_session
+            ),
+        )
+    except InvoiceConfirmationContextError as exc:
+        raise InvoiceSnapshotValidationError("confirmation_context", str(exc)) from exc
+
+
 def _lock_order_for_update(db_session, order_id):
     Orders = _order_model()
     return (
@@ -260,7 +320,7 @@ def _find_existing_corrective_invoice(db_session, original_invoice_id):
 
 def _build_invoice_record(
     order,
-    checkout_session,
+    confirmation_context,
     *,
     invoice_number,
     snapshot,
@@ -270,7 +330,7 @@ def _build_invoice_record(
     actor,
 ):
     Invoices = _invoice_model()
-    customer_snapshot = _customer_snapshot(checkout_session)
+    customer_snapshot = _customer_snapshot(confirmation_context)
 
     return Invoices(
         invoice_number=invoice_number,
@@ -382,8 +442,8 @@ def _snapshot_total_amount(snapshot):
     return float(total)
 
 
-def _customer_snapshot(checkout_session):
-    snapshot = getattr(checkout_session, "customer_snapshot", None)
+def _customer_snapshot(confirmation_context):
+    snapshot = getattr(confirmation_context, "customer_snapshot", None)
     return snapshot if isinstance(snapshot, Mapping) else {}
 
 

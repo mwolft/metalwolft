@@ -1,4 +1,5 @@
 from collections import deque
+from dataclasses import dataclass
 from email.message import EmailMessage
 import hashlib
 import math
@@ -11,10 +12,9 @@ import time
 
 from flask import Blueprint, request, jsonify, current_app
 from flask_mail import Mail, Message
-from sqlalchemy import event, inspect as sqla_inspect
 from werkzeug.utils import secure_filename
 
-from api.models import db, Orders
+from api.order_confirmation_context import get_order_confirmation_recipient_email
 from api.transactional_email_renderer import (
     render_order_delivery_estimate_update_email,
     render_order_status_update_email,
@@ -22,6 +22,39 @@ from api.transactional_email_renderer import (
 
 email_bp = Blueprint('email_bp', __name__)
 mail = Mail()
+
+ORDER_PROGRESS_STATUSES = (
+    ("pendiente", "Recibido"),
+    ("fabricacion", "Fabricación"),
+    ("pintura", "Pintura"),
+    ("embalaje", "Embalaje"),
+    ("enviado", "Enviado"),
+    ("entregado", "Entregado"),
+)
+
+
+@dataclass(frozen=True)
+class OrderUpdateEmailChange:
+    """Describe one committed operational change without persisting notification state."""
+
+    old_order_status: str | None
+    new_order_status: str | None
+    old_estimated_delivery_at: object
+    new_estimated_delivery_at: object
+    old_estimated_delivery_note: str | None
+    new_estimated_delivery_note: str | None
+    status_email_options: dict | None = None
+
+    @property
+    def status_changed(self):
+        return self.old_order_status != self.new_order_status
+
+    @property
+    def delivery_changed(self):
+        return (
+            self.old_estimated_delivery_at != self.new_estimated_delivery_at
+            or self.old_estimated_delivery_note != self.new_estimated_delivery_note
+        )
 
 CONTACT_MAX_REQUEST_BYTES = 16_384
 CONTACT_RATE_LIMIT_REQUESTS = 5
@@ -281,215 +314,91 @@ def contact():
         return jsonify({"error": "Internal server error"}), 500
     
 
-@event.listens_for(Orders, 'after_update')
-def enviar_correo_cambio_estado_o_entrega(mapper, connection, target: Orders):
-    """
-    Envía correo SOLO cuando:
-    - Cambia el estado (order_status): email de progreso (incluye fecha estimada si existe).
-    - Cambia la entrega estimada (estimated_delivery_at / estimated_delivery_note): email específico.
-    """
+def send_order_update_email(*, order, change, logger, send_email_func=None):
+    """Send the applicable post-commit operational update for one order."""
+    if not change.status_changed and not change.delivery_changed:
+        return False
+
+    if send_email_func is None:
+        send_email_func = send_email
+
     try:
-        # Detecta cambios reales en este UPDATE
-        insp = sqla_inspect(target)
-        changed = {attr.key for attr in insp.attrs if attr.history.has_changes()}
-        status_email_options = target.__dict__.pop('_admin_order_status_email_options', None)
+        recipient_email = get_order_confirmation_recipient_email(order)
+        if not recipient_email:
+            logger.warning("Order update email skipped without recipient order_id=%s", order.id)
+            return False
 
-        # Campos de entrega (solo si existen ya en el modelo)
-        campos_entrega = set()
-        if hasattr(target, 'estimated_delivery_at'):
-            campos_entrega.add('estimated_delivery_at')
-        if hasattr(target, 'estimated_delivery_note'):
-            campos_entrega.add('estimated_delivery_note')
+        order_reference = getattr(order, "locator", None) or "—"
+        if change.status_changed:
+            current_status = getattr(order, "order_status", None)
+            status_index = next(
+                (index for index, (code, _) in enumerate(ORDER_PROGRESS_STATUSES) if code == current_status),
+                None,
+            )
+            if status_index is None:
+                return False
 
-        cambio_estado = 'order_status' in changed
-        cambio_entrega = len(changed.intersection(campos_entrega)) > 0
-
-        # Si no cambió nada relevante, salimos
-        if not cambio_estado and not cambio_entrega:
-            return
-
-        # Datos comunes
-        try:
-            email = target.user.email  # relación ya cargada normalmente
-        except Exception:
-            email = None
-
-        locator = getattr(target, 'locator', None) or '—'
-        estado_actual = getattr(target, 'order_status', None)
-
-        # Estados en el mismo orden que usas en frontend/admin
-        estados = [
-            ('pendiente', 'Recibido'),
-            ('fabricacion', 'Fabricación'),
-            ('pintura', 'Pintura'),
-            ('embalaje', 'Embalaje'),
-            ('enviado', 'Enviado'),
-            ('entregado', 'Entregado'),
-        ]
-
-        # Helpers de entrega estimada
-        def fmt_fecha_estimada():
-            if hasattr(target, 'estimated_delivery_at') and target.estimated_delivery_at:
-                return target.estimated_delivery_at.strftime("%d/%m/%Y")
-            return None
-
-        def bloque_entrega_html():
-            fecha = fmt_fecha_estimada()
-            nota = getattr(target, 'estimated_delivery_note', None) if hasattr(target, 'estimated_delivery_note') else None
-            if not fecha and not nota:
-                return ""
-            extra = []
-            if fecha:
-                extra.append(f"<div>📅 <strong>Fecha estimada de entrega:</strong> {fecha}</div>")
-            if nota:
-                extra.append(f"<div>📝 <em>{nota}</em></div>")
-            return f"""<div style="margin-top:12px;">{''.join(extra)}</div>"""
-
-        # 1) Cambio de estado: email con barra de progreso + bloque de entrega si existe
-        if cambio_estado and estado_actual and email:
-            # si sigue en 'pendiente', opcionalmente puedes no enviar:
-            # if estado_actual == 'pendiente': return
-
-            indice_actual = next((i for i, (val, _) in enumerate(estados) if val == estado_actual), -1)
-            if indice_actual == -1:
-                return  # estado no reconocido
-
-            if (
-                estado_actual in {'enviado', 'entregado'}
-                and isinstance(status_email_options, dict)
-                and status_email_options.get('status') == estado_actual
-            ):
-                if not status_email_options.get('send_email', True):
-                    return
-                include_receipt_guide = bool(status_email_options.get('include_receipt_guide', True))
-                include_installation_guide = bool(status_email_options.get('include_installation_guide', True))
-                include_incident_form = bool(status_email_options.get('include_incident_form', True))
-                include_maintenance_guide = bool(status_email_options.get('include_maintenance_guide', True))
+            options = change.status_email_options or {}
+            if current_status in {"enviado", "entregado"} and options.get("status") == current_status:
+                if not options.get("send_email", True):
+                    return False
+                include_receipt_guide = bool(options.get("include_receipt_guide", True))
+                include_installation_guide = bool(options.get("include_installation_guide", True))
+                include_incident_form = bool(options.get("include_incident_form", True))
+                include_maintenance_guide = bool(options.get("include_maintenance_guide", True))
             else:
-                # Preserve the existing automatic email outside the explicit Admin controls.
                 include_receipt_guide = False
                 include_installation_guide = True
                 include_incident_form = False
                 include_maintenance_guide = True
 
-            circulos = ""
-            etiquetas = ""
-            for i, (valor, texto) in enumerate(estados):
-                if i < indice_actual:
-                    color = "#4CAF50"  # Completado
-                    icono = "✔"
-                elif i == indice_actual:
-                    color = "#ff324d"  # Actual (tu color)
-                    icono = str(i + 1)
-                else:
-                    color = "#ccc"     # Pendiente
-                    icono = str(i + 1)
-
-                circulos += f"""
-                    <td>
-                        <div style="margin: auto; background-color: {color}; color: white; width: 30px; height: 30px;
-                                    border-radius: 50%; line-height: 30px; font-weight: bold;">
-                            {icono}
-                        </div>
-                    </td>
-                """
-                etiquetas += f"""<td style="padding-top: 5px; font-size: 12px;">{texto}</td>"""
-
             rendered_email = render_order_status_update_email(
-                order_reference=locator,
-                current_status=estado_actual,
-                statuses=estados,
-                estimated_delivery_date=fmt_fecha_estimada(),
-                estimated_delivery_note=(
-                    getattr(target, 'estimated_delivery_note', None)
-                    if hasattr(target, 'estimated_delivery_note')
-                    else None
-                ),
+                order_reference=order_reference,
+                current_status=current_status,
+                statuses=ORDER_PROGRESS_STATUSES,
+                estimated_delivery_date=_format_estimated_delivery_date(order),
+                estimated_delivery_note=getattr(order, "estimated_delivery_note", None),
                 include_receipt_guide=include_receipt_guide,
                 include_installation_guide=include_installation_guide,
                 include_incident_form=include_incident_form,
                 include_maintenance_guide=include_maintenance_guide,
             )
-
-            html_body = f"""
-            <p style="font-weight: bold; font-size: 18px; margin-bottom: 10px;">📦 Estado de su pedido</p>
-            <p>Estimado cliente,</p>
-            <p>Su pedido ha cambiado de estado y ahora se encuentra en la fase: <strong>{estados[indice_actual][1]}</strong>.</p>
-
-            <table style="width: 100%; text-align: center; margin: 30px 0;">
-              <tr>{circulos}</tr>
-              <tr>{etiquetas}</tr>
-            </table>
-
-            <p style="margin-top: 10px;">📍 <strong>Localizador:</strong> {locator}</p>
-            {bloque_entrega_html()}
-
-            <p style="margin-top: 20px; font-size: 14px; color: #333;">
-              Gracias por confiar en <span style="font-weight: bold; color: #000;">Metal Wolft</span>.<br>
-              Si tienes cualquier duda, puedes responder directamente a este correo.
-            </p>
-            """
-
-            send_email(
-                subject=f"Actualización de tu pedido: {estados[indice_actual][1]}",
-                recipients=[email],
+            sent = bool(send_email_func(
+                subject=f"Actualización de tu pedido: {ORDER_PROGRESS_STATUSES[status_index][1]}",
+                recipients=[recipient_email],
                 body=rendered_email.text,
-                html=rendered_email.html
-            )
+                html=rendered_email.html,
+            ))
+            if not sent:
+                logger.error("Order status email delivery failed order_id=%s", order.id)
+            return sent
 
-        # 2) Cambio de entrega estimada (fecha/nota) sin cambio de estado: email breve
-        elif cambio_entrega and email:
-            fecha = fmt_fecha_estimada()
-            nota = getattr(target, 'estimated_delivery_note', None) if hasattr(target, 'estimated_delivery_note') else None
-            rendered_email = render_order_delivery_estimate_update_email(
-                order_reference=locator,
-                estimated_delivery_date=fecha,
-                estimated_delivery_note=nota,
-            )
-
-            partes = ["<p>Estimado cliente,</p>"]
-            if fecha:
-                partes.append(f"<p>Hemos actualizado la <strong>fecha estimada de entrega</strong> a: <strong>{fecha}</strong>.</p>")
-            if nota:
-                partes.append(f"<p>Nota: <em>{nota}</em></p>")
-            partes.append(f"<p>📍 <strong>Localizador:</strong> {locator}</p>")
-            partes.append("""
-              <p style="margin-top: 20px; font-size: 14px; color: #333;">
-                Gracias por confiar en <span style="font-weight: bold; color: #000;">Metal Wolft</span>.
-              </p>
-            """)
-            html_body = "\n".join(partes)
-
-            send_email(
-                subject="Actualización: entrega estimada de tu pedido",
-                recipients=[email],
-                body=rendered_email.text,
-                html=rendered_email.html
-            )
-
-    except Exception as e:
-        try:
-            current_app.logger.error(f"❌ Error en listener after_update: {str(e)}")
-        except Exception:
-            pass
-
-
-def send_order_status_email(user_email, order_status, locator):
-    try:
-        subject = f"Actualización de tu pedido ({locator})"
-        body = f"Tu pedido con localizador {locator} ha cambiado de estado a: {order_status}."
-
-        msg = Message(
-            subject=subject,
-            recipients=[user_email],
-            body=body
+        rendered_email = render_order_delivery_estimate_update_email(
+            order_reference=order_reference,
+            estimated_delivery_date=_format_estimated_delivery_date(order),
+            estimated_delivery_note=getattr(order, "estimated_delivery_note", None),
         )
-
-        mail.send(msg)
-        return True
-    except Exception as e:
-        current_app.logger.error(f"Error al enviar correo de estado del pedido: {str(e)}")
+        sent = bool(send_email_func(
+            subject="Actualización: entrega estimada de tu pedido",
+            recipients=[recipient_email],
+            body=rendered_email.text,
+            html=rendered_email.html,
+        ))
+        if not sent:
+            logger.error("Order delivery update email delivery failed order_id=%s", order.id)
+        return sent
+    except Exception as exc:
+        logger.error(
+            "Order update email failed order_id=%s error_type=%s",
+            getattr(order, "id", None),
+            type(exc).__name__,
+        )
         return False
+
+
+def _format_estimated_delivery_date(order):
+    value = getattr(order, "estimated_delivery_at", None)
+    return value.strftime("%d/%m/%Y") if value else None
 
 
 def _normalize_issue_report_data(data):

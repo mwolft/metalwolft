@@ -271,10 +271,32 @@ class CustomerOrdersEndpointTest(unittest.TestCase):
                 lastname="User",
                 shipping_city="Sevilla",
             )
+            self.guest_manual_order = Orders(
+                user_id=None,
+                locator="MG0001",
+                total_amount=180.0,
+                order_status="pendiente",
+                order_date=datetime(2026, 7, 23, 8, 30, 0),
+            )
+            db.session.add(self.guest_manual_order)
+            db.session.flush()
+            self._create_order_detail(
+                self.guest_manual_order,
+                product=self.product,
+                quantity=1,
+                alto=100.0,
+                ancho=80.0,
+                color="satinado_blanco",
+                anclaje="Sin obra: con agujeros interiores",
+                firstname="Cliente",
+                lastname="Sin Cuenta",
+                shipping_city="Ciudad Real",
+            )
             db.session.commit()
             self.user_a_old_order_id = self.user_a_old_order.id
             self.user_a_new_order_id = self.user_a_new_order.id
             self.user_b_order_id = self.user_b_order.id
+            self.guest_manual_order_id = self.guest_manual_order.id
             self.user_a_id = self.user_a.id
             self.product_id = self.product.id
 
@@ -512,6 +534,24 @@ class CustomerOrdersEndpointTest(unittest.TestCase):
 
         self.assertEqual(references, ["AA0002", "AA0001"])
         self.assertNotIn("BB0001", references)
+        self.assertNotIn("MG0001", references)
+
+    def test_guest_manual_order_is_not_listed_or_retrievable_by_any_account(self):
+        summary_response = self.client.get(
+            "/api/customer/orders",
+            headers=self._auth(self.user_a_token),
+        )
+        self.assertEqual(summary_response.status_code, 200)
+        self.assertNotIn(
+            "MG0001",
+            [order["reference"] for order in summary_response.get_json()["orders"]],
+        )
+
+        detail_response = self.client.get(
+            f"/api/customer/orders/{self.guest_manual_order_id}",
+            headers=self._auth(self.user_a_token),
+        )
+        self.assertEqual(detail_response.status_code, 404)
 
     def test_user_without_orders_receives_empty_list(self):
         response = self.client.get(

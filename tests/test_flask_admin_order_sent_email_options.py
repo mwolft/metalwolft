@@ -1,6 +1,7 @@
 import importlib.util
 import sys
 import unittest
+from datetime import date
 from pathlib import Path
 from unittest.mock import patch
 
@@ -56,6 +57,7 @@ class FlaskAdminOrderSentEmailOptionsTest(unittest.TestCase):
             db.session.add_all((user, self.order))
             db.session.commit()
             self.order_id = self.order.id
+            self.user_id = user.id
 
     def tearDown(self):
         with self.app.app_context():
@@ -191,6 +193,39 @@ class FlaskAdminOrderSentEmailOptionsTest(unittest.TestCase):
             for field_name in self.view._ORDER_STATUS_EMAIL_OPTION_FIELDS:
                 self.assertNotIn(field_name, order.__dict__)
             self.assertNotIn("_admin_order_status_email_options", order.__dict__)
+
+    def test_failed_commit_sends_no_update_email(self):
+        with self.app.test_request_context():
+            order, form = self._edit_form()
+            with patch.object(self.view.session, "commit", side_effect=RuntimeError("db unavailable")), patch(
+                "api.admin.send_order_update_email"
+            ) as send_update:
+                self.assertFalse(self.view.update_model(form, order))
+
+            send_update.assert_not_called()
+
+    def test_smtp_failure_after_commit_preserves_the_updated_order(self):
+        with self.app.app_context():
+            order, form = self._edit_form()
+            with patch("api.email_routes.send_email", side_effect=RuntimeError("smtp unavailable")):
+                self.assertTrue(self.view.update_model(form, order))
+
+            persisted = db.session.get(Orders, self.order_id)
+            self.assertEqual(persisted.order_status, "enviado")
+
+    def test_initial_insert_with_estimated_delivery_does_not_send_an_update_email(self):
+        with self.app.app_context(), patch("api.email_routes.send_email") as send_email:
+            new_order = Orders(
+                user=db.session.get(Users, self.user_id),
+                total_amount=20,
+                locator="QE2886",
+                order_status="pendiente",
+                estimated_delivery_at=date(2026, 9, 15),
+            )
+            db.session.add(new_order)
+            db.session.commit()
+
+        send_email.assert_not_called()
 
 
 if __name__ == "__main__":

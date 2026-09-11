@@ -2,7 +2,16 @@ import os
 
 from flask import current_app
 
-from api.invoice_snapshot_builder import FINAL_CHECKOUT_STATUSES, InvoiceSnapshotValidationError
+from api.invoice_confirmation_context import (
+    FINAL_CHECKOUT_STATUSES,
+    InvoiceConfirmationContextError,
+    build_invoice_confirmation_context_from_checkout_session,
+    build_invoice_confirmation_context_from_confirmed_order_context,
+)
+from api.invoice_snapshot_builder import (
+    InvoiceSnapshotValidationError,
+    validate_invoice_customer_snapshot,
+)
 from api.models import CheckoutSessions
 
 
@@ -57,7 +66,30 @@ def build_invoice_issuer_from_config():
     return issuer
 
 
-def select_checkout_session_for_invoice(order):
+def select_invoice_confirmation_context_for_invoice(order):
+    """Prefer immutable confirmation evidence and use checkout only for history.
+
+    A malformed ConfirmedOrderContext is deliberately terminal. Falling back to
+    a checkout session in that case would bypass the canonical confirmation
+    evidence attached to the order.
+    """
+    confirmed_order_context = getattr(order, "confirmed_order_context", None)
+    if confirmed_order_context is not None:
+        try:
+            confirmation_context = build_invoice_confirmation_context_from_confirmed_order_context(
+                order=order,
+                confirmed_order_context=confirmed_order_context,
+            )
+            # Keep the selector aligned with the existing fiscal-customer rules.
+            validate_invoice_customer_snapshot(order, confirmation_context.customer_snapshot)
+            return confirmation_context, None
+        except (InvoiceConfirmationContextError, InvoiceSnapshotValidationError):
+            return None, "El contexto confirmado del pedido no es valido para facturacion."
+
+    return _select_legacy_checkout_confirmation_context_for_invoice(order)
+
+
+def _select_legacy_checkout_confirmation_context_for_invoice(order):
     checkout_sessions = CheckoutSessions.query.filter_by(order_id=order.id).all()
     usable_sessions = [
         checkout_session
@@ -71,7 +103,16 @@ def select_checkout_session_for_invoice(order):
     if len(usable_sessions) > 1:
         return None, "El pedido tiene varias sesiones de checkout facturables."
 
-    return usable_sessions[0], None
+    try:
+        return (
+            build_invoice_confirmation_context_from_checkout_session(
+                order=order,
+                checkout_session=usable_sessions[0],
+            ),
+            None,
+        )
+    except InvoiceConfirmationContextError:
+        return None, "El pedido no esta listo para facturacion."
 
 
 def is_checkout_session_usable_for_invoice(checkout_session):

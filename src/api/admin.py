@@ -1,7 +1,9 @@
 import hmac
+import math
 import os
 import secrets
 from collections.abc import Mapping
+from decimal import Decimal, InvalidOperation
 from io import BytesIO
 
 from flask import request, Response, current_app, send_file, flash, redirect, session, url_for
@@ -11,8 +13,16 @@ from markupsafe import Markup, escape
 from flask_admin.contrib.sqla import ModelView
 from flask_admin.contrib.sqla.form import InlineModelConverter, InlineModelFormList
 from flask_admin.form import RenderTemplateWidget
-from wtforms import validators
-from wtforms.fields import BooleanField, DecimalField, SelectField, StringField, DateField, TextAreaField
+from wtforms import Form, validators
+from wtforms.fields import (
+    BooleanField,
+    DateField,
+    DateTimeField,
+    DecimalField,
+    SelectField,
+    StringField,
+    TextAreaField,
+)
 from .models import (
     db, Users, Products, ProductImages,
     Categories, Subcategories, Cart,
@@ -20,7 +30,9 @@ from .models import (
     Posts, Comments, Invoices, VeriFactuRecord, DeliveryEstimateConfig, DesignServiceConfig, DesignServicePriceTier, DesignRequest,
     AccountingEntry, SupplierInvoice, SupplierInvoiceDocument, SupplierInvoiceExtraction,
     SupplierInvoiceTaxBreakdown,
-    ManualInvoiceDraft, ManualInvoiceDraftLine, WorkOrder, CheckoutSessions,
+    ManualInvoiceDraft, ManualInvoiceDraftLine, ManualOrderDraft, ManualOrderDraftLine,
+    WorkOrder, CheckoutSessions,
+    ConfirmedOrderContext,
 )
 from api.accounting_excel_service import (
     AccountingExcelExportError,
@@ -35,7 +47,7 @@ from api.aeat_unified_ledger_service import (
     export_aeat_unified_ledger,
 )
 from api.flask_mail_invoice_adapter import FlaskMailInvoiceAdapter, FlaskMailInvoiceAdapterError
-from api.email_routes import send_order_status_email
+from api.email_routes import OrderUpdateEmailChange, send_order_update_email
 from api.invoice_accounting_service import (
     AccountingEntryIntegrityError,
     AccountingEntryUnsupportedSchema,
@@ -119,7 +131,7 @@ from api.cart_reminder_service import (
 from api.invoice_admin_helpers import (
     build_invoice_issuer_from_config,
     invoice_admin_actor_from_basic_auth,
-    select_checkout_session_for_invoice,
+    select_invoice_confirmation_context_for_invoice,
 )
 from api.invoice_issue_service import (
     CORRECTIVE_INVOICE_TYPE,
@@ -130,6 +142,18 @@ from api.invoice_issue_service import (
     issue_total_rectification_for_invoice,
 )
 from api.manual_invoice_issue_service import issue_manual_invoice
+from api.manual_order_draft_issue_service import (
+    ManualOrderDraftIssueError,
+    issue_manual_order_draft,
+)
+from api.order_confirmation_email_service import send_order_confirmation_email
+from api.manual_order_draft_service import (
+    ManualOrderDraftError,
+    invalidate_manual_order_draft_review,
+    is_manual_order_draft_review_current,
+    review_manual_order_draft,
+)
+from api.customer_snapshot import CustomerSnapshotValidationError, normalize_customer_snapshot
 from api.design_service import (
     DesignServiceValidationError,
     assert_order_accepts_physical_detail,
@@ -166,9 +190,20 @@ from api.verifactu_record_service import (
     verifactu_system_identity_from_config,
 )
 from datetime import date, datetime, timezone, timedelta
-from sqlalchemy import inspect, or_
+from sqlalchemy import and_, inspect, or_
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import selectinload
+
+from api.order_confirmation_context import (
+    get_order_customer_snapshot,
+    get_order_quote_snapshot,
+)
+from api.utils import (
+    CONFIGURATOR_ANCHORAGES,
+    CONFIGURATOR_COLORS,
+    CONFIGURATOR_SCREW_OPTIONS,
+    SCREW_OPTION_NOT_APPLICABLE,
+)
 
 
 # Credenciales desde ENV
@@ -870,13 +905,24 @@ def _pending_manufacturing_queue(db_session):
         .outerjoin(WorkOrder, WorkOrder.order_id == Orders.id)
         .where(
             Orders.order_status.in_(_PRODUCTION_QUEUE_STATUSES),
-            Orders.checkout_session.has(CheckoutSessions.status.in_(FINAL_CHECKOUT_STATUSES)),
+            or_(
+                Orders.confirmed_order_context.has(
+                    ConfirmedOrderContext.payment_status == "confirmed"
+                ),
+                and_(
+                    ~Orders.confirmed_order_context.has(),
+                    Orders.checkout_session.has(
+                        CheckoutSessions.status.in_(FINAL_CHECKOUT_STATUSES)
+                    ),
+                ),
+            ),
             Orders.order_details.any(OrderDetails.line_type == "physical"),
             ~Orders.order_details.any(OrderDetails.line_type != "physical"),
             or_(WorkOrder.id.is_(None), WorkOrder.manufactured_at.is_(None)),
         )
         .options(
             selectinload(Orders.order_details).selectinload(OrderDetails.product),
+            selectinload(Orders.confirmed_order_context),
             selectinload(Orders.checkout_session),
         )
         .order_by(Orders.order_date.asc(), Orders.id.asc())
@@ -886,9 +932,8 @@ def _pending_manufacturing_queue(db_session):
 
 def _pending_manufacturing_item(order, *, today=None):
     details = tuple(order.order_details or ())
-    checkout_session = getattr(order, "checkout_session", None)
-    customer_snapshot = getattr(checkout_session, "customer_snapshot", None)
-    customer_snapshot = customer_snapshot if isinstance(customer_snapshot, Mapping) else {}
+    customer_snapshot = get_order_customer_snapshot(order)
+    quote_snapshot = get_order_quote_snapshot(order)
     customer_name = " ".join(
         part
         for part in (
@@ -908,7 +953,7 @@ def _pending_manufacturing_item(order, *, today=None):
         )
 
     configurations = tuple(
-        _pending_manufacturing_configuration(checkout_session, detail)
+        _pending_manufacturing_configuration(quote_snapshot, detail)
         for detail in details
     )
     total_units = sum(configuration["quantity"] for configuration in configurations)
@@ -936,10 +981,10 @@ def _pending_manufacturing_item(order, *, today=None):
     }
 
 
-def _pending_manufacturing_configuration(checkout_session, detail):
+def _pending_manufacturing_configuration(quote_snapshot, detail):
     quantity = _queue_quantity(getattr(detail, "quantity", None))
     return {
-        "model_name": _queue_product_name(checkout_session, detail),
+        "model_name": _queue_product_name(quote_snapshot, detail),
         "quantity": quantity,
         "quantity_label": f"{quantity} {'ud.' if quantity == 1 else 'uds.'}",
         "height": _queue_dimension(getattr(detail, "alto", None)),
@@ -947,8 +992,7 @@ def _pending_manufacturing_configuration(checkout_session, detail):
     }
 
 
-def _queue_product_name(checkout_session, detail):
-    quote_snapshot = getattr(checkout_session, "quote_snapshot", None)
+def _queue_product_name(quote_snapshot, detail):
     quote_lines = quote_snapshot.get("lines") if isinstance(quote_snapshot, Mapping) else None
     product_id = getattr(detail, "product_id", None)
     if isinstance(quote_lines, list):
@@ -1011,7 +1055,33 @@ def _format_work_order_action(view, context, model, name):
     ).format(url=escape(action_url))
 
 
+def _format_order_customer_identity(order):
+    """Prefer the frozen confirmation identity for accountless manual orders."""
+    customer_snapshot = get_order_customer_snapshot(order)
+    if isinstance(customer_snapshot, Mapping):
+        full_name = " ".join(
+            part.strip()
+            for part in (
+                customer_snapshot.get("firstname"),
+                customer_snapshot.get("lastname"),
+            )
+            if isinstance(part, str) and part.strip()
+        )
+        email = customer_snapshot.get("email")
+        if isinstance(email, str) and email.strip():
+            return f"{full_name} · {email.strip()}" if full_name else email.strip()
+        if full_name:
+            return full_name
+
+    user = getattr(order, "user", None)
+    email = getattr(user, "email", None)
+    return email or "Cliente sin cuenta"
+
+
 class OrderAdminView(SafeModelView):
+    # New commercial orders must enter through checkout or the reviewed manual-draft flow.
+    can_create = False
+    can_delete = False
     can_view_details = True
     extra_css = ["/static/admin/order_sent_email_options.css"]
     extra_js = ["/static/admin/order_sent_email_options.js"]
@@ -1027,12 +1097,6 @@ class OrderAdminView(SafeModelView):
     )
 
     form_columns = [
-        'user_id',
-        'total_amount',
-        'discount_code',
-        'discount_value',
-        'order_date',
-        'locator',
         'order_status',
         'send_sent_status_email',
         'include_receipt_guide_in_sent_email',
@@ -1046,13 +1110,7 @@ class OrderAdminView(SafeModelView):
     ]
 
     form_groups = (
-        ('Pedido', [
-            'user_id',
-            'total_amount',
-            'discount_code',
-            'discount_value',
-            'order_date',
-            'locator',
+        ('Gestión operativa', [
             'order_status',
             'estimated_delivery_at',
             'estimated_delivery_note',
@@ -1090,7 +1148,8 @@ class OrderAdminView(SafeModelView):
         'work_order_action',
     ]
 
-    column_editable_list = ['total_amount', 'order_status']
+    # Status changes use the full form so transient notification controls remain available.
+    column_editable_list = []
     column_searchable_list = ['invoice_number', 'locator', 'discount_code']
     column_filters = [
         'order_status',
@@ -1100,6 +1159,7 @@ class OrderAdminView(SafeModelView):
     ]
 
     column_labels = {
+        'user_id': 'Cliente',
         'discount_code': 'Código',
         'discount_value': 'Importe',
         'order_type_label': 'Tipo',
@@ -1116,6 +1176,7 @@ class OrderAdminView(SafeModelView):
     }
 
     column_formatters = {
+        'user_id': lambda v, c, m, p: _format_order_customer_identity(m),
         'total_amount': lambda v, c, m, p: f"{(m.total_amount or 0):.2f}€",
         'discount_value': lambda v, c, m, p: f"-{m.discount_value:.2f}€" if m.discount_value else "—",
         'discount_code': lambda v, c, m, p: m.discount_code or "—",
@@ -1139,7 +1200,6 @@ class OrderAdminView(SafeModelView):
     }
 
     form_extra_fields = {
-        'locator': StringField('Localizador', render_kw={'readonly': True}),
         'order_status': SelectField(
             'Estado del Pedido',
             choices=[
@@ -1191,46 +1251,65 @@ class OrderAdminView(SafeModelView):
         ),
     }
 
-    def create_form(self, obj=None):
-        form = super().create_form(obj)
-        if not form.locator.data:
-            form.locator.data = Orders.generate_locator()
-        return form
-
     def on_model_change(self, form, model, is_created):
-        status_history = inspect(model).attrs.order_status.history
+        if is_created:
+            raise ValueError("Los pedidos se crean desde checkout o desde un borrador manual confirmado.")
         new_status = form.order_status.data
         if not is_created and order_contains_design_service(model) and new_status != "pendiente":
             raise ValueError("Las solicitudes de diseño no usan estados de fabricación, envío o entrega.")
-        is_real_status_transition = (
-            not is_created
-            and status_history.has_changes()
-            and all(
-                str(previous_status).strip().lower() != new_status
-                for previous_status in status_history.deleted
-            )
-        )
-        if is_real_status_transition and new_status == 'enviado':
-            # These controls affect only the pending status email and are never persisted on Orders.
-            model.__dict__['_admin_order_status_email_options'] = {
-                'status': 'enviado',
-                'send_email': bool(form.send_sent_status_email.data),
-                'include_receipt_guide': bool(form.include_receipt_guide_in_sent_email.data),
-                'include_installation_guide': bool(form.include_installation_guide_in_sent_email.data),
-                'include_incident_form': bool(form.include_incident_form_in_sent_email.data),
-            }
-        elif is_real_status_transition and new_status == 'entregado':
-            model.__dict__['_admin_order_status_email_options'] = {
-                'status': 'entregado',
-                'send_email': bool(form.send_delivered_status_email.data),
-                'include_installation_guide': bool(form.include_installation_guide_in_delivered_email.data),
-                'include_maintenance_guide': bool(form.include_maintenance_guide_in_delivered_email.data),
-            }
 
         for field_name in self._ORDER_STATUS_EMAIL_OPTION_FIELDS:
             model.__dict__.pop(field_name, None)
 
         return super().on_model_change(form, model, is_created)
+
+    def update_model(self, form, model):
+        change = self._build_order_update_email_change(form=form, model=model)
+        updated = super().update_model(form, model)
+        if updated:
+            try:
+                send_order_update_email(
+                    order=model,
+                    change=change,
+                    logger=current_app.logger,
+                )
+            except Exception:
+                current_app.logger.exception(
+                    "Order update email dispatch failed after commit order_id=%s",
+                    model.id,
+                )
+        return updated
+
+    @staticmethod
+    def _build_order_update_email_change(*, form, model):
+        old_status = model.order_status
+        new_status = form.order_status.data
+        options = None
+        if old_status != new_status and new_status == "enviado":
+            options = {
+                "status": "enviado",
+                "send_email": bool(form.send_sent_status_email.data),
+                "include_receipt_guide": bool(form.include_receipt_guide_in_sent_email.data),
+                "include_installation_guide": bool(form.include_installation_guide_in_sent_email.data),
+                "include_incident_form": bool(form.include_incident_form_in_sent_email.data),
+            }
+        elif old_status != new_status and new_status == "entregado":
+            options = {
+                "status": "entregado",
+                "send_email": bool(form.send_delivered_status_email.data),
+                "include_installation_guide": bool(form.include_installation_guide_in_delivered_email.data),
+                "include_maintenance_guide": bool(form.include_maintenance_guide_in_delivered_email.data),
+            }
+
+        return OrderUpdateEmailChange(
+            old_order_status=old_status,
+            new_order_status=new_status,
+            old_estimated_delivery_at=model.estimated_delivery_at,
+            new_estimated_delivery_at=form.estimated_delivery_at.data,
+            old_estimated_delivery_note=model.estimated_delivery_note,
+            new_estimated_delivery_note=form.estimated_delivery_note.data,
+            status_email_options=options,
+        )
 
     @expose('/issue-invoice/<int:order_id>', methods=['POST'])
     def issue_invoice(self, order_id):
@@ -1247,7 +1326,7 @@ class OrderAdminView(SafeModelView):
             flash('Esta acción no acepta datos fiscales desde el navegador.', 'error')
             return redirect(redirect_url)
 
-        checkout_session, invoiceability_error = select_checkout_session_for_invoice(order)
+        confirmation_context, invoiceability_error = select_invoice_confirmation_context_for_invoice(order)
         if invoiceability_error:
             flash(invoiceability_error, 'error')
             return redirect(redirect_url)
@@ -1255,7 +1334,7 @@ class OrderAdminView(SafeModelView):
         try:
             result = issue_invoice_for_order(
                 db_session=self.session,
-                checkout_session=checkout_session,
+                confirmation_context=confirmation_context,
                 issuer=build_invoice_issuer_from_config(),
                 order=order,
                 source="manual",
@@ -1543,6 +1622,11 @@ class CartAdminView(SafeModelView):
 
 
 class OrderDetailsAdminView(SafeModelView):
+    # Confirmed order lines are immutable commercial snapshots. They are created only
+    # by the canonical order-creation service.
+    can_create = False
+    can_edit = False
+    can_delete = False
     column_list = [
         'order_id', 'locator', 'cliente', 'line_type_label', 'product_name',
         'quantity', 'alto', 'ancho', 'anclaje', 'color',
@@ -1567,7 +1651,7 @@ class OrderDetailsAdminView(SafeModelView):
 
     column_formatters = {
         'locator': lambda v, c, m, p: m.order.locator if m.order else '',
-        'cliente': lambda v, c, m, p: f"{m.order.user.email}" if m.order and m.order.user else '',
+        'cliente': lambda v, c, m, p: _format_order_customer_identity(m.order) if m.order else '',
         'product_name': lambda v, c, m, p: (
             f"Diseño previo · {m.product.nombre}" if m.line_type == "design_service" and m.product
             else (m.product.nombre if m.product else '')
@@ -1605,6 +1689,966 @@ class OrderDetailsAdminView(SafeModelView):
         return super().on_model_change(form, model, is_created)
 
     column_default_sort = ('order_id', True)
+
+
+class ManualOrderDraftAdminFormError(ValueError):
+    """A safe, human-readable validation error for the manual-order editor."""
+
+
+class ManualOrderDraftForm(Form):
+    """Human fields only; derived commercial data is never submitted by the admin."""
+
+    customer_mode = SelectField(
+        "Tipo de cliente",
+        choices=[
+            (ManualOrderDraft.CUSTOMER_MODE_REGISTERED_USER, "Cliente registrado"),
+            (ManualOrderDraft.CUSTOMER_MODE_MANUAL_CUSTOMER, "Cliente sin cuenta"),
+        ],
+        validators=[validators.DataRequired()],
+        default=ManualOrderDraft.CUSTOMER_MODE_REGISTERED_USER,
+    )
+    user_id = SelectField(
+        "Usuario existente",
+        coerce=int,
+        validators=[validators.Optional()],
+    )
+    user_email = StringField(
+        "Email del cliente",
+        validators=[validators.Optional(), validators.Length(max=254)],
+    )
+    firstname = StringField("Nombre", validators=[validators.Optional(), validators.Length(max=100)])
+    lastname = StringField("Apellidos", validators=[validators.Optional(), validators.Length(max=100)])
+    phone = StringField("Teléfono", validators=[validators.Optional(), validators.Length(max=50)])
+    legal_name = StringField("Nombre o razón social", validators=[validators.Optional(), validators.Length(max=255)])
+    tax_id = StringField("NIF/CIF", validators=[validators.Optional(), validators.Length(max=20)])
+    billing_address = StringField("Dirección fiscal", validators=[validators.Optional(), validators.Length(max=200)])
+    billing_postal_code = StringField("Código postal fiscal", validators=[validators.Optional(), validators.Length(max=20)])
+    billing_city = StringField("Ciudad fiscal", validators=[validators.Optional(), validators.Length(max=100)])
+    billing_province = StringField("Provincia fiscal", validators=[validators.Optional(), validators.Length(max=100)])
+    billing_country_code = StringField(
+        "País fiscal",
+        validators=[validators.Optional(), validators.Length(max=2)],
+    )
+    shipping_same_as_billing = BooleanField("La dirección de envío coincide con la fiscal")
+    shipping_address = StringField("Dirección de envío", validators=[validators.Optional(), validators.Length(max=200)])
+    shipping_postal_code = StringField("Código postal de envío", validators=[validators.Optional(), validators.Length(max=20)])
+    shipping_city = StringField("Ciudad de envío", validators=[validators.Optional(), validators.Length(max=100)])
+    shipping_province = StringField("Provincia de envío", validators=[validators.Optional(), validators.Length(max=100)])
+    shipping_country_code = StringField(
+        "País de envío",
+        validators=[validators.Optional(), validators.Length(max=2)],
+    )
+    discount_code = StringField("Código de descuento", validators=[validators.Optional(), validators.Length(max=50)])
+    estimated_delivery_at = DateField(
+        "Fecha estimada de entrega",
+        format="%Y-%m-%d",
+        validators=[validators.Optional()],
+        render_kw={"type": "date"},
+    )
+    estimated_delivery_note = TextAreaField(
+        "Nota de entrega",
+        validators=[validators.Optional(), validators.Length(max=255)],
+        render_kw={"rows": 2},
+    )
+    payment_method = SelectField(
+        "Método de pago externo",
+        choices=[
+            ("", "Selecciona un método"),
+            ("bank_transfer", "Transferencia bancaria"),
+            ("cash", "Efectivo"),
+            ("external_other", "Otro pago externo"),
+        ],
+        validators=[validators.Optional()],
+    )
+    payment_reference = StringField("Referencia de pago", validators=[validators.Optional(), validators.Length(max=255)])
+    payment_confirmed_at = DateTimeField(
+        "Fecha y hora de confirmación del pago",
+        format="%Y-%m-%dT%H:%M",
+        validators=[validators.Optional()],
+        render_kw={"type": "datetime-local"},
+    )
+    payment_note = TextAreaField(
+        "Nota o evidencia de pago",
+        validators=[validators.Optional()],
+        render_kw={"rows": 3},
+    )
+    internal_note = TextAreaField(
+        "Nota interna",
+        validators=[validators.Optional()],
+        render_kw={"rows": 3},
+    )
+
+    def __init__(self, *args, user_choices=(), **kwargs):
+        super().__init__(*args, **kwargs)
+        self.user_id.choices = [(0, "Selecciona un usuario")] + list(user_choices)
+
+
+_MANUAL_ORDER_DRAFT_LINE_FIELDS = (
+    "product_id",
+    "quantity",
+    "alto",
+    "ancho",
+    "anclaje",
+    "color",
+    "screw_option",
+)
+_MANUAL_ORDER_DRAFT_MAX_LINES = 100
+
+
+def _manual_order_draft_user_choices(db_session):
+    users = db_session.query(Users).order_by(Users.email.asc()).all()
+    choices = []
+    emails = {}
+    profiles = {}
+    for user in users:
+        full_name = " ".join(
+            part for part in (user.firstname, user.lastname) if isinstance(part, str) and part.strip()
+        ).strip()
+        label = f"{user.email} — {full_name}" if full_name else user.email
+        choices.append((user.id, label))
+        emails[user.id] = user.email
+        profiles[user.id] = {
+            "email": user.email or "",
+            "firstname": user.firstname or "",
+            "lastname": user.lastname or "",
+            "phone": user.phone or "",
+            "legal_name": full_name,
+            "tax_id": user.CIF or "",
+            "billing_address": user.billing_address or "",
+            "billing_postal_code": user.billing_postal_code or "",
+            "billing_city": user.billing_city or "",
+            "shipping_address": user.shipping_address or "",
+            "shipping_postal_code": user.shipping_postal_code or "",
+            "shipping_city": user.shipping_city or "",
+        }
+    return choices, emails, profiles
+
+
+def _manual_order_draft_form_initial_data(draft):
+    if draft is None:
+        return {}
+
+    customer = draft.customer_draft if isinstance(draft.customer_draft, Mapping) else {}
+    data = {
+        "customer_mode": (
+            draft.customer_mode or ManualOrderDraft.CUSTOMER_MODE_REGISTERED_USER
+        ),
+        "user_id": draft.user_id or 0,
+        "user_email": customer.get("email") or getattr(getattr(draft, "user", None), "email", "") or "",
+        "discount_code": draft.discount_code or "",
+        "estimated_delivery_at": draft.estimated_delivery_at,
+        "estimated_delivery_note": draft.estimated_delivery_note or "",
+        "payment_method": draft.payment_method or "",
+        "payment_reference": draft.payment_reference or "",
+        "payment_confirmed_at": draft.payment_confirmed_at,
+        "payment_note": draft.payment_note or "",
+        "internal_note": draft.internal_note or "",
+    }
+    for field_name in (
+        "firstname",
+        "lastname",
+        "phone",
+        "legal_name",
+        "tax_id",
+        "billing_address",
+        "billing_postal_code",
+        "billing_city",
+        "billing_province",
+        "billing_country_code",
+        "shipping_address",
+        "shipping_postal_code",
+        "shipping_city",
+        "shipping_province",
+        "shipping_country_code",
+    ):
+        data[field_name] = customer.get(field_name) or ""
+    data["shipping_same_as_billing"] = _manual_order_draft_shipping_matches_billing(customer)
+    return data
+
+
+def _manual_order_draft_shipping_matches_billing(customer):
+    if not isinstance(customer, Mapping):
+        return False
+
+    suffixes = ("address", "postal_code", "city", "province", "country_code")
+    billing_values = [customer.get(f"billing_{suffix}") for suffix in suffixes]
+    if not any(billing_values):
+        return False
+    return all(
+        customer.get(f"shipping_{suffix}") == customer.get(f"billing_{suffix}")
+        for suffix in suffixes
+    )
+
+
+def _manual_order_draft_line_rows(draft=None, formdata=None):
+    if formdata is not None:
+        columns = {
+            field_name: formdata.getlist(f"line_{field_name}[]")
+            for field_name in _MANUAL_ORDER_DRAFT_LINE_FIELDS
+        }
+        count = max((len(values) for values in columns.values()), default=0)
+        rows = []
+        for index in range(min(count, _MANUAL_ORDER_DRAFT_MAX_LINES)):
+            rows.append(
+                {
+                    field_name: columns[field_name][index] if index < len(columns[field_name]) else ""
+                    for field_name in _MANUAL_ORDER_DRAFT_LINE_FIELDS
+                }
+            )
+        return rows or [{}]
+
+    lines = tuple(getattr(draft, "lines", ()) or ())
+    rows = [
+        {
+            "product_id": line.product_id,
+            "quantity": line.quantity,
+            "alto": line.alto,
+            "ancho": line.ancho,
+            "anclaje": line.anclaje,
+            "color": line.color,
+            "screw_option": line.screw_option,
+        }
+        for line in lines
+    ]
+    return rows or [{}]
+
+
+def _manual_order_draft_screw_options():
+    options = {}
+    for anchorage_options in CONFIGURATOR_SCREW_OPTIONS.values():
+        for value, rule in anchorage_options.items():
+            options.setdefault(value, rule["label"])
+    options[SCREW_OPTION_NOT_APPLICABLE] = "No aplica"
+    return tuple(options.items())
+
+
+def _manual_order_draft_line_payload(formdata, db_session):
+    columns = {
+        field_name: formdata.getlist(f"line_{field_name}[]")
+        for field_name in _MANUAL_ORDER_DRAFT_LINE_FIELDS
+    }
+    count = max((len(values) for values in columns.values()), default=0)
+    if count > _MANUAL_ORDER_DRAFT_MAX_LINES:
+        raise ManualOrderDraftAdminFormError("El borrador no puede incluir más de 100 configuraciones.")
+    if any(len(values) != count for values in columns.values()):
+        raise ManualOrderDraftAdminFormError("Las configuraciones del borrador no son válidas.")
+
+    raw_rows = [
+        {field_name: columns[field_name][index] for field_name in _MANUAL_ORDER_DRAFT_LINE_FIELDS}
+        for index in range(count)
+    ]
+    nonempty_rows = [row for row in raw_rows if any(str(value or "").strip() for value in row.values())]
+    if not nonempty_rows:
+        return []
+
+    product_ids = []
+    for row in nonempty_rows:
+        product_ids.append(_manual_order_draft_positive_integer(row["product_id"], "Producto"))
+
+    products = {
+        product.id: product
+        for product in db_session.query(Products).filter(Products.id.in_(product_ids)).all()
+    }
+    missing_ids = sorted(set(product_ids) - set(products))
+    if missing_ids:
+        raise ManualOrderDraftAdminFormError("Una configuración incluye un producto inexistente.")
+
+    known_screw_options = {
+        option
+        for options in CONFIGURATOR_SCREW_OPTIONS.values()
+        for option in options
+    }
+    known_screw_options.add(SCREW_OPTION_NOT_APPLICABLE)
+
+    payload = []
+    for position, row in enumerate(nonempty_rows):
+        product_id = product_ids[position]
+        quantity = _manual_order_draft_positive_integer(row["quantity"], "Cantidad")
+        alto = _manual_order_draft_positive_dimension(row["alto"], "Alto")
+        ancho = _manual_order_draft_positive_dimension(row["ancho"], "Ancho")
+        anclaje = _manual_order_draft_required_line_choice(row["anclaje"], "Anclaje")
+        color = _manual_order_draft_required_line_choice(row["color"], "Color")
+        screw_option = _manual_order_draft_required_line_choice(row["screw_option"], "Tornillería")
+
+        if anclaje not in CONFIGURATOR_ANCHORAGES:
+            raise ManualOrderDraftAdminFormError("Selecciona un anclaje válido.")
+        if color not in CONFIGURATOR_COLORS:
+            raise ManualOrderDraftAdminFormError("Selecciona un color válido.")
+        if screw_option not in known_screw_options:
+            raise ManualOrderDraftAdminFormError("Selecciona una opción de tornillería válida.")
+
+        payload.append(
+            {
+                "product_id": product_id,
+                "quantity": quantity,
+                "alto": alto,
+                "ancho": ancho,
+                "anclaje": anclaje,
+                "color": color,
+                "screw_option": screw_option,
+            }
+        )
+    return payload
+
+
+def _manual_order_draft_positive_integer(value, label):
+    try:
+        parsed = int(str(value).strip())
+    except (TypeError, ValueError):
+        raise ManualOrderDraftAdminFormError(f"{label} debe ser un número entero positivo.") from None
+    if parsed < 1:
+        raise ManualOrderDraftAdminFormError(f"{label} debe ser un número entero positivo.")
+    return parsed
+
+
+def _manual_order_draft_positive_dimension(value, label):
+    try:
+        parsed = float(str(value).strip())
+    except (TypeError, ValueError):
+        raise ManualOrderDraftAdminFormError(f"{label} debe ser una medida positiva.") from None
+    if not math.isfinite(parsed) or parsed <= 0:
+        raise ManualOrderDraftAdminFormError(f"{label} debe ser una medida positiva.")
+    return parsed
+
+
+def _manual_order_draft_required_line_choice(value, label):
+    normalized = str(value or "").strip()
+    if not normalized or len(normalized) > 50:
+        raise ManualOrderDraftAdminFormError(f"{label} no es válido.")
+    return normalized
+
+
+def _manual_order_draft_customer_from_form(form, user, customer_mode):
+    customer = {
+        "firstname": form.firstname.data,
+        "lastname": form.lastname.data,
+        "email": user.email if customer_mode == ManualOrderDraft.CUSTOMER_MODE_REGISTERED_USER else form.user_email.data,
+        "phone": form.phone.data,
+        "legal_name": form.legal_name.data,
+        "tax_id": form.tax_id.data,
+        "billing_address": form.billing_address.data,
+        "billing_postal_code": form.billing_postal_code.data,
+        "billing_city": form.billing_city.data,
+        "billing_province": form.billing_province.data,
+        "billing_country_code": form.billing_country_code.data,
+        "shipping_address": form.shipping_address.data,
+        "shipping_postal_code": form.shipping_postal_code.data,
+        "shipping_city": form.shipping_city.data,
+        "shipping_province": form.shipping_province.data,
+        "shipping_country_code": form.shipping_country_code.data,
+    }
+    if form.shipping_same_as_billing.data:
+        for suffix in ("address", "postal_code", "city", "province", "country_code"):
+            customer[f"shipping_{suffix}"] = customer.get(f"billing_{suffix}")
+    try:
+        return normalize_customer_snapshot(
+            customer,
+            require_checkout_fields=False,
+            validate_address_groups=False,
+        )
+    except CustomerSnapshotValidationError as exc:
+        raise ManualOrderDraftAdminFormError(str(exc)) from exc
+
+
+def _manual_order_draft_normalized_discount_code(value):
+    normalized = str(value or "").strip().upper()
+    return normalized or None
+
+
+def _manual_order_draft_optional_text(value):
+    normalized = str(value or "").strip()
+    return normalized or None
+
+
+def _manual_order_draft_lines_match(existing_lines, payload):
+    existing = tuple(existing_lines or ())
+    if len(existing) != len(payload):
+        return False
+    for line, values in zip(existing, payload):
+        if (
+            line.product_id != values["product_id"]
+            or line.quantity != values["quantity"]
+            or line.alto != values["alto"]
+            or line.ancho != values["ancho"]
+            or line.anclaje != values["anclaje"]
+            or line.color != values["color"]
+            or line.screw_option != values["screw_option"]
+        ):
+            return False
+    return True
+
+
+def _replace_manual_order_draft_lines(db_session, draft, payload):
+    # Delete first so the per-draft position constraint remains valid after a reorder.
+    draft.lines.clear()
+    db_session.flush()
+    for position, values in enumerate(payload):
+        draft.lines.append(ManualOrderDraftLine(position=position, **values))
+
+
+def _manual_order_draft_quote_view(quote_snapshot):
+    if not isinstance(quote_snapshot, Mapping):
+        return None
+
+    lines = []
+    for line in quote_snapshot.get("lines") or ():
+        if not isinstance(line, Mapping):
+            continue
+        lines.append(
+            {
+                "product_name": str(line.get("product_name") or "Producto"),
+                "quantity": line.get("quantity"),
+                "alto": line.get("alto"),
+                "ancho": line.get("ancho"),
+                "anclaje": line.get("anclaje"),
+                "color": line.get("color"),
+                "screw_option": line.get("screw_option"),
+                "unit_price": _manual_order_draft_money(line.get("unit_price")),
+                "screw_supplement": _manual_order_draft_money(line.get("screw_supplement")),
+                "line_total": _manual_order_draft_money(line.get("line_total")),
+            }
+        )
+
+    return {
+        "lines": lines,
+        "subtotal": _manual_order_draft_money(quote_snapshot.get("subtotal")),
+        "shipping_cost": _manual_order_draft_money(quote_snapshot.get("shipping_cost")),
+        "discount_code": quote_snapshot.get("discount_code"),
+        "discount_percent": quote_snapshot.get("discount_percent"),
+        "discount_amount": _manual_order_draft_money(quote_snapshot.get("discount_amount")),
+        "total_amount": _manual_order_draft_money(quote_snapshot.get("total_amount")),
+    }
+
+
+def _manual_order_draft_money(value):
+    try:
+        return f"{Decimal(str(value)).quantize(Decimal('0.01')):.2f} €"
+    except (InvalidOperation, TypeError, ValueError):
+        return "—"
+
+
+def _manual_order_draft_status_label(status):
+    return {
+        ManualOrderDraft.STATUS_DRAFT: "Borrador",
+        ManualOrderDraft.STATUS_ISSUED: "Pedido creado",
+        ManualOrderDraft.STATUS_CANCELLED: "Cancelado",
+    }.get(status, "—")
+
+
+class ManualOrderDraftAdminView(SafeModelView):
+    """Human Admin adapter for the canonical manual-order draft services."""
+
+    can_create = True
+    can_edit = True
+    can_delete = False
+    can_view_details = True
+    list_template = "admin/manual_order_draft_list.html"
+    extra_css = ["/static/admin/manual_order_draft.css"]
+    extra_js = ["/static/admin/manual_order_draft.js"]
+    column_list = [
+        "id",
+        "customer_mode",
+        "user_id",
+        "customer_email",
+        "last_quote_snapshot",
+        "status",
+        "payment_method",
+        "estimated_delivery_at",
+        "created_at",
+        "updated_at",
+        "issued_order_id",
+    ]
+    column_labels = {
+        "customer_mode": "Tipo de cliente",
+        "user_id": "Cliente",
+        "customer_email": "Email",
+        "last_quote_snapshot": "Total revisado",
+        "status": "Estado",
+        "payment_method": "Pago externo",
+        "estimated_delivery_at": "Entrega estimada",
+        "created_at": "Creado",
+        "updated_at": "Actualizado",
+        "issued_order_id": "Pedido creado",
+    }
+    column_filters = ["status", "payment_method", "created_at"]
+    column_searchable_list = ["user.email"]
+    column_default_sort = ("created_at", True)
+    column_formatters = {
+        "customer_mode": lambda view, context, model, name: _manual_order_draft_customer_mode_label(model.customer_mode),
+        "user_id": lambda view, context, model, name: _manual_order_draft_user_display(model),
+        "customer_email": lambda view, context, model, name: model.customer_email or "—",
+        "last_quote_snapshot": lambda view, context, model, name: _manual_order_draft_reviewed_total(model),
+        "status": lambda view, context, model, name: _manual_order_draft_status_label(model.status),
+        "payment_method": lambda view, context, model, name: _manual_order_draft_payment_method_label(model.payment_method),
+        "estimated_delivery_at": lambda view, context, model, name: (
+            model.estimated_delivery_at.strftime("%d/%m/%Y") if model.estimated_delivery_at else "—"
+        ),
+        "created_at": lambda view, context, model, name: _manual_order_draft_datetime_label(model.created_at),
+        "updated_at": lambda view, context, model, name: _manual_order_draft_datetime_label(model.updated_at),
+        "issued_order_id": lambda view, context, model, name: _manual_order_draft_order_link(model),
+    }
+    column_formatters_detail = column_formatters
+
+    @expose("/new/", methods=["GET", "POST"])
+    def create_view(self):
+        if request.method == "POST":
+            if not _valid_work_order_csrf_token(request.form.get("csrf_token")):
+                flash("La sesión del formulario ha caducado. Vuelve a intentarlo.", "error")
+                return redirect(self.get_url(".create_view"))
+
+            form, products, user_emails, user_profiles = self._manual_order_draft_form(formdata=request.form)
+            line_rows = _manual_order_draft_line_rows(formdata=request.form)
+            if not form.validate():
+                flash("Revisa los datos del borrador.", "error")
+                return self._render_manual_order_draft_form(
+                    form=form,
+                    products=products,
+                    user_emails=user_emails,
+                    user_profiles=user_profiles,
+                    line_rows=line_rows,
+                )
+
+            try:
+                draft = self._save_manual_order_draft(form, request.form)
+                self.session.commit()
+            except ManualOrderDraftAdminFormError as exc:
+                flash(str(exc), "error")
+                return self._render_manual_order_draft_form(
+                    form=form,
+                    products=products,
+                    user_emails=user_emails,
+                    user_profiles=user_profiles,
+                    line_rows=line_rows,
+                )
+            except Exception:
+                self.session.rollback()
+                current_app.logger.exception("Manual order draft creation failed")
+                flash("No se ha podido guardar el borrador manual.", "error")
+                return self._render_manual_order_draft_form(
+                    form=form,
+                    products=products,
+                    user_emails=user_emails,
+                    user_profiles=user_profiles,
+                    line_rows=line_rows,
+                )
+
+            flash("Borrador de pedido manual creado.", "success")
+            return redirect(self.get_url(".edit_view", id=draft.id))
+
+        form, products, user_emails, user_profiles = self._manual_order_draft_form()
+        return self._render_manual_order_draft_form(
+            form=form,
+            products=products,
+            user_emails=user_emails,
+            user_profiles=user_profiles,
+            line_rows=_manual_order_draft_line_rows(),
+        )
+
+    @expose("/edit/", methods=["GET", "POST"])
+    def edit_view(self):
+        draft = self.get_one(request.args.get("id"))
+        if draft is None:
+            flash("Borrador de pedido manual no encontrado.", "error")
+            return redirect(self.get_url(".index_view"))
+        if not draft.is_editable:
+            return self._redirect_noneditable_manual_order_draft(draft)
+
+        if request.method == "POST":
+            if not _valid_work_order_csrf_token(request.form.get("csrf_token")):
+                flash("La sesión del formulario ha caducado. Vuelve a intentarlo.", "error")
+                return redirect(self.get_url(".edit_view", id=draft.id))
+
+            form, products, user_emails, user_profiles = self._manual_order_draft_form(draft=draft, formdata=request.form)
+            line_rows = _manual_order_draft_line_rows(formdata=request.form)
+            if not form.validate():
+                flash("Revisa los datos del borrador.", "error")
+                return self._render_manual_order_draft_form(
+                    draft=draft,
+                    form=form,
+                    products=products,
+                    user_emails=user_emails,
+                    user_profiles=user_profiles,
+                    line_rows=line_rows,
+                )
+
+            try:
+                self._save_manual_order_draft(form, request.form, draft=draft)
+                self.session.commit()
+            except ManualOrderDraftAdminFormError as exc:
+                flash(str(exc), "error")
+                return self._render_manual_order_draft_form(
+                    draft=draft,
+                    form=form,
+                    products=products,
+                    user_emails=user_emails,
+                    user_profiles=user_profiles,
+                    line_rows=line_rows,
+                )
+            except Exception:
+                self.session.rollback()
+                current_app.logger.exception("Manual order draft update failed draft_id=%s", draft.id)
+                flash("No se ha podido guardar el borrador manual.", "error")
+                return redirect(self.get_url(".edit_view", id=draft.id))
+
+            flash("Borrador de pedido manual actualizado.", "success")
+            return redirect(self.get_url(".edit_view", id=draft.id))
+
+        form, products, user_emails, user_profiles = self._manual_order_draft_form(draft=draft)
+        return self._render_manual_order_draft_form(
+            draft=draft,
+            form=form,
+            products=products,
+            user_emails=user_emails,
+            user_profiles=user_profiles,
+            line_rows=_manual_order_draft_line_rows(draft=draft),
+        )
+
+    @expose("/details/")
+    def details_view(self):
+        draft = self.get_one(request.args.get("id"))
+        if draft is None:
+            flash("Borrador de pedido manual no encontrado.", "error")
+            return redirect(self.get_url(".index_view"))
+        return self.render(
+            "admin/manual_order_draft_detail.html",
+            draft=draft,
+            review_current=is_manual_order_draft_review_current(draft),
+            quote_view=_manual_order_draft_quote_view(draft.last_quote_snapshot),
+            status_label=_manual_order_draft_status_label(draft.status),
+            order_url=self._issued_manual_order_url(draft),
+            edit_url=self.get_url(".edit_view", id=draft.id) if draft.is_editable else None,
+            review_url=self.get_url(".review_draft", draft_id=draft.id) if draft.is_editable else None,
+            issue_url=self.get_url(".confirm_issue", draft_id=draft.id) if draft.is_editable else None,
+            cancel_url=self.get_url(".cancel_draft", draft_id=draft.id) if draft.is_editable else None,
+            csrf_token=_issue_work_order_csrf_token(),
+        )
+
+    @expose("/<int:draft_id>/review/", methods=["POST"])
+    def review_draft(self, draft_id):
+        redirect_url = self.get_url(".edit_view", id=draft_id)
+        if not _valid_work_order_csrf_token(request.form.get("csrf_token")):
+            flash("La sesión del formulario ha caducado. Vuelve a intentarlo.", "error")
+            return redirect(redirect_url)
+
+        draft = self.session.get(ManualOrderDraft, draft_id)
+        if draft is None:
+            flash("Borrador de pedido manual no encontrado.", "error")
+            return redirect(self.get_url(".index_view"))
+        if not draft.is_editable:
+            return self._redirect_noneditable_manual_order_draft(draft)
+
+        try:
+            review_manual_order_draft(db_session=self.session, draft=draft)
+            self.session.commit()
+        except ManualOrderDraftError as exc:
+            self.session.rollback()
+            current_app.logger.warning("Manual order draft review rejected draft_id=%s", draft_id)
+            flash(str(exc), "error")
+        except Exception:
+            self.session.rollback()
+            current_app.logger.exception("Manual order draft review failed draft_id=%s", draft_id)
+            flash("No se ha podido recalcular el pedido manual.", "error")
+        else:
+            flash("Presupuesto revisado y validado con precios autoritativos.", "success")
+        return redirect(redirect_url)
+
+    @expose("/<int:draft_id>/confirmar-pedido/", methods=["GET", "POST"])
+    def confirm_issue(self, draft_id):
+        draft = self.session.get(ManualOrderDraft, draft_id)
+        if draft is None:
+            flash("Borrador de pedido manual no encontrado.", "error")
+            return redirect(self.get_url(".index_view"))
+        if draft.is_issued and draft.issued_order_id:
+            flash("Este borrador ya creó un pedido.", "info")
+            return redirect(url_for("orders.details_view", id=draft.issued_order_id))
+        if not draft.is_editable:
+            return self._redirect_noneditable_manual_order_draft(draft)
+
+        if request.method == "GET":
+            if not is_manual_order_draft_review_current(draft):
+                flash("Recalcula y valida el borrador antes de confirmarlo.", "error")
+                return redirect(self.get_url(".edit_view", id=draft.id))
+            return self.render(
+                "admin/manual_order_draft_confirm.html",
+                draft=draft,
+                quote_view=_manual_order_draft_quote_view(draft.last_quote_snapshot),
+                action_url=self.get_url(".confirm_issue", draft_id=draft.id),
+                cancel_url=self.get_url(".details_view", id=draft.id),
+                csrf_token=_issue_work_order_csrf_token(),
+            )
+
+        if not _valid_work_order_csrf_token(request.form.get("csrf_token")):
+            flash("La sesión del formulario ha caducado. Vuelve a intentarlo.", "error")
+            return redirect(self.get_url(".confirm_issue", draft_id=draft.id))
+        if request.form.get("confirm_issue") != "confirmed":
+            flash("Confirma la creación del pedido antes de continuar.", "error")
+            return redirect(self.get_url(".confirm_issue", draft_id=draft.id))
+
+        try:
+            issue_result = issue_manual_order_draft(
+                db_session=self.session,
+                draft_id=draft.id,
+                actor=invoice_admin_actor_from_basic_auth(request.authorization),
+            )
+            self.session.commit()
+        except ManualOrderDraftIssueError as exc:
+            self.session.rollback()
+            current_app.logger.warning("Manual order draft issuance rejected draft_id=%s", draft_id)
+            flash(str(exc), "error")
+            return redirect(self.get_url(".details_view", id=draft.id))
+        except IntegrityError:
+            self.session.rollback()
+            current_app.logger.exception("Manual order draft issuance integrity failure draft_id=%s", draft_id)
+            flash("No se ha podido crear el pedido manual por un conflicto de integridad.", "error")
+            return redirect(self.get_url(".details_view", id=draft.id))
+        except Exception:
+            self.session.rollback()
+            current_app.logger.exception("Manual order draft issuance failed draft_id=%s", draft_id)
+            flash("No se ha podido crear el pedido manual.", "error")
+            return redirect(self.get_url(".details_view", id=draft.id))
+
+        order = issue_result.order
+        if issue_result.created:
+            try:
+                send_order_confirmation_email(
+                    user=order.user,
+                    order=order,
+                    mail_username=current_app.config.get("MAIL_USERNAME"),
+                    logger=current_app.logger,
+                )
+            except Exception:
+                current_app.logger.exception(
+                    "Manual order confirmation email failed order_id=%s",
+                    order.id,
+                )
+
+        flash(f"Pedido manual {order.locator or order.id} creado correctamente.", "success")
+        return redirect(url_for("orders.details_view", id=order.id))
+
+    @expose("/<int:draft_id>/cancelar/", methods=["GET", "POST"])
+    def cancel_draft(self, draft_id):
+        draft = self.session.get(ManualOrderDraft, draft_id)
+        if draft is None:
+            flash("Borrador de pedido manual no encontrado.", "error")
+            return redirect(self.get_url(".index_view"))
+        if not draft.is_editable:
+            return self._redirect_noneditable_manual_order_draft(draft)
+
+        if request.method == "GET":
+            return self.render(
+                "admin/manual_order_draft_cancel_confirm.html",
+                draft=draft,
+                action_url=self.get_url(".cancel_draft", draft_id=draft.id),
+                cancel_url=self.get_url(".details_view", id=draft.id),
+                csrf_token=_issue_work_order_csrf_token(),
+            )
+
+        if not _valid_work_order_csrf_token(request.form.get("csrf_token")):
+            flash("La sesión del formulario ha caducado. Vuelve a intentarlo.", "error")
+            return redirect(self.get_url(".cancel_draft", draft_id=draft.id))
+        if request.form.get("confirm_cancel") != "cancelled":
+            flash("Confirma la cancelación del borrador antes de continuar.", "error")
+            return redirect(self.get_url(".cancel_draft", draft_id=draft.id))
+
+        try:
+            locked_draft = (
+                self.session.query(ManualOrderDraft)
+                .filter(ManualOrderDraft.id == draft.id)
+                .with_for_update()
+                .one_or_none()
+            )
+            if locked_draft is None or not locked_draft.is_editable:
+                raise ManualOrderDraftAdminFormError("El borrador ya no puede cancelarse.")
+            # Preserve all draft evidence and any reviewed quote for auditability.
+            locked_draft.status = ManualOrderDraft.STATUS_CANCELLED
+            self.session.commit()
+        except ManualOrderDraftAdminFormError as exc:
+            self.session.rollback()
+            flash(str(exc), "error")
+        except Exception:
+            self.session.rollback()
+            current_app.logger.exception("Manual order draft cancellation failed draft_id=%s", draft_id)
+            flash("No se ha podido cancelar el borrador manual.", "error")
+        else:
+            flash("Borrador de pedido manual cancelado.", "success")
+        return redirect(self.get_url(".details_view", id=draft.id))
+
+    def delete_model(self, model):
+        flash("Los borradores manuales se cancelan; no se eliminan.", "error")
+        return False
+
+    def _manual_order_draft_form(self, *, draft=None, formdata=None):
+        user_choices, user_emails, user_profiles = _manual_order_draft_user_choices(self.session)
+        form = ManualOrderDraftForm(
+            formdata=formdata,
+            data=_manual_order_draft_form_initial_data(draft),
+            user_choices=user_choices,
+        )
+        selected_user_id = form.user_id.data
+        if (
+            form.customer_mode.data == ManualOrderDraft.CUSTOMER_MODE_REGISTERED_USER
+            and selected_user_id
+        ):
+            form.user_email.data = user_emails.get(selected_user_id, "")
+        products = self.session.query(Products).order_by(Products.nombre.asc()).all()
+        return form, products, user_emails, user_profiles
+
+    def _render_manual_order_draft_form(
+        self,
+        *,
+        form,
+        products,
+        user_emails,
+        user_profiles,
+        line_rows,
+        draft=None,
+    ):
+        review_current = bool(draft and is_manual_order_draft_review_current(draft))
+        return self.render(
+            "admin/manual_order_draft_edit.html",
+            draft=draft,
+            form=form,
+            products=products,
+            user_emails=user_emails,
+            user_profiles=user_profiles,
+            line_rows=line_rows,
+            configurator_anchorages=CONFIGURATOR_ANCHORAGES,
+            configurator_colors=CONFIGURATOR_COLORS,
+            screw_options=_manual_order_draft_screw_options(),
+            quote_view=_manual_order_draft_quote_view(
+                draft.last_quote_snapshot if draft is not None else None
+            ),
+            review_current=review_current,
+            csrf_token=_issue_work_order_csrf_token(),
+            form_action=self.get_url(".edit_view", id=draft.id) if draft else self.get_url(".create_view"),
+            detail_url=self.get_url(".details_view", id=draft.id) if draft else None,
+            review_url=self.get_url(".review_draft", draft_id=draft.id) if draft else None,
+            issue_url=self.get_url(".confirm_issue", draft_id=draft.id) if draft else None,
+            cancel_url=self.get_url(".cancel_draft", draft_id=draft.id) if draft else None,
+        )
+
+    def _save_manual_order_draft(self, form, formdata, *, draft=None):
+        customer_mode = _manual_order_draft_customer_mode(form.customer_mode.data)
+        user = None
+        if customer_mode == ManualOrderDraft.CUSTOMER_MODE_REGISTERED_USER:
+            user = self.session.get(Users, form.user_id.data)
+            if user is None:
+                raise ManualOrderDraftAdminFormError("Selecciona un usuario existente.")
+        customer_draft = _manual_order_draft_customer_from_form(form, user, customer_mode)
+        line_payload = _manual_order_draft_line_payload(formdata, self.session)
+        values = {
+            "customer_mode": customer_mode,
+            "user_id": user.id if user is not None else None,
+            "customer_draft": customer_draft,
+            "discount_code": _manual_order_draft_normalized_discount_code(form.discount_code.data),
+            "estimated_delivery_at": form.estimated_delivery_at.data,
+            "estimated_delivery_note": _manual_order_draft_optional_text(form.estimated_delivery_note.data),
+            "payment_method": _manual_order_draft_optional_text(form.payment_method.data),
+            "payment_reference": _manual_order_draft_optional_text(form.payment_reference.data),
+            "payment_confirmed_at": form.payment_confirmed_at.data,
+            "payment_note": _manual_order_draft_optional_text(form.payment_note.data),
+            "internal_note": _manual_order_draft_optional_text(form.internal_note.data),
+        }
+
+        if draft is None:
+            draft = ManualOrderDraft(
+                status=ManualOrderDraft.STATUS_DRAFT,
+                created_by=invoice_admin_actor_from_basic_auth(request.authorization),
+                **values,
+            )
+            self.session.add(draft)
+            for position, line_values in enumerate(line_payload):
+                draft.lines.append(ManualOrderDraftLine(position=position, **line_values))
+            invalidate_manual_order_draft_review(draft)
+            return draft
+
+        commercial_changed = (
+            draft.customer_mode != values["customer_mode"]
+            or draft.user_id != values["user_id"]
+            or dict(draft.customer_draft or {}) != values["customer_draft"]
+            or draft.discount_code != values["discount_code"]
+            or draft.estimated_delivery_at != values["estimated_delivery_at"]
+            or draft.estimated_delivery_note != values["estimated_delivery_note"]
+            or not _manual_order_draft_lines_match(draft.lines, line_payload)
+        )
+        for field_name, value in values.items():
+            setattr(draft, field_name, value)
+        if not _manual_order_draft_lines_match(draft.lines, line_payload):
+            _replace_manual_order_draft_lines(self.session, draft, line_payload)
+        if commercial_changed:
+            invalidate_manual_order_draft_review(draft)
+        return draft
+
+    def _redirect_noneditable_manual_order_draft(self, draft):
+        if draft.is_issued and draft.issued_order_id:
+            flash("El borrador ya emitido es de solo lectura.", "info")
+            return redirect(url_for("orders.details_view", id=draft.issued_order_id))
+        if draft.is_cancelled:
+            flash("El borrador cancelado es de solo lectura.", "info")
+        else:
+            flash("El borrador no está disponible para esta acción.", "error")
+        return redirect(self.get_url(".details_view", id=draft.id))
+
+    def _issued_manual_order_url(self, draft):
+        if not draft.issued_order_id:
+            return None
+        return url_for("orders.details_view", id=draft.issued_order_id)
+
+
+def _manual_order_draft_user_display(draft):
+    if draft.customer_mode == ManualOrderDraft.CUSTOMER_MODE_MANUAL_CUSTOMER:
+        return "Cliente sin cuenta"
+    user = getattr(draft, "user", None)
+    if user is None:
+        return "Usuario no disponible"
+    full_name = " ".join(
+        part for part in (user.firstname, user.lastname) if isinstance(part, str) and part.strip()
+    ).strip()
+    return f"{full_name} · {user.email}" if full_name else user.email
+
+
+def _manual_order_draft_customer_mode(value):
+    if value in {
+        ManualOrderDraft.CUSTOMER_MODE_REGISTERED_USER,
+        ManualOrderDraft.CUSTOMER_MODE_MANUAL_CUSTOMER,
+    }:
+        return value
+    raise ManualOrderDraftAdminFormError("Selecciona un tipo de cliente válido.")
+
+
+def _manual_order_draft_customer_mode_label(value):
+    return {
+        ManualOrderDraft.CUSTOMER_MODE_REGISTERED_USER: "Cliente registrado",
+        ManualOrderDraft.CUSTOMER_MODE_MANUAL_CUSTOMER: "Cliente sin cuenta",
+    }.get(value, "—")
+
+
+def _manual_order_draft_reviewed_total(draft):
+    quote = getattr(draft, "last_quote_snapshot", None)
+    if not isinstance(quote, Mapping):
+        return "—"
+    return _manual_order_draft_money(quote.get("total_amount"))
+
+
+def _manual_order_draft_payment_method_label(payment_method):
+    return {
+        "bank_transfer": "Transferencia bancaria",
+        "cash": "Efectivo",
+        "external_other": "Otro pago externo",
+    }.get(payment_method, "—")
+
+
+def _manual_order_draft_datetime_label(value):
+    return value.strftime("%d/%m/%Y %H:%M") if hasattr(value, "strftime") else "—"
+
+
+def _manual_order_draft_order_link(draft):
+    if not draft.issued_order_id:
+        return "—"
+    return Markup('<a href="{url}">Pedido #{order_id}</a>').format(
+        url=escape(url_for("orders.details_view", id=draft.issued_order_id)),
+        order_id=escape(draft.issued_order_id),
+    )
 
 
 class FavoritesAdminView(SafeModelView):
@@ -3928,6 +4972,7 @@ def setup_admin(app):
     admin.add_view(SafeModelView(ProductImages, db.session, name="Imágenes de producto", category="Catálogo"))
 
     admin.add_view(OrderAdminView(Orders, db.session, name="Pedidos", category="Ventas"))
+    admin.add_view(ManualOrderDraftAdminView(ManualOrderDraft, db.session, name="Pedidos manuales", category="Ventas"))
     admin.add_view(OrderDetailsAdminView(OrderDetails, db.session, name="Líneas de pedido", category="Ventas"))
     admin.add_view(CartAdminView(Cart, db.session, name="Carritos", category="Ventas"))
 

@@ -453,7 +453,7 @@ class Subcategories(db.Model):
 class Orders(db.Model):
     __tablename__ = "orders"
     id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
     order_date = db.Column(db.DateTime, default=db.func.current_timestamp())
     total_amount = db.Column(db.Float, nullable=False)
     shipping_cost = db.Column(db.Float, nullable=True, default=0.0)
@@ -473,6 +473,12 @@ class Orders(db.Model):
         uselist=False,
         cascade='all, delete-orphan',
     )
+    confirmed_order_context = db.relationship(
+        "ConfirmedOrderContext",
+        back_populates="order",
+        uselist=False,
+        cascade="all, delete-orphan",
+    )
 
     @property
     def shipping_address_summary(self):
@@ -486,9 +492,10 @@ class Orders(db.Model):
 
     @property
     def customer_phone_snapshot(self):
-        """Return the telephone frozen by the checkout, never the live profile value."""
-        checkout_session = getattr(self, "checkout_session", None)
-        customer_snapshot = getattr(checkout_session, "customer_snapshot", None)
+        """Return the canonical frozen telephone, retaining the legacy checkout fallback."""
+        from api.order_confirmation_context import get_order_customer_snapshot
+
+        customer_snapshot = get_order_customer_snapshot(self)
         if not isinstance(customer_snapshot, dict):
             return None
 
@@ -620,6 +627,11 @@ class CheckoutSessions(db.Model):
     user = db.relationship('Users', backref='checkout_sessions', lazy=True)
     order = db.relationship('Orders', backref=db.backref('checkout_session', uselist=False), lazy=True)
     design_request = db.relationship("DesignRequest", backref="checkout_sessions", lazy=True)
+    confirmed_order_context = db.relationship(
+        "ConfirmedOrderContext",
+        back_populates="source_checkout_session",
+        uselist=False,
+    )
 
     @staticmethod
     def generate_public_checkout_token():
@@ -653,6 +665,278 @@ class CheckoutSessions(db.Model):
             "created_at": self.created_at,
             "updated_at": self.updated_at
         }
+
+
+class ConfirmedOrderContext(db.Model):
+    """Immutable canonical confirmation data for one newly created order."""
+
+    __tablename__ = "confirmed_order_contexts"
+    __table_args__ = (
+        db.CheckConstraint(
+            "source IN ('web_checkout', 'admin_external')",
+            name="ck_confirmed_order_contexts_source_valid",
+        ),
+        db.CheckConstraint(
+            "payment_method IN ('stripe', 'paypal', 'bank_transfer', 'cash', 'external_other')",
+            name="ck_confirmed_order_contexts_payment_method_valid",
+        ),
+        db.CheckConstraint(
+            "payment_status = 'confirmed'",
+            name="ck_confirmed_order_contexts_payment_status_confirmed",
+        ),
+        db.CheckConstraint(
+            "currency = 'EUR'",
+            name="ck_confirmed_order_contexts_currency_eur",
+        ),
+        db.CheckConstraint(
+            "payment_amount >= 0",
+            name="ck_confirmed_order_contexts_payment_amount_nonnegative",
+        ),
+    )
+
+    id = db.Column(db.Integer, primary_key=True)
+    order_id = db.Column(db.Integer, db.ForeignKey("orders.id"), nullable=False, unique=True)
+    source = db.Column(db.String(30), nullable=False, default="web_checkout", server_default="web_checkout")
+    quote_snapshot = db.Column(db.JSON, nullable=False)
+    customer_snapshot = db.Column(db.JSON, nullable=False)
+    payment_method = db.Column(db.String(50), nullable=False)
+    payment_status = db.Column(
+        db.String(30),
+        nullable=False,
+        default="confirmed",
+        server_default="confirmed",
+    )
+    payment_reference = db.Column(db.String(255), nullable=True)
+    provider_identifiers = db.Column(db.JSON, nullable=True)
+    payment_confirmed_at = db.Column(db.DateTime, nullable=True)
+    payment_amount = db.Column(db.Numeric(12, 2), nullable=False)
+    currency = db.Column(db.String(3), nullable=False, default="EUR", server_default="EUR")
+    confirmed_at = db.Column(db.DateTime, nullable=False, server_default=db.func.now())
+    confirmed_by = db.Column(db.String(255), nullable=True)
+    source_checkout_session_id = db.Column(
+        db.Integer,
+        db.ForeignKey("checkout_sessions.id"),
+        nullable=True,
+        unique=True,
+    )
+    # Reserved for the later manual-order draft model, which does not exist in this hito.
+    source_manual_draft_id = db.Column(
+        db.Integer,
+        db.ForeignKey("manual_order_drafts.id"),
+        nullable=True,
+        unique=True,
+    )
+    internal_note = db.Column(db.Text, nullable=True)
+    created_at = db.Column(db.DateTime, nullable=False, server_default=db.func.now())
+
+    order = db.relationship("Orders", back_populates="confirmed_order_context")
+    source_checkout_session = db.relationship(
+        "CheckoutSessions",
+        back_populates="confirmed_order_context",
+    )
+    source_manual_draft = db.relationship(
+        "ManualOrderDraft",
+        back_populates="confirmed_order_context",
+        foreign_keys="ConfirmedOrderContext.source_manual_draft_id",
+    )
+
+    def __repr__(self):
+        return f"<ConfirmedOrderContext {self.id} for Order {self.order_id}>"
+
+
+@event.listens_for(ConfirmedOrderContext, "before_update")
+def prevent_confirmed_order_context_mutation(mapper, connection, target):
+    """A confirmed context is a historical record, not an editable order draft."""
+    from sqlalchemy import inspect
+
+    immutable_fields = (
+        "order_id",
+        "source",
+        "quote_snapshot",
+        "customer_snapshot",
+        "payment_method",
+        "payment_status",
+        "payment_reference",
+        "provider_identifiers",
+        "payment_confirmed_at",
+        "payment_amount",
+        "currency",
+        "confirmed_at",
+        "confirmed_by",
+        "source_checkout_session_id",
+        "source_manual_draft_id",
+        "internal_note",
+        "created_at",
+    )
+    inspection = inspect(target)
+    if any(inspection.attrs[field].history.has_changes() for field in immutable_fields):
+        raise ValueError("El contexto de pedido confirmado es inmutable.")
+
+
+class ManualOrderDraft(db.Model):
+    """Mutable physical-order input that exists before a canonical Order."""
+
+    __tablename__ = "manual_order_drafts"
+    __table_args__ = (
+        db.CheckConstraint(
+            "status IN ('draft', 'issued', 'cancelled')",
+            name="ck_manual_order_drafts_status_valid",
+        ),
+        db.CheckConstraint(
+            "payment_method IS NULL OR payment_method IN "
+            "('bank_transfer', 'cash', 'external_other')",
+            name="ck_manual_order_drafts_payment_method_valid",
+        ),
+        db.CheckConstraint(
+            "customer_mode IN ('registered_user', 'manual_customer')",
+            name="ck_manual_order_drafts_customer_mode_valid",
+        ),
+        db.CheckConstraint(
+            "(customer_mode = 'registered_user' AND user_id IS NOT NULL) OR "
+            "(customer_mode = 'manual_customer' AND user_id IS NULL)",
+            name="ck_manual_order_drafts_customer_mode_user",
+        ),
+        db.UniqueConstraint("issuance_key", name="uq_manual_order_drafts_issuance_key"),
+        db.UniqueConstraint("issued_order_id", name="uq_manual_order_drafts_issued_order_id"),
+        db.Index("ix_manual_order_drafts_user_status", "user_id", "status"),
+    )
+
+    STATUS_DRAFT = "draft"
+    STATUS_ISSUED = "issued"
+    STATUS_CANCELLED = "cancelled"
+    CUSTOMER_MODE_REGISTERED_USER = "registered_user"
+    CUSTOMER_MODE_MANUAL_CUSTOMER = "manual_customer"
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=True)
+    customer_mode = db.Column(
+        db.String(24),
+        nullable=False,
+        default=CUSTOMER_MODE_REGISTERED_USER,
+        server_default=CUSTOMER_MODE_REGISTERED_USER,
+    )
+    status = db.Column(
+        db.String(20),
+        nullable=False,
+        default=STATUS_DRAFT,
+        server_default=STATUS_DRAFT,
+    )
+    customer_draft = db.Column(db.JSON, nullable=True)
+    discount_code = db.Column(db.String(50), nullable=True)
+    estimated_delivery_at = db.Column(db.Date, nullable=True)
+    estimated_delivery_note = db.Column(db.String(255), nullable=True)
+    payment_method = db.Column(db.String(50), nullable=True)
+    payment_reference = db.Column(db.String(255), nullable=True)
+    payment_confirmed_at = db.Column(db.DateTime, nullable=True)
+    payment_note = db.Column(db.Text, nullable=True)
+    internal_note = db.Column(db.Text, nullable=True)
+    # Mutable review cache only; the confirmed context becomes fiscal authority.
+    last_quote_snapshot = db.Column(db.JSON, nullable=True)
+    quote_fingerprint = db.Column(db.String(64), nullable=True)
+    issuance_key = db.Column(db.String(36), nullable=True)
+    issued_order_id = db.Column(db.Integer, db.ForeignKey("orders.id"), nullable=True)
+    created_by = db.Column(db.String(255), nullable=True)
+    created_at = db.Column(db.DateTime, nullable=False, server_default=db.func.now())
+    updated_at = db.Column(
+        db.DateTime,
+        nullable=False,
+        server_default=db.func.now(),
+        onupdate=db.func.now(),
+    )
+
+    user = db.relationship(
+        "Users",
+        backref=db.backref("manual_order_drafts", lazy=True),
+        lazy=True,
+    )
+    issued_order = db.relationship("Orders", foreign_keys=[issued_order_id], lazy=True)
+    lines = db.relationship(
+        "ManualOrderDraftLine",
+        back_populates="draft",
+        lazy=True,
+        cascade="all, delete-orphan",
+        order_by="ManualOrderDraftLine.position",
+    )
+    confirmed_order_context = db.relationship(
+        "ConfirmedOrderContext",
+        back_populates="source_manual_draft",
+        uselist=False,
+        foreign_keys=[ConfirmedOrderContext.source_manual_draft_id],
+    )
+
+    @property
+    def is_editable(self):
+        return self.status == self.STATUS_DRAFT and self.issued_order_id is None
+
+    @property
+    def is_issued(self):
+        return self.status == self.STATUS_ISSUED
+
+    @property
+    def is_cancelled(self):
+        return self.status == self.STATUS_CANCELLED
+
+    @property
+    def customer_email(self):
+        """Show the draft contact while the confirmed context remains the final authority."""
+        customer_draft = self.customer_draft if isinstance(self.customer_draft, dict) else {}
+        email = customer_draft.get("email")
+        if isinstance(email, str) and email.strip():
+            return email.strip()
+        user = getattr(self, "user", None)
+        return getattr(user, "email", None)
+
+    def __repr__(self):
+        return f"<ManualOrderDraft {self.id} {self.status}>"
+
+
+class ManualOrderDraftLine(db.Model):
+    """One mutable physical configuration before the authoritative quote."""
+
+    __tablename__ = "manual_order_draft_lines"
+    __table_args__ = (
+        db.UniqueConstraint("draft_id", "position", name="uq_manual_order_draft_lines_position"),
+        db.CheckConstraint(
+            "quantity > 0",
+            name="ck_manual_order_draft_lines_quantity_positive",
+        ),
+        db.CheckConstraint(
+            "position >= 0",
+            name="ck_manual_order_draft_lines_position_nonnegative",
+        ),
+    )
+
+    id = db.Column(db.Integer, primary_key=True)
+    draft_id = db.Column(
+        db.Integer,
+        db.ForeignKey("manual_order_drafts.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    position = db.Column(db.Integer, nullable=False)
+    product_id = db.Column(db.Integer, db.ForeignKey("products.id"), nullable=False)
+    quantity = db.Column(db.Integer, nullable=False)
+    alto = db.Column(db.Float, nullable=True)
+    ancho = db.Column(db.Float, nullable=True)
+    anclaje = db.Column(db.String(50), nullable=True)
+    color = db.Column(db.String(50), nullable=True)
+    screw_option = db.Column(db.String(20), nullable=True)
+    created_at = db.Column(db.DateTime, nullable=False, server_default=db.func.now())
+    updated_at = db.Column(
+        db.DateTime,
+        nullable=False,
+        server_default=db.func.now(),
+        onupdate=db.func.now(),
+    )
+
+    draft = db.relationship("ManualOrderDraft", back_populates="lines", lazy=True)
+    product = db.relationship(
+        "Products",
+        backref=db.backref("manual_order_draft_lines", lazy=True),
+        lazy=True,
+    )
+
+    def __repr__(self):
+        return f"<ManualOrderDraftLine {self.id} draft={self.draft_id}>"
 
 
 class OrderDetails(db.Model):

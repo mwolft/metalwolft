@@ -63,7 +63,7 @@ class TransactionalOrderEmailRendererTest(unittest.TestCase):
             "Negro forja",
             "150 mm (+8,95 €)",
             "Cantidad: 2",
-            "Importe: 1.234,50 €",
+            "Total: 1.234,50 €",
             "Subtotal: 1.234,50 €",
             "Envío: GRATIS",
             "Descuento: −171,17 €",
@@ -79,6 +79,43 @@ class TransactionalOrderEmailRendererTest(unittest.TestCase):
         self.assertIn("1.234,50 €", rendered.html)
         self.assertIn("GRATIS", rendered.html)
         self.assertNotIn("<script", rendered.html.lower())
+
+    def test_renders_an_optional_product_thumbnail_and_total_label(self):
+        rendered = render_order(
+            lines=(
+                order_line(
+                    image_url="https://cdn.example.com/products/albany.webp",
+                    image_width=96,
+                ),
+            )
+        )
+
+        self.assertIn('src="https://cdn.example.com/products/albany.webp"', rendered.html)
+        self.assertIn('width="96"', rendered.html)
+        self.assertIn("Total", rendered.html)
+        self.assertNotIn("Importe de línea", rendered.html)
+        self.assertIn("Total: 1.234,50 €", rendered.text)
+        self.assertLess(
+            rendered.html.index('src="https://cdn.example.com/products/albany.webp"'),
+            rendered.html.index("Reja fija Albany"),
+        )
+        self.assertLess(rendered.html.index("Reja fija Albany"), rendered.html.index("×2"))
+        self.assertIn(
+            "</tr></table></td></tr></table><table role=\"presentation\"",
+            rendered.html,
+        )
+        self.assertIn('align="right" style="padding:10px 0 16px 12px', rendered.html)
+
+    def test_omits_product_thumbnail_when_the_line_has_no_valid_image_url(self):
+        rendered = render_order(lines=(order_line(image_url="/products/albany.webp"),))
+
+        self.assertNotIn("<img src=", rendered.html)
+        self.assertIn("Reja fija Albany", rendered.html)
+        self.assertIn("Total", rendered.html)
+        self.assertIn(
+            "</tr></table></td></tr></table><table role=\"presentation\"",
+            rendered.html,
+        )
 
     def test_renders_standard_and_long_screw_configurations(self):
         rendered = render_order(

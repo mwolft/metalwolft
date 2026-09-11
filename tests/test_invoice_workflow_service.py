@@ -140,13 +140,22 @@ def make_checkout_session():
     return SimpleNamespace(id=99, order_id=355)
 
 
-def run_workflow(invoice, *, session=None, output_dir=None, mailer=None, logger=None):
+def run_workflow(
+    invoice,
+    *,
+    session=None,
+    output_dir=None,
+    mailer=None,
+    logger=None,
+    confirmation_context=None,
+):
     db_session = session or FakeDbSession(invoice)
     output_dir = output_dir or tempfile.mkdtemp()
     return run_invoice_workflow_for_order(
         355,
         issuer={"legal_name": "MetalWolft"},
-        checkout_session=make_checkout_session(),
+        confirmation_context=confirmation_context,
+        checkout_session=None if confirmation_context is not None else make_checkout_session(),
         actor="admin@example.com",
         source="manual",
         invoice_output_dir=output_dir,
@@ -166,6 +175,36 @@ def issue_invoice_side_effect(invoice, *, created=True):
 
 @unittest.skipUnless(HAS_DB_TEST_DEPENDENCIES, "Flask/SQLAlchemy test dependencies are not installed.")
 class InvoiceWorkflowServiceTest(unittest.TestCase):
+    def test_complete_workflow_accepts_normalized_context_without_checkout_session(self):
+        invoice = make_invoice()
+        context = SimpleNamespace(source="admin_external", confirmation_context_id=91)
+
+        with patch(
+            "api.invoice_workflow_service.issue_invoice_for_order",
+            return_value=SimpleNamespace(
+                invoice=invoice,
+                invoice_number=invoice.invoice_number,
+                created=True,
+            ),
+        ) as issue, patch(
+            "api.invoice_workflow_service._run_pdf_step",
+            return_value=SimpleNamespace(status=STATUS_COMPLETED),
+        ), patch(
+            "api.invoice_workflow_service._run_accounting_step",
+            return_value=SimpleNamespace(status=STATUS_COMPLETED),
+        ), patch(
+            "api.invoice_workflow_service._run_verifactu_step",
+            return_value=SimpleNamespace(status=STATUS_COMPLETED),
+        ), patch(
+            "api.invoice_workflow_service._run_email_step",
+            return_value=SimpleNamespace(status=STATUS_COMPLETED),
+        ):
+            result, _ = run_workflow(invoice, confirmation_context=context)
+
+        self.assertTrue(result.completed)
+        self.assertIs(issue.call_args.kwargs["confirmation_context"], context)
+        self.assertIsNone(issue.call_args.kwargs["checkout_session"])
+
     def test_complete_workflow_runs_steps_in_order_and_commits_each_phase(self):
         invoice = make_invoice()
         calls = []

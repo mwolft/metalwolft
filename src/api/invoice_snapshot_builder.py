@@ -2,15 +2,20 @@ from copy import deepcopy
 from datetime import date, datetime, timezone
 from decimal import Decimal, InvalidOperation, ROUND_DOWN, ROUND_HALF_UP
 
+from api.invoice_confirmation_context import (
+    FINAL_CHECKOUT_STATUSES,
+    SUPPORTED_CURRENCY,
+    InvoiceConfirmationContextError,
+    coerce_invoice_confirmation_context,
+)
+
 
 SNAPSHOT_SCHEMA_VERSION = 2
 SNAPSHOT_GENERATOR = "invoice_snapshot_builder_v2"
 RECTIFICATION_SNAPSHOT_SCHEMA_VERSION = 3
 RECTIFICATION_SNAPSHOT_GENERATOR = "invoice_snapshot_builder_v3"
-SUPPORTED_CURRENCY = "EUR"
 SUPPORTED_TAX_RATE = Decimal("21.00")
 NET_UNIT_PRICE_QUANTUM = Decimal("0.000001")
-FINAL_CHECKOUT_STATUSES = {"paid", "order_created"}
 RECTIFICATION_TYPES = {"differences", "substitution"}
 RECTIFICATION_SCOPES = {"total", "partial"}
 RECTIFICATION_AEAT_TYPES = {"R1", "R2", "R3", "R4", "R5"}
@@ -34,12 +39,13 @@ class InvoiceSnapshotValidationError(ValueError):
 
 def build_invoice_snapshot(
     order,
-    checkout_session,
-    issuer,
+    confirmation_context=None,
+    issuer=None,
     *,
     issue_date,
     source="manual",
     actor=None,
+    checkout_session=None,
 ):
     """Build an immutable fiscal snapshot from an already-created order.
 
@@ -51,19 +57,32 @@ def build_invoice_snapshot(
     """
     if order is None:
         raise InvoiceSnapshotValidationError("order", "El pedido es obligatorio.")
-    if checkout_session is None:
-        raise InvoiceSnapshotValidationError("checkout_session", "La sesion de checkout es obligatoria.")
+    if confirmation_context is not None and checkout_session is not None:
+        raise InvoiceSnapshotValidationError(
+            "confirmation_context",
+            "Solo se puede indicar un contexto de confirmacion.",
+        )
+    if confirmation_context is None:
+        confirmation_context = checkout_session
 
-    quote = _copy_mapping(_getattr(checkout_session, "quote_snapshot"), "quote_snapshot")
-    customer_snapshot = _copy_mapping(
-        _getattr(checkout_session, "customer_snapshot"),
-        "customer_snapshot",
-    )
+    try:
+        confirmation_context = coerce_invoice_confirmation_context(
+            order=order,
+            confirmation_context=confirmation_context,
+        )
+    except InvoiceConfirmationContextError as exc:
+        field = {
+            "checkout_session.quote_snapshot": "quote_snapshot",
+            "checkout_session.customer_snapshot": "customer_snapshot",
+        }.get(getattr(exc, "field", None), getattr(exc, "field", None))
+        raise InvoiceSnapshotValidationError(field or "confirmation_context", str(exc)) from exc
+
+    quote = _copy_mapping(confirmation_context.quote_snapshot, "quote_snapshot")
+    customer_snapshot = _copy_mapping(confirmation_context.customer_snapshot, "customer_snapshot")
     issuer_snapshot = _normalize_issuer(issuer)
-    customer = _normalize_customer(customer_snapshot, order, checkout_session)
-    _validate_checkout_link(order, checkout_session)
+    customer = _normalize_customer(customer_snapshot, order)
 
-    currency = _extract_currency(quote, checkout_session)
+    currency = _extract_currency(quote, confirmation_context)
     if currency != SUPPORTED_CURRENCY:
         raise InvoiceSnapshotValidationError("operation.currency", "Moneda no soportada.")
 
@@ -92,17 +111,13 @@ def build_invoice_snapshot(
         },
         "lines": lines,
         "totals": totals,
-        "payment": _normalize_payment(checkout_session),
-        "references": {
-            "checkout_session_id": _get_required(
-                checkout_session,
-                "id",
-                "references.checkout_session_id",
-            ),
-            "order_id": _get_required(order, "id", "references.order_id"),
-            "source": source,
-            "actor": _serialize_actor(actor),
-        },
+        "payment": _normalize_payment(confirmation_context),
+        "references": _build_references(
+            order,
+            confirmation_context,
+            source=source,
+            actor=actor,
+        ),
     }
 
 
@@ -368,7 +383,7 @@ def _normalize_issuer(issuer):
     }
 
 
-def _normalize_customer(customer_snapshot, order, checkout_session):
+def _normalize_customer(customer_snapshot, order):
     firstname = customer_snapshot.get("firstname")
     lastname = customer_snapshot.get("lastname")
     legal_name = customer_snapshot.get("legal_name") or " ".join(
@@ -398,7 +413,6 @@ def _normalize_customer(customer_snapshot, order, checkout_session):
     email = (
         customer_snapshot.get("email")
         or _nested_attr(order, "user", "email")
-        or _nested_attr(checkout_session, "user", "email")
     )
     tax_id = customer_snapshot.get("tax_id") or customer_snapshot.get("CIF")
     if isinstance(tax_id, str):
@@ -431,6 +445,14 @@ def _normalize_customer(customer_snapshot, order, checkout_session):
     return customer
 
 
+def validate_invoice_customer_snapshot(order, customer_snapshot):
+    """Apply the current fiscal-customer rules without building a snapshot."""
+    return _normalize_customer(
+        _copy_mapping(customer_snapshot, "customer_snapshot"),
+        order,
+    )
+
+
 def _nested_attr(obj, parent, child):
     nested = _getattr(obj, parent)
     if nested is None:
@@ -438,27 +460,10 @@ def _nested_attr(obj, parent, child):
     return _getattr(nested, child)
 
 
-def _validate_checkout_link(order, checkout_session):
-    order_id = _get_required(order, "id", "order.id")
-    checkout_order_id = _get_required(checkout_session, "order_id", "checkout_session.order_id")
-    if checkout_order_id != order_id:
-        raise InvoiceSnapshotValidationError(
-            "checkout_session.order_id",
-            "La sesion no pertenece al pedido.",
-        )
-
-    status = _get_required(checkout_session, "status", "checkout_session.status")
-    if status not in FINAL_CHECKOUT_STATUSES:
-        raise InvoiceSnapshotValidationError(
-            "checkout_session.status",
-            "La sesion no esta finalizada ni pagada.",
-        )
-
-
-def _extract_currency(quote, checkout_session):
+def _extract_currency(quote, confirmation_context):
     currency = (
         quote.get("currency")
-        or _getattr(checkout_session, "currency")
+        or confirmation_context.currency
         or SUPPORTED_CURRENCY
     )
     return str(currency).upper()
@@ -860,29 +865,41 @@ def _finalize_totals(totals, lines):
     }
 
 
-def _normalize_payment(checkout_session):
-    provider = _get_required(checkout_session, "payment_provider", "payment.provider")
-    provider_reference = None
-    if provider == "stripe":
-        provider_reference = _getattr(checkout_session, "payment_intent_id")
-    elif provider == "paypal":
-        provider_reference = (
-            _getattr(checkout_session, "provider_capture_id")
-            or _getattr(checkout_session, "provider_order_id")
-        )
-    else:
-        provider_reference = (
-            _getattr(checkout_session, "provider_capture_id")
-            or _getattr(checkout_session, "provider_order_id")
-            or _getattr(checkout_session, "payment_intent_id")
-        )
-
+def _normalize_payment(confirmation_context):
     return {
-        "provider": provider,
-        "provider_reference": provider_reference,
+        "provider": confirmation_context.payment_method,
+        "provider_reference": confirmation_context.payment_reference,
         "status": "paid",
-        "paid_at": None,
+        "paid_at": (
+            confirmation_context.payment_confirmed_at.isoformat()
+            if confirmation_context.payment_confirmed_at is not None
+            else None
+        ),
     }
+
+
+def _build_references(order, confirmation_context, *, source, actor):
+    if confirmation_context.source_checkout_session_id is not None:
+        # Preserve the exact legacy web reference whenever one genuinely exists.
+        return {
+            "checkout_session_id": confirmation_context.source_checkout_session_id,
+            "order_id": _get_required(order, "id", "references.order_id"),
+            "source": source,
+            "actor": _serialize_actor(actor),
+        }
+
+    references = {
+        "order_id": _get_required(order, "id", "references.order_id"),
+        "source": source,
+        "actor": _serialize_actor(actor),
+    }
+
+    if confirmation_context.confirmation_context_id is not None:
+        references["confirmation_context_id"] = confirmation_context.confirmation_context_id
+    references["confirmation_source"] = confirmation_context.source
+    if confirmation_context.source_manual_draft_id is not None:
+        references["source_manual_draft_id"] = confirmation_context.source_manual_draft_id
+    return references
 
 
 def _serialize_actor(actor):

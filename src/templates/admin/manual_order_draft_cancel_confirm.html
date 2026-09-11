@@ -1,0 +1,16 @@
+{% extends 'admin/master.html' %}
+
+{% block body %}
+  <div class="mw-manual-order-draft mw-manual-order-draft--confirmation">
+    <div class="page-header"><h2>Cancelar borrador de pedido manual</h2></div>
+    <div class="alert alert-warning">
+      El borrador y su revisión se conservarán para trazabilidad, pero no podrá editarse ni crear un pedido.
+    </div>
+    <form method="post" action="{{ action_url }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <input type="hidden" name="confirm_cancel" value="cancelled">
+      <button type="submit" class="btn btn-danger">CANCELAR BORRADOR</button>
+      <a class="btn btn-default" href="{{ cancel_url }}">Volver al borrador</a>
+    </form>
+  </div>
+{% endblock %}

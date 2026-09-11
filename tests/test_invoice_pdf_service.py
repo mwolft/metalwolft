@@ -349,11 +349,9 @@ class InvoicePdfServiceTest(unittest.TestCase):
             "B00000000",
             "Sergio Arias",
             "00000000T",
-            "Teléfono",
-            "600000000",
             "AB1234",
             "Reja fija Pittsburgh",
-            "30 × 30 cm",
+            "Alto 30 cm × Ancho 30 cm",
             "Agujeros interiores",
             "Blanco liso",
             "Esmalte sintético",
@@ -465,9 +463,10 @@ class InvoicePdfServiceTest(unittest.TestCase):
         source = (SRC_DIR / "api/invoice_pdf_service.py").read_text(encoding="utf-8")
         self.assertIn('BRAND_RED = "#cf1c35"', source)
 
-    def test_pdf_hides_internal_hash_and_customer_email_but_renders_frozen_phone(self):
+    def test_pdf_hides_internal_hash_customer_email_and_customer_phone(self):
         invoice = SnapshotOnlyInvoice()
         original_hash = invoice.invoice_snapshot_hash
+        original_snapshot = copy.deepcopy(invoice.invoice_snapshot)
 
         with temp_invoice_dir() as tmpdir:
             result = generate_invoice_pdf(invoice, output_dir=tmpdir)
@@ -479,10 +478,12 @@ class InvoicePdfServiceTest(unittest.TestCase):
         self.assertNotIn(original_hash, text)
         self.assertNotIn(original_hash, str(metadata))
         self.assertNotIn("cliente@example.com", text)
-        self.assertIn("Teléfono", text)
-        self.assertIn("600000000", text)
+        self.assertNotIn("Teléfono", text)
+        self.assertNotIn("600000000", text)
         self.assertNotIn("600111222", text)
         self.assertIn("admin@metalwolft.com", text)
+        self.assertEqual(invoice.invoice_snapshot["customer"]["phone"], "600000000")
+        self.assertEqual(invoice.invoice_snapshot, original_snapshot)
         self.assertEqual(invoice.invoice_snapshot_hash, original_hash)
 
     def test_historical_snapshot_without_phone_remains_renderable_without_phone_line(self):

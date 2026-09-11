@@ -38,6 +38,7 @@ class OrderEmailLine:
     screw_configuration: str | None
     line_total: object
     image_url: str | None = None
+    image_width: int | None = None
     total_label: str | None = None
     line_type: str = "physical"
 
@@ -694,8 +695,8 @@ def _render_order_line(line):
     line_total = _format_money(line.line_total, "line_total")
     image_url = _email_image_url(line.image_url)
     total_label = _text(line.total_label)
-    text_total_label = total_label or "Importe"
-    html_total_label = total_label or "Importe de línea"
+    text_total_label = total_label or "Total"
+    html_total_label = total_label or "Total"
 
     if line.line_type == "design_service":
         plain = (
@@ -721,37 +722,45 @@ def _render_order_line(line):
 
     image_cell = ""
     if image_url:
+        image_width = 96 if line.image_width == 96 else 56
+        image_cell_width = image_width + 12
         image_cell = (
-            f'<td valign="top" width="64" style="width:64px;padding:16px 12px 4px 0;">'
-            f'<img src="{_html(image_url)}" alt="" width="56" height="56" '
-            'style="display:block;width:56px;height:56px;border:0;border-radius:6px;object-fit:cover;" '
+            f'<td valign="top" width="{image_cell_width}" style="width:{image_cell_width}px;padding:16px 12px 4px 0;">'
+            f'<img src="{_html(image_url)}" alt="" width="{image_width}" '
+            f'style="display:block;width:{image_width}px;max-width:100%;height:auto;border:0;border-radius:6px;" '
             'loading="lazy"></td>'
         )
 
-    html = (
-        (
+    product_summary = (
         '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" '
         f'style="width:100%;border-top:1px solid {COLOR_BORDER};border-collapse:collapse;">'
         "<tr>"
         f"{image_cell}"
-        f'<td style="padding:16px 0 4px;color:{COLOR_TEXT};font-size:16px;line-height:1.4;font-weight:700;'
+        '<td valign="top" style="padding:16px 0 4px;">'
+        '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" '
+        'style="width:100%;border-collapse:collapse;">'
+        "<tr>"
+        f'<td style="padding:0;color:{COLOR_TEXT};font-size:16px;line-height:1.4;font-weight:700;'
         'word-break:break-word;">'
         f"{_html(product_name)}</td>"
-        f'<td align="right" valign="top" style="padding:16px 0 4px 12px;color:{COLOR_TEXT};'
+        f'<td align="right" valign="top" style="padding:0 0 0 12px;color:{COLOR_TEXT};'
         f'font-size:15px;line-height:1.4;font-weight:600;white-space:nowrap;">×{_html(quantity)}</td>'
         "</tr><tr>"
-        f'<td colspan="{3 if image_cell else 2}" style="padding:0 0 5px;color:{COLOR_MUTED};font-size:14px;line-height:1.55;">'
-        f"{html_details}"
-        )
-        + (
-        "</td></tr><tr>"
-        f'<td colspan="{2 if image_cell else 1}" style="padding:4px 0 16px;color:{COLOR_MUTED};font-size:13px;line-height:1.4;">'
+        f'<td colspan="2" style="padding:4px 0 0;color:{COLOR_MUTED};font-size:14px;line-height:1.55;">'
+        f"{html_details}</td>"
+        "</tr></table></td></tr></table>"
+    )
+    total_summary = (
+        '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" '
+        'style="width:100%;border-collapse:collapse;">'
+        "<tr>"
+        f'<td style="padding:10px 0 16px;color:{COLOR_MUTED};font-size:13px;line-height:1.4;">'
         f"{_html(html_total_label)}</td>"
-        f'<td align="right" style="padding:4px 0 16px 12px;color:{COLOR_TEXT};font-size:15px;'
+        f'<td align="right" style="padding:10px 0 16px 12px;color:{COLOR_TEXT};font-size:15px;'
         f'line-height:1.4;font-weight:700;white-space:nowrap;">{_html(line_total)}</td>'
         "</tr></table>"
-        )
     )
+    html = product_summary + total_summary
     return plain, html
 
 
