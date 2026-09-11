@@ -47,7 +47,7 @@ from api.aeat_unified_ledger_service import (
     export_aeat_unified_ledger,
 )
 from api.flask_mail_invoice_adapter import FlaskMailInvoiceAdapter, FlaskMailInvoiceAdapterError
-from api.email_routes import send_order_status_email
+from api.email_routes import OrderUpdateEmailChange, send_order_update_email
 from api.invoice_accounting_service import (
     AccountingEntryIntegrityError,
     AccountingEntryUnsupportedSchema,
@@ -146,6 +146,7 @@ from api.manual_order_draft_issue_service import (
     ManualOrderDraftIssueError,
     issue_manual_order_draft,
 )
+from api.order_confirmation_email_service import send_order_confirmation_email
 from api.manual_order_draft_service import (
     ManualOrderDraftError,
     invalidate_manual_order_draft_review,
@@ -1253,39 +1254,62 @@ class OrderAdminView(SafeModelView):
     def on_model_change(self, form, model, is_created):
         if is_created:
             raise ValueError("Los pedidos se crean desde checkout o desde un borrador manual confirmado.")
-        status_history = inspect(model).attrs.order_status.history
         new_status = form.order_status.data
         if not is_created and order_contains_design_service(model) and new_status != "pendiente":
             raise ValueError("Las solicitudes de diseño no usan estados de fabricación, envío o entrega.")
-        is_real_status_transition = (
-            not is_created
-            and status_history.has_changes()
-            and all(
-                str(previous_status).strip().lower() != new_status
-                for previous_status in status_history.deleted
-            )
-        )
-        if is_real_status_transition and new_status == 'enviado':
-            # These controls affect only the pending status email and are never persisted on Orders.
-            model.__dict__['_admin_order_status_email_options'] = {
-                'status': 'enviado',
-                'send_email': bool(form.send_sent_status_email.data),
-                'include_receipt_guide': bool(form.include_receipt_guide_in_sent_email.data),
-                'include_installation_guide': bool(form.include_installation_guide_in_sent_email.data),
-                'include_incident_form': bool(form.include_incident_form_in_sent_email.data),
-            }
-        elif is_real_status_transition and new_status == 'entregado':
-            model.__dict__['_admin_order_status_email_options'] = {
-                'status': 'entregado',
-                'send_email': bool(form.send_delivered_status_email.data),
-                'include_installation_guide': bool(form.include_installation_guide_in_delivered_email.data),
-                'include_maintenance_guide': bool(form.include_maintenance_guide_in_delivered_email.data),
-            }
 
         for field_name in self._ORDER_STATUS_EMAIL_OPTION_FIELDS:
             model.__dict__.pop(field_name, None)
 
         return super().on_model_change(form, model, is_created)
+
+    def update_model(self, form, model):
+        change = self._build_order_update_email_change(form=form, model=model)
+        updated = super().update_model(form, model)
+        if updated:
+            try:
+                send_order_update_email(
+                    order=model,
+                    change=change,
+                    logger=current_app.logger,
+                )
+            except Exception:
+                current_app.logger.exception(
+                    "Order update email dispatch failed after commit order_id=%s",
+                    model.id,
+                )
+        return updated
+
+    @staticmethod
+    def _build_order_update_email_change(*, form, model):
+        old_status = model.order_status
+        new_status = form.order_status.data
+        options = None
+        if old_status != new_status and new_status == "enviado":
+            options = {
+                "status": "enviado",
+                "send_email": bool(form.send_sent_status_email.data),
+                "include_receipt_guide": bool(form.include_receipt_guide_in_sent_email.data),
+                "include_installation_guide": bool(form.include_installation_guide_in_sent_email.data),
+                "include_incident_form": bool(form.include_incident_form_in_sent_email.data),
+            }
+        elif old_status != new_status and new_status == "entregado":
+            options = {
+                "status": "entregado",
+                "send_email": bool(form.send_delivered_status_email.data),
+                "include_installation_guide": bool(form.include_installation_guide_in_delivered_email.data),
+                "include_maintenance_guide": bool(form.include_maintenance_guide_in_delivered_email.data),
+            }
+
+        return OrderUpdateEmailChange(
+            old_order_status=old_status,
+            new_order_status=new_status,
+            old_estimated_delivery_at=model.estimated_delivery_at,
+            new_estimated_delivery_at=form.estimated_delivery_at.data,
+            old_estimated_delivery_note=model.estimated_delivery_note,
+            new_estimated_delivery_note=form.estimated_delivery_note.data,
+            status_email_options=options,
+        )
 
     @expose('/issue-invoice/<int:order_id>', methods=['POST'])
     def issue_invoice(self, order_id):
@@ -2361,7 +2385,7 @@ class ManualOrderDraftAdminView(SafeModelView):
             return redirect(self.get_url(".confirm_issue", draft_id=draft.id))
 
         try:
-            order = issue_manual_order_draft(
+            issue_result = issue_manual_order_draft(
                 db_session=self.session,
                 draft_id=draft.id,
                 actor=invoice_admin_actor_from_basic_auth(request.authorization),
@@ -2382,6 +2406,21 @@ class ManualOrderDraftAdminView(SafeModelView):
             current_app.logger.exception("Manual order draft issuance failed draft_id=%s", draft_id)
             flash("No se ha podido crear el pedido manual.", "error")
             return redirect(self.get_url(".details_view", id=draft.id))
+
+        order = issue_result.order
+        if issue_result.created:
+            try:
+                send_order_confirmation_email(
+                    user=order.user,
+                    order=order,
+                    mail_username=current_app.config.get("MAIL_USERNAME"),
+                    logger=current_app.logger,
+                )
+            except Exception:
+                current_app.logger.exception(
+                    "Manual order confirmation email failed order_id=%s",
+                    order.id,
+                )
 
         flash(f"Pedido manual {order.locator or order.id} creado correctamente.", "success")
         return redirect(url_for("orders.details_view", id=order.id))

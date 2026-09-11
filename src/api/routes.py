@@ -36,7 +36,12 @@ import requests
 import uuid
 from urllib.parse import urljoin
 import hashlib
-from api.email_routes import send_email, get_admin_recipients
+from api.email_routes import (
+    OrderUpdateEmailChange,
+    get_admin_recipients,
+    send_email,
+    send_order_update_email,
+)
 from api.checkout_service import (
     build_checkout_quote,
     build_product_configuration_quote,
@@ -164,6 +169,37 @@ load_dotenv()
 
 def _customer_snapshot_validation_response(error):
     return jsonify(error.to_dict()), 400
+
+
+def _order_update_email_change(
+    *,
+    old_order_status,
+    old_estimated_delivery_at,
+    old_estimated_delivery_note,
+    order,
+):
+    return OrderUpdateEmailChange(
+        old_order_status=old_order_status,
+        new_order_status=order.order_status,
+        old_estimated_delivery_at=old_estimated_delivery_at,
+        new_estimated_delivery_at=order.estimated_delivery_at,
+        old_estimated_delivery_note=old_estimated_delivery_note,
+        new_estimated_delivery_note=order.estimated_delivery_note,
+    )
+
+
+def _send_order_update_email_post_commit(*, order, change):
+    try:
+        send_order_update_email(
+            order=order,
+            change=change,
+            logger=logger,
+        )
+    except Exception:
+        logger.exception(
+            "Order update email dispatch failed after commit order_id=%s",
+            order.id,
+        )
 
 
 def _extract_design_customer_snapshot(payload, current_user):
@@ -4514,6 +4550,10 @@ def handle_order(order_id):
 
         data = request.get_json() or {}
 
+        old_order_status = order.order_status
+        old_estimated_delivery_at = order.estimated_delivery_at
+        old_estimated_delivery_note = order.estimated_delivery_note
+
         if "order_status" in data:
             next_status = (data.get("order_status") or "").strip()
             if order_contains_design_service(order) and (next_status or "pendiente") != "pendiente":
@@ -4534,8 +4574,16 @@ def handle_order(order_id):
         if "estimated_delivery_note" in data:
             order.estimated_delivery_note = data.get("estimated_delivery_note") or ""
 
+        change = _order_update_email_change(
+            old_order_status=old_order_status,
+            old_estimated_delivery_at=old_estimated_delivery_at,
+            old_estimated_delivery_note=old_estimated_delivery_note,
+            order=order,
+        )
+
         try:
             db.session.commit()
+            _send_order_update_email_post_commit(order=order, change=change)
             response = jsonify(order.serialize())
             response.headers['Access-Control-Allow-Origin'] = '*'
             response.headers['Access-Control-Expose-Headers'] = 'X-Total-Count'
@@ -4781,6 +4829,9 @@ def set_estimated_delivery(order_id):
         return jsonify({"message": "Order not found"}), 404
 
     data = request.get_json() or {}
+    old_order_status = order.order_status
+    old_estimated_delivery_at = order.estimated_delivery_at
+    old_estimated_delivery_note = order.estimated_delivery_note
     date_str = data.get("estimated_delivery_at")  # "YYYY-MM-DD" o None
     note = data.get("estimated_delivery_note")    # str o None
 
@@ -4799,6 +4850,15 @@ def set_estimated_delivery(order_id):
     order.estimated_delivery_note = note if (note or note == "") else order.estimated_delivery_note
 
     db.session.commit()
+    _send_order_update_email_post_commit(
+        order=order,
+        change=_order_update_email_change(
+            old_order_status=old_order_status,
+            old_estimated_delivery_at=old_estimated_delivery_at,
+            old_estimated_delivery_note=old_estimated_delivery_note,
+            order=order,
+        ),
+    )
 
     return jsonify({
         "message": "Estimated delivery updated",

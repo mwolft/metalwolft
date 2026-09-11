@@ -385,7 +385,8 @@ class FlaskAdminManualOrderDraftIntegrationTest(unittest.TestCase):
                 headers=self._auth_header(),
                 follow_redirects=False,
             )
-        send_email.assert_not_called()
+        send_email.assert_called_once()
+        self.assertEqual(send_email.call_args.kwargs["recipients"][0], "manual@example.test")
         self.assertEqual(issued.status_code, 302)
         order_detail = self.client.get(
             issued.headers["Location"],
@@ -498,7 +499,8 @@ class FlaskAdminManualOrderDraftIntegrationTest(unittest.TestCase):
                 headers=self._auth_header(),
                 follow_redirects=False,
             )
-        send_email.assert_not_called()
+        send_email.assert_called_once()
+        self.assertEqual(send_email.call_args.kwargs["recipients"][0], "cliente@example.test")
         self.assertEqual(issued.status_code, 302)
         self.assertIn(b"/admin/orders/details/", issued.headers["Location"].encode("utf-8"))
         with self.app.app_context():
@@ -514,9 +516,40 @@ class FlaskAdminManualOrderDraftIntegrationTest(unittest.TestCase):
             follow_redirects=False,
         )
         self.assertEqual(retry.status_code, 302)
+        send_email.assert_called_once()
         with self.app.app_context():
             self.assertEqual(self.Orders.query.count(), 1)
             self.assertEqual(self.db.session.get(self.ManualOrderDraft, draft_id).issued_order_id, order_id)
+
+    def test_email_failure_after_commit_does_not_revert_manual_order(self):
+        draft_id = self._create_draft()
+        review_page = self.client.get(self._edit_url(draft_id), headers=self._auth_header())
+        self.client.post(
+            self._action_url(".review_draft", draft_id),
+            data={"csrf_token": self._csrf(review_page)},
+            headers=self._auth_header(),
+            follow_redirects=False,
+        )
+        issue_url = self._action_url(".confirm_issue", draft_id)
+        confirm_page = self.client.get(issue_url, headers=self._auth_header())
+
+        with patch(
+            "api.admin.send_order_confirmation_email",
+            side_effect=RuntimeError("smtp unavailable"),
+        ) as send_email:
+            issued = self.client.post(
+                issue_url,
+                data={"csrf_token": self._csrf(confirm_page), "confirm_issue": "confirmed"},
+                headers=self._auth_header(),
+                follow_redirects=False,
+            )
+
+        self.assertEqual(issued.status_code, 302)
+        send_email.assert_called_once()
+        with self.app.app_context():
+            draft = self.db.session.get(self.ManualOrderDraft, draft_id)
+            self.assertEqual(draft.status, self.ManualOrderDraft.STATUS_ISSUED)
+            self.assertEqual(self.Orders.query.count(), 1)
 
         issued_edit = self.client.get(
             self._edit_url(draft_id),

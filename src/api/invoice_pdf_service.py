@@ -343,7 +343,7 @@ def _render_invoice_snapshot_pdf(*, invoice_number, issued_at, snapshot, snapsho
             [[
                 _build_party_card("Emisor", issuer, box_width, style_map),
                 "",
-                _build_party_card("Cliente", customer, box_width, style_map, include_phone=True),
+                _build_party_card("Cliente", customer, box_width, style_map),
             ]],
             colWidths=[box_width, box_gap, box_width],
             style=TableStyle([
@@ -627,7 +627,9 @@ def _line_description(line):
     height = _format_measurement(configuration.get("height_cm"))
     width = _format_measurement(configuration.get("width_cm"))
     if height and width:
-        primary_details.append(f"{_pdf_text(height)} × {_pdf_text(width)} cm")
+        primary_details.append(
+            f"Alto {_pdf_text(height)} cm × Ancho {_pdf_text(width)} cm"
+        )
     elif height:
         primary_details.append(f"Alto {_pdf_text(height)} cm")
     elif width:

@@ -75,6 +75,80 @@ class OrderConfirmationEmailServiceTest(unittest.TestCase):
         self.assertIn("Blanco liso · Esmalte sintético", sent[0]["html"])
         self.assertIn("Pago confirmado", sent[0]["html"])
 
+    def test_recipient_and_greeting_prefer_frozen_confirmation_context(self):
+        sent = []
+        frozen_quote = checkout_quote()
+        order = SimpleNamespace(
+            locator="AB1234",
+            total_amount=180.5,
+            user=SimpleNamespace(email="account@example.com", firstname="Cuenta"),
+            confirmed_order_context=SimpleNamespace(
+                quote_snapshot=frozen_quote,
+                customer_snapshot={
+                    "email": "frozen@example.com",
+                    "firstname": "Congelado",
+                },
+            ),
+        )
+
+        send_order_confirmation_email(
+            user=order.user,
+            order=order,
+            checkout_quote={"lines": []},
+            customer_firstname="Formulario",
+            mail_username="admin@example.com",
+            logger=SimpleNamespace(info=lambda *args, **kwargs: None, error=lambda *args, **kwargs: None),
+            send_email_func=lambda **kwargs: sent.append(kwargs) or True,
+        )
+
+        self.assertEqual(sent[0]["recipients"], ["frozen@example.com", "admin@example.com"])
+        self.assertIn("Hola Congelado", sent[0]["body"])
+        self.assertIn("Reja fija Pittsburgh", sent[0]["body"])
+
+    def test_recipient_falls_back_to_legacy_checkout_customer_snapshot(self):
+        sent = []
+        order = SimpleNamespace(
+            locator="AB1234",
+            total_amount=180.5,
+            user=SimpleNamespace(email="account@example.com", firstname="Cuenta"),
+            checkout_session=SimpleNamespace(
+                quote_snapshot=checkout_quote(),
+                customer_snapshot={"email": "legacy@example.com", "firstname": "Legacy"},
+            ),
+        )
+
+        send_order_confirmation_email(
+            user=order.user,
+            order=order,
+            mail_username="admin@example.com",
+            logger=SimpleNamespace(info=lambda *args, **kwargs: None, error=lambda *args, **kwargs: None),
+            send_email_func=lambda **kwargs: sent.append(kwargs) or True,
+        )
+
+        self.assertEqual(sent[0]["recipients"], ["legacy@example.com", "admin@example.com"])
+        self.assertIn("Hola Legacy", sent[0]["body"])
+
+    def test_recipient_uses_order_user_only_when_no_snapshot_exists(self):
+        sent = []
+        order = SimpleNamespace(
+            locator="AB1234",
+            total_amount=180.5,
+            user=SimpleNamespace(email="historical@example.com", firstname="Historico"),
+        )
+
+        send_order_confirmation_email(
+            user=order.user,
+            order=order,
+            checkout_quote=checkout_quote(),
+            customer_firstname="Formulario",
+            mail_username="admin@example.com",
+            logger=SimpleNamespace(info=lambda *args, **kwargs: None, error=lambda *args, **kwargs: None),
+            send_email_func=lambda **kwargs: sent.append(kwargs) or True,
+        )
+
+        self.assertEqual(sent[0]["recipients"], ["historical@example.com", "admin@example.com"])
+        self.assertIn("Hola Historico", sent[0]["body"])
+
     def test_physical_line_labels_height_and_width_without_inverting_them(self):
         sent = []
         quote = checkout_quote()

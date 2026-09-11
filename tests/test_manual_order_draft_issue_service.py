@@ -187,6 +187,9 @@ class ManualOrderDraftIssueServiceTest(unittest.TestCase):
         return quote
 
     def issue(self, draft, *, actor=ACTOR):
+        return self.issue_result(draft, actor=actor).order
+
+    def issue_result(self, draft, *, actor=ACTOR):
         return issue_manual_order_draft(
             db_session=db.session,
             draft_id=draft.id,
@@ -563,13 +566,17 @@ class ManualOrderDraftIssueServiceTest(unittest.TestCase):
         with self.app.app_context():
             draft = self.create_draft()
             self.review(draft)
-            first_order = self.issue(draft)
+            first_result = self.issue_result(draft)
+            first_order = first_result.order
+            self.assertTrue(first_result.created)
             db.session.commit()
             issuance_key = draft.issuance_key
 
-            second_order = self.issue(draft, actor="otro-actor")
+            second_result = self.issue_result(draft, actor="otro-actor")
+            second_order = second_result.order
 
             self.assertEqual(second_order.id, first_order.id)
+            self.assertFalse(second_result.created)
             self.assertEqual(draft.issuance_key, issuance_key)
             self.assertEqual(Orders.query.count(), 1)
             self.assertEqual(ConfirmedOrderContext.query.count(), 1)

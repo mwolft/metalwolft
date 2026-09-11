@@ -4,6 +4,12 @@ from api.transactional_email_renderer import (
     OrderEmailLine,
     render_order_confirmation_email,
 )
+from api.order_confirmation_context import (
+    get_order_confirmation_customer_firstname,
+    get_order_confirmation_recipient_email,
+    get_order_customer_snapshot,
+    get_order_quote_snapshot,
+)
 from api.order_shipping import shipping_address_from_customer_snapshot
 from api.utils import (
     CONFIGURATOR_ANCHORAGES,
@@ -112,10 +118,10 @@ def _build_order_confirmation_email(
 
 def send_order_confirmation_email(
     *,
-    user,
+    user=None,
     order,
-    checkout_quote,
-    customer_firstname,
+    checkout_quote=None,
+    customer_firstname=None,
     customer_snapshot=None,
     mail_username,
     logger,
@@ -127,19 +133,34 @@ def send_order_confirmation_email(
         send_email_func = send_email
 
     try:
+        resolved_quote = get_order_quote_snapshot(order) or checkout_quote or {}
+        resolved_customer_snapshot = (
+            get_order_customer_snapshot(order) or customer_snapshot or {}
+        )
+        recipient_email = (
+            get_order_confirmation_recipient_email(order)
+            or _normalized_text(getattr(user, "email", None))
+        )
+        resolved_customer_firstname = (
+            get_order_confirmation_customer_firstname(order)
+            or _normalized_text(customer_firstname)
+        )
+        if not recipient_email:
+            raise ValueError("No hay un email de destinatario para el pedido confirmado.")
+
         logger.info(
             "Enviando correo de confirmación para el pedido %s.",
             order.locator,
         )
         rendered_email = _build_order_confirmation_email(
             order=order,
-            checkout_quote=checkout_quote,
-            customer_firstname=customer_firstname,
-            customer_snapshot=customer_snapshot,
+            checkout_quote=resolved_quote,
+            customer_firstname=resolved_customer_firstname,
+            customer_snapshot=resolved_customer_snapshot,
         )
-        is_design_service = bool(checkout_quote.get("lines")) and all(
+        is_design_service = bool(resolved_quote.get("lines")) and all(
             (line.get("line_type") or "physical") == "design_service"
-            for line in checkout_quote["lines"]
+            for line in resolved_quote["lines"]
         )
         email_sent = send_email_func(
             subject=(
@@ -147,7 +168,7 @@ def send_order_confirmation_email(
                 if is_design_service
                 else f"Hemos recibido tu pedido {order.locator}"
             ),
-            recipients=[user.email, mail_username],
+            recipients=[recipient_email, mail_username],
             body=rendered_email.text,
             html=rendered_email.html,
         )
@@ -168,3 +189,7 @@ def send_order_confirmation_email(
             order.locator,
             type(exc).__name__,
         )
+
+
+def _normalized_text(value):
+    return str(value or "").strip()

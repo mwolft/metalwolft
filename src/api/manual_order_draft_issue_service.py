@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
+from dataclasses import dataclass
 from uuid import uuid4
 
 from api.confirmed_order_context_service import (
@@ -73,6 +74,14 @@ class ManualOrderDraftOrderCreationError(ManualOrderDraftIssueError):
     """Raised when canonical Order creation rejects an otherwise reviewed draft."""
 
 
+@dataclass(frozen=True)
+class ManualOrderDraftIssueResult:
+    """Describe whether this call created the canonical order or reused it."""
+
+    order: Orders
+    created: bool
+
+
 def issue_manual_order_draft(*, db_session, draft_id, actor):
     """Convert one reviewed, externally paid draft into its canonical Order.
 
@@ -82,7 +91,7 @@ def issue_manual_order_draft(*, db_session, draft_id, actor):
     draft = _load_draft_for_issue(db_session=db_session, draft_id=draft_id)
     existing_order = _existing_issued_order_or_error(db_session=db_session, draft=draft)
     if existing_order is not None:
-        return existing_order
+        return ManualOrderDraftIssueResult(order=existing_order, created=False)
 
     if draft.status == ManualOrderDraft.STATUS_CANCELLED:
         raise ManualOrderDraftCancelledError("El borrador manual está cancelado.")
@@ -143,7 +152,7 @@ def issue_manual_order_draft(*, db_session, draft_id, actor):
     draft.status = ManualOrderDraft.STATUS_ISSUED
     draft.issued_order_id = order.id
     db_session.flush()
-    return order
+    return ManualOrderDraftIssueResult(order=order, created=True)
 
 
 def _load_draft_for_issue(*, db_session, draft_id):

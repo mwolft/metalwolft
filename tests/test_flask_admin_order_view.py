@@ -155,10 +155,18 @@ class FlaskAdminOrderViewInvoiceNumberTest(unittest.TestCase):
         self.assertIn("Notificaciones del email de estado", self.view_source)
         self.assertIn('extra_css = ["/static/admin/order_sent_email_options.css"]', self.view_source)
         self.assertIn('extra_js = ["/static/admin/order_sent_email_options.js"]', self.view_source)
+        update_source = method_source("OrderAdminView", "update_model")
+        change_source = method_source("OrderAdminView", "_build_order_update_email_change")
         on_model_change_source = method_source("OrderAdminView", "on_model_change")
-        self.assertIn("is_real_status_transition", on_model_change_source)
-        self.assertIn("status_history.has_changes()", on_model_change_source)
-        self.assertIn("_admin_order_status_email_options", on_model_change_source)
+        self.assertIn("change = self._build_order_update_email_change", update_source)
+        self.assertIn("updated = super().update_model(form, model)", update_source)
+        self.assertLess(
+            update_source.index("super().update_model(form, model)"),
+            update_source.index("send_order_update_email("),
+        )
+        self.assertIn("OrderUpdateEmailChange(", change_source)
+        self.assertIn('"send_email": bool(form.send_sent_status_email.data)', change_source)
+        self.assertIn('"send_email": bool(form.send_delivered_status_email.data)', change_source)
         self.assertIn("model.__dict__.pop(field_name, None)", on_model_change_source)
 
     def test_sent_status_notification_assets_are_csp_safe_and_group_the_secondary_controls(self):
