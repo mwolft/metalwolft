@@ -731,30 +731,36 @@ def _render_order_line(line):
             'loading="lazy"></td>'
         )
 
-    html = (
-        (
+    product_summary = (
         '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" '
         f'style="width:100%;border-top:1px solid {COLOR_BORDER};border-collapse:collapse;">'
         "<tr>"
         f"{image_cell}"
-        f'<td style="padding:16px 0 4px;color:{COLOR_TEXT};font-size:16px;line-height:1.4;font-weight:700;'
+        '<td valign="top" style="padding:16px 0 4px;">'
+        '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" '
+        'style="width:100%;border-collapse:collapse;">'
+        "<tr>"
+        f'<td style="padding:0;color:{COLOR_TEXT};font-size:16px;line-height:1.4;font-weight:700;'
         'word-break:break-word;">'
         f"{_html(product_name)}</td>"
-        f'<td align="right" valign="top" style="padding:16px 0 4px 12px;color:{COLOR_TEXT};'
+        f'<td align="right" valign="top" style="padding:0 0 0 12px;color:{COLOR_TEXT};'
         f'font-size:15px;line-height:1.4;font-weight:600;white-space:nowrap;">×{_html(quantity)}</td>'
         "</tr><tr>"
-        f'<td colspan="{3 if image_cell else 2}" style="padding:0 0 5px;color:{COLOR_MUTED};font-size:14px;line-height:1.55;">'
-        f"{html_details}"
-        )
-        + (
-        "</td></tr><tr>"
-        f'<td colspan="{2 if image_cell else 1}" style="padding:4px 0 16px;color:{COLOR_MUTED};font-size:13px;line-height:1.4;">'
+        f'<td colspan="2" style="padding:4px 0 0;color:{COLOR_MUTED};font-size:14px;line-height:1.55;">'
+        f"{html_details}</td>"
+        "</tr></table></td></tr></table>"
+    )
+    total_summary = (
+        '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" '
+        'style="width:100%;border-collapse:collapse;">'
+        "<tr>"
+        f'<td style="padding:10px 0 16px;color:{COLOR_MUTED};font-size:13px;line-height:1.4;">'
         f"{_html(html_total_label)}</td>"
-        f'<td align="right" style="padding:4px 0 16px 12px;color:{COLOR_TEXT};font-size:15px;'
+        f'<td align="right" style="padding:10px 0 16px 12px;color:{COLOR_TEXT};font-size:15px;'
         f'line-height:1.4;font-weight:700;white-space:nowrap;">{_html(line_total)}</td>'
         "</tr></table>"
-        )
     )
+    html = product_summary + total_summary
     return plain, html
 
 
