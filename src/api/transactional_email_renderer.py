@@ -38,6 +38,7 @@ class OrderEmailLine:
     screw_configuration: str | None
     line_total: object
     image_url: str | None = None
+    image_width: int | None = None
     total_label: str | None = None
     line_type: str = "physical"
 
@@ -694,8 +695,8 @@ def _render_order_line(line):
     line_total = _format_money(line.line_total, "line_total")
     image_url = _email_image_url(line.image_url)
     total_label = _text(line.total_label)
-    text_total_label = total_label or "Importe"
-    html_total_label = total_label or "Importe de línea"
+    text_total_label = total_label or "Total"
+    html_total_label = total_label or "Total"
 
     if line.line_type == "design_service":
         plain = (
@@ -721,10 +722,12 @@ def _render_order_line(line):
 
     image_cell = ""
     if image_url:
+        image_width = 96 if line.image_width == 96 else 56
+        image_cell_width = image_width + 12
         image_cell = (
-            f'<td valign="top" width="64" style="width:64px;padding:16px 12px 4px 0;">'
-            f'<img src="{_html(image_url)}" alt="" width="56" height="56" '
-            'style="display:block;width:56px;height:56px;border:0;border-radius:6px;object-fit:cover;" '
+            f'<td valign="top" width="{image_cell_width}" style="width:{image_cell_width}px;padding:16px 12px 4px 0;">'
+            f'<img src="{_html(image_url)}" alt="" width="{image_width}" '
+            f'style="display:block;width:{image_width}px;max-width:100%;height:auto;border:0;border-radius:6px;" '
             'loading="lazy"></td>'
         )
 

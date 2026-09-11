@@ -1,5 +1,10 @@
 from decimal import Decimal, InvalidOperation
 
+from flask import has_app_context
+from sqlalchemy.orm import selectinload
+
+from api.models import Products
+
 from api.transactional_email_renderer import (
     OrderEmailLine,
     render_order_confirmation_email,
@@ -65,7 +70,7 @@ def _format_color_with_finish(value):
     return f"{color} · Esmalte sintético" if color != "-" else color
 
 
-def _build_order_line(line):
+def _build_order_line(line, *, image_url=None):
     product_name = (
         line.get("product_name")
         or line.get("nombre")
@@ -91,6 +96,8 @@ def _build_order_line(line):
         color=_format_color_with_finish(line.get("color")),
         screw_configuration=screw_configuration,
         line_total=line.get("line_total"),
+        image_url=image_url,
+        image_width=96 if image_url else None,
         line_type=line_type,
     )
 
@@ -98,9 +105,11 @@ def _build_order_line(line):
 def _build_order_confirmation_email(
     *, order, checkout_quote, customer_firstname, customer_snapshot=None
 ):
+    quote_lines = tuple(checkout_quote.get("lines") or [])
+    image_urls = _order_line_image_urls(quote_lines)
     lines = tuple(
-        _build_order_line(line)
-        for line in (checkout_quote.get("lines") or [])
+        _build_order_line(line, image_url=image_urls.get(index))
+        for index, line in enumerate(quote_lines)
     )
     is_design_service = bool(lines) and all(line.line_type == "design_service" for line in lines)
     return render_order_confirmation_email(
@@ -114,6 +123,73 @@ def _build_order_confirmation_email(
         shipping_address=None if is_design_service else shipping_address_from_customer_snapshot(customer_snapshot),
         is_design_service=is_design_service,
     )
+
+
+def _order_line_image_urls(lines):
+    """Resolve frozen image URLs first, then the current stable product image."""
+    resolved = {}
+    product_ids = set()
+
+    for index, line in enumerate(lines):
+        image_url = _frozen_line_image_url(line)
+        if image_url:
+            resolved[index] = image_url
+            continue
+        product_id = _line_product_id(line)
+        if product_id is not None:
+            product_ids.add(product_id)
+
+    if not product_ids or not has_app_context():
+        return resolved
+
+    products = (
+        Products.query.options(selectinload(Products.images))
+        .filter(Products.id.in_(product_ids))
+        .all()
+    )
+    product_image_urls = {
+        product.id: _product_image_url(product)
+        for product in products
+    }
+    for index, line in enumerate(lines):
+        if index in resolved:
+            continue
+        image_url = product_image_urls.get(_line_product_id(line))
+        if image_url:
+            resolved[index] = image_url
+    return resolved
+
+
+def _frozen_line_image_url(line):
+    for field_name in ("image_url", "product_image_url", "imagen"):
+        image_url = _valid_image_url(line.get(field_name))
+        if image_url:
+            return image_url
+    return None
+
+
+def _line_product_id(line):
+    value = line.get("product_id", line.get("producto_id"))
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def _product_image_url(product):
+    image_url = _valid_image_url(getattr(product, "imagen", None))
+    if image_url:
+        return image_url
+    for image in getattr(product, "images", ()) or ():
+        image_url = _valid_image_url(getattr(image, "image_url", None))
+        if image_url:
+            return image_url
+    return None
+
+
+def _valid_image_url(value):
+    normalized = str(value or "").strip()
+    return normalized if normalized.startswith(("https://", "http://")) else None
 
 
 def send_order_confirmation_email(
