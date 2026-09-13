@@ -60,6 +60,25 @@ function ProductBadgeIcon({ icon }: { icon: ProductBadge["icon"] }) {
   );
 }
 
+function ProductVariantIcon() {
+  return (
+    <svg
+      aria-hidden="true"
+      className="mw-product-card__variant-icon"
+      fill="none"
+      focusable="false"
+      stroke="currentColor"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth="1.75"
+      viewBox="0 0 24 24"
+    >
+      <rect height="12" rx="1.5" width="12" x="3.5" y="3.5" />
+      <rect height="12" rx="1.5" width="12" x="8.5" y="8.5" />
+    </svg>
+  );
+}
+
 export function ProductCard({
   product,
   href,
@@ -135,6 +154,7 @@ export function ProductCard({
             <div className="mw-product-card__variants">
               {variants.map((variant) => (
                 <span className="mw-product-card__variant" key={variant.id}>
+                  <ProductVariantIcon />
                   {variant.label}
                 </span>
               ))}
