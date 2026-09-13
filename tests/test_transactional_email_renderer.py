@@ -13,6 +13,7 @@ from api.transactional_email_renderer import (  # noqa: E402
     TransactionalEmailRenderError,
     render_invoice_delivery_email,
     render_account_welcome_email,
+    render_design_result_ready_email,
     render_order_delivery_estimate_update_email,
     render_order_confirmation_email,
     render_order_status_update_email,
@@ -79,6 +80,57 @@ class TransactionalOrderEmailRendererTest(unittest.TestCase):
         self.assertIn("1.234,50 €", rendered.html)
         self.assertIn("GRATIS", rendered.html)
         self.assertNotIn("<script", rendered.html.lower())
+        self.assertIn("Hemos recibido correctamente tu pedido QE2885.", rendered.text)
+        self.assertIn("Hemos recibido correctamente tu pedido QE2885.", rendered.html)
+
+    def test_design_service_uses_request_copy_in_plain_text_and_preheader(self):
+        rendered = render_order(
+            is_design_service=True,
+            lines=(
+                order_line(
+                    line_type="design_service",
+                    measurements="Alto 30 cm × Ancho 45 cm",
+                    anchorage="",
+                    color="",
+                    screw_configuration=None,
+                ),
+            ),
+        )
+
+        expected_receipt = "Hemos recibido correctamente tu solicitud de diseño QE2885."
+        expected_measurements = "Alto 30 cm × Ancho 45 cm"
+        for body in (rendered.text, rendered.html):
+            self.assertIn(expected_receipt, body)
+            self.assertIn(expected_measurements, body)
+            self.assertNotIn("Hemos recibido correctamente tu pedido", body)
+        self.assertIn("Te avisaremos cuando esté preparada.", rendered.text)
+        self.assertIn(
+            "Revisaremos la configuración solicitada y te avisaremos cuando el diseño esté preparado.",
+            rendered.html,
+        )
+
+    def test_renders_design_result_ready_email_without_private_storage_url(self):
+        rendered = render_design_result_ready_email(
+            design_reference="DP-0001",
+            customer_firstname="Ana",
+            items=(
+                {
+                    "product_name": "Reja Maryland",
+                    "measurements": "Alto 120 cm × Ancho 200 cm",
+                },
+            ),
+            account_url="https://www.metalwolft.com/mi-cuenta/pedidos/42",
+        )
+
+        for body in (rendered.text, rendered.html):
+            self.assertIn("Tu diseño previo está listo", body)
+            self.assertIn("DP-0001", body)
+            self.assertIn("Reja Maryland", body)
+            self.assertIn("Alto 120 cm × Ancho 200 cm", body)
+            self.assertIn("mi-cuenta/pedidos/42", body)
+            self.assertNotIn("design-results/", body)
+            self.assertNotIn("storage_key", body)
+        self.assertIn("Ver y descargar mi diseño", rendered.html)
 
     def test_renders_an_optional_product_thumbnail_and_total_label(self):
         rendered = render_order(

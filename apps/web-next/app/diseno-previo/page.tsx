@@ -18,9 +18,9 @@ const DESIGN_CATEGORY_SLUG = "rejas-para-ventanas";
 export const revalidate = 300;
 
 export const metadata: Metadata = buildMetadata({
-  title: "Diseño previo a medida para rejas | MetalWolft",
+  title: "Diseño previo de proporciones para rejas | MetalWolft",
   description:
-    "Visualiza una reja a medida antes de encargarla. Elige el modelo y las medidas para recibir una representación previa con entrega estimada en 24 h.",
+    "Comprueba cómo se repartirán los barrotes y espacios de una reja según tus medidas antes de encargarla. Diseño previo a medida con entrega estimada en 24 h.",
   path: "/diseno-previo"
 });
 
@@ -94,10 +94,10 @@ export default async function DesignServicePage({ searchParams }: DesignServiceP
         <header className="mw-design-hero">
           <div className="mw-design-hero__copy">
             <p className="mw-eyebrow">Diseño previo a medida</p>
-            <h1 className="mw-title mw-title--compact">Visualiza tu reja antes de encargarla</h1>
+            <h1 className="mw-title mw-title--compact">Mira las proporciones de tu reja antes de encargarla</h1>
             <p className="mw-lead">
-              Te preparamos una representación previa del modelo adaptada a las medidas que necesitas,
-              para que puedas valorar sus proporciones antes de realizar el pedido.
+              Te mostramos cómo se repartirán los barrotes y espacios del modelo según el alto y ancho que
+              necesitas, para que puedas valorar sus proporciones antes de hacer el pedido.
             </p>
           </div>
           <div className="mw-design-hero__facts" aria-label="Información del servicio">

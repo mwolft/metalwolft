@@ -35,6 +35,17 @@ def _format_measurements(line, *, include_labels=False):
     return f"{formatted_alto} × {formatted_ancho} cm"
 
 
+def _format_design_service_measurements(line):
+    alto = line.get("alto")
+    ancho = line.get("ancho")
+    if alto is None or ancho is None:
+        return "-"
+    return (
+        f"Alto {_format_measurement(alto)} cm × "
+        f"Ancho {_format_measurement(ancho)} cm"
+    )
+
+
 def _format_measurement(value):
     try:
         normalized = Decimal(str(value))
@@ -82,13 +93,15 @@ def _build_order_line(line, *, image_url=None):
     )
 
     line_type = line.get("line_type") or "physical"
+    measurements = (
+        _format_design_service_measurements(line)
+        if line_type == "design_service"
+        else _format_measurements(line, include_labels=line_type == "physical")
+    )
     return OrderEmailLine(
         product_name=str(product_name).strip(),
         quantity=line.get("quantity", 1),
-        measurements=_format_measurements(
-            line,
-            include_labels=line_type == "physical",
-        ),
+        measurements=measurements,
         anchorage=(
             "" if line_type == "design_service"
             else _humanize_anchorage(line.get("anclaje"))

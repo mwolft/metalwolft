@@ -124,7 +124,7 @@ export function DesignServiceCheckoutView({ designRequestId }: DesignServiceChec
             {quote.items.map((item) => (
               <li key={`${item.product_id}:${item.width_cm}:${item.height_cm}`}>
                 <strong>{item.product_name}</strong>
-                <span>{formatMeasure(item.width_cm)} × {formatMeasure(item.height_cm)} cm</span>
+                <span>Ancho {formatMeasure(item.width_cm)} cm × Alto {formatMeasure(item.height_cm)} cm</span>
               </li>
             ))}
           </ul>

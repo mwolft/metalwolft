@@ -22,6 +22,7 @@ export type CustomerOrderDesignService = {
   reference: string;
   status: CustomerOrderStatus;
   lead_time_hours: number;
+  result_available: boolean;
 };
 
 export type CustomerPhysicalOrderSummary = CustomerOrderCommon & {
@@ -115,6 +116,8 @@ export type CustomerOrderInvoiceDownload = {
   filename: string;
 };
 
+export type CustomerOrderDesignResultDownload = CustomerOrderInvoiceDownload;
+
 export class CustomerOrdersClientError extends Error {
   status: number;
 
@@ -169,7 +172,8 @@ function isCustomerOrderDesignService(value: unknown): value is CustomerOrderDes
     typeof value.reference === "string" &&
     isCustomerOrderStatus(value.status) &&
     typeof value.lead_time_hours === "number" &&
-    Number.isFinite(value.lead_time_hours)
+    Number.isFinite(value.lead_time_hours) &&
+    typeof value.result_available === "boolean"
   );
 }
 
@@ -401,7 +405,11 @@ function filenameFromContentDisposition(header: string | null) {
   return /filename=([^;]+)/i.exec(header)?.[1]?.trim() || null;
 }
 
-function safeDownloadFilename(value: string | null, fallback: string) {
+function safeDownloadFilename(
+  value: string | null,
+  fallback: string,
+  allowedExtensions: readonly string[] = [".pdf"]
+) {
   if (!value) {
     return fallback;
   }
@@ -412,7 +420,7 @@ function safeDownloadFilename(value: string | null, fallback: string) {
     normalized.includes("/") ||
     normalized === "." ||
     normalized === ".." ||
-    !normalized.toLowerCase().endsWith(".pdf")
+    !allowedExtensions.some((extension) => normalized.toLowerCase().endsWith(extension))
   ) {
     return fallback;
   }
@@ -454,6 +462,45 @@ export async function fetchCustomerOrderInvoicePdf(
     filename: safeDownloadFilename(
       filenameFromContentDisposition(response.headers.get("Content-Disposition")),
       `factura_pedido_${orderId}.pdf`
+    )
+  };
+}
+
+export async function fetchCustomerOrderDesignResult(
+  token: string,
+  orderId: number
+): Promise<CustomerOrderDesignResultDownload> {
+  if (!token) {
+    throw new CustomerOrdersClientError("Necesitas iniciar sesión para descargar el diseño.", 401);
+  }
+
+  const response = await fetch(customerOrdersApiUrl(`/api/customer/orders/${orderId}/design-result`), {
+    headers: {
+      Accept: "application/pdf,image/jpeg,image/png",
+      Authorization: `Bearer ${token}`
+    }
+  }).catch(() => {
+    throw new CustomerOrdersClientError("No se pudo conectar con la API de pedidos.", 0);
+  });
+
+  if (!response.ok) {
+    throw new CustomerOrdersClientError(
+      response.status === 401 || response.status === 422
+        ? "Tu sesión ha caducado. Vuelve a iniciar sesión."
+        : response.status === 404
+          ? "El diseño ya no está disponible."
+          : "No se pudo descargar el diseño. Inténtalo de nuevo.",
+      response.status
+    );
+  }
+
+  const blob = await response.blob();
+  return {
+    blob,
+    filename: safeDownloadFilename(
+      filenameFromContentDisposition(response.headers.get("Content-Disposition")),
+      `diseno_previo_${orderId}.pdf`,
+      [".pdf", ".jpg", ".jpeg", ".png"]
     )
   };
 }

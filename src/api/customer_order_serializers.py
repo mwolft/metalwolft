@@ -4,6 +4,7 @@ from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 
 from api.utils import DEFAULT_CONFIGURATOR_SCREW_OPTION, resolve_screw_configuration
 from api.order_shipping import shipping_address_from_order_details
+from api.design_result_service import is_design_result_available
 
 
 DESIGN_SERVICE_LINE_TYPE = "design_service"
@@ -59,6 +60,7 @@ def _serialize_design_service(order):
         "reference": design_request.reference,
         "status": public_design_request_status(design_request.status),
         "lead_time_hours": design_request.lead_time_hours,
+        "result_available": is_design_result_available(design_request),
     }
 
 

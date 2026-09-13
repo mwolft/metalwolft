@@ -88,13 +88,18 @@ def render_order_confirmation_email(
         if is_design_service
         else "Ahora comenzaremos a preparar y fabricar tu pedido.\nTe informaremos cuando avance su estado."
     )
+    receipt_confirmation = (
+        f"Hemos recibido correctamente tu solicitud de diseño {order_reference_text}."
+        if is_design_service
+        else f"Hemos recibido correctamente tu pedido {order_reference_text}."
+    )
 
     text_body = (
         "METALWOLFT\n"
         f"{BRAND_TAGLINE}\n\n"
         f"{greeting}\n\n"
         f"{confirmation_title}\n\n"
-        f"Hemos recibido correctamente tu pedido {order_reference_text}.\n\n"
+        f"{receipt_confirmation}\n\n"
         f"Pedido: {order_reference_text}\n"
         "Estado del pago: confirmado\n\n"
         "RESUMEN DEL PEDIDO\n\n"
@@ -175,7 +180,95 @@ def render_order_confirmation_email(
     return RenderedEmail(
         text=text_body,
         html=_render_shell(
-            preheader=f"Hemos recibido correctamente tu pedido {order_reference_text}.",
+            preheader=receipt_confirmation,
+            content_html=content_html,
+        ),
+    )
+
+
+def render_design_result_ready_email(
+    *,
+    design_reference,
+    customer_firstname=None,
+    items,
+    account_url,
+):
+    """Render the post-delivery notice without exposing private storage."""
+    reference = _required_text(design_reference, "design_reference")
+    account_url_text = _required_text(account_url, "account_url")
+    customer_name = _text(customer_firstname)
+    greeting = f"Hola {customer_name}," if customer_name else "Hola,"
+    normalized_items = tuple(items or ())
+    if not normalized_items:
+        raise TransactionalEmailRenderError("La solicitud de diseño no contiene modelos.")
+
+    plain_items = []
+    html_rows = []
+    for item in normalized_items:
+        if not isinstance(item, dict):
+            raise TransactionalEmailRenderError("El modelo de diseño no es válido.")
+        product_name = _required_text(item.get("product_name"), "product_name")
+        measurements = _required_text(item.get("measurements"), "measurements")
+        plain_items.append(f"- {product_name}\n  {measurements}")
+        html_rows.append(
+            "<tr>"
+            f'<td style="padding:12px 14px;border-bottom:1px solid {COLOR_BORDER};color:{COLOR_TEXT};'
+            'font-size:14px;line-height:1.45;font-weight:700;word-break:break-word;">'
+            f"{_html(product_name)}</td>"
+            f'<td style="padding:12px 14px;border-bottom:1px solid {COLOR_BORDER};color:{COLOR_MUTED};'
+            'font-size:14px;line-height:1.45;word-break:break-word;">'
+            f"{_html(measurements)}</td>"
+            "</tr>"
+        )
+
+    items_text = "\n".join(plain_items)
+    text_body = (
+        "METALWOLFT\n"
+        f"{BRAND_TAGLINE}\n\n"
+        f"{greeting}\n\n"
+        "Tu diseño previo está listo.\n\n"
+        f"Referencia: {reference}\n\n"
+        "DISEÑOS PREPARADOS\n\n"
+        f"{items_text}\n\n"
+        "Puedes descargar el diseño desde el detalle de tu solicitud en Mi Cuenta:\n"
+        f"{account_url_text}\n\n"
+        "Gracias por confiar en MetalWolft.\n\n"
+        "MetalWolft\n"
+        "Fabricación de rejas a medida"
+    )
+    content_html = (
+        f'<p style="margin:0 0 18px;color:{COLOR_MUTED};font-size:15px;line-height:1.6;">'
+        f"{_html(greeting)}"
+        "</p>"
+        f'<h1 style="margin:0 0 12px;color:{COLOR_TEXT};font-family:Arial,Helvetica,sans-serif;'
+        'font-size:28px;line-height:1.2;font-weight:700;">Tu diseño previo está listo</h1>'
+        f'<p style="margin:0 0 20px;color:{COLOR_TEXT};font-size:16px;line-height:1.6;">'
+        "Hemos preparado el resultado de tu solicitud de diseño."
+        "</p>"
+        '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" '
+        f'style="width:100%;margin:0 0 20px;background:{COLOR_SURFACE_ALT};border:1px solid {COLOR_BORDER};'
+        'border-collapse:collapse;">'
+        f'<tr><td style="padding:12px 14px;color:{COLOR_MUTED};font-size:13px;line-height:1.4;">'
+        "Referencia</td>"
+        f'<td align="right" style="padding:12px 14px;color:{COLOR_TEXT};font-size:14px;line-height:1.4;font-weight:700;">'
+        f"{_html(reference)}</td></tr></table>"
+        f'<h2 style="margin:0 0 10px;color:{COLOR_TEXT};font-family:Arial,Helvetica,sans-serif;'
+        'font-size:14px;line-height:1.4;font-weight:700;letter-spacing:0.08em;">DISEÑOS PREPARADOS</h2>'
+        '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" '
+        f'style="width:100%;margin:0 0 24px;border:1px solid {COLOR_BORDER};border-collapse:collapse;">'
+        f"{''.join(html_rows)}"
+        "</table>"
+        f'<a href="{_html(account_url_text)}" '
+        f'style="display:inline-block;background:{COLOR_ACCENT};color:#ffffff;text-decoration:none;font-size:16px;'
+        'font-weight:700;padding:13px 22px;border-radius:999px;">Ver y descargar mi diseño</a>'
+        f'<p style="margin:22px 0 0;color:{COLOR_MUTED};font-size:14px;line-height:1.6;">'
+        "Desde Mi Cuenta podrás descargar el diseño preparado."
+        "</p>"
+    )
+    return RenderedEmail(
+        text=text_body,
+        html=_render_shell(
+            preheader=f"Tu diseño previo {reference} está listo para descargar.",
             content_html=content_html,
         ),
     )

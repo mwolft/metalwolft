@@ -260,10 +260,9 @@ export default async function RejasParaVentanasPage() {
                           </div>
                           <div>
                             <p className="mw-eyebrow">Diseño previo a medida</p>
-                            <h3>¿Dudas entre varios modelos?</h3>
+                            <h3>¿Quieres ver cómo se adapta este diseño a tus medidas?</h3>
                             <p>
-                              Visualízalos con las medidas de tu ventana antes de decidir. Puedes
-                              preparar uno o varios diseños y comparar mejor sus proporciones.
+                              Te mostramos cómo se repartirán los barrotes y espacios según el alto y ancho de tu reja.
                             </p>
                           </div>
                         </div>
@@ -272,7 +271,7 @@ export default async function RejasParaVentanasPage() {
                           <p>Descuento al añadir varios diseños</p>
                           <p>{DESIGN_SERVICE_MARKETING.leadTime}</p>
                           <Link className="mw-button mw-button--secondary" href="/diseno-previo">
-                            Comparar con diseño previo
+                            Preparar diseño previo
                           </Link>
                         </div>
                       </aside>

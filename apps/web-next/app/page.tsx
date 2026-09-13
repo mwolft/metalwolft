@@ -464,11 +464,9 @@ export default async function HomePage() {
           <div className="mw-home-design-service__box">
             <div className="mw-home-design-service__copy">
               <p className="mw-eyebrow">Diseño previo a medida</p>
-              <h2 id="diseno-previo-title">Visualiza tu reja antes de encargarla</h2>
+              <h2 id="diseno-previo-title">Mira las proporciones de tu reja antes de encargarla</h2>
               <p>
-                ¿Ya tienes un modelo en mente? Indica el modelo y las medidas de tu ventana y te
-                preparamos una representación previa para que puedas valorar sus proporciones antes
-                de hacer el pedido.
+                Te mostramos cómo se repartirán los barrotes y espacios según el alto y ancho que necesitas.
               </p>
               <div className="mw-actions">
                 <Link className="mw-button mw-button--secondary" href="/diseno-previo">
