@@ -1454,12 +1454,21 @@ textarea:focus-visible {
 }
 
 .mw-product-card__badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
   padding: 0.32rem 0.58rem;
   border: 1px solid rgba(255, 255, 255, 0.48);
   border-radius: 999px;
   font-size: 0.75rem;
   font-weight: 700;
   line-height: 1.2;
+}
+
+.mw-product-card__badge-icon {
+  width: 0.82rem;
+  height: 0.82rem;
+  flex: 0 0 auto;
 }
 
 .mw-product-card__badge--best-seller {

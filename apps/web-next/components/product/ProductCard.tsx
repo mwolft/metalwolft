@@ -13,12 +13,52 @@ type ProductBadge = {
   id: "best-seller" | "new-design";
   label: string;
   className: string;
+  icon: "trending-up" | "sparkles";
 };
 
 type ProductVariant = {
   id: "hinged" | "door";
   label: string;
 };
+
+function ProductBadgeIcon({ icon }: { icon: ProductBadge["icon"] }) {
+  if (icon === "sparkles") {
+    return (
+      <svg
+        aria-hidden="true"
+        className="mw-product-card__badge-icon"
+        fill="none"
+        focusable="false"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="2"
+        viewBox="0 0 24 24"
+      >
+        <path d="m12 3-1.9 5.1L5 10l5.1 1.9L12 17l1.9-5.1L19 10l-5.1-1.9L12 3Z" />
+        <path d="m19 15-.8 2.2L16 18l2.2.8L19 21l.8-2.2L22 18l-2.2-.8L19 15Z" />
+        <path d="m5 2-.6 1.4L3 4l1.4.6L5 6l.6-1.4L7 4l-1.4-.6L5 2Z" />
+      </svg>
+    );
+  }
+
+  return (
+    <svg
+      aria-hidden="true"
+      className="mw-product-card__badge-icon"
+      fill="none"
+      focusable="false"
+      stroke="currentColor"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth="2"
+      viewBox="0 0 24 24"
+    >
+      <path d="m3 17 6-6 4 4 8-8" />
+      <path d="M14 7h7v7" />
+    </svg>
+  );
+}
 
 export function ProductCard({
   product,
@@ -35,15 +75,17 @@ export function ProductCard({
     isBestSeller
       ? {
           id: "best-seller",
-          label: "Más vendido",
-          className: "mw-product-card__badge--best-seller"
+          label: "Top ventas",
+          className: "mw-product-card__badge--best-seller",
+          icon: "trending-up"
         }
       : null,
     isNewDesign
       ? {
           id: "new-design",
           label: "Nuevo diseño",
-          className: "mw-product-card__badge--new-design"
+          className: "mw-product-card__badge--new-design",
+          icon: "sparkles"
         }
       : null
   ].filter((badge): badge is ProductBadge => badge !== null);
@@ -79,6 +121,7 @@ export function ProductCard({
                   className={`mw-product-card__badge ${badge.className}`}
                   key={badge.id}
                 >
+                  <ProductBadgeIcon icon={badge.icon} />
                   {badge.label}
                 </span>
               ))}
