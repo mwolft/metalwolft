@@ -79,6 +79,27 @@ function ProductVariantIcon() {
   );
 }
 
+function HingedProductVariantIcon() {
+  return (
+    <svg
+      aria-hidden="true"
+      className="mw-product-card__variant-icon"
+      fill="none"
+      focusable="false"
+      stroke="currentColor"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth="1.75"
+      viewBox="0 0 24 24"
+    >
+      <rect height="18" rx="1.25" width="7" x="3" y="3" />
+      <path d="m10 4 10 4v8l-10 4z" />
+      <path d="m12 9.6 5.5 2.2" />
+      <path d="m12 14.2 5.5 2.2" />
+    </svg>
+  );
+}
+
 export function ProductCard({
   product,
   href,
@@ -154,7 +175,11 @@ export function ProductCard({
             <div className="mw-product-card__variants">
               {variants.map((variant) => (
                 <span className="mw-product-card__variant" key={variant.id}>
-                  <ProductVariantIcon />
+                  {variant.id === "hinged" ? (
+                    <HingedProductVariantIcon />
+                  ) : (
+                    <ProductVariantIcon />
+                  )}
                   {variant.label}
                 </span>
               ))}
