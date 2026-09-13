@@ -9,6 +9,12 @@ type ProductCardProps = {
   isNewDesign?: boolean;
 };
 
+type ProductBadge = {
+  id: "best-seller" | "new-design";
+  label: string;
+  className: string;
+};
+
 export function ProductCard({
   product,
   href,
@@ -21,11 +27,23 @@ export function ProductCard({
     product.descripcion?.trim() ||
     "Modelo metálico fabricado a medida por MetalWolft.";
   const badges = [
-    isBestSeller ? "Más vendido" : null,
-    isNewDesign ? "Nuevo diseño" : null
-  ].filter((badge): badge is string => Boolean(badge));
+    isBestSeller
+      ? {
+          id: "best-seller",
+          label: "Más vendido",
+          className: "mw-product-card__badge--best-seller"
+        }
+      : null,
+    isNewDesign
+      ? {
+          id: "new-design",
+          label: "Nuevo diseño",
+          className: "mw-product-card__badge--new-design"
+        }
+      : null
+  ].filter((badge): badge is ProductBadge => badge !== null);
   const accessibleLabel = badges.length
-    ? `Ver modelo ${productName}, ${badges.join(", ")}`
+    ? `Ver modelo ${productName}, ${badges.map((badge) => badge.label).join(", ")}`
     : `Ver modelo ${productName}`;
 
   return (
@@ -40,8 +58,11 @@ export function ProductCard({
           {badges.length > 0 ? (
             <div className="mw-product-card__badges">
               {badges.map((badge) => (
-                <span className="mw-product-card__badge" key={badge}>
-                  {badge}
+                <span
+                  className={`mw-product-card__badge ${badge.className}`}
+                  key={badge.id}
+                >
+                  {badge.label}
                 </span>
               ))}
             </div>

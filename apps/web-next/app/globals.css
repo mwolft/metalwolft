@@ -1457,15 +1457,19 @@ textarea:focus-visible {
   padding: 0.32rem 0.58rem;
   border: 1px solid rgba(255, 255, 255, 0.48);
   border-radius: 999px;
-  background: rgba(31, 41, 55, 0.92);
-  color: #fff;
   font-size: 0.75rem;
   font-weight: 700;
   line-height: 1.2;
 }
 
-.mw-product-card__badge + .mw-product-card__badge {
-  border-color: rgba(255, 50, 77, 0.5);
+.mw-product-card__badge--best-seller {
+  background: rgba(31, 41, 55, 0.92);
+  color: #fff;
+}
+
+.mw-product-card__badge--new-design {
+  background: var(--mw-accent);
+  color: #fff;
 }
 
 .mw-product-card__image-fallback {
