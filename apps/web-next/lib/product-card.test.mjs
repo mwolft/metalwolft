@@ -22,12 +22,18 @@ assert.match(sources.card, /isBestSeller\?: boolean/);
 assert.match(sources.card, /isNewDesign\?: boolean/);
 assert.match(sources.card, /isBestSeller = false/);
 assert.match(sources.card, /isNewDesign = false/);
-assert.match(sources.card, /isBestSeller \? "Más vendido" : null/);
-assert.match(sources.card, /isNewDesign \? "Nuevo diseño" : null/);
+assert.match(sources.card, /label: "Top ventas"/);
+assert.match(sources.card, /label: "Nuevo diseño"/);
 assert.match(sources.card, /aria-label={accessibleLabel}/);
 assert.match(sources.card, /badges\.length > 0 \?/);
 assert.match(sources.card, /className="mw-product-card__badges"/);
-assert.match(sources.card, /className="mw-product-card__badge"/);
+assert.match(
+  sources.card,
+  /className=\{`mw-product-card__badge \$\{badge\.className\}`\}/
+);
+assert.match(sources.card, /function ProductVariantIcon\(\)/);
+assert.match(sources.card, /className="mw-product-card__variant-icon"/);
+assert.match(sources.card, /<ProductVariantIcon \/>/);
 assert.equal((sources.card.match(/<Link\b/g) || []).length, 1);
 assert.doesNotMatch(sources.card, /\bprecio(?:_rebajado)?\b/);
 assert.doesNotMatch(sources.card, /"use client"/);
@@ -70,7 +76,19 @@ assert.match(
 );
 assert.match(sources.styles, /\.mw-product-card__cta\s*{[^}]*white-space:\s*nowrap/s);
 assert.match(sources.styles, /\.mw-product-card__badges\s*{[^}]*position:\s*absolute[^}]*flex-wrap:\s*wrap/s);
-assert.match(sources.styles, /\.mw-product-card__badge\s*{[^}]*background:\s*rgba\(31, 41, 55, 0\.92\)[^}]*color:\s*#fff/s);
+assert.match(
+  sources.styles,
+  /\.mw-product-card__badge--best-seller\s*{[^}]*background:\s*rgba\(31, 41, 55, 0\.92\)[^}]*color:\s*#fff/s
+);
+assert.match(sources.styles, /\.mw-product-card__variants\s*{[^}]*flex-wrap:\s*wrap/s);
+assert.match(
+  sources.styles,
+  /\.mw-product-card__variant\s*{[^}]*display:\s*inline-flex;[^}]*align-items:\s*center;[^}]*gap:\s*0\.26rem;/s
+);
+assert.match(
+  sources.styles,
+  /\.mw-product-card__variant-icon\s*{[^}]*width:\s*0\.78rem;[^}]*height:\s*0\.78rem;/s
+);
 assert.match(sources.styles, /\.mw-product-card__link:focus-visible/);
 assert.match(sources.styles, /@media \(prefers-reduced-motion: reduce\)[\s\S]*?\.mw-product-card/);
 
