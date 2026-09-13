@@ -15,6 +15,11 @@ type ProductBadge = {
   className: string;
 };
 
+type ProductVariant = {
+  id: "hinged" | "door";
+  label: string;
+};
+
 export function ProductCard({
   product,
   href,
@@ -42,8 +47,20 @@ export function ProductCard({
         }
       : null
   ].filter((badge): badge is ProductBadge => badge !== null);
-  const accessibleLabel = badges.length
-    ? `Ver modelo ${productName}, ${badges.map((badge) => badge.label).join(", ")}`
+  const variants = [
+    product.has_abatible === true
+      ? { id: "hinged", label: "Disponible en versión abatible" }
+      : null,
+    product.has_door_model === true
+      ? { id: "door", label: "Disponible en versión para puerta" }
+      : null
+  ].filter((variant): variant is ProductVariant => variant !== null);
+  const accessibleDetails = [
+    ...badges.map((badge) => badge.label),
+    ...variants.map((variant) => variant.label)
+  ];
+  const accessibleLabel = accessibleDetails.length
+    ? `Ver modelo ${productName}, ${accessibleDetails.join(", ")}`
     : `Ver modelo ${productName}`;
 
   return (
@@ -71,6 +88,15 @@ export function ProductCard({
         <div className="mw-product-card__body">
           <h3 className="mw-product-card__title">{productName}</h3>
           <p className="mw-product-card__description">{description}</p>
+          {variants.length > 0 ? (
+            <div className="mw-product-card__variants">
+              {variants.map((variant) => (
+                <span className="mw-product-card__variant" key={variant.id}>
+                  {variant.label}
+                </span>
+              ))}
+            </div>
+          ) : null}
           <span className="mw-product-card__cta" aria-hidden="true">
             Ver modelo
           </span>
