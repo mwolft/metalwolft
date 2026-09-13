@@ -1529,9 +1529,9 @@ textarea:focus-visible {
   align-items: center;
   gap: 0.26rem;
   padding: 0.26rem 0.5rem;
-  border: 1px solid rgba(31, 41, 55, 0.18);
+  border: 1px solid var(--mw-border);
   border-radius: 999px;
-  background: #f4f3f1;
+  background: #f5f6f7;
   color: var(--mw-text);
   font-size: 0.72rem;
   font-weight: 600;
