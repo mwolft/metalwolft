@@ -55,7 +55,17 @@ from api.design_service import (
     mark_design_request_paid,
     prepare_design_checkout_session,
     assert_order_accepts_physical_detail,
+    is_design_service_only_order,
     order_contains_design_service,
+)
+from api.design_result_service import (
+    design_result_download_filename,
+    is_design_result_available,
+)
+from api.private_object_storage import (
+    PrivateObjectStorageConfigurationError,
+    PrivateObjectStorageOperationError,
+    get_private_object_storage,
 )
 from api.public_rate_limiter import SlidingWindowRateLimiter
 from api.cart_budget_pdf_service import CartBudgetPdfError, render_cart_budget_pdf
@@ -3799,6 +3809,66 @@ def download_customer_order_invoice(order_id):
             order_id,
         )
         return jsonify({"message": "No se ha podido descargar la factura."}), 500
+
+
+@api.route('/customer/orders/<int:order_id>/design-result', methods=['GET'])
+@jwt_required()
+def download_customer_order_design_result(order_id):
+    customer_id = _get_authenticated_customer_id()
+    if customer_id is None:
+        return jsonify({"message": "Invalid customer session"}), 401
+
+    try:
+        order = (
+            Orders.query
+            .options(
+                joinedload(Orders.order_details),
+                joinedload(Orders.design_request),
+            )
+            .filter(Orders.id == order_id, Orders.user_id == customer_id)
+            .first()
+        )
+        if not order or not is_design_service_only_order(order):
+            return jsonify({"message": "Design result not found"}), 404
+
+        design_request = order.design_request
+        if (
+            design_request is None
+            or design_request.user_id != customer_id
+            or not is_design_result_available(design_request)
+        ):
+            return jsonify({"message": "Design result not found"}), 404
+
+        try:
+            content = get_private_object_storage(current_app).get_object(
+                storage_key=design_request.result_storage_key,
+            )
+        except (
+            PrivateObjectStorageConfigurationError,
+            PrivateObjectStorageOperationError,
+        ):
+            current_app.logger.warning(
+                "Private design-result download unavailable order_id=%s",
+                order_id,
+            )
+            return jsonify({"message": "Design result not found"}), 404
+
+        response = send_file(
+            BytesIO(content),
+            mimetype=design_request.result_mime,
+            as_attachment=True,
+            download_name=design_result_download_filename(design_request),
+            max_age=0,
+        )
+        response.headers["Cache-Control"] = "no-store"
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        return response
+    except Exception:
+        current_app.logger.exception(
+            "Unexpected customer design-result download error for order_id=%s",
+            order_id,
+        )
+        return jsonify({"message": "No se ha podido descargar el diseño."}), 500
 
 
 def _get_customer_order_invoice(order_id):

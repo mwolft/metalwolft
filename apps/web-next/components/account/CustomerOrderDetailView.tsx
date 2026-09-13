@@ -7,6 +7,7 @@ import { useAuthSession } from "@/hooks/useAuthSession";
 import { clearSession, getToken } from "@/lib/auth-client";
 import {
   CustomerOrdersClientError,
+  fetchCustomerOrderDesignResult,
   fetchCustomerOrderInvoicePdf,
   fetchCustomerOrderDetail,
   isCustomerOrdersNotFoundError,
@@ -104,6 +105,8 @@ export function CustomerOrderDetailView({ orderId }: { orderId: number }) {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isDownloadingInvoice, setIsDownloadingInvoice] = useState(false);
   const [invoiceDownloadError, setInvoiceDownloadError] = useState<string | null>(null);
+  const [isDownloadingDesignResult, setIsDownloadingDesignResult] = useState(false);
+  const [designResultDownloadError, setDesignResultDownloadError] = useState<string | null>(null);
 
   const redirectToLogin = useCallback(() => {
     clearSession();
@@ -189,6 +192,50 @@ export function CustomerOrderDetailView({ orderId }: { orderId: number }) {
         window.setTimeout(() => window.URL.revokeObjectURL(urlToRevoke), 0);
       }
       setIsDownloadingInvoice(false);
+    }
+  };
+
+  const handleDownloadDesignResult = async () => {
+    if (isDownloadingDesignResult) {
+      return;
+    }
+
+    const token = getToken();
+    if (!token) {
+      redirectToLogin();
+      return;
+    }
+
+    setIsDownloadingDesignResult(true);
+    setDesignResultDownloadError(null);
+
+    let downloadUrl: string | null = null;
+    try {
+      const download = await fetchCustomerOrderDesignResult(token, orderId);
+      downloadUrl = window.URL.createObjectURL(download.blob);
+      const link = document.createElement("a");
+      link.href = downloadUrl;
+      link.download = download.filename;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+    } catch (error) {
+      if (isCustomerOrdersSessionError(error)) {
+        redirectToLogin();
+        return;
+      }
+
+      setDesignResultDownloadError(
+        error instanceof CustomerOrdersClientError
+          ? error.message
+          : "No se pudo descargar el diseño. Inténtalo de nuevo."
+      );
+    } finally {
+      if (downloadUrl) {
+        const urlToRevoke = downloadUrl;
+        window.setTimeout(() => window.URL.revokeObjectURL(urlToRevoke), 0);
+      }
+      setIsDownloadingDesignResult(false);
     }
   };
 
@@ -285,7 +332,7 @@ export function CustomerOrderDetailView({ orderId }: { orderId: number }) {
           {isDesignService ? (
             <div className="mw-customer-order-service-detail">
               <p>Referencia: {designService?.reference}</p>
-              <p>Entrega: correo asociado a tu cuenta.</p>
+              <p>Entrega: te avisaremos cuando esté listo.</p>
               <p>Plazo estimado: {designService?.lead_time_hours} h.</p>
             </div>
           ) : null}
@@ -397,6 +444,32 @@ export function CustomerOrderDetailView({ orderId }: { orderId: number }) {
           <Link href="/mantenimiento-acabado-rejas-metalicas">Mantenimiento y acabado</Link>
         </nav>
       </section> : null}
+
+      {isDesignService && designService?.result_available ? (
+        <section className="mw-account-card" aria-labelledby="customer-order-design-result-title">
+          <div className="mw-account-section-heading">
+            <p className="mw-note">Diseño previo</p>
+            <h3 id="customer-order-design-result-title">Resultado disponible</h3>
+          </div>
+
+          <div className="mw-customer-order-invoice">
+            <button
+              className="mw-button mw-button--primary mw-customer-order-invoice__button"
+              disabled={isDownloadingDesignResult}
+              type="button"
+              onClick={handleDownloadDesignResult}
+            >
+              {isDownloadingDesignResult ? "Descargando..." : "Descargar diseño"}
+            </button>
+
+            {designResultDownloadError ? (
+              <p className="mw-customer-order-invoice__error" role="alert">
+                {designResultDownloadError}
+              </p>
+            ) : null}
+          </div>
+        </section>
+      ) : null}
 
       <section className="mw-account-card" aria-labelledby="customer-order-invoice-title">
         <div className="mw-account-section-heading">

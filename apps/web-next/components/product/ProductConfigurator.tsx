@@ -968,10 +968,10 @@ export function ProductConfigurator({
               />
             </div>
             <div className="mw-configurator-design-preview__copy">
-              <p className="mw-configurator-design-preview__title">¿Quieres ver cómo quedará tu reja?</p>
+              <p className="mw-configurator-design-preview__title">¿Quieres ver las proporciones de esta reja con tus medidas?</p>
               {designPreviewHref ? (
                 <>
-                  <p>Te preparamos un diseño previo de este modelo en</p>
+                  <p>Te mostramos cómo se repartirán los barrotes y espacios en</p>
                   <strong className="mw-configurator-design-preview__dimensions">
                     {designPreviewHeight} × {designPreviewWidth} cm
                   </strong>
@@ -980,7 +980,7 @@ export function ProductConfigurator({
                   ) : null}
                 </>
               ) : (
-                <p>Introduce alto y ancho para poder visualizar este modelo con tus proporciones.</p>
+                <p>Introduce alto y ancho para ver cómo se repartirán los barrotes y espacios según tus medidas.</p>
               )}
             </div>
           </div>

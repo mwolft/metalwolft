@@ -1,0 +1,22 @@
+{% extends 'admin/master.html' %}
+
+{% block body %}
+  <div class="container-fluid">
+    <h3>Subir resultado de diseño previo</h3>
+    <p>
+      La solicitud <strong>{{ design_request.reference }}</strong> se marcará como entregada
+      cuando el archivo se guarde correctamente.
+    </p>
+    <p class="text-muted">Se admiten PDF, JPEG y PNG de hasta 15 MB. El archivo quedará privado.</p>
+    <form method="post" action="{{ action_url }}" enctype="multipart/form-data">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <input type="hidden" name="submission_token" value="{{ submission_token }}">
+      <div class="form-group">
+        <label for="design-result">Resultado final</label>
+        <input id="design-result" name="result" type="file" class="form-control" accept="application/pdf,image/jpeg,image/png" required>
+      </div>
+      <button type="submit" class="btn btn-primary">SUBIR Y ENTREGAR</button>
+      <a href="{{ cancel_url }}" class="btn btn-default">Cancelar</a>
+    </form>
+  </div>
+{% endblock %}

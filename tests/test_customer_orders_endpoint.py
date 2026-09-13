@@ -41,6 +41,7 @@ if HAS_ENDPOINT_DEPS:
         Categories, DesignRequest, DesignRequestItem, Invoices, OrderDetails,
         Orders, Products, Users, db,
     )
+    from api.private_object_storage import PrivateObjectStorageOperationError  # noqa: E402
     from api.routes import api  # noqa: E402
 
 
@@ -448,6 +449,18 @@ class CustomerOrdersEndpointTest(unittest.TestCase):
         db.session.commit()
         return order
 
+    def _mark_design_result_ready(self, order_id, *, filename="resultado-final.pdf"):
+        order = db.session.get(Orders, order_id)
+        design_request = order.design_request
+        design_request.status = DesignRequest.STATUS_DELIVERED
+        design_request.result_storage_key = "design-results/2026/09/opaque-result.pdf"
+        design_request.result_filename = filename
+        design_request.result_mime = "application/pdf"
+        design_request.result_size = 128
+        design_request.result_sha256 = "a" * 64
+        db.session.commit()
+        return design_request
+
     def _create_invoice(
         self,
         order,
@@ -694,6 +707,7 @@ class CustomerOrdersEndpointTest(unittest.TestCase):
             "reference": "DP-0001",
             "status": {"code": "pending", "label": "Solicitud recibida"},
             "lead_time_hours": 24,
+            "result_available": False,
         })
         self.assertEqual(payload["design_count"], 1)
         self.assertEqual(payload["lines"], [{
@@ -713,6 +727,88 @@ class CustomerOrdersEndpointTest(unittest.TestCase):
         )
         self.assertEqual(summary["order_type"], "design_service")
         self.assertEqual(summary["design_count"], 1)
+
+    def test_design_result_signal_requires_delivered_request_with_complete_metadata(self):
+        with self.app.app_context():
+            order = self._create_design_order()
+            order_id = order.id
+            design_request = order.design_request
+            design_request.status = DesignRequest.STATUS_DELIVERED
+            db.session.commit()
+
+        incomplete_response = self.client.get(
+            f"/api/customer/orders/{order_id}",
+            headers=self._auth(self.user_a_token),
+        )
+        self.assertEqual(incomplete_response.status_code, 200)
+        self.assertFalse(incomplete_response.get_json()["order"]["design_service"]["result_available"])
+
+        with self.app.app_context():
+            self._mark_design_result_ready(order_id)
+
+        complete_response = self.client.get(
+            f"/api/customer/orders/{order_id}",
+            headers=self._auth(self.user_a_token),
+        )
+        self.assertEqual(complete_response.status_code, 200)
+        design_service = complete_response.get_json()["order"]["design_service"]
+        self.assertTrue(design_service["result_available"])
+        self.assertNotIn("storage_key", design_service)
+        self.assertNotIn("sha256", design_service)
+
+    def test_owner_can_download_private_design_result_without_exposing_storage_details(self):
+        with self.app.app_context():
+            order = self._create_design_order()
+            order_id = order.id
+            self._mark_design_result_ready(order_id, filename="resultado final.pdf")
+
+        with patch("api.routes.get_private_object_storage") as get_storage:
+            get_storage.return_value.get_object.return_value = b"%PDF-1.7 customer-design"
+            response = self.client.get(
+                f"/api/customer/orders/{order_id}/design-result",
+                headers=self._auth(self.user_a_token),
+            )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.mimetype, "application/pdf")
+        self.assertEqual(response.data, b"%PDF-1.7 customer-design")
+        self.assertIn("attachment", response.headers.get("Content-Disposition", ""))
+        self.assertIn("resultado_final.pdf", response.headers.get("Content-Disposition", ""))
+        self.assertEqual(response.headers.get("Cache-Control"), "no-store")
+        self.assertEqual(response.headers.get("X-Content-Type-Options"), "nosniff")
+        get_storage.return_value.get_object.assert_called_once_with(
+            storage_key="design-results/2026/09/opaque-result.pdf",
+        )
+
+    def test_design_result_download_hides_foreign_pending_and_missing_private_objects(self):
+        with self.app.app_context():
+            order = self._create_design_order()
+            order_id = order.id
+
+        pending_response = self.client.get(
+            f"/api/customer/orders/{order_id}/design-result",
+            headers=self._auth(self.user_a_token),
+        )
+        self.assertEqual(pending_response.status_code, 404)
+
+        with self.app.app_context():
+            self._mark_design_result_ready(order_id)
+
+        foreign_response = self.client.get(
+            f"/api/customer/orders/{order_id}/design-result",
+            headers=self._auth(self.user_b_token),
+        )
+        self.assertEqual(foreign_response.status_code, 404)
+
+        with patch("api.routes.get_private_object_storage") as get_storage:
+            get_storage.return_value.get_object.side_effect = PrivateObjectStorageOperationError(
+                "missing"
+            )
+            missing_response = self.client.get(
+                f"/api/customer/orders/{order_id}/design-result",
+                headers=self._auth(self.user_a_token),
+            )
+        self.assertEqual(missing_response.status_code, 404)
 
     def test_customer_order_serializer_rejects_mixed_line_types(self):
         class Detail:

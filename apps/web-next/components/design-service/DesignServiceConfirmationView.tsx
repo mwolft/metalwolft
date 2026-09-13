@@ -84,11 +84,11 @@ export function DesignServiceConfirmationView({ designRequestId }: { designReque
       <div className="mw-design-checkout__panel">
         <p><strong>Referencia:</strong> {confirmation.reference}</p>
         <ul className="mw-design-checkout__items">
-          {confirmation.items.map((item) => <li key={`${item.product_name}-${item.width_cm}-${item.height_cm}`}><strong>{item.product_name}</strong><span>{item.width_cm} × {item.height_cm} cm</span></li>)}
+          {confirmation.items.map((item) => <li key={`${item.product_name}-${item.width_cm}-${item.height_cm}`}><strong>{item.product_name}</strong><span>Ancho {item.width_cm} cm × Alto {item.height_cm} cm</span></li>)}
         </ul>
         <p><strong>Total:</strong> {formatCurrency(confirmation.total_amount, confirmation.currency)}</p>
         <p><strong>Entrega estimada:</strong> {confirmation.lead_time_hours} h</p>
-        <p>Enviaremos el diseño terminado al correo asociado a tu cuenta cuando esté listo.</p>
+        <p>Te avisaremos cuando tu diseño esté listo.</p>
       </div>
       <Link className="mw-button mw-button--secondary" href="/mi-cuenta">Ver mis pedidos</Link>
     </section>

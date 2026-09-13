@@ -160,6 +160,18 @@ from api.design_service import (
     order_contains_design_service,
     transition_design_request_status,
 )
+from api.design_result_email_service import send_design_result_ready_email
+from api.design_result_service import (
+    DesignResultError,
+    DesignResultPersistenceError,
+    compensate_design_result_upload,
+    result_metadata_state,
+    upload_design_result,
+)
+from api.private_object_storage import (
+    PrivateObjectStorageConfigurationError,
+    PrivateObjectStorageOperationError,
+)
 from api.manual_invoice_snapshot_builder import build_manual_invoice_snapshot
 from api.work_order_builder import (
     WorkOrderBuilder,
@@ -791,6 +803,71 @@ class DesignServicePriceTierAdminView(SafeModelView):
         return super().on_model_change(form, model, is_created)
 
 
+DESIGN_RESULT_UPLOAD_CSRF_SESSION_KEY = "design_result_upload_csrf"
+DESIGN_RESULT_UPLOAD_SUBMISSION_TOKEN_SESSION_KEY = "design_result_upload_submission"
+
+
+def _issue_design_result_upload_csrf_token():
+    token = session.get(DESIGN_RESULT_UPLOAD_CSRF_SESSION_KEY)
+    if not token:
+        token = secrets.token_urlsafe(32)
+        session[DESIGN_RESULT_UPLOAD_CSRF_SESSION_KEY] = token
+    return token
+
+
+def _valid_design_result_upload_csrf_token(token):
+    expected_token = session.get(DESIGN_RESULT_UPLOAD_CSRF_SESSION_KEY)
+    return bool(
+        expected_token
+        and token
+        and hmac.compare_digest(str(expected_token), str(token))
+    )
+
+
+def _issue_design_result_upload_submission_token():
+    token = secrets.token_urlsafe(32)
+    session[DESIGN_RESULT_UPLOAD_SUBMISSION_TOKEN_SESSION_KEY] = token
+    return token
+
+
+def _consume_design_result_upload_submission_token(token):
+    expected_token = session.get(DESIGN_RESULT_UPLOAD_SUBMISSION_TOKEN_SESSION_KEY)
+    if not (
+        expected_token
+        and token
+        and hmac.compare_digest(str(expected_token), str(token))
+    ):
+        return False
+    session.pop(DESIGN_RESULT_UPLOAD_SUBMISSION_TOKEN_SESSION_KEY, None)
+    return True
+
+
+def _format_design_request_result(view, context, model, name):
+    metadata_state = result_metadata_state(model)
+    if metadata_state == "partial":
+        return Markup(
+            "<span class='text-danger'>AVISO: metadatos de resultado incompletos. Requiere revisión.</span>"
+        )
+
+    if model.status == DesignRequest.STATUS_DELIVERED and metadata_state != "complete":
+        return Markup(
+            "<span class='text-danger'>AVISO: solicitud entregada sin resultado privado válido.</span>"
+        )
+
+    if model.status == DesignRequest.STATUS_IN_PROGRESS and metadata_state == "empty":
+        upload_url = view.get_url(".upload_result", design_request_id=model.id)
+        return Markup(
+            '<a class="btn btn-primary btn-sm" href="{upload_url}">SUBIR RESULTADO</a>'
+        ).format(upload_url=escape(upload_url))
+
+    if metadata_state == "complete":
+        return Markup("<span class='text-success'>Resultado privado: {filename}</span>").format(
+            filename=escape(model.result_filename)
+        )
+
+    return "—"
+
+
 class DesignRequestAdminView(SafeModelView):
     can_create = False
     can_delete = False
@@ -800,6 +877,7 @@ class DesignRequestAdminView(SafeModelView):
         "status",
         "user",
         "items",
+        "result_filename",
         "price_gross",
         "currency",
         "requested_at",
@@ -812,7 +890,6 @@ class DesignRequestAdminView(SafeModelView):
         "delivered_at",
         "cancelled_at",
         "order_id",
-        "result_filename",
         "result_mime",
         "result_size",
         "result_sha256",
@@ -851,6 +928,10 @@ class DesignRequestAdminView(SafeModelView):
         "result_size": "Tamaño",
         "result_sha256": "Hash SHA-256",
     }
+    column_formatters = {
+        "result_filename": _format_design_request_result,
+    }
+    column_formatters_detail = column_formatters
 
     _ALLOWED_TRANSITIONS = {
         DesignRequest.STATUS_PENDING_PAYMENT: set(),
@@ -868,11 +949,106 @@ class DesignRequestAdminView(SafeModelView):
         previous_status = history.deleted[0] if history.deleted else model.status
         new_status = form.status.data
         if previous_status != new_status:
+            if new_status == DesignRequest.STATUS_DELIVERED:
+                raise ValueError(
+                    "La entrega se cierra exclusivamente desde SUBIR RESULTADO."
+                )
             try:
                 transition_design_request_status(design_request=model, new_status=new_status)
             except DesignServiceValidationError as exc:
                 raise ValueError(str(exc)) from exc
         return super().on_model_change(form, model, is_created)
+
+    @expose("/<int:design_request_id>/subir-resultado/", methods=["GET", "POST"])
+    def upload_result(self, design_request_id):
+        design_request = self.session.get(DesignRequest, design_request_id)
+        if design_request is None:
+            flash("Solicitud de diseño no encontrada.", "error")
+            return redirect(self.get_url(".index_view"))
+
+        redirect_url = self.get_url(".details_view", id=design_request.id)
+        if request.method == "GET":
+            if (
+                design_request.status != DesignRequest.STATUS_IN_PROGRESS
+                or result_metadata_state(design_request) != "empty"
+            ):
+                flash(
+                    "Solo se puede subir el resultado de una solicitud en curso sin resultado previo.",
+                    "error",
+                )
+                return redirect(redirect_url)
+            return self.render(
+                "admin/design_request_result_upload.html",
+                design_request=design_request,
+                csrf_token=_issue_design_result_upload_csrf_token(),
+                submission_token=_issue_design_result_upload_submission_token(),
+                action_url=self.get_url(
+                    ".upload_result",
+                    design_request_id=design_request.id,
+                ),
+                cancel_url=redirect_url,
+            )
+
+        if not _valid_design_result_upload_csrf_token(request.form.get("csrf_token")):
+            flash("La sesión del formulario ha caducado. Vuelve a intentarlo.", "error")
+            return redirect(request.url)
+        if not _consume_design_result_upload_submission_token(
+            request.form.get("submission_token")
+        ):
+            flash("Esta subida ya se ha procesado o el formulario ha caducado.", "error")
+            return redirect(redirect_url)
+
+        result = None
+        try:
+            result = upload_design_result(
+                design_request_id=design_request.id,
+                file_storage=request.files.get("result"),
+                db_session=self.session,
+            )
+            self.session.commit()
+        except DesignResultPersistenceError:
+            self.session.rollback()
+            current_app.logger.warning(
+                "Design result metadata persistence failed design_request_id=%s",
+                design_request_id,
+            )
+            flash("No se ha podido guardar la referencia del resultado privado.", "error")
+            return redirect(redirect_url)
+        except DesignResultError as error:
+            self.session.rollback()
+            flash(str(error), "error")
+            return redirect(redirect_url)
+        except PrivateObjectStorageConfigurationError:
+            self.session.rollback()
+            current_app.logger.warning("Private design-result storage configuration is missing")
+            flash("El almacenamiento privado de resultados no está configurado.", "error")
+            return redirect(redirect_url)
+        except PrivateObjectStorageOperationError:
+            self.session.rollback()
+            current_app.logger.warning(
+                "Private design-result upload failed design_request_id=%s",
+                design_request_id,
+            )
+            flash("No se ha podido subir el resultado privado.", "error")
+            return redirect(redirect_url)
+        except Exception:
+            self.session.rollback()
+            compensate_design_result_upload(result, logger=current_app.logger)
+            current_app.logger.exception(
+                "Unexpected design-result upload failure design_request_id=%s",
+                design_request_id,
+            )
+            flash("No se ha podido subir el resultado privado.", "error")
+            return redirect(redirect_url)
+
+        send_design_result_ready_email(
+            design_request=result.design_request,
+            frontend_url=current_app.config.get("FRONTEND_URL"),
+            mail_username=current_app.config.get("MAIL_USERNAME"),
+            logger=current_app.logger,
+        )
+        flash("Resultado privado subido y solicitud marcada como entregada.", "success")
+        return redirect(redirect_url)
 
 
 WORK_ORDER_CSRF_SESSION_KEY = "work_order_csrf"

@@ -558,7 +558,7 @@ export function CartView({ deliveryEstimate }: { deliveryEstimate?: ReactNode })
                   <aside className="mw-cart-design-preview" aria-label="Diseño previo a medida">
                     <div className="mw-cart-design-preview__copy">
                       <div className="mw-cart-design-preview__heading">
-                        <p className="mw-cart-design-preview__title">¿Quieres verla antes de encargarla?</p>
+                        <p className="mw-cart-design-preview__title">¿Quieres ver sus proporciones antes de encargarla?</p>
                         <span className="mw-cart-design-preview__separator" aria-hidden="true">·</span>
                         <Link className="mw-cart-design-preview__link" href={designPreviewLink}>
                           Preparar diseño previo <span aria-hidden="true">→</span>

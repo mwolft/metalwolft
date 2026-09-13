@@ -228,7 +228,7 @@ export function DesignServiceBuilder({
           </p>
         </div>
         <p className="mw-design-builder__multi-note">
-          ¿Necesitas visualizar varias rejas? Añade más diseños y obtén mejor precio por unidad.
+          ¿Quieres comprobar las proporciones de varias rejas? Añade más diseños y obtén mejor precio por unidad.
         </p>
       </div>
 

@@ -173,6 +173,36 @@ class OrderConfirmationEmailServiceTest(unittest.TestCase):
         self.assertIn("Tornillos: 150 mm (+8,95 €)", sent[0]["body"])
         self.assertIn("Total: 190,00 €", sent[0]["body"])
 
+    def test_design_service_uses_request_copy_and_explicit_height_and_width(self):
+        sent = []
+        quote = checkout_quote()
+        quote["lines"][0].update(
+            {
+                "line_type": "design_service",
+                "alto": 30,
+                "ancho": 45,
+            }
+        )
+
+        send_order_confirmation_email(
+            user=SimpleNamespace(email="cliente@example.com"),
+            order=SimpleNamespace(locator="AB1234", total_amount=180.5),
+            checkout_quote=quote,
+            customer_firstname="Sergio",
+            mail_username="admin@example.com",
+            logger=SimpleNamespace(info=lambda *args, **kwargs: None, error=lambda *args, **kwargs: None),
+            send_email_func=lambda **kwargs: sent.append(kwargs) or True,
+        )
+
+        self.assertEqual(sent[0]["subject"], "Hemos recibido tu solicitud de diseño AB1234")
+        expected_receipt = "Hemos recibido correctamente tu solicitud de diseño AB1234."
+        expected_measurements = "Alto 30 cm × Ancho 45 cm"
+        for body in (sent[0]["body"], sent[0]["html"]):
+            self.assertIn(expected_receipt, body)
+            self.assertIn(expected_measurements, body)
+            self.assertNotIn("Hemos recibido correctamente tu pedido", body)
+            self.assertNotIn("Alto 45 cm × Ancho 30 cm", body)
+
     def test_email_uses_the_frozen_line_image_without_looking_up_a_product(self):
         sent = []
         quote = checkout_quote()
