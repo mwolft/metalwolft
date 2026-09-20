@@ -57,6 +57,22 @@ def shipping_address_from_order_details(order_details):
     )
 
 
+def shipping_address_from_order(order):
+    """Prefer operational lines, then the immutable and legacy checkout snapshots."""
+    operational_address = shipping_address_from_order_details(
+        getattr(order, "order_details", None)
+    )
+    if operational_address.is_available:
+        return operational_address
+
+    # Import lazily to keep the presentation helpers independent of ORM setup.
+    from api.order_confirmation_context import get_order_customer_snapshot
+
+    return shipping_address_from_customer_snapshot(
+        get_order_customer_snapshot(order)
+    )
+
+
 def shipping_address_lines(shipping_address, *, include_recipient=True):
     if not shipping_address or not shipping_address.is_available:
         return ()

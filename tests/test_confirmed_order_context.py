@@ -155,11 +155,13 @@ class ConfirmedOrderContextTest(unittest.TestCase):
         db.session.commit()
         return checkout_session, quote, customer
 
-    def finalize(self, checkout_session):
+    def finalize(self, checkout_session, *, customer_snapshot=None):
+        if customer_snapshot is None:
+            customer_snapshot = checkout_session.customer_snapshot
         return _finalize_order_from_checkout_quote(
             user=db.session.get(Users, self.user_id),
             checkout_quote=checkout_session.quote_snapshot,
-            customer_snapshot=checkout_session.customer_snapshot,
+            customer_snapshot=customer_snapshot,
             checkout_session=checkout_session,
         )
 
@@ -229,6 +231,54 @@ class ConfirmedOrderContextTest(unittest.TestCase):
             self.assertIsNotNone(context.confirmed_at)
             self.assertEqual(checkout_session.order_id, order.id)
             self.assertEqual(checkout_session.status, "order_created")
+
+    def test_web_finalizer_recovers_the_persisted_checkout_customer_snapshot(self):
+        with self.app.app_context(), patch("api.routes.send_order_confirmation_email"):
+            checkout_session, quote, customer = self.paid_checkout_session(
+                provider="stripe",
+                payment_reference="pi_checkout_customer_snapshot",
+            )
+
+            order, created = self.finalize(checkout_session, customer_snapshot={})
+
+            self.assertTrue(created)
+            context = ConfirmedOrderContext.query.one()
+            self.assertEqual(context.quote_snapshot, quote)
+            self.assertEqual(context.customer_snapshot, customer)
+
+            detail = OrderDetails.query.one()
+            self.assertEqual(detail.shipping_address, customer["shipping_address"])
+            self.assertEqual(detail.shipping_city, customer["shipping_city"])
+            self.assertEqual(detail.shipping_postal_code, customer["shipping_postal_code"])
+            self.assertEqual(detail.billing_address, customer["billing_address"])
+            self.assertEqual(detail.billing_city, customer["billing_city"])
+            self.assertEqual(detail.billing_postal_code, customer["billing_postal_code"])
+
+    def test_empty_confirmed_customer_snapshot_falls_back_to_checkout_for_phone(self):
+        with self.app.app_context():
+            checkout_session, quote, customer = self.paid_checkout_session(
+                provider="stripe",
+                payment_reference="pi_historical_empty_context",
+            )
+            order = self.persisted_order("HX1001")
+            checkout_session.order_id = order.id
+            confirmation = build_web_checkout_confirmation_input(checkout_session)
+            persist_confirmed_order_context(
+                db_session=db.session,
+                order=order,
+                quote_snapshot=quote,
+                customer_snapshot={},
+                confirmation=confirmation,
+            )
+            db.session.commit()
+            db.session.expire_all()
+
+            persisted_order = db.session.get(Orders, order.id)
+            self.assertEqual(persisted_order.customer_phone_snapshot, customer["phone"])
+            self.assertEqual(
+                persisted_order.shipping_address_summary,
+                "Ana Cliente\nCalle Entrega 1\n13001 Ciudad Real",
+            )
 
     def test_paypal_checkout_uses_the_real_capture_reference(self):
         with self.app.app_context(), patch("api.routes.send_order_confirmation_email"):

@@ -483,11 +483,11 @@ class Orders(db.Model):
     @property
     def shipping_address_summary(self):
         from api.order_shipping import (
-            shipping_address_from_order_details,
+            shipping_address_from_order,
             shipping_address_lines,
         )
 
-        shipping_address = shipping_address_from_order_details(self.order_details)
+        shipping_address = shipping_address_from_order(self)
         return "\n".join(shipping_address_lines(shipping_address)) or None
 
     @property

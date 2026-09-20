@@ -1355,6 +1355,10 @@ def _finalize_order_from_checkout_quote(user, checkout_quote, customer_snapshot,
         if checkout_session:
             if customer_snapshot:
                 checkout_session.customer_snapshot = customer_snapshot
+            # Once payment has completed, the persisted checkout snapshots are
+            # the canonical inputs for the order and its immutable context.
+            checkout_quote = checkout_session.quote_snapshot or checkout_quote
+            customer_snapshot = checkout_session.customer_snapshot or {}
             confirmation = build_web_checkout_confirmation_input(checkout_session)
 
         creation = create_order_from_confirmed_input(

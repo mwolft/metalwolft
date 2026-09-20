@@ -10,6 +10,7 @@ if str(SRC_DIR) not in sys.path:
     sys.path.insert(0, str(SRC_DIR))
 
 from api.order_shipping import (  # noqa: E402
+    shipping_address_from_order,
     shipping_address_from_customer_snapshot,
     shipping_address_from_order_details,
     shipping_address_lines,
@@ -73,6 +74,118 @@ class OrderShippingAddressTest(unittest.TestCase):
         )
         self.assertIsNone(address.province)
         self.assertIsNone(address.country_code)
+
+    def test_order_prefers_operational_details_over_confirmation_and_checkout_snapshots(self):
+        detail = SimpleNamespace(
+            firstname="Ana",
+            lastname="Cliente",
+            shipping_address="Calle Operativa 1",
+            shipping_postal_code="13001",
+            shipping_city="Ciudad Real",
+            billing_address=None,
+            billing_postal_code=None,
+            billing_city=None,
+        )
+        order = SimpleNamespace(
+            order_details=[detail],
+            confirmed_order_context=SimpleNamespace(
+                customer_snapshot={
+                    "shipping_address": "Calle Contexto 2",
+                    "shipping_postal_code": "28013",
+                    "shipping_city": "Madrid",
+                }
+            ),
+            checkout_session=SimpleNamespace(
+                customer_snapshot={
+                    "shipping_address": "Calle Checkout 3",
+                    "shipping_postal_code": "41001",
+                    "shipping_city": "Sevilla",
+                }
+            ),
+        )
+
+        address = shipping_address_from_order(order)
+
+        self.assertEqual(address.address, "Calle Operativa 1")
+        self.assertEqual(address.city, "Ciudad Real")
+
+    def test_order_uses_confirmation_snapshot_when_operational_details_are_empty(self):
+        detail = SimpleNamespace(
+            firstname=None,
+            lastname=None,
+            shipping_address=None,
+            shipping_postal_code=None,
+            shipping_city=None,
+            billing_address=None,
+            billing_postal_code=None,
+            billing_city=None,
+        )
+        order = SimpleNamespace(
+            order_details=[detail],
+            confirmed_order_context=SimpleNamespace(
+                customer_snapshot={
+                    "firstname": "Ana",
+                    "lastname": "Cliente",
+                    "shipping_address": "Calle Contexto 2",
+                    "shipping_postal_code": "28013",
+                    "shipping_city": "Madrid",
+                }
+            ),
+            checkout_session=SimpleNamespace(
+                customer_snapshot={
+                    "shipping_address": "Calle Checkout 3",
+                    "shipping_postal_code": "41001",
+                    "shipping_city": "Sevilla",
+                }
+            ),
+        )
+
+        address = shipping_address_from_order(order)
+
+        self.assertEqual(address.address, "Calle Contexto 2")
+        self.assertEqual(address.city, "Madrid")
+
+    def test_order_uses_checkout_snapshot_when_confirmation_snapshot_is_empty(self):
+        detail = SimpleNamespace(
+            firstname=None,
+            lastname=None,
+            shipping_address=None,
+            shipping_postal_code=None,
+            shipping_city=None,
+            billing_address=None,
+            billing_postal_code=None,
+            billing_city=None,
+        )
+        order = SimpleNamespace(
+            order_details=[detail],
+            confirmed_order_context=SimpleNamespace(customer_snapshot={}),
+            checkout_session=SimpleNamespace(
+                customer_snapshot={
+                    "firstname": "Ana",
+                    "lastname": "Cliente",
+                    "shipping_address": "Calle Checkout 3",
+                    "shipping_postal_code": "41001",
+                    "shipping_city": "Sevilla",
+                }
+            ),
+        )
+
+        address = shipping_address_from_order(order)
+
+        self.assertEqual(address.address, "Calle Checkout 3")
+        self.assertEqual(address.city, "Sevilla")
+
+    def test_order_without_any_address_remains_empty(self):
+        order = SimpleNamespace(
+            order_details=[],
+            confirmed_order_context=SimpleNamespace(customer_snapshot={}),
+            checkout_session=SimpleNamespace(customer_snapshot={}),
+        )
+
+        address = shipping_address_from_order(order)
+
+        self.assertFalse(address.is_available)
+        self.assertEqual(shipping_address_lines(address), ())
 
 
 if __name__ == "__main__":
