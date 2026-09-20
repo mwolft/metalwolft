@@ -171,11 +171,13 @@ def _metadata_table(data: WorkOrderData, styles):
     values = (
         ("PEDIDO", data.order.get("locator") or "No consta"),
         ("FECHA PEDIDO", data.order.get("ordered_at") or "No consta"),
+        ("ENTREGA ESTIMADA", data.order.get("estimated_delivery_date") or "No consta"),
         ("PARTE GENERADO", data.generated_at or "No consta"),
     )
+    metadata_width = 17.55 * cm
     table = Table(
         [[_label_value(label, value, styles) for label, value in values]],
-        colWidths=[5.85 * cm, 5.85 * cm, 5.85 * cm],
+        colWidths=[metadata_width / len(values)] * len(values),
     )
     table.setStyle(_boxed_table_style())
     return table

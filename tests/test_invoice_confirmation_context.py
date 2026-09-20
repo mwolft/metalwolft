@@ -21,6 +21,7 @@ from api.invoice_confirmation_context import (  # noqa: E402
     build_invoice_confirmation_context_from_confirmed_order_context,
 )
 from api.invoice_snapshot_builder import (  # noqa: E402
+    InvoiceSnapshotValidationError,
     build_invoice_snapshot,
 )
 from api.invoice_snapshot_integrity import calculate_invoice_snapshot_hash  # noqa: E402
@@ -281,6 +282,32 @@ class InvoiceConfirmationContextTest(unittest.TestCase):
 
         self.assertIsNone(selected_context)
         self.assertEqual(error, "El contexto confirmado del pedido no es valido para facturacion.")
+
+    def test_empty_confirmed_customer_snapshot_blocks_a_historical_checkout_fallback(self):
+        """Characterize order 366: the fiscal path must fail closed, not issue incomplete data."""
+        confirmed_context = make_confirmed_context(customer_snapshot={})
+        order = make_order(confirmed_order_context=confirmed_context)
+        context = build_invoice_confirmation_context_from_confirmed_order_context(
+            order=order,
+            confirmed_order_context=confirmed_context,
+        )
+
+        with self.assertRaisesRegex(InvoiceSnapshotValidationError, "customer.legal_name"):
+            build_invoice_snapshot(
+                order,
+                context,
+                make_issuer(),
+                issue_date=datetime(2026, 9, 10, 11, 0),
+            )
+
+        with patch(
+            "api.invoice_admin_helpers._select_legacy_checkout_confirmation_context_for_invoice"
+        ) as legacy_selector:
+            selected_context, error = select_invoice_confirmation_context_for_invoice(order)
+
+        self.assertIsNone(selected_context)
+        self.assertEqual(error, "El contexto confirmado del pedido no es valido para facturacion.")
+        legacy_selector.assert_not_called()
 
     def test_external_payment_evidence_rules_are_enforced(self):
         order = make_order()

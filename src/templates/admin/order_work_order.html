@@ -21,6 +21,7 @@
     <section class="mw-work-order__meta" aria-label="Identificación del parte">
       <div><span>Pedido</span><strong>{{ data.order.locator }}</strong></div>
       <div><span>Fecha pedido</span><strong>{{ data.order.ordered_at or 'No consta' }}</strong></div>
+      <div><span>Entrega estimada</span><strong>{{ data.order.estimated_delivery_date or 'No consta' }}</strong></div>
       <div><span>Parte generado</span><strong>{{ data.generated_at or 'No consta' }}</strong></div>
     </section>
 
