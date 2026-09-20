@@ -21,6 +21,7 @@
     <section class="mw-work-order__meta" aria-label="Identificación del parte">
       <div><span>Pedido</span><strong>{{ data.order.locator }}</strong></div>
       <div><span>Fecha pedido</span><strong>{{ data.order.ordered_at or 'No consta' }}</strong></div>
+      <div><span>Entrega estimada</span><strong>{{ data.order.estimated_delivery_date or 'No consta' }}</strong></div>
       <div><span>Parte generado</span><strong>{{ data.generated_at or 'No consta' }}</strong></div>
     </section>
 
@@ -28,9 +29,10 @@
       <h2 id="work-order-customer-title">Cliente / entrega</h2>
       <dl>
         <div><dt>Nombre</dt><dd>{{ data.customer.name or 'No consta' }}</dd></div>
-        {% if data.customer.phone %}
-          <div><dt>Teléfono</dt><dd>{{ data.customer.phone }}</dd></div>
-        {% endif %}
+        <div>
+          <dt>Teléfono</dt><dd>{{ data.customer.phone or 'No consta' }}</dd>
+          <dt>Email</dt><dd>{{ data.customer.email or 'No consta' }}</dd>
+        </div>
         {% if data.customer.delivery_address %}
           <div class="mw-work-order__address"><dt>Dirección de entrega</dt><dd>{% for address_line in data.customer.delivery_address %}<span>{{ address_line }}</span>{% endfor %}</dd></div>
         {% endif %}

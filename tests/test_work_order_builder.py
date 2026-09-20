@@ -55,6 +55,7 @@ if HAS_DEPS:
     from api.work_order_builder import (
         WORK_ORDER_SCHEMA_VERSION,
         WorkOrderBuilder,
+        WorkOrderData,
         WorkOrderValidationError,
         assert_snapshot_has_no_economic_data,
         get_or_create_work_order,
@@ -312,6 +313,7 @@ class WorkOrderBuilderTest(unittest.TestCase):
 
             self.assertTrue(created)
             self.assertEqual(work_order.schema_version, WORK_ORDER_SCHEMA_VERSION)
+            self.assertIsNone(work_order.snapshot["order"]["estimated_delivery_date"])
             self.assertEqual(work_order.snapshot["lines"][0]["quantity"], 2)
             self.assertEqual(work_order.snapshot["lines"][0]["dimensions"], {
                 "unit": "cm", "height": "109", "width": "198",
@@ -326,6 +328,7 @@ class WorkOrderBuilderTest(unittest.TestCase):
                 "https://res.cloudinary.com/dewanllxn/image/upload/essex.webp",
             )
             self.assertEqual(work_order.snapshot["customer"]["phone"], "600 123 123")
+            self.assertEqual(work_order.snapshot["customer"]["email"], order.user.email)
             self.assertIn("Ciudad Real", work_order.snapshot["customer"]["delivery_address"])
             assert_snapshot_has_no_economic_data(work_order.snapshot)
             snapshot_json = json.dumps(work_order.snapshot, ensure_ascii=False).lower()
@@ -360,6 +363,68 @@ class WorkOrderBuilderTest(unittest.TestCase):
             self.assertEqual(customer["phone"], "600 777 777")
             self.assertIn("Avenida del contexto 10", customer["delivery_address"])
 
+    def test_historical_work_order_recovers_missing_customer_and_delivery_metadata_read_only(self):
+        with self.app.app_context():
+            order = db.session.get(Orders, self.order_id)
+            detail = order.order_details[0]
+            detail.firstname = None
+            detail.lastname = None
+            detail.shipping_address = None
+            detail.shipping_city = None
+            detail.shipping_postal_code = None
+            detail.billing_address = None
+            detail.billing_city = None
+            detail.billing_postal_code = None
+            order.checkout_session.customer_snapshot = {
+                "firstname": "Ignacio",
+                "lastname": "Historico",
+                "email": "ignacio.historico@example.test",
+                "phone": "600 366 383",
+                "shipping_address": "Calle Historica 366",
+                "shipping_postal_code": "13001",
+                "shipping_city": "Ciudad Real",
+                "shipping_province": "Ciudad Real",
+                "shipping_country_code": "ES",
+            }
+            self._create_confirmed_context(order, customer_snapshot={})
+            order.estimated_delivery_at = date(2026, 10, 6)
+
+            historical_snapshot = WorkOrderBuilder.build_snapshot(order)
+            historical_snapshot["customer"] = {
+                "name": None,
+                "phone": None,
+                "delivery_address": [],
+            }
+            historical_snapshot["order"].pop("estimated_delivery_date")
+            work_order = WorkOrder(
+                order_id=order.id,
+                schema_version=WORK_ORDER_SCHEMA_VERSION,
+                snapshot=historical_snapshot,
+                created_by="admin",
+            )
+            db.session.add(work_order)
+            db.session.commit()
+            original_snapshot = deepcopy_json(work_order.snapshot)
+
+            data = WorkOrderBuilder.from_work_order(work_order)
+
+            self.assertEqual(data.customer["name"], "Ignacio Historico")
+            self.assertEqual(data.customer["phone"], "600 366 383")
+            self.assertEqual(data.customer["email"], "ignacio.historico@example.test")
+            self.assertIn("Calle Historica 366", data.customer["delivery_address"])
+            self.assertEqual(data.order["estimated_delivery_date"], "06/10/2026")
+            self.assertEqual(work_order.snapshot, original_snapshot)
+
+        html = self.client.get(self._work_order_url(), headers=self._auth_header())
+        self.assertEqual(html.status_code, 200)
+        rendered = html.get_data(as_text=True)
+        self.assertIn("Ignacio Historico", rendered)
+        self.assertIn("600 366 383", rendered)
+        self.assertIn("ignacio.historico@example.test", rendered)
+        self.assertIn("Calle Historica 366", rendered)
+        self.assertIn("Entrega estimada", rendered)
+        self.assertIn("06/10/2026", rendered)
+
     def test_existing_work_order_is_unique_and_catalog_changes_do_not_change_it(self):
         with self.app.app_context():
             order = db.session.get(Orders, self.order_id)
@@ -384,6 +449,14 @@ class WorkOrderBuilderTest(unittest.TestCase):
             product.nombre = "Nombre cambiado"
             product.imagen = "https://res.cloudinary.com/dewanllxn/image/upload/cambiada.webp"
             product.opening_type = "hinged"
+            order.checkout_session.customer_snapshot = {
+                "firstname": "Cambio",
+                "lastname": "Posterior",
+                "phone": "600 000 000",
+                "shipping_address": "Calle posterior 1",
+                "shipping_city": "Otra ciudad",
+                "shipping_postal_code": "00000",
+            }
             db.session.commit()
 
             data = WorkOrderBuilder.from_work_order(db.session.get(WorkOrder, work_order.id))
@@ -393,6 +466,9 @@ class WorkOrderBuilderTest(unittest.TestCase):
                 data.lines[0]["image_url"],
                 "https://res.cloudinary.com/dewanllxn/image/upload/essex.webp",
             )
+            self.assertEqual(data.customer["name"], "María Taller")
+            self.assertEqual(data.customer["phone"], "600 123 123")
+            self.assertEqual(data.customer["email"], order.user.email)
 
     def test_multiple_lines_and_historical_gaps_are_explicit(self):
         with self.app.app_context():
@@ -474,6 +550,30 @@ class WorkOrderBuilderTest(unittest.TestCase):
         with self.app.app_context():
             self.assertEqual(db.session.query(WorkOrder).filter_by(order_id=self.order_id).count(), 1)
 
+    def test_html_work_order_shows_no_consta_when_estimated_delivery_is_absent(self):
+        response = self.client.get(self._work_order_url(), headers=self._auth_header())
+
+        self.assertEqual(response.status_code, 200)
+        self.assertRegex(
+            response.get_data(as_text=True),
+            r"Entrega estimada</span>\s*<strong>No consta</strong>",
+        )
+
+    def test_html_work_order_renders_no_consta_when_customer_email_is_unavailable(self):
+        with self.app.app_context():
+            order = db.session.get(Orders, self.order_id)
+            order.user_id = None
+            db.session.commit()
+            db.session.expire(order, ["user"])
+
+        response = self.client.get(self._work_order_url(), headers=self._auth_header())
+
+        self.assertEqual(response.status_code, 200)
+        self.assertRegex(
+            response.get_data(as_text=True),
+            r"Email</dt>\s*<dd>No consta</dd>",
+        )
+
     def test_admin_notes_require_csrf_and_preserve_snapshot(self):
         response = self.client.get(self._work_order_url(), headers=self._auth_header())
         csrf_token = re.search(rb'name="csrf_token" value="([^"]+)"', response.data).group(1).decode()
@@ -519,6 +619,7 @@ class WorkOrderBuilderTest(unittest.TestCase):
         with self.app.app_context():
             order = db.session.get(Orders, self.order_id)
             order.order_details[0].quantity = 12
+            order.estimated_delivery_at = date(2026, 10, 6)
             db.session.flush()
             work_order, _created = get_or_create_work_order(
                 db_session=db.session, order=order, created_by="admin"
@@ -538,11 +639,53 @@ class WorkOrderBuilderTest(unittest.TestCase):
             self.assertTrue(pdf.startswith(b"%PDF"))
             self.assertIn(b"Reja Essex", pdf)
             self.assertIn(b"Unidades: 12", pdf)
+            self.assertIn(b"ENTREGA ESTIMADA", pdf)
+            self.assertIn(b"06/10/2026", pdf)
+            self.assertIn(b"EMAIL", pdf)
+            self.assertIn(order.user.email.encode("utf-8"), pdf)
             self.assertNotIn(b"CANTIDAD", pdf)
             self.assertNotIn(b"308.94", pdf)
             self.assertNotIn(b"PayPal", pdf)
             self.assertEqual(work_order.snapshot, original_snapshot)
             self.assertIn("/image/upload/f_png/", request_get.call_args.args[0])
+
+    def test_pdf_renders_no_consta_when_customer_email_is_unavailable(self):
+        data = WorkOrderData(
+            schema_version=WORK_ORDER_SCHEMA_VERSION,
+            order={
+                "locator": "WOEMAIL",
+                "ordered_at": "09/09/2026",
+                "estimated_delivery_date": None,
+            },
+            customer={
+                "name": "Cliente sin correo",
+                "phone": "600 000 000",
+                "delivery_address": ["Calle de prueba 1", "13001 Ciudad Real"],
+            },
+            lines=(
+                {
+                    "line_number": 1,
+                    "product_id": 46,
+                    "model_name": "Reja Essex",
+                    "quantity": 1,
+                    "dimensions": {"unit": "cm", "height": "109", "width": "198"},
+                    "anchorage": {"label": "Agujeros interiores"},
+                    "color": {"label": "Blanco liso", "finish_label": "Satinado liso"},
+                    "screws": {"display": "150 mm"},
+                    "opening_type": {"label": "Fija"},
+                    "image_url": None,
+                },
+            ),
+            generated_at="20/09/2026",
+            internal_notes=None,
+            manufactured_at=None,
+            manufactured_by=None,
+        )
+
+        pdf = generate_work_order_pdf(data)
+
+        self.assertIn(b"EMAIL", pdf)
+        self.assertIn(b"No consta", pdf)
 
     def test_pdf_endpoint_is_protected_and_handles_missing_images(self):
         with self.app.app_context():
@@ -558,6 +701,8 @@ class WorkOrderBuilderTest(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.mimetype, "application/pdf")
         self.assertIn(b"Imagen no disponible", response.data)
+        self.assertIn(b"ENTREGA ESTIMADA", response.data)
+        self.assertIn(b"No consta", response.data)
         self.assertNotIn(b"precio_total", response.data)
 
     def test_pdf_handles_image_download_failure_and_multiple_frozen_lines(self):

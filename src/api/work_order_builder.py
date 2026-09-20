@@ -90,8 +90,15 @@ class WorkOrderBuilder:
                 "id": _integer(getattr(order, "id", None)),
                 "locator": _text(getattr(order, "locator", None)) or "No consta",
                 "ordered_at": _date_text(getattr(order, "order_date", None)),
+                "estimated_delivery_date": _date_text(
+                    getattr(order, "estimated_delivery_at", None)
+                ),
             },
-            "customer": _build_customer(customer_snapshot, details),
+            "customer": _build_customer(
+                customer_snapshot,
+                details,
+                user=getattr(order, "user", None),
+            ),
             "lines": [
                 cls._build_line(detail, position)
                 for position, detail in enumerate(details, start=1)
@@ -155,10 +162,14 @@ class WorkOrderBuilder:
         if not isinstance(order, Mapping) or not isinstance(customer, Mapping) or not isinstance(lines, list):
             raise WorkOrderValidationError("El snapshot del parte de fabricación está incompleto.")
 
+        source_order = getattr(work_order, "order", None)
         return WorkOrderData(
             schema_version=schema_version,
-            order=deepcopy(dict(order)),
-            customer=deepcopy(dict(customer)),
+            order=_resolve_order_for_display(order, source_order),
+            customer=_resolve_customer_for_display(
+                customer,
+                source_order,
+            ),
             lines=tuple(deepcopy(dict(line)) for line in lines if isinstance(line, Mapping)),
             generated_at=_date_text(getattr(work_order, "created_at", None)),
             internal_notes=_text(getattr(work_order, "internal_notes", None)),
@@ -210,7 +221,7 @@ def _assert_no_economic_keys(value):
             _assert_no_economic_keys(nested_value)
 
 
-def _build_customer(customer_snapshot, details):
+def _build_customer(customer_snapshot, details, *, user=None):
     snapshot = customer_snapshot if isinstance(customer_snapshot, Mapping) else {}
     name = _name(snapshot.get("firstname"), snapshot.get("lastname"))
     if not name:
@@ -219,16 +230,84 @@ def _build_customer(customer_snapshot, details):
             getattr(first_detail, "firstname", None),
             getattr(first_detail, "lastname", None),
         )
+    if not name:
+        name = _name(
+            getattr(user, "firstname", None),
+            getattr(user, "lastname", None),
+        )
 
     shipping_address = shipping_address_from_customer_snapshot(snapshot)
     if not shipping_address.is_available:
         shipping_address = shipping_address_from_order_details(details)
+    if not shipping_address.is_available:
+        shipping_address = shipping_address_from_customer_snapshot(
+            _customer_snapshot_from_user(user)
+        )
 
     return {
         "name": name,
-        "phone": _text(snapshot.get("phone")),
+        "phone": _text(snapshot.get("phone")) or _text(getattr(user, "phone", None)),
+        "email": _text(snapshot.get("email")) or _text(getattr(user, "email", None)),
         "delivery_address": list(shipping_address_lines(shipping_address)),
     }
+
+
+def _resolve_order_for_display(snapshot_order, source_order):
+    """Retain frozen metadata while filling only fields absent from legacy snapshots."""
+    resolved = deepcopy(dict(snapshot_order))
+    if not _text(resolved.get("estimated_delivery_date")):
+        resolved["estimated_delivery_date"] = _date_text(
+            getattr(source_order, "estimated_delivery_at", None)
+        )
+    return resolved
+
+
+def _resolve_customer_for_display(snapshot_customer, source_order):
+    """Read missing legacy customer fields without mutating the work-order snapshot."""
+    resolved = deepcopy(dict(snapshot_customer))
+    if source_order is None:
+        return resolved
+
+    fallback = _build_customer(
+        get_order_customer_snapshot(source_order),
+        tuple(getattr(source_order, "order_details", ()) or ()),
+        user=getattr(source_order, "user", None),
+    )
+    if not _text(resolved.get("name")):
+        resolved["name"] = fallback["name"]
+    if not _text(resolved.get("phone")):
+        resolved["phone"] = fallback["phone"]
+    if not _text(resolved.get("email")):
+        resolved["email"] = fallback["email"]
+    if not _address_lines(resolved.get("delivery_address")):
+        resolved["delivery_address"] = fallback["delivery_address"]
+    return resolved
+
+
+def _customer_snapshot_from_user(user):
+    if user is None:
+        return {}
+    return {
+        "firstname": getattr(user, "firstname", None),
+        "lastname": getattr(user, "lastname", None),
+        "phone": getattr(user, "phone", None),
+        "email": getattr(user, "email", None),
+        "shipping_address": getattr(user, "shipping_address", None),
+        "shipping_city": getattr(user, "shipping_city", None),
+        "shipping_postal_code": getattr(user, "shipping_postal_code", None),
+        "billing_address": getattr(user, "billing_address", None),
+        "billing_city": getattr(user, "billing_city", None),
+        "billing_postal_code": getattr(user, "billing_postal_code", None),
+    }
+
+
+def _address_lines(value):
+    if isinstance(value, str):
+        normalized = _text(value)
+        return [normalized] if normalized else []
+    if not isinstance(value, (list, tuple)):
+        return []
+    return [line for item in value if (line := _text(item))]
 
 
 def _build_screws(detail, anchorage_rule):
