@@ -187,11 +187,33 @@ def _customer_table(customer: Mapping[str, Any], styles):
     address = "<br/>".join(_escape(item) for item in customer.get("delivery_address", ()) or ())
     values = [
         _label_value("NOMBRE", customer.get("name") or "No consta", styles),
-        _label_value("TELEFONO", customer.get("phone") or "No consta", styles),
+        _customer_contact(customer, styles),
         _label_value("DIRECCION DE ENTREGA", address or "No consta", styles, escaped=True),
     ]
-    table = Table([values], colWidths=[5.85 * cm, 4.45 * cm, 7.25 * cm])
+    table = Table([values], colWidths=[4.5 * cm, 5.8 * cm, 7.25 * cm])
     table.setStyle(_boxed_table_style())
+    return table
+
+
+def _customer_contact(customer: Mapping[str, Any], styles):
+    table = Table(
+        [
+            [_label_value("TELEFONO", customer.get("phone") or "No consta", styles)],
+            [_label_value("EMAIL", customer.get("email") or "No consta", styles)],
+        ],
+        colWidths=[5.8 * cm],
+    )
+    table.setStyle(
+        TableStyle(
+            [
+                ("LEFTPADDING", (0, 0), (-1, -1), 0),
+                ("RIGHTPADDING", (0, 0), (-1, -1), 0),
+                ("TOPPADDING", (0, 0), (-1, -1), 0),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 0),
+                ("BOTTOMPADDING", (0, 0), (-1, 0), 7),
+            ]
+        )
+    )
     return table
 
 

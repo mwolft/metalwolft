@@ -55,6 +55,7 @@ if HAS_DEPS:
     from api.work_order_builder import (
         WORK_ORDER_SCHEMA_VERSION,
         WorkOrderBuilder,
+        WorkOrderData,
         WorkOrderValidationError,
         assert_snapshot_has_no_economic_data,
         get_or_create_work_order,
@@ -327,6 +328,7 @@ class WorkOrderBuilderTest(unittest.TestCase):
                 "https://res.cloudinary.com/dewanllxn/image/upload/essex.webp",
             )
             self.assertEqual(work_order.snapshot["customer"]["phone"], "600 123 123")
+            self.assertEqual(work_order.snapshot["customer"]["email"], order.user.email)
             self.assertIn("Ciudad Real", work_order.snapshot["customer"]["delivery_address"])
             assert_snapshot_has_no_economic_data(work_order.snapshot)
             snapshot_json = json.dumps(work_order.snapshot, ensure_ascii=False).lower()
@@ -376,6 +378,7 @@ class WorkOrderBuilderTest(unittest.TestCase):
             order.checkout_session.customer_snapshot = {
                 "firstname": "Ignacio",
                 "lastname": "Historico",
+                "email": "ignacio.historico@example.test",
                 "phone": "600 366 383",
                 "shipping_address": "Calle Historica 366",
                 "shipping_postal_code": "13001",
@@ -407,6 +410,7 @@ class WorkOrderBuilderTest(unittest.TestCase):
 
             self.assertEqual(data.customer["name"], "Ignacio Historico")
             self.assertEqual(data.customer["phone"], "600 366 383")
+            self.assertEqual(data.customer["email"], "ignacio.historico@example.test")
             self.assertIn("Calle Historica 366", data.customer["delivery_address"])
             self.assertEqual(data.order["estimated_delivery_date"], "06/10/2026")
             self.assertEqual(work_order.snapshot, original_snapshot)
@@ -416,6 +420,7 @@ class WorkOrderBuilderTest(unittest.TestCase):
         rendered = html.get_data(as_text=True)
         self.assertIn("Ignacio Historico", rendered)
         self.assertIn("600 366 383", rendered)
+        self.assertIn("ignacio.historico@example.test", rendered)
         self.assertIn("Calle Historica 366", rendered)
         self.assertIn("Entrega estimada", rendered)
         self.assertIn("06/10/2026", rendered)
@@ -463,6 +468,7 @@ class WorkOrderBuilderTest(unittest.TestCase):
             )
             self.assertEqual(data.customer["name"], "María Taller")
             self.assertEqual(data.customer["phone"], "600 123 123")
+            self.assertEqual(data.customer["email"], order.user.email)
 
     def test_multiple_lines_and_historical_gaps_are_explicit(self):
         with self.app.app_context():
@@ -553,6 +559,21 @@ class WorkOrderBuilderTest(unittest.TestCase):
             r"Entrega estimada</span>\s*<strong>No consta</strong>",
         )
 
+    def test_html_work_order_renders_no_consta_when_customer_email_is_unavailable(self):
+        with self.app.app_context():
+            order = db.session.get(Orders, self.order_id)
+            order.user_id = None
+            db.session.commit()
+            db.session.expire(order, ["user"])
+
+        response = self.client.get(self._work_order_url(), headers=self._auth_header())
+
+        self.assertEqual(response.status_code, 200)
+        self.assertRegex(
+            response.get_data(as_text=True),
+            r"Email</dt>\s*<dd>No consta</dd>",
+        )
+
     def test_admin_notes_require_csrf_and_preserve_snapshot(self):
         response = self.client.get(self._work_order_url(), headers=self._auth_header())
         csrf_token = re.search(rb'name="csrf_token" value="([^"]+)"', response.data).group(1).decode()
@@ -620,11 +641,51 @@ class WorkOrderBuilderTest(unittest.TestCase):
             self.assertIn(b"Unidades: 12", pdf)
             self.assertIn(b"ENTREGA ESTIMADA", pdf)
             self.assertIn(b"06/10/2026", pdf)
+            self.assertIn(b"EMAIL", pdf)
+            self.assertIn(order.user.email.encode("utf-8"), pdf)
             self.assertNotIn(b"CANTIDAD", pdf)
             self.assertNotIn(b"308.94", pdf)
             self.assertNotIn(b"PayPal", pdf)
             self.assertEqual(work_order.snapshot, original_snapshot)
             self.assertIn("/image/upload/f_png/", request_get.call_args.args[0])
+
+    def test_pdf_renders_no_consta_when_customer_email_is_unavailable(self):
+        data = WorkOrderData(
+            schema_version=WORK_ORDER_SCHEMA_VERSION,
+            order={
+                "locator": "WOEMAIL",
+                "ordered_at": "09/09/2026",
+                "estimated_delivery_date": None,
+            },
+            customer={
+                "name": "Cliente sin correo",
+                "phone": "600 000 000",
+                "delivery_address": ["Calle de prueba 1", "13001 Ciudad Real"],
+            },
+            lines=(
+                {
+                    "line_number": 1,
+                    "product_id": 46,
+                    "model_name": "Reja Essex",
+                    "quantity": 1,
+                    "dimensions": {"unit": "cm", "height": "109", "width": "198"},
+                    "anchorage": {"label": "Agujeros interiores"},
+                    "color": {"label": "Blanco liso", "finish_label": "Satinado liso"},
+                    "screws": {"display": "150 mm"},
+                    "opening_type": {"label": "Fija"},
+                    "image_url": None,
+                },
+            ),
+            generated_at="20/09/2026",
+            internal_notes=None,
+            manufactured_at=None,
+            manufactured_by=None,
+        )
+
+        pdf = generate_work_order_pdf(data)
+
+        self.assertIn(b"EMAIL", pdf)
+        self.assertIn(b"No consta", pdf)
 
     def test_pdf_endpoint_is_protected_and_handles_missing_images(self):
         with self.app.app_context():

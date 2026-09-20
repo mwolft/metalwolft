@@ -247,6 +247,7 @@ def _build_customer(customer_snapshot, details, *, user=None):
     return {
         "name": name,
         "phone": _text(snapshot.get("phone")) or _text(getattr(user, "phone", None)),
+        "email": _text(snapshot.get("email")) or _text(getattr(user, "email", None)),
         "delivery_address": list(shipping_address_lines(shipping_address)),
     }
 
@@ -276,6 +277,8 @@ def _resolve_customer_for_display(snapshot_customer, source_order):
         resolved["name"] = fallback["name"]
     if not _text(resolved.get("phone")):
         resolved["phone"] = fallback["phone"]
+    if not _text(resolved.get("email")):
+        resolved["email"] = fallback["email"]
     if not _address_lines(resolved.get("delivery_address")):
         resolved["delivery_address"] = fallback["delivery_address"]
     return resolved
@@ -288,6 +291,7 @@ def _customer_snapshot_from_user(user):
         "firstname": getattr(user, "firstname", None),
         "lastname": getattr(user, "lastname", None),
         "phone": getattr(user, "phone", None),
+        "email": getattr(user, "email", None),
         "shipping_address": getattr(user, "shipping_address", None),
         "shipping_city": getattr(user, "shipping_city", None),
         "shipping_postal_code": getattr(user, "shipping_postal_code", None),
