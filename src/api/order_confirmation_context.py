@@ -14,8 +14,17 @@ def get_order_quote_snapshot(order):
 
 
 def get_order_customer_snapshot(order):
-    """Prefer the canonical confirmation customer data over legacy checkout data."""
-    return _snapshot_from_confirmation_or_checkout(order, "customer_snapshot")
+    """Resolve frozen customer data with a field-wise legacy checkout fallback."""
+    confirmation_context = get_order_confirmation_context(order)
+    confirmation_snapshot = _mapping_snapshot(
+        confirmation_context,
+        "customer_snapshot",
+    )
+    checkout_snapshot = _checkout_snapshot(order, "customer_snapshot")
+    return _merge_customer_snapshots(
+        preferred_snapshot=confirmation_snapshot,
+        fallback_snapshot=checkout_snapshot,
+    )
 
 
 def get_order_confirmation_recipient_email(order):
@@ -41,12 +50,34 @@ def get_order_confirmation_customer_firstname(order):
 def _snapshot_from_confirmation_or_checkout(order, attribute):
     confirmation_context = get_order_confirmation_context(order)
     if confirmation_context is not None:
-        confirmation_snapshot = getattr(confirmation_context, attribute, None)
-        return confirmation_snapshot if isinstance(confirmation_snapshot, Mapping) else {}
+        return _mapping_snapshot(confirmation_context, attribute)
 
+    return _checkout_snapshot(order, attribute)
+
+
+def _checkout_snapshot(order, attribute):
     checkout_session = getattr(order, "checkout_session", None)
-    checkout_snapshot = getattr(checkout_session, attribute, None)
-    return checkout_snapshot if isinstance(checkout_snapshot, Mapping) else {}
+    return _mapping_snapshot(checkout_session, attribute)
+
+
+def _mapping_snapshot(source, attribute):
+    snapshot = getattr(source, attribute, None)
+    return dict(snapshot) if isinstance(snapshot, Mapping) else {}
+
+
+def _merge_customer_snapshots(*, preferred_snapshot, fallback_snapshot):
+    """Keep confirmed values while recovering absent historical checkout fields."""
+    resolved = dict(fallback_snapshot)
+    for field, value in preferred_snapshot.items():
+        if _has_usable_value(value):
+            resolved[field] = value
+    return resolved
+
+
+def _has_usable_value(value):
+    if value is None:
+        return False
+    return not isinstance(value, str) or bool(value.strip())
 
 
 def _normalized_text(value):
