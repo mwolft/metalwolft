@@ -275,7 +275,8 @@
                 <div class="panel-body">
                     <canvas id="salesChart-{{ selected_year }}" style="width:100%; min-height:300px;"
                         data-labels='{{ monthly_sales_labels | tojson }}'
-                        data-values='{{ monthly_sales_values | tojson }}'>
+                        data-values='{{ monthly_sales_values | tojson }}'
+                        data-ads-values='{{ monthly_google_ads_values | tojson }}'>
                     </canvas>
                 </div>
             </div>

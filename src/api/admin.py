@@ -19,6 +19,7 @@ from wtforms.fields import (
     DateField,
     DateTimeField,
     DecimalField,
+    IntegerField,
     SelectField,
     StringField,
     TextAreaField,
@@ -27,7 +28,8 @@ from .models import (
     db, Users, Products, ProductImages,
     Categories, Subcategories, Cart,
     Orders, OrderDetails, Favorites,
-    Posts, Comments, Invoices, VeriFactuRecord, DeliveryEstimateConfig, DesignServiceConfig, DesignServicePriceTier, DesignRequest,
+    Posts, Comments, Invoices, VeriFactuRecord, DeliveryEstimateConfig,
+    GoogleAdsMonthlySpend, DesignServiceConfig, DesignServicePriceTier, DesignRequest,
     AccountingEntry, SupplierInvoice, SupplierInvoiceDocument, SupplierInvoiceExtraction,
     SupplierInvoiceTaxBreakdown,
     ManualInvoiceDraft, ManualInvoiceDraftLine, ManualOrderDraft, ManualOrderDraftLine,
@@ -367,6 +369,13 @@ class SecureAdminIndexView(AdminIndexView):
 
         monthly_sales_current = [monthly_sales[m] for m in range(1, 13)]
 
+        ads_rows = db.session.execute(
+            db.select(GoogleAdsMonthlySpend.month, GoogleAdsMonthlySpend.amount)
+            .where(GoogleAdsMonthlySpend.year == selected_year)
+        ).all()
+        monthly_google_ads = {int(row.month): float(row.amount) for row in ads_rows}
+        monthly_google_ads_values = [monthly_google_ads.get(month) for month in range(1, 13)]
+
         rows_users = db.session.execute(
             db.select(
                 extract('month', Users.created_at).label('month'),
@@ -424,6 +433,7 @@ class SecureAdminIndexView(AdminIndexView):
             recent_invoices=recent_invoices,
             monthly_sales_labels=monthly_sales_labels,
             monthly_sales_values=monthly_sales_current,
+            monthly_google_ads_values=monthly_google_ads_values,
             users_monthly_values=users_monthly_values,
             current_year=current_year,
             selected_year=selected_year,
@@ -517,6 +527,29 @@ class SafeModelView(SecureModelView):
     """
     can_delete = True
     action_disallowed_list = []   # asegura que 'delete' esté permitido
+
+
+class GoogleAdsMonthlySpendAdminView(SafeModelView):
+    column_list = ("year", "month", "amount", "note")
+    column_labels = {
+        "year": "Año",
+        "month": "Mes",
+        "amount": "Importe (€)",
+        "note": "Nota",
+    }
+    column_default_sort = [("year", True), ("month", True)]
+    form_columns = ("year", "month", "amount", "note")
+    form_overrides = {
+        "year": IntegerField,
+        "month": IntegerField,
+        "amount": DecimalField,
+        "note": TextAreaField,
+    }
+    form_args = {
+        "year": {"validators": [validators.InputRequired(), validators.NumberRange(min=1, max=9999)]},
+        "month": {"validators": [validators.InputRequired(), validators.NumberRange(min=1, max=12)]},
+        "amount": {"validators": [validators.InputRequired(), validators.NumberRange(min=Decimal("0"))]},
+    }
 
 
 # ========================== VISTAS ==========================
@@ -5168,3 +5201,4 @@ def setup_admin(app):
     admin.add_view(SafeModelView(Posts, db.session, name="Publicaciones", category="Contenido"))
 
     admin.add_view(SafeModelView(DeliveryEstimateConfig, db.session, name="Entrega estimada", category="Configuración"))
+    admin.add_view(GoogleAdsMonthlySpendAdminView(GoogleAdsMonthlySpend, db.session, name="Google Ads", category="Configuración"))
