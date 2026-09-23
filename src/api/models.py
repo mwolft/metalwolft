@@ -43,6 +43,31 @@ class DeliveryEstimateConfig(db.Model):
         return build_delivery_estimate(self)
 
 
+class GoogleAdsMonthlySpend(db.Model):
+    """Manually confirmed Google Ads service cost for one calendar month, in EUR."""
+
+    __tablename__ = "google_ads_monthly_spend"
+    __table_args__ = (
+        db.UniqueConstraint("year", "month", name="uq_google_ads_spend_year_month"),
+        db.CheckConstraint("year BETWEEN 1 AND 9999", name="ck_google_ads_spend_year_valid"),
+        db.CheckConstraint("month BETWEEN 1 AND 12", name="ck_google_ads_spend_month_valid"),
+        db.CheckConstraint("amount >= 0", name="ck_google_ads_spend_amount_nonnegative"),
+    )
+
+    id = db.Column(db.Integer, primary_key=True)
+    year = db.Column(db.Integer, nullable=False)
+    month = db.Column(db.Integer, nullable=False)
+    amount = db.Column(db.Numeric(12, 2), nullable=False)
+    note = db.Column(db.Text, nullable=True)
+    created_at = db.Column(db.DateTime, nullable=False, server_default=db.func.now())
+    updated_at = db.Column(
+        db.DateTime,
+        nullable=False,
+        server_default=db.func.now(),
+        onupdate=db.func.now(),
+    )
+
+
 class DesignServiceConfig(db.Model):
     """Single persisted configuration for the paid design-preview service."""
 

@@ -86,6 +86,7 @@ class FlaskAdminNavigationTest(unittest.TestCase):
                 ("Facturación", "VeriFactu"),
                 ("Contenido", "Publicaciones"),
                 ("Configuración", "Entrega estimada"),
+                ("Configuración", "Google Ads"),
             ],
         )
 
@@ -111,6 +112,7 @@ class FlaskAdminNavigationTest(unittest.TestCase):
             ("VeriFactuRecordAdminView", "VeriFactuRecord", "verifacturecord"),
             ("SafeModelView", "Posts", "posts"),
             ("SafeModelView", "DeliveryEstimateConfig", "deliveryestimateconfig"),
+            ("GoogleAdsMonthlySpendAdminView", "GoogleAdsMonthlySpend", "googleadsmonthlyspend"),
         ]
         actual = registered_views()
         self.assertEqual(
