@@ -1,5 +1,6 @@
 const DEFAULT_LOCAL_API_URL = "http://127.0.0.1:3001";
 export const CATALOG_REVALIDATE_SECONDS = 86_400;
+export const PRODUCT_REVALIDATE_SECONDS = 300;
 
 export class ApiRequestError extends Error {
   status: number;
@@ -153,7 +154,7 @@ export async function fetchProductBySlug(categorySlug: string, productSlug: stri
   const payload = await fetchApi<ApiProduct | { results?: ApiProduct | ApiProduct[] } | ApiProduct[]>(
     `/api/${categorySlug}/${productSlug}`,
     {
-    next: { revalidate: CATALOG_REVALIDATE_SECONDS }
+    next: { revalidate: PRODUCT_REVALIDATE_SECONDS }
     }
   );
 
@@ -180,7 +181,7 @@ export async function fetchCategoryProducts(categorySlug: string) {
   const payload = await fetchApi<ApiProduct[] | { results?: ApiProduct[] }>(
     `/api/category/${categorySlug}/products`,
     {
-      next: { revalidate: CATALOG_REVALIDATE_SECONDS }
+      next: { revalidate: PRODUCT_REVALIDATE_SECONDS }
     }
   );
 
