@@ -9,6 +9,7 @@ import {
   type MouseEvent,
   type PointerEvent
 } from "react";
+import { createPortal } from "react-dom";
 import {
   getAdjacentProductImageSrc,
   type ProductGalleryDirection,
@@ -37,13 +38,21 @@ export function ProductGallery({ images, productName }: ProductGalleryProps) {
   const [selectedSrc, setSelectedSrc] = useState(images[0]?.src ?? "");
   const [failedSources, setFailedSources] = useState<Set<string>>(() => new Set());
   const [horizontalSources, setHorizontalSources] = useState<Set<string>>(() => new Set());
+  const [isLightboxOpen, setIsLightboxOpen] = useState(false);
   const pointerOriginRef = useRef<PointerOrigin | null>(null);
+  const lightboxPointerOriginRef = useRef<PointerOrigin | null>(null);
+  const lightboxRef = useRef<HTMLDivElement>(null);
+  const closeButtonRef = useRef<HTMLButtonElement>(null);
+  const imageButtonRef = useRef<HTMLButtonElement>(null);
   const suppressClickRef = useRef(false);
   const suppressClickTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const availableImages = images.filter((image) => !failedSources.has(image.src));
   const selectedImage =
     availableImages.find((image) => image.src === selectedSrc) ?? availableImages[0] ?? null;
   const hasNavigation = Boolean(selectedImage && availableImages.length > 1);
+  const selectedIndex = selectedImage
+    ? availableImages.findIndex((image) => image.src === selectedImage.src)
+    : -1;
 
   useEffect(
     () => () => {
@@ -53,6 +62,21 @@ export function ProductGallery({ images, productName }: ProductGalleryProps) {
     },
     []
   );
+
+  useEffect(() => {
+    if (!isLightboxOpen) {
+      return;
+    }
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    closeButtonRef.current?.focus();
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      imageButtonRef.current?.focus();
+    };
+  }, [isLightboxOpen]);
 
   function markImageAsFailed(src: string) {
     setFailedSources((current) => {
@@ -171,6 +195,59 @@ export function ProductGallery({ images, productName }: ProductGalleryProps) {
     suppressNextClick();
   }
 
+  function handleLightboxKeyDown(event: KeyboardEvent<HTMLDivElement>) {
+    event.stopPropagation();
+    if (event.key === "Escape") {
+      event.preventDefault();
+      setIsLightboxOpen(false);
+    } else if (hasNavigation && (event.key === "ArrowLeft" || event.key === "ArrowRight")) {
+      event.preventDefault();
+      selectAdjacentImage(event.key === "ArrowLeft" ? -1 : 1);
+    } else if (event.key === "Tab") {
+      const buttons = lightboxRef.current?.querySelectorAll<HTMLButtonElement>("button");
+      if (!buttons?.length) {
+        return;
+      }
+
+      const first = buttons[0];
+      const last = buttons[buttons.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    }
+  }
+
+  function handleLightboxPointerDown(event: PointerEvent<HTMLDivElement>) {
+    if (!hasNavigation || !event.isPrimary || event.button !== 0 ||
+      (event.target instanceof HTMLElement && event.target.closest("button"))) {
+      return;
+    }
+
+    lightboxPointerOriginRef.current = {
+      pointerId: event.pointerId,
+      x: event.clientX,
+      y: event.clientY
+    };
+  }
+
+  function handleLightboxPointerUp(event: PointerEvent<HTMLDivElement>) {
+    const origin = lightboxPointerOriginRef.current;
+    lightboxPointerOriginRef.current = null;
+    if (!hasNavigation || !origin || origin.pointerId !== event.pointerId) {
+      return;
+    }
+
+    const horizontalDistance = event.clientX - origin.x;
+    if (Math.abs(horizontalDistance) >= SWIPE_THRESHOLD_PX &&
+      Math.abs(horizontalDistance) > Math.abs(event.clientY - origin.y)) {
+      selectAdjacentImage(horizontalDistance < 0 ? 1 : -1);
+    }
+  }
+
   return (
     <section
       className="mw-product-gallery"
@@ -186,25 +263,38 @@ export function ProductGallery({ images, productName }: ProductGalleryProps) {
         onPointerUp={handlePointerUp}
       >
         {selectedImage ? (
-          <Image
-            key={selectedImage.src}
-            src={selectedImage.src}
-            alt={selectedImage.alt}
-            fill
-            sizes="(max-width: 900px) calc(100vw - 2rem), 55vw"
-            priority={selectedImage.src === images[0]?.src}
-            unoptimized={isAvifUrl(selectedImage.src)}
-            draggable={false}
-            style={horizontalSources.has(selectedImage.src) ? { objectFit: "cover" } : undefined}
-            onLoad={(event) =>
-              rememberHorizontalImage(
-                selectedImage.src,
-                event.currentTarget.naturalWidth,
-                event.currentTarget.naturalHeight
-              )
-            }
-            onError={() => markImageAsFailed(selectedImage.src)}
-          />
+          <button
+            className="mw-product-gallery__open"
+            type="button"
+            aria-label={`Ampliar imagen de ${productName}`}
+            aria-haspopup="dialog"
+            ref={imageButtonRef}
+            onClick={() => {
+              if (!consumeSuppressedClick()) {
+                setIsLightboxOpen(true);
+              }
+            }}
+          >
+            <Image
+              key={selectedImage.src}
+              src={selectedImage.src}
+              alt={selectedImage.alt}
+              fill
+              sizes="(max-width: 900px) calc(100vw - 2rem), 55vw"
+              priority={selectedImage.src === images[0]?.src}
+              unoptimized={isAvifUrl(selectedImage.src)}
+              draggable={false}
+              style={horizontalSources.has(selectedImage.src) ? { objectFit: "cover" } : undefined}
+              onLoad={(event) =>
+                rememberHorizontalImage(
+                  selectedImage.src,
+                  event.currentTarget.naturalWidth,
+                  event.currentTarget.naturalHeight
+                )
+              }
+              onError={() => markImageAsFailed(selectedImage.src)}
+            />
+          </button>
         ) : (
           <div className="mw-product-gallery__placeholder" role="img" aria-label={productName}>
             <span>Imagen no disponible</span>
@@ -271,6 +361,95 @@ export function ProductGallery({ images, productName }: ProductGalleryProps) {
           ))}
         </div>
       ) : null}
+
+      {isLightboxOpen && selectedImage
+        ? createPortal(
+            <div
+              className="mw-product-gallery__lightbox"
+              role="dialog"
+              aria-modal="true"
+              aria-label={`Visor de imágenes de ${productName}`}
+              ref={lightboxRef}
+              onKeyDown={handleLightboxKeyDown}
+              onClick={(event) => {
+                if (event.target === event.currentTarget) {
+                  setIsLightboxOpen(false);
+                }
+              }}
+            >
+              <div className="mw-product-gallery__lightbox-content">
+                <div className="mw-product-gallery__lightbox-header">
+                  <span aria-live="polite">{selectedIndex + 1} / {availableImages.length}</span>
+                  <button
+                    className="mw-product-gallery__lightbox-close"
+                    type="button"
+                    aria-label="Cerrar visor"
+                    ref={closeButtonRef}
+                    onClick={() => setIsLightboxOpen(false)}
+                  >
+                    <span aria-hidden="true">×</span>
+                  </button>
+                </div>
+                <div
+                  className="mw-product-gallery__lightbox-media"
+                  onPointerDown={handleLightboxPointerDown}
+                  onPointerUp={handleLightboxPointerUp}
+                  onPointerCancel={() => { lightboxPointerOriginRef.current = null; }}
+                >
+                  <Image
+                    key={selectedImage.src}
+                    className="mw-product-gallery__lightbox-image"
+                    src={selectedImage.src}
+                    alt={selectedImage.alt}
+                    fill
+                    sizes="(max-width: 900px) 100vw, 90vw"
+                    unoptimized={isAvifUrl(selectedImage.src)}
+                    draggable={false}
+                    onError={() => markImageAsFailed(selectedImage.src)}
+                  />
+                  {hasNavigation ? (
+                    <>
+                      <button
+                        className="mw-product-gallery__lightbox-arrow mw-product-gallery__lightbox-arrow--previous"
+                        type="button"
+                        aria-label="Imagen anterior"
+                        onClick={() => selectAdjacentImage(-1)}
+                      >
+                        <span aria-hidden="true">‹</span>
+                      </button>
+                      <button
+                        className="mw-product-gallery__lightbox-arrow mw-product-gallery__lightbox-arrow--next"
+                        type="button"
+                        aria-label="Imagen siguiente"
+                        onClick={() => selectAdjacentImage(1)}
+                      >
+                        <span aria-hidden="true">›</span>
+                      </button>
+                    </>
+                  ) : null}
+                </div>
+                {hasNavigation ? (
+                  <div className="mw-product-gallery__lightbox-thumbnails" aria-label="Seleccionar imagen ampliada">
+                    {availableImages.map((image, index) => (
+                      <button
+                        className="mw-product-gallery__lightbox-thumbnail"
+                        data-active={selectedImage.src === image.src ? "true" : undefined}
+                        type="button"
+                        key={image.src}
+                        aria-label={`Mostrar imagen ${index + 1} de ${productName}`}
+                        aria-pressed={selectedImage.src === image.src}
+                        onClick={() => setSelectedSrc(image.src)}
+                      >
+                        <Image src={image.src} alt="" fill sizes="64px" unoptimized={isAvifUrl(image.src)} />
+                      </button>
+                    ))}
+                  </div>
+                ) : null}
+              </div>
+            </div>,
+            document.body
+          )
+        : null}
     </section>
   );
 }

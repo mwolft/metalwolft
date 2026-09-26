@@ -88,7 +88,25 @@ assert.match(galleryStyles, /\.mw-product-gallery__hit-zone\s*{[^}]*width:\s*30%
 assert.match(galleryStyles, /touch-action:\s*pan-y/);
 assert.match(galleryStyles, /\.mw-product-gallery__stage\s*\{[^}]*aspect-ratio:\s*9 \/ 10;/s);
 assert.doesNotMatch(galleryStyles, /\.mw-product-gallery__stage\s*\{[^}]*min-height:|\.mw-product-gallery__stage\s*\{[^}]*max-height:/s);
-assert.match(galleryStyles, /\.mw-product-gallery__stage img,[\s\S]*?object-fit:\s*contain;/);
+assert.match(galleryStyles, /\.mw-product-gallery__stage img\s*\{[^}]*object-fit:\s*contain;/s);
+assert.match(galleryStyles, /\.mw-product-gallery__thumbnail img\s*\{[^}]*object-fit:\s*cover;/s);
+assert.match(galleryStyles, /\.mw-product-gallery__lightbox-image\s*\{[^}]*object-fit:\s*contain;/s);
+assert.match(gallerySource, /createPortal\(/);
+assert.match(gallerySource, /aria-haspopup="dialog"/);
+assert.match(gallerySource, /role="dialog"[\s\S]*?aria-modal="true"/);
+assert.match(gallerySource, /document\.body\.style\.overflow = "hidden"/);
+assert.match(gallerySource, /document\.body\.style\.overflow = previousOverflow/);
+assert.match(gallerySource, /imageButtonRef\.current\?\.focus\(\)/);
+assert.match(gallerySource, /event\.key === "Escape"/);
+assert.match(gallerySource, /event\.key === "Tab"/);
+assert.match(gallerySource, /onKeyDown=\{handleLightboxKeyDown\}/);
+assert.match(gallerySource, /function handleLightboxKeyDown[\s\S]*?event\.stopPropagation\(\)/);
+assert.match(gallerySource, /event\.target === event\.currentTarget/);
+assert.match(gallerySource, /selectedIndex \+ 1\} \/ \{availableImages\.length/);
+assert.match(gallerySource, /handleLightboxPointerUp/);
+assert.match(galleryStyles, /\.mw-product-gallery__lightbox\s*\{[^}]*position:\s*fixed;/s);
+assert.match(galleryStyles, /\.mw-product-gallery__lightbox\s*\{[^}]*grid-template-columns:\s*minmax\(0, 1fr\);/s);
+assert.match(galleryStyles, /\.mw-product-gallery__lightbox-thumbnails\s*\{[^}]*min-width:\s*0;[^}]*overflow-x:\s*auto;/s);
 assert.doesNotMatch(galleryStyles, /\.mw-product-gallery__control[^}]*overflow-x/s);
 
 console.log("Product gallery assertions passed");
