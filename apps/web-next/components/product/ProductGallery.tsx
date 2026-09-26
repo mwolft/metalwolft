@@ -28,6 +28,8 @@ type PointerOrigin = {
 
 const SWIPE_THRESHOLD_PX = 50;
 const POST_SWIPE_CLICK_DELAY_MS = 350;
+const MIN_IMAGE_RATIO = 0.65;
+const MAX_IMAGE_RATIO = 2;
 
 function isAvifUrl(src: string) {
   return src.split(/[?#]/)[0].toLowerCase().endsWith(".avif");
@@ -36,6 +38,7 @@ function isAvifUrl(src: string) {
 export function ProductGallery({ images, productName }: ProductGalleryProps) {
   const [selectedSrc, setSelectedSrc] = useState(images[0]?.src ?? "");
   const [failedSources, setFailedSources] = useState<Set<string>>(() => new Set());
+  const [imageRatios, setImageRatios] = useState<Record<string, number>>({});
   const pointerOriginRef = useRef<PointerOrigin | null>(null);
   const suppressClickRef = useRef(false);
   const suppressClickTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -43,6 +46,7 @@ export function ProductGallery({ images, productName }: ProductGalleryProps) {
   const selectedImage =
     availableImages.find((image) => image.src === selectedSrc) ?? availableImages[0] ?? null;
   const hasNavigation = Boolean(selectedImage && availableImages.length > 1);
+  const selectedRatio = selectedImage ? imageRatios[selectedImage.src] : undefined;
 
   useEffect(
     () => () => {
@@ -59,6 +63,15 @@ export function ProductGallery({ images, productName }: ProductGalleryProps) {
       next.add(src);
       return next;
     });
+  }
+
+  function rememberImageRatio(src: string, width: number, height: number) {
+    if (!width || !height) {
+      return;
+    }
+
+    const ratio = Math.min(MAX_IMAGE_RATIO, Math.max(MIN_IMAGE_RATIO, width / height));
+    setImageRatios((current) => current[src] === ratio ? current : { ...current, [src]: ratio });
   }
 
   function selectAdjacentImage(direction: ProductGalleryDirection) {
@@ -163,6 +176,7 @@ export function ProductGallery({ images, productName }: ProductGalleryProps) {
     >
       <div
         className="mw-product-gallery__stage"
+        style={selectedRatio ? { aspectRatio: selectedRatio } : undefined}
         onClick={consumeSuppressedClick}
         onPointerCancel={resetPointerGesture}
         onPointerDown={handlePointerDown}
@@ -178,6 +192,13 @@ export function ProductGallery({ images, productName }: ProductGalleryProps) {
             priority={selectedImage.src === images[0]?.src}
             unoptimized={isAvifUrl(selectedImage.src)}
             draggable={false}
+            onLoad={(event) =>
+              rememberImageRatio(
+                selectedImage.src,
+                event.currentTarget.naturalWidth,
+                event.currentTarget.naturalHeight
+              )
+            }
             onError={() => markImageAsFailed(selectedImage.src)}
           />
         ) : (

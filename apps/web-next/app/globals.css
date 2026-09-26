@@ -2301,6 +2301,8 @@ textarea:focus-visible {
   position: relative;
   overflow: hidden;
   aspect-ratio: 9 / 10;
+  min-height: 180px;
+  max-height: min(90vh, 900px);
   border: 1px solid rgba(229, 231, 235, 0.92);
   border-radius: var(--mw-radius);
   background: linear-gradient(145deg, #f8fafc, #fff);
