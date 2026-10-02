@@ -58,7 +58,6 @@ LEGACY_SPA_STATIC_PATHS = frozenset(
         "/cards-carrusel",
         "/carrusel",
         "/cart",
-        "/cerramientos-de-cocina-con-cristal",
         "/checkout-form",
         "/contact",
         "/cookies-esenciales",
@@ -81,9 +80,6 @@ LEGACY_SPA_STATIC_PATHS = frozenset(
         "/politica-privacidad",
         "/product",
         "/profile",
-        "/puertas-correderas-exteriores",
-        "/puertas-correderas-interiores",
-        "/puertas-peatonales-metalicas",
         "/recepcion-pedidos-revisar-antes-firmar",
         "/rejas-para-ventanas",
         "/rejas-para-ventanas-modernas",
@@ -92,7 +88,6 @@ LEGACY_SPA_STATIC_PATHS = frozenset(
         "/seasonal-banner",
         "/sidebar",
         "/thank-you",
-        "/vallados-metalicos-exteriores",
     }
 )
 

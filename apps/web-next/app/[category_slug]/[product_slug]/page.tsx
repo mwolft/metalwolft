@@ -20,6 +20,7 @@ import {
 } from "@/lib/api";
 import { fetchDeliveryEstimate } from "@/lib/delivery-estimate";
 import { buildProductGalleryImages } from "@/lib/product-images";
+import { isPublicCatalogCategory } from "@/lib/public-catalog";
 
 type ProductPageParams = {
   category_slug: string;
@@ -31,6 +32,10 @@ type ProductPageProps = {
 };
 
 async function getProduct(params: ProductPageParams): Promise<ApiProduct | null> {
+  if (!isPublicCatalogCategory(params.category_slug)) {
+    return null;
+  }
+
   try {
     return await fetchProductBySlug(params.category_slug, params.product_slug);
   } catch (error) {
@@ -43,6 +48,10 @@ async function getProduct(params: ProductPageParams): Promise<ApiProduct | null>
 }
 
 async function getProductForMetadata(params: ProductPageParams): Promise<ApiProduct | null> {
+  if (!isPublicCatalogCategory(params.category_slug)) {
+    return null;
+  }
+
   try {
     return await fetchProductBySlug(params.category_slug, params.product_slug);
   } catch (error) {

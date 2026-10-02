@@ -20,6 +20,7 @@ import {
   fetchCategoryProducts
 } from "@/lib/api";
 import { fetchDeliveryEstimate } from "@/lib/delivery-estimate";
+import { isPublicCatalogCategory } from "@/lib/public-catalog";
 
 type CategoryPageParams = {
   category_slug: string;
@@ -73,6 +74,10 @@ function getCategoryImage(category: ApiCategory | null, products: ApiProduct[]) 
 }
 
 async function getCategoryPageData(params: CategoryPageParams): Promise<CategoryPageData | null> {
+  if (!isPublicCatalogCategory(params.category_slug)) {
+    return null;
+  }
+
   try {
     const [products, categories] = await Promise.all([
       fetchCategoryProducts(params.category_slug),

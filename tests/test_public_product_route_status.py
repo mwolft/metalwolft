@@ -256,7 +256,7 @@ class PublicProductRouteStatusTest(unittest.TestCase):
         resolve_product.assert_not_called()
         self.assertEqual(send_shell.call_count, len(paths))
 
-    def test_legacy_static_allowlist_matches_exact_react_router_paths(self):
+    def test_legacy_static_allowlist_excludes_retired_catalog_categories(self):
         layout_source = (SRC_DIR / "front" / "js" / "Layout.jsx").read_text(
             encoding="utf-8"
         )
@@ -264,8 +264,15 @@ class PublicProductRouteStatusTest(unittest.TestCase):
             re.findall(r'<Route path="(/[^":*]*)"', layout_source)
         )
 
+        retired_categories = {
+            "/vallados-metalicos-exteriores",
+            "/puertas-peatonales-metalicas",
+            "/puertas-correderas-interiores",
+            "/puertas-correderas-exteriores",
+            "/cerramientos-de-cocina-con-cristal",
+        }
         self.assertEqual(
-            declared_static_paths,
+            declared_static_paths - retired_categories,
             set(APP_MODULE.LEGACY_SPA_STATIC_PATHS),
         )
 
@@ -419,6 +426,53 @@ class PublicProductRouteStatusTest(unittest.TestCase):
         self.assertEqual(gone_response.status_code, 410)
         resolve_product.assert_not_called()
         prerender_get.assert_not_called()
+
+    def test_retired_category_routes_do_not_serve_legacy_shell(self):
+        paths = (
+            "/vallados-metalicos-exteriores",
+            "/puertas-peatonales-metalicas",
+            "/puertas-correderas-interiores",
+            "/puertas-correderas-exteriores",
+            "/cerramientos-de-cocina-con-cristal",
+            "/vallados-metalicos",
+            "/puertas-peatonales",
+        )
+        with patch.object(APP_MODULE, "send_from_directory") as send_shell:
+            for path in paths:
+                with self.subTest(path=path):
+                    response = self.client.get(path)
+                    self.assertEqual(response.status_code, 404)
+                    self.assertEqual(response.headers["X-Robots-Tag"], "noindex, nofollow")
+        send_shell.assert_not_called()
+
+    def test_historical_reja_redirects_are_direct_and_delhi_is_retired(self):
+        redirects = {
+            "pittsburgh": "reja-fija-pittsburgh",
+            "livingston": "reja-fija-livingston",
+            "lancaster": "reja-fija-lancaster",
+            "essex": "reja-fija-essex",
+        }
+        with patch.object(
+            APP_MODULE, "resolve_publicly_accessible_product_by_slugs", return_value=(None, None)
+        ):
+            for old_slug, new_slug in redirects.items():
+                with self.subTest(slug=old_slug):
+                    response = self.client.get(f"/rejas/rejas-para-ventanas-{old_slug}")
+                    self.assertEqual(response.status_code, 301)
+                    self.assertEqual(
+                        response.headers["Location"],
+                        f"/rejas-para-ventanas/{new_slug}",
+                    )
+
+            delhi = self.client.get("/rejas/rejas-para-ventanas-delhi")
+            self.assertEqual(delhi.status_code, 404)
+            self.assertNotIn("Location", delhi.headers)
+
+            retired_alias = self.client.get(
+                "/puertas-correderas/puerta-corredera-canberra"
+            )
+            self.assertEqual(retired_alias.status_code, 404)
+            self.assertNotIn("Location", retired_alias.headers)
 
 
 if __name__ == "__main__":

@@ -1,6 +1,7 @@
 import type { MetadataRoute } from "next";
 import { fetchCategories, fetchSitemapProducts } from "@/lib/api";
 import { absoluteUrl } from "@/lib/metadata";
+import { isPublicCatalogCategory } from "@/lib/public-catalog";
 
 type SitemapEntry = MetadataRoute.Sitemap[number];
 
@@ -65,7 +66,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     const categories = await fetchCategories();
     const sitemapProducts = await fetchSitemapProducts().catch(() => []);
     const categoryEntries = categories
-      .filter((category) => typeof category.slug === "string" && category.slug.trim().length > 0)
+      .filter((category) => typeof category.slug === "string" && isPublicCatalogCategory(category.slug))
       .map((category) =>
         createEntry(
           `/${category.slug}`,
@@ -75,7 +76,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         )
       );
 
-    const productEntries = sitemapProducts.map((product) =>
+    const productEntries = sitemapProducts.filter((product) => isPublicCatalogCategory(product.category_slug)).map((product) =>
       createEntry(
         `/${product.category_slug}/${product.slug}`,
         lastModified,
