@@ -67,6 +67,26 @@ const nextConfig = {
   async redirects() {
     return [
       {
+        source: "/rejas/rejas-para-ventanas-pittsburgh",
+        destination: "/rejas-para-ventanas/reja-fija-pittsburgh",
+        permanent: true
+      },
+      {
+        source: "/rejas/rejas-para-ventanas-livingston",
+        destination: "/rejas-para-ventanas/reja-fija-livingston",
+        permanent: true
+      },
+      {
+        source: "/rejas/rejas-para-ventanas-lancaster",
+        destination: "/rejas-para-ventanas/reja-fija-lancaster",
+        permanent: true
+      },
+      {
+        source: "/rejas/rejas-para-ventanas-essex",
+        destination: "/rejas-para-ventanas/reja-fija-essex",
+        permanent: true
+      },
+      {
         source: "/favicon.ico",
         destination: "/icon.png",
         permanent: false
