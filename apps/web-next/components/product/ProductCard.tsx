@@ -2,6 +2,7 @@ import Link from "next/link";
 import { ProductCardImage } from "@/components/product/ProductCardImage";
 import type { ApiProduct } from "@/lib/api";
 import { formatCurrency } from "@/lib/configurator-pricing";
+import type { ProductVersion } from "@/lib/product-families";
 
 type ProductCardProps = {
   product: ApiProduct;
@@ -10,6 +11,7 @@ type ProductCardProps = {
   isNewDesign?: boolean;
   editorialDescription?: string;
   bestSellerLabel?: "Más vendida" | "Top ventas";
+  versionLinks?: Array<{ id: ProductVersion; href: string; label: string }>;
 };
 
 type ProductBadge = {
@@ -20,8 +22,9 @@ type ProductBadge = {
 };
 
 type ProductVariant = {
-  id: "hinged" | "door";
+  id: ProductVersion;
   label: string;
+  href?: string;
 };
 
 function ProductBadgeIcon({ icon }: { icon: ProductBadge["icon"] }) {
@@ -109,7 +112,8 @@ export function ProductCard({
   isBestSeller = false,
   isNewDesign = false,
   editorialDescription,
-  bestSellerLabel = "Top ventas"
+  bestSellerLabel = "Top ventas",
+  versionLinks
 }: ProductCardProps) {
   const productName = product.h1_seo || product.nombre;
   const cardDescription = editorialDescription?.trim();
@@ -138,7 +142,7 @@ export function ProductCard({
         }
       : null
   ].filter((badge): badge is ProductBadge => badge !== null);
-  const variants = [
+  const informationalVariants = [
     product.has_abatible === true
       ? { id: "hinged", label: "También abatible" }
       : null,
@@ -146,9 +150,10 @@ export function ProductCard({
       ? { id: "door", label: "También para puerta" }
       : null
   ].filter((variant): variant is ProductVariant => variant !== null);
+  const variants: ProductVariant[] = versionLinks ?? informationalVariants;
   const accessibleDetails = [
     ...badges.map((badge) => badge.label),
-    ...variants.map((variant) => variant.label)
+    ...variants.filter((variant) => !variant.href).map((variant) => variant.label)
   ];
   const accessibleLabel = accessibleDetails.length
     ? `Ver modelo ${productName}, ${accessibleDetails.join(", ")}`
@@ -156,11 +161,7 @@ export function ProductCard({
 
   return (
     <article className="mw-product-card">
-      <Link
-        className="mw-product-card__link"
-        href={href}
-        aria-label={accessibleLabel}
-      >
+      <div className="mw-product-card__layout">
         <div className="mw-product-card__media">
           <ProductCardImage alt={productName} src={product.imagen} />
           {badges.length > 0 ? (
@@ -178,40 +179,49 @@ export function ProductCard({
           ) : null}
         </div>
         <div className="mw-product-card__body">
-          <h3 className="mw-product-card__title">{productName}</h3>
-          <p className={`mw-product-card__description${cardDescription ? " mw-product-card__description--microcopy" : ""}`}>
-            {description}
-          </p>
-          <div className="mw-product-card__price">
-            <div className="mw-product-card__price-rates">
-              {hasDiscount ? (
-                <del className="mw-product-card__price-original">
-                  {formatCurrency(product.precio)} €/m²
-                </del>
-              ) : null}
-              <strong>{formatCurrency(currentPrice)} €/m²</strong>
+          <Link className="mw-product-card__link" href={href} aria-label={accessibleLabel}>
+            <h3 className="mw-product-card__title">{productName}</h3>
+            <p className={`mw-product-card__description${cardDescription ? " mw-product-card__description--microcopy" : ""}`}>
+              {description}
+            </p>
+            <div className="mw-product-card__price">
+              <div className="mw-product-card__price-rates">
+                {hasDiscount ? (
+                  <del className="mw-product-card__price-original">
+                    {formatCurrency(product.precio)} €/m²
+                  </del>
+                ) : null}
+                <strong>{formatCurrency(currentPrice)} €/m²</strong>
+              </div>
+              <span className="mw-product-card__price-tax">IVA incluido</span>
             </div>
-            <span className="mw-product-card__price-tax">IVA incluido</span>
-          </div>
+          </Link>
           {variants.length > 0 ? (
             <div className="mw-product-card__variants">
-              {variants.map((variant) => (
-                <span className="mw-product-card__variant" key={variant.id}>
+              {variants.map((variant) => {
+                const content = <>
                   {variant.id === "hinged" ? (
                     <HingedProductVariantIcon />
                   ) : (
                     <ProductVariantIcon />
                   )}
                   {variant.label}
-                </span>
-              ))}
+                </>;
+                return variant.href ? (
+                  <Link className="mw-product-card__variant mw-product-card__variant--link" href={variant.href} key={variant.id}>
+                    {content}
+                  </Link>
+                ) : (
+                  <span className="mw-product-card__variant" key={variant.id}>{content}</span>
+                );
+              })}
             </div>
           ) : null}
           <span className="mw-product-card__cta" aria-hidden="true">
             Ver modelo
           </span>
         </div>
-      </Link>
+      </div>
     </article>
   );
 }

@@ -31,6 +31,10 @@ assert.match(sources.card, /label: bestSellerLabel/);
 assert.match(sources.card, /label: "Nuevo diseño"/);
 assert.match(sources.card, /label: "También abatible"/);
 assert.match(sources.card, /label: "También para puerta"/);
+assert.match(sources.card, /const variants: ProductVariant\[\] = versionLinks \?\? informationalVariants/);
+assert.match(sources.card, /variant\.href \? \(/);
+assert.match(sources.card, /href={variant\.href}/);
+assert.match(sources.card, /className="mw-product-card__variant mw-product-card__variant--link"/);
 assert.doesNotMatch(sources.card, /Disponible en versión abatible|Disponible en versión para puerta/);
 assert.doesNotMatch(sources.card, /reja-fija-albany|product\.slug\s*===/);
 assert.match(sources.card, /aria-label={accessibleLabel}/);
@@ -43,7 +47,8 @@ assert.match(
 assert.match(sources.card, /function ProductVariantIcon\(\)/);
 assert.match(sources.card, /className="mw-product-card__variant-icon"/);
 assert.match(sources.card, /<ProductVariantIcon \/>/);
-assert.equal((sources.card.match(/<Link\b/g) || []).length, 1);
+assert.equal((sources.card.match(/<Link\b/g) || []).length, 2);
+assert.match(sources.card, /<\/Link>\s*{variants\.length > 0/);
 assert.match(sources.card, /product\.precio_rebajado && product\.precio_rebajado > 0/);
 assert.match(sources.card, /hasDiscount \? product\.precio_rebajado! : product\.precio/);
 assert.match(sources.card, /formatCurrency\(currentPrice\)\} €\/m²/);
@@ -77,6 +82,7 @@ assert.match(sources.explicitCategory, /isNewDesign={product\.es_nuevo_diseno}/)
 assert.match(sources.explicitCategory, /getProductCardContent\(product\.slug\)/);
 assert.match(sources.explicitCategory, /editorialDescription={cardContent\?\.description}/);
 assert.match(sources.explicitCategory, /bestSellerLabel={cardContent\?\.bestSellerLabel}/);
+assert.match(sources.explicitCategory, /versionLinks={getProductAlternativeLinks\(product\.slug\)}/);
 assert.doesNotMatch(sources.dynamicCategory, /getProductCardContent|editorialDescription|bestSellerLabel/);
 assert.equal((sources.editorialContent.match(/"reja-[^"]+": \{ description:/g) || []).length, 24);
 assert.match(sources.editorialContent, /"reja-fija-albany": \{ description: "Líneas horizontales · Estilo moderno", bestSellerLabel: "Más vendida" \}/);
@@ -115,7 +121,8 @@ assert.match(
   sources.styles,
   /\.mw-product-card__variant-icon\s*{[^}]*width:\s*0\.78rem;[^}]*height:\s*0\.78rem;/s
 );
-assert.match(sources.styles, /\.mw-product-card__link:focus-visible/);
+assert.match(sources.styles, /\.mw-product-card__link:focus-visible::after/);
+assert.match(sources.styles, /\.mw-product-card__variant--link:focus-visible/);
 assert.match(sources.styles, /@media \(prefers-reduced-motion: reduce\)[\s\S]*?\.mw-product-card/);
 
 console.log("ProductCard catalog assertions passed");
