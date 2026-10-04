@@ -1,7 +1,6 @@
 "use client";
 
 import Image from "next/image";
-import Link from "next/link";
 import { useRef, useState, type PointerEvent } from "react";
 import {
   getAdjacentProductImageSrc,
@@ -12,13 +11,11 @@ import {
 type ProductCardCarouselProps = {
   images: ProductGalleryImage[];
   productName: string;
-  href: string;
 };
 
 type PointerOrigin = { pointerId: number; x: number; y: number };
 
 const SWIPE_THRESHOLD_PX = 50;
-const POST_SWIPE_CLICK_DELAY_MS = 350;
 const PRODUCT_IMAGE_SIZES =
   "(min-width: 1200px) 340px, (min-width: 900px) 29vw, (min-width: 620px) 44vw, calc(100vw - 5rem)";
 
@@ -26,11 +23,10 @@ function isAvifUrl(src: string) {
   return src.split(/[?#]/)[0].toLowerCase().endsWith(".avif");
 }
 
-export function ProductCardCarousel({ images, productName, href }: ProductCardCarouselProps) {
+export function ProductCardCarousel({ images, productName }: ProductCardCarouselProps) {
   const [selectedSrc, setSelectedSrc] = useState(images[0]?.src ?? "");
   const [failedSources, setFailedSources] = useState<Set<string>>(() => new Set());
   const pointerOriginRef = useRef<PointerOrigin | null>(null);
-  const suppressClickUntilRef = useRef(0);
   const availableImages = images.filter((image) => !failedSources.has(image.src));
   const selectedImage =
     availableImages.find((image) => image.src === selectedSrc) ?? availableImages[0] ?? null;
@@ -73,45 +69,33 @@ export function ProductCardCarousel({ images, productName, href }: ProductCardCa
     }
 
     selectAdjacentImage(horizontalDistance < 0 ? 1 : -1);
-    suppressClickUntilRef.current = Date.now() + POST_SWIPE_CLICK_DELAY_MS;
   }
 
   return (
     <div
       className="mw-product-card__carousel"
+      role="group"
+      aria-label={`Galería de ${productName}`}
       onPointerDown={handlePointerDown}
       onPointerUp={handlePointerUp}
       onPointerCancel={() => { pointerOriginRef.current = null; }}
     >
-      <Link
-        className="mw-product-card__carousel-link"
-        href={href}
-        aria-label={`Ver modelo ${productName}`}
-        onClick={(event) => {
-          if (Date.now() < suppressClickUntilRef.current) {
-            event.preventDefault();
-            suppressClickUntilRef.current = 0;
-          }
-        }}
-        onDragStart={(event) => event.preventDefault()}
-      >
-        {selectedImage ? (
-          <Image
-            key={selectedImage.src}
-            src={selectedImage.src}
-            alt={selectedImage.isPrimary ? productName : selectedImage.alt}
-            fill
-            sizes={PRODUCT_IMAGE_SIZES}
-            unoptimized={isAvifUrl(selectedImage.src)}
-            draggable={false}
-            onError={() => setFailedSources((current) => new Set(current).add(selectedImage.src))}
-          />
-        ) : (
-          <span className="mw-product-card__image-fallback" role="img" aria-label={`Imagen no disponible de ${productName}`}>
-            Imagen no disponible
-          </span>
-        )}
-      </Link>
+      {selectedImage ? (
+        <Image
+          key={selectedImage.src}
+          src={selectedImage.src}
+          alt={selectedImage.isPrimary ? productName : selectedImage.alt}
+          fill
+          sizes={PRODUCT_IMAGE_SIZES}
+          unoptimized={isAvifUrl(selectedImage.src)}
+          draggable={false}
+          onError={() => setFailedSources((current) => new Set(current).add(selectedImage.src))}
+        />
+      ) : (
+        <span className="mw-product-card__image-fallback" role="img" aria-label={`Imagen no disponible de ${productName}`}>
+          Imagen no disponible
+        </span>
+      )}
 
       {hasNavigation ? (
         <>

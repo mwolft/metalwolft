@@ -1507,6 +1507,14 @@ textarea:focus-visible {
   transform: translateY(-2px);
 }
 
+.mw-product-card:has(.mw-product-card__carousel:hover) {
+  transform: none;
+}
+
+.mw-product-card:has(.mw-product-card__carousel:hover):not(:focus-within) {
+  border-color: rgba(209, 213, 219, 0.92);
+}
+
 .mw-product-card:focus-within {
   border-color: var(--mw-accent);
 }
@@ -1554,24 +1562,12 @@ textarea:focus-visible {
   pointer-events: none;
 }
 
-.mw-product-card__carousel,
-.mw-product-card__carousel-link {
+.mw-product-card__carousel {
   position: absolute;
   inset: 0;
-}
-
-.mw-product-card__carousel {
-  touch-action: pan-y;
-}
-
-.mw-product-card__carousel-link {
   display: grid;
   place-items: center;
-}
-
-.mw-product-card__carousel-link:focus-visible {
-  outline: 3px solid var(--mw-accent);
-  outline-offset: -3px;
+  touch-action: pan-y;
 }
 
 .mw-product-card__carousel-control {
@@ -1626,13 +1622,13 @@ textarea:focus-visible {
   left: 0;
   display: flex;
   justify-content: center;
-  gap: 0.3rem;
+  gap: 0.35rem;
   pointer-events: none;
 }
 
 .mw-product-card__carousel-dot {
-  width: 6px;
-  height: 6px;
+  width: 8px;
+  height: 8px;
   border: 1px solid rgba(31, 41, 55, 0.35);
   border-radius: 50%;
   background: rgba(255, 255, 255, 0.9);

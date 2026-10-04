@@ -171,7 +171,7 @@ export function ProductCard({
       <div className="mw-product-card__layout">
         <div className={`mw-product-card__media${hasCarousel ? " mw-product-card__media--carousel" : ""}`}>
           {hasCarousel ? (
-            <ProductCardCarousel images={cardImages} productName={productName} href={href} />
+            <ProductCardCarousel images={cardImages} productName={productName} />
           ) : (
             <ProductCardImage alt={productName} src={product.imagen} />
           )}

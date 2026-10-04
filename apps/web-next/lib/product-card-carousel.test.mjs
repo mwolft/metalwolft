@@ -30,13 +30,14 @@ const catalog = readFileSync(new URL("../app/rejas-para-ventanas/page.tsx", impo
 const filters = readFileSync(new URL("../components/catalog/CatalogTypeNavigation.tsx", import.meta.url), "utf8");
 
 assert.match(card, /const hasCarousel = cardImages\.length > 1/);
-assert.match(card, /hasCarousel \? \(\s*<ProductCardCarousel images=\{cardImages\} productName=\{productName\} href=\{href\} \/>/);
+assert.match(card, /hasCarousel \? \(\s*<ProductCardCarousel images=\{cardImages\} productName=\{productName\} \/>/);
 assert.match(card, /<ProductCardImage alt=\{productName\} src=\{product\.imagen\} \/>/);
 assert.match(card, /<Link className="mw-product-card__link" href=\{href\}/);
 assert.equal((carousel.match(/<Image\b/g) || []).length, 1);
 assert.match(carousel, /src=\{selectedImage\.src\}/);
-assert.match(carousel, /href=\{href\}/);
-assert.match(carousel, /event\.preventDefault\(\)/);
+assert.doesNotMatch(carousel, /<Link\b|href=/);
+assert.match(carousel, /role="group"/);
+assert.match(carousel, /Galería de \$\{productName\}/);
 assert.match(carousel, /event\.pointerType !== "touch"/);
 assert.match(carousel, /Math\.abs\(horizontalDistance\) <= Math\.abs\(verticalDistance\)/);
 assert.match(carousel, /onPointerCancel=/);
@@ -46,7 +47,9 @@ assert.match(carousel, /\{hasNavigation \? \(/);
 assert.match(carousel, /aria-hidden="true"/);
 assert.match(styles, /\.mw-product-card__media\s*\{[^}]*aspect-ratio:\s*9 \/ 10/s);
 assert.match(styles, /\.mw-product-card__carousel\s*\{[^}]*touch-action:\s*pan-y/s);
+assert.match(styles, /\.mw-product-card:has\(\.mw-product-card__carousel:hover\)\s*\{[^}]*transform:\s*none/s);
 assert.match(styles, /\.mw-product-card__carousel-control\s*\{[^}]*opacity:\s*0;[^}]*pointer-events:\s*none/s);
+assert.match(styles, /\.mw-product-card__carousel-dot\s*\{[^}]*width:\s*8px;[^}]*height:\s*8px/s);
 assert.match(styles, /\.mw-product-card__carousel-dot\[data-active="true"\]\s*\{[^}]*background:\s*var\(--mw-accent\)/s);
 assert.match(catalog, /<CatalogTypeFilter>/);
 assert.match(filters, /onFilterChange=\{setActive\}/);
