@@ -8,6 +8,7 @@ const sources = Object.fromEntries(
       ["image", "../components/product/ProductCardImage.tsx"],
       ["explicitCategory", "../app/rejas-para-ventanas/page.tsx"],
       ["dynamicCategory", "../app/[category_slug]/page.tsx"],
+      ["editorialContent", "../lib/product-card-content.ts"],
       ["styles", "../app/globals.css"]
     ].map(async ([name, path]) => [name, await readFile(new URL(path, import.meta.url), "utf8")])
   )
@@ -17,13 +18,25 @@ assert.match(sources.card, /import { ProductCardImage }/);
 assert.match(sources.card, /<ProductCardImage alt={productName} src={product\.imagen} \/>/);
 assert.match(sources.card, /product\.h1_seo \|\| product\.nombre/);
 assert.match(sources.card, /product\.descripcion_seo\?\.trim\(\)/);
+assert.match(sources.card, /const cardDescription = editorialDescription\?\.trim\(\)/);
+assert.match(sources.card, /cardDescription \|\|\s*product\.descripcion_seo\?\.trim\(\)/);
+assert.match(sources.card, /cardDescription \? " mw-product-card__description--microcopy" : ""/);
 assert.match(sources.card, />\s*Ver modelo\s*</);
 assert.match(sources.card, /isBestSeller\?: boolean/);
 assert.match(sources.card, /isNewDesign\?: boolean/);
 assert.match(sources.card, /isBestSeller = false/);
 assert.match(sources.card, /isNewDesign = false/);
-assert.match(sources.card, /label: "Top ventas"/);
+assert.match(sources.card, /bestSellerLabel = "Top ventas"/);
+assert.match(sources.card, /label: bestSellerLabel/);
 assert.match(sources.card, /label: "Nuevo diseño"/);
+assert.match(sources.card, /label: "También abatible"/);
+assert.match(sources.card, /label: "También para puerta"/);
+assert.match(sources.card, /const variants: ProductVariant\[\] = versionLinks \?\? informationalVariants/);
+assert.match(sources.card, /variant\.href \? \(/);
+assert.match(sources.card, /href={variant\.href}/);
+assert.match(sources.card, /className="mw-product-card__variant mw-product-card__variant--link"/);
+assert.doesNotMatch(sources.card, /Disponible en versión abatible|Disponible en versión para puerta/);
+assert.doesNotMatch(sources.card, /reja-fija-albany|product\.slug\s*===/);
 assert.match(sources.card, /aria-label={accessibleLabel}/);
 assert.match(sources.card, /badges\.length > 0 \?/);
 assert.match(sources.card, /className="mw-product-card__badges"/);
@@ -34,8 +47,15 @@ assert.match(
 assert.match(sources.card, /function ProductVariantIcon\(\)/);
 assert.match(sources.card, /className="mw-product-card__variant-icon"/);
 assert.match(sources.card, /<ProductVariantIcon \/>/);
-assert.equal((sources.card.match(/<Link\b/g) || []).length, 1);
-assert.doesNotMatch(sources.card, /\bprecio(?:_rebajado)?\b/);
+assert.equal((sources.card.match(/<Link\b/g) || []).length, 2);
+assert.match(sources.card, /<\/Link>\s*{variants\.length > 0/);
+assert.match(sources.card, /product\.precio_rebajado && product\.precio_rebajado > 0/);
+assert.match(sources.card, /hasDiscount \? product\.precio_rebajado! : product\.precio/);
+assert.match(sources.card, /formatCurrency\(currentPrice\)\} €\/m²/);
+assert.match(sources.card, /formatCurrency\(product\.precio\)\} €\/m²/);
+assert.match(sources.card, /IVA incluido/);
+assert.ok(sources.card.indexOf('className="mw-product-card__description"') < sources.card.indexOf('className="mw-product-card__price"'));
+assert.ok(sources.card.indexOf('className="mw-product-card__price"') < sources.card.indexOf('className="mw-product-card__variants"'));
 assert.doesNotMatch(sources.card, /"use client"/);
 assert.doesNotMatch(sources.card, /\bfetch\s*\(|\buseState\s*\(|\buseEffect\s*\(/);
 
@@ -59,6 +79,16 @@ for (const page of [sources.explicitCategory, sources.dynamicCategory]) {
 assert.match(sources.dynamicCategory, /<ProductCard href={productHref} key={product\.id} product={product} \/>/);
 assert.match(sources.explicitCategory, /isBestSeller={product\.es_mas_vendido}/);
 assert.match(sources.explicitCategory, /isNewDesign={product\.es_nuevo_diseno}/);
+assert.match(sources.explicitCategory, /getProductCardContent\(product\.slug\)/);
+assert.match(sources.explicitCategory, /editorialDescription={cardContent\?\.description}/);
+assert.match(sources.explicitCategory, /bestSellerLabel={cardContent\?\.bestSellerLabel}/);
+assert.match(sources.explicitCategory, /versionLinks={getProductAlternativeLinks\(product\.slug\)}/);
+assert.doesNotMatch(sources.dynamicCategory, /getProductCardContent|editorialDescription|bestSellerLabel/);
+assert.equal((sources.editorialContent.match(/"reja-[^"]+": \{ description:/g) || []).length, 24);
+assert.match(sources.editorialContent, /"reja-fija-albany": \{ description: "Líneas horizontales · Estilo moderno", bestSellerLabel: "Más vendida" \}/);
+assert.match(sources.editorialContent, /"reja-fija-idaho": \{ description: "Líneas horizontales · Acabado robusto", bestSellerLabel: "Top ventas" \}/);
+assert.match(sources.editorialContent, /"reja-fija-essex": \{ description: "Líneas verticales · Estilo clásico", bestSellerLabel: "Top ventas" \}/);
+assert.doesNotMatch(sources.editorialContent, /"reja-fija-lancaster"|"reja-abatible-idaho"/);
 assert.equal((sources.explicitCategory.match(/data\.products\.map/g) || []).length, 1);
 assert.doesNotMatch(sources.explicitCategory, /featuredProducts|Productos destacados/);
 
@@ -70,6 +100,8 @@ assert.match(sources.styles, /\.mw-product-card__media\s*{[^}]*aspect-ratio:\s*9
 assert.match(sources.styles, /\.mw-product-card__media img\s*{[^}]*object-fit:\s*contain/s);
 assert.match(sources.styles, /\.mw-product-card \.mw-product-card__title\s*{[^}]*margin:\s*0;[^}]*-webkit-line-clamp:\s*2/s);
 assert.match(sources.styles, /\.mw-product-card__description\s*{[^}]*-webkit-line-clamp:\s*1/s);
+assert.match(sources.styles, /\.mw-product-card__description--microcopy\s*{[^}]*-webkit-line-clamp:\s*2/s);
+assert.match(sources.styles, /\.mw-product-card__price-rates\s*{[^}]*flex-wrap:\s*wrap/s);
 assert.match(
   sources.styles,
   /@media \(max-width: 640px\)[\s\S]*?\.mw-product-card__description\s*{[^}]*-webkit-line-clamp:\s*2/s
@@ -89,7 +121,8 @@ assert.match(
   sources.styles,
   /\.mw-product-card__variant-icon\s*{[^}]*width:\s*0\.78rem;[^}]*height:\s*0\.78rem;/s
 );
-assert.match(sources.styles, /\.mw-product-card__link:focus-visible/);
+assert.match(sources.styles, /\.mw-product-card__link:focus-visible::after/);
+assert.match(sources.styles, /\.mw-product-card__variant--link:focus-visible/);
 assert.match(sources.styles, /@media \(prefers-reduced-motion: reduce\)[\s\S]*?\.mw-product-card/);
 
 console.log("ProductCard catalog assertions passed");

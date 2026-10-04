@@ -20,6 +20,7 @@ import {
 } from "@/lib/api";
 import { fetchDeliveryEstimate } from "@/lib/delivery-estimate";
 import { buildProductGalleryImages } from "@/lib/product-images";
+import { getProductFamily } from "@/lib/product-families";
 import { isPublicCatalogCategory } from "@/lib/public-catalog";
 
 type ProductPageParams = {
@@ -168,6 +169,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
   const canonicalPath = `/${product.category_slug}/${product.slug}`;
   const categoryPath = `/${product.category_slug}`;
   const productImages = buildProductGalleryImages(product);
+  const productFamily = getProductFamily(product.slug);
   const visibleDescription =
     product.descripcion?.trim() || "Descripción técnica no disponible en este momento.";
 
@@ -204,6 +206,25 @@ export default async function ProductPage({ params }: ProductPageProps) {
             </Link>
           </div>
         </header>
+
+        {productFamily ? (
+          <nav className="mw-product-version-nav" aria-label={`Versiones de ${productFamily.name}`}>
+            <p>Disponible en versiones</p>
+            <div className="mw-product-version-nav__options">
+              {productFamily.versions.map(({ version, slug, label, href }) =>
+                slug === product.slug ? (
+                  <span aria-current="page" className="mw-product-version-nav__option mw-product-version-nav__option--current" key={version}>
+                    {label}
+                  </span>
+                ) : (
+                  <Link className="mw-product-version-nav__option" href={href} key={version}>
+                    {label}
+                  </Link>
+                )
+              )}
+            </div>
+          </nav>
+        ) : null}
 
         <section className="mw-product-purchase-layout">
           <ProductGallery

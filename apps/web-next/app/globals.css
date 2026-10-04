@@ -1334,7 +1334,7 @@ textarea:focus-visible {
   padding: 1.2rem 1.3rem;
   border: 1px solid rgba(207, 28, 53, 0.44);
   border-radius: 16px;
-  background: linear-gradient(135deg, rgba(255, 249, 249, 0.98), rgba(255, 252, 247, 0.9));
+  background: #FFF4F5;
 }
 
 .mw-category-design-service__intro {
@@ -1397,6 +1397,7 @@ textarea:focus-visible {
 }
 
 .mw-product-card {
+  position: relative;
   min-width: 0;
   overflow: hidden;
   border: 1px solid rgba(209, 213, 219, 0.92);
@@ -1414,17 +1415,24 @@ textarea:focus-visible {
   border-color: var(--mw-accent);
 }
 
-.mw-product-card__link {
+.mw-product-card__layout {
   display: flex;
   height: 100%;
   min-width: 0;
   flex-direction: column;
-  border-radius: inherit;
 }
 
-.mw-product-card__link:focus-visible {
+.mw-product-card__link::after {
+  position: absolute;
+  z-index: 1;
+  inset: 0;
+  content: "";
+}
+
+.mw-product-card__link:focus-visible::after {
   outline: 3px solid rgba(255, 50, 77, 0.34);
   outline-offset: -3px;
+  border-radius: 16px;
 }
 
 .mw-product-card__media {
@@ -1492,7 +1500,7 @@ textarea:focus-visible {
   flex: 1;
   min-width: 0;
   flex-direction: column;
-  padding: 0.75rem 1rem;
+  padding: 0.75rem 1rem 0.875rem;
 }
 
 .mw-product-card .mw-product-card__title {
@@ -1515,6 +1523,36 @@ textarea:focus-visible {
   line-height: 1.6;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 1;
+}
+
+.mw-product-card__description--microcopy {
+  -webkit-line-clamp: 2;
+}
+
+.mw-product-card__price {
+  margin-top: 0.55rem;
+}
+
+.mw-product-card__price-rates {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.35rem;
+  color: var(--mw-text);
+  font-size: 1rem;
+  line-height: 1.35;
+}
+
+.mw-product-card__price-original,
+.mw-product-card__price-tax {
+  color: var(--mw-muted);
+  font-size: 0.75rem;
+  font-weight: 400;
+}
+
+.mw-product-card__price-tax {
+  display: block;
+  line-height: 1.35;
 }
 
 .mw-product-card__variants {
@@ -1544,10 +1582,26 @@ textarea:focus-visible {
   flex: 0 0 auto;
 }
 
+.mw-product-card__variant--link {
+  position: relative;
+  z-index: 2;
+  min-height: 36px;
+  text-decoration: none;
+}
+
+.mw-product-card__variant--link:hover {
+  border-color: var(--mw-text);
+}
+
+.mw-product-card__variant--link:focus-visible {
+  outline: 2px solid var(--mw-accent);
+  outline-offset: 2px;
+}
+
 .mw-product-card__cta {
   align-self: flex-start;
   margin-top: auto;
-  padding-top: 0.65rem;
+  padding-top: 0.75rem;
   color: var(--mw-accent);
   font-weight: 800;
   white-space: nowrap;
@@ -2273,6 +2327,53 @@ textarea:focus-visible {
   border: 1px solid rgba(229, 231, 235, 0.92);
   border-radius: var(--mw-radius);
   background: rgba(255, 255, 255, 0.92);
+}
+
+.mw-product-version-nav {
+  margin-top: 1rem;
+}
+
+.mw-product-version-nav p {
+  margin: 0 0 0.5rem;
+  color: var(--mw-muted);
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.mw-product-version-nav__options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.mw-product-version-nav__option {
+  display: inline-flex;
+  min-height: 38px;
+  align-items: center;
+  justify-content: center;
+  padding: 0.45rem 0.8rem;
+  border: 1px solid var(--mw-border);
+  border-radius: 999px;
+  background: #f5f6f7;
+  color: var(--mw-text);
+  font-size: 0.85rem;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.mw-product-version-nav__option--current {
+  border-color: var(--mw-text);
+  background: var(--mw-text);
+  color: #fff;
+}
+
+a.mw-product-version-nav__option:hover {
+  border-color: var(--mw-text);
+}
+
+a.mw-product-version-nav__option:focus-visible {
+  outline: 2px solid var(--mw-accent);
+  outline-offset: 2px;
 }
 
 .mw-product-purchase-layout {
@@ -3218,7 +3319,7 @@ textarea:focus-visible {
   margin: 1.1rem 0 0;
   padding: 1rem 1.2rem;
   border-color: rgba(255, 50, 77, 0.18);
-  background: rgba(255, 50, 77, 0.05);
+  background: #FFF4F5;
 }
 
 .mw-delivery-estimate--category {
@@ -3226,7 +3327,7 @@ textarea:focus-visible {
   padding: 1.1rem 1.5rem;
   border-color: rgba(17, 24, 39, 0.12);
   border-left: 3px solid rgba(255, 50, 77, 0.72);
-  background: rgba(253, 252, 249, 0.92);
+  background: #FFF4F5;
 }
 
 .mw-delivery-estimate__category-layout {

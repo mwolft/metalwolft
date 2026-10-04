@@ -9,6 +9,8 @@ import {
 import { PageContainer } from "@/components/layout/PageContainer";
 import { DeliveryEstimate } from "@/components/product/DeliveryEstimate";
 import { ProductCard } from "@/components/product/ProductCard";
+import { getProductCardContent } from "@/lib/product-card-content";
+import { getProductAlternativeLinks } from "@/lib/product-families";
 import { BreadcrumbJsonLd } from "@/components/seo/BreadcrumbJsonLd";
 import { JsonLd } from "@/components/seo/JsonLd";
 import {
@@ -238,10 +240,14 @@ export default async function RejasParaVentanasPage() {
             <div className="mw-product-grid">
               {data.products.map((product, index) => {
                 const productHref = `/${CATEGORY_SLUG}/${product.slug}`;
+                const cardContent = getProductCardContent(product.slug);
 
                 return (
                   <Fragment key={product.id}>
                     <ProductCard
+                      editorialDescription={cardContent?.description}
+                      bestSellerLabel={cardContent?.bestSellerLabel}
+                      versionLinks={getProductAlternativeLinks(product.slug)}
                       href={productHref}
                       isBestSeller={product.es_mas_vendido}
                       isNewDesign={product.es_nuevo_diseno}
