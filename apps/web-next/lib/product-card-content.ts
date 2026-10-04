@@ -25,6 +25,7 @@ const PRODUCT_CARD_CONTENT: Record<string, ProductCardEditorialContent> = {
   "reja-abatible-cortland": { description: "Apertura abatible · Diseño mixto" },
   "reja-abatible-albany": { description: "Apertura abatible · Líneas horizontales" },
   "reja-abatible-essex": { description: "Apertura abatible · Líneas verticales" },
+  "reja-abatible-idaho": { description: "Tubos cuadrados · Verticales alternas" },
   "reja-puerta-albany": { description: "Para puertas · Líneas horizontales" },
   "reja-puerta-cortland": { description: "Para puertas · Diseño reforzado" },
   "reja-puerta-maryland": { description: "Para puertas · Perfil cuadrado" },
