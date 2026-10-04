@@ -1517,6 +1517,32 @@ textarea:focus-visible {
   -webkit-line-clamp: 1;
 }
 
+.mw-product-card__price {
+  margin-top: 0.55rem;
+}
+
+.mw-product-card__price-rates {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.35rem;
+  color: var(--mw-text);
+  font-size: 1rem;
+  line-height: 1.35;
+}
+
+.mw-product-card__price-original,
+.mw-product-card__price-tax {
+  color: var(--mw-muted);
+  font-size: 0.75rem;
+  font-weight: 400;
+}
+
+.mw-product-card__price-tax {
+  display: block;
+  line-height: 1.35;
+}
+
 .mw-product-card__variants {
   display: flex;
   flex-wrap: wrap;

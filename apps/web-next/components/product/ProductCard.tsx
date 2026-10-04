@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { ProductCardImage } from "@/components/product/ProductCardImage";
 import type { ApiProduct } from "@/lib/api";
+import { formatCurrency } from "@/lib/configurator-pricing";
 
 type ProductCardProps = {
   product: ApiProduct;
@@ -111,6 +112,8 @@ export function ProductCard({
     product.descripcion_seo?.trim() ||
     product.descripcion?.trim() ||
     "Modelo metálico fabricado a medida por MetalWolft.";
+  const hasDiscount = Boolean(product.precio_rebajado && product.precio_rebajado > 0);
+  const currentPrice = hasDiscount ? product.precio_rebajado! : product.precio;
   const badges = [
     isBestSeller
       ? {
@@ -171,6 +174,17 @@ export function ProductCard({
         <div className="mw-product-card__body">
           <h3 className="mw-product-card__title">{productName}</h3>
           <p className="mw-product-card__description">{description}</p>
+          <div className="mw-product-card__price">
+            <div className="mw-product-card__price-rates">
+              {hasDiscount ? (
+                <del className="mw-product-card__price-original">
+                  {formatCurrency(product.precio)} €/m²
+                </del>
+              ) : null}
+              <strong>{formatCurrency(currentPrice)} €/m²</strong>
+            </div>
+            <span className="mw-product-card__price-tax">IVA incluido</span>
+          </div>
           {variants.length > 0 ? (
             <div className="mw-product-card__variants">
               {variants.map((variant) => (

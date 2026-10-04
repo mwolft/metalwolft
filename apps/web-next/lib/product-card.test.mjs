@@ -35,7 +35,13 @@ assert.match(sources.card, /function ProductVariantIcon\(\)/);
 assert.match(sources.card, /className="mw-product-card__variant-icon"/);
 assert.match(sources.card, /<ProductVariantIcon \/>/);
 assert.equal((sources.card.match(/<Link\b/g) || []).length, 1);
-assert.doesNotMatch(sources.card, /\bprecio(?:_rebajado)?\b/);
+assert.match(sources.card, /product\.precio_rebajado && product\.precio_rebajado > 0/);
+assert.match(sources.card, /hasDiscount \? product\.precio_rebajado! : product\.precio/);
+assert.match(sources.card, /formatCurrency\(currentPrice\)\} €\/m²/);
+assert.match(sources.card, /formatCurrency\(product\.precio\)\} €\/m²/);
+assert.match(sources.card, /IVA incluido/);
+assert.ok(sources.card.indexOf('className="mw-product-card__description"') < sources.card.indexOf('className="mw-product-card__price"'));
+assert.ok(sources.card.indexOf('className="mw-product-card__price"') < sources.card.indexOf('className="mw-product-card__variants"'));
 assert.doesNotMatch(sources.card, /"use client"/);
 assert.doesNotMatch(sources.card, /\bfetch\s*\(|\buseState\s*\(|\buseEffect\s*\(/);
 
@@ -70,6 +76,7 @@ assert.match(sources.styles, /\.mw-product-card__media\s*{[^}]*aspect-ratio:\s*9
 assert.match(sources.styles, /\.mw-product-card__media img\s*{[^}]*object-fit:\s*contain/s);
 assert.match(sources.styles, /\.mw-product-card \.mw-product-card__title\s*{[^}]*margin:\s*0;[^}]*-webkit-line-clamp:\s*2/s);
 assert.match(sources.styles, /\.mw-product-card__description\s*{[^}]*-webkit-line-clamp:\s*1/s);
+assert.match(sources.styles, /\.mw-product-card__price-rates\s*{[^}]*flex-wrap:\s*wrap/s);
 assert.match(
   sources.styles,
   /@media \(max-width: 640px\)[\s\S]*?\.mw-product-card__description\s*{[^}]*-webkit-line-clamp:\s*2/s
