@@ -8,6 +8,8 @@ type ProductCardProps = {
   href: string;
   isBestSeller?: boolean;
   isNewDesign?: boolean;
+  editorialDescription?: string;
+  bestSellerLabel?: "Más vendida" | "Top ventas";
 };
 
 type ProductBadge = {
@@ -105,10 +107,12 @@ export function ProductCard({
   product,
   href,
   isBestSeller = false,
-  isNewDesign = false
+  isNewDesign = false,
+  editorialDescription,
+  bestSellerLabel = "Top ventas"
 }: ProductCardProps) {
   const productName = product.h1_seo || product.nombre;
-  const cardDescription = product.descripcion_card?.trim();
+  const cardDescription = editorialDescription?.trim();
   const description =
     cardDescription ||
     product.descripcion_seo?.trim() ||
@@ -120,7 +124,7 @@ export function ProductCard({
     isBestSeller
       ? {
           id: "best-seller",
-          label: product.best_seller_badge_variant === "most_sold" ? "Más vendida" : "Top ventas",
+          label: bestSellerLabel,
           className: "mw-product-card__badge--best-seller",
           icon: "trending-up"
         }
