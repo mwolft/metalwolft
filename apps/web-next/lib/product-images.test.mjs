@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import {
+  buildProductCardImages,
   buildProductGalleryImages,
   getAdjacentProductImageSrc
 } from "./product-images.ts";
@@ -26,6 +27,26 @@ assert.equal(images[0].isPrimary, true);
 assert.equal(images[1].isPrimary, false);
 assert.equal(images[0].alt, "Reja Albany");
 assert.equal(images[1].alt, "Vista adicional 1 de Reja Albany");
+
+assert.deepEqual(buildProductCardImages(product).map((image) => image.src), images.map((image) => image.src));
+assert.deepEqual(
+  buildProductCardImages({
+    ...product,
+    images: [
+      ...product.images,
+      { id: 4, product_id: 1, image_url: "https://example.test/secondary-c.jpg" },
+      { id: 5, product_id: 1, image_url: "https://example.test/secondary-d.jpg" },
+      { id: 6, product_id: 1, image_url: "  " }
+    ]
+  }).map((image) => image.src),
+  [
+    "https://example.test/main.jpg",
+    "https://example.test/secondary-a.jpg",
+    "https://example.test/secondary-b.jpg",
+    "https://example.test/secondary-c.jpg"
+  ]
+);
+assert.deepEqual(buildProductCardImages({ nombre: "Sin imagen", imagen: null, images: [] }), []);
 
 assert.deepEqual(
   buildProductGalleryImages({

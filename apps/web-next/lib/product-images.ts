@@ -53,3 +53,9 @@ export function buildProductGalleryImages(
     ];
   });
 }
+
+export function buildProductCardImages(
+  product: Pick<ApiProduct, "imagen" | "images" | "nombre">
+): ProductGalleryImage[] {
+  return buildProductGalleryImages(product).slice(0, 4);
+}

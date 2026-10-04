@@ -155,6 +155,10 @@ class ProductLifecyclePublicCatalogTest(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         products = response.get_json()
         self.assertEqual([product["slug"] for product in products], ["reja-disponible"])
+        self.assertEqual(
+            [image["image_url"] for image in products[0]["images"]],
+            ["https://example.test/reja-disponible.jpg"],
+        )
         self.assert_public_product_shape(products[0])
 
     def test_category_counts_include_only_discoverable_products(self):
