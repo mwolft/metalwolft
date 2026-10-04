@@ -5924,8 +5924,12 @@ a.mw-product-version-nav__option:focus-visible {
     grid-template-columns: 1fr;
   }
 
+  .mw-product-card .mw-product-card__title,
   .mw-product-card__description {
-    min-height: 3.2em;
+    min-height: 0;
+  }
+
+  .mw-product-card__description {
     -webkit-line-clamp: 2;
   }
 

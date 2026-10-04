@@ -110,6 +110,11 @@ assert.match(
   sources.styles,
   /@media \(max-width: 640px\)[\s\S]*?\.mw-product-card__description\s*{[^}]*-webkit-line-clamp:\s*2/s
 );
+assert.match(
+  sources.styles,
+  /@media \(max-width: 640px\)[\s\S]*?\.mw-product-card \.mw-product-card__title,\s*\.mw-product-card__description\s*{[^}]*min-height:\s*0/s
+);
+assert.doesNotMatch(sources.styles, /\.mw-product-card__description\s*{\s*min-height:\s*3\.2em/);
 assert.match(sources.styles, /\.mw-product-card__cta\s*{[^}]*white-space:\s*nowrap/s);
 assert.match(sources.styles, /\.mw-product-card__badges\s*{[^}]*position:\s*absolute[^}]*flex-wrap:\s*wrap/s);
 assert.match(
