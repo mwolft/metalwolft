@@ -61,9 +61,9 @@ export default async function AbatiblesPage() {
         <CatalogTypeNavigation active="hinged" />
 
         <section className="mw-abatible-collection__models" aria-labelledby="abatible-models-title">
-          <h2 id="abatible-models-title">Compara nuestros modelos abatibles</h2>
+          <h2 id="abatible-models-title">Elige tu reja abatible</h2>
           <p>
-            Albany, Cortland, Essex, Idaho y Maryland comparten apertura abatible y fabricación a medida, pero ofrecen diseños diferentes. Compara las cinco opciones y entra en la ficha del modelo que prefieras.
+            Compara diseños y precios entre nuestros modelos abatibles, todos fabricados a medida para adaptarse a tu ventana.
           </p>
           <div className="mw-product-grid">
             {products.map((product) => {
