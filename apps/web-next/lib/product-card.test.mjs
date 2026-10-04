@@ -17,13 +17,20 @@ assert.match(sources.card, /import { ProductCardImage }/);
 assert.match(sources.card, /<ProductCardImage alt={productName} src={product\.imagen} \/>/);
 assert.match(sources.card, /product\.h1_seo \|\| product\.nombre/);
 assert.match(sources.card, /product\.descripcion_seo\?\.trim\(\)/);
+assert.match(sources.card, /const cardDescription = product\.descripcion_card\?\.trim\(\)/);
+assert.match(sources.card, /cardDescription \|\|\s*product\.descripcion_seo\?\.trim\(\)/);
+assert.match(sources.card, /cardDescription \? " mw-product-card__description--microcopy" : ""/);
 assert.match(sources.card, />\s*Ver modelo\s*</);
 assert.match(sources.card, /isBestSeller\?: boolean/);
 assert.match(sources.card, /isNewDesign\?: boolean/);
 assert.match(sources.card, /isBestSeller = false/);
 assert.match(sources.card, /isNewDesign = false/);
-assert.match(sources.card, /label: "Top ventas"/);
+assert.match(sources.card, /product\.best_seller_badge_variant === "most_sold" \? "Más vendida" : "Top ventas"/);
 assert.match(sources.card, /label: "Nuevo diseño"/);
+assert.match(sources.card, /label: "También abatible"/);
+assert.match(sources.card, /label: "También para puerta"/);
+assert.doesNotMatch(sources.card, /Disponible en versión abatible|Disponible en versión para puerta/);
+assert.doesNotMatch(sources.card, /reja-fija-albany|product\.slug\s*===/);
 assert.match(sources.card, /aria-label={accessibleLabel}/);
 assert.match(sources.card, /badges\.length > 0 \?/);
 assert.match(sources.card, /className="mw-product-card__badges"/);
@@ -76,6 +83,7 @@ assert.match(sources.styles, /\.mw-product-card__media\s*{[^}]*aspect-ratio:\s*9
 assert.match(sources.styles, /\.mw-product-card__media img\s*{[^}]*object-fit:\s*contain/s);
 assert.match(sources.styles, /\.mw-product-card \.mw-product-card__title\s*{[^}]*margin:\s*0;[^}]*-webkit-line-clamp:\s*2/s);
 assert.match(sources.styles, /\.mw-product-card__description\s*{[^}]*-webkit-line-clamp:\s*1/s);
+assert.match(sources.styles, /\.mw-product-card__description--microcopy\s*{[^}]*-webkit-line-clamp:\s*2/s);
 assert.match(sources.styles, /\.mw-product-card__price-rates\s*{[^}]*flex-wrap:\s*wrap/s);
 assert.match(
   sources.styles,

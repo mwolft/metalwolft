@@ -187,6 +187,7 @@ class ProductLifecycleSQLiteModelTest(unittest.TestCase):
                 "nombre",
                 "descripcion",
                 "descripcion_seo",
+                "descripcion_card",
                 "titulo_seo",
                 "h1_seo",
                 "precio",
@@ -200,12 +201,15 @@ class ProductLifecycleSQLiteModelTest(unittest.TestCase):
                 "has_abatible",
                 "has_door_model",
                 "es_mas_vendido",
+                "best_seller_badge_variant",
                 "es_nuevo_diseno",
                 "available_for_sale",
             },
         )
         self.assertIs(serialized["available_for_sale"], False)
         self.assertEqual(serialized["opening_type"], "fixed")
+        self.assertIsNone(serialized["descripcion_card"])
+        self.assertEqual(serialized["best_seller_badge_variant"], "top_sales")
         self.assertNotIn("published", serialized)
 
         serialized_with_images = product.serialize_with_images()

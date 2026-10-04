@@ -108,7 +108,9 @@ export function ProductCard({
   isNewDesign = false
 }: ProductCardProps) {
   const productName = product.h1_seo || product.nombre;
+  const cardDescription = product.descripcion_card?.trim();
   const description =
+    cardDescription ||
     product.descripcion_seo?.trim() ||
     product.descripcion?.trim() ||
     "Modelo metálico fabricado a medida por MetalWolft.";
@@ -118,7 +120,7 @@ export function ProductCard({
     isBestSeller
       ? {
           id: "best-seller",
-          label: "Top ventas",
+          label: product.best_seller_badge_variant === "most_sold" ? "Más vendida" : "Top ventas",
           className: "mw-product-card__badge--best-seller",
           icon: "trending-up"
         }
@@ -134,10 +136,10 @@ export function ProductCard({
   ].filter((badge): badge is ProductBadge => badge !== null);
   const variants = [
     product.has_abatible === true
-      ? { id: "hinged", label: "Disponible en versión abatible" }
+      ? { id: "hinged", label: "También abatible" }
       : null,
     product.has_door_model === true
-      ? { id: "door", label: "Disponible en versión para puerta" }
+      ? { id: "door", label: "También para puerta" }
       : null
   ].filter((variant): variant is ProductVariant => variant !== null);
   const accessibleDetails = [
@@ -173,7 +175,9 @@ export function ProductCard({
         </div>
         <div className="mw-product-card__body">
           <h3 className="mw-product-card__title">{productName}</h3>
-          <p className="mw-product-card__description">{description}</p>
+          <p className={`mw-product-card__description${cardDescription ? " mw-product-card__description--microcopy" : ""}`}>
+            {description}
+          </p>
           <div className="mw-product-card__price">
             <div className="mw-product-card__price-rates">
               {hasDiscount ? (

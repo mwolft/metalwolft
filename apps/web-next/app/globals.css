@@ -1517,6 +1517,10 @@ textarea:focus-visible {
   -webkit-line-clamp: 1;
 }
 
+.mw-product-card__description--microcopy {
+  -webkit-line-clamp: 2;
+}
+
 .mw-product-card__price {
   margin-top: 0.55rem;
 }

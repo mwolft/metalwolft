@@ -76,6 +76,7 @@ export type ApiProduct = {
   nombre: string;
   descripcion: string;
   descripcion_seo: string | null;
+  descripcion_card?: string | null;
   titulo_seo: string | null;
   h1_seo: string | null;
   precio: number;
@@ -91,6 +92,7 @@ export type ApiProduct = {
   has_abatible: boolean;
   has_door_model: boolean;
   es_mas_vendido: boolean;
+  best_seller_badge_variant?: "top_sales" | "most_sold" | null;
   es_nuevo_diseno: boolean;
   available_for_sale: boolean;
   images?: ApiProductImage[];

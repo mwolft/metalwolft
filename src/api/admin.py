@@ -612,6 +612,13 @@ class ProductAdminView(SafeModelView):
         'published': 'Publicado',
         'available_for_sale': 'Disponible para venta',
         'opening_type': 'Tipo de apertura',
+        'best_seller_badge_variant': 'Texto de Top ventas',
+    }
+    form_choices = {
+        'best_seller_badge_variant': [
+            ('top_sales', 'Top ventas'),
+            ('most_sold', 'Más vendida'),
+        ],
     }
     form_args = {
         'published': {
@@ -636,6 +643,7 @@ class ProductAdminView(SafeModelView):
         'subcategoria',
         'descripcion',
         'descripcion_seo',
+        'descripcion_card',
         'titulo_seo',
         'h1_seo',
         'precio',
@@ -645,6 +653,7 @@ class ProductAdminView(SafeModelView):
         'has_abatible',
         'has_door_model',
         'es_mas_vendido',
+        'best_seller_badge_variant',
         'es_nuevo_diseno',
         'published',
         'available_for_sale',

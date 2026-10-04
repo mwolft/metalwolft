@@ -320,6 +320,10 @@ class Products(db.Model):
             "opening_type IN ('fixed', 'hinged')",
             name="ck_products_opening_type",
         ),
+        db.CheckConstraint(
+            "best_seller_badge_variant IN ('top_sales', 'most_sold')",
+            name="ck_products_best_seller_badge_variant",
+        ),
     )
 
     id = db.Column(db.Integer, primary_key=True)
@@ -328,9 +332,13 @@ class Products(db.Model):
     nombre = db.Column(db.String(100), nullable=False)
     descripcion = db.Column(db.Text, nullable=False)
     descripcion_seo = db.Column(db.Text, nullable=True)
+    descripcion_card = db.Column(db.Text, nullable=True)
     titulo_seo = db.Column(db.String(180), nullable=True)
     h1_seo = db.Column(db.String(180), nullable=True)
     es_mas_vendido = db.Column(db.Boolean, default=False)
+    best_seller_badge_variant = db.Column(
+        db.String(24), nullable=False, default="top_sales", server_default="top_sales"
+    )
     es_nuevo_diseno = db.Column(db.Boolean, default=False)
     published = db.Column(
         db.Boolean,
@@ -384,6 +392,7 @@ class Products(db.Model):
             "nombre": self.nombre,
             "descripcion": self.descripcion,
             "descripcion_seo": self.descripcion_seo,
+            "descripcion_card": self.descripcion_card,
             "titulo_seo": self.titulo_seo,
             "h1_seo": self.h1_seo,
             "precio": int(self.precio) if self.precio == int(self.precio) else self.precio,
@@ -397,6 +406,7 @@ class Products(db.Model):
             "has_abatible": self.has_abatible,
             "has_door_model": self.has_door_model,
             "es_mas_vendido": self.es_mas_vendido,
+            "best_seller_badge_variant": self.best_seller_badge_variant,
             "es_nuevo_diseno": self.es_nuevo_diseno,
             "available_for_sale": self.available_for_sale,
         }
