@@ -1340,7 +1340,12 @@ textarea:focus-visible {
   gap: 0.5rem;
   margin-top: 1rem;
   overflow-x: auto;
+  scrollbar-width: none;
   white-space: nowrap;
+}
+
+.mw-catalog-type-nav::-webkit-scrollbar {
+  display: none;
 }
 
 .mw-catalog-type-nav__item {

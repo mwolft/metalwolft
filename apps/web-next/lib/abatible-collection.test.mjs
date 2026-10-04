@@ -41,6 +41,7 @@ assert.match(page, /selectAbatibleCollection\(await fetchCategoryProducts\("reja
 assert.match(page, /href=\{CATEGORY_PATH \+ "\/" \+ product\.slug\}/);
 assert.match(page, /<BreadcrumbJsonLd/);
 assert.match(parent, /<CatalogTypeFilter>/);
+assert.match(parent, /Explora nuestros modelos y compara diseños, precios y opciones antes de elegir\./);
 assert.match(parent, /catalogType=\{getProductCatalogType\(product\)\}/);
 assert.match(nav, /href=\{COLLECTION_PATH\}/);
 assert.match(nav, /href=\{CATEGORY_PATH\} key=\{id\} onClick=\{\(\) => rememberFilter\(id\)\}/);
@@ -49,6 +50,8 @@ assert.match(nav, /<button[\s\S]*?onClick=\{\(\) => onFilterChange\(id\)\}/);
 assert.doesNotMatch(nav, /\?filter=|new URLSearchParams/);
 assert.match(styles, /\.mw-product-grid\[data-filter="fixed"\] > \.mw-product-card/);
 assert.match(styles, /\.mw-catalog-type-nav\s*\{[^}]*overflow-x:\s*auto/s);
+assert.match(styles, /\.mw-catalog-type-nav\s*\{[^}]*scrollbar-width:\s*none/s);
+assert.match(styles, /\.mw-catalog-type-nav::-webkit-scrollbar\s*\{[^}]*display:\s*none/s);
 assert.match(sitemap, /path: "\/rejas-para-ventanas\/abatibles"/);
 
 console.log("Abatible collection assertions passed");

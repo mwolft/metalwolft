@@ -229,8 +229,7 @@ export default async function RejasParaVentanasPage() {
         <section className="mw-section" id="modelos-reales">
           <h2>Modelos de rejas metálicas</h2>
           <p>
-            Este listado muestra productos del catálogo y te permite pasar
-            de la visión general a cada ficha individual con un solo clic.
+            Explora nuestros modelos y compara diseños, precios y opciones antes de elegir.
           </p>
 
           {data.products.length === 0 ? (
