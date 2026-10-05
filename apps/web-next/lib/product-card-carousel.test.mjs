@@ -51,7 +51,7 @@ assert.match(styles, /\.mw-product-card:has\(\.mw-product-card__carousel:hover\)
 assert.match(styles, /\.mw-product-card__carousel-control\s*\{[^}]*opacity:\s*0;[^}]*pointer-events:\s*none/s);
 assert.match(styles, /\.mw-product-card__carousel-dot\s*\{[^}]*width:\s*16px;[^}]*height:\s*16px/s);
 assert.match(styles, /\.mw-product-card__carousel-dot\[data-active="true"\]\s*\{[^}]*background:\s*var\(--mw-accent\)/s);
-assert.match(catalog, /<CatalogTypeFilter showNeedGuide>/);
+assert.match(catalog, /<CatalogTypeFilter>/);
 assert.match(filters, /onFilterChange=\{setActive\}/);
 
 console.log("ProductCard carousel assertions passed");

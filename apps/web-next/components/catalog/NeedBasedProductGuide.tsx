@@ -1,28 +1,29 @@
 "use client";
 
 import Link from "next/link";
+import { useShowFixedProducts } from "@/components/catalog/CatalogTypeNavigation";
 
 const OPTIONS = [
   {
     title: "No necesito abrirla",
-    description: "Si buscas una protección permanente, una reja fija puede ser la opción adecuada.",
+    description: "Protección permanente para tu ventana.",
     action: "Ver rejas fijas →",
   },
   {
     title: "Necesito poder abrirla",
-    description: "Si necesitas abrir la reja para acceder a la ventana, puedes elegir uno de nuestros modelos abatibles.",
+    description: "Apertura para acceder a la ventana.",
     action: "Ver rejas abatibles →",
     href: "/rejas-para-ventanas/abatibles",
   },
   {
     title: "Quiero evitar obra",
-    description: "Si prefieres una instalación sin obra, disponemos de una solución específica para este tipo de montaje.",
+    description: "Solución con instalación sin obra.",
     action: "Ver solución sin obra →",
     href: "/rejas-para-ventanas-sin-obra",
   },
   {
     title: "Quiero proteger a mi mascota",
-    description: "Si tienes gatos u otras mascotas, disponemos de una reja diseñada específicamente para esta necesidad.",
+    description: "Reja pensada para gatos y otras mascotas.",
     action: "Ver reja para mascotas →",
     href: "/rejas-para-ventanas/reja-mascotas-ohio",
   },
@@ -38,9 +39,11 @@ function OptionContent({ option }: { option: (typeof OPTIONS)[number] }) {
   );
 }
 
-export function NeedBasedProductGuide({ onSelectFixed }: { onSelectFixed: () => void }) {
+export function NeedBasedProductGuide() {
+  const onSelectFixed = useShowFixedProducts();
+
   return (
-    <section className="mw-need-guide" aria-labelledby="mw-need-guide-title">
+    <aside className="mw-panel mw-need-guide" aria-labelledby="mw-need-guide-title">
       <h2 id="mw-need-guide-title">¿Qué tipo de reja necesito?</h2>
       <p>Cada ventana y cada uso pueden necesitar una solución diferente. Elige tu caso y te ayudamos a encontrar la opción adecuada.</p>
       <ul className="mw-need-guide__grid">
@@ -58,6 +61,6 @@ export function NeedBasedProductGuide({ onSelectFixed }: { onSelectFixed: () => 
           </li>
         ))}
       </ul>
-    </section>
+    </aside>
   );
 }

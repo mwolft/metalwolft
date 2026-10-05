@@ -1,9 +1,8 @@
 "use client";
 
-import type { ReactNode, Ref } from "react";
-import { useEffect, useRef, useState } from "react";
+import type { ReactNode, Ref, RefObject } from "react";
+import { createContext, useContext, useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { NeedBasedProductGuide } from "@/components/catalog/NeedBasedProductGuide";
 import {
   CATALOG_FILTER_STORAGE_KEY,
   isLocalCatalogFilter,
@@ -79,7 +78,23 @@ export function CatalogTypeNavigation({
   );
 }
 
-export function CatalogTypeFilter({ children, showNeedGuide = false }: { children: ReactNode; showNeedGuide?: boolean }) {
+type CatalogFilterContextValue = {
+  active: CatalogType;
+  setActive: (type: CatalogType) => void;
+  navRef: RefObject<HTMLElement | null>;
+  fixedButtonRef: RefObject<HTMLButtonElement | null>;
+  showFixedProducts: () => void;
+};
+
+const CatalogFilterContext = createContext<CatalogFilterContextValue | null>(null);
+
+function useCatalogFilter() {
+  const context = useContext(CatalogFilterContext);
+  if (!context) throw new Error("Catalog filter components require CatalogFilterProvider");
+  return context;
+}
+
+export function CatalogFilterProvider({ children }: { children: ReactNode }) {
   const [active, setActive] = useState<CatalogType>("all");
   const navRef = useRef<HTMLElement>(null);
   const fixedButtonRef = useRef<HTMLButtonElement>(null);
@@ -104,10 +119,23 @@ export function CatalogTypeFilter({ children, showNeedGuide = false }: { childre
   }
 
   return (
+    <CatalogFilterContext.Provider value={{ active, setActive, navRef, fixedButtonRef, showFixedProducts }}>
+      {children}
+    </CatalogFilterContext.Provider>
+  );
+}
+
+export function useShowFixedProducts() {
+  return useCatalogFilter().showFixedProducts;
+}
+
+export function CatalogTypeFilter({ children }: { children: ReactNode }) {
+  const { active, setActive, navRef, fixedButtonRef } = useCatalogFilter();
+
+  return (
     <>
       <CatalogTypeNavigation active={active} onFilterChange={setActive} navRef={navRef} fixedButtonRef={fixedButtonRef} />
       <div className="mw-product-grid" data-filter={active} id="catalog-product-grid">{children}</div>
-      {showNeedGuide ? <NeedBasedProductGuide onSelectFixed={showFixedProducts} /> : null}
     </>
   );
 }

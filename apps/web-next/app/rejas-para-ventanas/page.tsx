@@ -9,7 +9,8 @@ import {
 import { PageContainer } from "@/components/layout/PageContainer";
 import { DeliveryEstimate } from "@/components/product/DeliveryEstimate";
 import { ProductCard } from "@/components/product/ProductCard";
-import { CatalogTypeFilter } from "@/components/catalog/CatalogTypeNavigation";
+import { CatalogFilterProvider, CatalogTypeFilter } from "@/components/catalog/CatalogTypeNavigation";
+import { NeedBasedProductGuide } from "@/components/catalog/NeedBasedProductGuide";
 import { getProductCardContent } from "@/lib/product-card-content";
 import { getProductAlternativeLinks } from "@/lib/product-families";
 import { getProductCatalogType } from "@/lib/catalog-types";
@@ -182,6 +183,7 @@ export default async function RejasParaVentanasPage() {
 
   return (
     <div className="mw-page">
+      <CatalogFilterProvider>
       <PageContainer>
         <BreadcrumbJsonLd
           items={[
@@ -213,15 +215,7 @@ export default async function RejasParaVentanasPage() {
             </div>
           </div>
 
-          <aside className="mw-panel" aria-label="Resumen de la landing">
-            <p className="mw-note">Resumen de compra</p>
-            <h2>{data.categoryName}</h2>
-            <ul className="mw-list">
-              <li>Rejas metálicas fabricadas a medida.</li>
-              <li>Modelos visibles en esta categoría: {data.products.length}.</li>
-              <li>Enlaces directos a guías y fichas de producto.</li>
-            </ul>
-          </aside>
+          <NeedBasedProductGuide />
         </section>
 
         <DeliveryEstimate estimate={deliveryEstimate} variant="category" />
@@ -238,7 +232,7 @@ export default async function RejasParaVentanasPage() {
               visibles para esta landing.
             </p>
           ) : (
-            <CatalogTypeFilter showNeedGuide>
+            <CatalogTypeFilter>
               {data.products.map((product, index) => {
                 const productHref = `/${CATEGORY_SLUG}/${product.slug}`;
                 const cardContent = getProductCardContent(product.slug);
@@ -368,6 +362,7 @@ export default async function RejasParaVentanasPage() {
           </p>
         </section>
       </PageContainer>
+      </CatalogFilterProvider>
     </div>
   );
 }
