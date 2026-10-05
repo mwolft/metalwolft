@@ -75,7 +75,7 @@ for (const page of [sources.explicitCategory, sources.dynamicCategory]) {
   assert.match(page, /import { ProductCard } from "@\/components\/product\/ProductCard"/);
   assert.doesNotMatch(page, /<article className="mw-card"/);
 }
-assert.match(sources.explicitCategory, /<CatalogTypeFilter>/);
+assert.match(sources.explicitCategory, /<CatalogTypeFilter showNeedGuide>/);
 assert.match(sources.catalogTypeNavigation, /className="mw-product-grid"/);
 assert.match(sources.dynamicCategory, /className="mw-product-grid"/);
 

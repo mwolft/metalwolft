@@ -1,8 +1,9 @@
 "use client";
 
-import type { ReactNode } from "react";
-import { useEffect, useState } from "react";
+import type { ReactNode, Ref } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { NeedBasedProductGuide } from "@/components/catalog/NeedBasedProductGuide";
 import {
   CATALOG_FILTER_STORAGE_KEY,
   isLocalCatalogFilter,
@@ -34,12 +35,16 @@ function rememberFilter(filter: CatalogType) {
 export function CatalogTypeNavigation({
   active,
   onFilterChange,
+  navRef,
+  fixedButtonRef,
 }: {
   active: CatalogType;
   onFilterChange?: (filter: CatalogType) => void;
+  navRef?: Ref<HTMLElement>;
+  fixedButtonRef?: Ref<HTMLButtonElement>;
 }) {
   return (
-    <nav className="mw-catalog-type-nav" aria-label="Tipos de rejas para ventanas">
+    <nav className="mw-catalog-type-nav" aria-label="Tipos de rejas para ventanas" ref={navRef}>
       {TYPES.map(({ id, label }) => {
         if (id === "hinged") {
           return active === "hinged" ? (
@@ -56,6 +61,7 @@ export function CatalogTypeNavigation({
               className={`mw-catalog-type-nav__item${active === id ? " mw-catalog-type-nav__item--active" : ""}`}
               key={id}
               onClick={() => onFilterChange(id)}
+              ref={id === "fixed" ? fixedButtonRef : undefined}
               type="button"
             >
               {label}
@@ -73,8 +79,10 @@ export function CatalogTypeNavigation({
   );
 }
 
-export function CatalogTypeFilter({ children }: { children: ReactNode }) {
+export function CatalogTypeFilter({ children, showNeedGuide = false }: { children: ReactNode; showNeedGuide?: boolean }) {
   const [active, setActive] = useState<CatalogType>("all");
+  const navRef = useRef<HTMLElement>(null);
+  const fixedButtonRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     try {
@@ -86,10 +94,20 @@ export function CatalogTypeFilter({ children }: { children: ReactNode }) {
     }
   }, []);
 
+  function showFixedProducts() {
+    setActive("fixed");
+    fixedButtonRef.current?.focus({ preventScroll: true });
+    navRef.current?.scrollIntoView({
+      behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "instant" : "smooth",
+      block: "start",
+    });
+  }
+
   return (
     <>
-      <CatalogTypeNavigation active={active} onFilterChange={setActive} />
-      <div className="mw-product-grid" data-filter={active}>{children}</div>
+      <CatalogTypeNavigation active={active} onFilterChange={setActive} navRef={navRef} fixedButtonRef={fixedButtonRef} />
+      <div className="mw-product-grid" data-filter={active} id="catalog-product-grid">{children}</div>
+      {showNeedGuide ? <NeedBasedProductGuide onSelectFixed={showFixedProducts} /> : null}
     </>
   );
 }

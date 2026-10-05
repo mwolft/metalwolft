@@ -238,7 +238,7 @@ export default async function RejasParaVentanasPage() {
               visibles para esta landing.
             </p>
           ) : (
-            <CatalogTypeFilter>
+            <CatalogTypeFilter showNeedGuide>
               {data.products.map((product, index) => {
                 const productHref = `/${CATEGORY_SLUG}/${product.slug}`;
                 const cardContent = getProductCardContent(product.slug);
@@ -298,14 +298,10 @@ export default async function RejasParaVentanasPage() {
         />
 
         <section className="mw-section">
-          <h2>Cómo elegir una reja para tu ventana</h2>
+          <h2>Cómo elegir el diseño de tu reja</h2>
           <p>
             Al comparar los modelos, fíjate en la distribución de los barrotes, la
             presencia de elementos horizontales y el nivel decorativo del diseño.
-          </p>
-          <p>
-            El modelo que elijas se fabricará adaptado a las medidas que indiques al
-            configurar el pedido.
           </p>
         </section>
 

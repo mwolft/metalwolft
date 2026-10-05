@@ -40,7 +40,7 @@ assert.match(page, /<CatalogTypeNavigation active="hinged" \/>/);
 assert.match(page, /selectAbatibleCollection\(await fetchCategoryProducts\("rejas-para-ventanas"\)\)/);
 assert.match(page, /href=\{CATEGORY_PATH \+ "\/" \+ product\.slug\}/);
 assert.match(page, /<BreadcrumbJsonLd/);
-assert.match(parent, /<CatalogTypeFilter>/);
+assert.match(parent, /<CatalogTypeFilter showNeedGuide>/);
 assert.match(parent, /Explora nuestros modelos y compara diseños, precios y opciones antes de elegir\./);
 assert.match(parent, /catalogType=\{getProductCatalogType\(product\)\}/);
 assert.match(nav, /href=\{COLLECTION_PATH\}/);
