@@ -1,7 +1,7 @@
 "use client";
 
-import type { ReactNode } from "react";
-import { useEffect, useState } from "react";
+import type { ReactNode, Ref, RefObject } from "react";
+import { createContext, useContext, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import {
   CATALOG_FILTER_STORAGE_KEY,
@@ -34,12 +34,16 @@ function rememberFilter(filter: CatalogType) {
 export function CatalogTypeNavigation({
   active,
   onFilterChange,
+  navRef,
+  fixedButtonRef,
 }: {
   active: CatalogType;
   onFilterChange?: (filter: CatalogType) => void;
+  navRef?: Ref<HTMLElement>;
+  fixedButtonRef?: Ref<HTMLButtonElement>;
 }) {
   return (
-    <nav className="mw-catalog-type-nav" aria-label="Tipos de rejas para ventanas">
+    <nav className="mw-catalog-type-nav" aria-label="Tipos de rejas para ventanas" ref={navRef}>
       {TYPES.map(({ id, label }) => {
         if (id === "hinged") {
           return active === "hinged" ? (
@@ -56,6 +60,7 @@ export function CatalogTypeNavigation({
               className={`mw-catalog-type-nav__item${active === id ? " mw-catalog-type-nav__item--active" : ""}`}
               key={id}
               onClick={() => onFilterChange(id)}
+              ref={id === "fixed" ? fixedButtonRef : undefined}
               type="button"
             >
               {label}
@@ -73,8 +78,26 @@ export function CatalogTypeNavigation({
   );
 }
 
-export function CatalogTypeFilter({ children }: { children: ReactNode }) {
+type CatalogFilterContextValue = {
+  active: CatalogType;
+  setActive: (type: CatalogType) => void;
+  navRef: RefObject<HTMLElement | null>;
+  fixedButtonRef: RefObject<HTMLButtonElement | null>;
+  showFixedProducts: () => void;
+};
+
+const CatalogFilterContext = createContext<CatalogFilterContextValue | null>(null);
+
+function useCatalogFilter() {
+  const context = useContext(CatalogFilterContext);
+  if (!context) throw new Error("Catalog filter components require CatalogFilterProvider");
+  return context;
+}
+
+export function CatalogFilterProvider({ children }: { children: ReactNode }) {
   const [active, setActive] = useState<CatalogType>("all");
+  const navRef = useRef<HTMLElement>(null);
+  const fixedButtonRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     try {
@@ -86,10 +109,33 @@ export function CatalogTypeFilter({ children }: { children: ReactNode }) {
     }
   }, []);
 
+  function showFixedProducts() {
+    setActive("fixed");
+    fixedButtonRef.current?.focus({ preventScroll: true });
+    navRef.current?.scrollIntoView({
+      behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "instant" : "smooth",
+      block: "start",
+    });
+  }
+
+  return (
+    <CatalogFilterContext.Provider value={{ active, setActive, navRef, fixedButtonRef, showFixedProducts }}>
+      {children}
+    </CatalogFilterContext.Provider>
+  );
+}
+
+export function useShowFixedProducts() {
+  return useCatalogFilter().showFixedProducts;
+}
+
+export function CatalogTypeFilter({ children }: { children: ReactNode }) {
+  const { active, setActive, navRef, fixedButtonRef } = useCatalogFilter();
+
   return (
     <>
-      <CatalogTypeNavigation active={active} onFilterChange={setActive} />
-      <div className="mw-product-grid" data-filter={active}>{children}</div>
+      <CatalogTypeNavigation active={active} onFilterChange={setActive} navRef={navRef} fixedButtonRef={fixedButtonRef} />
+      <div className="mw-product-grid" data-filter={active} id="catalog-product-grid">{children}</div>
     </>
   );
 }

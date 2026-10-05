@@ -9,7 +9,8 @@ import {
 import { PageContainer } from "@/components/layout/PageContainer";
 import { DeliveryEstimate } from "@/components/product/DeliveryEstimate";
 import { ProductCard } from "@/components/product/ProductCard";
-import { CatalogTypeFilter } from "@/components/catalog/CatalogTypeNavigation";
+import { CatalogFilterProvider, CatalogTypeFilter } from "@/components/catalog/CatalogTypeNavigation";
+import { NeedBasedProductGuide } from "@/components/catalog/NeedBasedProductGuide";
 import { getProductCardContent } from "@/lib/product-card-content";
 import { getProductAlternativeLinks } from "@/lib/product-families";
 import { getProductCatalogType } from "@/lib/catalog-types";
@@ -90,10 +91,10 @@ function isApiUnavailableError(error: unknown) {
 function buildIntroText(productCount: number, categoryDescription?: string | null) {
   const baseText =
     categoryDescription?.trim() ||
-    "Fabricamos rejas para ventanas a medida con enfoque en seguridad, montaje limpio y soluciones pensadas para viviendas que necesitan una protección metálica duradera.";
+    "Fabricamos rejas para ventanas a medida, adaptadas a las dimensiones de cada hueco.";
 
   if (productCount > 0) {
-    return `${baseText} Mostramos ${productCount} modelos del catálogo para que puedas comparar acabados, tipos de apertura y opciones de instalación sin obra desde la misma landing.`;
+    return `${baseText} Explora ${productCount} modelos y compara diseños, precios y opciones de apertura antes de elegir. Encontrarás rejas fijas y abatibles, con distintas opciones de instalación y anclaje.`;
   }
 
   return baseText;
@@ -182,6 +183,7 @@ export default async function RejasParaVentanasPage() {
 
   return (
     <div className="mw-page">
+      <CatalogFilterProvider>
       <PageContainer>
         <BreadcrumbJsonLd
           items={[
@@ -213,15 +215,7 @@ export default async function RejasParaVentanasPage() {
             </div>
           </div>
 
-          <aside className="mw-panel" aria-label="Resumen de la landing">
-            <p className="mw-note">Resumen de compra</p>
-            <h2>{data.categoryName}</h2>
-            <ul className="mw-list">
-              <li>Rejas metálicas fabricadas a medida.</li>
-              <li>Modelos visibles en esta categoría: {data.products.length}.</li>
-              <li>Enlaces directos a guías y fichas de producto.</li>
-            </ul>
-          </aside>
+          <NeedBasedProductGuide />
         </section>
 
         <DeliveryEstimate estimate={deliveryEstimate} variant="category" />
@@ -298,14 +292,10 @@ export default async function RejasParaVentanasPage() {
         />
 
         <section className="mw-section">
-          <h2>Cómo elegir una reja para tu ventana</h2>
+          <h2>Cómo elegir el diseño de tu reja</h2>
           <p>
             Al comparar los modelos, fíjate en la distribución de los barrotes, la
             presencia de elementos horizontales y el nivel decorativo del diseño.
-          </p>
-          <p>
-            El modelo que elijas se fabricará adaptado a las medidas que indiques al
-            configurar el pedido.
           </p>
         </section>
 
@@ -372,6 +362,7 @@ export default async function RejasParaVentanasPage() {
           </p>
         </section>
       </PageContainer>
+      </CatalogFilterProvider>
     </div>
   );
 }
