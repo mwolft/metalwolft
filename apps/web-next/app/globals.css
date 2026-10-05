@@ -1845,7 +1845,7 @@ textarea:focus-visible {
 .mw-product-card__variant--link {
   position: relative;
   z-index: 2;
-  min-height: 36px;
+  min-height: 16px;
   text-decoration: none;
 }
 
