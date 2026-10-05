@@ -10,7 +10,6 @@ const titles = [
   "No necesito abrirla",
   "Necesito poder abrirla",
   "Quiero evitar obra",
-  "Quiero proteger a mi mascota",
 ];
 assert.deepEqual(
   [...guide.matchAll(/title: "([^"]+)"/g)].map((match) => match[1]),
@@ -20,7 +19,8 @@ assert.match(guide, /¿Qué tipo de reja necesito\?/);
 assert.match(guide, /Cada ventana y cada uso pueden necesitar una solución diferente\. Elige tu caso y te ayudamos a encontrar la opción adecuada\./);
 assert.match(guide, /href: "\/rejas-para-ventanas\/abatibles"/);
 assert.match(guide, /href: "\/rejas-para-ventanas-sin-obra"/);
-assert.match(guide, /href: "\/rejas-para-ventanas\/reja-mascotas-ohio"/);
+assert.doesNotMatch(guide, /Quiero proteger a mi mascota|Reja pensada para gatos|Ver reja para mascotas|reja-mascotas-ohio/);
+assert.match(filter, /\{ id: "pets", label: "Mascotas" \}/);
 assert.match(guide, /<Link className="mw-need-guide__option" href=\{option\.href\}>/);
 assert.match(guide, /<button className="mw-need-guide__option" type="button" aria-controls="catalog-product-grid" onClick=\{onSelectFixed\}>/);
 assert.match(guide, /<aside className="mw-panel mw-need-guide" aria-labelledby="mw-need-guide-title">/);

@@ -21,12 +21,6 @@ const OPTIONS = [
     action: "Ver solución sin obra →",
     href: "/rejas-para-ventanas-sin-obra",
   },
-  {
-    title: "Quiero proteger a mi mascota",
-    description: "Reja pensada para gatos y otras mascotas.",
-    action: "Ver reja para mascotas →",
-    href: "/rejas-para-ventanas/reja-mascotas-ohio",
-  },
 ] as const;
 
 function OptionContent({ option }: { option: (typeof OPTIONS)[number] }) {
