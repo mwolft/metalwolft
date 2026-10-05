@@ -1691,8 +1691,8 @@ textarea:focus-visible {
 }
 
 .mw-product-card__carousel-dot {
-  width: 16px;
-  height: 16px;
+  width: 12px;
+  height: 12px;
   border: 1px solid rgba(31, 41, 55, 0.35);
   border-radius: 50%;
   background: rgba(255, 255, 255, 0.9);
