@@ -1,8 +1,11 @@
 import Link from "next/link";
+import { ProductCardCarousel } from "@/components/product/ProductCardCarousel";
 import { ProductCardImage } from "@/components/product/ProductCardImage";
 import type { ApiProduct } from "@/lib/api";
 import { formatCurrency } from "@/lib/configurator-pricing";
+import { buildProductCardImages } from "@/lib/product-images";
 import type { ProductVersion } from "@/lib/product-families";
+import type { ProductCatalogType } from "@/lib/catalog-types";
 
 type ProductCardProps = {
   product: ApiProduct;
@@ -12,6 +15,7 @@ type ProductCardProps = {
   editorialDescription?: string;
   bestSellerLabel?: "Más vendida" | "Top ventas";
   versionLinks?: Array<{ id: ProductVersion; href: string; label: string }>;
+  catalogType?: ProductCatalogType;
 };
 
 type ProductBadge = {
@@ -113,9 +117,12 @@ export function ProductCard({
   isNewDesign = false,
   editorialDescription,
   bestSellerLabel = "Top ventas",
-  versionLinks
+  versionLinks,
+  catalogType
 }: ProductCardProps) {
   const productName = product.h1_seo || product.nombre;
+  const cardImages = buildProductCardImages(product);
+  const hasCarousel = cardImages.length > 1;
   const cardDescription = editorialDescription?.trim();
   const description =
     cardDescription ||
@@ -160,10 +167,14 @@ export function ProductCard({
     : `Ver modelo ${productName}`;
 
   return (
-    <article className="mw-product-card">
+    <article className="mw-product-card" data-product-type={catalogType}>
       <div className="mw-product-card__layout">
-        <div className="mw-product-card__media">
-          <ProductCardImage alt={productName} src={product.imagen} />
+        <div className={`mw-product-card__media${hasCarousel ? " mw-product-card__media--carousel" : ""}`}>
+          {hasCarousel ? (
+            <ProductCardCarousel images={cardImages} productName={productName} />
+          ) : (
+            <ProductCardImage alt={productName} src={product.imagen} />
+          )}
           {badges.length > 0 ? (
             <div className="mw-product-card__badges">
               {badges.map((badge) => (

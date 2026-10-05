@@ -9,8 +9,10 @@ import {
 import { PageContainer } from "@/components/layout/PageContainer";
 import { DeliveryEstimate } from "@/components/product/DeliveryEstimate";
 import { ProductCard } from "@/components/product/ProductCard";
+import { CatalogTypeFilter } from "@/components/catalog/CatalogTypeNavigation";
 import { getProductCardContent } from "@/lib/product-card-content";
 import { getProductAlternativeLinks } from "@/lib/product-families";
+import { getProductCatalogType } from "@/lib/catalog-types";
 import { BreadcrumbJsonLd } from "@/components/seo/BreadcrumbJsonLd";
 import { JsonLd } from "@/components/seo/JsonLd";
 import {
@@ -227,8 +229,7 @@ export default async function RejasParaVentanasPage() {
         <section className="mw-section" id="modelos-reales">
           <h2>Modelos de rejas metálicas</h2>
           <p>
-            Este listado muestra productos del catálogo y te permite pasar
-            de la visión general a cada ficha individual con un solo clic.
+            Explora nuestros modelos y compara diseños, precios y opciones antes de elegir.
           </p>
 
           {data.products.length === 0 ? (
@@ -237,7 +238,7 @@ export default async function RejasParaVentanasPage() {
               visibles para esta landing.
             </p>
           ) : (
-            <div className="mw-product-grid">
+            <CatalogTypeFilter>
               {data.products.map((product, index) => {
                 const productHref = `/${CATEGORY_SLUG}/${product.slug}`;
                 const cardContent = getProductCardContent(product.slug);
@@ -245,6 +246,7 @@ export default async function RejasParaVentanasPage() {
                 return (
                   <Fragment key={product.id}>
                     <ProductCard
+                      catalogType={getProductCatalogType(product)}
                       editorialDescription={cardContent?.description}
                       bestSellerLabel={cardContent?.bestSellerLabel}
                       versionLinks={getProductAlternativeLinks(product.slug)}
@@ -285,7 +287,7 @@ export default async function RejasParaVentanasPage() {
                   </Fragment>
                 );
               })}
-            </div>
+            </CatalogTypeFilter>
           )}
         </section>
 

@@ -8,6 +8,7 @@ const sources = Object.fromEntries(
       ["image", "../components/product/ProductCardImage.tsx"],
       ["explicitCategory", "../app/rejas-para-ventanas/page.tsx"],
       ["dynamicCategory", "../app/[category_slug]/page.tsx"],
+      ["catalogTypeNavigation", "../components/catalog/CatalogTypeNavigation.tsx"],
       ["editorialContent", "../lib/product-card-content.ts"],
       ["styles", "../app/globals.css"]
     ].map(async ([name, path]) => [name, await readFile(new URL(path, import.meta.url), "utf8")])
@@ -72,9 +73,11 @@ assert.doesNotMatch(sources.image, /\bfetch\s*\(|\buseEffect\s*\(/);
 
 for (const page of [sources.explicitCategory, sources.dynamicCategory]) {
   assert.match(page, /import { ProductCard } from "@\/components\/product\/ProductCard"/);
-  assert.match(page, /className="mw-product-grid"/);
   assert.doesNotMatch(page, /<article className="mw-card"/);
 }
+assert.match(sources.explicitCategory, /<CatalogTypeFilter>/);
+assert.match(sources.catalogTypeNavigation, /className="mw-product-grid"/);
+assert.match(sources.dynamicCategory, /className="mw-product-grid"/);
 
 assert.match(sources.dynamicCategory, /<ProductCard href={productHref} key={product\.id} product={product} \/>/);
 assert.match(sources.explicitCategory, /isBestSeller={product\.es_mas_vendido}/);
@@ -84,11 +87,12 @@ assert.match(sources.explicitCategory, /editorialDescription={cardContent\?\.des
 assert.match(sources.explicitCategory, /bestSellerLabel={cardContent\?\.bestSellerLabel}/);
 assert.match(sources.explicitCategory, /versionLinks={getProductAlternativeLinks\(product\.slug\)}/);
 assert.doesNotMatch(sources.dynamicCategory, /getProductCardContent|editorialDescription|bestSellerLabel/);
-assert.equal((sources.editorialContent.match(/"reja-[^"]+": \{ description:/g) || []).length, 24);
+assert.equal((sources.editorialContent.match(/"reja-[^"]+": \{ description:/g) || []).length, 25);
 assert.match(sources.editorialContent, /"reja-fija-albany": \{ description: "Líneas horizontales · Estilo moderno", bestSellerLabel: "Más vendida" \}/);
 assert.match(sources.editorialContent, /"reja-fija-idaho": \{ description: "Líneas horizontales · Acabado robusto", bestSellerLabel: "Top ventas" \}/);
 assert.match(sources.editorialContent, /"reja-fija-essex": \{ description: "Líneas verticales · Estilo clásico", bestSellerLabel: "Top ventas" \}/);
-assert.doesNotMatch(sources.editorialContent, /"reja-fija-lancaster"|"reja-abatible-idaho"/);
+assert.doesNotMatch(sources.editorialContent, /"reja-fija-lancaster"/);
+assert.match(sources.editorialContent, /"reja-abatible-idaho": \{ description: "Tubos cuadrados · Verticales alternas" \}/);
 assert.equal((sources.explicitCategory.match(/data\.products\.map/g) || []).length, 1);
 assert.doesNotMatch(sources.explicitCategory, /featuredProducts|Productos destacados/);
 
@@ -106,6 +110,11 @@ assert.match(
   sources.styles,
   /@media \(max-width: 640px\)[\s\S]*?\.mw-product-card__description\s*{[^}]*-webkit-line-clamp:\s*2/s
 );
+assert.match(
+  sources.styles,
+  /@media \(max-width: 640px\)[\s\S]*?\.mw-product-card \.mw-product-card__title,\s*\.mw-product-card__description\s*{[^}]*min-height:\s*0/s
+);
+assert.doesNotMatch(sources.styles, /\.mw-product-card__description\s*{\s*min-height:\s*3\.2em/);
 assert.match(sources.styles, /\.mw-product-card__cta\s*{[^}]*white-space:\s*nowrap/s);
 assert.match(sources.styles, /\.mw-product-card__badges\s*{[^}]*position:\s*absolute[^}]*flex-wrap:\s*wrap/s);
 assert.match(

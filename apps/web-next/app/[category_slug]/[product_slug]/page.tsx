@@ -254,6 +254,9 @@ export default async function ProductPage({ params }: ProductPageProps) {
                   Categoría:{" "}
                   <Link href={categoryPath}>{product.categoria_nombre || "Catálogo"}</Link>
                 </li>
+                {productFamily?.currentVersion === "hinged" ? (
+                  <li><Link href="/rejas-para-ventanas/abatibles">Ver otros modelos abatibles</Link></li>
+                ) : null}
                 {product.subcategoria_nombre ? (
                   <li>Subcategoría: {product.subcategoria_nombre}</li>
                 ) : null}

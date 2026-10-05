@@ -23,7 +23,7 @@ from reportlab.lib import colors
 from reportlab.lib.units import cm
 from reportlab.lib.styles import getSampleStyleSheet
 from sqlalchemy import case, func, or_
-from sqlalchemy.orm import joinedload
+from sqlalchemy.orm import joinedload, selectinload
 from flask_mail import Message
 from dotenv import load_dotenv
 from api.exceptions import APIException
@@ -3428,10 +3428,14 @@ def get_products_by_category(slug):
     products = (
         publicly_discoverable_products_query()
         .filter_by(categoria_id=category.id)
+        .options(selectinload(Products.images))
         .order_by(Products.sort_order.asc(), Products.id.asc())    
         .all()
     )
-    return jsonify([p.serialize() for p in products]), 200
+    return jsonify([
+        {**product.serialize(), "images": [image.serialize() for image in product.images]}
+        for product in products
+    ]), 200
 
 
 @api.route("/sitemap/products", methods=["GET"])
