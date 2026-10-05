@@ -91,10 +91,10 @@ function isApiUnavailableError(error: unknown) {
 function buildIntroText(productCount: number, categoryDescription?: string | null) {
   const baseText =
     categoryDescription?.trim() ||
-    "Fabricamos rejas para ventanas a medida con enfoque en seguridad, montaje limpio y soluciones pensadas para viviendas que necesitan una protección metálica duradera.";
+    "Fabricamos rejas para ventanas a medida, adaptadas a las dimensiones de cada hueco.";
 
   if (productCount > 0) {
-    return `${baseText} Mostramos ${productCount} modelos del catálogo para que puedas comparar acabados, tipos de apertura y opciones de instalación sin obra desde la misma landing.`;
+    return `${baseText} Explora ${productCount} modelos y compara diseños, precios y opciones de apertura antes de elegir. Encontrarás rejas fijas y abatibles, con distintas opciones de instalación y anclaje.`;
   }
 
   return baseText;
