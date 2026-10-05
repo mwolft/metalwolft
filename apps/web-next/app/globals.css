@@ -6276,4 +6276,48 @@ a.mw-product-version-nav__option:focus-visible {
   .mw-product-version-nav {
     margin-top: 0.75rem;
   }
+
+  .mw-product-card__body {
+    padding: 0.6875rem 1rem 0.75rem;
+  }
+
+  .mw-product-card .mw-product-card__title {
+    font-size: 1.01rem;
+  }
+
+  .mw-product-card__description {
+    min-height: 1.5em;
+    margin-top: 0.35rem;
+    font-size: 0.94rem;
+    line-height: 1.5;
+  }
+
+  .mw-product-card__price {
+    margin-top: 0.5rem;
+  }
+
+  .mw-product-card__price-rates {
+    font-size: 0.97rem;
+  }
+
+  .mw-product-card__variants {
+    gap: 0.25rem;
+    margin-top: 0.45rem;
+  }
+
+  .mw-product-card__variant {
+    gap: 0.22rem;
+    padding: 0.23rem 0.4rem;
+    font-size: 0.68rem;
+  }
+
+  .mw-product-card__cta {
+    padding-top: 0.625rem;
+    font-size: 0.9rem;
+  }
+
+  .mw-product-card__badge {
+    padding: 0.29rem 0.53rem;
+    font-size: 0.7rem;
+  }
 }
