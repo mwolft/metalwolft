@@ -49,7 +49,7 @@ assert.match(styles, /\.mw-product-card__media\s*\{[^}]*aspect-ratio:\s*9 \/ 10/
 assert.match(styles, /\.mw-product-card__carousel\s*\{[^}]*touch-action:\s*pan-y/s);
 assert.match(styles, /\.mw-product-card:has\(\.mw-product-card__carousel:hover\)\s*\{[^}]*transform:\s*none/s);
 assert.match(styles, /\.mw-product-card__carousel-control\s*\{[^}]*opacity:\s*0;[^}]*pointer-events:\s*none/s);
-assert.match(styles, /\.mw-product-card__carousel-dot\s*\{[^}]*width:\s*16px;[^}]*height:\s*16px/s);
+assert.match(styles, /\.mw-product-card__carousel-dot\s*\{[^}]*width:\s*12px;[^}]*height:\s*12px/s);
 assert.match(styles, /\.mw-product-card__carousel-dot\[data-active="true"\]\s*\{[^}]*background:\s*var\(--mw-accent\)/s);
 assert.match(catalog, /<CatalogTypeFilter>/);
 assert.match(filters, /onFilterChange=\{setActive\}/);
