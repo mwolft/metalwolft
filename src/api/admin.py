@@ -181,6 +181,8 @@ from api.work_order_builder import (
     get_or_create_work_order,
 )
 from api.work_order_pdf_service import generate_work_order_pdf
+from api.delivery_receipt_builder import build_delivery_receipt, DeliveryReceiptValidationError
+from api.delivery_receipt_pdf_service import generate_delivery_receipt_pdf
 from api.invoice_legacy_rectification_aeat_service import (
     LegacyRectificationAeatClassificationError,
     SUPPORTED_LEGACY_AEAT_TYPES,
@@ -1264,6 +1266,16 @@ def _format_work_order_action(view, context, model, name):
     ).format(url=escape(action_url))
 
 
+def _format_delivery_receipt_action(view, context, model, name):
+    if order_contains_design_service(model):
+        return Markup("<span class='text-muted'>No disponible para diseño previo</span>")
+
+    action_url = view.get_url(".delivery_receipt_pdf_view", order_id=model.id)
+    return Markup(
+        '<a class="btn btn-default btn-sm" href="{url}">PARTE DE ENTREGA</a>'
+    ).format(url=escape(action_url))
+
+
 def _format_order_customer_identity(order):
     """Prefer the frozen confirmation identity for accountless manual orders."""
     customer_snapshot = get_order_customer_snapshot(order)
@@ -1355,6 +1367,7 @@ class OrderAdminView(SafeModelView):
         'customer_phone_snapshot',
         'shipping_address_summary',
         'work_order_action',
+        'delivery_receipt_action',
     ]
 
     # Status changes use the full form so transient notification controls remain available.
@@ -1382,6 +1395,7 @@ class OrderAdminView(SafeModelView):
         'customer_phone_snapshot': 'Teléfono',
         'shipping_address_summary': 'Direcci\u00f3n de env\u00edo',
         'work_order_action': 'Fabricación',
+        'delivery_receipt_action': 'Entrega personal',
     }
 
     column_formatters = {
@@ -1406,6 +1420,7 @@ class OrderAdminView(SafeModelView):
             ) if m.shipping_address_summary else "—"
         ),
         'work_order_action': lambda v, c, m, p: _format_work_order_action(v, c, m, p),
+        'delivery_receipt_action': lambda v, c, m, p: _format_delivery_receipt_action(v, c, m, p),
     }
 
     form_extra_fields = {
@@ -1585,6 +1600,41 @@ class OrderAdminView(SafeModelView):
             flash('No se ha podido emitir la factura.', 'error')
 
         return redirect(redirect_url)
+
+    @expose('/<int:order_id>/parte-entrega.pdf', methods=['GET'])
+    def delivery_receipt_pdf_view(self, order_id):
+        order = self.session.get(Orders, order_id)
+        if not order:
+            flash('Pedido no encontrado.', 'error')
+            return redirect(self.get_url('.index_view'))
+        if order_contains_design_service(order):
+            flash('Los servicios de diseño previo no generan parte de entrega.', 'error')
+            return redirect(self.get_url('.details_view', id=order.id))
+
+        try:
+            data = build_delivery_receipt(order)
+            pdf_bytes = generate_delivery_receipt_pdf(data)
+        except DeliveryReceiptValidationError as exc:
+            current_app.logger.warning('Invalid delivery receipt order_id=%s: %s', order_id, exc)
+            flash('No se ha podido generar el parte de entrega.', 'error')
+            return redirect(self.get_url('.details_view', id=order.id))
+        except Exception:
+            current_app.logger.exception('Unexpected delivery receipt failure order_id=%s', order_id)
+            flash('No se ha podido generar el parte de entrega.', 'error')
+            return redirect(self.get_url('.details_view', id=order.id))
+
+        locator = ''.join(
+            char for char in (data.locator or f'pedido-{order.id}')
+            if char.isalnum() or char in ('-', '_')
+        ) or f'pedido-{order.id}'
+        response = send_file(
+            BytesIO(pdf_bytes),
+            mimetype='application/pdf',
+            as_attachment=True,
+            download_name=f'parte-entrega-{locator}.pdf',
+        )
+        response.cache_control.no_store = True
+        return response
 
     @expose('/<int:order_id>/parte-trabajo/', methods=['GET'])
     def work_order_view(self, order_id):

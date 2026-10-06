@@ -543,6 +543,11 @@ class Orders(db.Model):
         """Virtual Flask-Admin detail column used for the internal work-order action."""
         return None
 
+    @property
+    def delivery_receipt_action(self):
+        """Virtual Flask-Admin detail column for the read-only delivery receipt."""
+        return None
+
     def __repr__(self):
         return f'<Order {self.id} by User {self.user_id}>'
 

@@ -4,8 +4,10 @@ import json
 import re
 import sys
 import unittest
+from dataclasses import replace
 from datetime import date, datetime
 from decimal import Decimal
+from io import BytesIO
 from pathlib import Path
 from unittest.mock import patch
 
@@ -35,8 +37,10 @@ if HAS_DEPS:
     from flask import Flask
     from flask_admin import Admin
     from PIL import Image
+    from pypdf import PdfReader
     from requests import Timeout
     from sqlalchemy.exc import IntegrityError
+    from sqlalchemy import event
     from sqlalchemy.orm import configure_mappers
 
     import api.admin as admin_module
@@ -61,6 +65,8 @@ if HAS_DEPS:
         get_or_create_work_order,
     )
     from api.work_order_pdf_service import generate_work_order_pdf
+    from api.delivery_receipt_builder import build_delivery_receipt, DeliveryReceiptValidationError
+    from api.delivery_receipt_pdf_service import generate_delivery_receipt_pdf
 
 
 @unittest.skipUnless(HAS_DEPS, "Flask Admin test dependencies are not installed.")
@@ -285,6 +291,176 @@ class WorkOrderBuilderTest(unittest.TestCase):
             if rule.endpoint.endswith(".work_order_pdf_view"):
                 return rule.rule.replace("<int:order_id>", str(order_id))
         raise AssertionError("Work-order PDF route was not registered")
+
+    def _delivery_receipt_url(self, order_id=None):
+        order_id = order_id or self.order_id
+        for rule in self.app.url_map.iter_rules():
+            if rule.endpoint.endswith(".delivery_receipt_pdf_view"):
+                return rule.rule.replace("<int:order_id>", str(order_id))
+        raise AssertionError("Delivery receipt route was not registered")
+
+    def test_delivery_receipt_web_order_is_protected_and_read_only(self):
+        self.assertEqual(self.client.get(self._delivery_receipt_url()).status_code, 401)
+        with self.app.app_context():
+            order = db.session.get(Orders, self.order_id)
+            before_status = order.order_status
+            before_order = (order.locator, order.total_amount, order.order_date)
+            writes = []
+
+            def record_write(connection, cursor, statement, parameters, context, executemany):
+                if statement.lstrip().upper().startswith(("INSERT", "UPDATE", "DELETE")):
+                    writes.append(statement)
+
+            event.listen(db.engine, "before_cursor_execute", record_write)
+            try:
+                response = self.client.get(self._delivery_receipt_url(), headers=self._auth_header())
+            finally:
+                event.remove(db.engine, "before_cursor_execute", record_write)
+
+            self.assertEqual(response.status_code, 200)
+            self.assertEqual(response.mimetype, "application/pdf")
+            self.assertIn("parte-entrega-", response.headers["Content-Disposition"])
+            self.assertIn("no-store", response.headers["Cache-Control"])
+            self.assertTrue(response.data.startswith(b"%PDF"))
+            self.assertIn(b"PARTE DE ENTREGA", response.data)
+            self.assertIn(b"Reja Essex", response.data)
+            self.assertIn(b"FECHA DE ENTREGA", response.data)
+            self.assertIn(b"FIRMA DE QUIEN RECIBE", response.data)
+            self.assertNotIn(b"308.94", response.data)
+            self.assertNotIn(b"154.47", response.data)
+            self.assertEqual(writes, [])
+            self.assertEqual(db.session.query(WorkOrder).filter_by(order_id=self.order_id).count(), 0)
+            db.session.expire_all()
+            order = db.session.get(Orders, self.order_id)
+            self.assertEqual(order.order_status, before_status)
+            self.assertEqual((order.locator, order.total_amount, order.order_date), before_order)
+
+        details = self.client.get(self._detail_url(), headers=self._auth_header())
+        self.assertEqual(details.status_code, 200)
+        self.assertIn(b"PARTE DE ENTREGA", details.data)
+
+    def test_delivery_receipt_recovers_historical_customer_and_shipping(self):
+        with self.app.app_context():
+            order = db.session.get(Orders, self.order_id)
+            detail = order.order_details[0]
+            detail.firstname = detail.lastname = None
+            detail.shipping_address = detail.shipping_city = detail.shipping_postal_code = None
+            order.checkout_session.customer_snapshot = {
+                "firstname": "Ignacio", "lastname": "Historico",
+                "email": "historico@example.test", "phone": "600 366 383",
+                "shipping_address": "Calle Historica 366",
+                "shipping_postal_code": "13001", "shipping_city": "Ciudad Real",
+                "shipping_province": "Ciudad Real", "shipping_country_code": "ES",
+            }
+            self._create_confirmed_context(order, customer_snapshot={})
+            db.session.commit()
+            data = build_delivery_receipt(order)
+            self.assertEqual(data.customer_name, "Ignacio Historico")
+            self.assertEqual(data.phone, "600 366 383")
+            self.assertEqual(data.email, "historico@example.test")
+            self.assertIn("Calle Historica 366", data.delivery_address)
+            self.assertIn("ES", data.delivery_address)
+
+    def test_delivery_receipt_manual_guest_uses_snapshot_without_user(self):
+        with self.app.app_context():
+            order = db.session.get(Orders, self.order_id)
+            order.checkout_session.order_id = None
+            db.session.delete(order.checkout_session)
+            order.user_id = None
+            self._create_confirmed_context(
+                order,
+                source="admin_external",
+                customer_snapshot={
+                    "firstname": "Ana", "lastname": "Sin cuenta",
+                    "legal_name": "Taller Ana SL", "email": "ana@example.test",
+                    "phone": "600 111 222", "shipping_address": "Avenida Manual 9",
+                    "shipping_postal_code": "28001", "shipping_city": "Madrid",
+                    "shipping_country_code": "ES",
+                },
+            )
+            db.session.commit()
+            self.assertIsNone(order.user)
+            data = build_delivery_receipt(order)
+            self.assertEqual(data.customer_name, "Taller Ana SL")
+            self.assertEqual(data.email, "ana@example.test")
+            self.assertTrue(generate_delivery_receipt_pdf(data).startswith(b"%PDF"))
+            response = self.client.get(self._delivery_receipt_url(), headers=self._auth_header())
+            self.assertEqual(response.status_code, 200)
+
+    def test_delivery_receipt_multiple_lines_and_unambiguous_frozen_names(self):
+        with self.app.app_context():
+            order = self._create_physical_order(include_second_line=True)
+            details = tuple(order.order_details)
+            order.checkout_session.quote_snapshot = {
+                "lines": [
+                    {
+                        "product_id": detail.product_id,
+                        "product_name": f"Nombre congelado {position}",
+                        "alto": detail.alto, "ancho": detail.ancho,
+                        "anclaje": detail.anclaje, "color": detail.color,
+                    }
+                    for position, detail in enumerate(details, start=1)
+                ]
+            }
+            db.session.commit()
+            data = build_delivery_receipt(order)
+            self.assertEqual(len(data.lines), 2)
+            self.assertEqual([line["model_name"] for line in data.lines], ["Nombre congelado 1", "Nombre congelado 2"])
+            self.assertEqual([line["quantity"] for line in data.lines], [2, 1])
+            self.assertTrue(generate_delivery_receipt_pdf(data).startswith(b"%PDF"))
+
+            order.checkout_session.quote_snapshot = {
+                "lines": [{"product_id": details[0].product_id, "product_name": "Nombre sin configuración"}]
+            }
+            db.session.commit()
+            self.assertEqual(build_delivery_receipt(order).lines[0]["model_name"], "Reja Essex")
+
+    def test_delivery_receipt_paginates_long_orders_without_cutting_articles(self):
+        with self.app.app_context():
+            data = build_delivery_receipt(db.session.get(Orders, self.order_id))
+        one_page = PdfReader(BytesIO(generate_delivery_receipt_pdf(data)))
+        self.assertEqual(len(one_page.pages), 1)
+
+        long_data = replace(
+            data,
+            lines=tuple({**data.lines[0], "model_name": f"Modelo entregado {index}"} for index in range(30)),
+        )
+        long_pdf = PdfReader(BytesIO(generate_delivery_receipt_pdf(long_data)))
+        self.assertGreater(len(long_pdf.pages), 1)
+        text = "\n".join(page.extract_text() for page in long_pdf.pages)
+        self.assertIn("Modelo entregado 0", text)
+        self.assertIn("Modelo entregado 29", text)
+        self.assertIn("FIRMA DE QUIEN RECIBE", text)
+
+    def test_delivery_receipt_can_use_matching_frozen_work_order_name(self):
+        with self.app.app_context():
+            order = db.session.get(Orders, self.order_id)
+            get_or_create_work_order(db_session=db.session, order=order, created_by="admin")
+            db.session.commit()
+            order.order_details[0].product.nombre = "Nombre vivo cambiado"
+            db.session.commit()
+
+            data = build_delivery_receipt(order)
+            self.assertEqual(data.lines[0]["model_name"], "Reja Essex")
+
+            order.work_order.snapshot["lines"][0]["dimensions"]["height"] = "999"
+            self.assertEqual(build_delivery_receipt(order).lines[0]["model_name"], "Nombre vivo cambiado")
+
+    def test_delivery_receipt_rejects_design_service_without_creating_work_order(self):
+        with self.app.app_context():
+            order = db.session.get(Orders, self.order_id)
+            order.order_details[0].line_type = "design_service"
+            db.session.commit()
+            with self.assertRaises(DeliveryReceiptValidationError):
+                build_delivery_receipt(order)
+
+        details = self.client.get(self._detail_url(), headers=self._auth_header())
+        self.assertEqual(details.status_code, 200)
+        self.assertNotIn(b"PARTE DE ENTREGA</a>", details.data)
+        response = self.client.get(self._delivery_receipt_url(), headers=self._auth_header())
+        self.assertEqual(response.status_code, 302)
+        with self.app.app_context():
+            self.assertEqual(db.session.query(WorkOrder).filter_by(order_id=self.order_id).count(), 0)
 
     def _manufactured_url(self, *, manufactured, order_id=None):
         order_id = order_id or self.order_id
