@@ -1,0 +1,49 @@
+{% extends 'admin/master.html' %}
+
+{% block body %}
+<div class="container-fluid" style="max-width:960px">
+  <h2>Fotografías del pedido {{ item.order.locator }}</h2>
+  <p>Pedido #{{ item.order_id }} · Modalidad: {{ '20 €' if item.mode == 'incentive' else 'Sin incentivo' }} · Estado: {{ item.status }}</p>
+  <p>Email de solicitud: {{ item.email_sent_at or 'No confirmado' }}. Fotos recibidas: {{ item.submitted_at or 'No consta' }}.</p>
+  {% if item.email_failed_at %}<p class="alert alert-warning">El último envío de email falló o no pudo confirmarse.</p>{% endif %}
+  {% if item.mode == 'incentive' %}<p class="alert alert-info">Aprobar las fotos solo deja 20 € pendientes de revisión financiera. Esta pantalla nunca reembolsa.</p>{% endif %}
+  <p>Autorización comercial: <strong>{{ 'Retirada' if item.consent_revoked_at else 'Sí' if item.commercial_consent is sameas true else 'No' if item.commercial_consent is sameas false else 'Aún no registrada' }}</strong></p>
+  {% if item.consent_at %}<p>Versión: {{ item.consent_version }} · Fecha: {{ item.consent_at }}</p><blockquote>{{ item.consent_text }}</blockquote>{% endif %}
+  {% if item.reviewed_at %}<p>Revisión: {{ item.reviewed_at }} · {{ item.reviewed_by }} · {{ item.review_note or '' }}</p>{% endif %}
+  {% if item.images %}
+  <div style="display:flex;flex-wrap:wrap;gap:16px;margin:20px 0">
+    {% for image in item.images %}
+    <figure style="width:260px;max-width:100%">
+      <a href="{{ image_urls[image.id] }}" target="_blank" rel="noopener noreferrer">
+        <img src="{{ image_urls[image.id] }}" alt="Fotografía {{ loop.index }} del pedido" style="width:100%;height:200px;object-fit:contain;background:#f3f3f3">
+      </a>
+      <figcaption>{{ image.review_status }} · {{ image.mime_type }} · {{ image.file_size }} bytes</figcaption>
+    </figure>
+    {% endfor %}
+  </div>
+  {% endif %}
+  {% if item.status == 'received' %}
+  <form method="post" action="{{ review_url }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <label for="review-note">Observación interna</label>
+    <textarea id="review-note" name="note" class="form-control" rows="3" maxlength="2000"></textarea>
+    <p style="margin-top:12px">
+      <button class="btn btn-success" name="decision" value="approve" type="submit">Aprobar fotografías</button>
+      <button class="btn btn-warning" name="decision" value="reject" type="submit">Rechazar fotografías</button>
+    </p>
+  </form>
+  {% endif %}
+  {% if item.status == 'offered' %}
+  <form method="post" action="{{ resend_url }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <button class="btn btn-default" type="submit">Reenviar correo de Entregado con enlace nuevo</button>
+  </form>
+  {% endif %}
+  {% if item.status != 'revoked' %}
+  <form method="post" action="{{ review_url }}" style="margin-top:16px">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <button class="btn btn-danger" name="decision" value="revoke" type="submit">Revocar enlace y autorización comercial</button>
+  </form>
+  {% endif %}
+</div>
+{% endblock %}

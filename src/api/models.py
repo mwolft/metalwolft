@@ -504,6 +504,9 @@ class Orders(db.Model):
         uselist=False,
         cascade="all, delete-orphan",
     )
+    customer_photo_request = db.relationship(
+        "CustomerPhotoRequest", back_populates="order", uselist=False,
+    )
 
     @property
     def shipping_address_summary(self):
@@ -801,6 +804,72 @@ def prevent_confirmed_order_context_mutation(mapper, connection, target):
     inspection = inspect(target)
     if any(inspection.attrs[field].history.has_changes() for field in immutable_fields):
         raise ValueError("El contexto de pedido confirmado es inmutable.")
+
+
+class CustomerPhotoRequest(db.Model):
+    __tablename__ = "customer_photo_requests"
+    __table_args__ = (
+        db.CheckConstraint("mode IN ('free', 'incentive')", name="ck_customer_photo_requests_mode"),
+        db.CheckConstraint(
+            "status IN ('offered', 'received', 'approved', 'rejected', 'refund_pending', 'revoked')",
+            name="ck_customer_photo_requests_status",
+        ),
+        db.CheckConstraint(
+            "(mode = 'free' AND offered_amount = 0) OR "
+            "(mode = 'incentive' AND offered_amount = 20)",
+            name="ck_customer_photo_requests_amount",
+        ),
+    )
+
+    id = db.Column(db.Integer, primary_key=True)
+    order_id = db.Column(db.Integer, db.ForeignKey("orders.id"), nullable=False, unique=True)
+    mode = db.Column(db.String(20), nullable=False)
+    offered_amount = db.Column(db.Numeric(12, 2), nullable=False)
+    status = db.Column(db.String(20), nullable=False, default="offered")
+    token_hash = db.Column(db.String(64), nullable=False, unique=True)
+    token_expires_at = db.Column(db.DateTime, nullable=False)
+    token_revoked_at = db.Column(db.DateTime, nullable=True)
+    terms_version = db.Column(db.String(50), nullable=False)
+    terms_text = db.Column(db.Text, nullable=False)
+    terms_url = db.Column(db.String(500), nullable=True)
+    offered_consent_text = db.Column(db.Text, nullable=False)
+    email_options = db.Column(db.JSON, nullable=False)
+    created_at = db.Column(db.DateTime, nullable=False, server_default=db.func.now())
+    email_sent_at = db.Column(db.DateTime, nullable=True)
+    email_failed_at = db.Column(db.DateTime, nullable=True)
+    submitted_at = db.Column(db.DateTime, nullable=True)
+    reviewed_at = db.Column(db.DateTime, nullable=True)
+    reviewed_by = db.Column(db.String(255), nullable=True)
+    review_note = db.Column(db.Text, nullable=True)
+    commercial_consent = db.Column(db.Boolean, nullable=True)
+    consent_text = db.Column(db.Text, nullable=True)
+    consent_version = db.Column(db.String(50), nullable=True)
+    consent_at = db.Column(db.DateTime, nullable=True)
+    consent_evidence = db.Column(db.JSON, nullable=True)
+    consent_revoked_at = db.Column(db.DateTime, nullable=True)
+
+    order = db.relationship("Orders", back_populates="customer_photo_request")
+    images = db.relationship("CustomerPhotoImage", back_populates="request", lazy=True)
+
+
+class CustomerPhotoImage(db.Model):
+    __tablename__ = "customer_photo_images"
+    __table_args__ = (
+        db.UniqueConstraint("request_id", "sha256", name="uq_customer_photo_images_hash"),
+    )
+
+    id = db.Column(db.Integer, primary_key=True)
+    request_id = db.Column(
+        db.Integer, db.ForeignKey("customer_photo_requests.id"), nullable=False, index=True,
+    )
+    storage_key = db.Column(db.String(255), nullable=False, unique=True)
+    mime_type = db.Column(db.String(30), nullable=False)
+    file_size = db.Column(db.Integer, nullable=False)
+    sha256 = db.Column(db.String(64), nullable=False)
+    created_at = db.Column(db.DateTime, nullable=False, server_default=db.func.now())
+    review_status = db.Column(db.String(20), nullable=False, default="pending")
+
+    request = db.relationship("CustomerPhotoRequest", back_populates="images")
 
 
 class ManualOrderDraft(db.Model):

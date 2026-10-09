@@ -362,6 +362,9 @@ def send_order_update_email(*, order, change, logger, send_email_func=None):
                 include_installation_guide=include_installation_guide,
                 include_incident_form=include_incident_form,
                 include_maintenance_guide=include_maintenance_guide,
+                photo_request_mode=options.get("photo_request_mode") if current_status == "entregado" else None,
+                photo_request_url=options.get("photo_request_url") if current_status == "entregado" else None,
+                photo_terms_url=options.get("photo_terms_url") if current_status == "entregado" else None,
             )
             sent = bool(send_email_func(
                 subject=f"Actualización de tu pedido: {ORDER_PROGRESS_STATUSES[status_index][1]}",

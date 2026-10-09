@@ -1,6 +1,7 @@
 "use client";
 
 import Script from "next/script";
+import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import {
   ANALYTICS_CONSENT_CHANGED_EVENT,
@@ -11,6 +12,7 @@ import {
 const gtmId = process.env.NEXT_PUBLIC_GTM_ID?.trim() || "GTM-P5Z39HKV";
 
 export function GtmAnalytics() {
+  const pathname = usePathname();
   const [isEnabled, setIsEnabled] = useState(false);
 
   useEffect(() => {
@@ -33,7 +35,7 @@ export function GtmAnalytics() {
     };
   }, []);
 
-  if (!isEnabled || !gtmId) {
+  if (!isEnabled || !gtmId || pathname === "/fotos-clientes") {
     return null;
   }
 

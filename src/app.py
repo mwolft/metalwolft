@@ -22,6 +22,7 @@ from api.commands import setup_commands
 from api.models import db
 from api.seo_routes import seo_bp
 from api.email_routes import email_bp
+from api.customer_photo_routes import customer_photo_bp
 from api.password_recovery_endpoints import auth_bp
 from api.invoice_preview import api_invoice_preview
 from api.budget_routes import budget_bp
@@ -190,6 +191,7 @@ session.mount("https://", HTTPAdapter(max_retries=retries))
 
 # 3) Creacion de la app
 app = Flask(__name__)
+app.config["APP_ENV"] = env
 app.logger.setLevel(logging.INFO)
 app.url_map.strict_slashes = False
 
@@ -259,6 +261,15 @@ app.config["MAIL_DEFAULT_SENDER"] = os.getenv(
     "MAIL_DEFAULT_SENDER", app.config["MAIL_USERNAME"]
 )
 app.config["FRONTEND_URL"] = os.getenv("FRONTEND_URL", "http://localhost:3000")
+app.config["CUSTOMER_PHOTOS_ENABLED"] = parse_boolean_env("CUSTOMER_PHOTOS_ENABLED", default=False)
+app.config["CUSTOMER_PHOTOS_INCENTIVE_ENABLED"] = parse_boolean_env(
+    "CUSTOMER_PHOTOS_INCENTIVE_ENABLED", default=False,
+)
+app.config["CUSTOMER_PHOTOS_TOKEN_DAYS"] = int(os.getenv("CUSTOMER_PHOTOS_TOKEN_DAYS", "30"))
+app.config["CUSTOMER_PHOTOS_TERMS_VERSION"] = os.getenv("CUSTOMER_PHOTOS_TERMS_VERSION", "")
+app.config["CUSTOMER_PHOTOS_TERMS_URL"] = os.getenv("CUSTOMER_PHOTOS_TERMS_URL", "")
+app.config["CUSTOMER_PHOTOS_TERMS_TEXT"] = os.getenv("CUSTOMER_PHOTOS_TERMS_TEXT", "")
+app.config["CUSTOMER_PHOTOS_CONSENT_TEXT"] = os.getenv("CUSTOMER_PHOTOS_CONSENT_TEXT", "")
 app.config["SUPPLIER_DOCUMENT_STORAGE_PROVIDER"] = (
     os.getenv("SUPPLIER_DOCUMENT_STORAGE_PROVIDER") or ""
 ).strip().lower()
@@ -307,6 +318,7 @@ setup_commands(app)
 # 10) Blueprints
 app.register_blueprint(api, url_prefix="/api")
 app.register_blueprint(email_bp, url_prefix="/api/email")
+app.register_blueprint(customer_photo_bp, url_prefix="/api/customer-photos")
 app.register_blueprint(auth_bp, url_prefix="/api/auth")
 app.register_blueprint(api_invoice_preview, url_prefix="/api")
 app.register_blueprint(budget_bp, url_prefix="/api")

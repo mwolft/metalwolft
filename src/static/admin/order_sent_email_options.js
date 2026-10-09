@@ -17,7 +17,8 @@
       masterFieldId: "send_delivered_status_email",
       secondaryFieldIds: [
         "include_installation_guide_in_delivered_email",
-        "include_maintenance_guide_in_delivered_email"
+        "include_maintenance_guide_in_delivered_email",
+        "photo_request_mode"
       ]
     }
   ];
@@ -70,6 +71,18 @@
       secondaryGroups.forEach(function (entry) {
         entry.field.disabled = !enabled;
       });
+      var photo = document.getElementById("photo_request_mode");
+      var original = document.getElementById(statusFieldId)?.dataset.originalStatus;
+      if (config.status === "entregado" && photo) {
+        var available = enabled && original !== "entregado";
+        fieldGroup(photo).hidden = !available;
+        photo.disabled = !available;
+        if (!available) photo.value = "none";
+        Array.prototype.forEach.call(photo.options, function (option) {
+          if (option.value === "free") option.disabled = photo.dataset.photosEnabled !== "true";
+          if (option.value === "incentive") option.disabled = photo.dataset.incentiveEnabled !== "true";
+        });
+      }
     }
 
     master.setAttribute("aria-controls", options.id);

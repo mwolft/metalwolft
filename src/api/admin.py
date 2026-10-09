@@ -6,7 +6,7 @@ from collections.abc import Mapping
 from decimal import Decimal, InvalidOperation
 from io import BytesIO
 
-from flask import request, Response, current_app, send_file, flash, redirect, session, url_for
+from flask import request, Response, current_app, send_file, flash, redirect, session, url_for, render_template
 from flask_admin import Admin, AdminIndexView, expose
 from flask_admin.actions import action
 from markupsafe import Markup, escape
@@ -34,7 +34,7 @@ from .models import (
     SupplierInvoiceTaxBreakdown,
     ManualInvoiceDraft, ManualInvoiceDraftLine, ManualOrderDraft, ManualOrderDraftLine,
     WorkOrder, CheckoutSessions,
-    ConfirmedOrderContext,
+    ConfirmedOrderContext, CustomerPhotoRequest, CustomerPhotoImage,
 )
 from api.accounting_excel_service import (
     AccountingExcelExportError,
@@ -50,6 +50,7 @@ from api.aeat_unified_ledger_service import (
 )
 from api.flask_mail_invoice_adapter import FlaskMailInvoiceAdapter, FlaskMailInvoiceAdapterError
 from api.email_routes import OrderUpdateEmailChange, send_order_update_email
+from api.private_object_storage import get_private_object_storage
 from api.invoice_accounting_service import (
     AccountingEntryIntegrityError,
     AccountingEntryUnsupportedSchema,
@@ -149,6 +150,10 @@ from api.manual_order_draft_issue_service import (
     issue_manual_order_draft,
 )
 from api.order_confirmation_email_service import send_order_confirmation_email
+from api.customer_photo_service import (
+    CustomerPhotoError, create_photo_request, rotate_photo_link,
+    review_photo_request, utcnow,
+)
 from api.manual_order_draft_service import (
     ManualOrderDraftError,
     invalidate_manual_order_draft_review,
@@ -1315,6 +1320,7 @@ class OrderAdminView(SafeModelView):
         'send_delivered_status_email',
         'include_installation_guide_in_delivered_email',
         'include_maintenance_guide_in_delivered_email',
+        'photo_request_mode',
     )
 
     form_columns = [
@@ -1326,6 +1332,7 @@ class OrderAdminView(SafeModelView):
         'send_delivered_status_email',
         'include_installation_guide_in_delivered_email',
         'include_maintenance_guide_in_delivered_email',
+        'photo_request_mode',
         'estimated_delivery_at',
         'estimated_delivery_note',
     ]
@@ -1344,6 +1351,7 @@ class OrderAdminView(SafeModelView):
             'send_delivered_status_email',
             'include_installation_guide_in_delivered_email',
             'include_maintenance_guide_in_delivered_email',
+            'photo_request_mode',
         ]),
     )
 
@@ -1463,6 +1471,15 @@ class OrderAdminView(SafeModelView):
             'Mantenimiento y acabado',
             default=True,
         ),
+        'photo_request_mode': SelectField(
+            'Fotografías del cliente',
+            choices=[
+                ('none', 'No solicitar fotografías'),
+                ('free', 'Solicitar fotografías sin incentivo'),
+                ('incentive', 'Ofrecer 20 € por fotografías aprobadas'),
+            ],
+            default='none',
+        ),
 
         'estimated_delivery_at': DateField(
             'Fecha estimada de entrega',
@@ -1474,6 +1491,19 @@ class OrderAdminView(SafeModelView):
             render_kw={'rows': 2, 'maxlength': 255, 'placeholder': 'p.ej. Retraso por pintura'}
         ),
     }
+
+    def edit_form(self, obj=None):
+        form = super().edit_form(obj)
+        if obj is not None:
+            form.order_status.render_kw = {
+                **(form.order_status.render_kw or {}),
+                "data-original-status": obj.order_status,
+            }
+            form.photo_request_mode.render_kw = {
+                "data-photos-enabled": str(bool(current_app.config.get("CUSTOMER_PHOTOS_ENABLED"))).lower(),
+                "data-incentive-enabled": str(bool(current_app.config.get("CUSTOMER_PHOTOS_INCENTIVE_ENABLED"))).lower(),
+            }
+        return form
 
     def on_model_change(self, form, model, is_created):
         if is_created:
@@ -1489,15 +1519,43 @@ class OrderAdminView(SafeModelView):
 
     def update_model(self, form, model):
         change = self._build_order_update_email_change(form=form, model=model)
+        photo_request = None
+        photo_url = None
+        options = change.status_email_options or {}
+        mode = options.get("photo_request_mode", "none")
+        if change.status_changed and change.new_order_status == "entregado" and options.get("send_email") and mode != "none":
+            try:
+                photo_request, photo_url = create_photo_request(
+                    order=model, mode=mode, app=current_app,
+                    email_options={
+                        "include_installation_guide": options["include_installation_guide"],
+                        "include_maintenance_guide": options["include_maintenance_guide"],
+                    },
+                    session=self.session,
+                )
+            except CustomerPhotoError as exc:
+                self.session.rollback()
+                flash(str(exc), "error")
+                return False
         updated = super().update_model(form, model)
         if updated:
             try:
-                send_order_update_email(
+                if photo_url:
+                    options["photo_request_url"] = photo_url
+                    options["photo_terms_url"] = photo_request.terms_url
+                sent = send_order_update_email(
                     order=model,
                     change=change,
                     logger=current_app.logger,
                 )
+                if photo_request:
+                    if sent:
+                        photo_request.email_sent_at = utcnow()
+                    else:
+                        photo_request.email_failed_at = utcnow()
+                    self.session.commit()
             except Exception:
+                self.session.rollback()
                 current_app.logger.exception(
                     "Order update email dispatch failed after commit order_id=%s",
                     model.id,
@@ -1523,6 +1581,7 @@ class OrderAdminView(SafeModelView):
                 "send_email": bool(form.send_delivered_status_email.data),
                 "include_installation_guide": bool(form.include_installation_guide_in_delivered_email.data),
                 "include_maintenance_guide": bool(form.include_maintenance_guide_in_delivered_email.data),
+                "photo_request_mode": form.photo_request_mode.data,
             }
 
         return OrderUpdateEmailChange(
@@ -5209,6 +5268,129 @@ class VeriFactuRecordAdminView(SafeModelView):
 
         return redirect(self.get_url(".index_view"))
 
+class CustomerPhotoRequestAdminView(SecureModelView):
+    can_create = False
+    can_edit = False
+    can_delete = False
+    can_view_details = True
+    column_list = ("id", "order_id", "mode", "status", "created_at", "email_sent_at", "submitted_at")
+    column_filters = ("order_id", "mode", "status")
+    column_details_list = (*column_list, "reviewed_at", "reviewed_by", "review_note", "commercial_consent", "consent_revoked_at")
+
+    def is_accessible(self):
+        return bool(
+            ADMIN_USER and ADMIN_PW
+            and current_app.secret_key
+            and current_app.secret_key != "sample key"
+            and super().is_accessible()
+        )
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.column_formatters = {"id": self._format_request_id}
+
+    def _format_request_id(self, view, context, model, name):
+        href = escape(self.get_url(".review", request_id=model.id))
+        return Markup(f'<a href="{href}">#{model.id} · Revisar</a>')
+
+    @expose("/review/<int:request_id>", methods=["GET", "POST"])
+    def review(self, request_id):
+        item = self.session.get(CustomerPhotoRequest, request_id)
+        if item is None:
+            return Response("Solicitud no encontrada", 404)
+        if request.method == "POST":
+            if not _valid_work_order_csrf_token(request.form.get("csrf_token")):
+                return Response("Solicitud no autorizada", 403)
+            decision = request.form.get("decision")
+            try:
+                if decision in {"approve", "reject"}:
+                    review_photo_request(
+                        request_id=request_id, decision=decision,
+                        note=request.form.get("note"),
+                        actor=(request.authorization or {}).get("username") or "admin",
+                        session=self.session,
+                    )
+                elif decision == "revoke":
+                    item = self.session.query(CustomerPhotoRequest).filter_by(id=request_id).with_for_update().one()
+                    item.token_revoked_at = utcnow()
+                    if item.commercial_consent:
+                        item.consent_revoked_at = utcnow()
+                    item.status = "revoked"
+                else:
+                    raise CustomerPhotoError("Acción no válida.")
+                self.session.commit()
+                flash("Solicitud actualizada.", "success")
+            except CustomerPhotoError as exc:
+                self.session.rollback()
+                flash(str(exc), "error")
+            return redirect(self.get_url(".review", request_id=request_id))
+        return self.render(
+            "admin/customer_photo_review.html", item=item,
+            csrf_token=_issue_work_order_csrf_token(),
+            review_url=self.get_url(".review", request_id=request_id),
+            resend_url=self.get_url(".resend", request_id=request_id),
+            image_urls={image.id: self.get_url(".view_image", image_id=image.id) for image in item.images},
+        )
+
+    @expose("/image/<int:image_id>", methods=["GET"])
+    def view_image(self, image_id):
+        image = self.session.get(CustomerPhotoImage, image_id)
+        if not image:
+            return Response("Imagen no encontrada", 404)
+        try:
+            content = get_private_object_storage(current_app).get_object(storage_key=image.storage_key)
+        except (PrivateObjectStorageConfigurationError, PrivateObjectStorageOperationError):
+            return Response("Imagen no disponible", 404)
+        response = send_file(BytesIO(content), mimetype=image.mime_type, as_attachment=False, max_age=0)
+        response.headers["Cache-Control"] = "no-store"
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        response.headers["Content-Security-Policy"] = "default-src 'none'; sandbox"
+        return response
+
+    @expose("/resend/<int:request_id>", methods=["POST"])
+    def resend(self, request_id):
+        if not _valid_work_order_csrf_token(request.form.get("csrf_token")):
+            return Response("Solicitud no autorizada", 403)
+        if not current_app.config.get("CUSTOMER_PHOTOS_ENABLED"):
+            flash("La solicitud de fotografías está desactivada.", "error")
+            return redirect(self.get_url(".review", request_id=request_id))
+        try:
+            item = self.session.query(CustomerPhotoRequest).filter_by(id=request_id).with_for_update().one_or_none()
+            if not item or item.order.order_status != "entregado":
+                raise CustomerPhotoError("Solo se puede reenviar una solicitud de un pedido entregado.")
+            link = rotate_photo_link(item, app=current_app)
+            self.session.commit()
+        except CustomerPhotoError as exc:
+            self.session.rollback()
+            flash(str(exc), "error")
+            return redirect(self.get_url(".review", request_id=request_id))
+        options = dict(item.email_options or {})
+        options.update(
+            status="entregado", send_email=True, photo_request_mode=item.mode,
+            photo_request_url=link, photo_terms_url=item.terms_url,
+        )
+        change = OrderUpdateEmailChange(
+            old_order_status="enviado", new_order_status="entregado",
+            old_estimated_delivery_at=item.order.estimated_delivery_at,
+            new_estimated_delivery_at=item.order.estimated_delivery_at,
+            old_estimated_delivery_note=item.order.estimated_delivery_note,
+            new_estimated_delivery_note=item.order.estimated_delivery_note,
+            status_email_options=options,
+        )
+        sent = send_order_update_email(order=item.order, change=change, logger=current_app.logger)
+        if sent:
+            item.email_sent_at = utcnow()
+        else:
+            item.email_failed_at = utcnow()
+        try:
+            self.session.commit()
+        except Exception:
+            self.session.rollback()
+            current_app.logger.exception("Could not record photo email status request_id=%s", request_id)
+        flash("Email reenviado." if sent else "El email no se pudo enviar; la solicitud sigue pendiente.", "success" if sent else "warning")
+        return redirect(self.get_url(".review", request_id=request_id))
+
+
 # ========================== SETUP ADMIN ==========================
 def setup_admin(app):
     # Secret key y tema
@@ -5231,6 +5413,9 @@ def setup_admin(app):
     admin.add_view(SafeModelView(ProductImages, db.session, name="Imágenes de producto", category="Catálogo"))
 
     admin.add_view(OrderAdminView(Orders, db.session, name="Pedidos", category="Ventas"))
+    admin.add_view(CustomerPhotoRequestAdminView(
+        CustomerPhotoRequest, db.session, name="Fotografías de clientes", category="Ventas",
+    ))
     admin.add_view(ManualOrderDraftAdminView(ManualOrderDraft, db.session, name="Pedidos manuales", category="Ventas"))
     admin.add_view(OrderDetailsAdminView(OrderDetails, db.session, name="Líneas de pedido", category="Ventas"))
     admin.add_view(CartAdminView(Cart, db.session, name="Carritos", category="Ventas"))

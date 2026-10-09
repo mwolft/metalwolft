@@ -308,6 +308,9 @@ def render_order_status_update_email(
     include_installation_guide=True,
     include_incident_form=False,
     include_maintenance_guide=True,
+    photo_request_mode=None,
+    photo_request_url=None,
+    photo_terms_url=None,
 ):
     order_reference_text = _required_text(order_reference, "order_reference")
     current_status_text = _required_text(current_status, "current_status")
@@ -338,6 +341,15 @@ def render_order_status_update_email(
         include_incident_form=include_incident_form,
         include_maintenance_guide=include_maintenance_guide,
     )
+    photo_text, photo_html = _render_photo_request_block(
+        current_status_text, photo_request_mode, photo_request_url, photo_terms_url,
+    )
+    if photo_text and not guidance_text:
+        guidance_text = "Ya tienes tu reja\n"
+        guidance_html = (
+            f'<p style="margin:0 0 12px;color:{COLOR_TEXT};font-size:15px;font-weight:700;">'
+            "Ya tienes tu reja</p>"
+        )
 
     text_body = (
         "METALWOLFT\n"
@@ -349,6 +361,7 @@ def render_order_status_update_email(
         "\nPROGRESO DEL PEDIDO\n"
         f"{progress_text}\n\n"
         f"{guidance_text}"
+        f"{photo_text}"
         "Si tienes cualquier duda, puedes responder directamente a este correo.\n\n"
         "MetalWolft\n"
         "Fabricaci\u00f3n de rejas a medida"
@@ -383,6 +396,7 @@ def render_order_status_update_email(
         f"{progress_rows}"
         "</table>"
         f"{guidance_html}"
+        f"{photo_html}"
         f'<p style="margin:0;color:{COLOR_MUTED};font-size:14px;line-height:1.6;">'
         "Si tienes cualquier duda, puedes responder directamente a este correo."
         "</p>"
@@ -394,6 +408,37 @@ def render_order_status_update_email(
             preheader=f"Tu pedido {order_reference_text} est\u00e1 ahora en {current_label}.",
             content_html=content_html,
         ),
+    )
+
+
+def _render_photo_request_block(status, mode, url, terms_url):
+    if status != "entregado" or mode not in {"free", "incentive"} or not url:
+        return "", ""
+    if mode == "incentive":
+        title = "¡Tus fotos tienen premio!"
+        body = (
+            "¿Nos enseñas cómo han quedado tus rejas? Si nos envías fotografías de la instalación "
+            "y cumplen las condiciones de la promoción, podrás recibir un reembolso de 20 € de tu compra."
+        )
+    else:
+        title = "Comparte tus rejas instaladas"
+        body = (
+            "Nos encantaría ver cómo han quedado tus rejas una vez instaladas. "
+            "Si te apetece compartir algunas fotografías con nosotros, puedes hacerlo desde el siguiente enlace."
+        )
+    conditions_text = f"Condiciones de la promoción: {terms_url}\n" if mode == "incentive" and terms_url else ""
+    conditions_html = (
+        f'<p style="margin:8px 0 0;"><a href="{_html(terms_url)}" style="color:{COLOR_ACCENT};">'
+        "Condiciones de la promoción</a></p>"
+        if mode == "incentive" and terms_url else ""
+    )
+    return (
+        f"{title}\n{body}\nEnviar mis fotografías: {url}\n{conditions_text}\n",
+        f'<div style="margin:0 0 24px;padding:16px;background:{COLOR_SURFACE_ALT};border-left:3px solid {COLOR_ACCENT};">'
+        f'<p style="margin:0 0 8px;color:{COLOR_TEXT};font-size:15px;font-weight:700;">{_html(title)}</p>'
+        f'<p style="margin:0 0 12px;color:{COLOR_MUTED};font-size:14px;line-height:1.55;">{_html(body)}</p>'
+        f'<a href="{_html(url)}" style="color:{COLOR_ACCENT};font-weight:700;">Enviar mis fotografías</a>'
+        f"{conditions_html}</div>",
     )
 
 
