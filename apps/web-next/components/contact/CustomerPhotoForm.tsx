@@ -167,7 +167,7 @@ export function CustomerPhotoForm() {
       <p>Evita personas identificables, matrículas o información privada.</p>
       <p>Las imágenes se ajustan automáticamente si es necesario y se envían por correo a MetalWolft. No se guardan en el panel. El conjunto procesado no puede superar {Math.round(info.max_total_bytes / (1024 * 1024))} MB.</p>
       {info.mode === "incentive" && (
-        <p>La revisión de las fotos no garantiza el reembolso de 20 €. Consulta las condiciones antes de enviarlas.</p>
+        <p>Participa dentro de los 30 días posteriores a la entrega. La revisión se comunicará en un máximo de 7 días naturales; podríamos pedirte fotos corregidas por correo. La recompensa está pensada para fotos utilizables comercialmente, pero la autorización se decide por separado. La revisión no garantiza un reembolso. Consulta las condiciones antes de enviarlas.</p>
       )}
       <div className="mw-customer-photo-fields">
         {([

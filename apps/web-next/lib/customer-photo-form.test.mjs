@@ -21,6 +21,8 @@ assert.match(form, /MAX_IMAGES|info\.max_images/);
 assert.match(form, /Fotografía frontal \(obligatoria\)/);
 assert.match(form, /Fotografía lateral o en perspectiva \(obligatoria\)/);
 assert.match(form, /Fotografías adicionales \(opcionales, hasta tres\)/);
+assert.match(form, /30 días posteriores a la entrega/);
+assert.match(form, /7 días naturales/);
 assert.match(form, /body\.append\("front_photo"/);
 assert.match(form, /body\.append\("perspective_photo"/);
 assert.match(form, /body\.append\("additional_photos"/);
