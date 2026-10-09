@@ -815,9 +815,14 @@ class CustomerPhotoRequest(db.Model):
             name="ck_customer_photo_requests_status",
         ),
         db.CheckConstraint(
-            "(mode = 'free' AND offered_amount = 0) OR "
-            "(mode = 'incentive' AND offered_amount = 20)",
+            "(mode = 'free' AND offered_amount = 0 AND NOT is_simulation) OR "
+            "(mode = 'incentive' AND is_simulation AND offered_amount = 0) OR "
+            "(mode = 'incentive' AND NOT is_simulation AND offered_amount = 20)",
             name="ck_customer_photo_requests_amount",
+        ),
+        db.CheckConstraint(
+            "NOT is_simulation OR status != 'refund_pending'",
+            name="ck_customer_photo_requests_simulation_no_refund",
         ),
     )
 
@@ -825,6 +830,7 @@ class CustomerPhotoRequest(db.Model):
     order_id = db.Column(db.Integer, db.ForeignKey("orders.id"), nullable=False, unique=True)
     mode = db.Column(db.String(20), nullable=False)
     offered_amount = db.Column(db.Numeric(12, 2), nullable=False)
+    is_simulation = db.Column(db.Boolean, nullable=False, default=False, server_default=db.false())
     status = db.Column(db.String(20), nullable=False, default="offered")
     token_hash = db.Column(db.String(64), nullable=False, unique=True)
     token_expires_at = db.Column(db.DateTime, nullable=False)

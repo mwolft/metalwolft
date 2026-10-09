@@ -311,6 +311,7 @@ def render_order_status_update_email(
     photo_request_mode=None,
     photo_request_url=None,
     photo_terms_url=None,
+    photo_is_simulation=False,
 ):
     order_reference_text = _required_text(order_reference, "order_reference")
     current_status_text = _required_text(current_status, "current_status")
@@ -342,7 +343,7 @@ def render_order_status_update_email(
         include_maintenance_guide=include_maintenance_guide,
     )
     photo_text, photo_html = _render_photo_request_block(
-        current_status_text, photo_request_mode, photo_request_url, photo_terms_url,
+        current_status_text, photo_request_mode, photo_request_url, photo_terms_url, photo_is_simulation,
     )
     if photo_text and not guidance_text:
         guidance_text = "Ya tienes tu reja\n"
@@ -411,7 +412,7 @@ def render_order_status_update_email(
     )
 
 
-def _render_photo_request_block(status, mode, url, terms_url):
+def _render_photo_request_block(status, mode, url, terms_url, is_simulation=False):
     if status != "entregado" or mode not in {"free", "incentive"} or not url:
         return "", ""
     if mode == "incentive":
@@ -432,10 +433,17 @@ def _render_photo_request_block(status, mode, url, terms_url):
         "Condiciones de la promoción</a></p>"
         if mode == "incentive" and terms_url else ""
     )
+    simulation_text = "SIMULACIÓN — SIN REEMBOLSO. Esta prueba no genera derecho a compensación.\n" if is_simulation else ""
+    simulation_html = (
+        f'<p style="margin:0 0 12px;color:{COLOR_TEXT};font-weight:700;">'
+        "SIMULACIÓN — SIN REEMBOLSO. Esta prueba no genera derecho a compensación.</p>"
+        if is_simulation else ""
+    )
     return (
-        f"{title}\n{body}\nEnviar mis fotografías: {url}\n{conditions_text}\n",
+        f"{title}\n{simulation_text}{body}\nEnviar mis fotografías: {url}\n{conditions_text}\n",
         f'<div style="margin:0 0 24px;padding:16px;background:{COLOR_SURFACE_ALT};border-left:3px solid {COLOR_ACCENT};">'
         f'<p style="margin:0 0 8px;color:{COLOR_TEXT};font-size:15px;font-weight:700;">{_html(title)}</p>'
+        f"{simulation_html}"
         f'<p style="margin:0 0 12px;color:{COLOR_MUTED};font-size:14px;line-height:1.55;">{_html(body)}</p>'
         f'<a href="{_html(url)}" style="color:{COLOR_ACCENT};font-weight:700;">Enviar mis fotografías</a>'
         f"{conditions_html}</div>",

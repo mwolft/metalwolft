@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from "react";
 
 type RequestInfo = {
   mode: "free" | "incentive";
+  is_simulation: boolean;
   status: "open" | "received" | "pending_confirmation";
   commercial_consent_active: boolean;
   terms_version: string;
@@ -129,6 +130,7 @@ export function CustomerPhotoForm() {
   if (!info) return <p role="status">{message}</p>;
   if (info.status !== "open") return (
     <div>
+      {info.is_simulation && <p role="note"><strong>SIMULACIÓN — SIN REEMBOLSO.</strong> Esta prueba no genera derecho a compensación.</p>}
       <p role="status">{message}</p>
       <p>Para retirar tu autorización comercial o solicitar la supresión de las fotografías recibidas por correo, escribe a <a href="mailto:admin@metalwolft.com">admin@metalwolft.com</a>. Son solicitudes distintas y las atenderemos por separado.</p>
     </div>
@@ -136,6 +138,7 @@ export function CustomerPhotoForm() {
 
   return (
     <form className="mw-contact-form mw-issue-report-form" onSubmit={submit}>
+      {info.is_simulation && <p role="note"><strong>SIMULACIÓN — SIN REEMBOLSO.</strong> Esta prueba no genera derecho a compensación, aunque las fotografías sean aprobadas.</p>}
       <p>Hasta cinco fotografías: una vista general, otra del diseño y, si quieres, detalles o perspectivas. No hace falta calidad profesional.</p>
       <p>Busca buena luz y evita personas identificables, matrículas o información privada.</p>
       <p>Las imágenes se ajustan automáticamente si es necesario y se envían por correo a MetalWolft. No se guardan en el panel. El conjunto procesado no puede superar {Math.round(info.max_total_bytes / (1024 * 1024))} MB.</p>

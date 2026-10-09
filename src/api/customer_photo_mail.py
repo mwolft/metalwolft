@@ -18,14 +18,15 @@ class PhotoMailUncertain(Exception):
     """Relay acceptance could not be established; never retry automatically."""
 
 
-def build_photo_message(*, app, order_reference, request_id, attempt_id, date, consent, photos):
+def build_photo_message(*, app, order_reference, request_id, attempt_id, date, consent, photos, is_simulation=False):
     message = EmailMessage()
     message["Subject"] = f"Fotografías de cliente - pedido {order_reference} - solicitud {request_id}"
     message["From"] = app.config.get("MAIL_DEFAULT_SENDER") or ""
     message["To"] = PHOTO_MAIL_RECIPIENT
     message["Message-ID"] = f"<customer-photos-{attempt_id}@metalwolft.com>"
+    simulation_notice = "SIMULACIÓN — SIN REEMBOLSO\n" if is_simulation else ""
     message.set_content(
-        f"Pedido: {order_reference}\nSolicitud: {request_id}\nFecha: {date.isoformat()}\n"
+        f"{simulation_notice}Pedido: {order_reference}\nSolicitud: {request_id}\nFecha: {date.isoformat()}\n"
         f"Fotografías: {len(photos)}\nAutorización comercial: {'Sí' if consent else 'No'}\n"
         "Las fotografías están adjuntas; no se guardan en el panel de administración.\n"
     )
@@ -37,22 +38,28 @@ def build_photo_message(*, app, order_reference, request_id, attempt_id, date, c
     return message
 
 
-def build_photo_confirmation_message(*, app, recipient, order_reference, request_id):
+def build_photo_confirmation_message(*, app, recipient, order_reference, request_id, is_simulation=False):
     message = EmailMessage()
     message["Subject"] = f"Hemos recibido tus fotografías - pedido {order_reference}"
     message["From"] = app.config.get("MAIL_DEFAULT_SENDER") or ""
     message["To"] = recipient
     message["Reply-To"] = PHOTO_MAIL_RECIPIENT
+    simulation_notice = (
+        "SIMULACIÓN — SIN REEMBOLSO. Esta prueba no genera derecho a compensación.\n\n"
+        if is_simulation else ""
+    )
+    refund_note = (
+        "" if is_simulation else "Si tu solicitud incluye la oferta de 20 €, el reembolso no es automático: "
+        "depende de la revisión y de las condiciones comunicadas.\n"
+    )
     message.set_content(
-        f"Hemos recibido tus fotografías para el pedido {order_reference} "
+        f"{simulation_notice}Hemos recibido tus fotografías para el pedido {order_reference} "
         f"(solicitud {request_id}). Las revisaremos antes de decidir si podemos utilizarlas.\n\n"
         "Si autorizaste su uso comercial, puedes solicitar la retirada de esa autorización "
         f"respondiendo a este mensaje o escribiendo a {PHOTO_MAIL_RECIPIENT}. "
         "La retirada de la autorización no elimina automáticamente las fotografías recibidas "
         "por correo. Si solicitas su supresión, indícalo expresamente para que podamos "
-        "tramitarla por separado.\n\n"
-        "Si tu solicitud incluye la oferta de 20 €, el reembolso no es automático: "
-        "depende de la revisión y de las condiciones comunicadas.\n"
+        f"tramitarla por separado.\n\n{refund_note}"
     )
     return message
 

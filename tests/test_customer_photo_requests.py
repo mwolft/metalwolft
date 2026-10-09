@@ -1,11 +1,13 @@
 import importlib.util
+import re
 from datetime import datetime, timedelta
 from base64 import b64encode
 from io import BytesIO
+import os
 from pathlib import Path
 import sys
 import unittest
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -16,13 +18,13 @@ if HAS_DEPS:
     from flask import Flask
     from flask_admin import Admin
     from PIL import Image
-    from sqlalchemy.exc import OperationalError
+    from sqlalchemy.exc import IntegrityError, OperationalError
     from werkzeug.datastructures import FileStorage
 
     from api.admin import CustomerPhotoRequestAdminView, OrderAdminView
     from api.customer_photo_routes import PhotoUploadRequest, customer_photo_bp
     from api.customer_photo_service import (
-        CustomerPhotoError, create_photo_request, resolve_photo_request,
+        CustomerPhotoError, _verified_test_database, create_photo_request, resolve_photo_request,
         rotate_photo_link,
         review_photo_request, stale_mail_attempts, submit_photos, token_hash, utcnow, validate_image,
     )
@@ -48,6 +50,9 @@ class CustomerPhotoRequestTest(unittest.TestCase):
             APP_ENV="development",
             CUSTOMER_PHOTOS_ENABLED=True,
             CUSTOMER_PHOTOS_INCENTIVE_ENABLED=False,
+            CUSTOMER_PHOTOS_INCENTIVE_TEST_MODE=False,
+            CUSTOMER_PHOTOS_INCENTIVE_TEST_DB_HOST="child.neon.tech",
+            CUSTOMER_PHOTOS_INCENTIVE_TEST_EMAILS="cliente@example.test",
             CUSTOMER_PHOTOS_TERMS_VERSION="draft-v1",
             CUSTOMER_PHOTOS_TERMS_TEXT="Borrador de condiciones sometido a aprobación.",
             CUSTOMER_PHOTOS_CONSENT_TEXT="Borrador de autorización comercial.",
@@ -214,6 +219,93 @@ class CustomerPhotoRequestTest(unittest.TestCase):
         order = db.session.get(Orders, self.order_id)
         with self.assertRaises(CustomerPhotoError):
             create_photo_request(order=order, mode="incentive", app=self.app)
+
+    def test_simulation_requires_every_gate_and_authorized_recipient(self):
+        order = db.session.get(Orders, self.order_id)
+        self.app.config.update(CUSTOMER_PHOTOS_INCENTIVE_ENABLED=True, CUSTOMER_PHOTOS_INCENTIVE_TEST_MODE=True)
+        with self.assertRaises(CustomerPhotoError):
+            create_photo_request(order=order, mode="incentive", app=self.app)
+        with patch("api.customer_photo_service._verified_test_database", return_value=True):
+            for key, value in (
+                ("APP_ENV", "production"),
+                ("CUSTOMER_PHOTOS_ENABLED", False),
+                ("CUSTOMER_PHOTOS_INCENTIVE_ENABLED", False),
+                ("CUSTOMER_PHOTOS_INCENTIVE_TEST_EMAILS", "other@example.test"),
+            ):
+                original = self.app.config[key]
+                self.app.config[key] = value
+                with self.assertRaises(CustomerPhotoError):
+                    create_photo_request(order=order, mode="incentive", app=self.app)
+                self.app.config[key] = original
+            item, _ = create_photo_request(order=order, mode="incentive", app=self.app)
+        db.session.commit()
+        self.assertTrue(db.session.get(CustomerPhotoRequest, item.id).is_simulation)
+        self.assertEqual(item.offered_amount, 0)
+        self.assertFalse(_verified_test_database(self.app))
+
+    def test_simulation_database_identity_checks_configured_and_live_child(self):
+        engine = MagicMock()
+        engine.url.render_as_string.return_value = "postgresql://tester:private@child.neon.tech/neondb"
+        engine.connect.return_value.__enter__.return_value.execute.return_value.one.return_value = ("neondb", "tester")
+        expected = {
+            "DATABASE_EXPECTED_HOST": "child.neon.tech",
+            "DATABASE_EXPECTED_NAME": "neondb",
+            "DATABASE_EXPECTED_USER": "tester",
+        }
+        with patch("api.customer_photo_service.db") as fake_db, patch.dict(os.environ, expected):
+            fake_db.engine = engine
+            self.assertTrue(_verified_test_database(self.app))
+            engine.connect.return_value.__enter__.return_value.execute.return_value.one.return_value = ("neondb", "other")
+            self.assertFalse(_verified_test_database(self.app))
+            engine.connect.return_value.__enter__.return_value.execute.return_value.one.return_value = ("neondb", "tester")
+            self.app.config["CUSTOMER_PHOTOS_INCENTIVE_TEST_DB_HOST"] = "other.neon.tech"
+            self.assertFalse(_verified_test_database(self.app))
+
+    def test_database_rejects_refund_pending_for_simulation(self):
+        self.app.config.update(CUSTOMER_PHOTOS_INCENTIVE_ENABLED=True, CUSTOMER_PHOTOS_INCENTIVE_TEST_MODE=True)
+        with patch("api.customer_photo_service._verified_test_database", return_value=True):
+            item, _ = create_photo_request(
+                order=db.session.get(Orders, self.order_id), mode="incentive", app=self.app,
+            )
+        db.session.commit()
+        item.status = "refund_pending"
+        with self.assertRaises(IntegrityError):
+            db.session.commit()
+        db.session.rollback()
+        self.assertEqual(db.session.get(CustomerPhotoRequest, item.id).status, "offered")
+
+    def test_simulated_incentive_email_submission_and_review_never_create_refund(self):
+        self.app.config.update(CUSTOMER_PHOTOS_INCENTIVE_ENABLED=True, CUSTOMER_PHOTOS_INCENTIVE_TEST_MODE=True)
+        with patch("api.customer_photo_service._verified_test_database", return_value=True), self.app.test_request_context(), patch("api.email_routes.send_email", return_value=True) as smtp:
+            order, form = self.order_form("incentive", guides=False)
+            self.assertTrue(self.view.update_model(form, order))
+            payload = smtp.call_args.kwargs
+            self.assertIn("SIMULACIÓN — SIN REEMBOLSO", payload["body"])
+            self.assertIn("SIMULACIÓN — SIN REEMBOLSO", payload["html"])
+            self.assertIn("20 €", payload["body"])
+            self.assertIn("/fotos-clientes#", payload["body"])
+        item = CustomerPhotoRequest.query.one()
+        self.assertTrue(item.is_simulation)
+        token = re.search(r"/fotos-clientes#([A-Za-z0-9_-]+)", payload["body"]).group(1)
+        with patch("api.customer_photo_service._verified_test_database", return_value=True):
+            details = self.app.test_client().get(
+                "/api/customer-photos", headers={"Authorization": f"Bearer {token}"},
+            )
+        self.assertEqual(details.status_code, 200)
+        self.assertTrue(details.json["is_simulation"])
+        sent = []
+        with patch("api.customer_photo_service._verified_test_database", return_value=True):
+            self.submit(token, send_message=lambda **kwargs: sent.append(kwargs["message"]))
+        self.assertEqual(len(sent), 2)
+        self.assertIn("SIMULACIÓN — SIN REEMBOLSO", sent[0].get_body(preferencelist=("plain",)).get_content())
+        self.assertIn("SIMULACIÓN — SIN REEMBOLSO", sent[1].get_content())
+        self.app.config["CUSTOMER_PHOTOS_INCENTIVE_TEST_MODE"] = False
+        item.mailbox_confirmed_at = utcnow()
+        db.session.commit()
+        result = review_photo_request(request_id=item.id, decision="approve", note="Prueba", actor="admin", app=self.app)
+        db.session.commit()
+        self.assertEqual(result.status, "approved")
+        self.assertNotEqual(result.status, "refund_pending")
         self.app.config["CUSTOMER_PHOTOS_INCENTIVE_ENABLED"] = True
         with self.assertRaises(CustomerPhotoError):
             create_photo_request(order=order, mode="incentive", app=self.app)

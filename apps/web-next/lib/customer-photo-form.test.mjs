@@ -22,6 +22,8 @@ assert.match(form, /Hasta cinco fotografías/);
 assert.match(form, /max_total_bytes/);
 assert.match(form, /envían por correo/);
 assert.match(form, /pending_confirmation/);
+assert.match(form, /info\.is_simulation/);
+assert.match(form, /SIMULACIÓN — SIN REEMBOLSO/);
 assert.doesNotMatch(form, /consent\/revoke|Retirar autorización comercial<\/button>/);
 assert.match(form, /mailto:admin@metalwolft\.com/);
 assert.match(form, /supresión/);

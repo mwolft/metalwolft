@@ -4,13 +4,16 @@ from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 from hashlib import sha256
 from io import BytesIO
+import os
 import secrets
 import re
 import warnings
 from uuid import uuid4
 
 from PIL import Image, ImageOps, UnidentifiedImageError
+from sqlalchemy import text
 
+from api.database_identity import parse_database_identity, validate_database_identity
 from api.design_service import order_contains_design_service
 from api.models import CustomerPhotoRequest, db
 from api.order_confirmation_context import get_order_confirmation_recipient_email
@@ -58,6 +61,46 @@ def _incentive_allowed(app):
     return app.config.get("APP_ENV") != "production" and _enabled(app, "CUSTOMER_PHOTOS_INCENTIVE_ENABLED")
 
 
+def _verified_test_database(app):
+    """Fail closed unless the effective connection matches the configured Neon child."""
+    expected_host = str(app.config.get("CUSTOMER_PHOTOS_INCENTIVE_TEST_DB_HOST") or "").strip()
+    if not expected_host or not expected_host.endswith(".neon.tech"):
+        return False
+    try:
+        identity = parse_database_identity(db.engine.url.render_as_string(hide_password=False))
+        validate_database_identity(
+            identity,
+            expected_host=os.getenv("DATABASE_EXPECTED_HOST"),
+            expected_name=os.getenv("DATABASE_EXPECTED_NAME"),
+            expected_user=os.getenv("DATABASE_EXPECTED_USER"),
+        )
+        if identity.host != expected_host:
+            return False
+        with db.engine.connect() as connection:
+            database_name, username = connection.execute(text("SELECT current_database(), current_user")).one()
+        return database_name == identity.database_name and username == identity.username
+    except Exception:
+        return False
+
+
+def _simulation_allowed(app, email):
+    if not isinstance(email, str):
+        return False
+    if not (
+        app.config.get("APP_ENV") == "development"
+        and _enabled(app, "CUSTOMER_PHOTOS_ENABLED")
+        and _enabled(app, "CUSTOMER_PHOTOS_INCENTIVE_ENABLED")
+        and _enabled(app, "CUSTOMER_PHOTOS_INCENTIVE_TEST_MODE")
+    ):
+        return False
+    allowed = {
+        value.strip().casefold()
+        for value in str(app.config.get("CUSTOMER_PHOTOS_INCENTIVE_TEST_EMAILS") or "").split(",")
+        if value.strip()
+    }
+    return email.strip().casefold() in allowed and _verified_test_database(app)
+
+
 def _terms(app, mode):
     version = str(app.config.get("CUSTOMER_PHOTOS_TERMS_VERSION") or "").strip()
     consent = str(app.config.get("CUSTOMER_PHOTOS_CONSENT_TEXT") or "").strip()
@@ -82,9 +125,13 @@ def _eligible(order, mode, app):
         raise CustomerPhotoError("El pedido no tiene destinatario de email válido.")
     _terms(app, mode)
     if mode == "free":
-        return
+        return False
     if not _incentive_allowed(app):
         raise CustomerPhotoError("El incentivo fotográfico está pendiente de aprobación para producción.")
+    if _enabled(app, "CUSTOMER_PHOTOS_INCENTIVE_TEST_MODE"):
+        if not _simulation_allowed(app, email):
+            raise CustomerPhotoError("La simulación requiere una child verificada y un destinatario autorizado.")
+        return True
     context = order.confirmed_order_context
     if not context or context.source != "web_checkout" or context.payment_status != "confirmed":
         raise CustomerPhotoError("El pedido no tiene pago web confirmado.")
@@ -114,12 +161,13 @@ def _eligible(order, mode, app):
         raise CustomerPhotoError("No consta una referencia reembolsable del proveedor.")
     # An offer is not a promise of a successful provider refund. Remaining balance
     # and external refunds must be reconciled before a future payment operation.
+    return False
 
 
 def create_photo_request(*, order, mode, app, email_options=None, session=None):
     """Stage one request in the caller's transaction; return the transient link."""
     session = session or db.session
-    _eligible(order, mode, app)
+    is_simulation = _eligible(order, mode, app)
     if session.query(CustomerPhotoRequest.id).filter_by(order_id=order.id).first():
         raise CustomerPhotoError("Este pedido ya tiene una solicitud de fotografías.")
     token = secrets.token_urlsafe(32)
@@ -131,7 +179,8 @@ def create_photo_request(*, order, mode, app, email_options=None, session=None):
     photo_request = CustomerPhotoRequest(
         order_id=order.id,
         mode=mode,
-        offered_amount=Decimal("20.00") if mode == "incentive" else Decimal("0.00"),
+        is_simulation=is_simulation,
+        offered_amount=Decimal("20.00") if mode == "incentive" and not is_simulation else Decimal("0.00"),
         status="offered",
         token_hash=token_hash(token),
         token_expires_at=utcnow() + timedelta(days=days),
@@ -148,6 +197,8 @@ def create_photo_request(*, order, mode, app, email_options=None, session=None):
 def rotate_photo_link(photo_request, *, app):
     if photo_request.mode == "incentive" and not _incentive_allowed(app):
         raise CustomerPhotoError("El incentivo fotográfico está pendiente de aprobación para producción.")
+    if photo_request.is_simulation and not _simulation_allowed(app, get_order_confirmation_recipient_email(photo_request.order)):
+        raise CustomerPhotoError("La simulación ya no está autorizada en este entorno.")
     if (photo_request.status != "offered" or photo_request.submitted_at or photo_request.token_revoked_at
             or photo_request.delivery_status in {"sending", "unknown"}):
         raise CustomerPhotoError("Solo se puede reenviar una solicitud pendiente.")
@@ -217,6 +268,8 @@ def submit_photos(*, token, files, commercial_consent, app, session=None, send_m
         raise CustomerPhotoError("El enlace no está disponible para un nuevo envío.")
     if photo_request.mode == "incentive" and not _incentive_allowed(app):
         raise CustomerPhotoError("El incentivo fotográfico está pendiente de aprobación para producción.")
+    if photo_request.is_simulation and not _simulation_allowed(app, get_order_confirmation_recipient_email(photo_request.order)):
+        raise CustomerPhotoError("La simulación ya no está autorizada en este entorno.")
     if commercial_consent not in ("yes", "no"):
         raise CustomerPhotoError("Indica expresamente si autorizas el uso comercial.")
     files = [file for file in files if file and getattr(file, "filename", None)]
@@ -237,13 +290,15 @@ def submit_photos(*, token, files, commercial_consent, app, session=None, send_m
     message = build_photo_message(
         app=app, order_reference=order_reference, request_id=request_id,
         attempt_id=attempt_id, date=created_at, consent=commercial_consent == "yes", photos=validated,
+        is_simulation=photo_request.is_simulation,
     )
     try:
         locked = session.query(CustomerPhotoRequest).filter_by(id=request_id).with_for_update().one()
         if (locked.token_hash != token_hash(token) or locked.status != "offered" or locked.submitted_at
                 or locked.token_revoked_at or locked.token_expires_at <= utcnow()
                 or locked.delivery_status in {"sending", "unknown"}
-                or (locked.mode == "incentive" and not _incentive_allowed(app))):
+                or (locked.mode == "incentive" and not _incentive_allowed(app))
+                or (locked.is_simulation and not _simulation_allowed(app, recipient))):
             raise CustomerPhotoError("El enlace ya no está disponible.")
         locked.delivery_status = "sending"
         locked.delivery_attempt_id = attempt_id
@@ -272,6 +327,7 @@ def submit_photos(*, token, files, commercial_consent, app, session=None, send_m
         try:
             confirmation = build_photo_confirmation_message(
                 app=app, recipient=recipient, order_reference=order_reference, request_id=request_id,
+                is_simulation=result.is_simulation,
             )
             (send_message or send_photo_message)(app=app, message=confirmation)
         except Exception:
@@ -309,11 +365,13 @@ def review_photo_request(*, request_id, decision, note, actor, session=None, app
         raise CustomerPhotoError("La solicitud no está pendiente de revisión.")
     if decision not in {"approve", "reject"}:
         raise CustomerPhotoError("Decisión de revisión no válida.")
-    if decision == "approve" and item.mode == "incentive" and (app is None or not _incentive_allowed(app)):
+    if decision == "approve" and item.is_simulation and (app is None or app.config.get("APP_ENV") != "development"):
+        raise CustomerPhotoError("Una simulación solo puede revisarse en desarrollo.")
+    if decision == "approve" and item.mode == "incentive" and not item.is_simulation and (app is None or not _incentive_allowed(app)):
         raise CustomerPhotoError("El incentivo fotográfico está pendiente de aprobación para producción.")
     if decision == "reject" and not str(note or "").strip():
         raise CustomerPhotoError("Indica el motivo interno del rechazo.")
-    item.status = ("refund_pending" if item.mode == "incentive" else "approved") if decision == "approve" else "rejected"
+    item.status = ("refund_pending" if item.mode == "incentive" and not item.is_simulation else "approved") if decision == "approve" else "rejected"
     item.reviewed_at = utcnow()
     item.reviewed_by = actor
     item.review_note = str(note or "").strip() or None

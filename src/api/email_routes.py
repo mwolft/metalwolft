@@ -365,6 +365,7 @@ def send_order_update_email(*, order, change, logger, send_email_func=None):
                 photo_request_mode=options.get("photo_request_mode") if current_status == "entregado" else None,
                 photo_request_url=options.get("photo_request_url") if current_status == "entregado" else None,
                 photo_terms_url=options.get("photo_terms_url") if current_status == "entregado" else None,
+                photo_is_simulation=bool(options.get("photo_is_simulation")) if current_status == "entregado" else False,
             )
             sent = bool(send_email_func(
                 subject=f"Actualización de tu pedido: {ORDER_PROGRESS_STATUSES[status_index][1]}",

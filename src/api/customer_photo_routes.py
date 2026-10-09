@@ -69,8 +69,14 @@ def photo_request_details():
         return jsonify({"error": "Demasiados intentos."}), 429
     if item.mode == "incentive" and current_app.config.get("APP_ENV") == "production":
         return jsonify({"error": "Solicitud no disponible."}), 404
+    if item.is_simulation:
+        from api.customer_photo_service import _simulation_allowed
+        from api.order_confirmation_context import get_order_confirmation_recipient_email
+        if not _simulation_allowed(current_app, get_order_confirmation_recipient_email(item.order)):
+            return jsonify({"error": "Solicitud no disponible."}), 404
     return jsonify({
         "mode": item.mode,
+        "is_simulation": item.is_simulation,
         "status": "received" if item.submitted_at else "pending_confirmation" if item.delivery_status in {"sending", "unknown"} else "open",
         "commercial_consent_active": bool(item.commercial_consent and not item.consent_revoked_at),
         "max_images": MAX_IMAGES,

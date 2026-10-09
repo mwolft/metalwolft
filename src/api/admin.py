@@ -1543,6 +1543,7 @@ class OrderAdminView(SafeModelView):
                 if photo_url:
                     options["photo_request_url"] = photo_url
                     options["photo_terms_url"] = photo_request.terms_url
+                    options["photo_is_simulation"] = photo_request.is_simulation
                 sent = send_order_update_email(
                     order=model,
                     change=change,
@@ -5273,7 +5274,7 @@ class CustomerPhotoRequestAdminView(SecureModelView):
     can_edit = False
     can_delete = False
     can_view_details = True
-    column_list = ("id", "order_id", "mode", "status", "photo_count", "delivery_status", "created_at", "submitted_at")
+    column_list = ("id", "order_id", "mode", "is_simulation", "status", "photo_count", "delivery_status", "created_at", "submitted_at")
     column_filters = ("order_id", "mode", "status")
     column_details_list = (*column_list, "mailbox_confirmed_at", "reviewed_at", "reviewed_by", "review_note", "commercial_consent", "consent_revoked_at")
 
@@ -5370,6 +5371,7 @@ class CustomerPhotoRequestAdminView(SecureModelView):
         options.update(
             status="entregado", send_email=True, photo_request_mode=item.mode,
             photo_request_url=link, photo_terms_url=item.terms_url,
+            photo_is_simulation=item.is_simulation,
         )
         change = OrderUpdateEmailChange(
             old_order_status="enviado", new_order_status="entregado",
