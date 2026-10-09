@@ -416,10 +416,49 @@ def _render_photo_request_block(status, mode, url, terms_url, is_simulation=Fals
     if status != "entregado" or mode not in {"free", "incentive"} or not url:
         return "", ""
     if mode == "incentive":
-        title = "¡Tus fotos tienen premio!"
-        body = (
-            "¿Nos enseñas cómo han quedado tus rejas? Si nos envías fotografías de la instalación "
-            "y cumplen las condiciones de la promoción, podrás recibir un reembolso de 20 € de tu compra."
+        title = "¡Enséñanos tus fotos! 📸" if is_simulation else "¡Tus fotos tienen premio! 📸"
+        intro = "¿Ya tienes tus rejas instaladas? ¡Nos encantaría ver cómo han quedado!"
+        instructions = (
+            "Envíanos dos fotografías de una de tus rejas: una de frente y otra de lado o en perspectiva, "
+            "donde se vea completa y bien centrada."
+        )
+        reward = (
+            "Esta es una prueba sin derecho a reembolso ni compensación."
+            if is_simulation else
+            "Si las fotografías cumplen las condiciones de la promoción, te devolveremos 20 € de tu compra."
+        )
+        simulation_text = "SIMULACIÓN — SIN REEMBOLSO.\n" if is_simulation else ""
+        simulation_html = (
+            f'<p style="margin:0 0 12px;color:{COLOR_TEXT};font-weight:700;">'
+            "SIMULACIÓN — SIN REEMBOLSO.</p>"
+            if is_simulation else ""
+        )
+        conditions_text = f"Consultar las condiciones de la promoción: {terms_url}\n" if terms_url else ""
+        conditions_html = (
+            f'<p style="margin:8px 0 0;"><a href="{_html(terms_url)}" style="color:{COLOR_ACCENT};">'
+            "Consultar las condiciones de la promoción</a></p>"
+            if terms_url else ""
+        )
+        note = "No necesitas una cámara profesional. ¡Con tu móvil es suficiente!"
+        return (
+            f"{title}\n{simulation_text}{intro}\n{instructions}\n{reward}\n"
+            f"Enviar mis fotografías: {url}\n{conditions_text}{note}\n\n",
+            f'<div style="margin:0 0 24px;padding:16px;background:{COLOR_SURFACE_ALT};border-left:3px solid {COLOR_ACCENT};">'
+            f'<p style="margin:0 0 8px;color:{COLOR_TEXT};font-size:15px;font-weight:700;">{_html(title)}</p>'
+            f"{simulation_html}"
+            f'<p style="margin:0 0 12px;color:{COLOR_MUTED};font-size:14px;line-height:1.55;">{_html(intro)}</p>'
+            f'<p style="margin:0 0 12px;color:{COLOR_MUTED};font-size:14px;line-height:1.55;">'
+            f'Envíanos <strong>dos fotografías de una de tus rejas</strong>: una de frente y otra de lado o en perspectiva, '
+            f'donde se vea completa y bien centrada.</p>'
+            f'<p style="margin:0 0 12px;color:{COLOR_MUTED};font-size:14px;line-height:1.55;">'
+            f'{_html(reward) if is_simulation else "Si las fotografías cumplen las condiciones de la promoción, <strong>te devolveremos 20 € de tu compra</strong>."}'
+            f'</p>'
+            f'<a href="{_html(url)}" style="display:inline-block;background:{COLOR_ACCENT};color:#ffffff;'
+            'text-decoration:none;font-size:16px;font-weight:700;padding:13px 22px;'
+            'border-radius:999px;">Enviar mis fotografías</a>'
+            f'{conditions_html}'
+            f'<p style="margin:12px 0 0;color:{COLOR_MUTED};font-size:13px;font-style:italic;line-height:1.55;">{_html(note)}</p>'
+            '</div>',
         )
     else:
         title = "Comparte tus rejas instaladas"

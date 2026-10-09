@@ -284,7 +284,8 @@ class CustomerPhotoRequestTest(unittest.TestCase):
             payload = smtp.call_args.kwargs
             self.assertIn("SIMULACIÓN — SIN REEMBOLSO", payload["body"])
             self.assertIn("SIMULACIÓN — SIN REEMBOLSO", payload["html"])
-            self.assertIn("20 €", payload["body"])
+            self.assertNotIn("te devolveremos 20 €", payload["body"])
+            self.assertNotIn("te devolveremos 20 €", payload["html"])
             self.assertIn("/fotos-clientes#", payload["body"])
         item = CustomerPhotoRequest.query.one()
         self.assertTrue(item.is_simulation)
