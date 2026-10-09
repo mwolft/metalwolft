@@ -26,7 +26,10 @@ if HAS_DEPS:
         rotate_photo_link,
         review_photo_request, stale_mail_attempts, submit_photos, token_hash, utcnow, validate_image,
     )
-    from api.customer_photo_mail import PhotoMailRejected, PhotoMailUncertain, build_photo_message, send_photo_message
+    from api.customer_photo_mail import (
+        PhotoMailRejected, PhotoMailUncertain, build_photo_confirmation_message,
+        build_photo_message, send_photo_message,
+    )
     from api.customer_photo_rate_limit import CustomerPhotoRateLimitUnavailable, allow_photo_request
     from api.models import (
         CheckoutSessions, ConfirmedOrderContext, CustomerPhotoRequest,
@@ -146,6 +149,34 @@ class CustomerPhotoRequestTest(unittest.TestCase):
             self.assertIn("Guía de instalación:", text)
             self.assertIn("Mantenimiento y acabado:", text)
             self.assertIn("Comparte tus rejas instaladas", text)
+
+    def test_incentive_email_in_development_includes_offer_link_and_terms(self):
+        order = db.session.get(Orders, self.order_id)
+        checkout = CheckoutSessions(
+            user_id=order.user_id, order_id=order.id, status="order_created",
+            payment_provider="stripe", payment_intent_id="pi_test",
+            public_checkout_token="checkout-incentive", quote_snapshot={"lines": [{}]},
+        )
+        order.confirmed_order_context = ConfirmedOrderContext(
+            source="web_checkout", quote_snapshot={"lines": [{}]},
+            customer_snapshot={"email": "cliente@example.test"},
+            payment_method="stripe", payment_status="confirmed",
+            payment_reference="pi_test", provider_identifiers={"payment_intent_id": "pi_test"},
+            payment_amount=80, currency="EUR", source_checkout_session=checkout,
+        )
+        db.session.commit()
+        self.app.config["CUSTOMER_PHOTOS_INCENTIVE_ENABLED"] = True
+        with self.app.test_request_context(), patch("api.email_routes.send_email", return_value=True) as smtp:
+            order, form = self.order_form("incentive", guides=False)
+            self.assertTrue(self.view.update_model(form, order))
+        payload = smtp.call_args.kwargs
+        self.assertEqual(payload["subject"], "Actualización de tu pedido: Entregado")
+        self.assertEqual(payload["recipients"], ["cliente@example.test"])
+        for body in (payload["body"], payload["html"]):
+            self.assertIn("20 €", body)
+            self.assertIn("/fotos-clientes#", body)
+            self.assertIn("https://example.test/condiciones", body)
+        self.assertEqual(CustomerPhotoRequest.query.one().mode, "incentive")
 
     def test_same_delivered_status_does_not_create_offer(self):
         order = db.session.get(Orders, self.order_id)
@@ -282,16 +313,23 @@ class CustomerPhotoRequestTest(unittest.TestCase):
         self.assertEqual(result.consent_text, "Borrador de autorización comercial.")
         self.assertEqual(result.consent_version, "draft-v1")
         self.assertEqual(result.photo_count, 5)
-        self.assertEqual(len(sent), 1)
+        self.assertEqual(len(sent), 2)
         self.assertEqual(sent[0]["To"], "admin@metalwolft.com")
         self.assertIn("Solicitud: ", sent[0].get_body(preferencelist=("plain",)).get_content())
         self.assertIn("Autorización comercial: No", sent[0].get_body(preferencelist=("plain",)).get_content())
         self.assertEqual(len(list(sent[0].iter_attachments())), 5)
         self.assertNotIn("photo.png", sent[0].as_string())
+        self.assertEqual(sent[1]["To"], "cliente@example.test")
+        self.assertEqual(sent[1]["Reply-To"], "admin@metalwolft.com")
+        confirmation_text = sent[1].get_body(preferencelist=("plain",)).get_content()
+        self.assertIn("retirada", confirmation_text)
+        self.assertIn("supresión", confirmation_text)
+        self.assertEqual(len(list(sent[1].iter_attachments())), 0)
         self.assertEqual(CustomerPhotoImage.query.count(), 0)
         self.assertEqual(CustomerPhotoUploadAttempt.query.count(), 0)
         with self.assertRaises(CustomerPhotoError):
             self.submit(token)
+        self.assertEqual(len(sent), 2)
 
     def test_upload_rejects_missing_consent_mime_and_duplicate_files(self):
         _, token = self.offer()
@@ -346,6 +384,21 @@ class CustomerPhotoRequestTest(unittest.TestCase):
         self.assertEqual(CustomerPhotoImage.query.count(), 0)
         self.submit(token)
         self.assertEqual(item.status, "received")
+
+    def test_confirmation_failure_does_not_undo_accepted_submission_or_resend_photos(self):
+        item, token = self.offer()
+        sent = []
+        def send(**kwargs):
+            sent.append(kwargs["message"])
+            if len(sent) == 2:
+                raise PhotoMailUncertain("confirmation timeout")
+        with patch.object(self.app.logger, "exception"):
+            self.submit(token, send_message=send)
+        self.assertEqual(item.status, "received")
+        self.assertEqual(item.delivery_status, "accepted")
+        self.assertEqual(len(sent), 2)
+        with self.assertRaises(CustomerPhotoError):
+            self.submit(token)
 
     def test_token_cannot_rotate_during_smtp_send(self):
         item, token = self.offer()
@@ -460,20 +513,28 @@ class CustomerPhotoRequestTest(unittest.TestCase):
         self.assertIsNotNone(db.session.get(CustomerPhotoRequest, item.id).mailbox_confirmed_at)
 
     def test_reject_requires_note_and_consent_can_be_revoked(self):
+        admin = Admin(self.app)
+        admin.add_view(CustomerPhotoRequestAdminView(CustomerPhotoRequest, db.session, endpoint="photo-review-revoke"))
         item, token = self.offer()
         self.submit(token)
         item.mailbox_confirmed_at = utcnow()
         db.session.commit()
         with self.assertRaises(CustomerPhotoError):
             review_photo_request(request_id=item.id, decision="reject", note="", actor="admin")
-        response = self.app.test_client().post(
+        self.assertEqual(self.app.test_client().post(
             "/api/customer-photos/consent/revoke", headers={"Authorization": f"Bearer {token}"},
-        )
-        self.assertEqual(response.status_code, 200)
+        ).status_code, 404)
+        credentials = b64encode(b"photo-admin:secret").decode("ascii")
+        with patch("api.admin.ADMIN_USER", "photo-admin"), patch("api.admin.ADMIN_PW", "secret"), patch("api.admin._valid_work_order_csrf_token", return_value=True):
+            response = self.app.test_client().post(
+                f"/admin/photo-review-revoke/review/{item.id}",
+                headers={"Authorization": f"Basic {credentials}"}, data={"decision": "revoke"},
+            )
+        self.assertEqual(response.status_code, 302)
         self.assertIsNotNone(item.consent_revoked_at)
-        reviewed = review_photo_request(request_id=item.id, decision="reject", note="No coincide", actor="admin")
-        db.session.commit()
-        self.assertEqual(reviewed.status, "rejected")
+        self.assertEqual(item.status, "revoked")
+        self.assertEqual(item.consent_version, "draft-v1")
+        self.assertEqual(item.photo_count, 1)
 
     def test_rate_limiter_blocks_repeated_requests(self):
         start = datetime(2026, 10, 9, 12, 0)
@@ -515,7 +576,7 @@ class CustomerPhotoRequestTest(unittest.TestCase):
             )
         self.assertEqual(response.status_code, 201)
         self.assertNotIn("order_id", response.json)
-        smtp.assert_called_once()
+        self.assertEqual(smtp.call_count, 2)
         self.assertEqual(db.session.get(CustomerPhotoRequest, item.id).status, "received")
         self.assertEqual(db.session.get(Orders, self.order_id).order_status, "enviado")
         self.assertEqual(Invoices.query.count(), 0)

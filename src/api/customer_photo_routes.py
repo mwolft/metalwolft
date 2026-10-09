@@ -7,13 +7,12 @@ from flask import Blueprint, Request, current_app, jsonify, request
 from api.customer_photo_service import (
     MAX_IMAGES, MAX_IMAGE_BYTES, MAX_TOTAL_IMAGE_BYTES, MAX_REQUEST_BYTES,
     CustomerPhotoError, resolve_photo_request,
-    submit_photos, utcnow,
+    submit_photos,
 )
 from api.customer_photo_mail import PhotoMailRejected, PhotoMailUncertain
 from api.customer_photo_rate_limit import (
     CustomerPhotoRateLimitUnavailable, allow_photo_request,
 )
-from api.models import db
 
 
 customer_photo_bp = Blueprint("customer_photo_bp", __name__)
@@ -37,7 +36,7 @@ def _within_limits(operation, item=None):
     if item is None:
         return allow_photo_request("public", limit=3000)
     if not allow_photo_request(f"request:{item.id}:{operation}", limit={
-        "get": 30, "post": 5, "revoke": 5,
+        "get": 30, "post": 5,
     }[operation]):
         return False
     return True
@@ -112,20 +111,3 @@ def upload_customer_photos():
         current_app.logger.warning("Customer photo mail acceptance uncertain")
         return jsonify({"error": str(exc)}), 409
     return jsonify({"message": "El servidor de correo ha aceptado tus fotografías. Gracias por compartirlas."}), 201
-
-
-@customer_photo_bp.route("/consent/revoke", methods=["POST"])
-def revoke_customer_photo_consent():
-    if not current_app.config.get("CUSTOMER_PHOTOS_ENABLED"):
-        return jsonify({"error": "Solicitud no disponible."}), 404
-    if not _within_limits("revoke"):
-        return jsonify({"error": "Demasiados intentos."}), 429
-    item = resolve_photo_request(_token())
-    if not item or not item.submitted_at:
-        return jsonify({"error": "Solicitud no disponible."}), 404
-    if not _within_limits("revoke", item):
-        return jsonify({"error": "Demasiados intentos."}), 429
-    if item.commercial_consent and not item.consent_revoked_at:
-        item.consent_revoked_at = utcnow()
-        db.session.commit()
-    return jsonify({"message": "Hemos registrado la retirada de tu autorización comercial."})

@@ -37,6 +37,26 @@ def build_photo_message(*, app, order_reference, request_id, attempt_id, date, c
     return message
 
 
+def build_photo_confirmation_message(*, app, recipient, order_reference, request_id):
+    message = EmailMessage()
+    message["Subject"] = f"Hemos recibido tus fotografías - pedido {order_reference}"
+    message["From"] = app.config.get("MAIL_DEFAULT_SENDER") or ""
+    message["To"] = recipient
+    message["Reply-To"] = PHOTO_MAIL_RECIPIENT
+    message.set_content(
+        f"Hemos recibido tus fotografías para el pedido {order_reference} "
+        f"(solicitud {request_id}). Las revisaremos antes de decidir si podemos utilizarlas.\n\n"
+        "Si autorizaste su uso comercial, puedes solicitar la retirada de esa autorización "
+        f"respondiendo a este mensaje o escribiendo a {PHOTO_MAIL_RECIPIENT}. "
+        "La retirada de la autorización no elimina automáticamente las fotografías recibidas "
+        "por correo. Si solicitas su supresión, indícalo expresamente para que podamos "
+        "tramitarla por separado.\n\n"
+        "Si tu solicitud incluye la oferta de 20 €, el reembolso no es automático: "
+        "depende de la revisión y de las condiciones comunicadas.\n"
+    )
+    return message
+
+
 def send_photo_message(*, app, message):
     host = app.config.get("MAIL_SERVER")
     port = app.config.get("MAIL_PORT")

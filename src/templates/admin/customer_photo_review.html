@@ -11,6 +11,7 @@
   {% if item.mode == 'incentive' %}<p class="alert alert-info">Aprobar las fotos solo deja 20 € pendientes de revisión financiera. Esta pantalla nunca reembolsa.</p>{% endif %}
   <p>Autorización comercial: <strong>{{ 'Retirada' if item.consent_revoked_at else 'Sí' if item.commercial_consent is sameas true else 'No' if item.commercial_consent is sameas false else 'Aún no registrada' }}</strong></p>
   {% if item.consent_at %}<p>Versión: {{ item.consent_version }} · Fecha: {{ item.consent_at }}</p><blockquote>{{ item.consent_text }}</blockquote>{% endif %}
+  <p>La retirada de la autorización comercial no elimina los adjuntos del buzón. Las solicitudes de supresión deben tramitarse por separado en admin@metalwolft.com.</p>
   {% if item.reviewed_at %}<p>Revisión: {{ item.reviewed_at }} · {{ item.reviewed_by }} · {{ item.review_note or '' }}</p>{% endif %}
   {% if item.delivery_status in ('accepted', 'unknown', 'sending') and not item.mailbox_confirmed_at %}
   <p class="alert alert-warning">Comprueba el correo y sus adjuntos antes de confirmar. Un resultado incierto no se reenvía automáticamente.</p>
@@ -40,7 +41,7 @@
   {% if item.status != 'revoked' %}
   <form method="post" action="{{ review_url }}" style="margin-top:16px">
     <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-    <button class="btn btn-danger" name="decision" value="revoke" type="submit">Revocar enlace y autorización comercial</button>
+    <button class="btn btn-danger" name="decision" value="revoke" type="submit">Revocar enlace y autorización comercial (no elimina adjuntos)</button>
   </form>
   {% endif %}
 </div>

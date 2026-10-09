@@ -126,34 +126,11 @@ export function CustomerPhotoForm() {
     }
   }
 
-  async function revokeConsent() {
-    if (!api || !token.current || !info) return;
-    setBusy(true);
-    try {
-      const response = await fetch(`${api}/api/customer-photos/consent/revoke`, {
-        method: "POST",
-        headers: { Authorization: `Bearer ${token.current}` },
-        cache: "no-store",
-        referrerPolicy: "no-referrer"
-      });
-      if (!response.ok) throw new Error("No se pudo retirar la autorización.");
-      setInfo({ ...info, commercial_consent_active: false });
-      setMessage("Hemos registrado la retirada de tu autorización comercial.");
-    } catch (error) {
-      setMessage(error instanceof Error ? error.message : "No se pudo retirar la autorización.");
-    } finally {
-      setBusy(false);
-    }
-  }
-
   if (!info) return <p role="status">{message}</p>;
   if (info.status !== "open") return (
     <div>
       <p role="status">{message}</p>
-      {info.commercial_consent_active && (
-        <button type="button" onClick={revokeConsent} disabled={busy}>Retirar autorización comercial</button>
-      )}
-      <p>Si el enlace ya no funciona, puedes responder al correo que te enviamos para solicitar la retirada.</p>
+      <p>Para retirar tu autorización comercial o solicitar la supresión de las fotografías recibidas por correo, escribe a <a href="mailto:admin@metalwolft.com">admin@metalwolft.com</a>. Son solicitudes distintas y las atenderemos por separado.</p>
     </div>
   );
 
@@ -193,6 +170,7 @@ export function CustomerPhotoForm() {
         <label><input type="radio" name="commercial-consent" value="no" checked={consent === "no"} onChange={() => setConsent("no")} /> No autorizo el uso comercial.</label>
       </fieldset>
       <p>Enviar fotos no implica autorizar su publicación. No publicaremos ninguna automáticamente.</p>
+      <p>Puedes retirar después tu autorización comercial escribiendo a <a href="mailto:admin@metalwolft.com">admin@metalwolft.com</a>. Retirar la autorización no elimina automáticamente las fotos recibidas por correo; si deseas solicitar su supresión, indícalo expresamente.</p>
       <button className="mw-button mw-button--primary" type="submit" disabled={busy || photos.length === 0 || !consent}>
         {busy ? "Enviando…" : "Enviar fotografías"}
       </button>

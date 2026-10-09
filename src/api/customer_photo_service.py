@@ -15,7 +15,8 @@ from api.design_service import order_contains_design_service
 from api.models import CustomerPhotoRequest, db
 from api.order_confirmation_context import get_order_confirmation_recipient_email
 from api.customer_photo_mail import (
-    PhotoMailRejected, PhotoMailUncertain, build_photo_message, send_photo_message,
+    PhotoMailRejected, PhotoMailUncertain, build_photo_message,
+    build_photo_confirmation_message, send_photo_message,
 )
 
 
@@ -229,6 +230,7 @@ def submit_photos(*, token, files, commercial_consent, app, session=None, send_m
         raise CustomerPhotoError("No envíes la misma fotografía dos veces.")
     request_id = photo_request.id
     order_reference = photo_request.order.locator
+    recipient = get_order_confirmation_recipient_email(photo_request.order)
     session.rollback()
     attempt_id = uuid4().hex
     created_at = utcnow()
@@ -263,10 +265,18 @@ def submit_photos(*, token, files, commercial_consent, app, session=None, send_m
             _finish_delivery(session, request_id, attempt_id, "unknown")
             raise PhotoMailUncertain("No podemos confirmar el envío. Contacta con MetalWolft antes de intentarlo de nuevo.") from exc
         try:
-            return _finish_delivery(session, request_id, attempt_id, "accepted")
+            result = _finish_delivery(session, request_id, attempt_id, "accepted")
         except Exception as exc:
             session.rollback()
             raise PhotoMailUncertain("El correo pudo haberse enviado, pero no se confirmó el registro. Contacta con MetalWolft.") from exc
+        try:
+            confirmation = build_photo_confirmation_message(
+                app=app, recipient=recipient, order_reference=order_reference, request_id=request_id,
+            )
+            (send_message or send_photo_message)(app=app, message=confirmation)
+        except Exception:
+            app.logger.exception("Customer photo confirmation email failed request_id=%s", request_id)
+        return result
     except Exception:
         session.rollback()
         raise
