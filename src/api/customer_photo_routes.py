@@ -104,7 +104,9 @@ def upload_customer_photos():
         return jsonify({"error": "Demasiados intentos."}), 429
     try:
         submit_photos(
-            token=_token(), files=request.files.getlist("photos"),
+            token=_token(), front_photo=request.files.get("front_photo"),
+            perspective_photo=request.files.get("perspective_photo"),
+            additional_photos=request.files.getlist("additional_photos"),
             commercial_consent=request.form.get("commercial_consent"),
             app=current_app,
             evidence={"channel": "public_photo_form"},

@@ -100,9 +100,11 @@ class CustomerPhotoRequestTest(unittest.TestCase):
         Image.new("RGB", (20, 20), color).save(content, format=fmt)
         return FileStorage(stream=BytesIO(content.getvalue()), filename="photo.png", content_type=mime)
 
-    def submit(self, token, *, consent="yes", colors=("red",), send_message=None):
+    def submit(self, token, *, consent="yes", colors=("red", "blue"), send_message=None):
         return submit_photos(
-            token=token, files=[self.image(color=color) for color in colors],
+            token=token, front_photo=self.image(color=colors[0]),
+            perspective_photo=self.image(color=colors[1]),
+            additional_photos=[self.image(color=color) for color in colors[2:]],
             commercial_consent=consent, app=self.app,
             send_message=send_message or (lambda **_kwargs: None),
         )
@@ -428,11 +430,38 @@ class CustomerPhotoRequestTest(unittest.TestCase):
         with self.assertRaises(CustomerPhotoError):
             self.submit(token, consent="")
         with self.assertRaises(CustomerPhotoError):
-            submit_photos(token=token, files=[self.image(mime="image/jpeg")], commercial_consent="yes", app=self.app)
+            submit_photos(token=token, front_photo=self.image(mime="image/jpeg"), perspective_photo=self.image(), additional_photos=[], commercial_consent="yes", app=self.app)
         with self.assertRaises(CustomerPhotoError):
             self.submit(token, colors=("red", "red"))
         with self.assertRaises(CustomerPhotoError):
             self.submit(token, colors=("red", "blue", "green", "yellow", "black", "white"))
+
+    def test_both_required_perspectives_are_enforced(self):
+        _, token = self.offer()
+        for front, perspective, expected in (
+            (None, self.image(color="blue"), "frontal"),
+            (self.image(), None, "perspectiva"),
+        ):
+            with self.subTest(expected=expected), self.assertRaisesRegex(CustomerPhotoError, expected):
+                submit_photos(token=token, front_photo=front, perspective_photo=perspective,
+                              additional_photos=[], commercial_consent="yes", app=self.app)
+        self.assertEqual(CustomerPhotoRequest.query.first().status, "offered")
+
+    def test_public_upload_requires_two_distinct_photo_fields(self):
+        item, token = self.offer()
+        client = self.app.test_client()
+        with patch("api.customer_photo_service.send_photo_message") as smtp:
+            for field, expected in (("front_photo", "perspectiva"), ("perspective_photo", "frontal")):
+                with self.subTest(field=field):
+                    response = client.post(
+                        "/api/customer-photos", headers={"Authorization": f"Bearer {token}"},
+                        data={"commercial_consent": "yes", field: (BytesIO(self.image().stream.read()), "reja.png", "image/png")},
+                        content_type="multipart/form-data",
+                    )
+                    self.assertEqual(response.status_code, 400)
+                    self.assertIn(expected, response.json["error"])
+            smtp.assert_not_called()
+        self.assertEqual(db.session.get(CustomerPhotoRequest, item.id).status, "offered")
 
     def test_large_image_is_resized_in_memory_and_oversize_mail_is_rejected(self):
         large = BytesIO()
@@ -626,7 +655,7 @@ class CustomerPhotoRequestTest(unittest.TestCase):
         self.assertIsNotNone(item.consent_revoked_at)
         self.assertEqual(item.status, "revoked")
         self.assertEqual(item.consent_version, "draft-v1")
-        self.assertEqual(item.photo_count, 1)
+        self.assertEqual(item.photo_count, 2)
 
     def test_rate_limiter_blocks_repeated_requests(self):
         start = datetime(2026, 10, 9, 12, 0)
@@ -662,7 +691,8 @@ class CustomerPhotoRequestTest(unittest.TestCase):
                 headers={"Authorization": f"Bearer {token}"},
                 data={
                     "commercial_consent": "yes",
-                    "photos": (BytesIO(content), "reja.png", "image/png"),
+                    "front_photo": (BytesIO(content), "frontal.png", "image/png"),
+                    "perspective_photo": (BytesIO(self.image(color="blue").stream.read()), "lateral.png", "image/png"),
                 },
                 content_type="multipart/form-data",
             )
@@ -675,7 +705,7 @@ class CustomerPhotoRequestTest(unittest.TestCase):
         second = client.post(
                 "/api/customer-photos",
                 headers={"Authorization": f"Bearer {token}"},
-                data={"commercial_consent": "yes", "photos": (BytesIO(content), "reja.png", "image/png")},
+                data={"commercial_consent": "yes", "front_photo": (BytesIO(content), "reja.png", "image/png")},
                 content_type="multipart/form-data",
         )
         self.assertEqual(second.status_code, 400)

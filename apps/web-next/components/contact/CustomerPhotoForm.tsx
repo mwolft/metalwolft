@@ -30,7 +30,9 @@ export function CustomerPhotoForm() {
   const token = useRef("");
   const previews = useRef(new Set<string>());
   const [info, setInfo] = useState<RequestInfo | null>(null);
-  const [photos, setPhotos] = useState<Preview[]>([]);
+  const [frontPhoto, setFrontPhoto] = useState<Preview | null>(null);
+  const [perspectivePhoto, setPerspectivePhoto] = useState<Preview | null>(null);
+  const [additionalPhotos, setAdditionalPhotos] = useState<Preview[]>([]);
   const [consent, setConsent] = useState<"" | "yes" | "no">("");
   const [message, setMessage] = useState("Comprobando enlace…");
   const [busy, setBusy] = useState(false);
@@ -63,11 +65,21 @@ export function CustomerPhotoForm() {
     };
   }, [api]);
 
-  function addPhotos(event: ChangeEvent<HTMLInputElement>) {
+  function selectPhotos(event: ChangeEvent<HTMLInputElement>, kind: "front" | "perspective" | "additional") {
     const selected = Array.from(event.target.files || []);
     event.target.value = "";
-    if (!info) return;
-    if (selected.length + photos.length > info.max_images) {
+    if (!info || !selected.length) return;
+    if (kind !== "additional" && selected.length !== 1) {
+      setMessage("Selecciona una sola fotografía para esta perspectiva.");
+      return;
+    }
+    const current = [frontPhoto, perspectivePhoto, ...additionalPhotos].filter((photo): photo is Preview => photo !== null);
+    const replaced = kind === "front" ? frontPhoto : kind === "perspective" ? perspectivePhoto : null;
+    if (kind === "additional" && selected.length + additionalPhotos.length > Math.min(3, info.max_images - 2)) {
+      setMessage("Puedes añadir un máximo de tres fotografías adicionales.");
+      return;
+    }
+    if (current.length - (replaced ? 1 : 0) + selected.length > info.max_images) {
       setMessage(`Puedes enviar un máximo de ${info.max_images} fotografías.`);
       return;
     }
@@ -75,7 +87,7 @@ export function CustomerPhotoForm() {
       setMessage("Usa JPEG, PNG o WebP de 5 MB o menos por fotografía.");
       return;
     }
-    if (selected.reduce((sum, file) => sum + file.size, photos.reduce((sum, photo) => sum + photo.file.size, 0)) > 24 * 1024 * 1024) {
+    if (selected.reduce((sum, file) => sum + file.size, current.reduce((sum, photo) => sum + (photo === replaced ? 0 : photo.file.size), 0)) > 24 * 1024 * 1024) {
       setMessage("El conjunto de fotografías es demasiado grande. Selecciona imágenes más pequeñas.");
       return;
     }
@@ -84,23 +96,33 @@ export function CustomerPhotoForm() {
       previews.current.add(url);
       return { id: url, file, url };
     });
-    setPhotos((current) => [...current, ...added]);
+    if (replaced) {
+      URL.revokeObjectURL(replaced.url);
+      previews.current.delete(replaced.url);
+    }
+    if (kind === "front") setFrontPhoto(added[0]);
+    else if (kind === "perspective") setPerspectivePhoto(added[0]);
+    else setAdditionalPhotos((currentPhotos) => [...currentPhotos, ...added]);
     setMessage("");
   }
 
   function removePhoto(id: string) {
     URL.revokeObjectURL(id);
     previews.current.delete(id);
-    setPhotos((current) => current.filter((photo) => photo.id !== id));
+    if (frontPhoto?.id === id) setFrontPhoto(null);
+    else if (perspectivePhoto?.id === id) setPerspectivePhoto(null);
+    else setAdditionalPhotos((current) => current.filter((photo) => photo.id !== id));
   }
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!api || !info || !token.current || !photos.length || !consent) return;
+    if (!api || !info || !token.current || !frontPhoto || !perspectivePhoto || !consent) return;
     setBusy(true);
     setMessage("");
     const body = new FormData();
-    photos.forEach((photo) => body.append("photos", photo.file));
+    body.append("front_photo", frontPhoto.file);
+    body.append("perspective_photo", perspectivePhoto.file);
+    additionalPhotos.forEach((photo) => body.append("additional_photos", photo.file));
     body.append("commercial_consent", consent);
     try {
       const response = await fetch(`${api}/api/customer-photos`, {
@@ -115,9 +137,11 @@ export function CustomerPhotoForm() {
         setInfo({ ...info, status: "pending_confirmation" });
       }
       if (!response.ok) throw new Error(result.error || "No se pudieron enviar las fotografías.");
-      photos.forEach((photo) => URL.revokeObjectURL(photo.url));
+      [frontPhoto, perspectivePhoto, ...additionalPhotos].forEach((photo) => URL.revokeObjectURL(photo.url));
       previews.current.clear();
-      setPhotos([]);
+      setFrontPhoto(null);
+      setPerspectivePhoto(null);
+      setAdditionalPhotos([]);
       setInfo({ ...info, status: "received", commercial_consent_active: consent === "yes" });
       setMessage(result.message || "El servidor de correo ha aceptado tus fotografías. Gracias.");
     } catch (error) {
@@ -139,28 +163,48 @@ export function CustomerPhotoForm() {
   return (
     <form className="mw-contact-form mw-issue-report-form" onSubmit={submit}>
       {info.is_simulation && <p role="note"><strong>SIMULACIÓN — SIN REEMBOLSO.</strong> Esta prueba no genera derecho a compensación, aunque las fotografías sean aprobadas.</p>}
-      <p>Hasta cinco fotografías: una vista general, otra del diseño y, si quieres, detalles o perspectivas. No hace falta calidad profesional.</p>
-      <p>Busca buena luz y evita personas identificables, matrículas o información privada.</p>
+      <p>Fotografía una sola reja, aunque tu pedido incluya varias. Bastan fotos hechas con móvil: procura buena luz, enfoque y encuadre.</p>
+      <p>Evita personas identificables, matrículas o información privada.</p>
       <p>Las imágenes se ajustan automáticamente si es necesario y se envían por correo a MetalWolft. No se guardan en el panel. El conjunto procesado no puede superar {Math.round(info.max_total_bytes / (1024 * 1024))} MB.</p>
       {info.mode === "incentive" && (
         <p>La revisión de las fotos no garantiza el reembolso de 20 €. Consulta las condiciones antes de enviarlas.</p>
       )}
-      <label className="mw-field">
-        <span>Fotografías (JPEG, PNG o WebP, máximo 5 MB cada una)</span>
-        <input type="file" accept="image/jpeg,image/png,image/webp" multiple onChange={addPhotos} disabled={busy || photos.length >= info.max_images} />
-      </label>
-      {photos.length > 0 && (
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 16 }}>
-          {photos.map((photo, index) => (
-            <div key={photo.id}>
+      <div className="mw-customer-photo-fields">
+        {([
+          { kind: "front" as const, title: "Fotografía frontal (obligatoria)", hint: "Reja completa, centrada y de frente.", photo: frontPhoto },
+          { kind: "perspective" as const, title: "Fotografía lateral o en perspectiva (obligatoria)", hint: "La misma reja: muestra su profundidad y cómo queda instalada.", photo: perspectivePhoto }
+        ]).map(({ kind, title, hint, photo }) => (
+          <div className="mw-customer-photo-field" key={kind}>
+            <label className="mw-field">
+              <span>{title}</span>
+              <small>{hint}</small>
+              <input type="file" accept="image/jpeg,image/png,image/webp" onChange={(event) => selectPhotos(event, kind)} disabled={busy} required={!photo} />
+            </label>
+            {photo && <div className="mw-customer-photo-preview">
               {/* Blob previews stay in memory and never use the public image optimizer. */}
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={photo.url} alt={`Fotografía seleccionada ${index + 1}`} style={{ width: 140, height: 120, objectFit: "contain" }} />
+              <img src={photo.url} alt={`Vista previa: ${title}`} />
+              <span>{photo.file.name}</span>
               <button type="button" onClick={() => removePhoto(photo.id)} disabled={busy}>Eliminar</button>
-            </div>
-          ))}
-        </div>
-      )}
+            </div>}
+          </div>
+        ))}
+      </div>
+      <div className="mw-customer-photo-field">
+        <label className="mw-field">
+          <span>Fotografías adicionales (opcionales, hasta tres)</span>
+          <small>Si quieres, añade detalles u otras perspectivas. JPEG, PNG o WebP; máximo 5 MB por imagen.</small>
+          <input type="file" accept="image/jpeg,image/png,image/webp" multiple onChange={(event) => selectPhotos(event, "additional")} disabled={busy || additionalPhotos.length >= 3} />
+        </label>
+        {additionalPhotos.length > 0 && <div className="mw-customer-photo-additional">
+          {additionalPhotos.map((photo, index) => <div className="mw-customer-photo-preview" key={photo.id}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={photo.url} alt={`Vista previa de fotografía adicional ${index + 1}`} />
+            <span>{photo.file.name}</span>
+            <button type="button" onClick={() => removePhoto(photo.id)} disabled={busy}>Eliminar</button>
+          </div>)}
+        </div>}
+      </div>
       <section aria-label="Condiciones de participación">
         <h3>Condiciones de participación</h3>
         <p>{info.terms_text}</p>
@@ -174,7 +218,7 @@ export function CustomerPhotoForm() {
       </fieldset>
       <p>Enviar fotos no implica autorizar su publicación. No publicaremos ninguna automáticamente.</p>
       <p>Puedes retirar después tu autorización comercial escribiendo a <a href="mailto:admin@metalwolft.com">admin@metalwolft.com</a>. Retirar la autorización no elimina automáticamente las fotos recibidas por correo; si deseas solicitar su supresión, indícalo expresamente.</p>
-      <button className="mw-button mw-button--primary" type="submit" disabled={busy || photos.length === 0 || !consent}>
+      <button className="mw-button mw-button--primary" type="submit" disabled={busy || !frontPhoto || !perspectivePhoto || !consent}>
         {busy ? "Enviando…" : "Enviar fotografías"}
       </button>
       {message && <p role="status">{message}</p>}

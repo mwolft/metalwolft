@@ -260,7 +260,7 @@ def validate_image(file):
     return declared, normalized, sha256(normalized).hexdigest(), ALLOWED_IMAGES[declared][1]
 
 
-def submit_photos(*, token, files, commercial_consent, app, session=None, send_message=None, evidence=None):
+def submit_photos(*, token, front_photo, perspective_photo, additional_photos, commercial_consent, app, session=None, send_message=None, evidence=None):
     """Reserve a single attempt, send without a DB lock, then record relay acceptance."""
     session = session or db.session
     photo_request = resolve_photo_request(token, session=session)
@@ -272,9 +272,15 @@ def submit_photos(*, token, files, commercial_consent, app, session=None, send_m
         raise CustomerPhotoError("La simulación ya no está autorizada en este entorno.")
     if commercial_consent not in ("yes", "no"):
         raise CustomerPhotoError("Indica expresamente si autorizas el uso comercial.")
-    files = [file for file in files if file and getattr(file, "filename", None)]
-    if not 1 <= len(files) <= MAX_IMAGES:
-        raise CustomerPhotoError("Selecciona entre una y cinco fotografías.")
+    if not front_photo or not getattr(front_photo, "filename", None):
+        raise CustomerPhotoError("Selecciona una fotografía frontal de la reja.")
+    if not perspective_photo or not getattr(perspective_photo, "filename", None):
+        raise CustomerPhotoError("Selecciona una fotografía lateral o en perspectiva.")
+    if any(not file or not getattr(file, "filename", None) for file in additional_photos):
+        raise CustomerPhotoError("Selecciona archivos válidos para las fotografías adicionales.")
+    if len(additional_photos) > MAX_IMAGES - 2:
+        raise CustomerPhotoError("Puedes añadir un máximo de tres fotografías adicionales.")
+    files = [front_photo, perspective_photo, *additional_photos]
     validated = [validate_image(file) for file in files]
     if sum(len(image[1]) for image in validated) > MAX_TOTAL_IMAGE_BYTES:
         raise CustomerPhotoError("El conjunto de fotografías supera 8 MB. Selecciona imágenes más pequeñas.")
