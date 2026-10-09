@@ -71,6 +71,7 @@ class FlaskAdminNavigationTest(unittest.TestCase):
                 ("Catálogo", "Productos"),
                 ("Catálogo", "Imágenes de producto"),
                 ("Ventas", "Pedidos"),
+                ("Ventas", "Fotografías de clientes"),
                 ("Ventas", "Pedidos manuales"),
                 ("Ventas", "Líneas de pedido"),
                 ("Ventas", "Carritos"),
@@ -97,6 +98,7 @@ class FlaskAdminNavigationTest(unittest.TestCase):
             ("ProductAdminView", "Products", "products"),
             ("SafeModelView", "ProductImages", "productimages"),
             ("OrderAdminView", "Orders", "orders"),
+            ("CustomerPhotoRequestAdminView", "CustomerPhotoRequest", "customerphotorequest"),
             ("ManualOrderDraftAdminView", "ManualOrderDraft", "manualorderdraft"),
             ("OrderDetailsAdminView", "OrderDetails", "orderdetails"),
             ("CartAdminView", "Cart", "cart"),
@@ -129,6 +131,7 @@ class FlaskAdminNavigationTest(unittest.TestCase):
         text = source()
         self.assertIn("class SecureAdminIndexView(AdminIndexView):", text)
         self.assertIn("class SecureModelView(ModelView):", text)
+        self.assertIn("class CustomerPhotoRequestAdminView(SecureModelView):", text)
         self.assertIn("request.authorization", text)
         self.assertIn("WWW-Authenticate", text)
 
