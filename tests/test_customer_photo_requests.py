@@ -1,4 +1,5 @@
 import importlib.util
+from datetime import datetime, timedelta
 from base64 import b64encode
 from io import BytesIO
 from pathlib import Path
@@ -15,18 +16,20 @@ if HAS_DEPS:
     from flask import Flask
     from flask_admin import Admin
     from PIL import Image
+    from sqlalchemy.exc import OperationalError
     from werkzeug.datastructures import FileStorage
 
     from api.admin import CustomerPhotoRequestAdminView, OrderAdminView
     from api.customer_photo_routes import customer_photo_bp
     from api.customer_photo_service import (
-        CustomerPhotoError, PhotoRateLimiter, create_photo_request, resolve_photo_request,
+        CustomerPhotoError, create_photo_request, resolve_photo_request,
         rotate_photo_link,
-        review_photo_request, submit_photos, token_hash, utcnow,
+        review_photo_request, stale_upload_attempts, submit_photos, token_hash, utcnow,
     )
+    from api.customer_photo_rate_limit import CustomerPhotoRateLimitUnavailable, allow_photo_request
     from api.models import (
         CheckoutSessions, ConfirmedOrderContext, CustomerPhotoRequest,
-        CustomerPhotoImage, Invoices, OrderDetails, Orders, Users, db,
+        CustomerPhotoImage, CustomerPhotoUploadAttempt, Invoices, OrderDetails, Orders, Users, db,
     )
 
 
@@ -214,6 +217,11 @@ class CustomerPhotoRequestTest(unittest.TestCase):
         checkout.payment_intent_id = "pi_mismatch"
         with self.assertRaises(CustomerPhotoError):
             create_photo_request(order=order, mode="incentive", app=self.app)
+        checkout.payment_intent_id = None
+        order.confirmed_order_context.payment_reference = None
+        order.confirmed_order_context.provider_identifiers = {"payment_intent_id": None}
+        with self.assertRaises(CustomerPhotoError):
+            create_photo_request(order=order, mode="incentive", app=self.app)
 
     def test_paypal_order_id_without_capture_is_not_incentive_eligible(self):
         order = db.session.get(Orders, self.order_id)
@@ -233,6 +241,26 @@ class CustomerPhotoRequestTest(unittest.TestCase):
         self.app.config["CUSTOMER_PHOTOS_INCENTIVE_ENABLED"] = True
         with self.assertRaises(CustomerPhotoError):
             create_photo_request(order=order, mode="incentive", app=self.app)
+
+    def test_paypal_capture_is_incentive_eligible_in_development(self):
+        order = db.session.get(Orders, self.order_id)
+        checkout = CheckoutSessions(
+            user_id=order.user_id, order_id=order.id, status="order_created",
+            payment_provider="paypal", provider_order_id="paypal-order",
+            provider_capture_id="capture-real", public_checkout_token="checkout-capture",
+            quote_snapshot={"lines": [{}]},
+        )
+        order.confirmed_order_context = ConfirmedOrderContext(
+            source="web_checkout", quote_snapshot={"lines": [{}]},
+            customer_snapshot={"email": "cliente@example.test"},
+            payment_method="paypal", payment_status="confirmed", payment_reference="capture-real",
+            provider_identifiers={"provider_order_id": "paypal-order", "provider_capture_id": "capture-real"},
+            payment_amount=80, currency="EUR", source_checkout_session=checkout,
+        )
+        db.session.commit()
+        self.app.config["CUSTOMER_PHOTOS_INCENTIVE_ENABLED"] = True
+        item, _ = create_photo_request(order=order, mode="incentive", app=self.app)
+        self.assertEqual(item.offered_amount, 20)
 
     def test_token_invalid_expired_revoked_and_single_offer(self):
         item, token = self.offer()
@@ -280,25 +308,73 @@ class CustomerPhotoRequestTest(unittest.TestCase):
             submit_photos(token=token, files=[self.image()], commercial_consent="yes", app=self.app, storage=FakeStorage(fail=True))
         self.assertEqual(db.session.get(CustomerPhotoRequest, item.id).status, "offered")
         self.assertEqual(CustomerPhotoImage.query.count(), 0)
+        self.assertEqual(CustomerPhotoUploadAttempt.query.count(), 0)
+
+    def test_token_rotated_during_r2_upload_cannot_confirm(self):
+        item, token = self.offer()
+        storage = FakeStorage()
+        original_put = storage.put_object
+
+        def rotate_during_upload(**kwargs):
+            original_put(**kwargs)
+            locked = db.session.query(CustomerPhotoRequest).filter_by(id=item.id).with_for_update().one()
+            rotate_photo_link(locked, app=self.app)
+            db.session.commit()
+
+        storage.put_object = rotate_during_upload
+        with self.assertRaises(CustomerPhotoError):
+            submit_photos(token=token, files=[self.image()], commercial_consent="yes", app=self.app, storage=storage)
+        self.assertEqual(db.session.get(CustomerPhotoRequest, item.id).status, "offered")
+        self.assertEqual(CustomerPhotoImage.query.count(), 0)
+        self.assertEqual(CustomerPhotoUploadAttempt.query.count(), 0)
+        self.assertEqual(storage.objects, {})
+
+    def test_production_blocks_incentive_resend_upload_and_approval(self):
+        self.app.config["CUSTOMER_PHOTOS_INCENTIVE_ENABLED"] = True
+        item, token = self.offer()
+        item.mode = "incentive"
+        item.offered_amount = 20
+        db.session.commit()
+        self.app.config["APP_ENV"] = "production"
+        with self.assertRaises(CustomerPhotoError):
+            rotate_photo_link(item, app=self.app)
+        with self.assertRaises(CustomerPhotoError):
+            submit_photos(token=token, files=[self.image()], commercial_consent="yes", app=self.app, storage=FakeStorage())
+        self.assertEqual(CustomerPhotoUploadAttempt.query.count(), 0)
+        self.app.config["APP_ENV"] = "development"
+        submit_photos(token=token, files=[self.image()], commercial_consent="yes", app=self.app, storage=FakeStorage())
+        self.app.config["APP_ENV"] = "production"
+        with self.assertRaises(CustomerPhotoError):
+            review_photo_request(request_id=item.id, decision="approve", note="", actor="admin", app=self.app)
+        self.assertEqual(item.status, "received")
+
+    def test_stale_reservation_is_reported_without_deletion(self):
+        item, _ = self.offer()
+        attempt = CustomerPhotoUploadAttempt(request_id=item.id, storage_key="customer-photos/test/orphan.jpg")
+        db.session.add(attempt)
+        db.session.commit()
+        self.assertEqual(stale_upload_attempts(now=utcnow() + timedelta(days=2)), [attempt])
+        self.assertEqual(CustomerPhotoUploadAttempt.query.count(), 1)
 
     def test_review_is_explicit_and_never_pays(self):
         item, token = self.offer()
         submit_photos(token=token, files=[self.image()], commercial_consent="yes", app=self.app, storage=FakeStorage())
-        reviewed = review_photo_request(request_id=item.id, decision="approve", note="Adecuadas", actor="admin")
+        reviewed = review_photo_request(request_id=item.id, decision="approve", note="Adecuadas", actor="admin", app=self.app)
         db.session.commit()
         self.assertEqual(reviewed.status, "approved")
         self.assertEqual(reviewed.images[0].review_status, "approved")
         with self.assertRaises(CustomerPhotoError):
-            review_photo_request(request_id=item.id, decision="approve", note="", actor="admin")
+            review_photo_request(request_id=item.id, decision="approve", note="", actor="admin", app=self.app)
 
     def test_incentive_approval_only_marks_refund_pending(self):
+        self.app.config["CUSTOMER_PHOTOS_INCENTIVE_ENABLED"] = True
         item, token = self.offer()
         item.mode = "incentive"
         item.offered_amount = 20
         db.session.commit()
         submit_photos(token=token, files=[self.image()], commercial_consent="yes", app=self.app, storage=FakeStorage())
         with patch("api.customer_photo_service.get_private_object_storage") as storage:
-            reviewed = review_photo_request(request_id=item.id, decision="approve", note="Aptas", actor="admin")
+            reviewed = review_photo_request(request_id=item.id, decision="approve", note="Aptas", actor="admin", app=self.app)
             db.session.commit()
             storage.assert_not_called()
         self.assertEqual(reviewed.status, "refund_pending")
@@ -341,10 +417,18 @@ class CustomerPhotoRequestTest(unittest.TestCase):
         self.assertEqual(reviewed.status, "rejected")
 
     def test_rate_limiter_blocks_repeated_requests(self):
-        limiter = PhotoRateLimiter()
-        self.assertTrue(limiter.allow("test", limit=2))
-        self.assertTrue(limiter.allow("test", limit=2))
-        self.assertFalse(limiter.allow("test", limit=2))
+        start = datetime(2026, 10, 9, 12, 0)
+        self.assertTrue(allow_photo_request("test", limit=2, now=start))
+        db.session.remove()
+        self.assertTrue(allow_photo_request("test", limit=2, now=start))
+        self.assertFalse(allow_photo_request("test", limit=2, now=start))
+        self.assertTrue(allow_photo_request("other", limit=2, now=start))
+        self.assertTrue(allow_photo_request("test", limit=2, now=start + timedelta(minutes=11)))
+
+    def test_rate_limiter_fails_closed_when_database_unavailable(self):
+        with patch.object(db.session, "execute", side_effect=OperationalError("query", {}, Exception("offline"))):
+            with self.assertRaises(CustomerPhotoRateLimitUnavailable):
+                allow_photo_request("unavailable", limit=2)
 
     def test_public_api_does_not_disclose_order_and_blocks_cross_access(self):
         _, token = self.offer()

@@ -850,6 +850,7 @@ class CustomerPhotoRequest(db.Model):
 
     order = db.relationship("Orders", back_populates="customer_photo_request")
     images = db.relationship("CustomerPhotoImage", back_populates="request", lazy=True)
+    upload_attempts = db.relationship("CustomerPhotoUploadAttempt", back_populates="request", lazy=True)
 
 
 class CustomerPhotoImage(db.Model):
@@ -870,6 +871,27 @@ class CustomerPhotoImage(db.Model):
     review_status = db.Column(db.String(20), nullable=False, default="pending")
 
     request = db.relationship("CustomerPhotoRequest", back_populates="images")
+
+
+class CustomerPhotoUploadAttempt(db.Model):
+    __tablename__ = "customer_photo_upload_attempts"
+
+    id = db.Column(db.Integer, primary_key=True)
+    request_id = db.Column(
+        db.Integer, db.ForeignKey("customer_photo_requests.id"), nullable=False, index=True,
+    )
+    storage_key = db.Column(db.String(255), nullable=False, unique=True)
+    created_at = db.Column(db.DateTime, nullable=False, server_default=db.func.now(), index=True)
+
+    request = db.relationship("CustomerPhotoRequest", back_populates="upload_attempts")
+
+
+class CustomerPhotoRateLimit(db.Model):
+    __tablename__ = "customer_photo_rate_limits"
+
+    bucket_key = db.Column(db.String(64), primary_key=True)
+    window_started_at = db.Column(db.DateTime, nullable=False)
+    hits = db.Column(db.Integer, nullable=False)
 
 
 class ManualOrderDraft(db.Model):

@@ -1501,7 +1501,7 @@ class OrderAdminView(SafeModelView):
             }
             form.photo_request_mode.render_kw = {
                 "data-photos-enabled": str(bool(current_app.config.get("CUSTOMER_PHOTOS_ENABLED"))).lower(),
-                "data-incentive-enabled": str(bool(current_app.config.get("CUSTOMER_PHOTOS_INCENTIVE_ENABLED"))).lower(),
+                "data-incentive-enabled": str(bool(current_app.config.get("CUSTOMER_PHOTOS_INCENTIVE_ENABLED")) and current_app.config.get("APP_ENV") != "production").lower(),
             }
         return form
 
@@ -5309,6 +5309,7 @@ class CustomerPhotoRequestAdminView(SecureModelView):
                         note=request.form.get("note"),
                         actor=(request.authorization or {}).get("username") or "admin",
                         session=self.session,
+                        app=current_app,
                     )
                 elif decision == "revoke":
                     item = self.session.query(CustomerPhotoRequest).filter_by(id=request_id).with_for_update().one()
