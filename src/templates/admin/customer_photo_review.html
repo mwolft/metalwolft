@@ -4,25 +4,23 @@
 <div class="container-fluid" style="max-width:960px">
   <h2>Fotografías del pedido {{ item.order.locator }}</h2>
   <p>Pedido #{{ item.order_id }} · Modalidad: {{ '20 €' if item.mode == 'incentive' else 'Sin incentivo' }} · Estado: {{ item.status }}</p>
-  <p>Email de solicitud: {{ item.email_sent_at or 'No confirmado' }}. Fotos recibidas: {{ item.submitted_at or 'No consta' }}.</p>
+  <p>Email de solicitud: {{ item.email_sent_at or 'No confirmado' }}. Fotos enviadas: {{ item.submitted_at or 'No consta' }}. Cantidad: {{ item.photo_count or 'No consta' }}.</p>
+  <p>Estado de correo: {{ item.delivery_status or 'Solicitud anterior sin envío registrado' }}. {% if item.delivery_message_id %}Referencia del mensaje: {{ item.delivery_message_id }}.{% endif %}</p>
+  <p class="alert alert-info">Las fotografías se reciben en admin@metalwolft.com. No se almacenan ni se pueden visualizar o descargar desde este panel.</p>
   {% if item.email_failed_at %}<p class="alert alert-warning">El último envío de email falló o no pudo confirmarse.</p>{% endif %}
   {% if item.mode == 'incentive' %}<p class="alert alert-info">Aprobar las fotos solo deja 20 € pendientes de revisión financiera. Esta pantalla nunca reembolsa.</p>{% endif %}
   <p>Autorización comercial: <strong>{{ 'Retirada' if item.consent_revoked_at else 'Sí' if item.commercial_consent is sameas true else 'No' if item.commercial_consent is sameas false else 'Aún no registrada' }}</strong></p>
   {% if item.consent_at %}<p>Versión: {{ item.consent_version }} · Fecha: {{ item.consent_at }}</p><blockquote>{{ item.consent_text }}</blockquote>{% endif %}
   {% if item.reviewed_at %}<p>Revisión: {{ item.reviewed_at }} · {{ item.reviewed_by }} · {{ item.review_note or '' }}</p>{% endif %}
-  {% if item.images %}
-  <div style="display:flex;flex-wrap:wrap;gap:16px;margin:20px 0">
-    {% for image in item.images %}
-    <figure style="width:260px;max-width:100%">
-      <a href="{{ image_urls[image.id] }}" target="_blank" rel="noopener noreferrer">
-        <img src="{{ image_urls[image.id] }}" alt="Fotografía {{ loop.index }} del pedido" style="width:100%;height:200px;object-fit:contain;background:#f3f3f3">
-      </a>
-      <figcaption>{{ image.review_status }} · {{ image.mime_type }} · {{ image.file_size }} bytes</figcaption>
-    </figure>
-    {% endfor %}
-  </div>
+  {% if item.delivery_status in ('accepted', 'unknown', 'sending') and not item.mailbox_confirmed_at %}
+  <p class="alert alert-warning">Comprueba el correo y sus adjuntos antes de confirmar. Un resultado incierto no se reenvía automáticamente.</p>
+  <form method="post" action="{{ review_url }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <label><input type="checkbox" name="mail_verified" value="yes" required> He localizado el correo de esta solicitud y he comprobado sus adjuntos.</label>
+    <button class="btn btn-default" name="decision" value="confirm_mail" type="submit">Confirmar recepción en el buzón</button>
+  </form>
   {% endif %}
-  {% if item.status == 'received' %}
+  {% if item.status == 'received' and item.mailbox_confirmed_at %}
   <form method="post" action="{{ review_url }}">
     <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
     <label for="review-note">Observación interna</label>
@@ -33,7 +31,7 @@
     </p>
   </form>
   {% endif %}
-  {% if item.status == 'offered' %}
+  {% if item.status == 'offered' and item.delivery_status not in ('sending', 'unknown') %}
   <form method="post" action="{{ resend_url }}">
     <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
     <button class="btn btn-default" type="submit">Reenviar correo de Entregado con enlace nuevo</button>

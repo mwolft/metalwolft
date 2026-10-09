@@ -5,7 +5,7 @@ import { useEffect, useRef, useState } from "react";
 
 type RequestInfo = {
   mode: "free" | "incentive";
-  status: "open" | "received";
+  status: "open" | "received" | "pending_confirmation";
   commercial_consent_active: boolean;
   terms_version: string;
   terms_url: string | null;
@@ -13,6 +13,7 @@ type RequestInfo = {
   consent_text: string;
   max_images: number;
   max_image_bytes: number;
+  max_total_bytes: number;
 };
 
 type Preview = { id: string; file: File; url: string };
@@ -53,7 +54,7 @@ export function CustomerPhotoForm() {
       })
       .then((data) => {
         setInfo(data);
-        setMessage(data.status === "received" ? "Ya hemos recibido tus fotografías. Gracias." : "");
+        setMessage(data.status === "received" ? "El servidor de correo ha aceptado tus fotografías. Gracias." : data.status === "pending_confirmation" ? "Estamos verificando el envío. No vuelvas a enviarlas; contacta con MetalWolft si necesitas ayuda." : "");
       })
       .catch((error) => setMessage(error instanceof Error ? error.message : "No se pudo abrir el formulario."));
     return () => {
@@ -71,6 +72,10 @@ export function CustomerPhotoForm() {
     }
     if (selected.some((file) => !["image/jpeg", "image/png", "image/webp"].includes(file.type) || file.size > info.max_image_bytes)) {
       setMessage("Usa JPEG, PNG o WebP de 5 MB o menos por fotografía.");
+      return;
+    }
+    if (selected.reduce((sum, file) => sum + file.size, photos.reduce((sum, photo) => sum + photo.file.size, 0)) > 24 * 1024 * 1024) {
+      setMessage("El conjunto de fotografías es demasiado grande. Selecciona imágenes más pequeñas.");
       return;
     }
     const added = selected.map((file) => {
@@ -105,12 +110,15 @@ export function CustomerPhotoForm() {
         referrerPolicy: "no-referrer"
       });
       const result = (await response.json()) as { message?: string; error?: string };
+      if (response.status === 409) {
+        setInfo({ ...info, status: "pending_confirmation" });
+      }
       if (!response.ok) throw new Error(result.error || "No se pudieron enviar las fotografías.");
       photos.forEach((photo) => URL.revokeObjectURL(photo.url));
       previews.current.clear();
       setPhotos([]);
       setInfo({ ...info, status: "received", commercial_consent_active: consent === "yes" });
-      setMessage(result.message || "Hemos recibido tus fotografías. Gracias.");
+      setMessage(result.message || "El servidor de correo ha aceptado tus fotografías. Gracias.");
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "No se pudieron enviar las fotografías.");
     } finally {
@@ -151,8 +159,9 @@ export function CustomerPhotoForm() {
 
   return (
     <form className="mw-contact-form mw-issue-report-form" onSubmit={submit}>
-      <p>Hasta tres fotografías: una vista general, otra del diseño y, si quieres, un detalle. No hace falta calidad profesional.</p>
+      <p>Hasta cinco fotografías: una vista general, otra del diseño y, si quieres, detalles o perspectivas. No hace falta calidad profesional.</p>
       <p>Busca buena luz y evita personas identificables, matrículas o información privada.</p>
+      <p>Las imágenes se ajustan automáticamente si es necesario y se envían por correo a MetalWolft. No se guardan en el panel. El conjunto procesado no puede superar {Math.round(info.max_total_bytes / (1024 * 1024))} MB.</p>
       {info.mode === "incentive" && (
         <p>La revisión de las fotos no garantiza el reembolso de 20 €. Consulta las condiciones antes de enviarlas.</p>
       )}

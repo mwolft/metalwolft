@@ -1,21 +1,31 @@
 """Token-scoped public API for private post-delivery photographs."""
 
-from flask import Blueprint, current_app, jsonify, request
+from io import BytesIO
+
+from flask import Blueprint, Request, current_app, jsonify, request
 
 from api.customer_photo_service import (
-    MAX_REQUEST_BYTES, CustomerPhotoError, resolve_photo_request,
+    MAX_IMAGES, MAX_IMAGE_BYTES, MAX_TOTAL_IMAGE_BYTES, MAX_REQUEST_BYTES,
+    CustomerPhotoError, resolve_photo_request,
     submit_photos, utcnow,
 )
+from api.customer_photo_mail import PhotoMailRejected, PhotoMailUncertain
 from api.customer_photo_rate_limit import (
     CustomerPhotoRateLimitUnavailable, allow_photo_request,
 )
 from api.models import db
-from api.private_object_storage import (
-    PrivateObjectStorageConfigurationError, PrivateObjectStorageOperationError,
-)
 
 
 customer_photo_bp = Blueprint("customer_photo_bp", __name__)
+
+
+class PhotoUploadRequest(Request):
+    """Keep bounded customer-photo multipart files in memory, never OS temp files."""
+
+    def _get_file_stream(self, total_content_length, content_type, filename=None, content_length=None):
+        if self.method == "POST" and self.path.rstrip("/") == "/api/customer-photos":
+            return BytesIO()
+        return super()._get_file_stream(total_content_length, content_type, filename, content_length)
 
 
 def _token():
@@ -62,10 +72,11 @@ def photo_request_details():
         return jsonify({"error": "Solicitud no disponible."}), 404
     return jsonify({
         "mode": item.mode,
-        "status": "received" if item.submitted_at else "open",
+        "status": "received" if item.submitted_at else "pending_confirmation" if item.delivery_status in {"sending", "unknown"} else "open",
         "commercial_consent_active": bool(item.commercial_consent and not item.consent_revoked_at),
-        "max_images": 3,
-        "max_image_bytes": 5 * 1024 * 1024,
+        "max_images": MAX_IMAGES,
+        "max_image_bytes": MAX_IMAGE_BYTES,
+        "max_total_bytes": MAX_TOTAL_IMAGE_BYTES,
         "terms_version": item.terms_version,
         "terms_url": item.terms_url,
         "terms_text": item.terms_text,
@@ -95,10 +106,12 @@ def upload_customer_photos():
         )
     except CustomerPhotoError as exc:
         return jsonify({"error": str(exc)}), 400
-    except (PrivateObjectStorageConfigurationError, PrivateObjectStorageOperationError):
-        current_app.logger.exception("Private photo storage unavailable")
-        return jsonify({"error": "No se han podido guardar las fotografías."}), 503
-    return jsonify({"message": "Hemos recibido tus fotografías. Gracias por compartirlas."}), 201
+    except PhotoMailRejected as exc:
+        return jsonify({"error": str(exc)}), 503
+    except PhotoMailUncertain as exc:
+        current_app.logger.warning("Customer photo mail acceptance uncertain")
+        return jsonify({"error": str(exc)}), 409
+    return jsonify({"message": "El servidor de correo ha aceptado tus fotografías. Gracias por compartirlas."}), 201
 
 
 @customer_photo_bp.route("/consent/revoke", methods=["POST"])

@@ -847,6 +847,13 @@ class CustomerPhotoRequest(db.Model):
     consent_at = db.Column(db.DateTime, nullable=True)
     consent_evidence = db.Column(db.JSON, nullable=True)
     consent_revoked_at = db.Column(db.DateTime, nullable=True)
+    photo_count = db.Column(db.Integer, nullable=True)
+    delivery_status = db.Column(db.String(20), nullable=True)
+    delivery_attempt_id = db.Column(db.String(32), nullable=True, unique=True)
+    delivery_started_at = db.Column(db.DateTime, nullable=True)
+    delivery_message_id = db.Column(db.String(255), nullable=True)
+    mailbox_confirmed_at = db.Column(db.DateTime, nullable=True)
+    mailbox_confirmed_by = db.Column(db.String(255), nullable=True)
 
     order = db.relationship("Orders", back_populates="customer_photo_request")
     images = db.relationship("CustomerPhotoImage", back_populates="request", lazy=True)

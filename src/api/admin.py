@@ -34,7 +34,7 @@ from .models import (
     SupplierInvoiceTaxBreakdown,
     ManualInvoiceDraft, ManualInvoiceDraftLine, ManualOrderDraft, ManualOrderDraftLine,
     WorkOrder, CheckoutSessions,
-    ConfirmedOrderContext, CustomerPhotoRequest, CustomerPhotoImage,
+    ConfirmedOrderContext, CustomerPhotoRequest,
 )
 from api.accounting_excel_service import (
     AccountingExcelExportError,
@@ -5273,9 +5273,9 @@ class CustomerPhotoRequestAdminView(SecureModelView):
     can_edit = False
     can_delete = False
     can_view_details = True
-    column_list = ("id", "order_id", "mode", "status", "created_at", "email_sent_at", "submitted_at")
+    column_list = ("id", "order_id", "mode", "status", "photo_count", "delivery_status", "created_at", "submitted_at")
     column_filters = ("order_id", "mode", "status")
-    column_details_list = (*column_list, "reviewed_at", "reviewed_by", "review_note", "commercial_consent", "consent_revoked_at")
+    column_details_list = (*column_list, "mailbox_confirmed_at", "reviewed_at", "reviewed_by", "review_note", "commercial_consent", "consent_revoked_at")
 
     def is_accessible(self):
         return bool(
@@ -5311,6 +5311,19 @@ class CustomerPhotoRequestAdminView(SecureModelView):
                         session=self.session,
                         app=current_app,
                     )
+                elif decision == "confirm_mail":
+                    if request.form.get("mail_verified") != "yes":
+                        raise CustomerPhotoError("Confirma que has comprobado el correo y sus adjuntos.")
+                    item = self.session.query(CustomerPhotoRequest).filter_by(id=request_id).with_for_update().one()
+                    stalled = item.delivery_status == "sending" and item.delivery_started_at and item.delivery_started_at <= utcnow() - timedelta(minutes=10)
+                    if (item.delivery_status not in {"accepted", "unknown"} and not stalled) or item.status not in {"offered", "received"}:
+                        raise CustomerPhotoError("No hay un envío de fotografías pendiente de conciliación.")
+                    item.delivery_status = "accepted"
+                    item.status = "received"
+                    item.submitted_at = item.submitted_at or utcnow()
+                    item.mailbox_confirmed_at = utcnow()
+                    item.mailbox_confirmed_by = (request.authorization or {}).get("username") or "admin"
+                    item.review_note = "Recepción de adjuntos comprobada en el buzón."
                 elif decision == "revoke":
                     item = self.session.query(CustomerPhotoRequest).filter_by(id=request_id).with_for_update().one()
                     item.token_revoked_at = utcnow()
@@ -5324,29 +5337,17 @@ class CustomerPhotoRequestAdminView(SecureModelView):
             except CustomerPhotoError as exc:
                 self.session.rollback()
                 flash(str(exc), "error")
+            except Exception:
+                self.session.rollback()
+                current_app.logger.exception("Could not update customer photo request_id=%s", request_id)
+                flash("No se ha podido actualizar la solicitud.", "error")
             return redirect(self.get_url(".review", request_id=request_id))
         return self.render(
             "admin/customer_photo_review.html", item=item,
             csrf_token=_issue_work_order_csrf_token(),
             review_url=self.get_url(".review", request_id=request_id),
             resend_url=self.get_url(".resend", request_id=request_id),
-            image_urls={image.id: self.get_url(".view_image", image_id=image.id) for image in item.images},
         )
-
-    @expose("/image/<int:image_id>", methods=["GET"])
-    def view_image(self, image_id):
-        image = self.session.get(CustomerPhotoImage, image_id)
-        if not image:
-            return Response("Imagen no encontrada", 404)
-        try:
-            content = get_private_object_storage(current_app).get_object(storage_key=image.storage_key)
-        except (PrivateObjectStorageConfigurationError, PrivateObjectStorageOperationError):
-            return Response("Imagen no disponible", 404)
-        response = send_file(BytesIO(content), mimetype=image.mime_type, as_attachment=False, max_age=0)
-        response.headers["Cache-Control"] = "no-store"
-        response.headers["X-Content-Type-Options"] = "nosniff"
-        response.headers["Content-Security-Policy"] = "default-src 'none'; sandbox"
-        return response
 
     @expose("/resend/<int:request_id>", methods=["POST"])
     def resend(self, request_id):

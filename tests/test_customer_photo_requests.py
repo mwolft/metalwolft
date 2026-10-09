@@ -20,12 +20,13 @@ if HAS_DEPS:
     from werkzeug.datastructures import FileStorage
 
     from api.admin import CustomerPhotoRequestAdminView, OrderAdminView
-    from api.customer_photo_routes import customer_photo_bp
+    from api.customer_photo_routes import PhotoUploadRequest, customer_photo_bp
     from api.customer_photo_service import (
         CustomerPhotoError, create_photo_request, resolve_photo_request,
         rotate_photo_link,
-        review_photo_request, stale_upload_attempts, submit_photos, token_hash, utcnow,
+        review_photo_request, stale_mail_attempts, submit_photos, token_hash, utcnow, validate_image,
     )
+    from api.customer_photo_mail import PhotoMailRejected, PhotoMailUncertain, build_photo_message, send_photo_message
     from api.customer_photo_rate_limit import CustomerPhotoRateLimitUnavailable, allow_photo_request
     from api.models import (
         CheckoutSessions, ConfirmedOrderContext, CustomerPhotoRequest,
@@ -33,24 +34,11 @@ if HAS_DEPS:
     )
 
 
-class FakeStorage:
-    def __init__(self, *, fail=False):
-        self.objects = {}
-        self.fail = fail
-
-    def put_object(self, *, storage_key, content, mime_type):
-        if self.fail:
-            raise RuntimeError("R2 failed")
-        self.objects[storage_key] = content
-
-    def delete_object(self, *, storage_key):
-        self.objects.pop(storage_key, None)
-
-
 @unittest.skipUnless(HAS_DEPS, "Backend test dependencies are not installed.")
 class CustomerPhotoRequestTest(unittest.TestCase):
     def setUp(self):
         self.app = Flask(__name__, template_folder=str(ROOT / "src" / "templates"))
+        self.app.request_class = PhotoUploadRequest
         self.app.config.update(
             SECRET_KEY="test-secret", SQLALCHEMY_DATABASE_URI="sqlite:///:memory:",
             SQLALCHEMY_TRACK_MODIFICATIONS=False,
@@ -63,6 +51,7 @@ class CustomerPhotoRequestTest(unittest.TestCase):
             CUSTOMER_PHOTOS_TERMS_URL="https://example.test/condiciones",
             CUSTOMER_PHOTOS_TOKEN_DAYS=30,
             FRONTEND_URL="https://example.test",
+            MAIL_SERVER="localhost", MAIL_PORT=1025, MAIL_DEFAULT_SENDER="test@example.test",
         )
         db.init_app(self.app)
         self.app.register_blueprint(customer_photo_bp, url_prefix="/api/customer-photos")
@@ -102,6 +91,13 @@ class CustomerPhotoRequestTest(unittest.TestCase):
         content = BytesIO()
         Image.new("RGB", (20, 20), color).save(content, format=fmt)
         return FileStorage(stream=BytesIO(content.getvalue()), filename="photo.png", content_type=mime)
+
+    def submit(self, token, *, consent="yes", colors=("red",), send_message=None):
+        return submit_photos(
+            token=token, files=[self.image(color=color) for color in colors],
+            commercial_consent=consent, app=self.app,
+            send_message=send_message or (lambda **_kwargs: None),
+        )
 
     def test_default_and_master_off_leave_email_unchanged_and_create_no_offer(self):
         with self.app.test_request_context(), patch("api.email_routes.send_email", return_value=True) as smtp:
@@ -277,57 +273,105 @@ class CustomerPhotoRequestTest(unittest.TestCase):
         db.session.commit()
         self.assertIsNone(resolve_photo_request(token))
 
-    def test_upload_private_images_consent_and_duplicate_protection(self):
+    def test_five_photos_send_in_one_mail_without_storing_images(self):
         item, token = self.offer()
-        storage = FakeStorage()
-        result = submit_photos(
-            token=token, files=[self.image(color="red"), self.image(color="blue")],
-            commercial_consent="no", app=self.app, storage=storage,
-        )
+        sent = []
+        result = self.submit(token, consent="no", colors=("red", "blue", "green", "yellow", "black"), send_message=lambda **kwargs: sent.append(kwargs["message"]))
         self.assertEqual(result.status, "received")
         self.assertFalse(result.commercial_consent)
         self.assertEqual(result.consent_text, "Borrador de autorización comercial.")
         self.assertEqual(result.consent_version, "draft-v1")
-        self.assertEqual(len(result.images), 2)
-        self.assertEqual(len(storage.objects), 2)
+        self.assertEqual(result.photo_count, 5)
+        self.assertEqual(len(sent), 1)
+        self.assertEqual(sent[0]["To"], "admin@metalwolft.com")
+        self.assertIn("Solicitud: ", sent[0].get_body(preferencelist=("plain",)).get_content())
+        self.assertIn("Autorización comercial: No", sent[0].get_body(preferencelist=("plain",)).get_content())
+        self.assertEqual(len(list(sent[0].iter_attachments())), 5)
+        self.assertNotIn("photo.png", sent[0].as_string())
+        self.assertEqual(CustomerPhotoImage.query.count(), 0)
+        self.assertEqual(CustomerPhotoUploadAttempt.query.count(), 0)
         with self.assertRaises(CustomerPhotoError):
-            submit_photos(token=token, files=[self.image()], commercial_consent="yes", app=self.app, storage=storage)
+            self.submit(token)
 
     def test_upload_rejects_missing_consent_mime_and_duplicate_files(self):
         _, token = self.offer()
         with self.assertRaises(CustomerPhotoError):
-            submit_photos(token=token, files=[self.image()], commercial_consent="", app=self.app, storage=FakeStorage())
+            self.submit(token, consent="")
         with self.assertRaises(CustomerPhotoError):
-            submit_photos(token=token, files=[self.image(mime="image/jpeg")], commercial_consent="yes", app=self.app, storage=FakeStorage())
+            submit_photos(token=token, files=[self.image(mime="image/jpeg")], commercial_consent="yes", app=self.app)
         with self.assertRaises(CustomerPhotoError):
-            submit_photos(token=token, files=[self.image(), self.image()], commercial_consent="yes", app=self.app, storage=FakeStorage())
+            self.submit(token, colors=("red", "red"))
+        with self.assertRaises(CustomerPhotoError):
+            self.submit(token, colors=("red", "blue", "green", "yellow", "black", "white"))
 
-    def test_storage_failure_does_not_accept_submission(self):
+    def test_large_image_is_resized_in_memory_and_oversize_mail_is_rejected(self):
+        large = BytesIO()
+        Image.new("RGB", (3200, 2500), "red").save(large, format="JPEG")
+        file = FileStorage(stream=BytesIO(large.getvalue()), filename="private-name.jpg", content_type="image/jpeg")
+        mime, content, _digest, extension = validate_image(file)
+        with Image.open(BytesIO(content)) as normalized:
+            self.assertLessEqual(max(normalized.size), 2400)
+        with patch("api.customer_photo_mail.MAX_MIME_BYTES", 100):
+            with self.assertRaises(PhotoMailRejected):
+                build_photo_message(
+                    app=self.app, order_reference="AB1234", request_id=1,
+                    attempt_id="abc", date=utcnow(), consent=True,
+                    photos=[(mime, content, "hash", extension)],
+                )
+
+    def test_smtp_adapter_sends_one_message_and_classifies_rejection(self):
+        photo = validate_image(self.image(fmt="JPEG", mime="image/jpeg"))
+        message = build_photo_message(
+            app=self.app, order_reference="AB1234", request_id=1,
+            attempt_id="abc", date=utcnow(), consent=True, photos=[photo],
+        )
+        with patch("api.customer_photo_mail.smtplib.SMTP") as smtp_class:
+            send_photo_message(app=self.app, message=message)
+            smtp_class.return_value.__enter__.return_value.send_message.assert_called_once_with(message)
+        with patch("api.customer_photo_mail.smtplib.SMTP") as smtp_class:
+            from smtplib import SMTPDataError
+            smtp_class.return_value.__enter__.return_value.send_message.side_effect = SMTPDataError(552, b"too large")
+            with self.assertRaises(PhotoMailRejected):
+                send_photo_message(app=self.app, message=message)
+
+    def test_definitive_smtp_rejection_allows_explicit_retry(self):
         item, token = self.offer()
-        with self.assertRaises(RuntimeError):
-            submit_photos(token=token, files=[self.image()], commercial_consent="yes", app=self.app, storage=FakeStorage(fail=True))
+        def reject(**_kwargs):
+            raise PhotoMailRejected("Rejected")
+        with self.assertRaises(PhotoMailRejected):
+            self.submit(token, send_message=reject)
         self.assertEqual(db.session.get(CustomerPhotoRequest, item.id).status, "offered")
+        self.assertEqual(item.delivery_status, "rejected")
+        self.assertIsNone(item.commercial_consent)
         self.assertEqual(CustomerPhotoImage.query.count(), 0)
-        self.assertEqual(CustomerPhotoUploadAttempt.query.count(), 0)
+        self.submit(token)
+        self.assertEqual(item.status, "received")
 
-    def test_token_rotated_during_r2_upload_cannot_confirm(self):
+    def test_token_cannot_rotate_during_smtp_send(self):
         item, token = self.offer()
-        storage = FakeStorage()
-        original_put = storage.put_object
-
-        def rotate_during_upload(**kwargs):
-            original_put(**kwargs)
+        def check_during_send(**_kwargs):
             locked = db.session.query(CustomerPhotoRequest).filter_by(id=item.id).with_for_update().one()
-            rotate_photo_link(locked, app=self.app)
-            db.session.commit()
-
-        storage.put_object = rotate_during_upload
-        with self.assertRaises(CustomerPhotoError):
-            submit_photos(token=token, files=[self.image()], commercial_consent="yes", app=self.app, storage=storage)
-        self.assertEqual(db.session.get(CustomerPhotoRequest, item.id).status, "offered")
+            with self.assertRaises(CustomerPhotoError):
+                rotate_photo_link(locked, app=self.app)
+            with self.assertRaises(CustomerPhotoError):
+                self.submit(token)
+        self.submit(token, send_message=check_during_send)
+        self.assertEqual(item.status, "received")
         self.assertEqual(CustomerPhotoImage.query.count(), 0)
-        self.assertEqual(CustomerPhotoUploadAttempt.query.count(), 0)
-        self.assertEqual(storage.objects, {})
+
+    def test_uncertain_smtp_is_not_retried_and_requires_reconciliation(self):
+        item, token = self.offer()
+        def uncertain(**_kwargs):
+            raise PhotoMailUncertain("timeout")
+        with self.assertRaises(PhotoMailUncertain):
+            self.submit(token, send_message=uncertain)
+        self.assertEqual(item.delivery_status, "unknown")
+        self.assertEqual(item.status, "offered")
+        with self.assertRaises(CustomerPhotoError):
+            self.submit(token)
+        with self.assertRaises(CustomerPhotoError):
+            rotate_photo_link(item, app=self.app)
+        self.assertEqual(stale_mail_attempts(now=utcnow() + timedelta(hours=1)), [item])
 
     def test_production_blocks_incentive_resend_upload_and_approval(self):
         self.app.config["CUSTOMER_PHOTOS_INCENTIVE_ENABLED"] = True
@@ -339,30 +383,27 @@ class CustomerPhotoRequestTest(unittest.TestCase):
         with self.assertRaises(CustomerPhotoError):
             rotate_photo_link(item, app=self.app)
         with self.assertRaises(CustomerPhotoError):
-            submit_photos(token=token, files=[self.image()], commercial_consent="yes", app=self.app, storage=FakeStorage())
-        self.assertEqual(CustomerPhotoUploadAttempt.query.count(), 0)
+            self.submit(token)
         self.app.config["APP_ENV"] = "development"
-        submit_photos(token=token, files=[self.image()], commercial_consent="yes", app=self.app, storage=FakeStorage())
+        self.submit(token)
+        item.mailbox_confirmed_at = utcnow()
+        db.session.commit()
         self.app.config["APP_ENV"] = "production"
         with self.assertRaises(CustomerPhotoError):
             review_photo_request(request_id=item.id, decision="approve", note="", actor="admin", app=self.app)
         self.assertEqual(item.status, "received")
 
-    def test_stale_reservation_is_reported_without_deletion(self):
-        item, _ = self.offer()
-        attempt = CustomerPhotoUploadAttempt(request_id=item.id, storage_key="customer-photos/test/orphan.jpg")
-        db.session.add(attempt)
-        db.session.commit()
-        self.assertEqual(stale_upload_attempts(now=utcnow() + timedelta(days=2)), [attempt])
-        self.assertEqual(CustomerPhotoUploadAttempt.query.count(), 1)
-
     def test_review_is_explicit_and_never_pays(self):
         item, token = self.offer()
-        submit_photos(token=token, files=[self.image()], commercial_consent="yes", app=self.app, storage=FakeStorage())
+        self.submit(token)
+        with self.assertRaises(CustomerPhotoError):
+            review_photo_request(request_id=item.id, decision="approve", note="Adecuadas", actor="admin", app=self.app)
+        item.mailbox_confirmed_at = utcnow()
+        db.session.commit()
         reviewed = review_photo_request(request_id=item.id, decision="approve", note="Adecuadas", actor="admin", app=self.app)
         db.session.commit()
         self.assertEqual(reviewed.status, "approved")
-        self.assertEqual(reviewed.images[0].review_status, "approved")
+        self.assertEqual(CustomerPhotoImage.query.count(), 0)
         with self.assertRaises(CustomerPhotoError):
             review_photo_request(request_id=item.id, decision="approve", note="", actor="admin", app=self.app)
 
@@ -372,11 +413,11 @@ class CustomerPhotoRequestTest(unittest.TestCase):
         item.mode = "incentive"
         item.offered_amount = 20
         db.session.commit()
-        submit_photos(token=token, files=[self.image()], commercial_consent="yes", app=self.app, storage=FakeStorage())
-        with patch("api.customer_photo_service.get_private_object_storage") as storage:
-            reviewed = review_photo_request(request_id=item.id, decision="approve", note="Aptas", actor="admin", app=self.app)
-            db.session.commit()
-            storage.assert_not_called()
+        self.submit(token)
+        item.mailbox_confirmed_at = utcnow()
+        db.session.commit()
+        reviewed = review_photo_request(request_id=item.id, decision="approve", note="Aptas", actor="admin", app=self.app)
+        db.session.commit()
         self.assertEqual(reviewed.status, "refund_pending")
 
     def test_invalid_recipient_blocks_offer(self):
@@ -402,9 +443,27 @@ class CustomerPhotoRequestTest(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertIn(b"Fotograf", response.data)
 
+    def test_admin_reconciles_received_mail_before_review(self):
+        admin = Admin(self.app)
+        admin.add_view(CustomerPhotoRequestAdminView(CustomerPhotoRequest, db.session, endpoint="photo-review-mail"))
+        item, token = self.offer()
+        self.submit(token)
+        client = self.app.test_client()
+        credentials = b64encode(b"photo-admin:secret").decode("ascii")
+        url = f"/admin/photo-review-mail/review/{item.id}"
+        with patch("api.admin.ADMIN_USER", "photo-admin"), patch("api.admin.ADMIN_PW", "secret"), patch("api.admin._valid_work_order_csrf_token", return_value=True):
+            denied = client.post(url, headers={"Authorization": f"Basic {credentials}"}, data={"decision": "confirm_mail"})
+            self.assertEqual(denied.status_code, 302)
+            self.assertIsNone(db.session.get(CustomerPhotoRequest, item.id).mailbox_confirmed_at)
+            response = client.post(url, headers={"Authorization": f"Basic {credentials}"}, data={"decision": "confirm_mail", "mail_verified": "yes"})
+            self.assertEqual(response.status_code, 302)
+        self.assertIsNotNone(db.session.get(CustomerPhotoRequest, item.id).mailbox_confirmed_at)
+
     def test_reject_requires_note_and_consent_can_be_revoked(self):
         item, token = self.offer()
-        submit_photos(token=token, files=[self.image()], commercial_consent="yes", app=self.app, storage=FakeStorage())
+        self.submit(token)
+        item.mailbox_confirmed_at = utcnow()
+        db.session.commit()
         with self.assertRaises(CustomerPhotoError):
             review_photo_request(request_id=item.id, decision="reject", note="", actor="admin")
         response = self.app.test_client().post(
@@ -443,9 +502,8 @@ class CustomerPhotoRequestTest(unittest.TestCase):
         item, token = self.offer()
         image = self.image()
         content = image.stream.read()
-        storage = FakeStorage()
         client = self.app.test_client()
-        with patch("api.customer_photo_service.get_private_object_storage", return_value=storage):
+        with patch("api.customer_photo_service.send_photo_message") as smtp:
             response = client.post(
                 "/api/customer-photos",
                 headers={"Authorization": f"Bearer {token}"},
@@ -457,19 +515,23 @@ class CustomerPhotoRequestTest(unittest.TestCase):
             )
         self.assertEqual(response.status_code, 201)
         self.assertNotIn("order_id", response.json)
-        self.assertEqual(len(storage.objects), 1)
+        smtp.assert_called_once()
         self.assertEqual(db.session.get(CustomerPhotoRequest, item.id).status, "received")
         self.assertEqual(db.session.get(Orders, self.order_id).order_status, "enviado")
         self.assertEqual(Invoices.query.count(), 0)
-        with patch("api.customer_photo_service.get_private_object_storage", return_value=storage):
-            second = client.post(
+        second = client.post(
                 "/api/customer-photos",
                 headers={"Authorization": f"Bearer {token}"},
                 data={"commercial_consent": "yes", "photos": (BytesIO(content), "reja.png", "image/png")},
                 content_type="multipart/form-data",
-            )
+        )
         self.assertEqual(second.status_code, 400)
-        self.assertEqual(CustomerPhotoImage.query.count(), 1)
+        self.assertEqual(CustomerPhotoImage.query.count(), 0)
+
+    def test_photo_multipart_stream_stays_in_memory(self):
+        with self.app.test_request_context("/api/customer-photos", method="POST") as context:
+            stream = context.request._get_file_stream(1024, "image/jpeg", "photo.jpg")
+            self.assertIsInstance(stream, BytesIO)
 
 
 if __name__ == "__main__":

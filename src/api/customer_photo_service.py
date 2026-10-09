@@ -12,15 +12,19 @@ from uuid import uuid4
 from PIL import Image, ImageOps, UnidentifiedImageError
 
 from api.design_service import order_contains_design_service
-from api.models import CustomerPhotoImage, CustomerPhotoRequest, CustomerPhotoUploadAttempt, db
+from api.models import CustomerPhotoRequest, db
 from api.order_confirmation_context import get_order_confirmation_recipient_email
-from api.private_object_storage import get_private_object_storage
+from api.customer_photo_mail import (
+    PhotoMailRejected, PhotoMailUncertain, build_photo_message, send_photo_message,
+)
 
 
 MODES = {"none", "free", "incentive"}
-MAX_IMAGES = 3
+MAX_IMAGES = 5
 MAX_IMAGE_BYTES = 5 * 1024 * 1024
-MAX_REQUEST_BYTES = 16 * 1024 * 1024
+MAX_PROCESSED_IMAGE_BYTES = 3 * 1024 * 1024
+MAX_TOTAL_IMAGE_BYTES = 8 * 1024 * 1024
+MAX_REQUEST_BYTES = 26 * 1024 * 1024
 MAX_PIXELS = 20_000_000
 ALLOWED_IMAGES = {"image/jpeg": ("JPEG", ".jpg"), "image/png": ("PNG", ".png"), "image/webp": ("WEBP", ".webp")}
 EMAIL_PATTERN = re.compile(r"^[^\s@]+@[^\s@]+\.[^\s@]+$")
@@ -143,7 +147,8 @@ def create_photo_request(*, order, mode, app, email_options=None, session=None):
 def rotate_photo_link(photo_request, *, app):
     if photo_request.mode == "incentive" and not _incentive_allowed(app):
         raise CustomerPhotoError("El incentivo fotográfico está pendiente de aprobación para producción.")
-    if photo_request.status != "offered" or photo_request.submitted_at or photo_request.token_revoked_at:
+    if (photo_request.status != "offered" or photo_request.submitted_at or photo_request.token_revoked_at
+            or photo_request.delivery_status in {"sending", "unknown"}):
         raise CustomerPhotoError("Solo se puede reenviar una solicitud pendiente.")
     token = secrets.token_urlsafe(32)
     url = _photo_form_url(app, token)
@@ -179,22 +184,35 @@ def validate_image(file):
                 raise CustomerPhotoError("Una fotografía tiene formato o dimensiones no válidos.")
             image = ImageOps.exif_transpose(image)
             image.load()
-            clean = BytesIO()
             fmt = ALLOWED_IMAGES[declared][0]
-            image.save(clean, format=fmt)
-            normalized = clean.getvalue()
-    except (UnidentifiedImageError, OSError, ValueError, Image.DecompressionBombWarning) as exc:
+            if fmt == "JPEG" and image.mode not in ("RGB", "L"):
+                image = image.convert("RGB")
+            image.thumbnail((2400, 2400), Image.Resampling.LANCZOS)
+            normalized = None
+            for edge in (2400, 2000, 1600):
+                candidate = image.copy()
+                candidate.thumbnail((edge, edge), Image.Resampling.LANCZOS)
+                for quality in ((88, 80, 72) if fmt != "PNG" else (None,)):
+                    clean = BytesIO()
+                    options = {"optimize": True} if fmt == "PNG" else {"quality": quality}
+                    candidate.save(clean, format=fmt, **options)
+                    if clean.tell() <= MAX_PROCESSED_IMAGE_BYTES:
+                        normalized = clean.getvalue()
+                        break
+                if normalized is not None:
+                    break
+    except (UnidentifiedImageError, OSError, ValueError, Image.DecompressionBombWarning, Image.DecompressionBombError) as exc:
         raise CustomerPhotoError("Una fotografía no es una imagen válida.") from exc
-    if len(normalized) > MAX_IMAGE_BYTES:
-        raise CustomerPhotoError("Una fotografía procesada supera 5 MB.")
+    if normalized is None:
+        raise CustomerPhotoError("No hemos podido ajustar una fotografía al tamaño permitido sin perder demasiada calidad.")
     return declared, normalized, sha256(normalized).hexdigest(), ALLOWED_IMAGES[declared][1]
 
 
-def submit_photos(*, token, files, commercial_consent, app, session=None, storage=None, evidence=None):
-    """Reserve upload keys, upload outside the row lock, then revalidate the token."""
+def submit_photos(*, token, files, commercial_consent, app, session=None, send_message=None, evidence=None):
+    """Reserve a single attempt, send without a DB lock, then record relay acceptance."""
     session = session or db.session
     photo_request = resolve_photo_request(token, session=session)
-    if not photo_request or photo_request.status != "offered":
+    if not photo_request or photo_request.status != "offered" or photo_request.delivery_status in {"sending", "unknown"}:
         raise CustomerPhotoError("El enlace no está disponible para un nuevo envío.")
     if photo_request.mode == "incentive" and not _incentive_allowed(app):
         raise CustomerPhotoError("El incentivo fotográfico está pendiente de aprobación para producción.")
@@ -202,82 +220,82 @@ def submit_photos(*, token, files, commercial_consent, app, session=None, storag
         raise CustomerPhotoError("Indica expresamente si autorizas el uso comercial.")
     files = [file for file in files if file and getattr(file, "filename", None)]
     if not 1 <= len(files) <= MAX_IMAGES:
-        raise CustomerPhotoError("Selecciona entre una y tres fotografías.")
+        raise CustomerPhotoError("Selecciona entre una y cinco fotografías.")
     validated = [validate_image(file) for file in files]
+    if sum(len(image[1]) for image in validated) > MAX_TOTAL_IMAGE_BYTES:
+        raise CustomerPhotoError("El conjunto de fotografías supera 8 MB. Selecciona imágenes más pequeñas.")
     hashes = [item[2] for item in validated]
     if len(set(hashes)) != len(hashes):
         raise CustomerPhotoError("No envíes la misma fotografía dos veces.")
     request_id = photo_request.id
-    session.rollback()  # End the validation read transaction before any R2 network call.
-    private_storage = storage or get_private_object_storage(app)
-    reserved = []
-    uploaded = []
+    order_reference = photo_request.order.locator
+    session.rollback()
+    attempt_id = uuid4().hex
+    created_at = utcnow()
+    message = build_photo_message(
+        app=app, order_reference=order_reference, request_id=request_id,
+        attempt_id=attempt_id, date=created_at, consent=commercial_consent == "yes", photos=validated,
+    )
     try:
-        for mime, content, digest, extension in validated:
-            now = utcnow()
-            reserved.append((f"customer-photos/{now:%Y}/{now:%m}/{uuid4().hex}{extension}", mime, content, digest))
         locked = session.query(CustomerPhotoRequest).filter_by(id=request_id).with_for_update().one()
         if (locked.token_hash != token_hash(token) or locked.status != "offered" or locked.submitted_at
-                or locked.token_revoked_at or locked.token_expires_at <= utcnow()):
-            raise CustomerPhotoError("El enlace ya no está disponible.")
-        for key, _, _, _ in reserved:
-            session.add(CustomerPhotoUploadAttempt(request_id=request_id, storage_key=key))
-        session.commit()
-        for key, mime, content, digest in reserved:
-            uploaded.append((key, mime, len(content), digest))
-            private_storage.put_object(storage_key=key, content=content, mime_type=mime)
-        locked = (
-            session.query(CustomerPhotoRequest)
-            .filter_by(id=request_id)
-            .with_for_update()
-            .one()
-        )
-        if (locked.token_hash != token_hash(token) or locked.status != "offered" or locked.submitted_at
                 or locked.token_revoked_at or locked.token_expires_at <= utcnow()
+                or locked.delivery_status in {"sending", "unknown"}
                 or (locked.mode == "incentive" and not _incentive_allowed(app))):
-            raise CustomerPhotoError("Esta solicitud ya se ha enviado o ha caducado.")
-        for key, mime, size, digest in uploaded:
-            session.add(CustomerPhotoImage(
-                request_id=locked.id, storage_key=key, mime_type=mime,
-                file_size=size, sha256=digest, review_status="pending",
-            ))
-        locked.status = "received"
-        locked.submitted_at = utcnow()
+            raise CustomerPhotoError("El enlace ya no está disponible.")
+        locked.delivery_status = "sending"
+        locked.delivery_attempt_id = attempt_id
+        locked.delivery_started_at = created_at
+        locked.delivery_message_id = message["Message-ID"]
+        locked.photo_count = len(validated)
         locked.commercial_consent = commercial_consent == "yes"
         locked.consent_text = locked.offered_consent_text
         locked.consent_version = locked.terms_version
-        locked.consent_at = utcnow()
+        locked.consent_at = created_at
         locked.consent_evidence = evidence or {}
-        session.query(CustomerPhotoUploadAttempt).filter(
-            CustomerPhotoUploadAttempt.storage_key.in_([key for key, _, _, _ in reserved])
-        ).delete(synchronize_session=False)
         session.commit()
-        return locked
+        try:
+            (send_message or send_photo_message)(app=app, message=message)
+        except PhotoMailRejected:
+            _finish_delivery(session, request_id, attempt_id, "rejected")
+            raise
+        except Exception as exc:
+            _finish_delivery(session, request_id, attempt_id, "unknown")
+            raise PhotoMailUncertain("No podemos confirmar el envío. Contacta con MetalWolft antes de intentarlo de nuevo.") from exc
+        try:
+            return _finish_delivery(session, request_id, attempt_id, "accepted")
+        except Exception as exc:
+            session.rollback()
+            raise PhotoMailUncertain("El correo pudo haberse enviado, pero no se confirmó el registro. Contacta con MetalWolft.") from exc
     except Exception:
         session.rollback()
-        cleaned = True
-        for key, _, _, _ in uploaded:
-            try:
-                private_storage.delete_object(storage_key=key)
-            except Exception:
-                cleaned = False
-                app.logger.exception("Private photo upload cleanup failed")
-        if cleaned and reserved:
-            try:
-                session.query(CustomerPhotoUploadAttempt).filter(
-                    CustomerPhotoUploadAttempt.storage_key.in_([key for key, _, _, _ in reserved])
-                ).delete(synchronize_session=False)
-                session.commit()
-            except Exception:
-                session.rollback()
-                app.logger.exception("Private photo upload marker cleanup failed")
         raise
+
+
+def _finish_delivery(session, request_id, attempt_id, outcome):
+    item = session.query(CustomerPhotoRequest).filter_by(id=request_id).with_for_update().one()
+    if item.delivery_attempt_id != attempt_id or item.delivery_status != "sending":
+        raise PhotoMailUncertain("El estado del envío cambió; requiere conciliación manual.")
+    item.delivery_status = outcome
+    if outcome == "accepted":
+        if item.status != "revoked":
+            item.status = "received"
+        item.submitted_at = utcnow()
+    elif outcome == "rejected":
+        item.photo_count = None
+        item.commercial_consent = None
+        item.consent_text = None
+        item.consent_version = None
+        item.consent_at = None
+        item.consent_evidence = None
+    session.commit()
+    return item
 
 
 def review_photo_request(*, request_id, decision, note, actor, session=None, app=None):
     session = session or db.session
     item = session.query(CustomerPhotoRequest).filter_by(id=request_id).with_for_update().one_or_none()
-    if not item or item.status != "received" or not item.images:
+    if not item or item.status != "received" or not item.mailbox_confirmed_at:
         raise CustomerPhotoError("La solicitud no está pendiente de revisión.")
     if decision not in {"approve", "reject"}:
         raise CustomerPhotoError("Decisión de revisión no válida.")
@@ -289,19 +307,14 @@ def review_photo_request(*, request_id, decision, note, actor, session=None, app
     item.reviewed_at = utcnow()
     item.reviewed_by = actor
     item.review_note = str(note or "").strip() or None
-    for image in item.images:
-        image.review_status = "approved" if decision == "approve" else "rejected"
     return item
 
 
-def stale_upload_attempts(*, session=None, now=None, min_age=timedelta(hours=24)):
-    """Report only unreferenced reservations; never delete private objects here."""
+def stale_mail_attempts(*, session=None, now=None, min_age=timedelta(minutes=10)):
+    """Report attempts needing manual mailbox reconciliation; never resend."""
     session = session or db.session
     cutoff = (now or utcnow()) - min_age
-    return (
-        session.query(CustomerPhotoUploadAttempt)
-        .outerjoin(CustomerPhotoImage, CustomerPhotoImage.storage_key == CustomerPhotoUploadAttempt.storage_key)
-        .filter(CustomerPhotoUploadAttempt.created_at <= cutoff, CustomerPhotoImage.id.is_(None))
-        .order_by(CustomerPhotoUploadAttempt.created_at)
-        .all()
-    )
+    return session.query(CustomerPhotoRequest).filter(
+        CustomerPhotoRequest.delivery_status.in_(("sending", "unknown")),
+        CustomerPhotoRequest.delivery_started_at <= cutoff,
+    ).order_by(CustomerPhotoRequest.delivery_started_at).all()

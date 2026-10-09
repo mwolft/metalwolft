@@ -22,7 +22,7 @@ from api.commands import setup_commands
 from api.models import db
 from api.seo_routes import seo_bp
 from api.email_routes import email_bp
-from api.customer_photo_routes import customer_photo_bp
+from api.customer_photo_routes import PhotoUploadRequest, customer_photo_bp
 from api.password_recovery_endpoints import auth_bp
 from api.invoice_preview import api_invoice_preview
 from api.budget_routes import budget_bp
@@ -191,6 +191,7 @@ session.mount("https://", HTTPAdapter(max_retries=retries))
 
 # 3) Creacion de la app
 app = Flask(__name__)
+app.request_class = PhotoUploadRequest
 app.config["APP_ENV"] = env
 app.logger.setLevel(logging.INFO)
 app.url_map.strict_slashes = False
