@@ -155,6 +155,7 @@ from api.customer_photo_service import (
     review_photo_request, review_deadline_on, commercial_license_expires_at,
     has_active_commercial_license, madrid_today, utcnow,
 )
+from api.customer_photo_license import PHOTO_LICENSE_VERSION
 from api.manual_order_draft_service import (
     ManualOrderDraftError,
     invalidate_manual_order_draft_review,
@@ -5310,7 +5311,7 @@ class CustomerPhotoRequestAdminView(SecureModelView):
 
     def _format_commercial_license(self, view, context, model, name):
         if has_active_commercial_license(model):
-            return "Licencia aceptada"
+            return "Licencia histórica vigente: revisar alcance" if model.consent_version != PHOTO_LICENSE_VERSION else "Licencia aceptada"
         if model.consent_revoked_at:
             return "Licencia retirada"
         if model.commercial_consent:
@@ -5415,6 +5416,7 @@ class CustomerPhotoRequestAdminView(SecureModelView):
         return self.render(
             "admin/customer_photo_review.html", item=item,
             commercial_license_active=has_active_commercial_license(item),
+            commercial_license_historical=bool(has_active_commercial_license(item) and item.consent_version != PHOTO_LICENSE_VERSION),
             commercial_license_expires_at=commercial_license_expires_at(item),
             review_deadline=review_deadline_on(item),
             review_overdue=bool(item.status == "received" and review_deadline_on(item) and madrid_today() > review_deadline_on(item)),

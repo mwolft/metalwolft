@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { LegalPageLayout } from "@/components/legal/LegalPageLayout";
 import { buildLegalRelatedLinks } from "@/lib/legal";
 import { buildMetadata } from "@/lib/metadata";
@@ -46,6 +47,26 @@ export default function PrivacyPolicyPage() {
           la experiencia general del sitio. También podemos usarla para ofrecer
           asistencia antes o después de la compra cuando nos contactas por los
           canales disponibles.
+        </p>
+      </section>
+
+      <section className="mw-section">
+        <h2>Fotografías de clientes</h2>
+        <p>
+          Cuando te invitamos individualmente a compartir fotografías de una reja instalada,
+          las imágenes se reciben como adjuntos en nuestro correo de administración. El panel
+          registra la solicitud, la recepción, la revisión y, si la aceptas, el texto, versión
+          y fecha de la licencia de uso comercial. Las fotografías no se publican automáticamente.
+          Para prestar el servicio de correo pueden intervenir proveedores técnicos. Recomendamos
+          evitar personas, matrículas, números de vivienda y otros datos identificativos innecesarios.
+        </p>
+        <p>
+          La licencia fotográfica es distinta del tratamiento de datos personales y no limita
+          tus derechos de protección de datos. Puedes plantear solicitudes relativas a tus
+          fotografías, pedir su retirada o ejercer tus derechos escribiendo a{" "}
+          <a href="mailto:admin@metalwolft.com">admin@metalwolft.com</a>. Consulta las{" "}
+          <Link href="/condiciones-promocion-fotos">condiciones de la promoción de fotografías</Link>
+          para conocer su alcance y plazos.
         </p>
       </section>
 

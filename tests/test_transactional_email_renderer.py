@@ -251,7 +251,8 @@ class TransactionalOrderStatusEmailRendererTest(unittest.TestCase):
             self.assertIn("¿Ya tienes tus rejas instaladas?", body)
             self.assertIn("dos fotografías de una de tus rejas", body)
             self.assertIn("una de frente y otra de lado o en perspectiva", body)
-            self.assertIn("te devolveremos 20 € de tu compra", body)
+            self.assertIn("nos autorizas a utilizarlas comercialmente, recibirás 20 €", body)
+            self.assertIn("bien centrada y con buena iluminación", body)
             self.assertIn("Enviar mis fotografías", body)
             self.assertIn(options["photo_request_url"], body)
             self.assertIn("Consultar las condiciones de la promoción", body)
@@ -262,7 +263,7 @@ class TransactionalOrderStatusEmailRendererTest(unittest.TestCase):
             self.assertIn("SIMULACIÓN — SIN REEMBOLSO", body)
             self.assertIn("dos fotografías de una de tus rejas", body)
             self.assertIn(options["photo_request_url"], body)
-            self.assertNotIn("te devolveremos 20 €", body)
+            self.assertNotIn("recibirás 20 €", body)
             self.assertNotIn("¡Tus fotos tienen premio!", body)
 
     def test_free_photo_invitation_keeps_existing_copy(self):

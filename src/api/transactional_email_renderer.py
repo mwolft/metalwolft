@@ -420,12 +420,13 @@ def _render_photo_request_block(status, mode, url, terms_url, is_simulation=Fals
         intro = "¿Ya tienes tus rejas instaladas? ¡Nos encantaría ver cómo han quedado!"
         instructions = (
             "Envíanos dos fotografías de una de tus rejas: una de frente y otra de lado o en perspectiva, "
-            "donde se vea completa y bien centrada."
+            "donde se vea completa, bien centrada y con buena iluminación."
         )
         reward = (
             "Esta es una prueba sin derecho a reembolso ni compensación."
             if is_simulation else
-            "Si las fotografías cumplen las condiciones de la promoción, te devolveremos 20 € de tu compra."
+            "Si tus fotografías cumplen las condiciones de la promoción y nos autorizas a utilizarlas "
+            "comercialmente, recibirás 20 €."
         )
         simulation_text = "SIMULACIÓN — SIN REEMBOLSO.\n" if is_simulation else ""
         simulation_html = (
@@ -448,10 +449,9 @@ def _render_photo_request_block(status, mode, url, terms_url, is_simulation=Fals
             f"{simulation_html}"
             f'<p style="margin:0 0 12px;color:{COLOR_MUTED};font-size:14px;line-height:1.55;">{_html(intro)}</p>'
             f'<p style="margin:0 0 12px;color:{COLOR_MUTED};font-size:14px;line-height:1.55;">'
-            f'Envíanos <strong>dos fotografías de una de tus rejas</strong>: una de frente y otra de lado o en perspectiva, '
-            f'donde se vea completa y bien centrada.</p>'
+            f'{_html(instructions)}</p>'
             f'<p style="margin:0 0 12px;color:{COLOR_MUTED};font-size:14px;line-height:1.55;">'
-            f'{_html(reward) if is_simulation else "Si las fotografías cumplen las condiciones de la promoción, <strong>te devolveremos 20 € de tu compra</strong>."}'
+            f'{_html(reward)}'
             f'</p>'
             f'<a href="{_html(url)}" style="display:inline-block;background:{COLOR_ACCENT};color:#ffffff;'
             'text-decoration:none;font-size:16px;font-weight:700;padding:13px 22px;'

@@ -164,7 +164,7 @@ export function CustomerPhotoForm() {
     <form className="mw-contact-form mw-issue-report-form" onSubmit={submit}>
       {info.is_simulation && <p role="note"><strong>SIMULACIÓN — SIN REEMBOLSO.</strong> Esta prueba no genera derecho a compensación, aunque las fotografías sean aprobadas.</p>}
       <p>Fotografía una sola reja, aunque tu pedido incluya varias. Bastan fotos hechas con móvil: procura buena luz, enfoque y encuadre.</p>
-      <p>Evita personas identificables, matrículas, números de portal u otros elementos que permitan identificar domicilios o terceros.</p>
+      <p>Evita personas identificables, matrículas, números de vivienda u otros datos que permitan identificar domicilios o terceros.</p>
       <p>Las imágenes se ajustan automáticamente si es necesario y se envían por correo a MetalWolft. No se guardan en el panel. El conjunto procesado no puede superar {Math.round(info.max_total_bytes / (1024 * 1024))} MB.</p>
       {info.mode === "incentive" && (
         <p>Participa dentro de los 30 días posteriores a la entrega. La revisión se comunicará en un máximo de 7 días naturales; podríamos pedirte fotos corregidas por correo. Para participar por 20 € debes aceptar expresamente la licencia de uso comercial descrita abajo. La revisión no garantiza un reembolso. Consulta las condiciones antes de enviarlas.</p>
@@ -214,11 +214,18 @@ export function CustomerPhotoForm() {
         <legend>Licencia de uso comercial, versión {info.terms_version}{info.mode === "incentive" ? " (necesaria para la promoción)" : " (opcional)"}</legend>
         <p>{info.consent_text}</p>
         <p>Esta licencia de explotación fotográfica es distinta del tratamiento de datos personales y no limita tus derechos de protección de datos.</p>
-        <label><input type="radio" name="commercial-consent" value="yes" checked={consent === "yes"} onChange={() => setConsent("yes")} /> Sí, acepto la licencia de uso comercial descrita.</label>
-        {info.mode === "free" && <label><input type="radio" name="commercial-consent" value="no" checked={consent === "no"} onChange={() => setConsent("no")} /> No autorizo el uso comercial; envío las fotografías voluntariamente.</label>}
+        {info.mode === "incentive" ? (
+          <label><input type="checkbox" name="commercial-consent" checked={consent === "yes"} onChange={(event) => setConsent(event.target.checked ? "yes" : "")} /> Acepto expresamente la licencia comercial descrita para participar en la promoción de 20 €.</label>
+        ) : (
+          <>
+            <label><input type="radio" name="commercial-consent" value="yes" checked={consent === "yes"} onChange={() => setConsent("yes")} /> Sí, acepto la licencia de uso comercial descrita.</label>
+            <label><input type="radio" name="commercial-consent" value="no" checked={consent === "no"} onChange={() => setConsent("no")} /> No autorizo el uso comercial; envío las fotografías voluntariamente.</label>
+          </>
+        )}
       </fieldset>
       <p>{info.mode === "free" ? "Puedes enviar fotografías sin conceder licencia comercial. Recibirlas no nos autoriza a publicarlas." : "Sin aceptar la licencia no puedes participar en la promoción de 20 €. Puedes consultarnos sobre un envío voluntario sin incentivo."} No publicaremos ninguna automáticamente.</p>
       <p>Puedes retirar después tu autorización comercial escribiendo a <a href="mailto:admin@metalwolft.com">admin@metalwolft.com</a>. Retirar la autorización no elimina automáticamente las fotos recibidas por correo; si deseas solicitar su supresión, indícalo expresamente.</p>
+      <p>Consulta también nuestra <a href="/politica-privacidad">política de privacidad</a>.</p>
       <button className="mw-button mw-button--primary" type="submit" disabled={busy || !frontPhoto || !perspectivePhoto || !consent || (info.mode === "incentive" && consent !== "yes")}>
         {busy ? "Enviando…" : "Enviar fotografías"}
       </button>

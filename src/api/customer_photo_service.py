@@ -15,7 +15,7 @@ from PIL import Image, ImageOps, UnidentifiedImageError
 from sqlalchemy import text
 
 from api.database_identity import parse_database_identity, validate_database_identity
-from api.customer_photo_license import PHOTO_LICENSE_TEXT, PHOTO_LICENSE_VERSION
+from api.customer_photo_license import PHOTO_LICENSE_TEXT, PHOTO_LICENSE_TEXT_BY_VERSION, PHOTO_LICENSE_VERSION
 from api.design_service import order_contains_design_service
 from api.models import CustomerPhotoRequest, db
 from api.order_confirmation_context import get_order_confirmation_recipient_email
@@ -143,7 +143,7 @@ def _terms(app, mode):
 
 def commercial_license_expires_at(photo_request):
     accepted_at = photo_request.consent_at
-    if not accepted_at or photo_request.consent_version != PHOTO_LICENSE_VERSION:
+    if not accepted_at or photo_request.consent_version not in PHOTO_LICENSE_TEXT_BY_VERSION:
         return None
     try:
         return accepted_at.replace(year=accepted_at.year + 5)
@@ -159,6 +159,7 @@ def has_active_commercial_license(photo_request):
         and utcnow() < expires_at
         and photo_request.consent_version == photo_request.terms_version
         and photo_request.consent_text
+        and photo_request.consent_text == PHOTO_LICENSE_TEXT_BY_VERSION[photo_request.consent_version]
         and photo_request.consent_text == photo_request.offered_consent_text
         and not photo_request.consent_revoked_at
     )

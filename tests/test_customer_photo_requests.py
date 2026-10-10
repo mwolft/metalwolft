@@ -30,7 +30,7 @@ if HAS_DEPS:
         has_active_commercial_license, madrid_today, _madrid_date, stale_mail_attempts,
         submit_photos, token_hash, utcnow, validate_image,
     )
-    from api.customer_photo_license import PHOTO_LICENSE_TEXT, PHOTO_LICENSE_VERSION
+    from api.customer_photo_license import PHOTO_LICENSE_TEXT, PHOTO_LICENSE_TEXT_BY_VERSION, PHOTO_LICENSE_VERSION
     from api.customer_photo_mail import (
         PhotoMailRejected, PhotoMailUncertain, build_photo_confirmation_message,
         build_photo_message, send_photo_message,
@@ -635,6 +635,24 @@ class CustomerPhotoRequestTest(unittest.TestCase):
         item.consent_at = utcnow()
         item.consent_version = "draft-v1"
         item.terms_version = "draft-v1"
+        self.assertFalse(has_active_commercial_license(item))
+
+    def test_previous_license_remains_valid_only_with_its_frozen_scope(self):
+        item, token = self.offer()
+        self.submit(token)
+        prior_version = "photo-license-v2-draft"
+        prior_text = PHOTO_LICENSE_TEXT_BY_VERSION[prior_version]
+        item.terms_version = prior_version
+        item.consent_version = prior_version
+        item.offered_consent_text = prior_text
+        item.consent_text = prior_text
+        self.assertTrue(has_active_commercial_license(item))
+        admin_view = CustomerPhotoRequestAdminView(CustomerPhotoRequest, db.session)
+        self.assertEqual(
+            admin_view._format_commercial_license(None, None, item, "commercial_consent"),
+            "Licencia histórica vigente: revisar alcance",
+        )
+        item.consent_text = PHOTO_LICENSE_TEXT
         self.assertFalse(has_active_commercial_license(item))
 
     def test_incentive_upload_requires_explicit_license_before_mail(self):
