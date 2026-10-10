@@ -4,10 +4,17 @@ Flask commands are useful to run cronjobs or tasks outside of the API but still 
 with your database, for example: Import the price of bitcoin every night at 12am
 """
 import click
+from api.customer_photo_service import stale_mail_attempts
 from api.models import db, Users, Orders
 
 def setup_commands(app):
     """Register Flask CLI commands."""
+
+    @app.cli.command("customer-photo-mail-candidates")
+    def customer_photo_mail_candidates():
+        """List stalled mail attempts requiring manual reconciliation."""
+        for item in stale_mail_attempts():
+            click.echo(f"request={item.id} order={item.order_id} started={item.delivery_started_at} status={item.delivery_status}")
 
     @app.cli.command("insert-test-users")
     @click.argument("count")

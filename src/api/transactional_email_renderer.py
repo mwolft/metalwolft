@@ -308,6 +308,10 @@ def render_order_status_update_email(
     include_installation_guide=True,
     include_incident_form=False,
     include_maintenance_guide=True,
+    photo_request_mode=None,
+    photo_request_url=None,
+    photo_terms_url=None,
+    photo_is_simulation=False,
 ):
     order_reference_text = _required_text(order_reference, "order_reference")
     current_status_text = _required_text(current_status, "current_status")
@@ -338,6 +342,15 @@ def render_order_status_update_email(
         include_incident_form=include_incident_form,
         include_maintenance_guide=include_maintenance_guide,
     )
+    photo_text, photo_html = _render_photo_request_block(
+        current_status_text, photo_request_mode, photo_request_url, photo_terms_url, photo_is_simulation,
+    )
+    if photo_text and not guidance_text:
+        guidance_text = "Ya tienes tu reja\n"
+        guidance_html = (
+            f'<p style="margin:0 0 12px;color:{COLOR_TEXT};font-size:15px;font-weight:700;">'
+            "Ya tienes tu reja</p>"
+        )
 
     text_body = (
         "METALWOLFT\n"
@@ -349,6 +362,7 @@ def render_order_status_update_email(
         "\nPROGRESO DEL PEDIDO\n"
         f"{progress_text}\n\n"
         f"{guidance_text}"
+        f"{photo_text}"
         "Si tienes cualquier duda, puedes responder directamente a este correo.\n\n"
         "MetalWolft\n"
         "Fabricaci\u00f3n de rejas a medida"
@@ -383,6 +397,7 @@ def render_order_status_update_email(
         f"{progress_rows}"
         "</table>"
         f"{guidance_html}"
+        f"{photo_html}"
         f'<p style="margin:0;color:{COLOR_MUTED};font-size:14px;line-height:1.6;">'
         "Si tienes cualquier duda, puedes responder directamente a este correo."
         "</p>"
@@ -394,6 +409,86 @@ def render_order_status_update_email(
             preheader=f"Tu pedido {order_reference_text} est\u00e1 ahora en {current_label}.",
             content_html=content_html,
         ),
+    )
+
+
+def _render_photo_request_block(status, mode, url, terms_url, is_simulation=False):
+    if status != "entregado" or mode not in {"free", "incentive"} or not url:
+        return "", ""
+    if mode == "incentive":
+        title = "¡Enséñanos tus fotos! 📸" if is_simulation else "¡Tus fotos tienen premio! 📸"
+        intro = "¿Ya tienes tus rejas instaladas? ¡Nos encantaría ver cómo han quedado!"
+        instructions = (
+            "Envíanos dos fotografías de una de tus rejas: una de frente y otra de lado o en perspectiva, "
+            "donde se vea completa, bien centrada y con buena iluminación."
+        )
+        reward = (
+            "Esta es una prueba sin derecho a reembolso ni compensación."
+            if is_simulation else
+            "Si tus fotografías cumplen las condiciones de la promoción y nos autorizas a utilizarlas "
+            "comercialmente, recibirás 20 €."
+        )
+        simulation_text = "SIMULACIÓN — SIN REEMBOLSO.\n" if is_simulation else ""
+        simulation_html = (
+            f'<p style="margin:0 0 12px;color:{COLOR_TEXT};font-weight:700;">'
+            "SIMULACIÓN — SIN REEMBOLSO.</p>"
+            if is_simulation else ""
+        )
+        conditions_text = f"Consultar las condiciones de la promoción: {terms_url}\n" if terms_url else ""
+        conditions_html = (
+            f'<p style="margin:8px 0 0;"><a href="{_html(terms_url)}" style="color:{COLOR_ACCENT};">'
+            "Consultar las condiciones de la promoción</a></p>"
+            if terms_url else ""
+        )
+        note = "No necesitas una cámara profesional. ¡Con tu móvil es suficiente!"
+        opposition = "MetalWolft: si no deseas recibir futuras invitaciones de fotografías, registra tu baja desde tu enlace personal o escribe a admin@metalwolft.com. Los avisos operativos de tu pedido se mantienen."
+        return (
+            f"{title}\n{simulation_text}{intro}\n{instructions}\n{reward}\n"
+            f"Enviar mis fotografías: {url}\n{conditions_text}{note}\n{opposition}\n\n",
+            f'<div style="margin:0 0 24px;padding:16px;background:{COLOR_SURFACE_ALT};border-left:3px solid {COLOR_ACCENT};">'
+            f'<p style="margin:0 0 8px;color:{COLOR_TEXT};font-size:15px;font-weight:700;">{_html(title)}</p>'
+            f"{simulation_html}"
+            f'<p style="margin:0 0 12px;color:{COLOR_MUTED};font-size:14px;line-height:1.55;">{_html(intro)}</p>'
+            f'<p style="margin:0 0 12px;color:{COLOR_MUTED};font-size:14px;line-height:1.55;">'
+            f'{_html(instructions)}</p>'
+            f'<p style="margin:0 0 12px;color:{COLOR_MUTED};font-size:14px;line-height:1.55;">'
+            f'{_html(reward)}'
+            f'</p>'
+            f'<a href="{_html(url)}" style="display:inline-block;background:{COLOR_ACCENT};color:#ffffff;'
+            'text-decoration:none;font-size:16px;font-weight:700;padding:13px 22px;'
+            'border-radius:999px;">Enviar mis fotografías</a>'
+            f'{conditions_html}'
+            f'<p style="margin:12px 0 0;color:{COLOR_MUTED};font-size:13px;font-style:italic;line-height:1.55;">{_html(note)}</p>'
+            f'<p style="margin:12px 0 0;color:{COLOR_MUTED};font-size:13px;line-height:1.55;">{_html(opposition)}</p>'
+            '</div>',
+        )
+    else:
+        title = "Comparte tus rejas instaladas"
+        body = (
+            "Nos encantaría ver cómo han quedado tus rejas una vez instaladas. "
+            "Si te apetece compartir algunas fotografías con nosotros, puedes hacerlo desde el siguiente enlace."
+        )
+    conditions_text = f"Condiciones de la promoción: {terms_url}\n" if mode == "incentive" and terms_url else ""
+    conditions_html = (
+        f'<p style="margin:8px 0 0;"><a href="{_html(terms_url)}" style="color:{COLOR_ACCENT};">'
+        "Condiciones de la promoción</a></p>"
+        if mode == "incentive" and terms_url else ""
+    )
+    simulation_text = "SIMULACIÓN — SIN REEMBOLSO. Esta prueba no genera derecho a compensación.\n" if is_simulation else ""
+    simulation_html = (
+        f'<p style="margin:0 0 12px;color:{COLOR_TEXT};font-weight:700;">'
+        "SIMULACIÓN — SIN REEMBOLSO. Esta prueba no genera derecho a compensación.</p>"
+        if is_simulation else ""
+    )
+    opposition = "MetalWolft: si no deseas recibir futuras invitaciones de fotografías, registra tu baja desde tu enlace personal o escribe a admin@metalwolft.com. Los avisos operativos de tu pedido se mantienen."
+    return (
+        f"{title}\n{simulation_text}{body}\nEnviar mis fotografías: {url}\n{conditions_text}{opposition}\n",
+        f'<div style="margin:0 0 24px;padding:16px;background:{COLOR_SURFACE_ALT};border-left:3px solid {COLOR_ACCENT};">'
+        f'<p style="margin:0 0 8px;color:{COLOR_TEXT};font-size:15px;font-weight:700;">{_html(title)}</p>'
+        f"{simulation_html}"
+        f'<p style="margin:0 0 12px;color:{COLOR_MUTED};font-size:14px;line-height:1.55;">{_html(body)}</p>'
+        f'<a href="{_html(url)}" style="color:{COLOR_ACCENT};font-weight:700;">Enviar mis fotografías</a>'
+        f'{conditions_html}<p style="margin:12px 0 0;color:{COLOR_MUTED};font-size:13px;line-height:1.55;">{_html(opposition)}</p></div>',
     )
 
 

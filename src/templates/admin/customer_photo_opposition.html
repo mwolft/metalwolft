@@ -1,0 +1,14 @@
+{% extends 'admin/master.html' %}
+
+{% block body %}
+<div class="container-fluid" style="max-width:720px">
+  <h2>Oposición a invitaciones de fotografías</h2>
+  <p>Registra aquí una solicitud recibida por correo. Solo se conserva una huella del email; esta baja no impide los avisos operativos del pedido.</p>
+  <form method="post">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <label for="photo-opposition-email">Email del cliente</label>
+    <input id="photo-opposition-email" name="email" type="email" class="form-control" maxlength="255" required autocomplete="off">
+    <button class="btn btn-primary" type="submit" style="margin-top:12px">Registrar oposición</button>
+  </form>
+</div>
+{% endblock %}

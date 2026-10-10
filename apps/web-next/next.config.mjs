@@ -1,4 +1,8 @@
 /** @type {import('next').NextConfig} */
+import { fileURLToPath } from "node:url";
+
+const appRoot = fileURLToPath(new URL(".", import.meta.url));
+
 function getCspApiOrigin() {
   const apiUrl = process.env.NEXT_PUBLIC_API_URL?.trim();
 
@@ -56,6 +60,10 @@ function buildContentSecurityPolicy({ allowInlineScripts = true, reportEndpoint 
 
 const nextConfig = {
   reactStrictMode: true,
+  webpack(config) {
+    config.resolve.alias = { ...config.resolve.alias, "@": appRoot };
+    return config;
+  },
   images: {
     remotePatterns: [
       {
@@ -152,6 +160,13 @@ const nextConfig = {
       {
         source: "/:path*",
         headers
+      },
+      {
+        source: "/fotos-clientes",
+        headers: [
+          { key: "Referrer-Policy", value: "no-referrer" },
+          { key: "X-Robots-Tag", value: "noindex, nofollow, noarchive" }
+        ]
       }
     ];
   }

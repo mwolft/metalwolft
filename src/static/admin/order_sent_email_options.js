@@ -17,7 +17,9 @@
       masterFieldId: "send_delivered_status_email",
       secondaryFieldIds: [
         "include_installation_guide_in_delivered_email",
-        "include_maintenance_guide_in_delivered_email"
+        "include_maintenance_guide_in_delivered_email",
+        "photo_request_mode",
+        "photo_actual_delivery_on"
       ]
     }
   ];
@@ -70,10 +72,33 @@
       secondaryGroups.forEach(function (entry) {
         entry.field.disabled = !enabled;
       });
+      var photo = document.getElementById("photo_request_mode");
+      var original = document.getElementById(statusFieldId)?.dataset.originalStatus;
+      if (config.status === "entregado" && photo) {
+        var available = enabled && original !== "entregado" && document.getElementById(statusFieldId)?.value === "entregado";
+        fieldGroup(photo).hidden = !available;
+        photo.disabled = !available;
+        if (!available) photo.value = "none";
+        Array.prototype.forEach.call(photo.options, function (option) {
+          if (option.value === "free") option.disabled = photo.dataset.photosEnabled !== "true";
+          if (option.value === "incentive") option.disabled = photo.dataset.incentiveEnabled !== "true";
+        });
+        var actualDelivery = document.getElementById("photo_actual_delivery_on");
+        if (actualDelivery) {
+          var needsDate = available && photo.value !== "none";
+          fieldGroup(actualDelivery).hidden = !needsDate;
+          actualDelivery.disabled = !needsDate;
+          actualDelivery.required = needsDate;
+        }
+      }
     }
 
     master.setAttribute("aria-controls", options.id);
     master.addEventListener("change", syncSecondaryFields);
+    if (config.status === "entregado") {
+      document.getElementById("photo_request_mode")?.addEventListener("change", syncSecondaryFields);
+      document.getElementById(statusFieldId)?.addEventListener("change", syncSecondaryFields);
+    }
     syncSecondaryFields();
     return container;
   }

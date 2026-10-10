@@ -4346,6 +4346,46 @@ a.mw-product-version-nav__option:focus-visible {
   text-underline-offset: 0.16em;
 }
 
+.mw-customer-photo-fields,
+.mw-customer-photo-additional {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr));
+  gap: 1rem;
+}
+
+.mw-customer-photo-field {
+  min-width: 0;
+}
+
+.mw-customer-photo-field small {
+  color: var(--mw-muted);
+  font-weight: 400;
+}
+
+.mw-customer-photo-preview {
+  display: grid;
+  gap: 0.35rem;
+  min-width: 0;
+  margin-top: 0.75rem;
+}
+
+.mw-customer-photo-preview img {
+  width: 140px;
+  max-width: 100%;
+  height: 120px;
+  object-fit: contain;
+}
+
+.mw-customer-photo-preview span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mw-customer-photo-preview button {
+  width: fit-content;
+}
+
 .mw-form-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));

@@ -203,8 +203,13 @@ class GoogleAdsMonthlySpendTest(unittest.TestCase):
         script = ScriptDirectory.from_config(config)
         heads = script.get_revisions("heads")
         self.assertEqual(len(heads), 1)
-        self.assertEqual(heads[0].revision, "e2f3a4b5c6d7")
-        self.assertEqual(heads[0].down_revision, "d1e2f3a4b5c6")
+        self.assertEqual(heads[0].revision, "e1f2a3b4c5d6")
+        self.assertEqual(script.get_revision("e1f2a3b4c5d6").down_revision, "d0e1f2a3b4c5")
+        self.assertEqual(script.get_revision("d0e1f2a3b4c5").down_revision, "b8c9d0e1f2a3")
+        self.assertEqual(script.get_revision("b8c9d0e1f2a3").down_revision, "a7b8c9d0e1f2")
+        self.assertEqual(script.get_revision("a7b8c9d0e1f2").down_revision, "f6a7b8c9d0e1")
+        self.assertEqual(script.get_revision("f6a7b8c9d0e1").down_revision, "e2f3a4b5c6d7")
+        self.assertEqual(script.get_revision("e2f3a4b5c6d7").down_revision, "d1e2f3a4b5c6")
 
         engine = create_engine("sqlite:///:memory:")
         with engine.begin() as connection:

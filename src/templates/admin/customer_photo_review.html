@@ -1,0 +1,72 @@
+{% extends 'admin/master.html' %}
+
+{% block body %}
+<div class="container-fluid" style="max-width:960px">
+  <h2>Fotografías del pedido {{ item.order.locator }}</h2>
+  <p><a href="{{ opposition_url }}">Registrar oposición a futuras invitaciones fotográficas</a></p>
+  {% if item.is_simulation %}<p class="alert alert-danger"><strong>SIMULACIÓN — SIN REEMBOLSO.</strong> Aprobar esta solicitud no crea ninguna obligación económica.</p>{% endif %}
+  <p>Pedido #{{ item.order_id }} · Modalidad: {{ 'Promoción 20 €' if item.mode == 'incentive' else 'Fotografías voluntarias sin incentivo' }} · Estado: {{ item.status }}</p>
+  <p>Email de solicitud: {{ item.email_sent_at or 'No confirmado' }}. Fotos enviadas: {{ item.submitted_at or 'No consta' }}. Cantidad: {{ item.photo_count or 'No consta' }}.</p>
+  <p>Entrega real declarada: {{ item.actual_delivery_on.strftime('%d/%m/%Y') if item.actual_delivery_on else 'No consta (solicitud histórica)' }}. Límite de participación: {{ item.participation_deadline_on.strftime('%d/%m/%Y') if item.participation_deadline_on else 'No consta (solicitud histórica)' }}.</p>
+  <p class="{{ 'alert alert-danger' if review_overdue else 'alert alert-info' }}">Recepción acreditada: {{ item.receipt_accredited_on.strftime('%d/%m/%Y') if item.receipt_accredited_on else 'No consta' }}. Límite de revisión: {{ review_deadline.strftime('%d/%m/%Y') if review_deadline else 'Pendiente de recepción acreditada' }}{% if review_overdue %} · PLAZO VENCIDO{% endif %}.</p>
+  <p>Estado de correo: {{ item.delivery_status or 'Solicitud anterior sin envío registrado' }}. {% if item.delivery_message_id %}Referencia del mensaje: {{ item.delivery_message_id }}.{% endif %}</p>
+  <p class="alert alert-info">Las fotografías se reciben en admin@metalwolft.com. No se almacenan ni se pueden visualizar o descargar desde este panel.</p>
+  {% if item.mode == 'incentive' %}<p class="alert alert-warning">Comprueba la licencia aceptada y sus condiciones antes de revisar un incentivo; no se solicita ni ejecuta ningún reembolso desde esta pantalla.</p>{% endif %}
+  {% if item.email_failed_at %}<p class="alert alert-warning">El último envío de email falló o no pudo confirmarse.</p>{% endif %}
+  {% if item.mode == 'incentive' and not item.is_simulation %}<p class="alert alert-info">Aprobar las fotos solo deja 20 € pendientes de revisión financiera. Esta pantalla nunca reembolsa.</p>{% endif %}
+  <p>Uso comercial: <strong>{{ 'Licencia histórica vigente: revisar alcance' if commercial_license_historical else 'Licencia aceptada y vigente' if commercial_license_active else 'Licencia retirada' if item.consent_revoked_at else 'Licencia histórica o caducada: revisar' if item.commercial_consent else 'Sin autorización comercial' }}</strong>. {% if item.mode == 'free' %}El envío voluntario no concede derechos de publicación por sí solo.{% else %}La licencia es requisito para participar en la promoción.{% endif %}</p>
+  {% if commercial_license_expires_at %}<p>Fin de licencia registrada: {{ commercial_license_expires_at.strftime('%d/%m/%Y') }}.</p>{% endif %}
+  {% if item.consent_at %}<p>Condiciones ofrecidas: {{ item.terms_version }} · Licencia registrada: {{ item.consent_version }} · Fecha: {{ item.consent_at }}</p><blockquote>{{ item.consent_text }}</blockquote>{% endif %}
+  <p>La retirada de la autorización comercial no elimina los adjuntos del buzón. Las solicitudes de supresión deben tramitarse por separado en admin@metalwolft.com.</p>
+  {% if item.reviewed_at %}<p>Revisión: {{ item.reviewed_at }} · {{ item.reviewed_by }} · {{ item.review_note or '' }}</p>{% endif %}
+  {% if item.followup_notes %}
+  <h3>Observaciones de corrección</h3>
+  <ul>{% for entry in item.followup_notes %}<li>{{ entry.created_at }} · {{ entry.created_by }} · {{ 'Corrección solicitada' if entry.kind == 'correction_requested' else 'Corrección recibida' }}{% if entry.received_on %} (recibida el {{ entry.received_on.strftime('%d/%m/%Y') }}){% endif %}: {{ entry.note }}</li>{% endfor %}</ul>
+  {% endif %}
+  {% if item.delivery_status in ('accepted', 'unknown', 'sending') and not item.mailbox_confirmed_at %}
+  <p class="alert alert-warning">Comprueba el correo y sus adjuntos antes de confirmar. Un resultado incierto no se reenvía automáticamente.</p>
+  <form method="post" action="{{ review_url }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    {% if not item.receipt_accredited_on %}<label for="mail-received-on">Fecha de recepción acreditada en el buzón{% if item.delivery_status in ('unknown', 'sending') %} (obligatoria){% endif %}</label>
+    <input id="mail-received-on" type="date" name="mail_received_on" class="form-control" {% if item.delivery_status in ('unknown', 'sending') %}required{% endif %}>{% endif %}
+    <label><input type="checkbox" name="mail_verified" value="yes" required> He localizado el correo de esta solicitud y he comprobado sus adjuntos.</label>
+    <button class="btn btn-default" name="decision" value="confirm_mail" type="submit">Confirmar recepción en el buzón</button>
+  </form>
+  {% endif %}
+  {% if item.status == 'received' and item.mailbox_confirmed_at %}
+  <form method="post" action="{{ review_url }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <label for="correction-kind">Documentar corrección por correo</label>
+    <select id="correction-kind" name="correction_kind" class="form-control" required>
+      <option value="correction_requested">Fotografías corregidas solicitadas</option>
+      <option value="correction_received">Fotografías corregidas recibidas</option>
+    </select>
+    <label for="correction-received-on">Fecha de recepción acreditada de fotos corregidas (solo al registrarlas)</label>
+    <input id="correction-received-on" type="date" name="correction_received_on" class="form-control">
+    <textarea name="note" class="form-control" rows="2" maxlength="2000" required aria-label="Observación de corrección"></textarea>
+    <button class="btn btn-default" name="decision" value="note_correction" type="submit">Guardar observación</button>
+  </form>
+  <form method="post" action="{{ review_url }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <label for="review-note">Observación interna</label>
+    <textarea id="review-note" name="note" class="form-control" rows="3" maxlength="2000"></textarea>
+    <p style="margin-top:12px">
+      {% if item.mode != 'incentive' or commercial_license_active %}<button class="btn btn-success" name="decision" value="approve" type="submit">Aprobar fotografías</button>{% else %}<span class="alert alert-warning">No se puede aprobar el incentivo sin licencia comercial vigente.</span>{% endif %}
+      <button class="btn btn-warning" name="decision" value="reject" type="submit">Rechazar fotografías</button>
+    </p>
+  </form>
+  {% endif %}
+  {% if item.status == 'offered' and item.delivery_status not in ('sending', 'unknown') %}
+  <form method="post" action="{{ resend_url }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <button class="btn btn-default" type="submit">Reenviar correo de Entregado con enlace nuevo</button>
+  </form>
+  {% endif %}
+  {% if item.status != 'revoked' %}
+  <form method="post" action="{{ review_url }}" style="margin-top:16px">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <button class="btn btn-danger" name="decision" value="revoke" type="submit">Revocar enlace y autorización comercial (no elimina adjuntos)</button>
+  </form>
+  {% endif %}
+</div>
+{% endblock %}

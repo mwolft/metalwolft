@@ -234,6 +234,49 @@ class TransactionalOrderEmailRendererTest(unittest.TestCase):
 
 
 class TransactionalOrderStatusEmailRendererTest(unittest.TestCase):
+    def test_delivered_photo_incentive_copy_real_and_simulated(self):
+        options = dict(
+            order_reference="QE2885", current_status="entregado",
+            statuses=(("pendiente", "Recibido"), ("entregado", "Entregado")),
+            photo_request_mode="incentive",
+            photo_request_url="https://www.metalwolft.com/fotos-clientes#private-token",
+            photo_terms_url="https://www.metalwolft.com/condiciones-promocion-fotos",
+            include_installation_guide=False, include_maintenance_guide=False,
+        )
+        real = render_order_status_update_email(**options)
+        simulated = render_order_status_update_email(**options, photo_is_simulation=True)
+        self.assertIn('display:inline-block;background:', real.html)
+        for body in (real.text, real.html):
+            self.assertIn("¡Tus fotos tienen premio! 📸", body)
+            self.assertIn("¿Ya tienes tus rejas instaladas?", body)
+            self.assertIn("dos fotografías de una de tus rejas", body)
+            self.assertIn("una de frente y otra de lado o en perspectiva", body)
+            self.assertIn("nos autorizas a utilizarlas comercialmente, recibirás 20 €", body)
+            self.assertIn("bien centrada y con buena iluminación", body)
+            self.assertIn("Enviar mis fotografías", body)
+            self.assertIn(options["photo_request_url"], body)
+            self.assertIn("Consultar las condiciones de la promoción", body)
+            self.assertIn(options["photo_terms_url"], body)
+            self.assertIn("¡Con tu móvil es suficiente!", body)
+            self.assertNotIn("SIMULACIÓN — SIN REEMBOLSO", body)
+        for body in (simulated.text, simulated.html):
+            self.assertIn("SIMULACIÓN — SIN REEMBOLSO", body)
+            self.assertIn("dos fotografías de una de tus rejas", body)
+            self.assertIn(options["photo_request_url"], body)
+            self.assertNotIn("recibirás 20 €", body)
+            self.assertNotIn("¡Tus fotos tienen premio!", body)
+
+    def test_free_photo_invitation_keeps_existing_copy(self):
+        rendered = render_order_status_update_email(
+            order_reference="QE2885", current_status="entregado",
+            statuses=(("pendiente", "Recibido"), ("entregado", "Entregado")),
+            photo_request_mode="free", photo_request_url="https://www.metalwolft.com/fotos-clientes#private-token",
+        )
+        for body in (rendered.text, rendered.html):
+            self.assertIn("Comparte tus rejas instaladas", body)
+            self.assertIn("Si te apetece compartir algunas fotografías", body)
+            self.assertNotIn("¡Tus fotos tienen premio!", body)
+
     def test_renders_status_progress_details_and_plain_text(self):
         rendered = render_order_status_update_email(
             order_reference="QE2885",
