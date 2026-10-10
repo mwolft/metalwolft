@@ -164,7 +164,7 @@ export function CustomerPhotoForm() {
     <form className="mw-contact-form mw-issue-report-form" onSubmit={submit}>
       {info.is_simulation && <p role="note"><strong>SIMULACIÓN — SIN REEMBOLSO.</strong> Esta prueba no genera derecho a compensación, aunque las fotografías sean aprobadas.</p>}
       <p>Fotografía una sola reja, aunque tu pedido incluya varias. Bastan fotos hechas con móvil: procura buena luz, enfoque y encuadre.</p>
-      <p>Evita personas identificables, matrículas o información privada.</p>
+      <p>Evita personas identificables, matrículas, números de portal u otros elementos que permitan identificar domicilios o terceros.</p>
       <p>Las imágenes se ajustan automáticamente si es necesario y se envían por correo a MetalWolft. No se guardan en el panel. El conjunto procesado no puede superar {Math.round(info.max_total_bytes / (1024 * 1024))} MB.</p>
       {info.mode === "incentive" && (
         <p>Participa dentro de los 30 días posteriores a la entrega. La revisión se comunicará en un máximo de 7 días naturales; podríamos pedirte fotos corregidas por correo. Para participar por 20 € debes aceptar expresamente la licencia de uso comercial descrita abajo. La revisión no garantiza un reembolso. Consulta las condiciones antes de enviarlas.</p>
@@ -213,6 +213,7 @@ export function CustomerPhotoForm() {
       <fieldset>
         <legend>Licencia de uso comercial, versión {info.terms_version}{info.mode === "incentive" ? " (necesaria para la promoción)" : " (opcional)"}</legend>
         <p>{info.consent_text}</p>
+        <p>Esta licencia de explotación fotográfica es distinta del tratamiento de datos personales y no limita tus derechos de protección de datos.</p>
         <label><input type="radio" name="commercial-consent" value="yes" checked={consent === "yes"} onChange={() => setConsent("yes")} /> Sí, acepto la licencia de uso comercial descrita.</label>
         {info.mode === "free" && <label><input type="radio" name="commercial-consent" value="no" checked={consent === "no"} onChange={() => setConsent("no")} /> No autorizo el uso comercial; envío las fotografías voluntariamente.</label>}
       </fieldset>

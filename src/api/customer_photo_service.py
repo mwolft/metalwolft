@@ -15,6 +15,7 @@ from PIL import Image, ImageOps, UnidentifiedImageError
 from sqlalchemy import text
 
 from api.database_identity import parse_database_identity, validate_database_identity
+from api.customer_photo_license import PHOTO_LICENSE_TEXT, PHOTO_LICENSE_VERSION
 from api.design_service import order_contains_design_service
 from api.models import CustomerPhotoRequest, db
 from api.order_confirmation_context import get_order_confirmation_recipient_email
@@ -133,16 +134,29 @@ def _terms(app, mode):
     conditions_url = str(app.config.get("CUSTOMER_PHOTOS_TERMS_URL") or "").strip()
     if not version or not consent or not terms_text or (mode == "incentive" and not conditions_url):
         raise CustomerPhotoError("Faltan las condiciones y autorización aprobadas para fotografías.")
+    if version != PHOTO_LICENSE_VERSION or consent != PHOTO_LICENSE_TEXT:
+        raise CustomerPhotoError("La versión y el texto de la licencia comercial no coinciden con el borrador vigente.")
     if mode == "incentive" and not conditions_url.startswith("https://"):
         raise CustomerPhotoError("Las condiciones del incentivo necesitan una URL HTTPS.")
     return version, consent, terms_text, conditions_url
 
 
+def commercial_license_expires_at(photo_request):
+    accepted_at = photo_request.consent_at
+    if not accepted_at or photo_request.consent_version != PHOTO_LICENSE_VERSION:
+        return None
+    try:
+        return accepted_at.replace(year=accepted_at.year + 5)
+    except ValueError:
+        return accepted_at.replace(year=accepted_at.year + 5, day=28)
+
+
 def has_active_commercial_license(photo_request):
+    expires_at = commercial_license_expires_at(photo_request)
     return bool(
         photo_request.commercial_consent is True
-        and photo_request.consent_at
-        and photo_request.consent_version
+        and expires_at
+        and utcnow() < expires_at
         and photo_request.consent_version == photo_request.terms_version
         and photo_request.consent_text
         and photo_request.consent_text == photo_request.offered_consent_text

@@ -60,7 +60,7 @@ export default function CustomerPhotoPromotionTermsPage() {
           perspectiva. Puedes añadir hasta tres imágenes más de detalle u otras vistas. La reja debe
           aparecer completa, aproximadamente centrada, nítida y bien iluminada. Las fotos hechas
           con móvil son válidas; no se exige calidad profesional. Evita personas identificables,
-          matrículas e información privada.
+          matrículas, números de portal y otros elementos que permitan identificar domicilios o terceros.
         </p>
         <p>
           MetalWolft revisará si las imágenes muestran la reja instalada, cumplen las dos
@@ -111,12 +111,18 @@ export default function CustomerPhotoPromotionTermsPage() {
           derechos de publicación. Ninguna fotografía se publica automáticamente.
         </p>
         <p>
-          El texto definitivo deberá concretar usos autorizados, canales, duración y ámbito
-          territorial de la licencia, sin cesiones ilimitadas. Por ahora se prevén usos en
-          metalwolft.com, fichas y categorías, catálogo comercial, redes sociales y publicidad
-          de MetalWolft. No se presume autorización de personas o titulares de derechos ajenos
-          que aparezcan en las imágenes. Estos extremos requieren revisión jurídica antes de activar
-          el incentivo real.
+          El cliente conserva la titularidad de sus fotografías. La licencia concedida a
+          MetalWolft es <strong>no exclusiva</strong>, tiene alcance <strong>mundial</strong> y dura
+          <strong> cinco años desde su aceptación</strong>. Permite reproducir y utilizar las
+          fotografías en la web y fichas de productos de MetalWolft, redes sociales, publicidad
+          online, catálogos y materiales promocionales.
+        </p>
+        <p>
+          MetalWolft puede recortar las fotografías, ajustar su iluminación y color y cambiar
+          su tamaño o formato, pero no alterar engañosamente el producto. Puede facilitar las
+          imágenes a proveedores técnicos o publicitarios que trabajen para MetalWolft, sin
+          concederles explotación comercial independiente. No se presume autorización de las
+          personas o titulares de derechos ajenos que aparezcan en las imágenes.
         </p>
       </section>
 
@@ -126,8 +132,9 @@ export default function CustomerPhotoPromotionTermsPage() {
           Las fotografías pueden enviarse sin participar en la promoción de 20 € cuando la invitación
           sea voluntaria. En ese caso no es obligatorio conceder licencia comercial ni existe derecho
           al incentivo. El tratamiento de datos personales y los derechos correspondientes son
-          independientes de la licencia; esta no sustituye las obligaciones de privacidad. Evita
-          incluir datos de terceros si no cuentas con autorización adecuada.
+          independientes de la licencia; esta no sustituye las obligaciones de privacidad ni
+          supone renunciar a derechos reconocidos por el RGPD. Evita incluir personas o elementos
+          que permitan identificar domicilios o terceros.
         </p>
         <p>
           Puedes solicitar la retirada de la autorización o la supresión de las fotografías

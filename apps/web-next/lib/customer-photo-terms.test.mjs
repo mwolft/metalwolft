@@ -17,7 +17,13 @@ assert.match(page, /revisión jurídica/);
 assert.match(page, /SIMULACIÓN — SIN REEMBOLSO/);
 assert.match(page, /promoción remunerada exige su aceptación/);
 assert.match(page, /mera recepción de imágenes no concede/);
-assert.match(page, /duración y ámbito/);
+assert.match(page, /no exclusiva/);
+assert.match(page, /mundial/);
+assert.match(page, /cinco años desde su aceptación/);
+assert.match(page, /conserva la titularidad/);
+assert.match(page, /recortar las fotografías/);
+assert.match(page, /sin.*explotación comercial independiente/s);
+assert.match(page, /RGPD/);
 assert.match(page, /mailto:admin@metalwolft\.com/);
 assert.match(page, /href="\/politica-privacidad"/);
 

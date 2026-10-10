@@ -23,6 +23,7 @@ from api.models import db
 from api.seo_routes import seo_bp
 from api.email_routes import email_bp
 from api.customer_photo_routes import PhotoUploadRequest, customer_photo_bp
+from api.customer_photo_license import PHOTO_LICENSE_TEXT, PHOTO_LICENSE_VERSION
 from api.password_recovery_endpoints import auth_bp
 from api.invoice_preview import api_invoice_preview
 from api.budget_routes import budget_bp
@@ -272,10 +273,10 @@ app.config["CUSTOMER_PHOTOS_INCENTIVE_TEST_MODE"] = parse_boolean_env(
 app.config["CUSTOMER_PHOTOS_INCENTIVE_TEST_DB_HOST"] = os.getenv("CUSTOMER_PHOTOS_INCENTIVE_TEST_DB_HOST", "")
 app.config["CUSTOMER_PHOTOS_INCENTIVE_TEST_EMAILS"] = os.getenv("CUSTOMER_PHOTOS_INCENTIVE_TEST_EMAILS", "")
 app.config["CUSTOMER_PHOTOS_TOKEN_DAYS"] = int(os.getenv("CUSTOMER_PHOTOS_TOKEN_DAYS", "30"))
-app.config["CUSTOMER_PHOTOS_TERMS_VERSION"] = os.getenv("CUSTOMER_PHOTOS_TERMS_VERSION", "")
+app.config["CUSTOMER_PHOTOS_TERMS_VERSION"] = PHOTO_LICENSE_VERSION
 app.config["CUSTOMER_PHOTOS_TERMS_URL"] = os.getenv("CUSTOMER_PHOTOS_TERMS_URL", "")
 app.config["CUSTOMER_PHOTOS_TERMS_TEXT"] = os.getenv("CUSTOMER_PHOTOS_TERMS_TEXT", "")
-app.config["CUSTOMER_PHOTOS_CONSENT_TEXT"] = os.getenv("CUSTOMER_PHOTOS_CONSENT_TEXT", "")
+app.config["CUSTOMER_PHOTOS_CONSENT_TEXT"] = PHOTO_LICENSE_TEXT
 app.config["SUPPLIER_DOCUMENT_STORAGE_PROVIDER"] = (
     os.getenv("SUPPLIER_DOCUMENT_STORAGE_PROVIDER") or ""
 ).strip().lower()

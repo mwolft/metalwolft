@@ -26,8 +26,11 @@ if HAS_DEPS:
     from api.customer_photo_service import (
         CustomerPhotoError, _verified_test_database, create_photo_request as create_photo_request_service, resolve_photo_request,
         rotate_photo_link,
-        review_photo_request, review_deadline_on, madrid_today, _madrid_date, stale_mail_attempts, submit_photos, token_hash, utcnow, validate_image,
+        review_photo_request, review_deadline_on, commercial_license_expires_at,
+        has_active_commercial_license, madrid_today, _madrid_date, stale_mail_attempts,
+        submit_photos, token_hash, utcnow, validate_image,
     )
+    from api.customer_photo_license import PHOTO_LICENSE_TEXT, PHOTO_LICENSE_VERSION
     from api.customer_photo_mail import (
         PhotoMailRejected, PhotoMailUncertain, build_photo_confirmation_message,
         build_photo_message, send_photo_message,
@@ -57,9 +60,9 @@ class CustomerPhotoRequestTest(unittest.TestCase):
             CUSTOMER_PHOTOS_INCENTIVE_TEST_MODE=False,
             CUSTOMER_PHOTOS_INCENTIVE_TEST_DB_HOST="child.neon.tech",
             CUSTOMER_PHOTOS_INCENTIVE_TEST_EMAILS="cliente@example.test",
-            CUSTOMER_PHOTOS_TERMS_VERSION="draft-v1",
+            CUSTOMER_PHOTOS_TERMS_VERSION=PHOTO_LICENSE_VERSION,
             CUSTOMER_PHOTOS_TERMS_TEXT="Borrador de condiciones sometido a aprobación.",
-            CUSTOMER_PHOTOS_CONSENT_TEXT="Borrador de autorización comercial.",
+            CUSTOMER_PHOTOS_CONSENT_TEXT=PHOTO_LICENSE_TEXT,
             CUSTOMER_PHOTOS_TERMS_URL="https://example.test/condiciones",
             CUSTOMER_PHOTOS_TOKEN_DAYS=30,
             FRONTEND_URL="https://example.test",
@@ -410,8 +413,8 @@ class CustomerPhotoRequestTest(unittest.TestCase):
         result = self.submit(token, consent="no", colors=("red", "blue", "green", "yellow", "black"), send_message=lambda **kwargs: sent.append(kwargs["message"]))
         self.assertEqual(result.status, "received")
         self.assertFalse(result.commercial_consent)
-        self.assertEqual(result.consent_text, "Borrador de autorización comercial.")
-        self.assertEqual(result.consent_version, "draft-v1")
+        self.assertEqual(result.consent_text, PHOTO_LICENSE_TEXT)
+        self.assertEqual(result.consent_version, PHOTO_LICENSE_VERSION)
         self.assertEqual(result.photo_count, 5)
         self.assertEqual(len(sent), 2)
         self.assertEqual(sent[0]["To"], "admin@metalwolft.com")
@@ -599,6 +602,40 @@ class CustomerPhotoRequestTest(unittest.TestCase):
         reviewed = review_photo_request(request_id=item.id, decision="approve", note="Aptas", actor="admin", app=self.app)
         db.session.commit()
         self.assertEqual(reviewed.status, "refund_pending")
+
+    def test_new_offer_freezes_current_license_and_rejects_old_configuration(self):
+        item, token = self.offer()
+        self.assertEqual(item.terms_version, PHOTO_LICENSE_VERSION)
+        self.assertEqual(item.offered_consent_text, PHOTO_LICENSE_TEXT)
+        response = self.app.test_client().get(
+            "/api/customer-photos", headers={"Authorization": f"Bearer {token}"},
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json["terms_version"], PHOTO_LICENSE_VERSION)
+        self.assertEqual(response.json["consent_text"], PHOTO_LICENSE_TEXT)
+        self.app.config["CUSTOMER_PHOTOS_TERMS_VERSION"] = "draft-v1"
+        with self.assertRaisesRegex(CustomerPhotoError, "borrador vigente"):
+            self.offer()
+        self.app.config["CUSTOMER_PHOTOS_TERMS_VERSION"] = PHOTO_LICENSE_VERSION
+        self.app.config["CUSTOMER_PHOTOS_CONSENT_TEXT"] = "Texto anterior de licencia."
+        with self.assertRaisesRegex(CustomerPhotoError, "borrador vigente"):
+            self.offer()
+        self.assertEqual(item.terms_version, PHOTO_LICENSE_VERSION)
+        self.assertEqual(item.offered_consent_text, PHOTO_LICENSE_TEXT)
+
+    def test_license_expires_five_calendar_years_after_acceptance(self):
+        item, token = self.offer()
+        self.submit(token)
+        self.assertTrue(has_active_commercial_license(item))
+        self.assertEqual(commercial_license_expires_at(item).year, item.consent_at.year + 5)
+        item.consent_at = item.consent_at.replace(year=item.consent_at.year - 6)
+        self.assertFalse(has_active_commercial_license(item))
+        item.consent_at = datetime(2024, 2, 29, 12)
+        self.assertEqual(commercial_license_expires_at(item), datetime(2029, 2, 28, 12))
+        item.consent_at = utcnow()
+        item.consent_version = "draft-v1"
+        item.terms_version = "draft-v1"
+        self.assertFalse(has_active_commercial_license(item))
 
     def test_incentive_upload_requires_explicit_license_before_mail(self):
         self.app.config["CUSTOMER_PHOTOS_INCENTIVE_ENABLED"] = True
@@ -830,7 +867,7 @@ class CustomerPhotoRequestTest(unittest.TestCase):
         self.assertEqual(response.status_code, 302)
         self.assertIsNotNone(item.consent_revoked_at)
         self.assertEqual(item.status, "revoked")
-        self.assertEqual(item.consent_version, "draft-v1")
+        self.assertEqual(item.consent_version, PHOTO_LICENSE_VERSION)
         self.assertEqual(item.photo_count, 2)
 
     def test_rate_limiter_blocks_repeated_requests(self):

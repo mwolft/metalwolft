@@ -19,6 +19,8 @@ assert.match(form, /value="no"/);
 assert.match(form, /info\.mode === "free" && <label><input type="radio" name="commercial-consent" value="no"/);
 assert.match(form, /info\.mode === "incentive" && consent !== "yes"/);
 assert.match(form, /Sin aceptar la licencia no puedes participar en la promoción de 20 €/);
+assert.match(form, /licencia de explotación fotográfica es distinta del tratamiento de datos personales/);
+assert.match(form, /identificar domicilios o terceros/);
 assert.match(form, /image\/jpeg,image\/png,image\/webp/);
 assert.match(form, /MAX_IMAGES|info\.max_images/);
 assert.match(form, /Fotografía frontal \(obligatoria\)/);
