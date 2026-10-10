@@ -17,7 +17,7 @@ from sqlalchemy import text
 from api.database_identity import parse_database_identity, validate_database_identity
 from api.customer_photo_license import PHOTO_LICENSE_TEXT, PHOTO_LICENSE_TEXT_BY_VERSION, PHOTO_LICENSE_VERSION
 from api.design_service import order_contains_design_service
-from api.models import CustomerPhotoRequest, db
+from api.models import CustomerPhotoPromotionOptOut, CustomerPhotoRequest, db
 from api.order_confirmation_context import get_order_confirmation_recipient_email
 from api.customer_photo_mail import (
     PhotoMailRejected, PhotoMailUncertain, build_photo_message,
@@ -72,6 +72,43 @@ def token_hash(token):
     return sha256(str(token).encode("utf-8")).hexdigest()
 
 
+def promotion_email_hash(email):
+    normalized = str(email or "").strip().casefold()
+    if not EMAIL_PATTERN.fullmatch(normalized):
+        raise CustomerPhotoError("Indica un email válido para registrar la oposición.")
+    return sha256(normalized.encode("utf-8")).hexdigest()
+
+
+def photo_promotion_opted_out(email, *, session=None):
+    session = session or db.session
+    with session.no_autoflush:
+        return session.get(CustomerPhotoPromotionOptOut, promotion_email_hash(email)) is not None
+
+
+def register_photo_promotion_opt_out(email, *, source, session=None):
+    if source not in {"customer", "admin"}:
+        raise CustomerPhotoError("Origen de la oposición no válido.")
+    session = session or db.session
+    email_hash = promotion_email_hash(email)
+    item = session.get(CustomerPhotoPromotionOptOut, email_hash)
+    if item is None:
+        item = CustomerPhotoPromotionOptOut(email_hash=email_hash, source=source)
+        session.add(item)
+    return item
+
+
+def opt_out_photo_promotion(token, *, session=None):
+    session = session or db.session
+    item = resolve_photo_request(token, session=session)
+    if not item:
+        raise CustomerPhotoError("Enlace no válido o caducado.")
+    email = get_order_confirmation_recipient_email(item.order)
+    if not email:
+        raise CustomerPhotoError("No consta un destinatario válido.")
+    register_photo_promotion_opt_out(email, source="customer", session=session)
+    session.commit()
+
+
 def _photo_form_url(app, token):
     base = str(app.config.get("FRONTEND_URL") or "").rstrip("/")
     if not base.startswith(("https://", "http://localhost:", "http://127.0.0.1:")):
@@ -84,7 +121,11 @@ def _enabled(app, name):
 
 
 def _incentive_allowed(app):
-    return app.config.get("APP_ENV") != "production" and _enabled(app, "CUSTOMER_PHOTOS_INCENTIVE_ENABLED")
+    return bool(
+        _enabled(app, "CUSTOMER_PHOTOS_INCENTIVE_ENABLED")
+        and app.config.get("APP_ENV") in {"development", "production"}
+        and (app.config.get("APP_ENV") != "production" or not _enabled(app, "CUSTOMER_PHOTOS_INCENTIVE_TEST_MODE"))
+    )
 
 
 def _verified_test_database(app):
@@ -165,7 +206,7 @@ def has_active_commercial_license(photo_request):
     )
 
 
-def _eligible(order, mode, app):
+def _eligible(order, mode, app, *, session=None):
     if mode not in MODES or mode == "none":
         raise CustomerPhotoError("Selecciona una modalidad de fotografías válida.")
     if not _enabled(app, "CUSTOMER_PHOTOS_ENABLED"):
@@ -175,6 +216,8 @@ def _eligible(order, mode, app):
     email = get_order_confirmation_recipient_email(order)
     if not email or not EMAIL_PATTERN.fullmatch(email):
         raise CustomerPhotoError("El pedido no tiene destinatario de email válido.")
+    if photo_promotion_opted_out(email, session=session):
+        raise CustomerPhotoError("El cliente no desea recibir invitaciones fotográficas.")
     _terms(app, mode)
     if mode == "free":
         return False
@@ -219,7 +262,7 @@ def _eligible(order, mode, app):
 def create_photo_request(*, order, mode, app, delivered_on=None, email_options=None, session=None):
     """Stage one request in the caller's transaction; return the transient link."""
     session = session or db.session
-    is_simulation = _eligible(order, mode, app)
+    is_simulation = _eligible(order, mode, app, session=session)
     today = _madrid_date(utcnow())
     if type(delivered_on) is not date:
         raise CustomerPhotoError("Indica expresamente la fecha real de entrega del pedido.")
@@ -258,6 +301,8 @@ def rotate_photo_link(photo_request, *, app):
         raise CustomerPhotoError("El plazo de participación de 30 días ha terminado.")
     if photo_request.mode == "incentive" and not _incentive_allowed(app):
         raise CustomerPhotoError("El incentivo fotográfico está pendiente de aprobación para producción.")
+    if photo_promotion_opted_out(get_order_confirmation_recipient_email(photo_request.order)):
+        raise CustomerPhotoError("El cliente no desea recibir invitaciones fotográficas.")
     if photo_request.is_simulation and not _simulation_allowed(app, get_order_confirmation_recipient_email(photo_request.order)):
         raise CustomerPhotoError("La simulación ya no está autorizada en este entorno.")
     if (photo_request.status != "offered" or photo_request.submitted_at or photo_request.token_revoked_at

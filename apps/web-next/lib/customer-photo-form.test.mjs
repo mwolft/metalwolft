@@ -40,6 +40,8 @@ assert.match(form, /info\.is_simulation/);
 assert.match(form, /SIMULACIÓN — SIN REEMBOLSO/);
 assert.doesNotMatch(form, /consent\/revoke|Retirar autorización comercial<\/button>/);
 assert.match(form, /mailto:admin@metalwolft\.com/);
+assert.match(form, /\/api\/customer-photos\/opt-out/);
+assert.match(form, /registrar tu oposición aquí/);
 assert.match(form, /supresión/);
 assert.match(analytics, /pathname === "\/fotos-clientes"/);
 assert.match(config, /source: "\/fotos-clientes"/);

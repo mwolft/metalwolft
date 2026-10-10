@@ -870,6 +870,14 @@ class CustomerPhotoRequest(db.Model):
     followup_notes = db.relationship("CustomerPhotoFollowupNote", back_populates="request", lazy=True, order_by="CustomerPhotoFollowupNote.id")
 
 
+class CustomerPhotoPromotionOptOut(db.Model):
+    __tablename__ = "customer_photo_promotion_opt_outs"
+
+    email_hash = db.Column(db.String(64), primary_key=True)
+    source = db.Column(db.String(20), nullable=False)
+    created_at = db.Column(db.DateTime, nullable=False, server_default=db.func.now())
+
+
 class CustomerPhotoFollowupNote(db.Model):
     __tablename__ = "customer_photo_followup_notes"
     __table_args__ = (

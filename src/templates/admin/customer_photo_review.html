@@ -3,6 +3,7 @@
 {% block body %}
 <div class="container-fluid" style="max-width:960px">
   <h2>Fotografías del pedido {{ item.order.locator }}</h2>
+  <p><a href="{{ opposition_url }}">Registrar oposición a futuras invitaciones fotográficas</a></p>
   {% if item.is_simulation %}<p class="alert alert-danger"><strong>SIMULACIÓN — SIN REEMBOLSO.</strong> Aprobar esta solicitud no crea ninguna obligación económica.</p>{% endif %}
   <p>Pedido #{{ item.order_id }} · Modalidad: {{ 'Promoción 20 €' if item.mode == 'incentive' else 'Fotografías voluntarias sin incentivo' }} · Estado: {{ item.status }}</p>
   <p>Email de solicitud: {{ item.email_sent_at or 'No confirmado' }}. Fotos enviadas: {{ item.submitted_at or 'No consta' }}. Cantidad: {{ item.photo_count or 'No consta' }}.</p>
@@ -10,7 +11,7 @@
   <p class="{{ 'alert alert-danger' if review_overdue else 'alert alert-info' }}">Recepción acreditada: {{ item.receipt_accredited_on.strftime('%d/%m/%Y') if item.receipt_accredited_on else 'No consta' }}. Límite de revisión: {{ review_deadline.strftime('%d/%m/%Y') if review_deadline else 'Pendiente de recepción acreditada' }}{% if review_overdue %} · PLAZO VENCIDO{% endif %}.</p>
   <p>Estado de correo: {{ item.delivery_status or 'Solicitud anterior sin envío registrado' }}. {% if item.delivery_message_id %}Referencia del mensaje: {{ item.delivery_message_id }}.{% endif %}</p>
   <p class="alert alert-info">Las fotografías se reciben en admin@metalwolft.com. No se almacenan ni se pueden visualizar o descargar desde este panel.</p>
-  {% if item.mode == 'incentive' %}<p class="alert alert-warning">La promoción real sigue desactivada hasta aprobación jurídica. Comprueba la licencia aceptada y sus condiciones antes de revisar un incentivo; no se solicita ni ejecuta ningún reembolso desde esta pantalla.</p>{% endif %}
+  {% if item.mode == 'incentive' %}<p class="alert alert-warning">Comprueba la licencia aceptada y sus condiciones antes de revisar un incentivo; no se solicita ni ejecuta ningún reembolso desde esta pantalla.</p>{% endif %}
   {% if item.email_failed_at %}<p class="alert alert-warning">El último envío de email falló o no pudo confirmarse.</p>{% endif %}
   {% if item.mode == 'incentive' and not item.is_simulation %}<p class="alert alert-info">Aprobar las fotos solo deja 20 € pendientes de revisión financiera. Esta pantalla nunca reembolsa.</p>{% endif %}
   <p>Uso comercial: <strong>{{ 'Licencia histórica vigente: revisar alcance' if commercial_license_historical else 'Licencia aceptada y vigente' if commercial_license_active else 'Licencia retirada' if item.consent_revoked_at else 'Licencia histórica o caducada: revisar' if item.commercial_consent else 'Sin autorización comercial' }}</strong>. {% if item.mode == 'free' %}El envío voluntario no concede derechos de publicación por sí solo.{% else %}La licencia es requisito para participar en la promoción.{% endif %}</p>

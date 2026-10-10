@@ -7,7 +7,7 @@ from flask import Blueprint, Request, current_app, jsonify, request
 from api.customer_photo_service import (
     MAX_IMAGES, MAX_IMAGE_BYTES, MAX_TOTAL_IMAGE_BYTES, MAX_REQUEST_BYTES,
     CustomerPhotoError, resolve_photo_request,
-    submit_photos,
+    submit_photos, opt_out_photo_promotion, _incentive_allowed,
 )
 from api.customer_photo_mail import PhotoMailRejected, PhotoMailUncertain
 from api.customer_photo_rate_limit import (
@@ -67,7 +67,7 @@ def photo_request_details():
         return jsonify({"error": "Enlace no válido o caducado."}), 404
     if not _within_limits("get", item):
         return jsonify({"error": "Demasiados intentos."}), 429
-    if item.mode == "incentive" and current_app.config.get("APP_ENV") == "production":
+    if item.mode == "incentive" and not _incentive_allowed(current_app):
         return jsonify({"error": "Solicitud no disponible."}), 404
     if item.is_simulation:
         from api.customer_photo_service import _simulation_allowed
@@ -87,6 +87,24 @@ def photo_request_details():
         "terms_text": item.terms_text,
         "consent_text": item.offered_consent_text,
     })
+
+
+@customer_photo_bp.route("/opt-out", methods=["POST"])
+def opt_out_customer_photo_promotion():
+    if not current_app.config.get("CUSTOMER_PHOTOS_ENABLED"):
+        return jsonify({"error": "Solicitud no disponible."}), 404
+    if not _within_limits("post"):
+        return jsonify({"error": "Demasiados intentos."}), 429
+    item = resolve_photo_request(_token())
+    if not item:
+        return jsonify({"error": "Enlace no válido o caducado."}), 404
+    if not _within_limits("post", item):
+        return jsonify({"error": "Demasiados intentos."}), 429
+    try:
+        opt_out_photo_promotion(_token())
+    except CustomerPhotoError as exc:
+        return jsonify({"error": str(exc)}), 400
+    return jsonify({"message": "No recibirás nuevas invitaciones para compartir fotografías."})
 
 
 @customer_photo_bp.route("", methods=["POST"])

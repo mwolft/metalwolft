@@ -441,9 +441,10 @@ def _render_photo_request_block(status, mode, url, terms_url, is_simulation=Fals
             if terms_url else ""
         )
         note = "No necesitas una cámara profesional. ¡Con tu móvil es suficiente!"
+        opposition = "MetalWolft: si no deseas recibir futuras invitaciones de fotografías, registra tu baja desde tu enlace personal o escribe a admin@metalwolft.com. Los avisos operativos de tu pedido se mantienen."
         return (
             f"{title}\n{simulation_text}{intro}\n{instructions}\n{reward}\n"
-            f"Enviar mis fotografías: {url}\n{conditions_text}{note}\n\n",
+            f"Enviar mis fotografías: {url}\n{conditions_text}{note}\n{opposition}\n\n",
             f'<div style="margin:0 0 24px;padding:16px;background:{COLOR_SURFACE_ALT};border-left:3px solid {COLOR_ACCENT};">'
             f'<p style="margin:0 0 8px;color:{COLOR_TEXT};font-size:15px;font-weight:700;">{_html(title)}</p>'
             f"{simulation_html}"
@@ -458,6 +459,7 @@ def _render_photo_request_block(status, mode, url, terms_url, is_simulation=Fals
             'border-radius:999px;">Enviar mis fotografías</a>'
             f'{conditions_html}'
             f'<p style="margin:12px 0 0;color:{COLOR_MUTED};font-size:13px;font-style:italic;line-height:1.55;">{_html(note)}</p>'
+            f'<p style="margin:12px 0 0;color:{COLOR_MUTED};font-size:13px;line-height:1.55;">{_html(opposition)}</p>'
             '</div>',
         )
     else:
@@ -478,14 +480,15 @@ def _render_photo_request_block(status, mode, url, terms_url, is_simulation=Fals
         "SIMULACIÓN — SIN REEMBOLSO. Esta prueba no genera derecho a compensación.</p>"
         if is_simulation else ""
     )
+    opposition = "MetalWolft: si no deseas recibir futuras invitaciones de fotografías, registra tu baja desde tu enlace personal o escribe a admin@metalwolft.com. Los avisos operativos de tu pedido se mantienen."
     return (
-        f"{title}\n{simulation_text}{body}\nEnviar mis fotografías: {url}\n{conditions_text}\n",
+        f"{title}\n{simulation_text}{body}\nEnviar mis fotografías: {url}\n{conditions_text}{opposition}\n",
         f'<div style="margin:0 0 24px;padding:16px;background:{COLOR_SURFACE_ALT};border-left:3px solid {COLOR_ACCENT};">'
         f'<p style="margin:0 0 8px;color:{COLOR_TEXT};font-size:15px;font-weight:700;">{_html(title)}</p>'
         f"{simulation_html}"
         f'<p style="margin:0 0 12px;color:{COLOR_MUTED};font-size:14px;line-height:1.55;">{_html(body)}</p>'
         f'<a href="{_html(url)}" style="color:{COLOR_ACCENT};font-weight:700;">Enviar mis fotografías</a>'
-        f"{conditions_html}</div>",
+        f'{conditions_html}<p style="margin:12px 0 0;color:{COLOR_MUTED};font-size:13px;line-height:1.55;">{_html(opposition)}</p></div>',
     )
 
 

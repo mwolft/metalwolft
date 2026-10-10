@@ -1,6 +1,6 @@
 """Versioned draft of the commercial photo license shown before acceptance."""
 
-PHOTO_LICENSE_VERSION = "photo-license-v3-draft"
+PHOTO_LICENSE_VERSION = "photo-license-v3"
 PHOTO_LICENSE_TEXT = (
     "Autorizo a MetalWolft a utilizar comercialmente las fotografías que envío mediante "
     "una licencia no exclusiva, de ámbito mundial y durante cinco años desde mi aceptación. "
@@ -29,5 +29,6 @@ PHOTO_LICENSE_TEXT_BY_VERSION = {
         "una explotación comercial independiente. Esta licencia no sustituye el "
         "tratamiento de datos personales ni implica renuncia a mis derechos de protección de datos."
     ),
+    "photo-license-v3-draft": PHOTO_LICENSE_TEXT,
     PHOTO_LICENSE_VERSION: PHOTO_LICENSE_TEXT,
 }

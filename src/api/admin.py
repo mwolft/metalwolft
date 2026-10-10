@@ -154,8 +154,10 @@ from api.customer_photo_service import (
     CustomerPhotoError, create_photo_request, rotate_photo_link,
     review_photo_request, review_deadline_on, commercial_license_expires_at,
     has_active_commercial_license, madrid_today, utcnow,
+    photo_promotion_opted_out, register_photo_promotion_opt_out,
 )
 from api.customer_photo_license import PHOTO_LICENSE_VERSION
+from api.order_confirmation_context import get_order_confirmation_recipient_email
 from api.manual_order_draft_service import (
     ManualOrderDraftError,
     invalidate_manual_order_draft_review,
@@ -1511,7 +1513,7 @@ class OrderAdminView(SafeModelView):
             }
             form.photo_request_mode.render_kw = {
                 "data-photos-enabled": str(bool(current_app.config.get("CUSTOMER_PHOTOS_ENABLED"))).lower(),
-                "data-incentive-enabled": str(bool(current_app.config.get("CUSTOMER_PHOTOS_INCENTIVE_ENABLED")) and current_app.config.get("APP_ENV") != "production").lower(),
+                "data-incentive-enabled": str(bool(current_app.config.get("CUSTOMER_PHOTOS_INCENTIVE_ENABLED")) and not (current_app.config.get("APP_ENV") == "production" and current_app.config.get("CUSTOMER_PHOTOS_INCENTIVE_TEST_MODE"))).lower(),
             }
         return form
 
@@ -1535,15 +1537,20 @@ class OrderAdminView(SafeModelView):
         mode = options.get("photo_request_mode", "none")
         if change.status_changed and change.new_order_status == "entregado" and options.get("send_email") and mode != "none":
             try:
-                photo_request, photo_url = create_photo_request(
-                    order=model, mode=mode, app=current_app,
-                    delivered_on=form.photo_actual_delivery_on.data,
-                    email_options={
-                        "include_installation_guide": options["include_installation_guide"],
-                        "include_maintenance_guide": options["include_maintenance_guide"],
-                    },
-                    session=self.session,
-                )
+                recipient = get_order_confirmation_recipient_email(model)
+                if recipient and photo_promotion_opted_out(recipient, session=self.session):
+                    options["photo_request_mode"] = "none"
+                    flash("No se enviará la invitación fotográfica: el cliente solicitó la baja. El aviso operativo se mantiene.", "warning")
+                else:
+                    photo_request, photo_url = create_photo_request(
+                        order=model, mode=mode, app=current_app,
+                        delivered_on=form.photo_actual_delivery_on.data,
+                        email_options={
+                            "include_installation_guide": options["include_installation_guide"],
+                            "include_maintenance_guide": options["include_maintenance_guide"],
+                        },
+                        session=self.session,
+                    )
             except CustomerPhotoError as exc:
                 self.session.rollback()
                 flash(str(exc), "error")
@@ -5330,6 +5337,27 @@ class CustomerPhotoRequestAdminView(SecureModelView):
         label = f"Límite: {deadline.strftime('%d/%m/%Y')}"
         return Markup(f'<strong class="text-danger">{escape(label)} · VENCIDO</strong>') if overdue else label
 
+    @expose("/opposition", methods=["GET", "POST"])
+    def opposition(self):
+        if request.method == "POST":
+            if not _valid_work_order_csrf_token(request.form.get("csrf_token")):
+                return Response("Solicitud no autorizada", 403)
+            try:
+                register_photo_promotion_opt_out(
+                    request.form.get("email"), source="admin", session=self.session,
+                )
+                self.session.commit()
+                flash("Oposición a futuras invitaciones fotográficas registrada.", "success")
+            except CustomerPhotoError as exc:
+                self.session.rollback()
+                flash(str(exc), "error")
+            except Exception:
+                self.session.rollback()
+                current_app.logger.exception("Could not register photo promotion opposition")
+                flash("No se pudo registrar la oposición.", "error")
+            return redirect(self.get_url(".opposition"))
+        return self.render("admin/customer_photo_opposition.html", csrf_token=_issue_work_order_csrf_token())
+
     @expose("/review/<int:request_id>", methods=["GET", "POST"])
     def review(self, request_id):
         item = self.session.get(CustomerPhotoRequest, request_id)
@@ -5423,6 +5451,7 @@ class CustomerPhotoRequestAdminView(SecureModelView):
             csrf_token=_issue_work_order_csrf_token(),
             review_url=self.get_url(".review", request_id=request_id),
             resend_url=self.get_url(".resend", request_id=request_id),
+            opposition_url=self.get_url(".opposition"),
         )
 
     @expose("/resend/<int:request_id>", methods=["POST"])

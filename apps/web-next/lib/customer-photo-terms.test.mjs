@@ -8,14 +8,13 @@ const privacy = readFileSync(join(process.cwd(), "app/politica-privacidad/page.t
 assert.match(page, /const PATH = "\/condiciones-promocion-fotos"/);
 assert.match(page, /export default function CustomerPhotoPromotionTermsPage/);
 assert.match(page, /robots: \{ index: false, follow: false, noarchive: true \}/);
-assert.match(page, /Borrador pendiente de aprobación/);
+assert.doesNotMatch(page, /Borrador pendiente de aprobación/);
 assert.match(page, /20 € una sola vez por pedido aprobado/);
 assert.match(page, /30 días naturales desde la fecha\s+real de entrega/);
 assert.match(page, /7 días naturales desde la recepción acreditada/);
 assert.match(page, /una frontal y otra lateral o en/);
 assert.match(page, /tres imágenes más/);
-assert.match(page, /revisión jurídica/);
-assert.match(page, /SIMULACIÓN — SIN REEMBOLSO/);
+assert.match(page, /registrar\s+tu oposición/);
 assert.match(page, /promoción remunerada exige su aceptación/);
 assert.match(page, /mera recepción de imágenes no concede/);
 assert.match(page, /no exclusiva/);

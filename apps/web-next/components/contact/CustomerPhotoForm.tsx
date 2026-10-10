@@ -36,6 +36,7 @@ export function CustomerPhotoForm() {
   const [consent, setConsent] = useState<"" | "yes" | "no">("");
   const [message, setMessage] = useState("Comprobando enlace…");
   const [busy, setBusy] = useState(false);
+  const [oppositionRecorded, setOppositionRecorded] = useState(false);
   const api = apiBase();
 
   useEffect(() => {
@@ -151,12 +152,38 @@ export function CustomerPhotoForm() {
     }
   }
 
+  async function optOut() {
+    if (!api || !token.current || busy) return;
+    setBusy(true);
+    try {
+      const response = await fetch(`${api}/api/customer-photos/opt-out`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token.current}` },
+        cache: "no-store",
+        referrerPolicy: "no-referrer"
+      });
+      const result = (await response.json()) as { message?: string; error?: string };
+      if (!response.ok) throw new Error(result.error || "No se pudo registrar la baja.");
+      setOppositionRecorded(true);
+      setMessage(result.message || "No recibirás nuevas invitaciones para compartir fotografías.");
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "No se pudo registrar la baja.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const oppositionControl = oppositionRecorded
+    ? <p role="status">No recibirás nuevas invitaciones para compartir fotografías.</p>
+    : <p>Si no deseas recibir futuras invitaciones, puedes <button type="button" onClick={optOut} disabled={busy}>registrar tu oposición aquí</button> o escribir a <a href="mailto:admin@metalwolft.com">admin@metalwolft.com</a>. Esto no afecta a los avisos operativos de tus pedidos.</p>;
+
   if (!info) return <p role="status">{message}</p>;
   if (info.status !== "open") return (
     <div>
       {info.is_simulation && <p role="note"><strong>SIMULACIÓN — SIN REEMBOLSO.</strong> Esta prueba no genera derecho a compensación.</p>}
       <p role="status">{message}</p>
       <p>Para retirar tu autorización comercial o solicitar la supresión de las fotografías recibidas por correo, escribe a <a href="mailto:admin@metalwolft.com">admin@metalwolft.com</a>. Son solicitudes distintas y las atenderemos por separado.</p>
+      {oppositionControl}
     </div>
   );
 
@@ -225,6 +252,7 @@ export function CustomerPhotoForm() {
       </fieldset>
       <p>{info.mode === "free" ? "Puedes enviar fotografías sin conceder licencia comercial. Recibirlas no nos autoriza a publicarlas." : "Sin aceptar la licencia no puedes participar en la promoción de 20 €. Puedes consultarnos sobre un envío voluntario sin incentivo."} No publicaremos ninguna automáticamente.</p>
       <p>Puedes retirar después tu autorización comercial escribiendo a <a href="mailto:admin@metalwolft.com">admin@metalwolft.com</a>. Retirar la autorización no elimina automáticamente las fotos recibidas por correo; si deseas solicitar su supresión, indícalo expresamente.</p>
+      {oppositionControl}
       <p>Consulta también nuestra <a href="/politica-privacidad">política de privacidad</a>.</p>
       <button className="mw-button mw-button--primary" type="submit" disabled={busy || !frontPhoto || !perspectivePhoto || !consent || (info.mode === "incentive" && consent !== "yes")}>
         {busy ? "Enviando…" : "Enviar fotografías"}

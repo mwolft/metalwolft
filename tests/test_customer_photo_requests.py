@@ -29,6 +29,7 @@ if HAS_DEPS:
         review_photo_request, review_deadline_on, commercial_license_expires_at,
         has_active_commercial_license, madrid_today, _madrid_date, stale_mail_attempts,
         submit_photos, token_hash, utcnow, validate_image,
+        photo_promotion_opted_out, register_photo_promotion_opt_out,
     )
     from api.customer_photo_license import PHOTO_LICENSE_TEXT, PHOTO_LICENSE_TEXT_BY_VERSION, PHOTO_LICENSE_VERSION
     from api.customer_photo_mail import (
@@ -38,7 +39,8 @@ if HAS_DEPS:
     from api.customer_photo_rate_limit import CustomerPhotoRateLimitUnavailable, allow_photo_request
     from api.models import (
         CheckoutSessions, ConfirmedOrderContext, CustomerPhotoRequest,
-        CustomerPhotoImage, CustomerPhotoUploadAttempt, CustomerPhotoFollowupNote, Invoices, OrderDetails, Orders, Users, db,
+        CustomerPhotoImage, CustomerPhotoUploadAttempt, CustomerPhotoFollowupNote, CustomerPhotoPromotionOptOut,
+        Invoices, OrderDetails, Orders, Users, db,
     )
 
     def create_photo_request(**kwargs):
@@ -341,8 +343,9 @@ class CustomerPhotoRequestTest(unittest.TestCase):
         self.assertEqual(item.offered_amount, 20)
         db.session.rollback()
         self.app.config["APP_ENV"] = "production"
-        with self.assertRaises(CustomerPhotoError):
-            create_photo_request(order=order, mode="incentive", app=self.app)
+        production_offer, _ = create_photo_request(order=order, mode="incentive", app=self.app)
+        self.assertFalse(production_offer.is_simulation)
+        db.session.rollback()
         self.app.config["APP_ENV"] = "development"
         checkout.payment_intent_id = "pi_mismatch"
         with self.assertRaises(CustomerPhotoError):
@@ -556,25 +559,65 @@ class CustomerPhotoRequestTest(unittest.TestCase):
             rotate_photo_link(item, app=self.app)
         self.assertEqual(stale_mail_attempts(now=utcnow() + timedelta(hours=1)), [item])
 
-    def test_production_blocks_incentive_resend_upload_and_approval(self):
+    def test_production_flag_controls_incentive_resend_upload_and_approval(self):
         self.app.config["CUSTOMER_PHOTOS_INCENTIVE_ENABLED"] = True
         item, token = self.offer()
         item.mode = "incentive"
         item.offered_amount = 20
         db.session.commit()
         self.app.config["APP_ENV"] = "production"
+        self.app.config["CUSTOMER_PHOTOS_INCENTIVE_ENABLED"] = False
         with self.assertRaises(CustomerPhotoError):
             rotate_photo_link(item, app=self.app)
         with self.assertRaises(CustomerPhotoError):
             self.submit(token)
         self.app.config["APP_ENV"] = "development"
+        self.app.config["CUSTOMER_PHOTOS_INCENTIVE_ENABLED"] = True
         self.submit(token)
         item.mailbox_confirmed_at = utcnow()
         db.session.commit()
         self.app.config["APP_ENV"] = "production"
+        self.app.config["CUSTOMER_PHOTOS_INCENTIVE_ENABLED"] = False
         with self.assertRaises(CustomerPhotoError):
             review_photo_request(request_id=item.id, decision="approve", note="", actor="admin", app=self.app)
         self.assertEqual(item.status, "received")
+        self.app.config["CUSTOMER_PHOTOS_INCENTIVE_ENABLED"] = True
+        result = review_photo_request(request_id=item.id, decision="approve", note="Aptas", actor="admin", app=self.app)
+        self.assertEqual(result.status, "refund_pending")
+
+    def test_production_simulation_flag_cannot_enable_incentive(self):
+        self.app.config.update(APP_ENV="production", CUSTOMER_PHOTOS_INCENTIVE_ENABLED=True,
+                               CUSTOMER_PHOTOS_INCENTIVE_TEST_MODE=True)
+        with self.assertRaises(CustomerPhotoError):
+            self.offer("incentive")
+
+    def test_opt_out_is_persistent_idempotent_and_preserves_operational_email(self):
+        item, token = self.offer()
+        client = self.app.test_client()
+        response = client.post("/api/customer-photos/opt-out", headers={"Authorization": f"Bearer {token}"})
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(photo_promotion_opted_out(" CLIENTE@example.test "))
+        self.assertEqual(CustomerPhotoPromotionOptOut.query.count(), 1)
+        self.assertEqual(client.post("/api/customer-photos/opt-out", headers={"Authorization": f"Bearer {token}"}).status_code, 200)
+        self.assertEqual(CustomerPhotoPromotionOptOut.query.count(), 1)
+        with self.assertRaises(CustomerPhotoError):
+            rotate_photo_link(item, app=self.app)
+        with self.app.test_request_context(), patch("api.email_routes.send_email", return_value=True) as smtp:
+            order, form = self.order_form("free", guides=False)
+            self.assertTrue(self.view.update_model(form, order))
+            self.assertEqual(order.order_status, "entregado")
+            self.assertNotIn("Comparte tus rejas instaladas", smtp.call_args.kwargs["body"])
+            self.assertEqual(smtp.call_args.kwargs["subject"], "Actualización de tu pedido: Entregado")
+        self.assertEqual(CustomerPhotoRequest.query.count(), 1)
+
+    def test_admin_can_record_email_opposition_without_raw_email_storage(self):
+        register_photo_promotion_opt_out(" CLIENTE@EXAMPLE.TEST ", source="admin")
+        db.session.commit()
+        self.assertTrue(photo_promotion_opted_out("cliente@example.test"))
+        self.assertEqual(CustomerPhotoPromotionOptOut.query.count(), 1)
+        self.assertNotIn("cliente@example.test", str(CustomerPhotoPromotionOptOut.query.one().__dict__))
+        with self.assertRaises(CustomerPhotoError):
+            self.offer()
 
     def test_review_is_explicit_and_never_pays(self):
         item, token = self.offer()
