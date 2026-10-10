@@ -1,6 +1,6 @@
 """Post-delivery photo requests. No payment or fiscal side effects live here."""
 
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, time, timedelta, timezone
 from decimal import Decimal
 from hashlib import sha256
 from io import BytesIO
@@ -9,6 +9,7 @@ import secrets
 import re
 import warnings
 from uuid import uuid4
+from zoneinfo import ZoneInfo
 
 from PIL import Image, ImageOps, UnidentifiedImageError
 from sqlalchemy import text
@@ -32,6 +33,7 @@ MAX_REQUEST_BYTES = 26 * 1024 * 1024
 MAX_PIXELS = 20_000_000
 ALLOWED_IMAGES = {"image/jpeg": ("JPEG", ".jpg"), "image/png": ("PNG", ".png"), "image/webp": ("WEBP", ".webp")}
 EMAIL_PATTERN = re.compile(r"^[^\s@]+@[^\s@]+\.[^\s@]+$")
+MADRID = ZoneInfo("Europe/Madrid")
 
 
 class CustomerPhotoError(ValueError):
@@ -40,6 +42,29 @@ class CustomerPhotoError(ValueError):
 
 def utcnow():
     return datetime.now(timezone.utc).replace(tzinfo=None)
+
+
+def _madrid_date(moment):
+    return moment.replace(tzinfo=timezone.utc).astimezone(MADRID).date()
+
+
+def madrid_today():
+    return _madrid_date(utcnow())
+
+
+def _end_of_madrid_day(day):
+    return datetime.combine(day + timedelta(days=1), time.min, MADRID).astimezone(timezone.utc).replace(tzinfo=None)
+
+
+def review_deadline_on(photo_request):
+    """Only a relay-accepted or manually reconciled receipt starts review time."""
+    if photo_request.delivery_status != "accepted" or not photo_request.receipt_accredited_on:
+        return None
+    received_on = photo_request.receipt_accredited_on
+    for note in photo_request.followup_notes:
+        if note.kind == "correction_received" and note.received_on and note.received_on > received_on:
+            received_on = note.received_on
+    return received_on + timedelta(days=7)
 
 
 def token_hash(token):
@@ -164,18 +189,23 @@ def _eligible(order, mode, app):
     return False
 
 
-def create_photo_request(*, order, mode, app, email_options=None, session=None):
+def create_photo_request(*, order, mode, app, delivered_on=None, email_options=None, session=None):
     """Stage one request in the caller's transaction; return the transient link."""
     session = session or db.session
     is_simulation = _eligible(order, mode, app)
+    today = _madrid_date(utcnow())
+    if type(delivered_on) is not date:
+        raise CustomerPhotoError("Indica expresamente la fecha real de entrega del pedido.")
+    if delivered_on > today:
+        raise CustomerPhotoError("La fecha real de entrega no puede ser futura.")
+    participation_deadline = delivered_on + timedelta(days=30)
+    if today > participation_deadline:
+        raise CustomerPhotoError("Han transcurrido más de 30 días desde la entrega real.")
     if session.query(CustomerPhotoRequest.id).filter_by(order_id=order.id).first():
         raise CustomerPhotoError("Este pedido ya tiene una solicitud de fotografías.")
     token = secrets.token_urlsafe(32)
     url = _photo_form_url(app, token)
     version, consent, terms_text, terms_url = _terms(app, mode)
-    days = int(app.config.get("CUSTOMER_PHOTOS_TOKEN_DAYS", 30))
-    if days < 1 or days > 365:
-        raise CustomerPhotoError("La caducidad del enlace no es válida.")
     photo_request = CustomerPhotoRequest(
         order_id=order.id,
         mode=mode,
@@ -183,7 +213,9 @@ def create_photo_request(*, order, mode, app, email_options=None, session=None):
         offered_amount=Decimal("20.00") if mode == "incentive" and not is_simulation else Decimal("0.00"),
         status="offered",
         token_hash=token_hash(token),
-        token_expires_at=utcnow() + timedelta(days=days),
+        token_expires_at=_end_of_madrid_day(participation_deadline),
+        actual_delivery_on=delivered_on,
+        participation_deadline_on=participation_deadline,
         terms_version=version,
         terms_text=terms_text,
         terms_url=terms_url or None,
@@ -195,6 +227,8 @@ def create_photo_request(*, order, mode, app, email_options=None, session=None):
 
 
 def rotate_photo_link(photo_request, *, app):
+    if photo_request.participation_deadline_on and _madrid_date(utcnow()) > photo_request.participation_deadline_on:
+        raise CustomerPhotoError("El plazo de participación de 30 días ha terminado.")
     if photo_request.mode == "incentive" and not _incentive_allowed(app):
         raise CustomerPhotoError("El incentivo fotográfico está pendiente de aprobación para producción.")
     if photo_request.is_simulation and not _simulation_allowed(app, get_order_confirmation_recipient_email(photo_request.order)):
@@ -216,7 +250,8 @@ def resolve_photo_request(token, *, session=None, now=None):
     session = session or db.session
     item = session.query(CustomerPhotoRequest).filter_by(token_hash=token_hash(token)).one_or_none()
     now = now or utcnow()
-    if not item or item.status == "revoked" or item.token_revoked_at or item.token_expires_at <= now:
+    if (not item or item.status == "revoked" or item.token_revoked_at or item.token_expires_at <= now
+            or (item.participation_deadline_on and _madrid_date(now) > item.participation_deadline_on)):
         return None
     return item
 
@@ -302,6 +337,7 @@ def submit_photos(*, token, front_photo, perspective_photo, additional_photos, c
         locked = session.query(CustomerPhotoRequest).filter_by(id=request_id).with_for_update().one()
         if (locked.token_hash != token_hash(token) or locked.status != "offered" or locked.submitted_at
                 or locked.token_revoked_at or locked.token_expires_at <= utcnow()
+                or (locked.participation_deadline_on and _madrid_date(utcnow()) > locked.participation_deadline_on)
                 or locked.delivery_status in {"sending", "unknown"}
                 or (locked.mode == "incentive" and not _incentive_allowed(app))
                 or (locked.is_simulation and not _simulation_allowed(app, recipient))):
@@ -353,6 +389,7 @@ def _finish_delivery(session, request_id, attempt_id, outcome):
         if item.status != "revoked":
             item.status = "received"
         item.submitted_at = utcnow()
+        item.receipt_accredited_on = _madrid_date(item.submitted_at)
     elif outcome == "rejected":
         item.photo_count = None
         item.commercial_consent = None

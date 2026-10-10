@@ -834,6 +834,8 @@ class CustomerPhotoRequest(db.Model):
     status = db.Column(db.String(20), nullable=False, default="offered")
     token_hash = db.Column(db.String(64), nullable=False, unique=True)
     token_expires_at = db.Column(db.DateTime, nullable=False)
+    actual_delivery_on = db.Column(db.Date, nullable=True)
+    participation_deadline_on = db.Column(db.Date, nullable=True)
     token_revoked_at = db.Column(db.DateTime, nullable=True)
     terms_version = db.Column(db.String(50), nullable=False)
     terms_text = db.Column(db.Text, nullable=False)
@@ -860,10 +862,28 @@ class CustomerPhotoRequest(db.Model):
     delivery_message_id = db.Column(db.String(255), nullable=True)
     mailbox_confirmed_at = db.Column(db.DateTime, nullable=True)
     mailbox_confirmed_by = db.Column(db.String(255), nullable=True)
+    receipt_accredited_on = db.Column(db.Date, nullable=True)
 
     order = db.relationship("Orders", back_populates="customer_photo_request")
     images = db.relationship("CustomerPhotoImage", back_populates="request", lazy=True)
     upload_attempts = db.relationship("CustomerPhotoUploadAttempt", back_populates="request", lazy=True)
+    followup_notes = db.relationship("CustomerPhotoFollowupNote", back_populates="request", lazy=True, order_by="CustomerPhotoFollowupNote.id")
+
+
+class CustomerPhotoFollowupNote(db.Model):
+    __tablename__ = "customer_photo_followup_notes"
+    __table_args__ = (
+        db.CheckConstraint("kind IN ('correction_requested', 'correction_received')", name="ck_customer_photo_followup_notes_kind"),
+    )
+
+    id = db.Column(db.Integer, primary_key=True)
+    request_id = db.Column(db.Integer, db.ForeignKey("customer_photo_requests.id"), nullable=False, index=True)
+    kind = db.Column(db.String(32), nullable=False)
+    note = db.Column(db.Text, nullable=False)
+    received_on = db.Column(db.Date, nullable=True)
+    created_at = db.Column(db.DateTime, nullable=False, server_default=db.func.now())
+    created_by = db.Column(db.String(255), nullable=False)
+    request = db.relationship("CustomerPhotoRequest", back_populates="followup_notes")
 
 
 class CustomerPhotoImage(db.Model):

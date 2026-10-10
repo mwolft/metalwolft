@@ -24,9 +24,9 @@ if HAS_DEPS:
     from api.admin import CustomerPhotoRequestAdminView, OrderAdminView
     from api.customer_photo_routes import PhotoUploadRequest, customer_photo_bp
     from api.customer_photo_service import (
-        CustomerPhotoError, _verified_test_database, create_photo_request, resolve_photo_request,
+        CustomerPhotoError, _verified_test_database, create_photo_request as create_photo_request_service, resolve_photo_request,
         rotate_photo_link,
-        review_photo_request, stale_mail_attempts, submit_photos, token_hash, utcnow, validate_image,
+        review_photo_request, review_deadline_on, madrid_today, _madrid_date, stale_mail_attempts, submit_photos, token_hash, utcnow, validate_image,
     )
     from api.customer_photo_mail import (
         PhotoMailRejected, PhotoMailUncertain, build_photo_confirmation_message,
@@ -35,8 +35,12 @@ if HAS_DEPS:
     from api.customer_photo_rate_limit import CustomerPhotoRateLimitUnavailable, allow_photo_request
     from api.models import (
         CheckoutSessions, ConfirmedOrderContext, CustomerPhotoRequest,
-        CustomerPhotoImage, CustomerPhotoUploadAttempt, Invoices, OrderDetails, Orders, Users, db,
+        CustomerPhotoImage, CustomerPhotoUploadAttempt, CustomerPhotoFollowupNote, Invoices, OrderDetails, Orders, Users, db,
     )
+
+    def create_photo_request(**kwargs):
+        kwargs.setdefault("delivered_on", madrid_today())
+        return create_photo_request_service(**kwargs)
 
 
 @unittest.skipUnless(HAS_DEPS, "Backend test dependencies are not installed.")
@@ -87,6 +91,7 @@ class CustomerPhotoRequestTest(unittest.TestCase):
         form.include_installation_guide_in_delivered_email.data = guides
         form.include_maintenance_guide_in_delivered_email.data = guides
         form.photo_request_mode.data = mode
+        form.photo_actual_delivery_on.data = madrid_today()
         return order, form
 
     def offer(self, mode="free"):
@@ -633,6 +638,119 @@ class CustomerPhotoRequestTest(unittest.TestCase):
             response = client.post(url, headers={"Authorization": f"Basic {credentials}"}, data={"decision": "confirm_mail", "mail_verified": "yes"})
             self.assertEqual(response.status_code, 302)
         self.assertIsNotNone(db.session.get(CustomerPhotoRequest, item.id).mailbox_confirmed_at)
+
+    def test_new_offer_freezes_real_delivery_date_and_expires_after_thirty_days(self):
+        order = db.session.get(Orders, self.order_id)
+        with self.assertRaisesRegex(CustomerPhotoError, "fecha real"):
+            create_photo_request_service(order=order, mode="free", app=self.app)
+        with self.assertRaisesRegex(CustomerPhotoError, "futura"):
+            create_photo_request_service(order=order, mode="free", app=self.app, delivered_on=madrid_today() + timedelta(days=1))
+        with self.assertRaisesRegex(CustomerPhotoError, "30 días"):
+            create_photo_request_service(order=order, mode="free", app=self.app, delivered_on=madrid_today() - timedelta(days=31))
+        delivered = madrid_today() - timedelta(days=15)
+        item, token_url = create_photo_request_service(order=order, mode="free", app=self.app, delivered_on=delivered)
+        db.session.commit()
+        self.assertEqual(item.actual_delivery_on, delivered)
+        self.assertEqual(item.participation_deadline_on, delivered + timedelta(days=30))
+        self.assertEqual(_madrid_date(item.token_expires_at), delivered + timedelta(days=31))
+        self.assertTrue(token_url.endswith(token_url.split("#", 1)[1]))
+
+    def test_historical_offer_without_delivery_date_is_not_retroactively_expired(self):
+        item, token = self.offer()
+        item.actual_delivery_on = None
+        item.participation_deadline_on = None
+        item.receipt_accredited_on = None
+        db.session.commit()
+        self.assertEqual(resolve_photo_request(token).id, item.id)
+        self.assertIsNone(review_deadline_on(item))
+
+    def test_review_deadline_requires_accredited_receipt(self):
+        item, token = self.offer()
+        self.assertIsNone(review_deadline_on(item))
+        self.submit(token)
+        item = db.session.get(CustomerPhotoRequest, item.id)
+        self.assertEqual(item.receipt_accredited_on, madrid_today())
+        self.assertEqual(review_deadline_on(item), madrid_today() + timedelta(days=7))
+        item.delivery_status = "unknown"
+        self.assertIsNone(review_deadline_on(item))
+
+    def test_uncertain_mail_deadline_starts_when_admin_confirms_inbox(self):
+        admin = Admin(self.app)
+        admin.add_view(CustomerPhotoRequestAdminView(CustomerPhotoRequest, db.session, endpoint="photo-review-uncertain"))
+        item, _ = self.offer()
+        item.delivery_status = "unknown"
+        item.delivery_started_at = utcnow() - timedelta(hours=1)
+        db.session.commit()
+        self.assertIsNone(review_deadline_on(item))
+        credentials = b64encode(b"photo-admin:secret").decode("ascii")
+        with patch("api.admin.ADMIN_USER", "photo-admin"), patch("api.admin.ADMIN_PW", "secret"), patch("api.admin._valid_work_order_csrf_token", return_value=True):
+            denied = self.app.test_client().post(
+                f"/admin/photo-review-uncertain/review/{item.id}",
+                headers={"Authorization": f"Basic {credentials}"},
+                data={"decision": "confirm_mail", "mail_verified": "yes"},
+            )
+            self.assertEqual(denied.status_code, 302)
+            self.assertIsNone(item.receipt_accredited_on)
+            response = self.app.test_client().post(
+                f"/admin/photo-review-uncertain/review/{item.id}",
+                headers={"Authorization": f"Basic {credentials}"},
+                data={"decision": "confirm_mail", "mail_verified": "yes", "mail_received_on": madrid_today().isoformat()},
+            )
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(item.receipt_accredited_on, madrid_today())
+        self.assertEqual(review_deadline_on(item), madrid_today() + timedelta(days=7))
+        self.assertEqual(item.status, "received")
+
+    def test_correction_notes_append_without_changing_original_review_history(self):
+        admin = Admin(self.app)
+        admin.add_view(CustomerPhotoRequestAdminView(CustomerPhotoRequest, db.session, endpoint="photo-review-notes"))
+        item, token = self.offer()
+        self.submit(token)
+        item.mailbox_confirmed_at = utcnow()
+        item.receipt_accredited_on = madrid_today() - timedelta(days=3)
+        db.session.commit()
+        self.assertEqual(review_deadline_on(item), madrid_today() + timedelta(days=4))
+        credentials = b64encode(b"photo-admin:secret").decode("ascii")
+        url = f"/admin/photo-review-notes/review/{item.id}"
+        with patch("api.admin.ADMIN_USER", "photo-admin"), patch("api.admin.ADMIN_PW", "secret"), patch("api.admin._valid_work_order_csrf_token", return_value=True):
+            client = self.app.test_client()
+            for kind, note in (("correction_requested", "Falta detalle lateral"), ("correction_received", "Recibida por correo")):
+                response = client.post(url, headers={"Authorization": f"Basic {credentials}"},
+                                       data={"decision": "note_correction", "correction_kind": kind, "note": note,
+                                             "correction_received_on": madrid_today().isoformat() if kind == "correction_received" else ""})
+                self.assertEqual(response.status_code, 302)
+            response = client.get(url, headers={"Authorization": f"Basic {credentials}"})
+            self.assertIn(b"L\xc3\xadmite de revisi\xc3\xb3n", response.data)
+        self.assertEqual([note.kind for note in CustomerPhotoFollowupNote.query.order_by(CustomerPhotoFollowupNote.id)],
+                         ["correction_requested", "correction_received"])
+        self.assertEqual(review_deadline_on(item), madrid_today() + timedelta(days=7))
+        self.assertIsNone(item.review_note)
+        review_photo_request(request_id=item.id, decision="approve", note="Apta", actor="admin", app=self.app)
+        db.session.commit()
+        self.assertEqual(CustomerPhotoFollowupNote.query.count(), 2)
+        self.assertEqual(item.review_note, "Apta")
+
+    def test_overdue_review_is_highlighted_without_automatic_decision(self):
+        admin = Admin(self.app)
+        admin.add_view(CustomerPhotoRequestAdminView(CustomerPhotoRequest, db.session, endpoint="photo-review-overdue"))
+        item, token = self.offer()
+        self.submit(token)
+        item.mailbox_confirmed_at = utcnow()
+        item.receipt_accredited_on = madrid_today() - timedelta(days=8)
+        db.session.commit()
+        credentials = b64encode(b"photo-admin:secret").decode("ascii")
+        with patch("api.admin.ADMIN_USER", "photo-admin"), patch("api.admin.ADMIN_PW", "secret"):
+            client = self.app.test_client()
+            response = client.get(
+                f"/admin/photo-review-overdue/review/{item.id}",
+                headers={"Authorization": f"Basic {credentials}"},
+            )
+            listing = client.get("/admin/photo-review-overdue/", headers={"Authorization": f"Basic {credentials}"})
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(b"PLAZO VENCIDO", response.data)
+        self.assertEqual(listing.status_code, 200)
+        self.assertIn(b"VENCIDO", listing.data)
+        self.assertEqual(item.status, "received")
 
     def test_reject_requires_note_and_consent_can_be_revoked(self):
         admin = Admin(self.app)

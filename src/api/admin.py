@@ -34,7 +34,7 @@ from .models import (
     SupplierInvoiceTaxBreakdown,
     ManualInvoiceDraft, ManualInvoiceDraftLine, ManualOrderDraft, ManualOrderDraftLine,
     WorkOrder, CheckoutSessions,
-    ConfirmedOrderContext, CustomerPhotoRequest,
+    ConfirmedOrderContext, CustomerPhotoRequest, CustomerPhotoFollowupNote,
 )
 from api.accounting_excel_service import (
     AccountingExcelExportError,
@@ -152,7 +152,7 @@ from api.manual_order_draft_issue_service import (
 from api.order_confirmation_email_service import send_order_confirmation_email
 from api.customer_photo_service import (
     CustomerPhotoError, create_photo_request, rotate_photo_link,
-    review_photo_request, utcnow,
+    review_photo_request, review_deadline_on, madrid_today, utcnow,
 )
 from api.manual_order_draft_service import (
     ManualOrderDraftError,
@@ -1321,6 +1321,7 @@ class OrderAdminView(SafeModelView):
         'include_installation_guide_in_delivered_email',
         'include_maintenance_guide_in_delivered_email',
         'photo_request_mode',
+        'photo_actual_delivery_on',
     )
 
     form_columns = [
@@ -1333,6 +1334,7 @@ class OrderAdminView(SafeModelView):
         'include_installation_guide_in_delivered_email',
         'include_maintenance_guide_in_delivered_email',
         'photo_request_mode',
+        'photo_actual_delivery_on',
         'estimated_delivery_at',
         'estimated_delivery_note',
     ]
@@ -1352,6 +1354,7 @@ class OrderAdminView(SafeModelView):
             'include_installation_guide_in_delivered_email',
             'include_maintenance_guide_in_delivered_email',
             'photo_request_mode',
+            'photo_actual_delivery_on',
         ]),
     )
 
@@ -1480,6 +1483,11 @@ class OrderAdminView(SafeModelView):
             ],
             default='none',
         ),
+        'photo_actual_delivery_on': DateField(
+            'Fecha real de entrega para solicitar fotografías',
+            format='%Y-%m-%d',
+            render_kw={'placeholder': 'YYYY-MM-DD'},
+        ),
 
         'estimated_delivery_at': DateField(
             'Fecha estimada de entrega',
@@ -1527,6 +1535,7 @@ class OrderAdminView(SafeModelView):
             try:
                 photo_request, photo_url = create_photo_request(
                     order=model, mode=mode, app=current_app,
+                    delivered_on=form.photo_actual_delivery_on.data,
                     email_options={
                         "include_installation_guide": options["include_installation_guide"],
                         "include_maintenance_guide": options["include_maintenance_guide"],
@@ -5276,7 +5285,7 @@ class CustomerPhotoRequestAdminView(SecureModelView):
     can_view_details = True
     column_list = ("id", "order_id", "mode", "is_simulation", "status", "photo_count", "delivery_status", "created_at", "submitted_at")
     column_filters = ("order_id", "mode", "status")
-    column_details_list = (*column_list, "mailbox_confirmed_at", "reviewed_at", "reviewed_by", "review_note", "commercial_consent", "consent_revoked_at")
+    column_details_list = (*column_list, "actual_delivery_on", "participation_deadline_on", "receipt_accredited_on", "mailbox_confirmed_at", "reviewed_at", "reviewed_by", "review_note", "commercial_consent", "consent_revoked_at")
 
     def is_accessible(self):
         return bool(
@@ -5288,11 +5297,19 @@ class CustomerPhotoRequestAdminView(SecureModelView):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.column_formatters = {"id": self._format_request_id}
+        self.column_formatters = {"id": self._format_request_id, "submitted_at": self._format_review_deadline}
 
     def _format_request_id(self, view, context, model, name):
         href = escape(self.get_url(".review", request_id=model.id))
         return Markup(f'<a href="{href}">#{model.id} · Revisar</a>')
+
+    def _format_review_deadline(self, view, context, model, name):
+        deadline = review_deadline_on(model)
+        if not deadline:
+            return "Pendiente de recepción" if model.status == "offered" else "No consta"
+        overdue = model.status == "received" and madrid_today() > deadline
+        label = f"Límite: {deadline.strftime('%d/%m/%Y')}"
+        return Markup(f'<strong class="text-danger">{escape(label)} · VENCIDO</strong>') if overdue else label
 
     @expose("/review/<int:request_id>", methods=["GET", "POST"])
     def review(self, request_id):
@@ -5312,6 +5329,28 @@ class CustomerPhotoRequestAdminView(SecureModelView):
                         session=self.session,
                         app=current_app,
                     )
+                elif decision == "note_correction":
+                    item = self.session.query(CustomerPhotoRequest).filter_by(id=request_id).with_for_update().one()
+                    if item.status != "received":
+                        raise CustomerPhotoError("Solo se documentan correcciones de fotografías recibidas pendientes de revisión.")
+                    kind = request.form.get("correction_kind")
+                    note = str(request.form.get("note") or "").strip()
+                    if kind not in {"correction_requested", "correction_received"} or not note or len(note) > 2000:
+                        raise CustomerPhotoError("Indica el tipo y una observación de hasta 2000 caracteres.")
+                    received_on = None
+                    if kind == "correction_received":
+                        try:
+                            received_on = date.fromisoformat(str(request.form.get("correction_received_on") or ""))
+                        except ValueError as exc:
+                            raise CustomerPhotoError("Indica la fecha acreditada de recepción de las fotos corregidas.") from exc
+                        if (received_on > madrid_today() or not item.receipt_accredited_on
+                                or received_on < item.receipt_accredited_on):
+                            raise CustomerPhotoError("La recepción corregida debe ser posterior a la inicial y no futura.")
+                    self.session.add(CustomerPhotoFollowupNote(
+                        request_id=request_id, kind=kind, note=note,
+                        received_on=received_on,
+                        created_by=(request.authorization or {}).get("username") or "admin",
+                    ))
                 elif decision == "confirm_mail":
                     if request.form.get("mail_verified") != "yes":
                         raise CustomerPhotoError("Confirma que has comprobado el correo y sus adjuntos.")
@@ -5319,6 +5358,18 @@ class CustomerPhotoRequestAdminView(SecureModelView):
                     stalled = item.delivery_status == "sending" and item.delivery_started_at and item.delivery_started_at <= utcnow() - timedelta(minutes=10)
                     if (item.delivery_status not in {"accepted", "unknown"} and not stalled) or item.status not in {"offered", "received"}:
                         raise CustomerPhotoError("No hay un envío de fotografías pendiente de conciliación.")
+                    if not item.receipt_accredited_on:
+                        received_raw = str(request.form.get("mail_received_on") or "").strip()
+                        if received_raw:
+                            try:
+                                received_on = date.fromisoformat(received_raw)
+                            except ValueError as exc:
+                                raise CustomerPhotoError("La fecha de recepción del correo no es válida.") from exc
+                            if received_on > madrid_today() or (item.actual_delivery_on and received_on < item.actual_delivery_on):
+                                raise CustomerPhotoError("La fecha de recepción no puede ser futura ni anterior a la entrega.")
+                            item.receipt_accredited_on = received_on
+                        elif item.delivery_status in {"unknown", "sending"}:
+                            raise CustomerPhotoError("Indica la fecha acreditada de recepción del correo.")
                     item.delivery_status = "accepted"
                     item.status = "received"
                     item.submitted_at = item.submitted_at or utcnow()
@@ -5345,6 +5396,8 @@ class CustomerPhotoRequestAdminView(SecureModelView):
             return redirect(self.get_url(".review", request_id=request_id))
         return self.render(
             "admin/customer_photo_review.html", item=item,
+            review_deadline=review_deadline_on(item),
+            review_overdue=bool(item.status == "received" and review_deadline_on(item) and madrid_today() > review_deadline_on(item)),
             csrf_token=_issue_work_order_csrf_token(),
             review_url=self.get_url(".review", request_id=request_id),
             resend_url=self.get_url(".resend", request_id=request_id),
