@@ -356,6 +356,40 @@ class CustomerPhotoRequestTest(unittest.TestCase):
         with self.assertRaises(CustomerPhotoError):
             create_photo_request(order=order, mode="incentive", app=self.app)
 
+    def test_historical_low_value_order_without_payment_evidence_cannot_receive_incentive(self):
+        order = db.session.get(Orders, self.order_id)
+        order.total_amount = 1.57
+        order.order_status = "pendiente"
+        db.session.commit()
+        self.app.config["CUSTOMER_PHOTOS_INCENTIVE_ENABLED"] = True
+
+        with self.assertRaisesRegex(CustomerPhotoError, "El pedido no tiene pago web confirmado"):
+            create_photo_request(order=order, mode="incentive", app=self.app)
+        self.assertEqual(CustomerPhotoRequest.query.count(), 0)
+
+    def test_confirmed_stripe_payment_below_incentive_amount_is_still_ineligible(self):
+        order = db.session.get(Orders, self.order_id)
+        order.total_amount = 1.57
+        checkout = CheckoutSessions(
+            user_id=order.user_id, order_id=order.id, status="order_created",
+            payment_provider="stripe", payment_intent_id="pi_low_value",
+            public_checkout_token="checkout-low-value",
+            quote_snapshot={"lines": [{}], "total_amount": 1.57},
+        )
+        order.confirmed_order_context = ConfirmedOrderContext(
+            source="web_checkout", quote_snapshot={"lines": [{}], "total_amount": 1.57},
+            customer_snapshot={"email": "cliente@example.test"},
+            payment_method="stripe", payment_status="confirmed",
+            payment_reference="pi_low_value", provider_identifiers={"payment_intent_id": "pi_low_value"},
+            payment_amount=1.57, currency="EUR", source_checkout_session=checkout,
+        )
+        db.session.commit()
+        self.app.config["CUSTOMER_PHOTOS_INCENTIVE_ENABLED"] = True
+
+        with self.assertRaisesRegex(CustomerPhotoError, "El importe o la moneda no permiten el incentivo"):
+            create_photo_request(order=order, mode="incentive", app=self.app)
+        self.assertEqual(CustomerPhotoRequest.query.count(), 0)
+
     def test_paypal_order_id_without_capture_is_not_incentive_eligible(self):
         order = db.session.get(Orders, self.order_id)
         checkout = CheckoutSessions(
