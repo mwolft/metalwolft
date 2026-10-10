@@ -5,6 +5,8 @@ from email.message import EmailMessage
 import smtplib
 import ssl
 
+from api.transactional_email_renderer import render_customer_photo_confirmation_email
+
 
 PHOTO_MAIL_RECIPIENT = "admin@metalwolft.com"
 MAX_MIME_BYTES = 12 * 1024 * 1024
@@ -38,29 +40,18 @@ def build_photo_message(*, app, order_reference, request_id, attempt_id, date, c
     return message
 
 
-def build_photo_confirmation_message(*, app, recipient, order_reference, request_id, is_simulation=False):
+def build_photo_confirmation_message(*, app, recipient, order_reference, request_id, mode, terms_url=None, is_simulation=False):
     message = EmailMessage()
-    message["Subject"] = f"Hemos recibido tus fotografías - pedido {order_reference}"
+    message["Subject"] = "¡Hemos recibido tus fotos! 📸 | MetalWolft"
     message["From"] = app.config.get("MAIL_DEFAULT_SENDER") or ""
     message["To"] = recipient
     message["Reply-To"] = PHOTO_MAIL_RECIPIENT
-    simulation_notice = (
-        "SIMULACIÓN — SIN REEMBOLSO. Esta prueba no genera derecho a compensación.\n\n"
-        if is_simulation else ""
+    rendered = render_customer_photo_confirmation_email(
+        mode=mode, order_reference=order_reference, request_id=request_id,
+        terms_url=terms_url, is_simulation=is_simulation,
     )
-    refund_note = (
-        "" if is_simulation else "Si tu solicitud incluye la oferta de 20 €, el reembolso no es automático: "
-        "depende de la revisión y de las condiciones comunicadas.\n"
-    )
-    message.set_content(
-        f"{simulation_notice}Hemos recibido tus fotografías para el pedido {order_reference} "
-        f"(solicitud {request_id}). Las revisaremos antes de decidir si podemos utilizarlas.\n\n"
-        "Si autorizaste su uso comercial, puedes solicitar la retirada de esa autorización "
-        f"respondiendo a este mensaje o escribiendo a {PHOTO_MAIL_RECIPIENT}. "
-        "La retirada de la autorización no elimina automáticamente las fotografías recibidas "
-        "por correo. Si solicitas su supresión, indícalo expresamente para que podamos "
-        f"tramitarla por separado.\n\n{refund_note}"
-    )
+    message.set_content(rendered.text)
+    message.add_alternative(rendered.html, subtype="html")
     return message
 
 

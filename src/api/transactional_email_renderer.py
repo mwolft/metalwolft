@@ -668,6 +668,108 @@ def render_order_delivery_estimate_update_email(
     )
 
 
+def render_customer_photo_confirmation_email(*, mode, order_reference, request_id, terms_url=None, is_simulation=False):
+    if mode not in {"free", "incentive"}:
+        raise TransactionalEmailRenderError("Modalidad de fotografías no válida.")
+
+    reference = _required_text(order_reference, "order_reference")
+    request_number = _required_text(request_id, "request_id")
+    introduction = (
+        "¡Ya tenemos las fotografías de tus rejas instaladas! Nos hace mucha ilusión ver cómo han quedado "
+        "y agradecemos que hayas dedicado un momento a compartirlas con nosotros."
+    )
+    next_step = (
+        "Revisaremos las imágenes y, si necesitamos alguna aclaración, nos pondremos en contacto contigo."
+        if mode == "free"
+        else "Revisaremos las imágenes conforme a las condiciones de la promoción y te comunicaremos el resultado."
+    )
+    privacy_text = (
+        "Si autorizaste el uso comercial de las fotografías, puedes solicitar la retirada de esa autorización "
+        "respondiendo a este correo o escribiendo a admin@metalwolft.com. La retirada no elimina automáticamente "
+        "las fotografías recibidas por correo; si deseas solicitar su supresión, indícalo expresamente."
+    )
+
+    promotion_text = ""
+    promotion_html = ""
+    if mode == "incentive":
+        if is_simulation:
+            promotion_title = "SIMULACIÓN — SIN REEMBOLSO"
+            promotion_description = (
+                "Esta solicitud es una prueba y no genera derecho a compensación ni reembolso."
+            )
+        else:
+            promotion_title = "Tus fotografías participan en nuestra promoción de 20 €"
+            promotion_description = (
+                "Si son aprobadas y cumplen las condiciones, recibirás 20 € por la licencia de uso comercial "
+                "de las fotografías. La aprobación y el reembolso no son automáticos."
+            )
+        conditions_text = f"\nCondiciones de la promoción: {terms_url}" if terms_url else ""
+        conditions_html = (
+            f'<p style="margin:12px 0 0;font-size:14px;line-height:1.6;">'
+            f'<a href="{_html(terms_url)}" style="color:{COLOR_ACCENT};text-decoration:underline;">'
+            "Consultar las condiciones de la promoción</a></p>"
+            if terms_url else ""
+        )
+        promotion_text = f"\n\n{promotion_title}\n{promotion_description}{conditions_text}"
+        promotion_html = (
+            '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" '
+            f'style="width:100%;margin:0 0 24px;background:{COLOR_SURFACE_ALT};'
+            f'border:1px solid {COLOR_BORDER};border-collapse:collapse;">'
+            '<tr><td style="padding:18px 20px;">'
+            f'<p style="margin:0 0 8px;color:{COLOR_TEXT};font-size:16px;line-height:1.45;font-weight:700;">'
+            f'{_html(promotion_title)}</p>'
+            f'<p style="margin:0;color:{COLOR_TEXT};font-size:14px;line-height:1.6;">'
+            f'{_html(promotion_description)}</p>{conditions_html}'
+            "</td></tr></table>"
+        )
+
+    text_body = (
+        "METALWOLFT\n"
+        f"{BRAND_TAGLINE}\n\n"
+        "¡Gracias por compartir tus fotos! 📸\n\n"
+        "Hola,\n\n"
+        f"{introduction}\n\n"
+        "¿Qué ocurre ahora?\n"
+        f"{next_step}{promotion_text}\n\n"
+        "Gracias de nuevo por confiar en MetalWolft.\n\n"
+        "El equipo de MetalWolft.\n\n"
+        "Si tienes alguna consulta sobre tus fotografías o sobre su utilización, "
+        "puedes escribirnos a admin@metalwolft.com.\n\n"
+        f"{privacy_text}\n\n"
+        f"Pedido: {reference} · Solicitud: {request_number}"
+    )
+    content_html = (
+        f'<h1 style="margin:0 0 20px;color:{COLOR_TEXT};font-family:Arial,Helvetica,sans-serif;'
+        'font-size:27px;line-height:1.25;font-weight:700;">¡Gracias por compartir tus fotos! 📸</h1>'
+        f'<p style="margin:0 0 16px;color:{COLOR_TEXT};font-size:16px;line-height:1.6;">Hola,</p>'
+        f'<p style="margin:0 0 24px;color:{COLOR_TEXT};font-size:16px;line-height:1.6;">'
+        f'{_html(introduction)}</p>'
+        f'<h2 style="margin:0 0 10px;color:{COLOR_TEXT};font-family:Arial,Helvetica,sans-serif;'
+        'font-size:17px;line-height:1.4;font-weight:700;">¿Qué ocurre ahora?</h2>'
+        f'<p style="margin:0 0 24px;color:{COLOR_TEXT};font-size:15px;line-height:1.6;">'
+        f'{_html(next_step)}</p>'
+        f'{promotion_html}'
+        f'<p style="margin:0 0 6px;color:{COLOR_TEXT};font-size:15px;line-height:1.6;">'
+        'Gracias de nuevo por confiar en MetalWolft.</p>'
+        f'<p style="margin:0 0 24px;color:{COLOR_TEXT};font-size:15px;line-height:1.6;font-weight:700;">'
+        'El equipo de MetalWolft.</p>'
+        f'<p style="margin:0 0 10px;color:{COLOR_MUTED};font-size:13px;line-height:1.6;">'
+        'Si tienes alguna consulta sobre tus fotografías o sobre su utilización, puedes escribirnos a '
+        f'<a href="mailto:admin@metalwolft.com" style="color:{COLOR_ACCENT};">admin@metalwolft.com</a>.</p>'
+        f'<p style="margin:0 0 12px;color:{COLOR_MUTED};font-size:12px;line-height:1.6;">'
+        f'{_html(privacy_text)}</p>'
+        f'<p style="margin:0;color:{COLOR_MUTED};font-size:12px;line-height:1.5;">'
+        f'Pedido: {_html(reference)} · Solicitud: {_html(request_number)}</p>'
+    )
+    return RenderedEmail(
+        text=text_body,
+        html=_render_shell(
+            preheader="Hemos recibido tus fotografías. Gracias por compartirlas con MetalWolft.",
+            content_html=content_html,
+        ),
+    )
+
+
 def render_account_welcome_email(*, customer_firstname=None, login_url):
     login_url_text = _required_text(login_url, "login_url")
     customer_name = _text(customer_firstname)
