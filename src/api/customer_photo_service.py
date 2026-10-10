@@ -444,7 +444,7 @@ def submit_photos(*, token, front_photo, perspective_photo, additional_photos, c
         try:
             confirmation = build_photo_confirmation_message(
                 app=app, recipient=recipient, order_reference=order_reference, request_id=request_id,
-                is_simulation=result.is_simulation,
+                mode=result.mode, terms_url=result.terms_url, is_simulation=result.is_simulation,
             )
             (send_message or send_photo_message)(app=app, message=confirmation)
         except Exception:

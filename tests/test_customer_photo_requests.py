@@ -311,7 +311,8 @@ class CustomerPhotoRequestTest(unittest.TestCase):
             self.submit(token, send_message=lambda **kwargs: sent.append(kwargs["message"]))
         self.assertEqual(len(sent), 2)
         self.assertIn("SIMULACIÓN — SIN REEMBOLSO", sent[0].get_body(preferencelist=("plain",)).get_content())
-        self.assertIn("SIMULACIÓN — SIN REEMBOLSO", sent[1].get_content())
+        self.assertIn("SIMULACIÓN — SIN REEMBOLSO", sent[1].get_body(preferencelist=("plain",)).get_content())
+        self.assertIn("SIMULACIÓN — SIN REEMBOLSO", sent[1].get_body(preferencelist=("html",)).get_content())
         self.app.config["CUSTOMER_PHOTOS_INCENTIVE_TEST_MODE"] = False
         item.mailbox_confirmed_at = utcnow()
         db.session.commit()
@@ -523,6 +524,69 @@ class CustomerPhotoRequestTest(unittest.TestCase):
                     attempt_id="abc", date=utcnow(), consent=True,
                     photos=[(mime, content, "hash", extension)],
                 )
+
+    def test_free_confirmation_uses_branded_html_and_never_mentions_incentive(self):
+        message = build_photo_confirmation_message(
+            app=self.app, recipient="cliente@example.test", order_reference="AB1234",
+            request_id=7, mode="free", terms_url="https://example.test/condiciones",
+        )
+        self.assertEqual(message["Subject"], "¡Hemos recibido tus fotos! 📸 | MetalWolft")
+        self.assertEqual(message["To"], "cliente@example.test")
+        self.assertEqual(message["Reply-To"], "admin@metalwolft.com")
+        self.assertEqual(len(list(message.iter_attachments())), 0)
+        text = message.get_body(preferencelist=("plain",)).get_content()
+        html = message.get_body(preferencelist=("html",)).get_content()
+        for body in (text, html):
+            self.assertIn("¡Gracias por compartir tus fotos! 📸", body)
+            self.assertIn("¿Qué ocurre ahora?", body)
+            self.assertIn("admin@metalwolft.com", body)
+            self.assertNotIn("20 €", body)
+            self.assertNotIn("reembolso", body.lower())
+            self.assertNotIn("condiciones-promocion", body)
+        self.assertIn("<!doctype html>", html)
+        self.assertIn("METAL", html)
+        self.assertIn("WOLFT", html)
+        self.assertIn("role=\"presentation\"", html)
+        self.assertIn("<meta name=\"viewport\"", html)
+
+    def test_incentive_confirmation_has_conditions_without_automatic_payment_promise(self):
+        url = "https://example.test/condiciones-promocion-fotos"
+        message = build_photo_confirmation_message(
+            app=self.app, recipient="cliente@example.test", order_reference="AB1234",
+            request_id=7, mode="incentive", terms_url=url,
+        )
+        self.assertEqual(message["Subject"], "¡Hemos recibido tus fotos! 📸 | MetalWolft")
+        for body in (
+            message.get_body(preferencelist=("plain",)).get_content(),
+            message.get_body(preferencelist=("html",)).get_content(),
+        ):
+            self.assertIn("Tus fotografías participan en nuestra promoción de 20 €", body)
+            self.assertIn("recibirás 20 €", body)
+            self.assertIn("no son automáticos", body)
+            self.assertIn(url, body)
+            self.assertNotIn("SIMULACIÓN", body)
+
+    def test_simulated_confirmation_cannot_promise_a_refund(self):
+        message = build_photo_confirmation_message(
+            app=self.app, recipient="cliente@example.test", order_reference="AB1234",
+            request_id=7, mode="incentive", terms_url="https://example.test/condiciones",
+            is_simulation=True,
+        )
+        for body in (
+            message.get_body(preferencelist=("plain",)).get_content(),
+            message.get_body(preferencelist=("html",)).get_content(),
+        ):
+            self.assertIn("SIMULACIÓN — SIN REEMBOLSO", body)
+            self.assertNotIn("recibirás 20 €", body)
+
+    def test_confirmation_multipart_is_sent_by_existing_smtp_adapter(self):
+        message = build_photo_confirmation_message(
+            app=self.app, recipient="cliente@example.test", order_reference="AB1234",
+            request_id=7, mode="free",
+        )
+        with patch("api.customer_photo_mail.smtplib.SMTP") as smtp_class:
+            send_photo_message(app=self.app, message=message)
+        smtp_class.return_value.__enter__.return_value.send_message.assert_called_once_with(message)
 
     def test_smtp_adapter_sends_one_message_and_classifies_rejection(self):
         photo = validate_image(self.image(fmt="JPEG", mime="image/jpeg"))
