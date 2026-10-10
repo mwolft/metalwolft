@@ -600,6 +600,63 @@ class CustomerPhotoRequestTest(unittest.TestCase):
         db.session.commit()
         self.assertEqual(reviewed.status, "refund_pending")
 
+    def test_incentive_upload_requires_explicit_license_before_mail(self):
+        self.app.config["CUSTOMER_PHOTOS_INCENTIVE_ENABLED"] = True
+        item, token = self.offer()
+        item.mode = "incentive"
+        item.offered_amount = 20
+        db.session.commit()
+        sent = []
+        with self.assertRaisesRegex(CustomerPhotoError, "licencia de uso comercial"):
+            self.submit(token, consent="no", send_message=lambda **kwargs: sent.append(kwargs))
+        self.assertEqual(sent, [])
+        self.assertEqual(db.session.get(CustomerPhotoRequest, item.id).status, "offered")
+        result = self.submit(token, consent="yes")
+        self.assertTrue(result.commercial_consent)
+        self.assertEqual(result.consent_version, result.terms_version)
+        self.assertEqual(result.consent_text, result.offered_consent_text)
+        self.assertIsNotNone(result.consent_at)
+
+    def test_incentive_review_requires_current_versioned_license(self):
+        self.app.config["CUSTOMER_PHOTOS_INCENTIVE_ENABLED"] = True
+        item, token = self.offer()
+        item.mode = "incentive"
+        item.offered_amount = 20
+        db.session.commit()
+        self.submit(token)
+        item.mailbox_confirmed_at = utcnow()
+        db.session.commit()
+        original_version = item.consent_version
+        for override in (
+            {"commercial_consent": False},
+            {"consent_version": None},
+            {"consent_version": "other-version"},
+            {"consent_revoked_at": utcnow()},
+        ):
+            for key, value in override.items():
+                setattr(item, key, value)
+            db.session.commit()
+            with self.assertRaisesRegex(CustomerPhotoError, "licencia comercial vigente"):
+                review_photo_request(request_id=item.id, decision="approve", note="", actor="admin", app=self.app)
+            self.assertEqual(item.status, "received")
+            item.commercial_consent = True
+            item.consent_version = original_version
+            item.consent_revoked_at = None
+            db.session.commit()
+
+    def test_voluntary_upload_without_license_can_be_reviewed_without_refund(self):
+        item, token = self.offer()
+        self.submit(token, consent="no")
+        item.mailbox_confirmed_at = utcnow()
+        db.session.commit()
+        reviewed = review_photo_request(request_id=item.id, decision="approve", note="Voluntaria", actor="admin", app=self.app)
+        db.session.commit()
+        self.assertEqual(reviewed.status, "approved")
+        self.assertFalse(reviewed.commercial_consent)
+        admin_view = CustomerPhotoRequestAdminView(CustomerPhotoRequest, db.session)
+        self.assertEqual(admin_view._format_request_mode(None, None, reviewed, "mode"), "Voluntaria sin incentivo")
+        self.assertEqual(admin_view._format_commercial_license(None, None, reviewed, "commercial_consent"), "Sin autorización comercial")
+
     def test_invalid_recipient_blocks_offer(self):
         order = db.session.get(Orders, self.order_id)
         order.user.email = "not-an-email"

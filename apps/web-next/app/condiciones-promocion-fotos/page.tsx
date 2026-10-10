@@ -28,7 +28,7 @@ export default function CustomerPhotoPromotionTermsPage() {
         "Basta fotografiar una reja instalada: una foto frontal y otra lateral o en perspectiva.",
         "El incentivo previsto es de 20 € una sola vez por pedido aprobado, no por fotografía.",
         "Hay 30 días desde la entrega para participar y la revisión se comunicará en un máximo de 7 días naturales.",
-        "La autorización comercial se solicita por separado; el reembolso no es automático."
+        "La promoción de 20 € requiere aceptar expresamente una licencia comercial; el reembolso no es automático."
       ]}
       relatedLinks={buildLegalRelatedLinks(PATH)}
     >
@@ -77,15 +77,16 @@ export default function CustomerPhotoPromotionTermsPage() {
         <p>
           La modalidad incentivada prevé <strong>20 € una sola vez por pedido aprobado</strong>,
           no por fotografía. La recompensa está destinada a fotografías que MetalWolft pueda usar
-          comercialmente. La revisión de las imágenes no ejecuta por sí sola un pago: el reembolso
-          se gestionaría manualmente después de una revisión administrativa independiente.
+          comercialmente. Para participar en esta modalidad es necesario aceptar expresamente la
+          licencia de uso comercial aplicable a las fotografías. Sin esa aceptación no se participa
+          en la promoción remunerada. La revisión de las imágenes no ejecuta por sí sola un pago:
+          el reembolso se gestionaría manualmente después de una revisión administrativa independiente.
         </p>
         <p>
           Cuando proceda y sea posible, se intentará por el método de pago original.
-          <strong> Pendiente de aprobación jurídica y fiscal:</strong> cómo opera la recompensa
-          cuando no se autoriza el uso comercial, qué ocurre si el método original no admite
-          reembolso y el tratamiento fiscal aplicable. No se promete aquí una fecha de abono
-          ni un método alternativo.
+          <strong> Pendiente de aprobación jurídica y fiscal:</strong> qué ocurre si el método
+          original no admite reembolso, el tratamiento fiscal aplicable y la redacción definitiva
+          de la licencia. No se promete aquí una fecha de abono ni un método alternativo.
         </p>
       </section>
 
@@ -102,19 +103,31 @@ export default function CustomerPhotoPromotionTermsPage() {
       </section>
 
       <section className="mw-section">
-        <h2>Uso comercial y privacidad</h2>
+        <h2>Licencia de uso comercial</h2>
         <p>
-          Enviar fotografías y autorizar su utilización comercial son decisiones distintas.
-          El formulario permite enviar las fotos sin autorizar su publicación; la autorización
-          comercial se solicita de forma expresa y no premarcada. La posible relación entre esa
-          autorización y el incentivo de 20 € está pendiente de revisión jurídica antes de activar
-          la promoción. Ninguna fotografía se publica automáticamente.
+          La licencia es una decisión expresa y no premarcada, separada de la información sobre
+          protección de datos. La promoción remunerada exige su aceptación; una invitación a enviar
+          fotografías voluntarias permite no concederla. La mera recepción de imágenes no concede
+          derechos de publicación. Ninguna fotografía se publica automáticamente.
         </p>
         <p>
-          La licencia o autorización de uso comercial no sustituye la información sobre el
-          tratamiento de datos personales ni elimina los derechos reconocidos por la normativa
-          de protección de datos. Las imágenes pueden contener datos de terceros; evita incluirlos
-          si no tienes autorización adecuada.
+          El texto definitivo deberá concretar usos autorizados, canales, duración y ámbito
+          territorial de la licencia, sin cesiones ilimitadas. Por ahora se prevén usos en
+          metalwolft.com, fichas y categorías, catálogo comercial, redes sociales y publicidad
+          de MetalWolft. No se presume autorización de personas o titulares de derechos ajenos
+          que aparezcan en las imágenes. Estos extremos requieren revisión jurídica antes de activar
+          el incentivo real.
+        </p>
+      </section>
+
+      <section className="mw-section">
+        <h2>Fotografías voluntarias y datos personales</h2>
+        <p>
+          Las fotografías pueden enviarse sin participar en la promoción de 20 € cuando la invitación
+          sea voluntaria. En ese caso no es obligatorio conceder licencia comercial ni existe derecho
+          al incentivo. El tratamiento de datos personales y los derechos correspondientes son
+          independientes de la licencia; esta no sustituye las obligaciones de privacidad. Evita
+          incluir datos de terceros si no cuentas con autorización adecuada.
         </p>
         <p>
           Puedes solicitar la retirada de la autorización o la supresión de las fotografías

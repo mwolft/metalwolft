@@ -116,7 +116,7 @@ export function CustomerPhotoForm() {
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!api || !info || !token.current || !frontPhoto || !perspectivePhoto || !consent) return;
+    if (!api || !info || !token.current || !frontPhoto || !perspectivePhoto || !consent || (info.mode === "incentive" && consent !== "yes")) return;
     setBusy(true);
     setMessage("");
     const body = new FormData();
@@ -167,7 +167,7 @@ export function CustomerPhotoForm() {
       <p>Evita personas identificables, matrículas o información privada.</p>
       <p>Las imágenes se ajustan automáticamente si es necesario y se envían por correo a MetalWolft. No se guardan en el panel. El conjunto procesado no puede superar {Math.round(info.max_total_bytes / (1024 * 1024))} MB.</p>
       {info.mode === "incentive" && (
-        <p>Participa dentro de los 30 días posteriores a la entrega. La revisión se comunicará en un máximo de 7 días naturales; podríamos pedirte fotos corregidas por correo. La recompensa está pensada para fotos utilizables comercialmente, pero la autorización se decide por separado. La revisión no garantiza un reembolso. Consulta las condiciones antes de enviarlas.</p>
+        <p>Participa dentro de los 30 días posteriores a la entrega. La revisión se comunicará en un máximo de 7 días naturales; podríamos pedirte fotos corregidas por correo. Para participar por 20 € debes aceptar expresamente la licencia de uso comercial descrita abajo. La revisión no garantiza un reembolso. Consulta las condiciones antes de enviarlas.</p>
       )}
       <div className="mw-customer-photo-fields">
         {([
@@ -211,14 +211,14 @@ export function CustomerPhotoForm() {
         {info.terms_url && <p><a href={info.terms_url} target="_blank" rel="noopener noreferrer">Leer condiciones completas</a></p>}
       </section>
       <fieldset>
-        <legend>Autorización de uso comercial, versión {info.terms_version}</legend>
+        <legend>Licencia de uso comercial, versión {info.terms_version}{info.mode === "incentive" ? " (necesaria para la promoción)" : " (opcional)"}</legend>
         <p>{info.consent_text}</p>
-        <label><input type="radio" name="commercial-consent" value="yes" checked={consent === "yes"} onChange={() => setConsent("yes")} /> Sí, autorizo el uso comercial descrito.</label>
-        <label><input type="radio" name="commercial-consent" value="no" checked={consent === "no"} onChange={() => setConsent("no")} /> No autorizo el uso comercial.</label>
+        <label><input type="radio" name="commercial-consent" value="yes" checked={consent === "yes"} onChange={() => setConsent("yes")} /> Sí, acepto la licencia de uso comercial descrita.</label>
+        {info.mode === "free" && <label><input type="radio" name="commercial-consent" value="no" checked={consent === "no"} onChange={() => setConsent("no")} /> No autorizo el uso comercial; envío las fotografías voluntariamente.</label>}
       </fieldset>
-      <p>Enviar fotos no implica autorizar su publicación. No publicaremos ninguna automáticamente.</p>
+      <p>{info.mode === "free" ? "Puedes enviar fotografías sin conceder licencia comercial. Recibirlas no nos autoriza a publicarlas." : "Sin aceptar la licencia no puedes participar en la promoción de 20 €. Puedes consultarnos sobre un envío voluntario sin incentivo."} No publicaremos ninguna automáticamente.</p>
       <p>Puedes retirar después tu autorización comercial escribiendo a <a href="mailto:admin@metalwolft.com">admin@metalwolft.com</a>. Retirar la autorización no elimina automáticamente las fotos recibidas por correo; si deseas solicitar su supresión, indícalo expresamente.</p>
-      <button className="mw-button mw-button--primary" type="submit" disabled={busy || !frontPhoto || !perspectivePhoto || !consent}>
+      <button className="mw-button mw-button--primary" type="submit" disabled={busy || !frontPhoto || !perspectivePhoto || !consent || (info.mode === "incentive" && consent !== "yes")}>
         {busy ? "Enviando…" : "Enviar fotografías"}
       </button>
       {message && <p role="status">{message}</p>}

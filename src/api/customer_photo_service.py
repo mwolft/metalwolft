@@ -138,6 +138,18 @@ def _terms(app, mode):
     return version, consent, terms_text, conditions_url
 
 
+def has_active_commercial_license(photo_request):
+    return bool(
+        photo_request.commercial_consent is True
+        and photo_request.consent_at
+        and photo_request.consent_version
+        and photo_request.consent_version == photo_request.terms_version
+        and photo_request.consent_text
+        and photo_request.consent_text == photo_request.offered_consent_text
+        and not photo_request.consent_revoked_at
+    )
+
+
 def _eligible(order, mode, app):
     if mode not in MODES or mode == "none":
         raise CustomerPhotoError("Selecciona una modalidad de fotografías válida.")
@@ -307,6 +319,8 @@ def submit_photos(*, token, front_photo, perspective_photo, additional_photos, c
         raise CustomerPhotoError("La simulación ya no está autorizada en este entorno.")
     if commercial_consent not in ("yes", "no"):
         raise CustomerPhotoError("Indica expresamente si autorizas el uso comercial.")
+    if photo_request.mode == "incentive" and commercial_consent != "yes":
+        raise CustomerPhotoError("Para participar en la promoción de 20 €, acepta expresamente la licencia de uso comercial.")
     if not front_photo or not getattr(front_photo, "filename", None):
         raise CustomerPhotoError("Selecciona una fotografía frontal de la reja.")
     if not perspective_photo or not getattr(perspective_photo, "filename", None):
@@ -340,6 +354,7 @@ def submit_photos(*, token, front_photo, perspective_photo, additional_photos, c
                 or (locked.participation_deadline_on and _madrid_date(utcnow()) > locked.participation_deadline_on)
                 or locked.delivery_status in {"sending", "unknown"}
                 or (locked.mode == "incentive" and not _incentive_allowed(app))
+                or (locked.mode == "incentive" and commercial_consent != "yes")
                 or (locked.is_simulation and not _simulation_allowed(app, recipient))):
             raise CustomerPhotoError("El enlace ya no está disponible.")
         locked.delivery_status = "sending"
@@ -412,6 +427,8 @@ def review_photo_request(*, request_id, decision, note, actor, session=None, app
         raise CustomerPhotoError("Una simulación solo puede revisarse en desarrollo.")
     if decision == "approve" and item.mode == "incentive" and not item.is_simulation and (app is None or not _incentive_allowed(app)):
         raise CustomerPhotoError("El incentivo fotográfico está pendiente de aprobación para producción.")
+    if decision == "approve" and item.mode == "incentive" and not has_active_commercial_license(item):
+        raise CustomerPhotoError("No se puede aprobar el incentivo sin una licencia comercial vigente y vinculada a las condiciones ofrecidas.")
     if decision == "reject" and not str(note or "").strip():
         raise CustomerPhotoError("Indica el motivo interno del rechazo.")
     item.status = ("refund_pending" if item.mode == "incentive" and not item.is_simulation else "approved") if decision == "approve" else "rejected"

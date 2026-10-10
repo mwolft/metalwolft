@@ -15,6 +15,9 @@ assert.match(page, /una frontal y otra lateral o en/);
 assert.match(page, /tres imágenes más/);
 assert.match(page, /revisión jurídica/);
 assert.match(page, /SIMULACIÓN — SIN REEMBOLSO/);
+assert.match(page, /promoción remunerada exige su aceptación/);
+assert.match(page, /mera recepción de imágenes no concede/);
+assert.match(page, /duración y ámbito/);
 assert.match(page, /mailto:admin@metalwolft\.com/);
 assert.match(page, /href="\/politica-privacidad"/);
 

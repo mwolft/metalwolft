@@ -152,7 +152,7 @@ from api.manual_order_draft_issue_service import (
 from api.order_confirmation_email_service import send_order_confirmation_email
 from api.customer_photo_service import (
     CustomerPhotoError, create_photo_request, rotate_photo_link,
-    review_photo_request, review_deadline_on, madrid_today, utcnow,
+    review_photo_request, review_deadline_on, has_active_commercial_license, madrid_today, utcnow,
 )
 from api.manual_order_draft_service import (
     ManualOrderDraftError,
@@ -5283,9 +5283,9 @@ class CustomerPhotoRequestAdminView(SecureModelView):
     can_edit = False
     can_delete = False
     can_view_details = True
-    column_list = ("id", "order_id", "mode", "is_simulation", "status", "photo_count", "delivery_status", "created_at", "submitted_at")
+    column_list = ("id", "order_id", "mode", "commercial_consent", "is_simulation", "status", "photo_count", "delivery_status", "created_at", "submitted_at")
     column_filters = ("order_id", "mode", "status")
-    column_details_list = (*column_list, "actual_delivery_on", "participation_deadline_on", "receipt_accredited_on", "mailbox_confirmed_at", "reviewed_at", "reviewed_by", "review_note", "commercial_consent", "consent_revoked_at")
+    column_details_list = (*column_list, "actual_delivery_on", "participation_deadline_on", "receipt_accredited_on", "mailbox_confirmed_at", "reviewed_at", "reviewed_by", "review_note", "consent_version", "consent_at", "consent_revoked_at")
 
     def is_accessible(self):
         return bool(
@@ -5297,7 +5297,22 @@ class CustomerPhotoRequestAdminView(SecureModelView):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.column_formatters = {"id": self._format_request_id, "submitted_at": self._format_review_deadline}
+        self.column_formatters = {
+            "id": self._format_request_id,
+            "mode": self._format_request_mode,
+            "commercial_consent": self._format_commercial_license,
+            "submitted_at": self._format_review_deadline,
+        }
+
+    def _format_request_mode(self, view, context, model, name):
+        return "20 € (invitación)" if model.mode == "incentive" else "Voluntaria sin incentivo"
+
+    def _format_commercial_license(self, view, context, model, name):
+        if has_active_commercial_license(model):
+            return "Licencia aceptada"
+        if model.consent_revoked_at:
+            return "Licencia retirada"
+        return "Sin autorización comercial"
 
     def _format_request_id(self, view, context, model, name):
         href = escape(self.get_url(".review", request_id=model.id))
@@ -5396,6 +5411,7 @@ class CustomerPhotoRequestAdminView(SecureModelView):
             return redirect(self.get_url(".review", request_id=request_id))
         return self.render(
             "admin/customer_photo_review.html", item=item,
+            commercial_license_active=has_active_commercial_license(item),
             review_deadline=review_deadline_on(item),
             review_overdue=bool(item.status == "received" and review_deadline_on(item) and madrid_today() > review_deadline_on(item)),
             csrf_token=_issue_work_order_csrf_token(),
