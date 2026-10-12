@@ -162,6 +162,10 @@ const nextConfig = {
         source: "/:path*",
         headers
       },
+      ...["/login", "/registro", "/mi-cuenta"].map((source) => ({
+        source,
+        headers: [{ key: "Referrer-Policy", value: "strict-origin-when-cross-origin" }]
+      })),
       {
         source: "/fotos-clientes",
         headers: [
