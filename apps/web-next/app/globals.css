@@ -4276,6 +4276,15 @@ a.mw-product-version-nav__option:focus-visible {
   line-height: 1.7;
 }
 
+.mw-google-auth {
+  margin-top: 1.2rem;
+  max-width: 100%;
+}
+
+.mw-account-google-link {
+  margin-top: 1.5rem;
+}
+
 .mw-contact-form {
   margin-top: 1.3rem;
 }

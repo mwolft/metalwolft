@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 import { LoginForm } from "@/components/auth/LoginForm";
+import { GoogleIdentityButton } from "@/components/auth/GoogleIdentityButton";
 import { PageContainer } from "@/components/layout/PageContainer";
 
 type LoginSearchParams = {
@@ -54,6 +55,7 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
               tu compra de rejas para ventanas a medida.
             </p>
             <LoginForm nextPath={nextPath} />
+            <GoogleIdentityButton mode="login" nextPath={nextPath} />
             <p className="mw-auth-footnote">
               ¿No tienes cuenta? <Link href={buildRegisterHref(nextPath)}>Crear cuenta</Link>.
             </p>

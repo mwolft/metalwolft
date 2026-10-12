@@ -1,6 +1,6 @@
 from flask import request, jsonify, Blueprint, send_file, send_from_directory, current_app, abort, Response
 from flask_jwt_extended import jwt_required
-from api.models import db, Users, Products, ProductImages, Categories, Subcategories, Orders, CheckoutSessions, OrderDetails, Favorites, Cart, Posts, Comments, Invoices, DeliveryEstimateConfig, AccountingEntry, DesignRequest
+from api.models import db, Users, ExternalIdentity, Products, ProductImages, Categories, Subcategories, Orders, CheckoutSessions, OrderDetails, Favorites, Cart, Posts, Comments, Invoices, DeliveryEstimateConfig, AccountingEntry, DesignRequest
 from api.utils import (
     DEFAULT_CONFIGURATOR_SCREW_OPTION,
     build_configured_reja_quote,
@@ -10,6 +10,7 @@ from api.utils import (
     serialize_configurator_configuration,
 )
 from api.jwt_utils import create_user_access_token, get_current_user_context as get_jwt_identity
+from api.google_identity import GoogleIdentityError, verify_google_identity
 from sqlalchemy.exc import SQLAlchemyError
 import bcrypt
 from datetime import datetime, timezone, date
@@ -2986,7 +2987,7 @@ def login():
         db.select(Users).where(Users.email == email)
     ).scalar()
 
-    if not user or not bcrypt.checkpw(
+    if not user or not user.password or user.is_active is False or not bcrypt.checkpw(
         password.encode("utf-8"),
         user.password.encode("utf-8")
     ):
@@ -3006,6 +3007,91 @@ def login():
     })
     response.headers.add("Access-Control-Allow-Origin", "*")
     return response, 200
+
+
+@api.route("/auth/google", methods=["POST"])
+def google_login():
+    data = request.get_json(silent=True)
+    if not isinstance(data, dict):
+        return jsonify({"message": "Solicitud inválida."}), 400
+    try:
+        identity = verify_google_identity(data.get("credential"))
+    except GoogleIdentityError as exc:
+        return jsonify({"message": str(exc)}), 401
+
+    linked = ExternalIdentity.query.filter_by(
+        provider="google", provider_subject=identity["sub"]
+    ).first()
+    if linked:
+        user = db.session.get(Users, linked.user_id)
+        if user is None or user.is_active is False or user.is_admin:
+            return jsonify({"message": "No se pudo acceder a esta cuenta."}), 403
+    else:
+        if Users.query.filter(func.lower(Users.email) == identity["email"]).first():
+            return jsonify({
+                "message": "Ya tienes una cuenta en MetalWolft. Accede con tu contraseña para vincular Google."
+            }), 409
+        user = Users(email=identity["email"], password=None, is_admin=False)
+        try:
+            db.session.add(user)
+            db.session.flush()
+            db.session.add(ExternalIdentity(
+                user_id=user.id, provider="google", provider_subject=identity["sub"]
+            ))
+            db.session.commit()
+        except IntegrityError:
+            db.session.rollback()
+            return jsonify({"message": "No se pudo crear la cuenta. Inténtalo de nuevo."}), 409
+
+    return jsonify({
+        "results": user.serialize(),
+        "access_token": create_user_access_token(user, expires_delta=timedelta(hours=24)),
+    }), 200
+
+
+@api.route("/auth/google/link", methods=["GET", "POST"])
+@jwt_required()
+def link_google_identity():
+    context = get_jwt_identity()
+    user_id = context.get("user_id") if context else None
+    user = db.session.get(Users, user_id) if isinstance(user_id, int) else None
+    if user is None or user.is_active is False or user.is_admin:
+        return jsonify({"message": "Sesión no válida."}), 401
+
+    if request.method == "GET":
+        linked = ExternalIdentity.query.filter_by(user_id=user.id, provider="google").first()
+        return jsonify({"linked": linked is not None}), 200
+
+    data = request.get_json(silent=True)
+    if not isinstance(data, dict):
+        return jsonify({"message": "Solicitud inválida."}), 400
+    password = data.get("password")
+    if not isinstance(password, str) or len(password) > 1024 or not user.password or not bcrypt.checkpw(
+        password.encode("utf-8"), user.password.encode("utf-8")
+    ):
+        return jsonify({"message": "Confirma tu contraseña para vincular Google."}), 403
+    try:
+        identity = verify_google_identity(data.get("credential"))
+    except GoogleIdentityError as exc:
+        return jsonify({"message": str(exc)}), 401
+
+    linked = ExternalIdentity.query.filter_by(provider="google", provider_subject=identity["sub"]).first()
+    if linked:
+        if linked.user_id == user.id:
+            return jsonify({"message": "Google ya está vinculado a tu cuenta."}), 200
+        return jsonify({"message": "Esta cuenta Google ya está vinculada."}), 409
+    if ExternalIdentity.query.filter_by(user_id=user.id, provider="google").first():
+        return jsonify({"message": "Tu cuenta ya tiene un acceso Google vinculado."}), 409
+
+    db.session.add(ExternalIdentity(
+        user_id=user.id, provider="google", provider_subject=identity["sub"]
+    ))
+    try:
+        db.session.commit()
+    except IntegrityError:
+        db.session.rollback()
+        return jsonify({"message": "No se pudo vincular Google. Inténtalo de nuevo."}), 409
+    return jsonify({"message": "Google vinculado a tu cuenta."}), 200
 
 
 @api.route("/protected", methods=["GET"])

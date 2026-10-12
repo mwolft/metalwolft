@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 import { RegisterForm } from "@/components/auth/RegisterForm";
+import { GoogleIdentityButton } from "@/components/auth/GoogleIdentityButton";
 import { PageContainer } from "@/components/layout/PageContainer";
 
 type RegisterSearchParams = {
@@ -54,6 +55,7 @@ export default async function RegisterPage({ searchParams }: RegisterPageProps) 
               con la compra de tus rejas para ventanas a medida.
             </p>
             <RegisterForm nextPath={nextPath} />
+            <GoogleIdentityButton mode="login" nextPath={nextPath} />
             <p className="mw-auth-footnote">
               ¿Ya tienes cuenta? <Link href={buildLoginHref(nextPath)}>Inicia sesión</Link>.
             </p>
