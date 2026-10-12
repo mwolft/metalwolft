@@ -24,7 +24,7 @@ test("authentication pages present Google before the email form without a techni
     assert.doesNotMatch(source, /mw-auth-aside/);
   }
   assert.match(read("app/globals.css"), /width: min\(100%, 480px\)/);
-  assert.match(read("components/auth/GoogleIdentityButton.tsx"), /mode === "login" \? 400 : 320/);
+  assert.match(read("components/auth/GoogleIdentityButton.tsx"), /Math\.min\(container\.current\.clientWidth \|\| 400, 400\)/);
 });
 
 test("linking keeps the local session and requires a password", () => {
@@ -33,6 +33,15 @@ test("linking keeps the local session and requires a password", () => {
   assert.match(source, /getToken\(\)/);
   assert.match(source, /password: passwordRef\.current/);
   assert.match(source, /\/api\/auth\/google\/link/);
+});
+
+test("linked Google identity has one status message and no linking controls", () => {
+  const source = read("components/auth/GoogleIdentityButton.tsx");
+  assert.match(source, /linked === true \? <p className="mw-account-google-link__status">Google ya está vinculado a tu cuenta/);
+  assert.match(source, /linked === false \? \(\s*<label className="mw-field">/);
+  assert.match(source, /mode === "login" \|\| linked === false \? <div className="mw-google-auth__button"/);
+  assert.match(source, /if \(mode === "link"\) \{\s*setFeedback\(""\);/);
+  assert.match(read("app/globals.css"), /\.mw-account-google-link \.mw-google-auth \{\s*max-width: 400px;/);
 });
 
 test("the content security policy permits only the GIS script and frame origin", () => {

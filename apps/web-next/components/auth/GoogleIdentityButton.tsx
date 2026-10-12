@@ -90,7 +90,7 @@ export function GoogleIdentityButton({ mode, nextPath }: GoogleIdentityButtonPro
             } | null;
             if (!response.ok) throw new Error(payload?.message || "No se pudo acceder con Google.");
             if (mode === "link") {
-              setFeedback(payload?.message || "Google vinculado a tu cuenta.");
+              setFeedback("");
               setPassword("");
               setLinked(true);
               return;
@@ -112,7 +112,7 @@ export function GoogleIdentityButton({ mode, nextPath }: GoogleIdentityButtonPro
     container.current.replaceChildren();
     google.accounts.id.renderButton(container.current, {
       theme: "outline", size: "large", text: "continue_with",
-      width: Math.min(container.current.clientWidth || 400, mode === "login" ? 400 : 320)
+      width: Math.min(container.current.clientWidth || 400, 400)
     });
   }, [linked, mode, nextPath, ready, router]);
 
@@ -126,14 +126,17 @@ export function GoogleIdentityButton({ mode, nextPath }: GoogleIdentityButtonPro
         onReady={() => setReady(true)}
         onError={() => setFeedback("No se pudo cargar el acceso con Google. Inténtalo más tarde.")}
       />
-      {mode === "link" && linked === true ? <p>Google ya está vinculado a tu cuenta.</p> : null}
+      {mode === "link" && linked === true ? <p className="mw-account-google-link__status">Google ya está vinculado a tu cuenta.</p> : null}
+      {mode === "link" && linked === false ? (
+        <p className="mw-account-google-link__intro">¿Quieres acceder también con Google? Vincúlalo a esta cuenta sin perder tus pedidos.</p>
+      ) : null}
       {mode === "link" && linked === false ? (
         <label className="mw-field">
           <span>Confirma tu contraseña para vincular Google</span>
           <input autoComplete="current-password" type="password" value={password} onChange={(event) => setPassword(event.target.value)} />
         </label>
       ) : null}
-      <div ref={container} />
+      {mode === "login" || linked === false ? <div className="mw-google-auth__button" ref={container} /> : null}
       {feedback ? <p className="mw-auth-footnote" role="status">{feedback}</p> : null}
     </div>
   );

@@ -441,7 +441,6 @@ export function AccountOverview() {
         </Link>
       </div>
       <div className="mw-account-google-link">
-        <p>¿Quieres acceder también con Google? Vincúlalo a esta cuenta sin perder tus pedidos.</p>
         <GoogleIdentityButton mode="link" />
       </div>
     </section>
