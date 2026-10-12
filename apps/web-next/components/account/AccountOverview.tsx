@@ -25,6 +25,7 @@ import {
   type CustomerProfile
 } from "@/lib/customer-profile-client";
 import { useAuthSession } from "@/hooks/useAuthSession";
+import { GoogleIdentityButton } from "@/components/auth/GoogleIdentityButton";
 
 function customerName(user: CustomerProfile | null) {
   const fullName = [user?.firstname, user?.lastname]
@@ -438,6 +439,9 @@ export function AccountOverview() {
         <Link className="mw-button mw-button--secondary" href="/rejas-para-ventanas">
           Seguir comprando
         </Link>
+      </div>
+      <div className="mw-account-google-link">
+        <GoogleIdentityButton mode="link" />
       </div>
     </section>
   );

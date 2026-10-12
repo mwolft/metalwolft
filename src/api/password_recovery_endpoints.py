@@ -23,7 +23,11 @@ def forgot_password():
             return jsonify({"message": "Si el correo está registrado, recibirás un enlace para restablecer tu contraseña."}), 200
 
         # Generar un token de recuperación
-        reset_token = create_access_token(identity=email, expires_delta=timedelta(minutes=15))
+        reset_token = create_access_token(
+            identity=email,
+            additional_claims={"purpose": "password_reset"},
+            expires_delta=timedelta(minutes=15),
+        )
 
         # Crear el enlace de recuperación
         reset_link = f"{current_app.config['FRONTEND_URL']}/reset-password?token={reset_token}"
@@ -53,6 +57,8 @@ def reset_password():
         # Verificar el token
         try:
             decoded_token = decode_token(token)
+            if decoded_token.get("purpose") != "password_reset":
+                return jsonify({"error": "Token inválido o expirado."}), 400
             email = decoded_token['sub']
         except Exception:
             return jsonify({"error": "Token inválido o expirado."}), 400

@@ -18,6 +18,15 @@ try {
   const reportOnlyImgSrc = reportOnlyCsp.split("; ").find((directive) => directive.startsWith("img-src "));
 
   assert.equal(rules[0].source, "/:path*");
+  for (const source of ["/login", "/registro", "/mi-cuenta"]) {
+    assert.deepEqual(rules.find((rule) => rule.source === source)?.headers, [
+      { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" }
+    ]);
+  }
+  assert.deepEqual(rules.find((rule) => rule.source === "/fotos-clientes")?.headers, [
+    { key: "Referrer-Policy", value: "no-referrer" },
+    { key: "X-Robots-Tag", value: "noindex, nofollow, noarchive" }
+  ]);
   assert.match(csp, /default-src 'self'/);
   assert.match(csp, /frame-ancestors 'self'/);
   assert.match(csp, /connect-src 'self' https:\/\/api\.metalwolft\.com/);

@@ -23,6 +23,7 @@ function buildContentSecurityPolicy({ allowInlineScripts = true, reportEndpoint 
     "'self'",
     ...(allowInlineScripts ? ["'unsafe-inline'"] : []),
     "https://www.googletagmanager.com",
+    "https://accounts.google.com/gsi/client",
     "https://js.stripe.com",
     "https://*.js.stripe.com",
     "https://maps.googleapis.com",
@@ -37,11 +38,11 @@ function buildContentSecurityPolicy({ allowInlineScripts = true, reportEndpoint 
     "form-action 'self'",
     "frame-ancestors 'self'",
     `script-src ${scriptSources.join(" ")}`,
-    "style-src 'self' 'unsafe-inline' https://*.paypal.com https://*.paypalobjects.com https://*.venmo.com",
-    "img-src 'self' data: blob: https://res.cloudinary.com https://www.google.es https://www.googletagmanager.com https://*.stripe.com https://*.paypal.com https://*.paypalobjects.com https://*.venmo.com",
+    "style-src 'self' 'unsafe-inline' https://accounts.google.com https://*.paypal.com https://*.paypalobjects.com https://*.venmo.com",
+    "img-src 'self' data: blob: https://accounts.google.com https://res.cloudinary.com https://www.google.es https://www.googletagmanager.com https://*.stripe.com https://*.paypal.com https://*.paypalobjects.com https://*.venmo.com",
     "font-src 'self' data:",
-    `connect-src 'self' ${apiOrigin} https://www.googletagmanager.com https://www.google-analytics.com https://region1.google-analytics.com https://region1.analytics.google.com https://api.stripe.com https://maps.googleapis.com https://res.cloudinary.com https://*.paypal.com https://*.paypalobjects.com https://*.venmo.com`,
-    "frame-src 'self' https://js.stripe.com https://*.js.stripe.com https://hooks.stripe.com https://*.paypal.com https://*.paypalobjects.com https://*.venmo.com",
+    `connect-src 'self' ${apiOrigin} https://accounts.google.com https://www.googletagmanager.com https://www.google-analytics.com https://region1.google-analytics.com https://region1.analytics.google.com https://api.stripe.com https://maps.googleapis.com https://res.cloudinary.com https://*.paypal.com https://*.paypalobjects.com https://*.venmo.com`,
+    "frame-src 'self' https://accounts.google.com https://js.stripe.com https://*.js.stripe.com https://hooks.stripe.com https://*.paypal.com https://*.paypalobjects.com https://*.venmo.com",
     "child-src 'self' https://*.paypal.com https://*.paypalobjects.com https://*.venmo.com",
     "media-src 'self' blob: https://res.cloudinary.com"
   ];
@@ -161,6 +162,10 @@ const nextConfig = {
         source: "/:path*",
         headers
       },
+      ...["/login", "/registro", "/mi-cuenta"].map((source) => ({
+        source,
+        headers: [{ key: "Referrer-Policy", value: "strict-origin-when-cross-origin" }]
+      })),
       {
         source: "/fotos-clientes",
         headers: [

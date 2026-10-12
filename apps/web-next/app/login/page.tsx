@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 import { LoginForm } from "@/components/auth/LoginForm";
+import { GoogleIdentityButton } from "@/components/auth/GoogleIdentityButton";
 import { PageContainer } from "@/components/layout/PageContainer";
 
 type LoginSearchParams = {
@@ -45,32 +46,19 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
           <span aria-current="page">Iniciar sesión</span>
         </nav>
 
-        <section className="mw-auth-layout">
+        <section className="mw-auth-layout" aria-label="Acceso a tu cuenta">
           <div className="mw-auth-card">
-            <p className="mw-eyebrow">Cuenta MetalWolft</p>
             <h1 className="mw-title mw-title--compact">Iniciar sesión</h1>
             <p className="mw-lead">
-              Accede para continuar tu sesión en MetalWolft y seguir preparando
-              tu compra de rejas para ventanas a medida.
+              Accede a tu cuenta para consultar tus pedidos y realizar nuevas compras
             </p>
+            <GoogleIdentityButton mode="login" nextPath={nextPath} />
+            <div className="mw-auth-divider"><span>o con tu correo</span></div>
             <LoginForm nextPath={nextPath} />
             <p className="mw-auth-footnote">
               ¿No tienes cuenta? <Link href={buildRegisterHref(nextPath)}>Crear cuenta</Link>.
             </p>
           </div>
-
-          <aside className="mw-auth-aside" aria-label="Información de acceso">
-            <p className="mw-note">Compra segura</p>
-            <h2>Tu sesión conecta con el acceso existente</h2>
-            <ul className="mw-list">
-              <li>Usamos el mismo acceso que ya existe en MetalWolft.</li>
-              <li>El token se guarda en tu navegador como en la web actual.</li>
-              <li>La contraseña nunca se almacena en el frontend.</li>
-            </ul>
-            <p className="mw-auth-footnote">
-              Tras iniciar sesión volverás a la página solicitada si la ruta es segura.
-            </p>
-          </aside>
         </section>
       </PageContainer>
     </div>

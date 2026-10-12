@@ -215,7 +215,7 @@ class Users(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     created_at = db.Column(db.DateTime, nullable=False, server_default=db.func.now())
     email = db.Column(db.String(120), unique=True, nullable=False)
-    password = db.Column(db.String(120), nullable=False)
+    password = db.Column(db.String(120), nullable=True)
     firstname = db.Column(db.String(100), nullable=True)
     lastname = db.Column(db.String(100), nullable=True)
     phone = db.Column(db.String(50), nullable=True)
@@ -249,6 +249,21 @@ class Users(db.Model):
             "billing_postal_code": self.billing_postal_code,
             "CIF": self.CIF,
         }
+
+
+class ExternalIdentity(db.Model):
+    __tablename__ = "external_identities"
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False, index=True)
+    provider = db.Column(db.String(32), nullable=False)
+    provider_subject = db.Column(db.String(255), nullable=False)
+    created_at = db.Column(db.DateTime, nullable=False, server_default=db.func.now())
+
+    __table_args__ = (
+        db.UniqueConstraint("provider", "provider_subject", name="uq_external_identity_provider_subject"),
+        db.UniqueConstraint("user_id", "provider", name="uq_external_identity_user_provider"),
+    )
 
 
 class Posts(db.Model):
