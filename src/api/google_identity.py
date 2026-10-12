@@ -3,6 +3,7 @@
 import os
 
 import jwt
+from flask import current_app, has_app_context
 from jwt import PyJWKClient
 
 
@@ -22,8 +23,10 @@ def verify_google_identity(credential):
     if not isinstance(credential, str) or not credential or len(credential) > 8192:
         raise GoogleIdentityError("Credencial de Google inválida.")
 
+    phase = "key_fetch"
     try:
         key = _jwks.get_signing_key_from_jwt(credential).key
+        phase = "claims_validation"
         claims = jwt.decode(
             credential,
             key,
@@ -34,6 +37,12 @@ def verify_google_identity(credential):
             leeway=30,
         )
     except (jwt.PyJWTError, ValueError, OSError) as exc:
+        if has_app_context() and current_app.config.get("APP_ENV") == "development":
+            current_app.logger.warning(
+                "google_identity_verification_failed category=%s exception=%s",
+                phase,
+                type(exc).__name__,
+            )
         raise GoogleIdentityError("No se pudo verificar la identidad de Google.") from exc
 
     subject = claims.get("sub")

@@ -151,6 +151,13 @@ class GoogleCustomerAuthTest(unittest.TestCase):
         self.assertEqual(self.client.post("/api/auth/google", json={"credential": "bad"}).status_code, 401)
         self.assertEqual(self.client.post("/api/auth/google", json=[]).status_code, 400)
 
+    def test_verification_failure_keeps_browser_message_generic(self):
+        self.verify.side_effect = GoogleIdentityError("No se pudo verificar la identidad de Google.")
+        response = self.client.post("/api/auth/google", json={"credential": "sensitive-credential"})
+        self.assertEqual(response.status_code, 401)
+        self.assertEqual(response.json, {"message": "No se pudo verificar la identidad de Google."})
+        self.assertNotIn("sensitive-credential", response.get_data(as_text=True))
+
     def test_password_reset_requires_reset_purpose_and_supports_google_only_user(self):
         self.client.post("/api/auth/google", json={"credential": "mock"})
         with self.app.app_context():
@@ -166,6 +173,58 @@ class GoogleCustomerAuthTest(unittest.TestCase):
 
 
 class GoogleTokenValidationTest(unittest.TestCase):
+    @patch.dict(os.environ, {"GOOGLE_CLIENT_ID": "test-client-id"})
+    def test_development_diagnostics_do_not_expose_credentials_or_exception_details(self):
+        import jwt
+
+        app = Flask(__name__)
+        app.config["APP_ENV"] = "development"
+        with app.app_context(), patch.object(app.logger, "warning") as warning:
+            with patch(
+                "api.google_identity._jwks.get_signing_key_from_jwt",
+                side_effect=jwt.PyJWKClientConnectionError("sensitive-token-and-email@example.test"),
+            ):
+                with self.assertRaisesRegex(GoogleIdentityError, "No se pudo verificar la identidad de Google"):
+                    verify_google_identity("sensitive-credential")
+
+        logged = repr(warning.call_args)
+        self.assertIn("category=%s exception=%s", logged)
+        self.assertIn("key_fetch", logged)
+        self.assertIn("PyJWKClientConnectionError", logged)
+        self.assertNotIn("sensitive-credential", logged)
+        self.assertNotIn("sensitive-token-and-email@example.test", logged)
+
+    @patch.dict(os.environ, {"GOOGLE_CLIENT_ID": "test-client-id"})
+    def test_development_diagnostics_identify_claim_validation_without_details(self):
+        import jwt
+
+        app = Flask(__name__)
+        app.config["APP_ENV"] = "development"
+        with app.app_context(), patch.object(app.logger, "warning") as warning:
+            with patch("api.google_identity._jwks.get_signing_key_from_jwt", return_value=SimpleNamespace(key="test-key")):
+                with patch("api.google_identity.jwt.decode", side_effect=jwt.InvalidAudienceError("sensitive-audience")):
+                    with self.assertRaisesRegex(GoogleIdentityError, "No se pudo verificar la identidad de Google"):
+                        verify_google_identity("sensitive-credential")
+
+        logged = repr(warning.call_args)
+        self.assertIn("claims_validation", logged)
+        self.assertIn("InvalidAudienceError", logged)
+        self.assertNotIn("sensitive-credential", logged)
+        self.assertNotIn("sensitive-audience", logged)
+
+    @patch.dict(os.environ, {"GOOGLE_CLIENT_ID": "test-client-id"})
+    def test_production_does_not_log_google_verification_diagnostics(self):
+        import jwt
+
+        app = Flask(__name__)
+        app.config["APP_ENV"] = "production"
+        with app.app_context(), patch.object(app.logger, "warning") as warning:
+            with patch("api.google_identity._jwks.get_signing_key_from_jwt", return_value=SimpleNamespace(key="test-key")):
+                with patch("api.google_identity.jwt.decode", side_effect=jwt.InvalidAudienceError("sensitive-audience")):
+                    with self.assertRaisesRegex(GoogleIdentityError, "No se pudo verificar la identidad de Google"):
+                        verify_google_identity("sensitive-credential")
+        warning.assert_not_called()
+
     @unittest.skipUnless(importlib.util.find_spec("cryptography"), "RSA test requires PyJWT[crypto]")
     @patch.dict(os.environ, {"GOOGLE_CLIENT_ID": "test-client-id"})
     def test_real_rsa_verification_rejects_wrong_audience_expiry_and_signature(self):
