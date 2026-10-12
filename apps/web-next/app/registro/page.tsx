@@ -46,33 +46,19 @@ export default async function RegisterPage({ searchParams }: RegisterPageProps) 
           <span aria-current="page">Crear cuenta</span>
         </nav>
 
-        <section className="mw-auth-layout">
+        <section className="mw-auth-layout" aria-label="Crear cuenta">
           <div className="mw-auth-card">
-            <p className="mw-eyebrow">Cuenta MetalWolft</p>
             <h1 className="mw-title mw-title--compact">Crear cuenta</h1>
             <p className="mw-lead">
-              Regístrate para guardar tu sesión, añadir productos al carrito y continuar
-              con la compra de tus rejas para ventanas a medida.
+              Crea tu cuenta para consultar tus pedidos y comprar con más facilidad.
             </p>
-            <RegisterForm nextPath={nextPath} />
             <GoogleIdentityButton mode="login" nextPath={nextPath} />
+            <div className="mw-auth-divider"><span>o con tu correo</span></div>
+            <RegisterForm nextPath={nextPath} />
             <p className="mw-auth-footnote">
               ¿Ya tienes cuenta? <Link href={buildLoginHref(nextPath)}>Inicia sesión</Link>.
             </p>
           </div>
-
-          <aside className="mw-auth-aside" aria-label="Ventajas de crear cuenta">
-            <p className="mw-note">Compra más cómoda</p>
-            <h2>Tu cuenta usa el acceso existente de MetalWolft</h2>
-            <ul className="mw-list">
-              <li>Podrás volver al carrito y continuar el pedido.</li>
-              <li>El backend crea la sesión con el mismo contrato que la web actual.</li>
-              <li>La contraseña nunca se almacena en el frontend.</li>
-            </ul>
-            <p className="mw-auth-footnote">
-              Tras crear la cuenta volverás a la página solicitada si la ruta es segura.
-            </p>
-          </aside>
         </section>
       </PageContainer>
     </div>

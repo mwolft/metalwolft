@@ -112,7 +112,7 @@ export function GoogleIdentityButton({ mode, nextPath }: GoogleIdentityButtonPro
     container.current.replaceChildren();
     google.accounts.id.renderButton(container.current, {
       theme: "outline", size: "large", text: "continue_with",
-      width: Math.min(container.current.clientWidth || 280, 320)
+      width: Math.min(container.current.clientWidth || 400, mode === "login" ? 400 : 320)
     });
   }, [linked, mode, nextPath, ready, router]);
 
