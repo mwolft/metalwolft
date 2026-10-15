@@ -1012,29 +1012,14 @@ textarea:focus-visible {
     box-shadow 200ms ease;
 }
 
-.mw-home-product-card__link {
-  display: flex;
-  flex: 1;
-  min-width: 0;
-  flex-direction: column;
-  color: inherit;
-  text-decoration: none;
-}
-
-.mw-home-product-card__link:focus-visible {
-  outline: 3px solid var(--mw-accent);
-  outline-offset: -4px;
-}
-
 .mw-home-product-card__media {
   position: relative;
-  aspect-ratio: 4 / 5;
+  aspect-ratio: 9 / 10;
   background: #f3f4f6;
 }
 
 .mw-home-product-card__media img {
   object-fit: cover;
-  object-position: center;
   transition: transform 200ms ease;
 }
 
@@ -1102,7 +1087,6 @@ textarea:focus-visible {
   .mw-home-product-card:hover,
   .mw-home-product-card:focus-within {
     transform: translateY(-4px);
-    box-shadow: 0 10px 28px rgba(21, 34, 55, 0.1);
   }
 
   .mw-home-product-card:hover .mw-home-product-card__media img,

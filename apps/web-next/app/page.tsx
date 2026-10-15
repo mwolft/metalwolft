@@ -407,36 +407,36 @@ export default async function HomePage() {
             <div className="mw-home-product-grid">
               {data.featuredProducts.map((product) => (
                 <article className="mw-home-product-card" key={product.id}>
-                  <Link
-                    aria-label={`Ver modelo ${product.title}`}
-                    className="mw-home-product-card__link"
-                    href={product.href}
-                  >
-                    <div className="mw-home-product-card__media">
-                      {product.image ? (
-                        <Image
-                          src={product.image}
-                          alt={product.title}
-                          fill
-                          sizes="(max-width: 767px) 100vw, (max-width: 1120px) 50vw, 33vw"
-                          unoptimized={product.image.split(/[?#]/)[0].toLowerCase().endsWith(".avif")}
-                        />
-                      ) : (
-                        <div className="mw-home-product-card__placeholder" aria-hidden="true">
-                          <span>{product.badge}</span>
-                        </div>
-                      )}
-                    </div>
-                    <div className="mw-home-product-card__body">
-                      <span className="mw-home-product-card__badge">{product.badge}</span>
-                      <h3>{product.title}</h3>
-                      <p>{product.description}</p>
-                      <p className="mw-home-product-card__orientation">{product.orientation}</p>
-                      <div className="mw-actions">
-                        <span className="mw-button mw-button--primary">Ver modelo</span>
+                  <div className="mw-home-product-card__media">
+                    {product.image ? (
+                      <Image
+                        src={product.image}
+                        alt={product.title}
+                        fill
+                        sizes="(max-width: 767px) 100vw, (max-width: 1120px) 50vw, 33vw"
+                        unoptimized={product.image.split(/[?#]/)[0].toLowerCase().endsWith(".avif")}
+                      />
+                    ) : (
+                      <div className="mw-home-product-card__placeholder" aria-hidden="true">
+                        <span>{product.badge}</span>
                       </div>
+                    )}
+                  </div>
+                  <div className="mw-home-product-card__body">
+                    <span className="mw-home-product-card__badge">{product.badge}</span>
+                    <h3>{product.title}</h3>
+                    <p>{product.description}</p>
+                    <p className="mw-home-product-card__orientation">{product.orientation}</p>
+                    <div className="mw-actions">
+                      <Link
+                        aria-label={`Ver modelo ${product.title}`}
+                        className="mw-button mw-button--primary"
+                        href={product.href}
+                      >
+                        Ver modelo
+                      </Link>
                     </div>
-                  </Link>
+                  </div>
                 </article>
               ))}
             </div>

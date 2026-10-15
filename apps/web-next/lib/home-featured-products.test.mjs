@@ -40,9 +40,7 @@ assert.match(
 assert.match(home, /HOME_FEATURED_MODELS\.flatMap/);
 assert.match(home, /products\.find\(\(candidate\) => candidate\.slug === editorial\.slug\)/);
 assert.match(home, /aria-label={`Ver modelo \$\{product\.title\}`}/);
-assert.match(home, /<Link\s+aria-label={`Ver modelo \$\{product\.title\}`}\s+className="mw-home-product-card__link"\s+href=\{product\.href\}\s*>/);
-assert.match(home, /<span className="mw-button mw-button--primary">Ver modelo<\/span>/);
-assert.doesNotMatch(home.slice(home.indexOf('<article className="mw-home-product-card"'), home.indexOf('</article>')), /<Link[\s\S]*<Link/);
+assert.match(home, />\s*Ver modelo\s*<\/Link>/);
 assert.doesNotMatch(home, /Modelo a medida|Más vendido/);
 assert.doesNotMatch(home, /^"use client";/);
 assert.match(home, /function buildItemListJsonLd/);
@@ -52,9 +50,6 @@ assert.match(
   /@media \(hover: hover\) and \(pointer: fine\)[\s\S]*?\.mw-home-product-card:hover,[\s\S]*?translateY\(-4px\)/
 );
 assert.match(styles, /\.mw-home-product-card:hover \.mw-home-product-card__media img,[\s\S]*?scale\(1\.02\)/);
-assert.match(styles, /\.mw-home-product-card__media\s*{[^}]*aspect-ratio:\s*4\s*\/\s*5/s);
-assert.match(styles, /\.mw-home-product-card__media img\s*{[^}]*object-fit:\s*cover;[^}]*object-position:\s*center/s);
-assert.match(styles, /\.mw-home-product-card__link:focus-visible\s*{[^}]*outline:\s*3px solid var\(--mw-accent\)/s);
 assert.match(
   styles,
   /@media \(prefers-reduced-motion: reduce\)[\s\S]*?\.mw-home-product-card__media img[\s\S]*?transition:\s*none/
