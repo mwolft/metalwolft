@@ -811,7 +811,7 @@ textarea:focus-visible {
 }
 
 .mw-home-page {
-  padding-top: 2rem;
+  padding-top: 0;
 }
 
 .mw-hero {
@@ -844,9 +844,8 @@ textarea:focus-visible {
   position: relative;
   display: flex;
   align-items: center;
-  min-height: clamp(470px, 43vw, 590px);
+  min-height: clamp(480px, 42vw, 600px);
   overflow: hidden;
-  border-radius: var(--mw-radius);
   background: #1d2933;
   isolation: isolate;
 }
@@ -856,7 +855,7 @@ textarea:focus-visible {
   z-index: -1;
   inset: 0;
   content: "";
-  background: linear-gradient(90deg, rgba(12, 24, 35, 0.96) 0%, rgba(12, 24, 35, 0.9) 58%, rgba(12, 24, 35, 0.25) 100%);
+  background: linear-gradient(90deg, rgba(12, 24, 35, 0.92) 0%, rgba(12, 24, 35, 0.84) 45%, rgba(12, 24, 35, 0.65) 60%, rgba(12, 24, 35, 0.08) 82%);
 }
 
 .mw-home-hero__photo {
@@ -893,8 +892,8 @@ textarea:focus-visible {
 }
 
 .mw-home-hero__copy {
-  width: min(100%, 640px);
-  padding: clamp(2rem, 5vw, 4rem);
+  width: min(100%, 600px);
+  padding: clamp(2.5rem, 5vw, 4rem) 0;
   color: #fff;
 }
 
@@ -6076,7 +6075,6 @@ a.mw-product-version-nav__option:focus-visible {
     margin: 0 auto;
   }
 
-  .mw-home-hero,
   .mw-home-trust,
   .mw-home-product-grid,
   .mw-home-feature-grid,
@@ -6092,7 +6090,7 @@ a.mw-product-version-nav__option:focus-visible {
   }
 
   .mw-home-hero::before {
-    background: linear-gradient(90deg, rgba(12, 24, 35, 0.96) 0%, rgba(12, 24, 35, 0.9) 70%, rgba(12, 24, 35, 0.4) 100%);
+    background: linear-gradient(90deg, rgba(12, 24, 35, 0.92) 0%, rgba(12, 24, 35, 0.88) 70%, rgba(12, 24, 35, 0.2) 100%);
   }
 
   .mw-home-hero__copy {
@@ -6237,6 +6235,10 @@ a.mw-product-version-nav__option:focus-visible {
     padding: 2rem 0 3rem;
   }
 
+  .mw-home-page {
+    padding-top: 0;
+  }
+
   .mw-thank-you-page {
     align-items: flex-start;
   }
@@ -6270,20 +6272,20 @@ a.mw-product-version-nav__option:focus-visible {
 
   .mw-home-hero {
     align-items: flex-start;
-    min-height: clamp(660px, 165vw, 760px);
+    min-height: clamp(620px, 150vw, 720px);
   }
 
   .mw-home-hero::before {
-    background: linear-gradient(180deg, rgba(12, 24, 35, 0.96) 0%, rgba(12, 24, 35, 0.9) 62%, rgba(12, 24, 35, 0.15) 100%);
+    background: linear-gradient(180deg, rgba(12, 24, 35, 0.94) 0%, rgba(12, 24, 35, 0.82) 58%, rgba(12, 24, 35, 0.12) 100%);
   }
 
   .mw-home-hero__photo {
-    object-position: 58% center;
+    object-position: 52% center;
   }
 
   .mw-home-hero__copy {
     width: 100%;
-    padding: 1.4rem;
+    padding: 1.75rem 0 2rem;
   }
 
   .mw-configurator-grid,
@@ -6365,7 +6367,7 @@ a.mw-product-version-nav__option:focus-visible {
   }
 
   .mw-home-page {
-    padding-top: 1.625rem;
+    padding-top: 0;
   }
 
   .mw-title {

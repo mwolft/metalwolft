@@ -283,21 +283,21 @@ export default async function HomePage() {
 
   return (
     <div className="mw-page mw-home-page">
-      <PageContainer>
-        <JsonLd data={buildOrganizationJsonLd()} />
-        <JsonLd data={buildWebPageJsonLd(description)} />
-        <JsonLd data={buildItemListJsonLd(data.featuredProducts)} />
-        <JsonLd data={buildFaqJsonLd()} />
+      <JsonLd data={buildOrganizationJsonLd()} />
+      <JsonLd data={buildWebPageJsonLd(description)} />
+      <JsonLd data={buildItemListJsonLd(data.featuredProducts)} />
+      <JsonLd data={buildFaqJsonLd()} />
 
-        <section className="mw-home-hero">
-          <Image
-            className="mw-home-hero__photo"
-            src={HERO_PHOTO_URL}
-            alt="Reja para ventana instalada en una vivienda"
-            fill
-            priority
-            sizes="(max-width: 1199px) calc(100vw - 2rem), 1040px"
-          />
+      <section className="mw-home-hero">
+        <Image
+          className="mw-home-hero__photo"
+          src={HERO_PHOTO_URL}
+          alt="Reja para ventana instalada en una vivienda"
+          fill
+          priority
+          sizes="100vw"
+        />
+        <PageContainer>
           <div className="mw-home-hero__copy">
             <p className="mw-eyebrow">Especialistas en rejas para ventanas</p>
             <h1 className="mw-title">Rejas para ventanas a medida</h1>
@@ -318,8 +318,10 @@ export default async function HomePage() {
               </Link>
             </div>
           </div>
-        </section>
+        </PageContainer>
+      </section>
 
+      <PageContainer>
         <div className="mw-home-hero__details">
           <ul className="mw-home-hero__points">
             <li>Modelos fabricados a medida para el hueco real de tu ventana.</li>
