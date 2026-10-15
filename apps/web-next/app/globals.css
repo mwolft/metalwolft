@@ -1907,7 +1907,7 @@ textarea:focus-visible {
   padding: 1.8rem;
   border: 1px solid rgba(229, 231, 235, 0.92);
   border-radius: var(--mw-radius);
-  background: rgba(255, 255, 255, 0.9);
+  background: rgb(250 251 251 / 90%);
 }
 
 .mw-section h2 {
