@@ -986,22 +986,6 @@ textarea:focus-visible {
   color: var(--mw-accent);
 }
 
-.mw-home-trust__note {
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
-  margin: 0.7rem 0 0;
-  color: var(--mw-muted);
-  font-size: 0.82rem;
-  line-height: 1.4;
-}
-
-.mw-home-trust__note svg {
-  width: 1rem;
-  height: 1rem;
-  flex: 0 0 auto;
-}
-
 .mw-home-product-grid,
 .mw-home-feature-grid,
 .mw-home-guide-grid {

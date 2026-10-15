@@ -380,14 +380,6 @@ export default async function HomePage() {
           </article>
         </section>
 
-        <p className="mw-home-trust__note">
-          <svg aria-hidden="true" viewBox="0 0 20 20" fill="none">
-            <circle cx="10" cy="10" r="8" stroke="currentColor" strokeWidth="1.5" />
-            <path d="M10 9v5m0-8h.01" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-          </svg>
-          La instalación no está incluida.
-        </p>
-
         <section className="mw-section" id="modelos-destacados">
           <p className="mw-eyebrow">Modelos destacados</p>
           <h2>Encuentra el modelo que mejor encaja con tu vivienda</h2>
