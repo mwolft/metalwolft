@@ -6025,7 +6025,7 @@ a.mw-product-version-nav__option:focus-visible {
   }
 }
 
-@media (max-width: 900px) {
+@media (max-width: 1160px) {
   :root {
     --mw-header-nav-height: 78px;
   }
@@ -6099,7 +6099,9 @@ a.mw-product-version-nav__option:focus-visible {
     padding: 0.9rem 1rem;
     border-radius: 16px;
   }
+}
 
+@media (max-width: 900px) {
   .mw-hero {
     grid-template-columns: 1fr;
   }
@@ -6526,5 +6528,36 @@ a.mw-product-version-nav__option:focus-visible {
   .mw-product-card__badge {
     padding: 0.29rem 0.53rem;
     font-size: 0.7rem;
+  }
+}
+
+@media (min-width: 561px) and (max-width: 640px) {
+  .mw-home-hero {
+    min-height: calc(2080px - 250vw);
+  }
+}
+
+@media (min-width: 641px) and (max-width: 900px) {
+  .mw-home-hero {
+    min-height: clamp(410px, calc(620px - 23.4vw), 470px);
+  }
+
+  .mw-home-hero::before {
+    background: linear-gradient(90deg, rgba(255, 252, 247, 0.96) 0%, rgba(255, 252, 247, 0.88) 35%, rgba(255, 252, 247, 0.45) 68%, rgba(255, 252, 247, 0.12) 100%);
+  }
+
+  .mw-home-hero__copy {
+    padding-block: 1.5rem;
+    transform: translateY(-1.25rem);
+  }
+}
+
+@media (min-width: 901px) and (max-width: 1160px) {
+  .mw-home-hero {
+    min-height: calc(140px + 30vw);
+  }
+
+  .mw-home-hero__copy {
+    transform: translateY(-1.25rem);
   }
 }
