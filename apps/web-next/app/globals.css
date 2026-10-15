@@ -6299,7 +6299,7 @@ a.mw-product-version-nav__option:focus-visible {
   }
 
   .mw-home-hero {
-    align-items: flex-start;
+    align-items: center;
     min-height: clamp(590px, 140vw, 680px);
   }
 
