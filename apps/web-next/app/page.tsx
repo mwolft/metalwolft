@@ -322,39 +322,6 @@ export default async function HomePage() {
       </section>
 
       <PageContainer>
-        <div className="mw-home-hero__details">
-          <ul className="mw-home-hero__points">
-            <li>
-              <svg aria-hidden="true" viewBox="0 0 20 20" fill="none">
-                <path d="m4 10 4 4 8-8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-              <span><strong>Modelos fabricados a medida</strong> para el hueco real de tu ventana.</span>
-            </li>
-            <li>
-              <svg aria-hidden="true" viewBox="0 0 20 20" fill="none">
-                <path d="m4 10 4 4 8-8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-              <span><strong>Guías prácticas</strong> para medir y elegir el anclaje antes de comprar.</span>
-            </li>
-            <li>
-              <svg aria-hidden="true" viewBox="0 0 20 20" fill="none">
-                <path d="m4 10 4 4 8-8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-              <span><strong>Atención directa por WhatsApp</strong> si necesitas ayuda antes de comprar.</span>
-            </li>
-          </ul>
-          <div className="mw-home-hero__route">
-            <p className="mw-note">Compra más fácil</p>
-            <h2>Tu ruta más directa para acertar</h2>
-            <ol className="mw-steps">
-              <li>Elige el modelo que mejor encaja con tu ventana.</li>
-              <li>Mide alto y ancho con la guía paso a paso.</li>
-              <li>Configura medidas, anclaje y acabado.</li>
-              <li>Recibe la reja en España peninsular y organiza su instalación.</li>
-            </ol>
-          </div>
-        </div>
-
         <section className="mw-home-trust" aria-label="Puntos de confianza">
           <article className="mw-home-trust__item">
             <Image
@@ -412,6 +379,14 @@ export default async function HomePage() {
             </span>
           </article>
         </section>
+
+        <p className="mw-home-trust__note">
+          <svg aria-hidden="true" viewBox="0 0 20 20" fill="none">
+            <circle cx="10" cy="10" r="8" stroke="currentColor" strokeWidth="1.5" />
+            <path d="M10 9v5m0-8h.01" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+          </svg>
+          La instalación no está incluida.
+        </p>
 
         <section className="mw-section" id="modelos-destacados">
           <p className="mw-eyebrow">Modelos destacados</p>

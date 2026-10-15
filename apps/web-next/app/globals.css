@@ -874,15 +874,13 @@ textarea:focus-visible {
 .mw-home-feature-card,
 .mw-home-benefit-card,
 .mw-home-guide-card,
-.mw-home-workshop__panel,
-.mw-home-hero__route {
+.mw-home-workshop__panel {
   border: 1px solid rgba(229, 231, 235, 0.92);
   border-radius: var(--mw-radius);
   background: rgba(255, 255, 255, 0.94);
   box-shadow: var(--mw-shadow);
 }
 
-.mw-home-hero__route,
 .mw-home-trust__item {
   box-shadow: none;
 }
@@ -944,55 +942,6 @@ textarea:focus-visible {
   color: var(--mw-accent-dark);
 }
 
-.mw-home-hero__details {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 1rem;
-  margin-top: 1rem;
-}
-
-.mw-home-hero__points {
-  margin: 0;
-  padding: 1.2rem 1.25rem;
-  border: 1px solid rgba(229, 231, 235, 0.92);
-  border-radius: var(--mw-radius);
-  background: rgba(255, 255, 255, 0.94);
-  color: #4b5563;
-  line-height: 1.6;
-  list-style: none;
-}
-
-.mw-home-hero__points li {
-  display: flex;
-  align-items: flex-start;
-  gap: 0.65rem;
-}
-
-.mw-home-hero__points svg {
-  width: 1rem;
-  height: 1rem;
-  flex: 0 0 auto;
-  margin-top: 0.3em;
-  color: var(--mw-accent-dark);
-}
-
-.mw-home-hero__points strong {
-  color: var(--mw-text);
-}
-
-.mw-home-hero__points li + li {
-  margin-top: 0.7rem;
-}
-
-.mw-home-hero__route {
-  padding: 1.2rem 1.25rem;
-}
-
-.mw-home-hero__route h2 {
-  margin: 0.8rem 0 0;
-  font-size: 1.25rem;
-}
-
 .mw-home-trust {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -1035,6 +984,22 @@ textarea:focus-visible {
 
 .mw-home-trust__link:hover {
   color: var(--mw-accent);
+}
+
+.mw-home-trust__note {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 0.7rem 0 0;
+  color: var(--mw-muted);
+  font-size: 0.82rem;
+  line-height: 1.4;
+}
+
+.mw-home-trust__note svg {
+  width: 1rem;
+  height: 1rem;
+  flex: 0 0 auto;
 }
 
 .mw-home-product-grid,
@@ -6141,10 +6106,6 @@ a.mw-product-version-nav__option:focus-visible {
   .mw-home-workshop,
   .mw-home-design-service__box,
   .mw-category-design-service {
-    grid-template-columns: 1fr;
-  }
-
-  .mw-home-hero__details {
     grid-template-columns: 1fr;
   }
 
