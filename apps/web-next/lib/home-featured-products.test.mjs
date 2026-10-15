@@ -53,15 +53,13 @@ assert.match(
   styles,
   /@media \(hover: hover\) and \(pointer: fine\)[\s\S]*?\.mw-home-product-card:hover,[\s\S]*?translateY\(-4px\)/
 );
-assert.match(styles, /\.mw-home-product-card:hover \.mw-home-product-card__media img,[\s\S]*?scale\(1\.02\)/);
 assert.match(styles, /\.mw-home-product-card__media\s*{[^}]*aspect-ratio:\s*16\s*\/\s*11/s);
-assert.match(styles, /\.mw-home-product-card__media img\s*{[^}]*object-fit:\s*cover/s);
+assert.match(styles, /\.mw-home-product-card__media\s*{[^}]*background:\s*#f8f9fa/s);
+assert.match(styles, /\.mw-home-product-card__media img\s*{[^}]*object-fit:\s*contain/s);
+assert.doesNotMatch(styles, /\.mw-home-product-card:hover \.mw-home-product-card__media img/);
 assert.match(styles, /\.mw-home-product-card__link:focus-visible\s*{[^}]*outline:\s*3px solid var\(--mw-accent\)/s);
 assert.match(styles, /\.mw-home-product-card__body\s*{[^}]*padding:\s*1rem/s);
-assert.match(
-  styles,
-  /@media \(prefers-reduced-motion: reduce\)[\s\S]*?\.mw-home-product-card__media img[\s\S]*?transition:\s*none/
-);
+assert.match(styles, /@media \(prefers-reduced-motion: reduce\)[\s\S]*?\.mw-home-product-card\s*{\s*transition:\s*none/s);
 assert.match(styles, /\.mw-home-product-card__body \.mw-actions\s*{[^}]*margin-top:\s*auto/s);
 
 console.log("Home featured products assertions passed");

@@ -1029,12 +1029,11 @@ textarea:focus-visible {
 .mw-home-product-card__media {
   position: relative;
   aspect-ratio: 16 / 11;
-  background: #f3f4f6;
+  background: #f8f9fa;
 }
 
 .mw-home-product-card__media img {
-  object-fit: cover;
-  transition: transform 200ms ease;
+  object-fit: contain;
 }
 
 .mw-home-product-card__placeholder {
@@ -1102,11 +1101,6 @@ textarea:focus-visible {
   .mw-home-product-card:focus-within {
     transform: translateY(-4px);
     box-shadow: 0 10px 28px rgba(21, 34, 55, 0.1);
-  }
-
-  .mw-home-product-card:hover .mw-home-product-card__media img,
-  .mw-home-product-card:focus-within .mw-home-product-card__media img {
-    transform: scale(1.02);
   }
 }
 
@@ -3859,16 +3853,13 @@ a.mw-product-version-nav__option:focus-visible {
 
 @media (prefers-reduced-motion: reduce) {
   .mw-product-card,
-  .mw-home-product-card,
-  .mw-home-product-card__media img {
+  .mw-home-product-card {
     transition: none;
   }
 
   .mw-product-card:hover,
   .mw-home-product-card:hover,
-  .mw-home-product-card:focus-within,
-  .mw-home-product-card:hover .mw-home-product-card__media img,
-  .mw-home-product-card:focus-within .mw-home-product-card__media img {
+  .mw-home-product-card:focus-within {
     transform: none;
   }
 
