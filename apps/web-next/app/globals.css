@@ -855,7 +855,11 @@ textarea:focus-visible {
   z-index: -1;
   inset: 0;
   content: "";
-  background: linear-gradient(90deg, rgba(255, 252, 247, 0.98) 0%, rgba(255, 252, 247, 0.94) 38%, rgba(255, 252, 247, 0.86) 56%, rgba(255, 252, 247, 0.18) 78%, transparent 90%);
+  background: linear-gradient(90deg, rgba(255, 252, 247, 0.96) 0%, rgba(255, 252, 247, 0.88) 22%, rgba(255, 252, 247, 0.65) 38%, rgba(255, 252, 247, 0.2) 55%, transparent 70%);
+}
+
+.mw-home-hero > .mw-container {
+  min-width: 0;
 }
 
 .mw-home-hero__photo {
@@ -892,9 +896,22 @@ textarea:focus-visible {
 }
 
 .mw-home-hero__copy {
+  position: relative;
+  z-index: 0;
+  min-width: 0;
   width: min(100%, 600px);
   padding: clamp(2.5rem, 5vw, 4rem) 0;
   color: var(--mw-text);
+  overflow-wrap: break-word;
+}
+
+.mw-home-hero__copy::before {
+  position: absolute;
+  z-index: -1;
+  inset: -1.5rem -6rem;
+  content: "";
+  pointer-events: none;
+  background: linear-gradient(90deg, rgba(255, 252, 247, 0.76) 0%, rgba(255, 252, 247, 0.72) 90%, transparent 100%);
 }
 
 .mw-home-hero__copy .mw-eyebrow {
@@ -6101,7 +6118,7 @@ a.mw-product-version-nav__option:focus-visible {
   }
 
   .mw-home-hero::before {
-    background: linear-gradient(90deg, rgba(255, 252, 247, 0.98) 0%, rgba(255, 252, 247, 0.9) 76%, rgba(255, 252, 247, 0.16) 100%);
+    background: linear-gradient(90deg, rgba(255, 252, 247, 0.94) 0%, rgba(255, 252, 247, 0.82) 70%, rgba(255, 252, 247, 0.12) 100%);
   }
 
   .mw-home-hero__copy {
@@ -6287,7 +6304,7 @@ a.mw-product-version-nav__option:focus-visible {
   }
 
   .mw-home-hero::before {
-    background: linear-gradient(180deg, rgba(255, 252, 247, 0.98) 0%, rgba(255, 252, 247, 0.9) 70%, rgba(255, 252, 247, 0.08) 100%);
+    background: linear-gradient(180deg, rgba(255, 252, 247, 0.96) 0%, rgba(255, 252, 247, 0.89) 58%, rgba(255, 252, 247, 0.2) 85%, transparent 100%);
   }
 
   .mw-home-hero__photo {
@@ -6299,12 +6316,27 @@ a.mw-product-version-nav__option:focus-visible {
     padding: 1.5rem 0 1.75rem;
   }
 
+  .mw-home-hero__copy::before {
+    content: none;
+  }
+
+  .mw-home-hero__copy .mw-title {
+    font-size: clamp(2rem, 9vw, 2.2rem);
+    line-height: 1.05;
+  }
+
   .mw-home-hero__copy .mw-lead {
     line-height: 1.5;
   }
 
   .mw-home-hero__copy .mw-actions {
     margin-top: 1.25rem;
+  }
+
+  .mw-home-hero__copy .mw-button {
+    max-width: 100%;
+    white-space: normal;
+    text-align: center;
   }
 
   .mw-configurator-grid,
