@@ -302,9 +302,9 @@ export default async function HomePage() {
             <p className="mw-eyebrow">Especialistas en rejas para ventanas</p>
             <h1 className="mw-title">Rejas para ventanas a medida</h1>
             <p className="mw-lead">
-              Fabricamos rejas para ventanas a medida para que puedas elegir un modelo, configurar
-              medidas, acabado y anclaje, y comprar directamente online. Enviamos a España
-              peninsular; el servicio no incluye la instalación.
+              Fabricamos rejas para ventanas a medida, adaptadas a tu hogar. Elige el diseño que
+              más te guste, personaliza las medidas, el acabado y los anclajes, y compra fácilmente
+              online. Enviamos a toda España peninsular, listas para instalar.
             </p>
             <div className="mw-actions">
               <Link className="mw-button mw-button--primary" href="/rejas-para-ventanas">
@@ -322,6 +322,7 @@ export default async function HomePage() {
       </section>
 
       <PageContainer>
+        <p><small>La instalación no está incluida.</small></p>
         <div className="mw-home-hero__details">
           <ul className="mw-home-hero__points">
             <li>Modelos fabricados a medida para el hueco real de tu ventana.</li>
