@@ -846,7 +846,7 @@ textarea:focus-visible {
   align-items: center;
   min-height: clamp(480px, 42vw, 600px);
   overflow: hidden;
-  background: #1d2933;
+  background: #fffcf7;
   isolation: isolate;
 }
 
@@ -855,7 +855,7 @@ textarea:focus-visible {
   z-index: -1;
   inset: 0;
   content: "";
-  background: linear-gradient(90deg, rgba(12, 24, 35, 0.92) 0%, rgba(12, 24, 35, 0.84) 45%, rgba(12, 24, 35, 0.65) 60%, rgba(12, 24, 35, 0.08) 82%);
+  background: linear-gradient(90deg, rgba(255, 252, 247, 0.98) 0%, rgba(255, 252, 247, 0.94) 38%, rgba(255, 252, 247, 0.86) 56%, rgba(255, 252, 247, 0.18) 78%, transparent 90%);
 }
 
 .mw-home-hero__photo {
@@ -894,16 +894,27 @@ textarea:focus-visible {
 .mw-home-hero__copy {
   width: min(100%, 600px);
   padding: clamp(2.5rem, 5vw, 4rem) 0;
-  color: #fff;
+  color: var(--mw-text);
 }
 
 .mw-home-hero__copy .mw-eyebrow {
-  color: #ffbec7;
+  color: var(--mw-accent-dark);
 }
 
 .mw-home-hero__copy .mw-lead {
-  color: #fff;
+  margin-top: 1rem;
+  color: var(--mw-text);
   max-width: 52ch;
+  font-weight: 500;
+  line-height: 1.55;
+}
+
+.mw-home-hero__copy .mw-button--primary {
+  background: var(--mw-accent-dark);
+}
+
+.mw-home-hero__copy .mw-button--secondary {
+  color: var(--mw-accent-dark);
 }
 
 .mw-home-hero__details {
@@ -6090,7 +6101,7 @@ a.mw-product-version-nav__option:focus-visible {
   }
 
   .mw-home-hero::before {
-    background: linear-gradient(90deg, rgba(12, 24, 35, 0.92) 0%, rgba(12, 24, 35, 0.88) 70%, rgba(12, 24, 35, 0.2) 100%);
+    background: linear-gradient(90deg, rgba(255, 252, 247, 0.98) 0%, rgba(255, 252, 247, 0.9) 76%, rgba(255, 252, 247, 0.16) 100%);
   }
 
   .mw-home-hero__copy {
@@ -6272,20 +6283,28 @@ a.mw-product-version-nav__option:focus-visible {
 
   .mw-home-hero {
     align-items: flex-start;
-    min-height: clamp(620px, 150vw, 720px);
+    min-height: clamp(590px, 140vw, 680px);
   }
 
   .mw-home-hero::before {
-    background: linear-gradient(180deg, rgba(12, 24, 35, 0.94) 0%, rgba(12, 24, 35, 0.82) 58%, rgba(12, 24, 35, 0.12) 100%);
+    background: linear-gradient(180deg, rgba(255, 252, 247, 0.98) 0%, rgba(255, 252, 247, 0.9) 70%, rgba(255, 252, 247, 0.08) 100%);
   }
 
   .mw-home-hero__photo {
-    object-position: 52% center;
+    object-position: 50% center;
   }
 
   .mw-home-hero__copy {
     width: 100%;
-    padding: 1.75rem 0 2rem;
+    padding: 1.5rem 0 1.75rem;
+  }
+
+  .mw-home-hero__copy .mw-lead {
+    line-height: 1.5;
+  }
+
+  .mw-home-hero__copy .mw-actions {
+    margin-top: 1.25rem;
   }
 
   .mw-configurator-grid,
