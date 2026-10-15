@@ -289,14 +289,6 @@ export default async function HomePage() {
       <JsonLd data={buildFaqJsonLd()} />
 
       <section className="mw-home-hero">
-        <Image
-          className="mw-home-hero__photo"
-          src={HERO_PHOTO_URL}
-          alt="Reja para ventana instalada en una vivienda"
-          fill
-          priority
-          sizes="100vw"
-        />
         <PageContainer>
           <div className="mw-home-hero__copy">
             <p className="mw-eyebrow">Especialistas en rejas para ventanas</p>
@@ -319,6 +311,16 @@ export default async function HomePage() {
             </div>
           </div>
         </PageContainer>
+        <div className="mw-home-hero__media">
+          <Image
+            className="mw-home-hero__photo"
+            src={HERO_PHOTO_URL}
+            alt="Reja para ventana instalada en una vivienda"
+            fill
+            priority
+            sizes="100vw"
+          />
+        </div>
       </section>
 
       <PageContainer>

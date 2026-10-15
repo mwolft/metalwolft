@@ -862,8 +862,13 @@ textarea:focus-visible {
   min-width: 0;
 }
 
-.mw-home-hero__photo {
+.mw-home-hero__media {
+  position: absolute;
   z-index: -2;
+  inset: 0;
+}
+
+.mw-home-hero__photo {
   object-fit: cover;
   object-position: center;
 }
@@ -6299,16 +6304,21 @@ a.mw-product-version-nav__option:focus-visible {
   }
 
   .mw-home-hero {
-    align-items: flex-start;
-    min-height: clamp(590px, 140vw, 680px);
+    flex-direction: column;
+    align-items: stretch;
+    min-height: 0;
   }
 
   .mw-home-hero::before {
-    background: linear-gradient(180deg, rgba(255, 252, 247, 0.96) 0%, rgba(255, 252, 247, 0.89) 58%, rgba(255, 252, 247, 0.2) 85%, transparent 100%);
+    content: none;
   }
 
-  .mw-home-hero__photo {
-    object-position: 50% center;
+  .mw-home-hero__media {
+    position: relative;
+    z-index: auto;
+    inset: auto;
+    width: 100%;
+    aspect-ratio: 5 / 3;
   }
 
   .mw-home-hero__copy {
