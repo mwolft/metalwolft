@@ -1028,12 +1028,13 @@ textarea:focus-visible {
 
 .mw-home-product-card__media {
   position: relative;
-  aspect-ratio: 16 / 11;
+  aspect-ratio: 5 / 4;
   background: #f8f9fa;
 }
 
 .mw-home-product-card__media img {
-  object-fit: contain;
+  object-fit: cover;
+  object-position: center;
 }
 
 .mw-home-product-card__placeholder {
