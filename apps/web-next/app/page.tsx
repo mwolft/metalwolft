@@ -31,6 +31,8 @@ type HomeData = {
 
 const CATEGORY_SLUG = "rejas-para-ventanas";
 const HERO_IMAGE_PATH = "/images/home/rejas-para-ventanas.webp";
+const HERO_PHOTO_URL =
+  "https://res.cloudinary.com/dewanllxn/image/upload/v1792061621/rejas-para-ventanas-modernas.webp";
 const CATALOG_LOG_DEDUPLICATION_MS = 60_000;
 const lastCatalogLogAt: Partial<Record<"products" | "categories", number>> = {};
 const HOME_FEATURED_MODELS = [
@@ -281,20 +283,28 @@ export default async function HomePage() {
 
   return (
     <div className="mw-page mw-home-page">
-      <PageContainer>
-        <JsonLd data={buildOrganizationJsonLd()} />
-        <JsonLd data={buildWebPageJsonLd(description)} />
-        <JsonLd data={buildItemListJsonLd(data.featuredProducts)} />
-        <JsonLd data={buildFaqJsonLd()} />
+      <JsonLd data={buildOrganizationJsonLd()} />
+      <JsonLd data={buildWebPageJsonLd(description)} />
+      <JsonLd data={buildItemListJsonLd(data.featuredProducts)} />
+      <JsonLd data={buildFaqJsonLd()} />
 
-        <section className="mw-home-hero">
+      <section className="mw-home-hero">
+        <Image
+          className="mw-home-hero__photo"
+          src={HERO_PHOTO_URL}
+          alt="Reja para ventana instalada en una vivienda"
+          fill
+          priority
+          sizes="100vw"
+        />
+        <PageContainer>
           <div className="mw-home-hero__copy">
             <p className="mw-eyebrow">Especialistas en rejas para ventanas</p>
             <h1 className="mw-title">Rejas para ventanas a medida</h1>
             <p className="mw-lead">
-              Fabricamos rejas para ventanas a medida para que puedas elegir un modelo, configurar
-              medidas, acabado y anclaje, y comprar directamente online. Enviamos a España
-              peninsular; el servicio no incluye la instalación.
+              Fabricamos rejas para ventanas a medida, adaptadas a tu hogar. Elige el diseño que
+              más te guste, personaliza las medidas, el acabado y los anclajes, y compra fácilmente
+              online. Enviamos a toda España peninsular, listas para instalar.
             </p>
             <div className="mw-actions">
               <Link className="mw-button mw-button--primary" href="/rejas-para-ventanas">
@@ -307,38 +317,11 @@ export default async function HomePage() {
                 Cómo medir tu ventana
               </Link>
             </div>
-            <ul className="mw-home-hero__points">
-              <li>Modelos fabricados a medida para el hueco real de tu ventana.</li>
-              <li>Guías prácticas para medir y elegir el anclaje antes de comprar.</li>
-              <li>Atención directa por WhatsApp si necesitas ayuda antes de comprar.</li>
-            </ul>
           </div>
+        </PageContainer>
+      </section>
 
-          <div className="mw-home-hero__media">
-            <div className="mw-home-hero__image">
-              <Image
-                src={HERO_IMAGE_PATH}
-                alt="Reja para ventana fabricada a medida por MetalWolft"
-                width={1280}
-                height={960}
-                priority
-                sizes="(max-width: 1024px) 100vw, 42vw"
-                unoptimized={HERO_IMAGE_PATH.split(/[?#]/)[0].toLowerCase().endsWith(".avif")}
-              />
-            </div>
-            <div className="mw-home-hero__route">
-              <p className="mw-note">Compra más fácil</p>
-              <h2>Tu ruta más directa para acertar</h2>
-              <ol className="mw-steps">
-                <li>Elige el modelo que mejor encaja con tu ventana.</li>
-                <li>Mide alto y ancho con la guía paso a paso.</li>
-                <li>Configura medidas, anclaje y acabado.</li>
-                <li>Recibe la reja en España peninsular y organiza su instalación.</li>
-              </ol>
-            </div>
-          </div>
-        </section>
-
+      <PageContainer>
         <section className="mw-home-trust" aria-label="Puntos de confianza">
           <article className="mw-home-trust__item">
             <Image
@@ -424,36 +407,36 @@ export default async function HomePage() {
             <div className="mw-home-product-grid">
               {data.featuredProducts.map((product) => (
                 <article className="mw-home-product-card" key={product.id}>
-                  <div className="mw-home-product-card__media">
-                    {product.image ? (
-                      <Image
-                        src={product.image}
-                        alt={product.title}
-                        fill
-                        sizes="(max-width: 767px) 100vw, (max-width: 1120px) 50vw, 33vw"
-                        unoptimized={product.image.split(/[?#]/)[0].toLowerCase().endsWith(".avif")}
-                      />
-                    ) : (
-                      <div className="mw-home-product-card__placeholder" aria-hidden="true">
-                        <span>{product.badge}</span>
-                      </div>
-                    )}
-                  </div>
-                  <div className="mw-home-product-card__body">
-                    <span className="mw-home-product-card__badge">{product.badge}</span>
-                    <h3>{product.title}</h3>
-                    <p>{product.description}</p>
-                    <p className="mw-home-product-card__orientation">{product.orientation}</p>
-                    <div className="mw-actions">
-                      <Link
-                        aria-label={`Ver modelo ${product.title}`}
-                        className="mw-button mw-button--primary"
-                        href={product.href}
-                      >
-                        Ver modelo
-                      </Link>
+                  <Link
+                    aria-label={`Ver modelo ${product.title}`}
+                    className="mw-home-product-card__link"
+                    href={product.href}
+                  >
+                    <div className="mw-home-product-card__media">
+                      {product.image ? (
+                        <Image
+                          src={product.image}
+                          alt={product.title}
+                          fill
+                          sizes="(max-width: 767px) 100vw, (max-width: 1120px) 50vw, 33vw"
+                          unoptimized={product.image.split(/[?#]/)[0].toLowerCase().endsWith(".avif")}
+                        />
+                      ) : (
+                        <div className="mw-home-product-card__placeholder" aria-hidden="true">
+                          <span>{product.badge}</span>
+                        </div>
+                      )}
                     </div>
-                  </div>
+                    <div className="mw-home-product-card__body">
+                      <span className="mw-home-product-card__badge">{product.badge}</span>
+                      <h3>{product.title}</h3>
+                      <p>{product.description}</p>
+                      <p className="mw-home-product-card__orientation">{product.orientation}</p>
+                      <div className="mw-actions">
+                        <span className="mw-button mw-button--primary">Ver modelo</span>
+                      </div>
+                    </div>
+                  </Link>
                 </article>
               ))}
             </div>

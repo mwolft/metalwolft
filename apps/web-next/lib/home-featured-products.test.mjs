@@ -40,7 +40,11 @@ assert.match(
 assert.match(home, /HOME_FEATURED_MODELS\.flatMap/);
 assert.match(home, /products\.find\(\(candidate\) => candidate\.slug === editorial\.slug\)/);
 assert.match(home, /aria-label={`Ver modelo \$\{product\.title\}`}/);
-assert.match(home, />\s*Ver modelo\s*<\/Link>/);
+const cardStart = home.indexOf('<article className="mw-home-product-card"');
+const card = home.slice(cardStart, home.indexOf('</article>', cardStart));
+assert.match(card, /<Link\s+aria-label={`Ver modelo \$\{product\.title\}`}\s+className="mw-home-product-card__link"\s+href=\{product\.href\}\s*>/);
+assert.match(card, /<span className="mw-button mw-button--primary">Ver modelo<\/span>/);
+assert.equal((card.match(/<Link\b/g) || []).length, 1);
 assert.doesNotMatch(home, /Modelo a medida|Más vendido/);
 assert.doesNotMatch(home, /^"use client";/);
 assert.match(home, /function buildItemListJsonLd/);
@@ -49,11 +53,13 @@ assert.match(
   styles,
   /@media \(hover: hover\) and \(pointer: fine\)[\s\S]*?\.mw-home-product-card:hover,[\s\S]*?translateY\(-4px\)/
 );
-assert.match(styles, /\.mw-home-product-card:hover \.mw-home-product-card__media img,[\s\S]*?scale\(1\.02\)/);
-assert.match(
-  styles,
-  /@media \(prefers-reduced-motion: reduce\)[\s\S]*?\.mw-home-product-card__media img[\s\S]*?transition:\s*none/
-);
+assert.match(styles, /\.mw-home-product-card__media\s*{[^}]*aspect-ratio:\s*5\s*\/\s*4/s);
+assert.match(styles, /\.mw-home-product-card__media\s*{[^}]*background:\s*#f8f9fa/s);
+assert.match(styles, /\.mw-home-product-card__media img\s*{[^}]*object-fit:\s*cover;[^}]*object-position:\s*center/s);
+assert.doesNotMatch(styles, /\.mw-home-product-card:hover \.mw-home-product-card__media img/);
+assert.match(styles, /\.mw-home-product-card__link:focus-visible\s*{[^}]*outline:\s*3px solid var\(--mw-accent\)/s);
+assert.match(styles, /\.mw-home-product-card__body\s*{[^}]*padding:\s*1rem/s);
+assert.match(styles, /@media \(prefers-reduced-motion: reduce\)[\s\S]*?\.mw-home-product-card\s*{\s*transition:\s*none/s);
 assert.match(styles, /\.mw-home-product-card__body \.mw-actions\s*{[^}]*margin-top:\s*auto/s);
 
 console.log("Home featured products assertions passed");
