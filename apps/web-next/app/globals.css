@@ -906,8 +906,12 @@ textarea:focus-visible {
 }
 
 @media (min-width: 901px) {
+  .mw-home-hero {
+    min-height: clamp(448px, 42vw, 568px);
+  }
+
   .mw-home-hero__copy {
-    padding-block: clamp(1.5rem, 2.5vw, 2rem);
+    padding-block: 1rem;
   }
 }
 
