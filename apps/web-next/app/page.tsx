@@ -31,6 +31,8 @@ type HomeData = {
 
 const CATEGORY_SLUG = "rejas-para-ventanas";
 const HERO_IMAGE_PATH = "/images/home/rejas-para-ventanas.webp";
+const HERO_PHOTO_URL =
+  "https://res.cloudinary.com/dewanllxn/image/upload/v1792061621/rejas-para-ventanas-modernas.webp";
 const CATALOG_LOG_DEDUPLICATION_MS = 60_000;
 const lastCatalogLogAt: Partial<Record<"products" | "categories", number>> = {};
 const HOME_FEATURED_MODELS = [
@@ -288,6 +290,14 @@ export default async function HomePage() {
         <JsonLd data={buildFaqJsonLd()} />
 
         <section className="mw-home-hero">
+          <Image
+            className="mw-home-hero__photo"
+            src={HERO_PHOTO_URL}
+            alt="Reja para ventana instalada en una vivienda"
+            fill
+            priority
+            sizes="(max-width: 1199px) calc(100vw - 2rem), 1040px"
+          />
           <div className="mw-home-hero__copy">
             <p className="mw-eyebrow">Especialistas en rejas para ventanas</p>
             <h1 className="mw-title">Rejas para ventanas a medida</h1>
@@ -307,37 +317,26 @@ export default async function HomePage() {
                 Cómo medir tu ventana
               </Link>
             </div>
-            <ul className="mw-home-hero__points">
-              <li>Modelos fabricados a medida para el hueco real de tu ventana.</li>
-              <li>Guías prácticas para medir y elegir el anclaje antes de comprar.</li>
-              <li>Atención directa por WhatsApp si necesitas ayuda antes de comprar.</li>
-            </ul>
-          </div>
-
-          <div className="mw-home-hero__media">
-            <div className="mw-home-hero__image">
-              <Image
-                src={HERO_IMAGE_PATH}
-                alt="Reja para ventana fabricada a medida por MetalWolft"
-                width={1280}
-                height={960}
-                priority
-                sizes="(max-width: 1024px) 100vw, 42vw"
-                unoptimized={HERO_IMAGE_PATH.split(/[?#]/)[0].toLowerCase().endsWith(".avif")}
-              />
-            </div>
-            <div className="mw-home-hero__route">
-              <p className="mw-note">Compra más fácil</p>
-              <h2>Tu ruta más directa para acertar</h2>
-              <ol className="mw-steps">
-                <li>Elige el modelo que mejor encaja con tu ventana.</li>
-                <li>Mide alto y ancho con la guía paso a paso.</li>
-                <li>Configura medidas, anclaje y acabado.</li>
-                <li>Recibe la reja en España peninsular y organiza su instalación.</li>
-              </ol>
-            </div>
           </div>
         </section>
+
+        <div className="mw-home-hero__details">
+          <ul className="mw-home-hero__points">
+            <li>Modelos fabricados a medida para el hueco real de tu ventana.</li>
+            <li>Guías prácticas para medir y elegir el anclaje antes de comprar.</li>
+            <li>Atención directa por WhatsApp si necesitas ayuda antes de comprar.</li>
+          </ul>
+          <div className="mw-home-hero__route">
+            <p className="mw-note">Compra más fácil</p>
+            <h2>Tu ruta más directa para acertar</h2>
+            <ol className="mw-steps">
+              <li>Elige el modelo que mejor encaja con tu ventana.</li>
+              <li>Mide alto y ancho con la guía paso a paso.</li>
+              <li>Configura medidas, anclaje y acabado.</li>
+              <li>Recibe la reja en España peninsular y organiza su instalación.</li>
+            </ol>
+          </div>
+        </div>
 
         <section className="mw-home-trust" aria-label="Puntos de confianza">
           <article className="mw-home-trust__item">
