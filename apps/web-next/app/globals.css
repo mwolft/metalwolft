@@ -953,16 +953,35 @@ textarea:focus-visible {
 
 .mw-home-hero__points {
   margin: 0;
-  padding: 1.2rem 1.25rem 1.2rem 2.45rem;
+  padding: 1.2rem 1.25rem;
   border: 1px solid rgba(229, 231, 235, 0.92);
   border-radius: var(--mw-radius);
   background: rgba(255, 255, 255, 0.94);
   color: #4b5563;
-  line-height: 1.7;
+  line-height: 1.6;
+  list-style: none;
+}
+
+.mw-home-hero__points li {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.65rem;
+}
+
+.mw-home-hero__points svg {
+  width: 1rem;
+  height: 1rem;
+  flex: 0 0 auto;
+  margin-top: 0.3em;
+  color: var(--mw-accent-dark);
+}
+
+.mw-home-hero__points strong {
+  color: var(--mw-text);
 }
 
 .mw-home-hero__points li + li {
-  margin-top: 0.55rem;
+  margin-top: 0.7rem;
 }
 
 .mw-home-hero__route {

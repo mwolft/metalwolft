@@ -325,9 +325,24 @@ export default async function HomePage() {
         <p><small>La instalación no está incluida.</small></p>
         <div className="mw-home-hero__details">
           <ul className="mw-home-hero__points">
-            <li>Modelos fabricados a medida para el hueco real de tu ventana.</li>
-            <li>Guías prácticas para medir y elegir el anclaje antes de comprar.</li>
-            <li>Atención directa por WhatsApp si necesitas ayuda antes de comprar.</li>
+            <li>
+              <svg aria-hidden="true" viewBox="0 0 20 20" fill="none">
+                <path d="m4 10 4 4 8-8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+              <span><strong>Modelos fabricados a medida</strong> para el hueco real de tu ventana.</span>
+            </li>
+            <li>
+              <svg aria-hidden="true" viewBox="0 0 20 20" fill="none">
+                <path d="m4 10 4 4 8-8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+              <span><strong>Guías prácticas</strong> para medir y elegir el anclaje antes de comprar.</span>
+            </li>
+            <li>
+              <svg aria-hidden="true" viewBox="0 0 20 20" fill="none">
+                <path d="m4 10 4 4 8-8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+              <span><strong>Atención directa por WhatsApp</strong> si necesitas ayuda antes de comprar.</span>
+            </li>
           </ul>
           <div className="mw-home-hero__route">
             <p className="mw-note">Compra más fácil</p>
