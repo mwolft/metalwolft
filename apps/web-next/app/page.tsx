@@ -322,24 +322,26 @@ export default async function HomePage() {
       </section>
 
       <PageContainer>
-        <p><small>La instalación no está incluida.</small></p>
-        <div className="mw-home-hero__details">
+        <section className="mw-home-hero__details" aria-label="Ventajas para elegir tu reja">
           <ul className="mw-home-hero__points">
-            <li>Modelos fabricados a medida para el hueco real de tu ventana.</li>
-            <li>Guías prácticas para medir y elegir el anclaje antes de comprar.</li>
-            <li>Atención directa por WhatsApp si necesitas ayuda antes de comprar.</li>
+            <li>
+              <svg aria-hidden="true" viewBox="0 0 24 24" fill="none"><path d="M4 17 17 4l3 3L7 20H4v-3ZM11 10l3 3" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" /></svg>
+              <span><strong>Fabricación a medida</strong>adaptada al hueco real de tu ventana.</span>
+            </li>
+            <li>
+              <svg aria-hidden="true" viewBox="0 0 24 24" fill="none"><path d="M3 7h18M3 12h18M3 17h18M7 5v4m5 1v4m5 1v4" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" /></svg>
+              <span><strong>Ayuda para medir</strong>guías prácticas antes de comprar.</span>
+            </li>
+            <li>
+              <svg aria-hidden="true" viewBox="0 0 24 24" fill="none"><path d="M5 19l1-4a8 8 0 1 1 3 3l-4 1Z" stroke="currentColor" strokeWidth="1.7" strokeLinejoin="round" /></svg>
+              <span><strong>Asesoramiento directo</strong>resolvemos tus dudas por WhatsApp.</span>
+            </li>
           </ul>
-          <div className="mw-home-hero__route">
-            <p className="mw-note">Compra más fácil</p>
-            <h2>Tu ruta más directa para acertar</h2>
-            <ol className="mw-steps">
-              <li>Elige el modelo que mejor encaja con tu ventana.</li>
-              <li>Mide alto y ancho con la guía paso a paso.</li>
-              <li>Configura medidas, anclaje y acabado.</li>
-              <li>Recibe la reja en España peninsular y organiza su instalación.</li>
-            </ol>
-          </div>
-        </div>
+          <p className="mw-home-hero__installation-note">
+            <svg aria-hidden="true" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="1.7" /><path d="M12 11v5m0-8h.01" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" /></svg>
+            La instalación no está incluida.
+          </p>
+        </section>
 
         <section className="mw-home-trust" aria-label="Puntos de confianza">
           <article className="mw-home-trust__item">
