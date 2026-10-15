@@ -6304,7 +6304,7 @@ a.mw-product-version-nav__option:focus-visible {
   }
 
   .mw-home-hero::before {
-    background: linear-gradient(180deg, rgba(255, 252, 247, 0.96) 0%, rgba(255, 252, 247, 0.89) 58%, rgba(255, 252, 247, 0.2) 85%, transparent 100%);
+    background: linear-gradient(180deg, rgba(255, 252, 247, 0.78) 0%, rgba(255, 252, 247, 0.88) 18%, rgba(255, 252, 247, 0.94) 30%, rgba(255, 252, 247, 0.89) 58%, rgba(255, 252, 247, 0.2) 85%, transparent 100%);
   }
 
   .mw-home-hero__photo {
