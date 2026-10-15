@@ -905,6 +905,12 @@ textarea:focus-visible {
   overflow-wrap: break-word;
 }
 
+@media (min-width: 901px) {
+  .mw-home-hero__copy {
+    padding-block: clamp(1.5rem, 2.5vw, 2rem);
+  }
+}
+
 .mw-home-hero__copy::before {
   position: absolute;
   z-index: -1;
