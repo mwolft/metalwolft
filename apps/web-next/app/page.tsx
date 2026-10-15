@@ -322,7 +322,6 @@ export default async function HomePage() {
       </section>
 
       <PageContainer>
-        <p><small>La instalación no está incluida.</small></p>
         <div className="mw-home-hero__details">
           <ul className="mw-home-hero__points">
             <li>
