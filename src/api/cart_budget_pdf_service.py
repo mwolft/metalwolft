@@ -4,6 +4,8 @@ from datetime import datetime, timezone
 from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 from io import BytesIO
 from pathlib import Path
+import secrets
+import string
 from xml.sax.saxutils import escape
 
 from api.invoice_snapshot_builder import SUPPORTED_TAX_RATE, _tax_from_gross
@@ -17,7 +19,7 @@ BRAND_BORDER = "#e5e7eb"
 BRAND_SURFACE = "#f8f7f7"
 BRAND_ICON_PATH = Path(__file__).resolve().parents[2] / "apps" / "web-next" / "app" / "icon.png"
 MONEY = Decimal("0.01")
-BANK_TRANSFER_IBAN = "ES89 2100 4565 8701 0015 8358"
+BANK_TRANSFER_IBAN = "ES45 2100 6259 1402 0019 8226"
 
 
 class CartBudgetPdfError(ValueError):
@@ -43,6 +45,7 @@ def render_cart_budget_pdf(*, quote, issued_at=None):
     )
 
     normalized_quote = _validated_quote(quote)
+    reference = "".join(secrets.choice(string.ascii_uppercase + string.digits) for _ in range(4))
     generated_at = issued_at or datetime.now(timezone.utc)
     if generated_at.tzinfo is None:
         generated_at = generated_at.replace(tzinfo=timezone.utc)
@@ -61,7 +64,7 @@ def render_cart_budget_pdf(*, quote, issued_at=None):
     styles = _styles(colors, getSampleStyleSheet(), TA_RIGHT)
     available_width = A4[0] - document.leftMargin - document.rightMargin
     story = [
-        _header(available_width, generated_at, styles, Image, Paragraph, Table, TableStyle, cm),
+        _header(available_width, generated_at, reference, styles, Image, Paragraph, Table, TableStyle, cm),
         HRFlowable(width="100%", thickness=1.1, color=colors.HexColor(BRAND_RED), spaceBefore=8, spaceAfter=14),
         Paragraph("Configuración presupuestada", styles["section"]),
         _line_table(normalized_quote["lines"], styles, Table, TableStyle, Paragraph, colors, available_width),
@@ -126,7 +129,7 @@ def _validated_quote(quote):
     return result
 
 
-def _header(available_width, generated_at, styles, Image, Paragraph, Table, TableStyle, cm):
+def _header(available_width, generated_at, reference, styles, Image, Paragraph, Table, TableStyle, cm):
     brand_copy = Paragraph(
         f"<font size='15'><b>METAL</b></font><font size='15' color='{BRAND_RED}'><b>WOLFT</b></font>"
         "<br/><font size='8' color='#6b7280'>Rejas para ventanas a medida</font>",
@@ -144,6 +147,7 @@ def _header(available_width, generated_at, styles, Image, Paragraph, Table, Tabl
 
     details = Paragraph(
         "<font size='12'><b>PRESUPUESTO</b></font><br/>"
+        f"<font size='8'>Ref. {reference}</font><br/>"
         f"<font size='7' color='{BRAND_MUTED}'>FECHA DE EMISIÓN</font><br/>"
         f"{generated_at.astimezone(timezone.utc).strftime('%d/%m/%Y')}",
         styles["body"],

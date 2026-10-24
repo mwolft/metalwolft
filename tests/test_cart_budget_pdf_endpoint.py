@@ -5,6 +5,7 @@ from datetime import datetime, timezone
 from decimal import Decimal
 from io import BytesIO
 from pathlib import Path
+from unittest.mock import patch
 
 
 ROOT_DIR = Path(__file__).resolve().parents[1]
@@ -131,16 +132,18 @@ class CartBudgetPdfEndpointTest(unittest.TestCase):
                 "accounting": AccountingEntry.query.count(),
             }
 
-        response = self.client.post(
-            "/api/cart/budget/pdf",
-            json={
-                "lines": [{"unit_price": 999999}],
-                "subtotal": 999999,
-                "shipping_cost": 999999,
-                "total_amount": 999999,
-            },
-            headers=self.auth(),
-        )
+        with patch("api.cart_budget_pdf_service.secrets.choice", side_effect="K7M2") as choice:
+            response = self.client.post(
+                "/api/cart/budget/pdf",
+                json={
+                    "lines": [{"unit_price": 999999}],
+                    "subtotal": 999999,
+                    "shipping_cost": 999999,
+                    "total_amount": 999999,
+                },
+                headers=self.auth(),
+            )
+        self.assertEqual(choice.call_count, 4)
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.mimetype, "application/pdf")
@@ -149,6 +152,9 @@ class CartBudgetPdfEndpointTest(unittest.TestCase):
         self.assertEqual(response.headers["Cache-Control"], "no-store")
         text = self.budget_pdf_text(response)
         self.assertIn("PRESUPUESTO", text)
+        self.assertIn("Ref. K7M2", text)
+        self.assertLess(text.index("PRESUPUESTO"), text.index("Ref. K7M2"))
+        self.assertLess(text.index("Ref. K7M2"), text.index("FECHA DE EMISIÓN"))
         self.assertIn("Reja presupuestada", text)
         self.assertIn("Alto: 100 cm", text)
         self.assertIn("Anclaje: Sin obra: con agujeros interiores", text)
@@ -160,7 +166,7 @@ class CartBudgetPdfEndpointTest(unittest.TestCase):
         self.assertIn("IVA 21 %", text)
         self.assertIn("21,00 €", text)
         self.assertIn("¿Prefieres pagar por transferencia bancaria?", text)
-        self.assertIn("ES89 2100 4565 8701 0015 8358", text)
+        self.assertIn("ES45 2100 6259 1402 0019 8226", text)
         self.assertIn("no crea un pedido", text)
         self.assertIn("Documento informativo.", text)
         self.assertNotIn("999.999", text)
@@ -211,7 +217,7 @@ class CartBudgetPdfEndpointTest(unittest.TestCase):
         self.assertIn("IVA 21 %", text)
         self.assertIn("52,07 €", text)
         self.assertIn("¿Prefieres pagar por transferencia bancaria?", text)
-        self.assertIn("ES89 2100 4565 8701 0015 8358", text)
+        self.assertIn("ES45 2100 6259 1402 0019 8226", text)
         self.assertNotIn("FACTURA", text)
 
     def test_uses_a_valid_coupon_from_the_authoritative_quote(self):
