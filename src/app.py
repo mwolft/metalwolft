@@ -29,7 +29,7 @@ from api.invoice_preview import api_invoice_preview
 from api.budget_routes import budget_bp
 from api.security_routes import security_bp
 from api.product_lifecycle import resolve_publicly_accessible_product_by_slugs
-from legacy_public_routes import REDIRECT_MAP, GONE_PATHS
+from legacy_public_routes import REDIRECT_MAP, GONE_PATHS, NEXT_STOREFRONT_REDIRECTS
 
 
 # 1) Entorno y paths
@@ -43,55 +43,12 @@ LOCAL_SQLITE_DATABASE_URI = "sqlite:////tmp/test.db"
 PRODUCTION_APP_ENV = "production"
 VALID_APP_ENVIRONMENTS = {PRODUCTION_APP_ENV, "development", "test"}
 NON_PRODUCT_PATH_PREFIXES = {"admin", "api", "mi-cuenta", "static"}
-# Exact, non-dynamic routes currently owned by the legacy React Router.
-LEGACY_SPA_STATIC_PATHS = frozenset(
-    {
-        "/",
-        "/aside-categories",
-        "/aside-otherscategories",
-        "/aside-post",
-        "/body-home-main",
-        "/body-home-quarter",
-        "/body-home-secondary",
-        "/body-home-tertiary",
-        "/blogs",
-        "/breadcrumb",
-        "/cambios-politica-cookies",
-        "/cards-carrusel",
-        "/carrusel",
-        "/cart",
-        "/checkout-form",
-        "/contact",
-        "/cookies-esenciales",
-        "/delivery-estimate",
-        "/delivery-estimate-banner",
-        "/donde-comprar-rejas-leroy-ikea",
-        "/favoritos",
-        "/formulario-incidencias",
-        "/informacion-recogida",
-        "/instalation-rejas-para-ventanas",
-        "/license",
-        "/login",
-        "/medir-hueco-rejas-para-ventanas",
-        "/mi-cuenta",
-        "/notification",
-        "/pay-pal-button",
-        "/plazos-entrega-rejas-a-medida",
-        "/politica-cookies",
-        "/politica-devolucion",
-        "/politica-privacidad",
-        "/product",
-        "/profile",
-        "/recepcion-pedidos-revisar-antes-firmar",
-        "/rejas-para-ventanas",
-        "/rejas-para-ventanas-modernas",
-        "/rejas-para-ventanas-sin-obra",
-        "/reset-password",
-        "/seasonal-banner",
-        "/sidebar",
-        "/thank-you",
-    }
-)
+STOREFRONT_URL = "https://www.metalwolft.com"
+# Keep the legacy shell where crossing origins could discard account, cart or payment state.
+LEGACY_SPA_RETAINED_PATHS = frozenset({
+    "/cart", "/checkout-form", "/login", "/mi-cuenta", "/profile",
+    "/thank-you",
+})
 
 
 def parse_boolean_env(name, *, default=False):
@@ -336,10 +293,32 @@ app.register_blueprint(seo_bp)
 @app.before_request
 def handle_legacy_public_urls():
     if request.path in REDIRECT_MAP:
-        return redirect(REDIRECT_MAP[request.path], code=301)
+        destination = REDIRECT_MAP[request.path]
+        if request.method in {"GET", "HEAD"}:
+            return redirect_to_storefront(destination)
+        return redirect(destination, code=301)
 
     if request.path in GONE_PATHS:
         return "Pagina obsoleta", 410
+
+    if request.method in {"GET", "HEAD"} and request.endpoint == "serve_spa":
+        normalized_path = _normalized_public_path(request.path)
+        if normalized_path == "/reset-password":
+            response = redirect_to_storefront("/reset-password", code=302)
+            response.headers["Cache-Control"] = "no-store"
+            return response
+
+        destination = NEXT_STOREFRONT_REDIRECTS.get(normalized_path)
+        if destination is not None:
+            return redirect_to_storefront(destination)
+
+
+def redirect_to_storefront(path, *, code=301):
+    query = request.query_string.decode("latin-1")
+    destination = f"{STOREFRONT_URL}{path}"
+    if query:
+        destination = f"{destination}?{query}"
+    return redirect(destination, code=code)
 
 
 def _public_product_path_segments(path):
@@ -424,7 +403,7 @@ def classify_legacy_spa_route():
 
     normalized_path = _normalized_public_path(request.path)
     if (
-        normalized_path in LEGACY_SPA_STATIC_PATHS
+        normalized_path in LEGACY_SPA_RETAINED_PATHS
         or _legacy_spa_asset_exists(request.path)
     ):
         return None

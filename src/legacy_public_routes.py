@@ -26,3 +26,28 @@ GONE_PATHS = frozenset(
         "/faq",
     }
 )
+
+
+# Only routes with an equivalent page in the current Next.js storefront.
+# Account, cart, checkout and recovery routes retain the old origin for now.
+NEXT_STOREFRONT_REDIRECTS = {
+    "/": "/",
+    "/blogs": "/blogs",
+    "/contact": "/contact",
+    "/cambios-politica-cookies": "/cambios-politica-cookies",
+    "/cookies-esenciales": "/politica-cookies",
+    "/donde-comprar-rejas-leroy-ikea": "/donde-comprar-rejas-leroy-ikea",
+    "/formulario-incidencias": "/formulario-incidencias",
+    "/informacion-recogida": "/politica-privacidad",
+    "/instalation-rejas-para-ventanas": "/instalation-rejas-para-ventanas",
+    "/license": "/license",
+    "/medir-hueco-rejas-para-ventanas": "/medir-hueco-rejas-para-ventanas",
+    "/plazos-entrega-rejas-a-medida": "/plazos-entrega-rejas-a-medida",
+    "/politica-cookies": "/politica-cookies",
+    "/politica-devolucion": "/politica-devolucion",
+    "/politica-privacidad": "/politica-privacidad",
+    "/recepcion-pedidos-revisar-antes-firmar": "/recepcion-pedidos-revisar-antes-firmar",
+    "/rejas-para-ventanas": "/rejas-para-ventanas",
+    "/rejas-para-ventanas-modernas": "/rejas-para-ventanas-modernas",
+    "/rejas-para-ventanas-sin-obra": "/rejas-para-ventanas-sin-obra",
+}

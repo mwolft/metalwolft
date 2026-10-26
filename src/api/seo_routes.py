@@ -1199,7 +1199,7 @@ def seo_informacion_recogida():
         "sobre tus datos personales según la normativa de privacidad."
     )
     image = "https://res.cloudinary.com/dewanllxn/image/upload/v1733817377/herrero-ciudad-real_ndf77e.jpg"
-    url = "https://www.metalwolft.com/informacion-recogida"
+    url = "https://www.metalwolft.com/politica-privacidad"
 
     meta_data = {
         "lang": "es",

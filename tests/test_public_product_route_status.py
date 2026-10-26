@@ -1,6 +1,5 @@
 import importlib
 import importlib.util
-import re
 import sys
 import unittest
 from pathlib import Path
@@ -74,6 +73,39 @@ class PublicProductRouteStatusTest(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.get_data(as_text=True), "legacy shell")
         send_shell.assert_called_once()
+
+    def test_public_catalog_product_keeps_legacy_shell_after_resolution(self):
+        category = SimpleNamespace(id=10, slug="rejas-para-ventanas")
+        with patch.object(
+            APP_MODULE,
+            "resolve_publicly_accessible_product_by_slugs",
+            return_value=(category, self.product),
+        ) as resolve_product, patch.object(
+            APP_MODULE,
+            "send_from_directory",
+            side_effect=self._shell_response,
+        ) as send_shell:
+            response = self.client.get("/rejas-para-ventanas/reja-disponible?alto=120")
+            head_response = self.client.head("/rejas-para-ventanas/reja-disponible")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(head_response.status_code, 200)
+        self.assertNotIn("Location", response.headers)
+        self.assertNotIn("Location", head_response.headers)
+        self.assertEqual(resolve_product.call_count, 2)
+        self.assertEqual(send_shell.call_count, 2)
+
+    def test_missing_public_catalog_product_does_not_redirect(self):
+        category = SimpleNamespace(id=10, slug="rejas-para-ventanas")
+        with patch.object(
+            APP_MODULE,
+            "resolve_publicly_accessible_product_by_slugs",
+            return_value=(category, None),
+        ):
+            response = self.client.get("/rejas-para-ventanas/no-existe")
+
+        self.assertEqual(response.status_code, 404)
+        self.assertNotIn("Location", response.headers)
 
     def test_valid_product_reaches_prerender_for_googlebot(self):
         prerender_response = SimpleNamespace(
@@ -233,14 +265,14 @@ class PublicProductRouteStatusTest(unittest.TestCase):
         self.assertIn("content-type", allowed_headers)
         self.assertIn("idempotency-key", allowed_headers)
 
-    def test_static_public_private_transactional_and_category_routes_reach_shell(self):
-        paths = (
-            "/",
-            "/contact",
-            "/mi-cuenta",
-            "/checkout-form",
-            "/rejas-para-ventanas",
-        )
+    def test_confirmed_static_routes_redirect_and_transactional_routes_keep_shell(self):
+        redirects = {
+            "/": "/",
+            "/contact": "/contact",
+            "/rejas-para-ventanas": "/rejas-para-ventanas",
+            "/cookies-esenciales": "/politica-cookies",
+            "/informacion-recogida": "/politica-privacidad",
+        }
         with patch.object(
             APP_MODULE,
             "resolve_publicly_accessible_product_by_slugs",
@@ -250,42 +282,38 @@ class PublicProductRouteStatusTest(unittest.TestCase):
             "send_from_directory",
             side_effect=self._shell_response,
         ) as send_shell:
-            responses = [self.client.get(path) for path in paths]
+            responses = {path: self.client.get(path) for path in redirects}
+            retained = [self.client.get(path) for path in APP_MODULE.LEGACY_SPA_RETAINED_PATHS]
 
-        self.assertTrue(all(response.status_code == 200 for response in responses))
+        for path, destination in redirects.items():
+            self.assertEqual(responses[path].status_code, 301)
+            self.assertEqual(
+                responses[path].headers["Location"],
+                f"https://www.metalwolft.com{destination}",
+            )
+        self.assertTrue(all(response.status_code == 200 for response in retained))
         resolve_product.assert_not_called()
-        self.assertEqual(send_shell.call_count, len(paths))
+        self.assertEqual(send_shell.call_count, len(retained))
 
-    def test_legacy_static_allowlist_excludes_retired_catalog_categories(self):
-        layout_source = (SRC_DIR / "front" / "js" / "Layout.jsx").read_text(
-            encoding="utf-8"
-        )
-        declared_static_paths = set(
-            re.findall(r'<Route path="(/[^":*]*)"', layout_source)
-        )
-
-        retired_categories = {
-            "/vallados-metalicos-exteriores",
-            "/puertas-peatonales-metalicas",
-            "/puertas-correderas-interiores",
-            "/puertas-correderas-exteriores",
-            "/cerramientos-de-cocina-con-cristal",
-        }
+    def test_legacy_shell_is_retained_for_account_cart_and_transactional_paths(self):
         self.assertEqual(
-            declared_static_paths - retired_categories,
-            set(APP_MODULE.LEGACY_SPA_STATIC_PATHS),
+            APP_MODULE.LEGACY_SPA_RETAINED_PATHS,
+            {
+                "/cart", "/checkout-form", "/login", "/mi-cuenta",
+                "/profile", "/thank-you",
+            },
         )
 
-    def test_static_route_reaches_prerender_for_googlebot(self):
-        prerender_response = SimpleNamespace(
-            content=b"prerendered static route",
-            status_code=200,
-            headers={},
-        )
+    def test_static_redirect_destinations_exist_in_next(self):
+        next_app = ROOT_DIR / "apps" / "web-next" / "app"
+        for destination in APP_MODULE.NEXT_STOREFRONT_REDIRECTS.values():
+            with self.subTest(destination=destination):
+                self.assertTrue((next_app / destination.strip("/") / "page.tsx").is_file())
+
+    def test_redirected_static_route_does_not_reach_prerender_for_googlebot(self):
         with patch.object(
             APP_MODULE.session,
             "get",
-            return_value=prerender_response,
         ) as prerender_get, patch.object(
             APP_MODULE,
             "send_from_directory",
@@ -295,12 +323,12 @@ class PublicProductRouteStatusTest(unittest.TestCase):
                 headers={"User-Agent": "Googlebot"},
             )
 
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.get_data(), b"prerendered static route")
-        prerender_get.assert_called_once()
+        self.assertEqual(response.status_code, 301)
+        self.assertEqual(response.headers["Location"], "https://www.metalwolft.com/contact")
+        prerender_get.assert_not_called()
         send_shell.assert_not_called()
 
-    def test_static_route_with_query_and_trailing_slash_remains_valid(self):
+    def test_static_route_with_query_and_trailing_slash_redirects(self):
         with patch.object(
             APP_MODULE,
             "resolve_publicly_accessible_product_by_slugs",
@@ -311,8 +339,86 @@ class PublicProductRouteStatusTest(unittest.TestCase):
         ):
             response = self.client.get("/contact/?utm_source=test")
 
-        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.status_code, 301)
+        self.assertEqual(
+            response.headers["Location"],
+            "https://www.metalwolft.com/contact?utm_source=test",
+        )
         resolve_product.assert_not_called()
+
+    def test_account_cart_and_recovery_queries_stay_on_legacy_origin(self):
+        paths = (
+            "/login?next=%2Fcheckout",
+            "/cart?step=payment",
+            "/mi-cuenta",
+            "/profile",
+            "/checkout-form",
+            "/thank-you?checkout_token=opaque",
+        )
+        with patch.object(
+            APP_MODULE,
+            "send_from_directory",
+            side_effect=self._shell_response,
+        ) as send_shell:
+            for path in paths:
+                with self.subTest(path=path):
+                    response = self.client.get(path)
+                    self.assertEqual(response.status_code, 200)
+                    self.assertNotIn("Location", response.headers)
+        self.assertEqual(send_shell.call_count, len(paths))
+
+    def test_reset_password_redirect_preserves_all_parameters_without_caching(self):
+        path = "/reset-password?token=opaque%2Bvalue&source=email&next=%2Flogin"
+        with patch.object(APP_MODULE, "send_from_directory") as send_shell:
+            for method in ("get", "head"):
+                with self.subTest(method=method):
+                    response = getattr(self.client, method)(path)
+                    self.assertEqual(response.status_code, 302)
+                    self.assertEqual(
+                        response.headers["Location"],
+                        "https://www.metalwolft.com/reset-password"
+                        "?token=opaque%2Bvalue&source=email&next=%2Flogin",
+                    )
+                    self.assertEqual(response.headers["Cache-Control"], "no-store")
+            self.assertNotEqual(self.client.post(path).status_code, 302)
+        send_shell.assert_not_called()
+
+    def test_carrito_has_no_legacy_route_or_forced_redirect(self):
+        response = self.client.get("/carrito")
+        self.assertEqual(response.status_code, 404)
+        self.assertNotIn("Location", response.headers)
+
+    def test_retired_auxiliary_routes_return_404_and_non_get_is_not_redirected(self):
+        with patch.object(APP_MODULE, "send_from_directory") as send_shell:
+            for path in ("/favoritos", "/carrusel", "/product", "/pay-pal-button"):
+                with self.subTest(path=path):
+                    response = self.client.get(path)
+                    self.assertEqual(response.status_code, 404)
+            for path in ("/cart", "/contact", "/rejas-para-ventanas/reja-fija-albany"):
+                with self.subTest(path=path):
+                    self.assertNotEqual(self.client.post(path).status_code, 301)
+            self.assertNotEqual(self.client.get("/admin/not-a-real-endpoint").status_code, 301)
+        send_shell.assert_not_called()
+
+    def test_api_webhooks_and_admin_assets_remain_outside_spa_routing(self):
+        rules = {rule.rule: rule for rule in APP_MODULE.app.url_map.iter_rules()}
+        self.assertIn("POST", rules["/api/webhook"].methods)
+        self.assertIn("POST", rules["/api/paypal/webhook"].methods)
+        self.assertNotEqual(rules["/api/webhook"].endpoint, "serve_spa")
+        self.assertNotEqual(rules["/api/paypal/webhook"].endpoint, "serve_spa")
+
+        response = self.client.get("/static/admin/order_sent_email_options.js")
+        self.assertEqual(response.status_code, 200)
+        self.assertNotIn("Location", response.headers)
+        response.close()
+
+    def test_legacy_information_metadata_points_to_current_privacy_page(self):
+        response = self.client.get("/api/seo/informacion-recogida")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            response.get_json()["canonical"],
+            "https://www.metalwolft.com/politica-privacidad",
+        )
 
     def test_unknown_routes_return_404_before_prerender_and_shell(self):
         paths = (
@@ -461,8 +567,12 @@ class PublicProductRouteStatusTest(unittest.TestCase):
                     self.assertEqual(response.status_code, 301)
                     self.assertEqual(
                         response.headers["Location"],
-                        f"/rejas-para-ventanas/{new_slug}",
+                        f"https://www.metalwolft.com/rejas-para-ventanas/{new_slug}",
                     )
+
+            old_home = self.client.head("/index.php")
+            self.assertEqual(old_home.status_code, 301)
+            self.assertEqual(old_home.headers["Location"], "https://www.metalwolft.com/")
 
             delhi = self.client.get("/rejas/rejas-para-ventanas-delhi")
             self.assertEqual(delhi.status_code, 404)
