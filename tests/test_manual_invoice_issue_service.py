@@ -473,6 +473,64 @@ class ManualInvoiceDraftAdminViewTest(unittest.TestCase):
         self.assertNotIn("onclick", script.lower())
         self.assertNotIn("javascript:", script.lower())
 
+    def test_linked_corrective_preview_uses_modern_original_without_issuing(self):
+        from api.models import Invoices
+
+        with self.app.app_context():
+            original = Invoices(
+                invoice_number="F2026000008", invoice_type="ordinary", amount=305.80,
+                client_name="Cliente", client_address="Calle 1", order_details=[],
+                issued_at=datetime(2026, 8, 1), invoice_snapshot={"schema_version": 2},
+                invoice_snapshot_schema_version=2,
+            )
+            self.db.session.add(original)
+            self.db.session.flush()
+            original_id = original.id
+            target = self.db.session.get(self.ManualInvoiceDraft, self.draft_id)
+            target.document_nature = "corrective"
+            target.original_invoice_id = original_id
+            target.rectification_reason = "price_error"
+            target.rectification_aeat_type = "R1"
+            target.lines[0].tax_base = Decimal("-24.79")
+            self.db.session.commit()
+
+        with patch.object(self.admin_module, "build_invoice_issuer_from_config", return_value=issuer()):
+            response = self.client.get(self._route(".confirm_issue", draft_id=self.draft_id), headers=self.auth)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(b"F2026000008", response.data)
+        self.assertIn(b"-30.00", response.data)
+        with self.app.app_context():
+            self.assertEqual(self.db.session.query(Invoices).count(), 1)
+            self.assertEqual(self.db.session.get(Invoices, original_id).invoice_snapshot, {"schema_version": 2})
+            self.assertIsNone(self.db.session.get(self.ManualInvoiceDraft, self.draft_id).issued_invoice_id)
+
+    def test_linked_corrective_preview_rejects_missing_original(self):
+        with self.app.app_context():
+            target = self.db.session.get(self.ManualInvoiceDraft, self.draft_id)
+            target.document_nature = "corrective"
+            target.original_invoice_id = 99999
+            target.rectification_reason = "price_error"
+            target.rectification_aeat_type = "R1"
+            target.lines[0].tax_base = Decimal("-24.79")
+            self.db.session.commit()
+
+        with patch.object(self.admin_module, "build_invoice_issuer_from_config", return_value=issuer()):
+            response = self.client.get(self._route(".confirm_issue", draft_id=self.draft_id), headers=self.auth)
+
+        self.assertEqual(response.status_code, 302)
+        with self.app.app_context():
+            self.assertIsNone(self.db.session.get(self.ManualInvoiceDraft, self.draft_id).issued_invoice_id)
+
+    def test_ordinary_preview_needs_no_original(self):
+        with patch.object(self.admin_module, "build_invoice_issuer_from_config", return_value=issuer()):
+            response = self.client.get(self._route(".confirm_issue", draft_id=self.draft_id), headers=self.auth)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(b"121.00", response.data)
+        with self.app.app_context():
+            self.assertIsNone(self.db.session.get(self.ManualInvoiceDraft, self.draft_id).issued_invoice_id)
+
     def test_issued_and_cancelled_drafts_cannot_be_edited(self):
         with self.app.app_context():
             draft = self.db.session.get(self.ManualInvoiceDraft, self.draft_id)

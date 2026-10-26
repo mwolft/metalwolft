@@ -4407,11 +4407,16 @@ class ManualInvoiceDraftAdminView(SafeModelView):
 
         if request.method == "GET":
             try:
+                original_invoice = (
+                    self.session.get(Invoices, draft.original_invoice_id)
+                    if draft.original_invoice_id is not None else None
+                )
                 preview = build_manual_invoice_snapshot(
                     draft,
                     build_invoice_issuer_from_config(),
                     issue_date=draft.issue_date,
                     actor=invoice_admin_actor_from_basic_auth(request.authorization),
+                    original_invoice=original_invoice,
                 )
             except Exception as exc:
                 flash(f"El borrador no está listo para emitir: {exc}", "error")
