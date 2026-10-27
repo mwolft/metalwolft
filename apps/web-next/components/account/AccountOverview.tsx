@@ -335,6 +335,15 @@ export function AccountOverview() {
                 maxLength={100}
                 onChange={handleFieldChange}
               />
+              <ProfileField
+                autoComplete="off"
+                draft={draft}
+                errors={errors}
+                field="CIF"
+                label="CIF / NIF"
+                maxLength={20}
+                onChange={handleFieldChange}
+              />
             </div>
           </fieldset>
 
@@ -417,6 +426,10 @@ export function AccountOverview() {
                   profile.billing_city
                 )}
               </dd>
+            </div>
+            <div>
+              <dt>CIF / NIF</dt>
+              <dd>{displayValue(profile.CIF)}</dd>
             </div>
             <div>
               <dt>Dirección de entrega</dt>

@@ -29,6 +29,7 @@ const user = {
   billing_address: "Calle Fiscal 1",
   billing_city: "Ciudad Real",
   billing_postal_code: "13001",
+  CIF: "B12345678",
   shipping_address: null,
   shipping_city: null,
   shipping_postal_code: null
@@ -37,6 +38,7 @@ const user = {
 const initialDraft = profileHelpers.buildCustomerProfileDraft(user);
 assert.equal(initialDraft.phone, "600123123");
 assert.equal(initialDraft.email, "ana@example.com");
+assert.equal(initialDraft.CIF, "B12345678");
 
 const typingDraft = profileHelpers.updateCustomerProfileDraftField(
   initialDraft,
@@ -48,7 +50,25 @@ assert.equal(typingDraft.firstname, "  Ana María  ");
 const outgoingUpdate = profileHelpers.buildCustomerProfileUpdate(typingDraft);
 assert.equal(outgoingUpdate.firstname, "Ana María");
 assert.equal(outgoingUpdate.phone, "600123123");
+assert.equal(outgoingUpdate.CIF, "B12345678");
+assert.equal(outgoingUpdate.billing_address, user.billing_address);
 assert.equal(Object.hasOwn(outgoingUpdate, "email"), false);
+
+const editedTaxId = profileHelpers.updateCustomerProfileDraftField(
+  initialDraft,
+  "CIF",
+  "  b87654321  "
+);
+assert.equal(profileHelpers.buildCustomerProfileUpdate(editedTaxId).CIF, "b87654321");
+assert.equal(profileHelpers.buildCustomerProfileUpdate(editedTaxId).phone, user.phone);
+assert.equal(profileHelpers.buildCustomerProfileUpdate({ ...initialDraft, CIF: "  " }).CIF, "");
+assert.equal(profileHelpers.buildCustomerProfileDraft({ ...user, CIF: null }).CIF, "");
+const invalidTaxId = profileHelpers.validateCustomerProfileDraft({
+  ...initialDraft,
+  CIF: "X".repeat(21)
+});
+assert.equal(invalidTaxId.isValid, false);
+assert.match(invalidTaxId.errors.CIF, /20 caracteres/);
 
 const invalidPhone = profileHelpers.validateCustomerProfileDraft({
   ...initialDraft,
@@ -66,6 +86,8 @@ assert.match(overviewSource, />\s*Cancelar\s*</);
 assert.match(overviewSource, /readOnly type="email"/);
 assert.match(overviewSource, /updateCustomerProfile\(/);
 assert.match(overviewSource, /saveSession\(token, updatedProfile\)/);
+assert.match(overviewSource, /field="CIF"/);
+assert.match(overviewSource, /displayValue\(profile\.CIF\)/);
 assert.match(overviewSource, /setDraft\(buildCustomerProfileDraft\(profile\)\)/);
 assert.doesNotMatch(overviewSource, /onChange=.*trim\(/);
 

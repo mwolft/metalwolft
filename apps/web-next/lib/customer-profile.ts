@@ -8,6 +8,7 @@ export type CustomerProfileDraft = {
   billing_address: string;
   billing_city: string;
   billing_postal_code: string;
+  CIF: string;
   shipping_address: string;
   shipping_city: string;
   shipping_postal_code: string;
@@ -24,6 +25,7 @@ const PROFILE_FIELD_LIMITS: Record<CustomerProfileEditableField, number> = {
   billing_address: 200,
   billing_city: 100,
   billing_postal_code: 20,
+  CIF: 20,
   shipping_address: 200,
   shipping_city: 100,
   shipping_postal_code: 20
@@ -42,6 +44,7 @@ export function buildCustomerProfileDraft(user: AuthUser): CustomerProfileDraft 
     billing_address: valueOrEmpty(user.billing_address),
     billing_city: valueOrEmpty(user.billing_city),
     billing_postal_code: valueOrEmpty(user.billing_postal_code),
+    CIF: valueOrEmpty(user.CIF),
     shipping_address: valueOrEmpty(user.shipping_address),
     shipping_city: valueOrEmpty(user.shipping_city),
     shipping_postal_code: valueOrEmpty(user.shipping_postal_code)
@@ -86,6 +89,7 @@ export function buildCustomerProfileUpdate(
     billing_address: draft.billing_address.trim(),
     billing_city: draft.billing_city.trim(),
     billing_postal_code: draft.billing_postal_code.trim(),
+    CIF: draft.CIF.trim(),
     shipping_address: draft.shipping_address.trim(),
     shipping_city: draft.shipping_city.trim(),
     shipping_postal_code: draft.shipping_postal_code.trim()
