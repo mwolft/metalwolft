@@ -9,6 +9,7 @@ def create_user_access_token(user, *, expires_delta=None) -> str:
     additional_claims = {
         "email": user.email,
         "is_admin": bool(user.is_admin),
+        "credential_version": user.credential_version,
     }
 
     return create_access_token(

@@ -96,6 +96,13 @@ from api.customer_profile import (
     normalize_customer_profile_update,
     serialize_customer_profile,
 )
+from api.credential_security import (
+    CredentialRateLimitUnavailable,
+    release_successful_attempt,
+    replace_password_if_version,
+    reserve_password_attempt,
+    valid_new_password,
+)
 from api.payment_amounts import PaymentAmountValidationError, validate_payment_amount
 from api.confirmed_order_context_service import build_web_checkout_confirmation_input
 from api.order_creation_service import (
@@ -6301,25 +6308,16 @@ def update_me():
             "field": "profile",
         }), 400
 
+    if "password" in data:
+        return jsonify({
+            "message": "Cambia la contraseña mediante el proceso seguro de cuenta.",
+            "field": "password",
+        }), 400
+
     try:
         profile_update = normalize_customer_profile_update(data)
     except CustomerSnapshotValidationError as error:
         return _customer_snapshot_validation_response(error)
-
-    # 1. Cambio de contraseña usando BCRYPT
-    password = data.get("password")
-    if password is not None and not isinstance(password, str):
-        return jsonify({
-            "message": "La contraseña debe ser texto.",
-            "field": "password",
-        }), 400
-    if isinstance(password, str) and password.strip() != "":
-        # Generamos el salt y el hash con bcrypt
-        salt = bcrypt.gensalt()
-        # IMPORTANTE: bcrypt necesita bytes, por eso usamos .encode('utf-8')
-        hashed_password = bcrypt.hashpw(password.encode('utf-8'), salt)
-        # Guardamos el hash decodificado como string en la base de datos
-        user.password = hashed_password.decode('utf-8')
 
     for field, value in profile_update.items():
         setattr(user, field, value)
@@ -6331,3 +6329,58 @@ def update_me():
         db.session.rollback()
         logger.exception("Error updating profile for user %s", user_id)
         return jsonify({"message": "Error interno"}), 500
+
+
+@api.route('/auth/change-password', methods=['POST'])
+@jwt_required()
+def change_password():
+    identity = get_jwt_identity()
+    user = db.session.get(Users, identity.get("user_id")) if identity else None
+    if user is None or user.is_active is False:
+        return jsonify({"message": "Sesión no válida."}), 401
+
+    data = request.get_json(silent=True)
+    if not isinstance(data, dict):
+        return jsonify({"message": "Solicitud inválida."}), 400
+    current_password = data.get("current_password")
+    new_password = data.get("new_password")
+    if not isinstance(current_password, str) or not isinstance(new_password, str):
+        return jsonify({"message": "Indica tu contraseña actual y una contraseña nueva válida."}), 400
+    if not user.password:
+        return jsonify({"message": "Esta cuenta no tiene contraseña local. Utiliza la recuperación por correo."}), 403
+    try:
+        current_length = len(current_password.encode("utf-8"))
+    except UnicodeEncodeError:
+        return jsonify({"message": "Contraseña actual incorrecta."}), 403
+    if current_length > 1024:
+        return jsonify({"message": "Contraseña actual incorrecta."}), 403
+
+    try:
+        allowed = reserve_password_attempt(user.id)
+    except CredentialRateLimitUnavailable:
+        return jsonify({"message": "Servicio temporalmente no disponible."}), 503
+    if not allowed:
+        return jsonify({"message": "Demasiados intentos. Inténtalo más tarde."}), 429
+
+    if not bcrypt.checkpw(
+        current_password.encode("utf-8"), user.password.encode("utf-8")
+    ):
+        return jsonify({"message": "Contraseña actual incorrecta."}), 403
+
+    try:
+        release_successful_attempt(user.id)
+    except CredentialRateLimitUnavailable:
+        return jsonify({"message": "Servicio temporalmente no disponible."}), 503
+    if not valid_new_password(new_password) or new_password == current_password:
+        return jsonify({"message": "La contraseña nueva debe ser distinta y tener entre 8 y 72 bytes UTF-8."}), 400
+
+    try:
+        changed = replace_password_if_version(user, new_password, user.credential_version)
+    except SQLAlchemyError:
+        db.session.rollback()
+        return jsonify({"message": "No se pudo cambiar la contraseña."}), 503
+    if not changed:
+        return jsonify({"message": "La contraseña cambió durante la solicitud. Inicia sesión de nuevo."}), 409
+    response = jsonify({"message": "Contraseña actualizada. Inicia sesión de nuevo."})
+    response.headers["Cache-Control"] = "no-store"
+    return response, 200

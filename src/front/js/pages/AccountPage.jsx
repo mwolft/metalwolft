@@ -56,8 +56,6 @@ export const AccountPage = () => {
     const [saving, setSaving] = useState(false);
     const [saved, setSaved] = useState(false);
     const [cancelled, setCancelled] = useState(false);
-    const [editPassword, setEditPassword] = useState(false);
-    const [confirmPassword, setConfirmPassword] = useState("");
     const [downloadingInvoiceId, setDownloadingInvoiceId] = useState(null);
     const [invoiceFeedback, setInvoiceFeedback] = useState({ orderId: null, type: "", message: "" });
 
@@ -71,23 +69,10 @@ export const AccountPage = () => {
     }, [store.isLoged]);
 
     const handleSaveProfile = async () => {
-        if (editPassword) {
-            if (profile.password !== confirmPassword) {
-                alert("Las contraseñas no coinciden");
-                return;
-            }
-            if (profile.password.length < 6) {
-                alert("La nueva contraseña debe tener al menos 6 caracteres");
-                return;
-            }
-        }
-
         setSaving(true);
         const success = await actions.updateProfile(profile);
         if (success) {
             setSaved(true);
-            setEditPassword(false);
-            setConfirmPassword("");
             setTimeout(() => setSaved(false), 2000);
         }
         setSaving(false);
@@ -96,8 +81,6 @@ export const AccountPage = () => {
     const handleCancel = () => {
         if (store.currentUser) {
             setProfile(store.currentUser);
-            setEditPassword(false);
-            setConfirmPassword("");
             setCancelled(true);
             setTimeout(() => setCancelled(false), 2000);
         }
@@ -211,39 +194,10 @@ export const AccountPage = () => {
                                 <label className="form-label fw-bold">Email</label>
                                 <input className="form-control bg-light" value={profile.email || ""} readOnly />
                                 <div className="col-12 mt-3">
-                                    <button
-                                        type="button"
-                                        className="btn btn-sm btn-outline-secondary mb-3"
-                                        onClick={() => setEditPassword(!editPassword)}
-                                    >
-                                        {editPassword ? "Cerrar cambio de contraseña" : "¿Cambiar contraseña?"}
-                                    </button>
+                                    <a href="https://www.metalwolft.com/forgot-password">
+                                        Cambiar contraseña mediante correo
+                                    </a>
                                 </div>
-
-                                {editPassword && (
-                                    <div className="row g-3 animate__animated animate__fadeIn mb-3">
-                                        <div className="col-md-6">
-                                            <label className="form-label fw-bold">Nueva contraseña</label>
-                                            <input
-                                                type="password"
-                                                autoComplete="new-password"
-                                                className="form-control"
-                                                placeholder="Nueva clave"
-                                                onChange={(e) => setProfile({ ...profile, password: e.target.value })}
-                                            />
-                                        </div>
-                                        <div className="col-md-6">
-                                            <label className="form-label fw-bold">Confirmar nueva contraseña</label>
-                                            <input
-                                                type="password"
-                                                className="form-control"
-                                                placeholder="Repite la nueva clave"
-                                                value={confirmPassword}
-                                                onChange={(e) => setConfirmPassword(e.target.value)}
-                                            />
-                                        </div>
-                                    </div>
-                                )}
                             </div>
 
                             <div className="col-md-6">

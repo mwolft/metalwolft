@@ -216,6 +216,7 @@ class Users(db.Model):
     created_at = db.Column(db.DateTime, nullable=False, server_default=db.func.now())
     email = db.Column(db.String(120), unique=True, nullable=False)
     password = db.Column(db.String(120), nullable=True)
+    credential_version = db.Column(db.Integer, nullable=False, default=0, server_default="0")
     firstname = db.Column(db.String(100), nullable=True)
     lastname = db.Column(db.String(100), nullable=True)
     phone = db.Column(db.String(50), nullable=True)
