@@ -48,7 +48,12 @@ def prepare_environment():
     require(os.getenv("CODESPACES", "").lower() == "true", "not running in Codespaces")
     require(os.getenv("PIPENV_DONT_LOAD_ENV") == "1", "Pipenv dotenv loading is not disabled")
     require(git_value("branch", "--show-current") == EXPECTED_BRANCH, "unexpected branch")
-    require(git_value("rev-parse", "HEAD") == EXPECTED_COMMIT, "unexpected commit")
+    require(git_value("merge-base", EXPECTED_COMMIT, "HEAD") == EXPECTED_COMMIT, "unexpected base commit")
+    changed_since_base = set(git_value("diff", "--name-only", EXPECTED_COMMIT, "HEAD").splitlines())
+    require(
+        changed_since_base <= {"scripts/validate_credential_security_pg.py"},
+        "unexpected committed code changes since the validated base",
+    )
 
     from sqlalchemy.engine import make_url
 
