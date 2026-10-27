@@ -5,11 +5,12 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 import re
 import logging
+from urllib.parse import urlencode
 import requests
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 from datetime import timedelta
-from flask import Flask, jsonify, send_from_directory, request, current_app, redirect, g
+from flask import Flask, jsonify, send_from_directory, request, current_app, redirect
 from flask_migrate import Migrate
 from flask_cors import CORS
 from flask_jwt_extended import JWTManager
@@ -29,7 +30,10 @@ from api.invoice_preview import api_invoice_preview
 from api.budget_routes import budget_bp
 from api.security_routes import security_bp
 from api.product_lifecycle import resolve_publicly_accessible_product_by_slugs
-from legacy_public_routes import REDIRECT_MAP, GONE_PATHS, NEXT_STOREFRONT_REDIRECTS
+from legacy_public_routes import (
+    REDIRECT_MAP, GONE_PATHS, NEXT_STOREFRONT_REDIRECTS,
+    NEXT_PRODUCT_REDIRECT_SLUGS,
+)
 
 
 # 1) Entorno y paths
@@ -44,6 +48,9 @@ PRODUCTION_APP_ENV = "production"
 VALID_APP_ENVIRONMENTS = {PRODUCTION_APP_ENV, "development", "test"}
 NON_PRODUCT_PATH_PREFIXES = {"admin", "api", "mi-cuenta", "static"}
 STOREFRONT_URL = "https://www.metalwolft.com"
+PRODUCT_REDIRECT_QUERY_KEYS = frozenset({
+    "utm_source", "utm_medium", "utm_campaign", "utm_content", "utm_term",
+})
 # Keep the legacy shell where crossing origins could discard account, cart or payment state.
 LEGACY_SPA_RETAINED_PATHS = frozenset({
     "/cart", "/checkout-form", "/login", "/mi-cuenta", "/profile",
@@ -321,6 +328,20 @@ def redirect_to_storefront(path, *, code=301):
     return redirect(destination, code=code)
 
 
+def redirect_verified_product(path):
+    query = urlencode([
+        (key, value)
+        for key, value in request.args.items(multi=True)
+        if key in PRODUCT_REDIRECT_QUERY_KEYS and len(value) <= 200
+    ])
+    destination = f"{STOREFRONT_URL}{path}"
+    if query:
+        destination = f"{destination}?{query}"
+    response = redirect(destination, code=302)
+    response.headers["Cache-Control"] = "no-store"
+    return response
+
+
 def _public_product_path_segments(path):
     segments = path.strip("/").split("/")
     if len(segments) != 2 or not all(segments):
@@ -389,16 +410,21 @@ def classify_public_product_route():
         response.headers["X-Robots-Tag"] = "noindex, nofollow"
         return response
 
-    g.is_public_product_route = True
-    return None
+    if (
+        category_slug == "rejas-para-ventanas"
+        and product_slug in NEXT_PRODUCT_REDIRECT_SLUGS
+    ):
+        return redirect_verified_product(f"/{category_slug}/{product_slug}")
+
+    response = jsonify({"message": "Product not found"})
+    response.status_code = 404
+    response.headers["X-Robots-Tag"] = "noindex, nofollow"
+    return response
 
 
 @app.before_request
 def classify_legacy_spa_route():
     if request.method not in {"GET", "HEAD"} or request.endpoint != "serve_spa":
-        return None
-
-    if getattr(g, "is_public_product_route", False):
         return None
 
     normalized_path = _normalized_public_path(request.path)

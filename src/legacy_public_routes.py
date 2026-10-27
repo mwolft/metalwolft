@@ -28,6 +28,39 @@ GONE_PATHS = frozenset(
 )
 
 
+# Verified public product paths with an exact Next.js counterpart (phase 2D).
+NEXT_PRODUCT_REDIRECT_SLUGS = frozenset({
+    "reja-abatible-albany",
+    "reja-abatible-cortland",
+    "reja-abatible-essex",
+    "reja-abatible-idaho",
+    "reja-abatible-maryland-para-ventanas",
+    "reja-fija-albany",
+    "reja-fija-clasica-charleston",
+    "reja-fija-cortland",
+    "reja-fija-dakota",
+    "reja-fija-erie",
+    "reja-fija-essex",
+    "reja-fija-genesee",
+    "reja-fija-idaho",
+    "reja-fija-ithaca",
+    "reja-fija-lancaster",
+    "reja-fija-livingston",
+    "reja-fija-luton",
+    "reja-fija-maryland",
+    "reja-fija-orleans-clasica",
+    "reja-fija-pittsburgh",
+    "reja-fija-poole",
+    "reja-fija-vermont",
+    "reja-fija-virginia",
+    "reja-mascotas-ohio",
+    "reja-puerta-albany",
+    "reja-puerta-cortland",
+    "reja-puerta-essex",
+    "reja-puerta-maryland",
+})
+
+
 # Only routes with an equivalent page in the current Next.js storefront.
 # Account, cart, checkout and recovery routes retain the old origin for now.
 NEXT_STOREFRONT_REDIRECTS = {

@@ -58,42 +58,87 @@ class PublicProductRouteStatusTest(unittest.TestCase):
     def _shell_response(self, *args, **kwargs):
         return APP_MODULE.app.response_class("legacy shell", status=200)
 
-    def test_valid_product_continues_to_shell_for_browser(self):
+    def test_product_outside_verified_category_does_not_redirect_or_serve_spa(self):
+        product = SimpleNamespace(id=20, slug="reja-fija-albany")
         with patch.object(
             APP_MODULE,
             "resolve_publicly_accessible_product_by_slugs",
-            return_value=(self.category, self.product),
+            return_value=(self.category, product),
         ), patch.object(
             APP_MODULE,
             "send_from_directory",
             side_effect=self._shell_response,
         ) as send_shell:
-            response = self.client.get("/rejas-publicas/reja-disponible")
+            response = self.client.get("/rejas-publicas/reja-fija-albany")
 
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.get_data(as_text=True), "legacy shell")
-        send_shell.assert_called_once()
+        self.assertEqual(response.status_code, 404)
+        self.assertNotIn("Location", response.headers)
+        send_shell.assert_not_called()
 
-    def test_public_catalog_product_keeps_legacy_shell_after_resolution(self):
+    def test_verified_sellable_product_redirects_get_and_head(self):
         category = SimpleNamespace(id=10, slug="rejas-para-ventanas")
+        product = SimpleNamespace(id=20, slug="reja-fija-albany", available_for_sale=True)
         with patch.object(
             APP_MODULE,
             "resolve_publicly_accessible_product_by_slugs",
-            return_value=(category, self.product),
+            return_value=(category, product),
         ) as resolve_product, patch.object(
             APP_MODULE,
             "send_from_directory",
             side_effect=self._shell_response,
         ) as send_shell:
-            response = self.client.get("/rejas-para-ventanas/reja-disponible?alto=120")
-            head_response = self.client.head("/rejas-para-ventanas/reja-disponible")
+            response = self.client.get(
+                "/rejas-para-ventanas/reja-fija-albany"
+                "?utm_source=email&utm_campaign=autumn&token=secret&alto=120"
+            )
+            head_response = self.client.head("/rejas-para-ventanas/reja-fija-albany")
 
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(head_response.status_code, 200)
-        self.assertNotIn("Location", response.headers)
-        self.assertNotIn("Location", head_response.headers)
+        destination = "https://www.metalwolft.com/rejas-para-ventanas/reja-fija-albany"
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(head_response.status_code, 302)
+        self.assertEqual(response.headers["Location"], destination + "?utm_source=email&utm_campaign=autumn")
+        self.assertEqual(head_response.headers["Location"], destination)
+        self.assertEqual(response.headers["Cache-Control"], "no-store")
+        self.assertEqual(response.headers["Referrer-Policy"], "strict-origin-when-cross-origin")
         self.assertEqual(resolve_product.call_count, 2)
-        self.assertEqual(send_shell.call_count, 2)
+        send_shell.assert_not_called()
+
+    def test_verified_unavailable_product_redirects_without_reenabling_sale(self):
+        category = SimpleNamespace(id=10, slug="rejas-para-ventanas")
+        for slug in ("reja-fija-poole", "reja-puerta-essex"):
+            product = SimpleNamespace(id=20, slug=slug, available_for_sale=False)
+            with self.subTest(slug=slug), patch.object(
+                APP_MODULE,
+                "resolve_publicly_accessible_product_by_slugs",
+                return_value=(category, product),
+            ), patch.object(APP_MODULE, "send_from_directory") as send_shell:
+                response = self.client.get(f"/rejas-para-ventanas/{slug}")
+                self.assertEqual(response.status_code, 302)
+                self.assertEqual(
+                    response.headers["Location"],
+                    f"https://www.metalwolft.com/rejas-para-ventanas/{slug}",
+                )
+                self.assertFalse(product.available_for_sale)
+                send_shell.assert_not_called()
+
+    def test_only_the_28_verified_product_slugs_can_redirect(self):
+        self.assertEqual(len(APP_MODULE.NEXT_PRODUCT_REDIRECT_SLUGS), 28)
+        category = SimpleNamespace(id=10, slug="rejas-para-ventanas")
+        with patch.object(
+            APP_MODULE,
+            "resolve_publicly_accessible_product_by_slugs",
+            side_effect=lambda category_slug, product_slug: (
+                category,
+                SimpleNamespace(slug=product_slug),
+            ),
+        ):
+            for slug in APP_MODULE.NEXT_PRODUCT_REDIRECT_SLUGS:
+                with self.subTest(slug=slug):
+                    response = self.client.get(f"/rejas-para-ventanas/{slug}")
+                    self.assertEqual(response.status_code, 302)
+            response = self.client.get("/rejas-para-ventanas/reja-fija-futura")
+        self.assertEqual(response.status_code, 404)
+        self.assertNotIn("Location", response.headers)
 
     def test_missing_public_catalog_product_does_not_redirect(self):
         category = SimpleNamespace(id=10, slug="rejas-para-ventanas")
@@ -107,29 +152,37 @@ class PublicProductRouteStatusTest(unittest.TestCase):
         self.assertEqual(response.status_code, 404)
         self.assertNotIn("Location", response.headers)
 
-    def test_valid_product_reaches_prerender_for_googlebot(self):
-        prerender_response = SimpleNamespace(
-            content=b"prerendered product",
-            status_code=200,
-            headers={},
-        )
+    def test_unpublished_verified_product_does_not_redirect(self):
+        category = SimpleNamespace(id=10, slug="rejas-para-ventanas")
         with patch.object(
             APP_MODULE,
             "resolve_publicly_accessible_product_by_slugs",
-            return_value=(self.category, self.product),
+            return_value=(category, None),
+        ), patch.object(APP_MODULE, "send_from_directory") as send_shell:
+            response = self.client.get("/rejas-para-ventanas/reja-fija-albany")
+
+        self.assertEqual(response.status_code, 404)
+        self.assertNotIn("Location", response.headers)
+        send_shell.assert_not_called()
+
+    def test_verified_product_redirects_before_prerender_for_googlebot(self):
+        category = SimpleNamespace(id=10, slug="rejas-para-ventanas")
+        product = SimpleNamespace(id=20, slug="reja-fija-albany")
+        with patch.object(
+            APP_MODULE,
+            "resolve_publicly_accessible_product_by_slugs",
+            return_value=(category, product),
         ), patch.object(
             APP_MODULE.session,
             "get",
-            return_value=prerender_response,
         ) as prerender_get:
             response = self.client.get(
-                "/rejas-publicas/reja-disponible",
+                "/rejas-para-ventanas/reja-fija-albany",
                 headers={"User-Agent": "Googlebot"},
             )
 
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.get_data(), b"prerendered product")
-        prerender_get.assert_called_once()
+        self.assertEqual(response.status_code, 302)
+        prerender_get.assert_not_called()
 
     def test_missing_and_unpublished_products_return_same_404_before_prerender(self):
         for product_slug in ("no-existe", "reja-no-publicada"):
@@ -396,7 +449,9 @@ class PublicProductRouteStatusTest(unittest.TestCase):
                     self.assertEqual(response.status_code, 404)
             for path in ("/cart", "/contact", "/rejas-para-ventanas/reja-fija-albany"):
                 with self.subTest(path=path):
-                    self.assertNotEqual(self.client.post(path).status_code, 301)
+                    response = self.client.post(path)
+                    self.assertNotIn(response.status_code, {301, 302})
+                    self.assertNotIn("Location", response.headers)
             self.assertNotEqual(self.client.get("/admin/not-a-real-endpoint").status_code, 301)
         send_shell.assert_not_called()
 
