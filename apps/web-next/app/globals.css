@@ -5042,6 +5042,21 @@ a.mw-product-version-nav__option:focus-visible {
   border-radius: 24px;
 }
 
+.mw-account-security {
+  margin-top: 1.5rem;
+}
+
+.mw-account-security__form {
+  display: grid;
+  gap: 1rem;
+  max-width: 30rem;
+  margin-top: 1rem;
+}
+
+.mw-account-security__form .mw-button {
+  justify-self: start;
+}
+
 .mw-account-card h2,
 .mw-account-state h1,
 .mw-account-state h2,

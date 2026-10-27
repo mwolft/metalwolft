@@ -104,6 +104,7 @@ class CustomerProfileEndpointTest(unittest.TestCase):
         self.app.register_blueprint(api, url_prefix="/api")
 
         with self.app.app_context():
+            db.create_all()
             self.user = Users(
                 email="profile@example.test",
                 password="not-a-real-password",

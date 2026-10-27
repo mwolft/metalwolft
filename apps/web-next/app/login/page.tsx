@@ -6,6 +6,7 @@ import { PageContainer } from "@/components/layout/PageContainer";
 
 type LoginSearchParams = {
   next?: string | string[];
+  password_changed?: string;
 };
 
 type LoginPageProps = {
@@ -52,6 +53,11 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
             <p className="mw-lead">
               Accede a tu cuenta para consultar tus pedidos y realizar nuevas compras
             </p>
+            {resolvedSearchParams?.password_changed === "1" ? (
+              <p className="mw-alert mw-alert--success" role="status">
+                Contraseña actualizada. Inicia sesión de nuevo.
+              </p>
+            ) : null}
             <GoogleIdentityButton mode="login" nextPath={nextPath} />
             <div className="mw-auth-divider"><span>o con tu correo</span></div>
             <LoginForm nextPath={nextPath} />

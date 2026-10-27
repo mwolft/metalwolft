@@ -17,6 +17,7 @@ export type AuthUser = {
   billing_city?: string | null;
   billing_postal_code?: string | null;
   CIF?: string | null;
+  has_password?: boolean;
 };
 
 function emitAuthSessionChanged() {

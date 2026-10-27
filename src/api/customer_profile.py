@@ -36,6 +36,7 @@ def serialize_customer_profile(user):
         "billing_city": user.billing_city,
         "billing_postal_code": user.billing_postal_code,
         "CIF": user.CIF,
+        "has_password": bool(getattr(user, "password", None)),
     }
 
 

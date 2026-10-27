@@ -26,6 +26,7 @@ import {
 } from "@/lib/customer-profile-client";
 import { useAuthSession } from "@/hooks/useAuthSession";
 import { GoogleIdentityButton } from "@/components/auth/GoogleIdentityButton";
+import { AccountSecurity } from "@/components/account/AccountSecurity";
 
 function customerName(user: CustomerProfile | null) {
   const fullName = [user?.firstname, user?.lastname]
@@ -237,6 +238,7 @@ export function AccountOverview() {
   }
 
   return (
+    <>
     <section className="mw-account-card" aria-labelledby="account-overview-title">
       <div className="mw-account-profile__heading">
         <div>
@@ -457,5 +459,7 @@ export function AccountOverview() {
         <GoogleIdentityButton mode="link" />
       </div>
     </section>
+    <AccountSecurity hasPassword={profile.has_password} />
+    </>
   );
 }
