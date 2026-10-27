@@ -30,7 +30,7 @@ function isNullableString(value: unknown) {
   return typeof value === "string" || value === null;
 }
 
-function parseCustomerProfile(payload: unknown): CustomerProfile {
+export function parseCustomerProfile(payload: unknown): CustomerProfile {
   if (
     !isRecord(payload) ||
     typeof payload.id !== "number" ||
@@ -62,7 +62,7 @@ function parseCustomerProfile(payload: unknown): CustomerProfile {
     );
   }
 
-  if (typeof payload.has_password !== "boolean") {
+  if (payload.has_password !== undefined && typeof payload.has_password !== "boolean") {
     throw new CustomerProfileClientError("La respuesta del perfil no tiene el formato esperado.", 0);
   }
 

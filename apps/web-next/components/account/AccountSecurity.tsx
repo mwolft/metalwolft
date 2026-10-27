@@ -66,9 +66,7 @@ export function AccountSecurity({ hasPassword }: { hasPassword?: boolean }) {
           Esta cuenta no tiene contraseña local. Si quieres establecer una, puedes hacerlo mediante la{" "}
           <Link href="/forgot-password">recuperación por correo</Link>.
         </p>
-      ) : hasPassword === undefined ? (
-        <p>Comprobando las opciones de seguridad de tu cuenta...</p>
-      ) : (
+      ) : hasPassword === true ? (
         <form className="mw-account-security__form" onSubmit={handleSubmit}>
           <p>Cambia tu contraseña introduciendo primero la actual. Después tendrás que iniciar sesión de nuevo.</p>
           <label className="mw-field">
@@ -88,6 +86,8 @@ export function AccountSecurity({ hasPassword }: { hasPassword?: boolean }) {
             {busy ? "Cambiando..." : "Cambiar contraseña"}
           </button>
         </form>
+      ) : (
+        <p>La opción de cambiar la contraseña no está disponible temporalmente.</p>
       )}
     </section>
   );
