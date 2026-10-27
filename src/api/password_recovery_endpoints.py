@@ -3,7 +3,7 @@ from flask_jwt_extended import create_access_token, decode_token
 from datetime import timedelta
 from api.models import db, Users
 from api.utils import send_email 
-import bcrypt
+from api.credential_security import replace_password_if_version, token_credential_version, valid_new_password
 
 auth_bp = Blueprint('auth_bp', __name__)
 
@@ -25,7 +25,7 @@ def forgot_password():
         # Generar un token de recuperación
         reset_token = create_access_token(
             identity=email,
-            additional_claims={"purpose": "password_reset"},
+            additional_claims={"purpose": "password_reset", "credential_version": user.credential_version},
             expires_delta=timedelta(minutes=15),
         )
 
@@ -53,6 +53,8 @@ def reset_password():
 
         if not token or not new_password:
             return jsonify({"error": "Token y nueva contraseña requeridos."}), 400
+        if not valid_new_password(new_password):
+            return jsonify({"error": "La contraseña debe tener entre 8 y 72 bytes UTF-8."}), 400
 
         # Verificar el token
         try:
@@ -60,6 +62,9 @@ def reset_password():
             if decoded_token.get("purpose") != "password_reset":
                 return jsonify({"error": "Token inválido o expirado."}), 400
             email = decoded_token['sub']
+            version = token_credential_version(decoded_token)
+            if not isinstance(email, str) or version is None:
+                return jsonify({"error": "Token inválido o expirado."}), 400
         except Exception:
             return jsonify({"error": "Token inválido o expirado."}), 400
 
@@ -67,14 +72,17 @@ def reset_password():
         user = Users.query.filter_by(email=email).first()
         if not user:
             return jsonify({"error": "Usuario no encontrado."}), 404
+        if user.credential_version != version:
+            return jsonify({"error": "Token inválido o expirado."}), 400
 
-        # Actualizar la contraseña
-        hashed_password = bcrypt.hashpw(new_password.encode('utf-8'), bcrypt.gensalt())
-        user.password = hashed_password.decode('utf-8')
-        db.session.commit()
+        if not replace_password_if_version(user, new_password, version):
+            return jsonify({"error": "Token inválido o expirado."}), 400
 
-        return jsonify({"message": "Contraseña actualizada correctamente."}), 200
+        response = jsonify({"message": "Contraseña actualizada correctamente."})
+        response.headers["Cache-Control"] = "no-store"
+        return response, 200
 
-    except Exception as e:
+    except Exception:
+        db.session.rollback()
         current_app.logger.exception("Error en reset-password")
         return jsonify({"error": "Internal server error"}), 500

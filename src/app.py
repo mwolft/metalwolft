@@ -26,6 +26,7 @@ from api.email_routes import email_bp
 from api.customer_photo_routes import PhotoUploadRequest, customer_photo_bp
 from api.customer_photo_license import PHOTO_LICENSE_TEXT, PHOTO_LICENSE_VERSION
 from api.password_recovery_endpoints import auth_bp
+from api.credential_security import register_credential_revocation
 from api.invoice_preview import api_invoice_preview
 from api.budget_routes import budget_bp
 from api.security_routes import security_bp
@@ -213,7 +214,8 @@ db.init_app(app)
 # 7) JWT
 app.config["JWT_SECRET_KEY"] = os.getenv("JWT_SECRET_KEY")
 app.config["JWT_ACCESS_TOKEN_EXPIRES"] = timedelta(hours=24)
-JWTManager(app)
+jwt_manager = JWTManager(app)
+register_credential_revocation(jwt_manager)
 
 
 # 8) Mail
