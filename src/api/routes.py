@@ -3398,6 +3398,7 @@ def update_user(user_id):
 @api.route('/users/<int:user_id>', methods=['DELETE'])
 @jwt_required()
 def delete_user(user_id):
+    from api.user_deletion_service import UserDeletionBlocked, delete_user_without_history
     current_user = get_jwt_identity()
     if not current_user.get("is_admin"):
         response = jsonify({"message": "Access forbidden: Admins only"})
@@ -3408,8 +3409,13 @@ def delete_user(user_id):
         response = jsonify({"message": "User not found!"})
         response.headers['Access-Control-Allow-Origin'] = '*'
         return response, 404
-    db.session.delete(user)
-    db.session.commit()
+    try:
+        delete_user_without_history(user)
+    except UserDeletionBlocked as exc:
+        return jsonify({"message": str(exc)}), 409
+    except Exception:
+        current_app.logger.exception("User deletion failed")
+        return jsonify({"message": "No se pudo eliminar la cuenta."}), 500
     response = jsonify({"message": "User deleted!"})
     response.headers['Access-Control-Allow-Origin'] = '*'
     return response, 200

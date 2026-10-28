@@ -584,6 +584,22 @@ def _format_cart_reminder(view, context, model, name):
 
 
 class UsersAdminView(SafeModelView):
+    fast_mass_delete = False
+
+    def delete_model(self, model):
+        from api.user_deletion_service import UserDeletionBlocked, delete_user_without_history
+
+        try:
+            delete_user_without_history(model, session=self.session)
+        except UserDeletionBlocked as exc:
+            flash(str(exc), "error")
+            return False
+        except Exception:
+            current_app.logger.exception("User deletion failed")
+            flash("No se pudo eliminar la cuenta.", "error")
+            return False
+        return True
+
     column_default_sort = ('id', True)  # DESC
     column_sortable_list = ('id', 'email')
     column_searchable_list = ('email',)
