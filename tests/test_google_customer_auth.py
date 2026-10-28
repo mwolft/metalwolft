@@ -37,9 +37,13 @@ class GoogleCustomerAuthTest(unittest.TestCase):
         self.verifier = patch("api.routes.verify_google_identity")
         self.verify = self.verifier.start()
         self.verify.return_value = {"sub": "google-sub-1", "email": "new@example.test"}
+        self.mailer = patch("api.routes.send_email")
+        self.send_email = self.mailer.start()
+        self.send_email.return_value = True
 
     def tearDown(self):
         self.verifier.stop()
+        self.mailer.stop()
         with self.app.app_context():
             db.session.remove()
             db.drop_all()
@@ -47,6 +51,12 @@ class GoogleCustomerAuthTest(unittest.TestCase):
     def test_new_google_customer_reuses_local_session_and_checkout_identity(self):
         response = self.client.post("/api/auth/google", json={"credential": "mock"})
         self.assertEqual(response.status_code, 200)
+        self.send_email.assert_called_once()
+        mail = self.send_email.call_args.kwargs
+        self.assertEqual(mail["recipients"], ["new@example.test"])
+        self.assertEqual(mail["subject"], "¡Bienvenido a Metal Wolft!")
+        self.assertIn("Bienvenido a MetalWolft", mail["body"])
+        self.assertIn("Bienvenido a MetalWolft", mail["html"])
         user_id = response.json["results"]["id"]
         token = response.json["access_token"]
         with self.app.app_context():
@@ -72,6 +82,7 @@ class GoogleCustomerAuthTest(unittest.TestCase):
         again = self.client.post("/api/auth/google", json={"credential": "mock"})
         self.assertEqual(again.status_code, 200)
         self.assertEqual(again.json["results"]["id"], user_id)
+        self.send_email.assert_called_once()
         with self.app.app_context():
             self.assertEqual(Orders.query.filter_by(user_id=user_id).count(), 1)
 
@@ -82,6 +93,7 @@ class GoogleCustomerAuthTest(unittest.TestCase):
         response = self.client.post("/api/auth/google", json={"credential": "mock"})
         self.assertEqual(response.status_code, 409)
         self.assertIn("Accede con tu contraseña", response.json["message"])
+        self.send_email.assert_not_called()
         with self.app.app_context():
             self.assertEqual(Users.query.count(), 1)
             self.assertEqual(ExternalIdentity.query.count(), 0)
@@ -103,7 +115,27 @@ class GoogleCustomerAuthTest(unittest.TestCase):
         self.assertEqual(link.status_code, 200)
         google_login = self.client.post("/api/auth/google", json={"credential": "mock"})
         self.assertEqual(google_login.json["results"]["id"], user_id)
+        self.send_email.assert_not_called()
         self.assertEqual(self.client.post("/api/login", json={"email": "new@example.test", "password": "existing-password"}).status_code, 200)
+
+    def test_welcome_email_failure_does_not_block_new_google_account(self):
+        for result in (False, RuntimeError("sensitive SMTP detail")):
+            with self.subTest(result=type(result).__name__):
+                self.send_email.reset_mock()
+                self.verify.return_value = {
+                    "sub": f"google-{type(result).__name__}",
+                    "email": f"{type(result).__name__.lower()}@example.test",
+                }
+                self.send_email.side_effect = result if isinstance(result, Exception) else None
+                self.send_email.return_value = result if result is False else True
+                with self.assertLogs(self.app.logger, level="WARNING") as logs:
+                    response = self.client.post("/api/auth/google", json={"credential": "mock"})
+                self.assertEqual(response.status_code, 200)
+                self.assertTrue(response.json["access_token"])
+                self.send_email.assert_called_once()
+                self.assertNotIn("sensitive SMTP detail", " ".join(logs.output))
+                with self.app.app_context():
+                    self.assertIsNotNone(db.session.get(Users, response.json["results"]["id"]))
 
     def test_link_cannot_take_identity_from_another_user(self):
         first = self.client.post("/api/auth/google", json={"credential": "mock"})

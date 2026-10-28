@@ -3050,6 +3050,21 @@ def google_login():
             db.session.rollback()
             return jsonify({"message": "No se pudo crear la cuenta. Inténtalo de nuevo."}), 409
 
+        try:
+            rendered_welcome_email = render_account_welcome_email(
+                customer_firstname=user.firstname,
+                login_url="https://www.metalwolft.com/login",
+            )
+            if not send_email(
+                subject="¡Bienvenido a Metal Wolft!",
+                recipients=[user.email],
+                body=rendered_welcome_email.text,
+                html=rendered_welcome_email.html,
+            ):
+                current_app.logger.warning("No se pudo enviar el email de bienvenida de Google.")
+        except Exception:
+            current_app.logger.warning("No se pudo enviar el email de bienvenida de Google.")
+
     return jsonify({
         "results": user.serialize(),
         "access_token": create_user_access_token(user, expires_delta=timedelta(hours=24)),
