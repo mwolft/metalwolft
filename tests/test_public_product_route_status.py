@@ -58,6 +58,16 @@ class PublicProductRouteStatusTest(unittest.TestCase):
     def _shell_response(self, *args, **kwargs):
         return APP_MODULE.app.response_class("legacy shell", status=200)
 
+    def test_retired_poole_redirects_directly_to_essex(self):
+        for method in ("get", "head"):
+            with self.subTest(method=method):
+                response = getattr(self.client, method)("/rejas-para-ventanas/reja-fija-poole")
+                self.assertEqual(response.status_code, 301)
+                self.assertEqual(
+                    response.headers["Location"],
+                    "https://www.metalwolft.com/rejas-para-ventanas/reja-fija-essex",
+                )
+
     def test_product_outside_verified_category_does_not_redirect_or_serve_spa(self):
         product = SimpleNamespace(id=20, slug="reja-fija-albany")
         with patch.object(
@@ -105,7 +115,7 @@ class PublicProductRouteStatusTest(unittest.TestCase):
 
     def test_verified_unavailable_product_redirects_without_reenabling_sale(self):
         category = SimpleNamespace(id=10, slug="rejas-para-ventanas")
-        for slug in ("reja-fija-poole", "reja-puerta-essex"):
+        for slug in ("reja-puerta-essex",):
             product = SimpleNamespace(id=20, slug=slug, available_for_sale=False)
             with self.subTest(slug=slug), patch.object(
                 APP_MODULE,
@@ -135,7 +145,7 @@ class PublicProductRouteStatusTest(unittest.TestCase):
             for slug in APP_MODULE.NEXT_PRODUCT_REDIRECT_SLUGS:
                 with self.subTest(slug=slug):
                     response = self.client.get(f"/rejas-para-ventanas/{slug}")
-                    self.assertEqual(response.status_code, 302)
+                    self.assertEqual(response.status_code, 301 if slug == "reja-fija-poole" else 302)
             response = self.client.get("/rejas-para-ventanas/reja-fija-futura")
         self.assertEqual(response.status_code, 404)
         self.assertNotIn("Location", response.headers)

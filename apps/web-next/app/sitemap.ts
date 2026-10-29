@@ -77,7 +77,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         )
       );
 
-    const productEntries = sitemapProducts.filter((product) => isPublicCatalogCategory(product.category_slug)).map((product) =>
+    const productEntries = sitemapProducts.filter((product) =>
+      isPublicCatalogCategory(product.category_slug) && product.slug !== "reja-fija-poole"
+    ).map((product) =>
       createEntry(
         `/${product.category_slug}/${product.slug}`,
         lastModified,

@@ -76,6 +76,11 @@ const nextConfig = {
   async redirects() {
     return [
       {
+        source: "/rejas-para-ventanas/reja-fija-poole",
+        destination: "/rejas-para-ventanas/reja-fija-essex",
+        statusCode: 301
+      },
+      {
         source: "/rejas/rejas-para-ventanas-pittsburgh",
         destination: "/rejas-para-ventanas/reja-fija-pittsburgh",
         permanent: true

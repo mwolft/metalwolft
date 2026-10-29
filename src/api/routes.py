@@ -3557,6 +3557,7 @@ def get_sitemap_products():
     products = (
         publicly_accessible_products_query()
         .join(Categories, Products.categoria_id == Categories.id)
+        .filter(Products.slug != "reja-fija-poole")
         .with_entities(
             Categories.slug.label("category_slug"),
             Products.slug.label("product_slug"),

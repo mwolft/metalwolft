@@ -5,6 +5,7 @@ These rules apply only to the public website surface, never to business APIs.
 """
 
 REDIRECT_MAP = {
+    "/rejas-para-ventanas/reja-fija-poole": "/rejas-para-ventanas/reja-fija-essex",
     "/rejas/rejas-para-ventanas-pittsburgh": "/rejas-para-ventanas/reja-fija-pittsburgh",
     "/rejas/rejas-para-ventanas-livingston": "/rejas-para-ventanas/reja-fija-livingston",
     "/rejas/rejas-para-ventanas-lancaster": "/rejas-para-ventanas/reja-fija-lancaster",

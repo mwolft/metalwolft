@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import nextConfig from "../next.config.mjs";
+import { readFileSync } from "node:fs";
 
 const redirects = await nextConfig.redirects();
 const rejaRedirects = redirects.filter((entry) =>
@@ -26,4 +27,10 @@ for (const [oldSlug, newSlug] of expected) {
 }
 
 assert.equal(redirects.some((entry) => entry.source.includes("delhi")), false);
+const poole = redirects.find((entry) => entry.source === "/rejas-para-ventanas/reja-fija-poole");
+assert.equal(poole?.destination, "/rejas-para-ventanas/reja-fija-essex");
+assert.equal(poole?.statusCode, 301);
+assert.equal(redirects.some((entry) => entry.source === poole.destination), false);
+const sitemapSource = readFileSync(new URL("../app/sitemap.ts", import.meta.url), "utf8");
+assert.match(sitemapSource, /product\.slug !== "reja-fija-poole"/);
 console.log("Historical reja redirects are permanent and direct in Next");
