@@ -227,7 +227,10 @@ function buildWebPageJsonLd(description: string) {
     name: "Rejas para ventanas a medida",
     url: absoluteUrl("/"),
     description,
-    primaryImageOfPage: absoluteUrl(HERO_IMAGE_PATH),
+    primaryImageOfPage: {
+      "@type": "ImageObject",
+      url: absoluteUrl(HERO_IMAGE_PATH)
+    },
     isPartOf: {
       "@type": "WebSite",
       name: siteConfig.name,
