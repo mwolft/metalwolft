@@ -1,10 +1,10 @@
-import Image from "next/image";
 import Link from "next/link";
 import { PageContainer } from "@/components/layout/PageContainer";
 import { contactDetails, contactLinks } from "@/lib/contact";
 import { legalFooterLinks } from "@/lib/legal";
 import { footerCatalogLinks, footerGuideLinks } from "@/lib/navigation";
 import { CookieConsentSettingsButton } from "@/components/analytics/CookieConsentSettingsButton";
+import { SiteLocationMap } from "@/components/layout/SiteLocationMap";
 
 export function SiteFooter() {
   return (
@@ -30,20 +30,15 @@ export function SiteFooter() {
                 <circle cx="12" cy="10" r="3" />
               </svg>
               <div className="mw-footer__brand-location-details">
+                <p>Dónde estamos</p>
                 <address>
-                  <span>Carretera de Porzuna, km 1,8</span>
+                  <span>Próxima ubicación del taller de fabricación</span>
+                  <span>Calle Socuéllamos 14, nave 1</span>
                   <span>13005 Ciudad Real · España</span>
                 </address>
+                <p>Venta exclusivamente online · Sin atención presencial al público</p>
               </div>
-              <div aria-hidden="true" className="mw-footer__map-preview">
-                <Image
-                  src="/metalwolft-location-map.png"
-                  alt=""
-                  width={612}
-                  height={344}
-                  sizes="(max-width: 640px) 100vw, 306px"
-                />
-              </div>
+              <SiteLocationMap />
             </div>
           </div>
 
