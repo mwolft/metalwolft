@@ -10,6 +10,8 @@ export const siteConfig = {
     "https://res.cloudinary.com/dewanllxn/image/upload/v1749024437/rejas-para-ventanas_nzmi8k.png"
 };
 
+export const organizationId = "https://www.metalwolft.com/#organization";
+
 export function absoluteUrl(path = "/") {
   const normalizedPath = path.startsWith("/") ? path : `/${path}`;
   return new URL(normalizedPath, siteConfig.siteUrl).toString();

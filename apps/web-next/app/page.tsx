@@ -11,7 +11,7 @@ import {
   fetchCategories,
   fetchCategoryProducts
 } from "@/lib/api";
-import { absoluteUrl, buildMetadata, siteConfig, trimTextAtWord } from "@/lib/metadata";
+import { absoluteUrl, buildMetadata, organizationId, siteConfig, trimTextAtWord } from "@/lib/metadata";
 
 type HomeFeaturedProduct = {
   id: string;
@@ -207,7 +207,7 @@ function buildOrganizationJsonLd() {
   return {
     "@context": "https://schema.org",
     "@type": "OnlineStore",
-    "@id": "https://www.metalwolft.com/#organization",
+    "@id": organizationId,
     name: siteConfig.name,
     url: siteConfig.siteUrl,
     logo: absoluteUrl("/metalwolft-isotipo.webp"),
@@ -229,7 +229,7 @@ function buildWebPageJsonLd(description: string) {
     name: "Rejas para ventanas a medida",
     url: absoluteUrl("/"),
     description,
-    about: { "@id": "https://www.metalwolft.com/#organization" },
+    about: { "@id": organizationId },
     primaryImageOfPage: {
       "@type": "ImageObject",
       url: absoluteUrl(HERO_IMAGE_PATH)
@@ -239,7 +239,7 @@ function buildWebPageJsonLd(description: string) {
       "@id": absoluteUrl("/#website"),
       name: siteConfig.name,
       url: siteConfig.siteUrl,
-      publisher: { "@id": "https://www.metalwolft.com/#organization" }
+      publisher: { "@id": organizationId }
     }
   };
 }

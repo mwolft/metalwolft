@@ -4,7 +4,7 @@ import { PageContainer } from "@/components/layout/PageContainer";
 import { BreadcrumbJsonLd } from "@/components/seo/BreadcrumbJsonLd";
 import { JsonLd } from "@/components/seo/JsonLd";
 import { contactDetails, contactLinks } from "@/lib/contact";
-import { absoluteUrl, buildMetadata, siteConfig } from "@/lib/metadata";
+import { absoluteUrl, buildMetadata, organizationId, siteConfig } from "@/lib/metadata";
 
 const PAGE_PATH = "/contact";
 const PAGE_TITLE = "Contacto para rejas para ventanas a medida | MetalWolft";
@@ -60,10 +60,11 @@ export const metadata = buildMetadata({
 function buildOrganizationJsonLd() {
   return {
     "@context": "https://schema.org",
-    "@type": "Organization",
+    "@type": "OnlineStore",
+    "@id": organizationId,
     name: siteConfig.name,
     url: absoluteUrl("/"),
-    logo: siteConfig.defaultOgImage,
+    logo: absoluteUrl("/metalwolft-isotipo.webp"),
     email: contactDetails.email,
     telephone: contactDetails.phoneDisplay,
     contactPoint: [
@@ -88,13 +89,12 @@ function buildContactPageJsonLd() {
     description: PAGE_DESCRIPTION,
     isPartOf: {
       "@type": "WebSite",
+      "@id": absoluteUrl("/#website"),
       name: siteConfig.name,
-      url: absoluteUrl("/")
+      url: absoluteUrl("/"),
+      publisher: { "@id": organizationId }
     },
-    about: {
-      "@type": "Organization",
-      name: siteConfig.name
-    }
+    about: { "@id": organizationId }
   };
 }
 
