@@ -600,9 +600,10 @@ export default async function HomePage() {
             <p className="mw-eyebrow">Taller y confianza</p>
             <h2>Fabricación propia y atención directa</h2>
             <p>
-              Fabricamos rejas para ventanas a medida en España y trabajamos cada pedido con una
-              lógica sencilla: entender bien el hueco, proponer un modelo coherente y mantener una
-              atención directa cuando el cliente necesita ayuda antes de comprar.
+              Fabricamos rejas para ventanas a medida en nuestro taller del Polígono Industrial
+              Larache, en Ciudad Real. Trabajamos cada pedido con una lógica sencilla: entender bien
+              el hueco, proponer un modelo coherente y mantener una atención directa cuando el
+              cliente necesita ayuda antes de comprar.
             </p>
             <p>
               No intentamos vender una solución genérica. La prioridad es que la reja encaje, se

@@ -169,8 +169,8 @@ export default function ContactPage() {
         <section className="mw-section">
           <h2>Canales de contacto y presupuesto</h2>
           <p>
-            Próxima ubicación del taller de fabricación: Calle Socuéllamos 14, nave 1,
-            13005 Ciudad Real, España. Venta online · Visitas solo con cita previa.
+            Taller de fabricación en el Polígono Industrial Larache: Calle Socuéllamos 14,
+            nave 1, 13005 Ciudad Real, España. Venta online · Visitas solo con cita previa.
             Contacta con nosotros por teléfono, WhatsApp, email o
             mediante el formulario.
           </p>

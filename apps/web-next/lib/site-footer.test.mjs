@@ -1,18 +1,23 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 
-const [footer, map, styles, nextConfig, packageJson, legal, changesPolicy] = await Promise.all([
+const [footer, map, styles, nextConfig, packageJson, legal, changesPolicy, home, contact] = await Promise.all([
   readFile(new URL("../components/layout/SiteFooter.tsx", import.meta.url), "utf8"),
   readFile(new URL("../components/layout/SiteLocationMap.tsx", import.meta.url), "utf8"),
   readFile(new URL("../app/globals.css", import.meta.url), "utf8"),
   readFile(new URL("../next.config.mjs", import.meta.url), "utf8"),
   readFile(new URL("../package.json", import.meta.url), "utf8"),
   readFile(new URL("./legal.ts", import.meta.url), "utf8"),
-  readFile(new URL("../app/cambios-politica-cookies/page.tsx", import.meta.url), "utf8")
+  readFile(new URL("../app/cambios-politica-cookies/page.tsx", import.meta.url), "utf8"),
+  readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
+  readFile(new URL("../app/contact/page.tsx", import.meta.url), "utf8")
 ]);
 
 assert.match(footer, /Taller de fabricación · Ciudad Real/);
+assert.match(footer, /Polígono Industrial Larache/);
 assert.match(footer, /Calle Socuéllamos 14, nave 1/);
+assert.match(home, /taller del Polígono Industrial\s+Larache, en Ciudad Real/);
+assert.match(contact, /Taller de fabricación en el Polígono Industrial Larache/);
 assert.match(footer, /Venta online · Visitas solo con cita previa/);
 assert.doesNotMatch(footer, /Próxima ubicación/);
 assert.doesNotMatch(footer, /Carretera de Porzuna/);

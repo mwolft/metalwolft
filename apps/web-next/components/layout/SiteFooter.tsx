@@ -32,6 +32,7 @@ export function SiteFooter() {
               <div className="mw-footer__brand-location-details">
                 <p className="mw-footer__location-title">Taller de fabricación · Ciudad Real</p>
                 <address>
+                  <span>Polígono Industrial Larache</span>
                   <span>Calle Socuéllamos 14, nave 1</span>
                   <span>13005 Ciudad Real</span>
                 </address>
