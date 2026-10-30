@@ -13,7 +13,8 @@ const [footer, map, styles, nextConfig, packageJson, legal, changesPolicy] = awa
 
 assert.match(footer, /Taller de fabricación · Ciudad Real/);
 assert.match(footer, /Calle Socuéllamos 14, nave 1/);
-assert.match(footer, /Próxima ubicación · Venta online · Visitas solo con cita previa/);
+assert.match(footer, /Venta online · Visitas solo con cita previa/);
+assert.doesNotMatch(footer, /Próxima ubicación/);
 assert.doesNotMatch(footer, /Carretera de Porzuna/);
 assert.doesNotMatch(footer, /Sin atención presencial/);
 assert.match(

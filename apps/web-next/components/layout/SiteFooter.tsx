@@ -35,7 +35,7 @@ export function SiteFooter() {
                   <span>Calle Socuéllamos 14, nave 1</span>
                   <span>13005 Ciudad Real</span>
                 </address>
-                <p className="mw-footer__location-note">Próxima ubicación · Venta online · Visitas solo con cita previa</p>
+                <p className="mw-footer__location-note">Venta online · Visitas solo con cita previa</p>
               </div>
               <SiteLocationMap />
             </div>
