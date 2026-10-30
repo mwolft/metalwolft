@@ -30,13 +30,12 @@ export function SiteFooter() {
                 <circle cx="12" cy="10" r="3" />
               </svg>
               <div className="mw-footer__brand-location-details">
-                <p>Dónde estamos</p>
+                <p className="mw-footer__location-title">Taller de fabricación · Ciudad Real</p>
                 <address>
-                  <span>Próxima ubicación del taller de fabricación</span>
                   <span>Calle Socuéllamos 14, nave 1</span>
-                  <span>13005 Ciudad Real · España</span>
+                  <span>13005 Ciudad Real</span>
                 </address>
-                <p>Venta exclusivamente online · Sin atención presencial al público</p>
+                <p className="mw-footer__location-note">Próxima ubicación · Venta online · Visitas solo con cita previa</p>
               </div>
               <SiteLocationMap />
             </div>
