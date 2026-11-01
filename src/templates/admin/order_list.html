@@ -1,0 +1,12 @@
+{% extends 'admin/model/list.html' %}
+
+{% block model_menu_bar %}
+  {{ super() }}
+  <form method="get" action="{{ url_for('.export_commercial') }}" class="form-inline" style="margin: 12px 0 20px">
+    <label for="date_from">Desde</label>
+    <input id="date_from" name="date_from" type="date" class="form-control">
+    <label for="date_to">Hasta</label>
+    <input id="date_to" name="date_to" type="date" class="form-control">
+    <button type="submit" class="btn btn-primary">Exportar pedidos y lineas</button>
+  </form>
+{% endblock %}

@@ -40,6 +40,7 @@ from api.accounting_excel_service import (
     AccountingExcelExportError,
     export_sales_accounting_entries,
 )
+from api.commercial_orders_export_service import build_workbook, iter_orders
 from api.aeat_sales_ledger_service import (
     AeatSalesLedgerError,
     export_aeat_sales_ledger,
@@ -1329,8 +1330,40 @@ class OrderAdminView(SafeModelView):
     can_create = False
     can_delete = False
     can_view_details = True
+    list_template = "admin/order_list.html"
     extra_css = ["/static/admin/order_sent_email_options.css"]
     extra_js = ["/static/admin/order_sent_email_options.js"]
+
+    @expose('/export-commercial', methods=['GET'])
+    def export_commercial(self):
+        from datetime import date
+
+        def parse_date(name):
+            raw = request.args.get(name, '').strip()
+            if not raw:
+                return None
+            try:
+                if len(raw) != 10 or date.fromisoformat(raw).isoformat() != raw:
+                    raise ValueError
+                return date.fromisoformat(raw)
+            except ValueError:
+                return None
+
+        if set(request.args) - {'date_from', 'date_to'}:
+            return Response('Filtros no validos', status=400)
+        start = parse_date('date_from')
+        end = parse_date('date_to')
+        if ((request.args.get('date_from') and start is None) or
+                (request.args.get('date_to') and end is None) or
+                (start and end and start > end)):
+            return Response('Intervalo de fechas no valido', status=400)
+        output = build_workbook(iter_orders(db.session, start, end), start, end)
+        response = send_file(
+            output, as_attachment=True, download_name='pedidos-comerciales.xlsx',
+            mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        )
+        response.headers['Cache-Control'] = 'no-store'
+        return response
 
     _ORDER_STATUS_EMAIL_OPTION_FIELDS = (
         'send_sent_status_email',
