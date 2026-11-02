@@ -41,13 +41,13 @@ def registered_views():
         view = statement.value.args[0]
         if not isinstance(view, ast.Call) or not isinstance(view.func, ast.Name):
             raise AssertionError("admin.add_view must receive a view constructor")
-        model = view.args[0]
-        if not isinstance(model, ast.Name):
+        model = view.args[0] if view.args else None
+        if model is not None and not isinstance(model, ast.Name):
             raise AssertionError("model view must receive a model class")
         views.append(
             {
                 "view": view.func.id,
-                "model": model.id,
+                "model": model.id if model else None,
                 "name": literal_keyword(view, "name"),
                 "category": literal_keyword(view, "category"),
                 "endpoint": literal_keyword(view, "endpoint"),
@@ -71,6 +71,7 @@ class FlaskAdminNavigationTest(unittest.TestCase):
                 ("Catálogo", "Productos"),
                 ("Catálogo", "Imágenes de producto"),
                 ("Ventas", "Pedidos"),
+                ("Ventas", "Analítica comercial"),
                 ("Ventas", "Fotografías de clientes"),
                 ("Ventas", "Pedidos manuales"),
                 ("Ventas", "Líneas de pedido"),
@@ -117,6 +118,10 @@ class FlaskAdminNavigationTest(unittest.TestCase):
             ("GoogleAdsMonthlySpendAdminView", "GoogleAdsMonthlySpend", "googleadsmonthlyspend"),
         ]
         actual = registered_views()
+        analytics = next(item for item in actual if item["view"] == "CommercialAnalyticsView")
+        self.assertEqual((analytics["model"], analytics["endpoint"], analytics["category"]),
+                         (None, "commercialanalytics", "Ventas"))
+        actual = [item for item in actual if item["model"] is not None]
         self.assertEqual(
             [(item["view"], item["model"], item["model"].lower()) for item in actual],
             expected,

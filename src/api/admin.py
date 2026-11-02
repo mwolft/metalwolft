@@ -7,7 +7,7 @@ from decimal import Decimal, InvalidOperation
 from io import BytesIO
 
 from flask import request, Response, current_app, send_file, flash, redirect, session, url_for, render_template
-from flask_admin import Admin, AdminIndexView, expose
+from flask_admin import Admin, AdminIndexView, BaseView, expose
 from flask_admin.actions import action
 from markupsafe import Markup, escape
 from flask_admin.contrib.sqla import ModelView
@@ -41,6 +41,7 @@ from api.accounting_excel_service import (
     export_sales_accounting_entries,
 )
 from api.commercial_orders_export_service import build_workbook, iter_orders
+from api.commercial_analytics_service import commercial_indicators, resolve_commercial_period
 from api.aeat_sales_ledger_service import (
     AeatSalesLedgerError,
     export_aeat_sales_ledger,
@@ -530,6 +531,33 @@ class SecureModelView(ModelView):
 
     def inaccessible_callback(self, name, **kwargs):
         return Response('Login required', 401, {'WWW-Authenticate': 'Basic realm="Login Required"'})
+
+
+class CommercialAnalyticsView(BaseView):
+    def is_accessible(self):
+        return _admin_credentials_valid(request.authorization or {})
+
+    def inaccessible_callback(self, name, **kwargs):
+        return Response('Login required', 401, {'WWW-Authenticate': 'Basic realm="Login Required"'})
+
+    @expose('/')
+    def index(self):
+        period_kind = request.args.get('period', 'month')
+        date_from = request.args.get('date_from')
+        date_to = request.args.get('date_to')
+        try:
+            period = resolve_commercial_period(period_kind, date_from, date_to)
+        except ValueError as exc:
+            return self.render(
+                'admin/commercial_analytics.html', period_kind=period_kind,
+                date_from=date_from, date_to=date_to, indicators=None,
+                error=str(exc),
+            ), 400
+        return self.render(
+            'admin/commercial_analytics.html', period_kind=period_kind,
+            date_from=date_from, date_to=date_to,
+            indicators=commercial_indicators(db.session, period), error=None,
+        )
 
 
 # ========================== SAFE MODEL VIEW (CON PAPELERA Y MASIVO) ==========================
@@ -5576,6 +5604,7 @@ def setup_admin(app):
     admin.add_view(SafeModelView(ProductImages, db.session, name="Imágenes de producto", category="Catálogo"))
 
     admin.add_view(OrderAdminView(Orders, db.session, name="Pedidos", category="Ventas"))
+    admin.add_view(CommercialAnalyticsView(name="Analítica comercial", endpoint="commercialanalytics", category="Ventas"))
     admin.add_view(CustomerPhotoRequestAdminView(
         CustomerPhotoRequest, db.session, name="Fotografías de clientes", category="Ventas",
     ))
