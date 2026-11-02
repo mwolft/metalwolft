@@ -14,7 +14,7 @@ document.addEventListener('DOMContentLoaded', function () {
             labels: labels,
             datasets: [
                 {
-                    label: 'Ventas',
+                    label: 'Importe de pedidos registrados',
                     data: values,
                     yAxisID: 'y',
                     borderColor: '#337ab7',
@@ -50,7 +50,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 y: {
                     beginAtZero: true,
                     position: 'left',
-                    title: { display: true, text: 'Ventas (€)' }
+                    title: { display: true, text: 'Pedidos registrados (€)' }
                 },
                 yAds: {
                     beginAtZero: true,

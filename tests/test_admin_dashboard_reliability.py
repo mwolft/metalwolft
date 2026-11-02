@@ -1,7 +1,7 @@
 import base64
 import sys
 import unittest
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -10,7 +10,7 @@ sys.path.insert(0, str(ROOT / "src"))
 from flask import Flask
 
 from api import admin as admin_module
-from api.models import db
+from api.models import Orders, db
 
 
 class DashboardReliabilityTest(unittest.TestCase):
@@ -81,6 +81,30 @@ class DashboardReliabilityTest(unittest.TestCase):
     def test_madrid_time_respects_winter_summer_and_aware_input(self):
         self.assertEqual(admin_module._format_madrid_time(datetime(2026, 1, 10, 12)), "10/01 13:00")
         self.assertEqual(admin_module._format_madrid_time(datetime(2026, 7, 10, 12)), "10/07 14:00")
+
+    def test_commercial_kpis_and_quick_links_use_current_month(self):
+        today = datetime.now(timezone.utc).replace(tzinfo=None)
+        with self.app.app_context():
+            db.session.add_all([
+                Orders(locator="DASH000001", order_date=today, total_amount=100, order_status="pendiente"),
+                Orders(locator="DASH000002", order_date=today, total_amount=200, order_status="cancelado"),
+                Orders(locator="DASH000003", order_date=datetime(2025, 1, 1), total_amount=900),
+            ])
+            db.session.commit()
+        response = self.client.get("/admin/", headers=self.auth())
+        self.assertEqual(response.status_code, 200)
+        html = response.get_data(as_text=True)
+        self.assertIn("300.00 €", html)
+        self.assertIn("150.00 €", html)
+        self.assertIn("Pedidos registrados</span>\n            <strong class=\"admin-dashboard__value\">2</strong>", html)
+        self.assertIn('href="/admin/manualorderdraft/"', html)
+        self.assertIn('href="/admin/libro-aeat"', html)
+        self.assertIn('href="/admin/supplierinvoice/upload-and-process/"', html)
+        self.assertIn('href="/admin/manualinvoicedraft/new/"', html)
+        self.assertLess(html.index("PENDIENTES DE FABRICAR"), html.index("Actividad comercial"))
+        self.assertLess(html.index("Actividad comercial"), html.index("Accesos rápidos"))
+        self.assertLess(html.index("Actividad reciente"), html.index("Información general"))
+        self.assertNotIn("Punto Muerto", html)
 
 
 if __name__ == "__main__":

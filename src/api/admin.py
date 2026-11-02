@@ -319,11 +319,6 @@ class SecureAdminIndexView(AdminIndexView):
             db.select(func.count(Orders.id))
         ) or 0
 
-        avg_ticket = db.session.scalar(
-            db.select(func.avg(Orders.total_amount))
-            .where(Orders.total_amount.isnot(None))
-        ) or 0
-
         now = datetime.now(timezone.utc).replace(tzinfo=None)
         current_year = now.year
         selected_year = _dashboard_year(request.args.get("year"), current_year)
@@ -338,6 +333,12 @@ class SecureAdminIndexView(AdminIndexView):
             .where(Orders.order_date >= inicio_mes_actual)
             .where(Orders.order_date <= now)
         ) or 0
+
+        period_order_count, period_avg_ticket = db.session.execute(
+            db.select(func.count(Orders.id), func.avg(Orders.total_amount))
+            .where(Orders.order_date >= inicio_mes_actual)
+            .where(Orders.order_date <= now)
+        ).one()
 
 
         ingresos_mes_anterior = db.session.scalar(
@@ -433,7 +434,8 @@ class SecureAdminIndexView(AdminIndexView):
                 'orders_count': orders_count,
                 'invoices_count': invoices_count,
                 'users_count': users_count,
-                'avg_ticket': avg_ticket,
+                'period_order_count': period_order_count,
+                'period_avg_ticket': period_avg_ticket or 0,
                 'ingresos_mes_actual': ingresos_mes_actual,
                 'variacion_porcentual': variacion_porcentual,
                 'variacion_label': variacion_label,
@@ -450,6 +452,7 @@ class SecureAdminIndexView(AdminIndexView):
             selected_year=selected_year,
             tz_es=_format_madrid_time,
             aeat_unified_url=self.get_url('.unified_aeat_ledger'),
+            manual_orders_url=url_for('manualorderdraft.index_view'),
             pending_manufacturing=pending_manufacturing,
         )
 

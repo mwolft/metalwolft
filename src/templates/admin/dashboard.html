@@ -2,23 +2,25 @@
 
 {% block body %}
 <style>
-    .admin-dashboard-action .panel-body {
-        display: flex;
-        align-items: center;
-        justify-content: flex-end;
-        gap: 22px;
-        padding-top: 12px;
-        padding-bottom: 12px;
-    }
-
-    .admin-dashboard-action__copy {
-        text-align: right;
-    }
-
-    .admin-dashboard-action .btn {
-        min-width: 190px;
-    }
-
+    .admin-dashboard { --mw-admin-blue: #183b60; --mw-admin-red: #b52538; }
+    .admin-dashboard__section { margin: 22px 0 12px; color: var(--mw-admin-blue); font-size: 18px; font-weight: 700; }
+    .admin-dashboard__section small { color: #566579; display: block; font-size: 12px; font-weight: 400; margin-top: 4px; }
+    .admin-dashboard__kpis, .admin-dashboard__links, .admin-dashboard__totals { display: grid; gap: 12px; }
+    .admin-dashboard__kpis { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .admin-dashboard__links, .admin-dashboard__totals { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+    .admin-dashboard__card { background: #fff; border: 1px solid #dce3e9; border-radius: 6px; min-width: 0; padding: 16px; }
+    .admin-dashboard__card--primary { border-top: 3px solid var(--mw-admin-red); }
+    .admin-dashboard__label { color: var(--mw-admin-blue); display: block; font-weight: 600; }
+    .admin-dashboard__value { color: #172d44; display: block; font-size: clamp(21px, 2vw, 28px); font-weight: 700; margin-top: 8px; }
+    .admin-dashboard__help { color: #526174; display: block; font-size: 12px; line-height: 1.45; margin-top: 8px; }
+    .admin-dashboard__link { align-items: center; color: var(--mw-admin-blue); display: flex; font-weight: 600; min-height: 54px; text-decoration: none; }
+    .admin-dashboard__link:hover { color: var(--mw-admin-red); text-decoration: underline; }
+    .admin-dashboard__link:focus-visible { outline: 3px solid var(--mw-admin-red); outline-offset: 2px; }
+    .admin-dashboard__chart { height: 260px; position: relative; }
+    .admin-dashboard__table td, .admin-dashboard__table th { vertical-align: middle !important; }
+    .admin-dashboard__table td:last-child { font-weight: 600; white-space: nowrap; }
+    .admin-dashboard__total { background: #f5f7f9; padding: 12px 16px; }
+    .admin-dashboard__total strong { color: #172d44; display: block; font-size: 20px; }
     .admin-production-queue .panel-heading {
         align-items: center;
         display: flex;
@@ -61,20 +63,9 @@
     .admin-production-queue__countdown { margin-top: 2px; }
 
     @media (max-width: 767px) {
-        .admin-dashboard-action .panel-body {
-            align-items: stretch;
-            flex-direction: column;
-            gap: 10px;
-        }
-
-        .admin-dashboard-action__copy {
-            text-align: left;
-        }
-
-        .admin-dashboard-action .btn {
-            align-self: flex-start;
-        }
-
+        .admin-dashboard__kpis { grid-template-columns: 1fr; }
+        .admin-dashboard__links, .admin-dashboard__totals { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        .admin-dashboard__chart { height: 220px; }
         .admin-production-queue__item {
             align-items: flex-start;
             grid-template-columns: minmax(0, 1fr);
@@ -89,9 +80,13 @@
 
         .admin-production-queue__action { justify-self: start; }
     }
+    @media (max-width: 420px) {
+        .admin-dashboard__links { grid-template-columns: 1fr; }
+        .admin-dashboard__card { padding: 13px; }
+    }
 </style>
-<div class="container-fluid" style="margin-top:10px;">
-    <h3 style="margin-bottom:15px;"><b>RESUMEN:</b></h3>
+<div class="container-fluid admin-dashboard" style="margin-top:10px;">
+    <h3 style="margin-bottom:15px;"><b>Resumen de gestión</b></h3>
     <form method="get" data-pjax="false" style="margin-bottom:15px;">
         <select name="year">
             <option value="{{ current_year }}" {% if selected_year==current_year %}selected{% endif %}>
@@ -143,124 +138,65 @@
             {% endfor %}
         </div>
     </div>
-    <div class="panel panel-default admin-dashboard-action" style="margin-bottom:15px;">
-        <div class="panel-body">
-            <div class="admin-dashboard-action__copy">
-                <strong>Libro AEAT conjunto</strong>
-                <div class="text-muted">Facturas expedidas y facturas recibidas por ejercicio y periodo.</div>
-            </div>
-            <a class="btn btn-primary" href="{{ aeat_unified_url }}">DESCARGAR LIBRO AEAT</a>
-        </div>
-    </div>
-    <div class="panel panel-primary admin-dashboard-action" style="margin-bottom:15px;">
-        <div class="panel-body">
-            <div class="admin-dashboard-action__copy">
-                <strong>Nueva factura recibida</strong>
-                <div class="text-muted">Sube un PDF y revisa la propuesta antes de registrarla.</div>
-            </div>
-            <a class="btn btn-primary" href="{{ url_for('supplierinvoice.upload_and_process') }}">NUEVA FACTURA RECIBIDA</a>
-        </div>
-    </div>
-    <div class="panel panel-default admin-dashboard-action" style="margin-bottom:15px;">
-        <div class="panel-body">
-            <div class="admin-dashboard-action__copy">
-                <strong>Factura manual</strong>
-                <div class="text-muted">Crea y emite una factura ordinaria sin pedido asociado.</div>
-            </div>
-            <a class="btn btn-primary" href="{{ url_for('manualinvoicedraft.create_view') }}">EMITIR FACTURA MANUAL</a>
-        </div>
-    </div>
-    <div class="row">
-        <div class="col-md-12 col-sm-12">
-            <div class="panel panel-success">
-                <div class="panel-heading">Importe de pedidos del mes</div>
-                <div class="panel-body">
-                    <h3 style="display:inline-block; margin:0;">
-                        <b><b>{{ "%.2f"|format(metrics.ingresos_mes_actual) }}€</b></b>
-                    </h3>
-                    <small style="display:inline-block; margin-left:10px;">
+    <h4 class="admin-dashboard__section">Actividad comercial <small>Mes en curso, desde el día 1 hasta ahora (UTC).</small></h4>
+    <div class="admin-dashboard__kpis">
+        <div class="admin-dashboard__card admin-dashboard__card--primary">
+            <span class="admin-dashboard__label">Importe de pedidos del mes</span>
+            <strong class="admin-dashboard__value">{{ "%.2f"|format(metrics.ingresos_mes_actual) }} €</strong>
+            <span class="admin-dashboard__help">
                         {% if metrics.variacion_es_nueva %}
-                        <span style="color:green;">▲ {{ metrics.variacion_label }}</span>
-                        <span class="text-muted"> (sin periodo anterior)</span>
+                        {{ metrics.variacion_label }} (sin periodo anterior)
                         {% else %}
-                        {% if metrics.variacion_up %}
-                        <span style="color:green;">▲ {{ metrics.variacion_label }}</span>
-                        {% else %}
-                        <span style="color:red;">▼ {{ metrics.variacion_label }}</span>
+                        {{ metrics.variacion_label }} respecto al periodo equivalente del mes anterior
                         {% endif %}
-                        respecto al periodo equivalente del mes anterior
-                        {% endif %}
-
-                    </small>
-                    <p class="text-muted" style="margin:8px 0 0;">Importes registrados, no necesariamente cobrados.</p>
-                </div>
-            </div>
+            </span>
+            <span class="admin-dashboard__help">Importes registrados, no necesariamente cobrados.</span>
+        </div>
+        <div class="admin-dashboard__card">
+            <span class="admin-dashboard__label">Pedidos registrados</span>
+            <strong class="admin-dashboard__value">{{ metrics.period_order_count }}</strong>
+            <span class="admin-dashboard__help">Todos los estados del mes en curso.</span>
+        </div>
+        <div class="admin-dashboard__card">
+            <span class="admin-dashboard__label">Ticket medio</span>
+            <strong class="admin-dashboard__value">{{ "%.2f"|format(metrics.period_avg_ticket) }} €</strong>
+            <span class="admin-dashboard__help">Media del total registrado por pedido del mes; no implica cobro.</span>
         </div>
     </div>
-    <div class="row">
-        <div class="col-sm-3">
-            <div class="panel panel-primary">
-                <div class="panel-heading">Productos</div>
-                <div class="panel-body"><strong>{{ metrics.products_count }}</strong></div>
-            </div>
-        </div>
-        <div class="col-sm-3">
-            <div class="panel panel-primary">
-                <div class="panel-heading">Pedidos</div>
-                <div class="panel-body"><strong>{{ metrics.orders_count }}</strong></div>
-            </div>
-        </div>
-        <div class="col-sm-3">
-            <div class="panel panel-primary">
-                <div class="panel-heading">Facturas</div>
-                <div class="panel-body"><strong>{{ metrics.invoices_count }}</strong></div>
-            </div>
-        </div>
-        <div class="col-sm-3">
-            <div class="panel panel-primary">
-                <div class="panel-heading">Usuarios</div>
-                <div class="panel-body"><strong>{{ metrics.users_count }}</strong></div>
-            </div>
-        </div>
-    </div>
+    <h4 class="admin-dashboard__section">Accesos rápidos</h4>
+    <nav class="admin-dashboard__links" aria-label="Accesos rápidos del administrador">
+        <a class="admin-dashboard__card admin-dashboard__link" href="{{ manual_orders_url }}">Pedidos manuales</a>
+        <a class="admin-dashboard__card admin-dashboard__link" href="{{ aeat_unified_url }}">Libro AEAT conjunto</a>
+        <a class="admin-dashboard__card admin-dashboard__link" href="{{ url_for('supplierinvoice.upload_and_process') }}">Nueva factura recibida</a>
+        <a class="admin-dashboard__card admin-dashboard__link" href="{{ url_for('manualinvoicedraft.create_view') }}">Factura manual</a>
+    </nav>
+    <h4 class="admin-dashboard__section">Evolución comercial <small>Importe de pedidos registrados e inversión de Google Ads; no indica cobros ni atribución.</small></h4>
     <div class="row">
         <div class="col-md-12">
             <div class="panel panel-primary">
                 <div class="panel-heading">
-                    Ventas {{ selected_year }}
+                    Pedidos registrados e inversión Google Ads {{ selected_year }}
                 </div>
                 <div class="panel-body">
-                    <canvas id="salesChart-{{ selected_year }}" style="width:100%; min-height:300px;"
+                    <div class="admin-dashboard__chart">
+                    <canvas id="salesChart-{{ selected_year }}" role="img" aria-label="Importe mensual de pedidos registrados e inversión Google Ads en {{ selected_year }}"
                         data-labels='{{ monthly_sales_labels | tojson }}'
                         data-values='{{ monthly_sales_values | tojson }}'
                         data-ads-values='{{ monthly_google_ads_values | tojson }}'>
                     </canvas>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
-    <div class="row">
-        <div class="col-md-12">
-            <div class="panel panel-primary">
-                <div class="panel-heading">
-                    Usuarios nuevos {{ selected_year }}
-                </div>
-                <div class="panel-body">
-                    <canvas id="usersChart-{{ selected_year }}" style="width:100%; min-height:300px;"
-                        data-labels='{{ monthly_sales_labels | tojson }}'
-                        data-values='{{ users_monthly_values | tojson }}'>
-                    </canvas>
-                </div>
-            </div>
-        </div>
-    </div>
+    <h4 class="admin-dashboard__section">Actividad reciente</h4>
     <div class="row">
         <div class="col-md-6 col-sm-12">
             <div class="panel panel-primary">
                 <div class="panel-heading">Últimos pedidos</div>
                 <div class="panel-body" style="padding:0;">
-                    <div class="table-responsive"> <!-- 🔥 Scroll horizontal en móvil -->
-                        <table class="table table-striped" style="margin:0;">
+                    <div class="table-responsive">
+                        <table class="table table-striped admin-dashboard__table" style="margin:0;">
                             <thead>
                                 <tr>
                                     <th>Cliente</th>
@@ -279,7 +215,7 @@
                                 </tr>
                                 {% else %}
                                 <tr>
-                                    <td colspan="5" class="text-muted">Sin datos</td>
+                                    <td colspan="4" class="text-muted">Sin datos</td>
                                 </tr>
                                 {% endfor %}
                             </tbody>
@@ -293,8 +229,8 @@
             <div class="panel panel-primary">
                 <div class="panel-heading">Últimas facturas</div>
                 <div class="panel-body" style="padding:0;">
-                    <div class="table-responsive"> <!-- 🔥 Scroll horizontal en móvil -->
-                        <table class="table table-striped" style="margin:0;">
+                    <div class="table-responsive">
+                        <table class="table table-striped admin-dashboard__table" style="margin:0;">
                             <thead>
                                 <tr>
                                     <th>Nro. Factura</th>
@@ -311,7 +247,7 @@
                                 </tr>
                                 {% else %}
                                 <tr>
-                                    <td colspan="4" class="text-muted">Sin datos</td>
+                                    <td colspan="3" class="text-muted">Sin datos</td>
                                 </tr>
                                 {% endfor %}
                             </tbody>
@@ -320,12 +256,21 @@
                 </div>
             </div>
         </div>
-        <div class="col-md-3 col-sm-6">
-            <div class="panel panel-primary">
-                <div class="panel-heading">Ticket medio</div>
-                <div class="panel-body">
-                    <h3><b>{{ "%.2f"|format(metrics.avg_ticket) }}€</b></h3>
-                </div>
+    </div>
+    <h4 class="admin-dashboard__section">Información general <small>Totales históricos y evolución de altas.</small></h4>
+    <div class="admin-dashboard__totals">
+        <div class="admin-dashboard__card admin-dashboard__total"><span>Productos</span><strong>{{ metrics.products_count }}</strong></div>
+        <div class="admin-dashboard__card admin-dashboard__total"><span>Pedidos históricos</span><strong>{{ metrics.orders_count }}</strong></div>
+        <div class="admin-dashboard__card admin-dashboard__total"><span>Facturas</span><strong>{{ metrics.invoices_count }}</strong></div>
+        <div class="admin-dashboard__card admin-dashboard__total"><span>Usuarios</span><strong>{{ metrics.users_count }}</strong></div>
+    </div>
+    <div class="panel panel-default" style="margin-top:12px;">
+        <div class="panel-heading">Usuarios nuevos {{ selected_year }}</div>
+        <div class="panel-body">
+            <div class="admin-dashboard__chart">
+                <canvas id="usersChart-{{ selected_year }}" role="img" aria-label="Usuarios nuevos por mes en {{ selected_year }}"
+                    data-labels='{{ monthly_sales_labels | tojson }}'
+                    data-values='{{ users_monthly_values | tojson }}'></canvas>
             </div>
         </div>
     </div>
