@@ -68,6 +68,19 @@ class GoogleAdsMonthlySpend(db.Model):
     )
 
 
+class GoogleAdsMonthlySpendChange(db.Model):
+    """Immutable audit trail for manual monthly cost changes."""
+
+    __tablename__ = "google_ads_monthly_spend_change"
+
+    id = db.Column(db.Integer, primary_key=True)
+    year = db.Column(db.Integer, nullable=False)
+    month = db.Column(db.Integer, nullable=False)
+    old_amount = db.Column(db.Numeric(12, 2), nullable=True)
+    new_amount = db.Column(db.Numeric(12, 2), nullable=False)
+    changed_at = db.Column(db.DateTime, nullable=False, server_default=db.func.now())
+
+
 class GoogleAdsImportedMonthlyCost(db.Model):
     """Source-backed monthly Google Ads cost, separate from manual estimates."""
 

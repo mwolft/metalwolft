@@ -14,6 +14,7 @@ from sqlalchemy import select
 
 from api.commercial_analytics_service import monthly_order_activity, resolve_ranking_period
 from api.models import GoogleAdsImportedMonthlyCost
+from api.google_ads_manual_service import effective_monthly_costs
 
 
 HEADERS = (
@@ -152,10 +153,9 @@ def import_monthly_costs(session, rows, filename, *, replace_existing=False):
     return {"inserted": inserted, "updated": updated, "unchanged": len(rows) - inserted - updated}
 
 
-def ads_dashboard_data(session, choice, available_years):
+def ads_dashboard_data(session, choice, available_years, *, include_manual=True):
     resolve_ranking_period(choice, available_years)
-    query = select(GoogleAdsImportedMonthlyCost).order_by(
-        GoogleAdsImportedMonthlyCost.year, GoogleAdsImportedMonthlyCost.month)
+    effective = effective_monthly_costs(session, include_manual=include_manual)
     year = None
     if choice == "year":
         year = datetime.now(ZoneInfo('Europe/Madrid')).year
@@ -163,16 +163,14 @@ def ads_dashboard_data(session, choice, available_years):
         year = datetime.now(ZoneInfo('Europe/Madrid')).year - 1
     elif choice.startswith("year:"):
         year = int(choice[5:])
-    if year is not None:
-        query = query.where(GoogleAdsImportedMonthlyCost.year == year)
-    records = session.execute(query).scalars().all()
+    records = [(month, source, amount, row) for month, source, amount, row in reversed(effective)
+               if year is None or month.year == year]
     if choice == "all":
         if not records:
             return {"total": Decimal('0.00'), "product": Decimal('0.00'),
                     "without": Decimal('0.00'), "labels": [], "costs": [],
                     "sales": [], "orders": [], "coverage": None, "missing": 0, "partial": []}
-        start = date(records[0].year, records[0].month, 1)
-        end = date(records[-1].year, records[-1].month, 1)
+        start, end = records[0][0], records[-1][0]
     else:
         start, end = date(year, 1, 1), date(year, 12, 1)
     months = []
@@ -180,17 +178,20 @@ def ads_dashboard_data(session, choice, available_years):
     while cursor <= end:
         months.append((cursor.year, cursor.month))
         cursor = date(cursor.year + (cursor.month == 12), cursor.month % 12 + 1, 1)
-    by_month = {(record.year, record.month): record for record in records}
+    by_month = {(month.year, month.month): (source, amount, row)
+                for month, source, amount, row in records}
     activity = {year: monthly_order_activity(session, year) for year in {y for y, _ in months}}
     future = [activity[year]['future'][month - 1] for year, month in months]
-    costs = [float(by_month[key].cost_eur) if key in by_month and not future[index] else None
+    costs = [float(by_month[key][1]) if key in by_month and not future[index] else None
              for index, key in enumerate(months)]
-    partial = [key in by_month and (by_month[key].source_start.day != 1 or
-               by_month[key].source_end.day != calendar.monthrange(*key)[1]) for key in months]
+    partial = [key in by_month and by_month[key][0] == 'CSV' and
+               (by_month[key][2].source_start.day != 1 or
+                by_month[key][2].source_end.day != calendar.monthrange(*key)[1]) for key in months]
     return {
-        "total": sum((record.cost_eur for record in records), Decimal('0.00')),
-        "product": sum((record.cost_product_eur for record in records), Decimal('0.00')),
-        "without": sum((record.cost_without_product_eur for record in records), Decimal('0.00')),
+        "total": sum((amount for _, _, amount, _ in records), Decimal('0.00')),
+        "product": sum((row.cost_product_eur for _, source, _, row in records if source == 'CSV'), Decimal('0.00')),
+        "without": sum((row.cost_without_product_eur for _, source, _, row in records if source == 'CSV'), Decimal('0.00')),
+        "unclassified": sum((amount for _, source, amount, _ in records if source == 'Manual'), Decimal('0.00')),
         "labels": [f"{year}-{month:02d}" for year, month in months],
         "costs": costs,
         "sales": [None if activity[year]['future'][month - 1] else activity[year]['amounts'][month - 1]
@@ -201,6 +202,9 @@ def ads_dashboard_data(session, choice, available_years):
         "partial": partial,
         "missing": sum(key not in by_month and not future[index]
                        for index, key in enumerate(months)),
-        "coverage": (min(record.source_start for record in records),
-                     max(record.source_end for record in records)) if records else None,
+        "coverage": (min(row.source_start if source == 'CSV' else month
+                         for month, source, _, row in records),
+                     max(row.source_end if source == 'CSV' else
+                         date(month.year, month.month, calendar.monthrange(month.year, month.month)[1])
+                         for month, source, _, row in records)) if records else None,
     }

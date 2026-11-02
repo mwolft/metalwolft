@@ -417,6 +417,7 @@
                     </select>
                 </label>
                 <button type="submit" class="btn btn-default">Ver periodo</button>
+                {% if ads_monthly_url and not ads_unavailable %}<a class="btn btn-default" href="{{ ads_monthly_url }}">Gestionar gastos</a>{% endif %}
                 {% if not ads_unavailable %}<a class="btn btn-default" href="{{ ads_import_url }}">Importar CSV</a>{% endif %}
             </form>
             {% if ads_error %}<div class="alert {{ 'alert-warning' if ads_unavailable else 'alert-danger' }}" role="alert">{{ ads_error }}</div>{% endif %}
@@ -429,6 +430,7 @@
                     <div class="admin-dashboard__ads-total"><span>Gasto publicitario</span><strong>{{ '%.2f'|format(ads_data.total) }} €</strong></div>
                     <div class="admin-dashboard__ads-total"><span>Con datos de producto</span><strong>{{ '%.2f'|format(ads_data.product) }} €</strong></div>
                     <div class="admin-dashboard__ads-total"><span>Sin datos de producto</span><strong>{{ '%.2f'|format(ads_data.without) }} €</strong></div>
+                    {% if ads_data.unclassified %}<div class="admin-dashboard__ads-total"><span>Sin desglose (manual)</span><strong>{{ '%.2f'|format(ads_data.unclassified) }} €</strong></div>{% endif %}
                 </div>
                 {% endif %}
                 {% if ads_data.labels %}
@@ -440,7 +442,7 @@
                     data-future='{{ ads_data.future|tojson }}'
                     data-partial='{{ ads_data.partial|tojson }}'></canvas></div></div>
                 {% endif %}
-                <p class="text-muted" style="margin:10px 0 0;">Coste importado de un CSV derivado; no es una exportación mensual nativa. El gasto manual anterior no se incluye. Los pedidos se agrupan por mes completo incluso donde la cobertura de Ads es parcial. Sus importes son registros comerciales, no ventas atribuidas a Google Ads ni cobros confirmados. No se calculan ROAS, CPA ni beneficio.</p>
+                <p class="text-muted" style="margin:10px 0 0;">{% if ads_manual_available %}El importe manual confirmado prevalece sobre el CSV del mismo mes, sin sumarse. Los importes manuales no tienen desglose de producto. {% endif %}El CSV es derivado, no una exportación mensual nativa. Los pedidos se agrupan por mes completo incluso donde la cobertura de Ads es parcial. Sus importes son registros comerciales, no ventas atribuidas a Google Ads ni cobros confirmados. No se calculan ROAS, CPA ni beneficio.</p>
             {% endif %}
         </div>
     </div>

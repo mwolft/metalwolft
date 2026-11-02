@@ -1,0 +1,71 @@
+{% extends 'admin/master.html' %}
+{% block body %}
+<div class="container-fluid" style="max-width:960px;margin-top:20px;">
+    <h3>Gastos mensuales de Google Ads</h3>
+    <p>Un importe efectivo por mes. El valor manual confirmado prevalece sobre el CSV, que se conserva como referencia.</p>
+    {% if error %}<div class="alert alert-danger" role="alert">{{ error }}</div>{% endif %}
+    <div class="panel panel-default">
+        <div class="panel-heading">{% if current %}Editar {{ current[0].strftime('%Y-%m') }}{% else %}Añadir mes{% endif %}</div>
+        <div class="panel-body">
+            {% if current %}<p>{% if current[1] == 'Manual anterior sin confirmar' %}Importe manual anterior, pendiente de confirmar{% else %}Importe efectivo actual{% endif %}: <strong>{{ '%.2f'|format(current[2]) }} €</strong> ({{ current[1] }}).</p>{% endif %}
+            <form method="post" data-pjax="false" class="form-inline">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                <input type="hidden" name="action" value="{{ 'edit' if current else 'add' }}">
+                <div class="form-group">
+                    <label for="ads-month">Mes</label>
+                    <input id="ads-month" name="month" type="month" class="form-control" required
+                           value="{{ current[0].strftime('%Y-%m') if current else '' }}" {% if current %}readonly{% endif %}>
+                </div>
+                <div class="form-group">
+                    <label for="ads-amount">Importe (€)</label>
+                    <input id="ads-amount" name="amount" type="text" inputmode="decimal" class="form-control"
+                           required pattern="[0-9]+([.,][0-9]{1,2})?" value="{{ '%.2f'|format(current[2]) if current else '' }}">
+                </div>
+                <button type="submit" class="btn btn-primary">{{ 'Guardar cambio' if current else 'Añadir mes' }}</button>
+                {% if current %}<a href="{{ url_for('.manage_google_ads_monthly') }}" class="btn btn-default">Cancelar</a>{% endif %}
+            </form>
+        </div>
+    </div>
+    <div class="table-responsive">
+        <table class="table table-striped table-condensed">
+            <thead><tr><th>Mes</th><th>Importe efectivo</th><th>Origen</th><th>Acción</th></tr></thead>
+            <tbody>
+                {% for month, source, amount, row in months %}
+                <tr><td>{{ month.strftime('%Y-%m') }}</td><td>{{ '%.2f'|format(amount) }} €</td><td>{{ source }}</td>
+                    <td><a href="{{ url_for('.manage_google_ads_monthly', edit=month.strftime('%Y-%m')) }}">Editar</a></td></tr>
+                {% else %}<tr><td colspan="4">Todavía no hay meses registrados.</td></tr>{% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% if legacy %}
+    <h4>Importes manuales anteriores pendientes de confirmar</h4>
+    <p>Estos importes no se incluyen en el dashboard. Revisa cada mes antes de activarlo.</p>
+    <div class="table-responsive">
+        <table class="table table-condensed">
+            <thead><tr><th>Mes</th><th>Importe anterior</th><th>Acción</th></tr></thead>
+            <tbody>{% for row in legacy %}
+                <tr><td>{{ '%04d-%02d'|format(row.year, row.month) }}</td>
+                    <td>{{ '%.2f'|format(row.amount) }} €</td>
+                    <td><a href="{{ url_for('.manage_google_ads_monthly', edit='%04d-%02d'|format(row.year, row.month)) }}">Revisar y confirmar</a></td></tr>
+            {% endfor %}</tbody>
+        </table>
+    </div>
+    {% endif %}
+    <h4>Últimos cambios manuales</h4>
+    <div class="table-responsive">
+        <table class="table table-condensed">
+            <thead><tr><th>Fecha</th><th>Mes</th><th>Importe anterior</th><th>Importe nuevo</th></tr></thead>
+            <tbody>
+                {% for change in changes %}
+                <tr><td>{{ change.changed_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                    <td>{{ '%04d-%02d'|format(change.year, change.month) }}</td>
+                    <td>{{ ('%.2f €'|format(change.old_amount)) if change.old_amount is not none else 'Sin dato' }}</td>
+                    <td>{{ '%.2f €'|format(change.new_amount) }}</td></tr>
+                {% else %}<tr><td colspan="4">Aún no hay cambios manuales.</td></tr>{% endfor %}
+            </tbody>
+        </table>
+    </div>
+    <p><a class="btn btn-default" href="{{ dashboard_url }}">Volver al dashboard</a>
+       <a class="btn btn-default" href="{{ import_url }}">Importar CSV</a></p>
+</div>
+{% endblock %}

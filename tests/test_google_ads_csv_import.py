@@ -17,7 +17,8 @@ sys.path.insert(0, str(ROOT / 'src'))
 
 from api import admin as admin_module
 from api.google_ads_csv_service import HEADERS, ads_dashboard_data, import_monthly_costs, parse_monthly_cost_csv
-from api.models import GoogleAdsImportedMonthlyCost, Orders, db
+from api.google_ads_manual_service import effective_monthly_costs, save_manual_cost
+from api.models import GoogleAdsImportedMonthlyCost, GoogleAdsMonthlySpend, GoogleAdsMonthlySpendChange, Orders, db
 
 
 def csv_data(*rows):
@@ -117,6 +118,80 @@ class GoogleAdsCsvImportTest(unittest.TestCase):
             with self.assertRaises(ValueError):
                 ads_dashboard_data(db.session, 'invalid', [2025])
 
+    def test_manual_cost_overrides_csv_without_inventing_components(self):
+        with self.app.app_context():
+            import_monthly_costs(db.session, parse_monthly_cost_csv(csv_data(JULY)), 'cost.csv')
+            self.assertTrue(save_manual_cost(db.session, '2025-07', '200,50', editing=True))
+            self.assertEqual(GoogleAdsImportedMonthlyCost.query.one().cost_eur, Decimal('198.42'))
+            data = ads_dashboard_data(db.session, 'all', [2025])
+            self.assertEqual(data['total'], Decimal('200.50'))
+            self.assertEqual(data['product'], Decimal('0.00'))
+            self.assertEqual(data['without'], Decimal('0.00'))
+            self.assertEqual(data['unclassified'], Decimal('200.50'))
+            self.assertEqual(data['costs'], [200.5])
+            self.assertEqual(len(effective_monthly_costs(db.session)), 1)
+            change = GoogleAdsMonthlySpendChange.query.one()
+            self.assertEqual((change.old_amount, change.new_amount),
+                             (Decimal('198.42'), Decimal('200.50')))
+            self.assertTrue(save_manual_cost(db.session, '2025-07', '201.00', editing=True))
+            self.assertEqual(GoogleAdsMonthlySpendChange.query.count(), 2)
+            self.assertFalse(save_manual_cost(db.session, '2025-07', '201.00', editing=True))
+            self.assertEqual(GoogleAdsMonthlySpendChange.query.count(), 2)
+            with self.assertRaises(ValueError):
+                save_manual_cost(db.session, '2025-07', '202.00')
+
+    def test_manual_month_validation_and_new_month(self):
+        for month, amount in [('2025-13', '1.00'), ('2025-01', '-1.00'),
+                              ('2025-01', '1.001'), ('2025-01', 'nan')]:
+            with self.subTest(month=month, amount=amount), self.app.app_context():
+                with self.assertRaises(ValueError):
+                    save_manual_cost(db.session, month, amount)
+        with self.app.app_context():
+            self.assertTrue(save_manual_cost(db.session, '2025-09', '0'))
+            self.assertEqual(GoogleAdsMonthlySpend.query.one().amount, Decimal('0.00'))
+            self.assertIsNone(GoogleAdsMonthlySpendChange.query.one().old_amount)
+
+    def test_legacy_manual_values_remain_inactive_until_confirmed(self):
+        with self.app.app_context():
+            import_monthly_costs(db.session, parse_monthly_cost_csv(csv_data(JULY)), 'cost.csv')
+            db.session.add(GoogleAdsMonthlySpend(year=2025, month=7, amount=Decimal('70.00')))
+            db.session.add(GoogleAdsMonthlySpend(year=2025, month=9, amount=Decimal('20.00')))
+            db.session.commit()
+            data = ads_dashboard_data(db.session, 'all', [2025])
+            self.assertEqual(data['total'], Decimal('198.42'))
+            self.assertEqual(len(effective_monthly_costs(db.session)), 1)
+        html = self.client.get('/admin/ads-monthly', headers=self.auth).get_data(as_text=True)
+        self.assertIn('pendientes de confirmar', html)
+        with self.app.app_context():
+            save_manual_cost(db.session, '2025-07', '75.00', editing=True)
+            self.assertEqual(GoogleAdsMonthlySpendChange.query.one().old_amount, Decimal('198.42'))
+            self.assertEqual(ads_dashboard_data(db.session, 'all', [2025])['total'], Decimal('75.00'))
+            save_manual_cost(db.session, '2025-09', '20.00', editing=True)
+            self.assertEqual(ads_dashboard_data(db.session, 'all', [2025])['total'], Decimal('95.00'))
+
+    def test_manual_admin_auth_csrf_edit_and_dashboard(self):
+        self.assertEqual(self.client.get('/admin/ads-monthly').status_code, 401)
+        response = self.client.get('/admin/ads-monthly', headers=self.auth)
+        self.assertEqual(response.status_code, 200)
+        with self.client.session_transaction() as browser_session:
+            token = browser_session['google_ads_monthly_csrf']
+        self.assertEqual(self.client.post('/admin/ads-monthly', headers=self.auth,
+            data={'action': 'add', 'month': '2025-07', 'amount': '40.00'}).status_code, 400)
+        response = self.client.post('/admin/ads-monthly', headers=self.auth,
+            data={'csrf_token': token, 'action': 'add', 'month': '2025-07', 'amount': '40.00'})
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(self.client.post('/admin/ads-monthly', headers=self.auth,
+            data={'csrf_token': token, 'action': 'add', 'month': '2025-07', 'amount': '40.00'}).status_code, 400)
+        edit = self.client.get('/admin/ads-monthly?edit=2025-07', headers=self.auth)
+        self.assertIn('40.00', edit.get_data(as_text=True))
+        self.assertEqual(self.client.post('/admin/ads-monthly', headers=self.auth,
+            data={'csrf_token': token, 'action': 'edit', 'month': '2025-07', 'amount': '41.50'}).status_code, 302)
+        dashboard = self.client.get('/admin/?ads_period=year:2025', headers=self.auth)
+        self.assertIn('41.50 €', dashboard.get_data(as_text=True))
+        self.assertIn('Sin desglose (manual)', dashboard.get_data(as_text=True))
+        with self.app.app_context():
+            self.assertEqual(GoogleAdsMonthlySpendChange.query.count(), 2)
+
     def test_admin_auth_csrf_and_import(self):
         self.assertEqual(self.client.get('/admin/ads-import').status_code, 401)
         self.assertEqual(self.client.post('/admin/ads-import', data={}).status_code, 401)
@@ -159,9 +234,19 @@ class GoogleAdsCsvImportTest(unittest.TestCase):
         self.assertEqual(self.client.post('/admin/ads-import', headers=self.auth,
             data={'cost_csv': (io.BytesIO(csv_data(JULY)), 'cost.csv')}).status_code, 503)
 
+    def test_dashboard_keeps_csv_until_manual_history_migration(self):
+        with self.app.app_context():
+            import_monthly_costs(db.session, parse_monthly_cost_csv(csv_data(JULY)), 'cost.csv')
+            GoogleAdsMonthlySpendChange.__table__.drop(db.engine)
+        response = self.client.get('/admin/', headers=self.auth)
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('198.42 €', response.get_data(as_text=True))
+        self.assertNotIn('>Gestionar gastos</a>', response.get_data(as_text=True))
+        self.assertEqual(self.client.get('/admin/ads-monthly', headers=self.auth).status_code, 503)
+
     def test_migration_constraints_on_isolated_database(self):
         script = ScriptDirectory(str(ROOT / 'src' / 'migrations'))
-        self.assertEqual(script.get_heads(), ['a6f2c9e4d1b8'])
+        self.assertEqual(script.get_heads(), ['b7d3e9f1a2c4'])
         migration = script.get_revision('a6f2c9e4d1b8').module
         engine = create_engine('sqlite:///:memory:')
         with engine.begin() as connection:
@@ -178,6 +263,24 @@ class GoogleAdsCsvImportTest(unittest.TestCase):
                 })
                 migration.downgrade()
                 self.assertNotIn('google_ads_imported_monthly_cost', inspect(connection).get_table_names())
+            finally:
+                migration.op = original
+
+    def test_manual_history_migration_on_isolated_database(self):
+        script = ScriptDirectory(str(ROOT / 'src' / 'migrations'))
+        migration = script.get_revision('b7d3e9f1a2c4').module
+        self.assertEqual(migration.down_revision, 'a6f2c9e4d1b8')
+        engine = create_engine('sqlite:///:memory:')
+        with engine.begin() as connection:
+            operations = Operations(MigrationContext.configure(connection))
+            original = migration.op
+            try:
+                migration.op = operations
+                migration.upgrade()
+                columns = {item['name'] for item in inspect(connection).get_columns('google_ads_monthly_spend_change')}
+                self.assertTrue({'old_amount', 'new_amount', 'changed_at'} <= columns)
+                migration.downgrade()
+                self.assertNotIn('google_ads_monthly_spend_change', inspect(connection).get_table_names())
             finally:
                 migration.op = original
 

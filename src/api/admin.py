@@ -1,7 +1,9 @@
 import hmac
 import math
 import os
+import re
 import secrets
+from datetime import date
 from collections.abc import Mapping
 from decimal import Decimal, InvalidOperation
 from io import BytesIO
@@ -29,7 +31,7 @@ from .models import (
     Categories, Subcategories, Cart,
     Orders, OrderDetails, Favorites,
     Posts, Comments, Invoices, VeriFactuRecord, DeliveryEstimateConfig,
-    GoogleAdsMonthlySpend, GoogleAdsImportedMonthlyCost, DesignServiceConfig, DesignServicePriceTier, DesignRequest,
+    GoogleAdsMonthlySpend, GoogleAdsMonthlySpendChange, GoogleAdsImportedMonthlyCost, DesignServiceConfig, DesignServicePriceTier, DesignRequest,
     AccountingEntry, SupplierInvoice, SupplierInvoiceDocument, SupplierInvoiceExtraction,
     SupplierInvoiceTaxBreakdown,
     ManualInvoiceDraft, ManualInvoiceDraftLine, ManualOrderDraft, ManualOrderDraftLine,
@@ -47,6 +49,7 @@ from api.commercial_analytics_service import (
     resolve_commercial_period, resolve_ranking_period,
 )
 from api.google_ads_csv_service import MAX_BYTES, ads_dashboard_data, import_monthly_costs, parse_monthly_cost_csv
+from api.google_ads_manual_service import effective_monthly_costs, save_manual_cost, unconfirmed_manual_costs
 from api.aeat_sales_ledger_service import (
     AeatSalesLedgerError,
     export_aeat_sales_ledger,
@@ -375,15 +378,18 @@ class SecureAdminIndexView(AdminIndexView):
             config_error = str(exc)
         ads_period_choice = request.args.get('ads_period', 'all')
         ads_unavailable = not inspect(db.engine).has_table(GoogleAdsImportedMonthlyCost.__tablename__)
+        ads_manual_available = inspect(db.engine).has_table(GoogleAdsMonthlySpendChange.__tablename__)
         if ads_unavailable:
             ads_available_years = available_years
             ads_data = None
             ads_error = 'La analítica de Google Ads estará disponible cuando se aplique su migración.'
         else:
-            ads_years = db.session.scalars(db.select(GoogleAdsImportedMonthlyCost.year).distinct()).all()
+            ads_years = [month.year for month, _, _, _ in effective_monthly_costs(
+                db.session, include_manual=ads_manual_available)]
             ads_available_years = sorted(set(available_years) | set(ads_years), reverse=True)
             try:
-                ads_data = ads_dashboard_data(db.session, ads_period_choice, ads_available_years)
+                ads_data = ads_dashboard_data(db.session, ads_period_choice, ads_available_years,
+                                              include_manual=ads_manual_available)
                 ads_error = None
             except ValueError as exc:
                 ads_data = None
@@ -456,6 +462,8 @@ class SecureAdminIndexView(AdminIndexView):
             ads_error=ads_error,
             ads_unavailable=ads_unavailable,
             ads_import_url=self.get_url('.import_google_ads_csv'),
+            ads_monthly_url=self.get_url('.manage_google_ads_monthly') if ads_manual_available else None,
+            ads_manual_available=ads_manual_available,
             users_monthly_values=users_monthly_values,
             current_year=current_year,
             selected_year=selected_year,
@@ -498,6 +506,60 @@ class SecureAdminIndexView(AdminIndexView):
                     error, status = 'No se pudo importar el CSV.', 500
         html = self.render('admin/google_ads_csv_import.html', csrf_token=token,
                            error=error, result=result, dashboard_url=self.get_url('.index'))
+        return (html, status) if status != 200 else html
+
+    @expose('/ads-monthly', methods=['GET', 'POST'])
+    def manage_google_ads_monthly(self):
+        if not all(inspect(db.engine).has_table(name) for name in (
+                GoogleAdsImportedMonthlyCost.__tablename__, GoogleAdsMonthlySpend.__tablename__,
+                GoogleAdsMonthlySpendChange.__tablename__)):
+            return Response('La gestión manual requiere aplicar primero su migración.', status=503)
+        csrf_key = 'google_ads_monthly_csrf'
+        token = session.get(csrf_key)
+        if not token:
+            token = secrets.token_urlsafe(32)
+            session[csrf_key] = token
+        error = None
+        status = 200
+        if request.method == 'POST':
+            if not request.form.get('csrf_token') or not hmac.compare_digest(
+                    str(token), str(request.form.get('csrf_token'))):
+                error, status = 'Formulario caducado. Vuelve a cargar la página.', 400
+            else:
+                try:
+                    action = request.form.get('action')
+                    if action not in ('add', 'edit'):
+                        raise ValueError('Acción no válida.')
+                    save_manual_cost(db.session, request.form.get('month'),
+                                     request.form.get('amount'), editing=action == 'edit')
+                    return redirect(self.get_url('.manage_google_ads_monthly'))
+                except ValueError as exc:
+                    db.session.rollback()
+                    error, status = str(exc), 400
+                except Exception:
+                    db.session.rollback()
+                    current_app.logger.error('Google Ads manual cost save failed')
+                    error, status = 'No se pudo guardar el gasto.', 500
+        months = effective_monthly_costs(db.session)
+        legacy = unconfirmed_manual_costs(db.session)
+        selected = request.args.get('edit') or (request.form.get('month') if
+                    request.method == 'POST' and request.form.get('action') == 'edit' else None)
+        if selected and not re.fullmatch(r'\d{4}-(0[1-9]|1[0-2])', selected):
+            return Response('Mes no válido.', status=400)
+        current = next((entry for entry in months if entry[0].strftime('%Y-%m') == selected), None)
+        if selected and current is None:
+            current = next(((date(row.year, row.month, 1), 'Manual anterior sin confirmar',
+                             row.amount, row) for row in legacy
+                            if f'{row.year:04d}-{row.month:02d}' == selected), None)
+        if selected and current is None:
+            return Response('El mes no existe.', status=404)
+        changes = db.session.scalars(db.select(GoogleAdsMonthlySpendChange).order_by(
+            GoogleAdsMonthlySpendChange.changed_at.desc(), GoogleAdsMonthlySpendChange.id.desc()
+        ).limit(30)).all()
+        html = self.render('admin/google_ads_monthly.html', csrf_token=token, error=error,
+                           months=months, legacy=legacy, current=current, changes=changes,
+                           dashboard_url=self.get_url('.index'),
+                           import_url=self.get_url('.import_google_ads_csv'))
         return (html, status) if status != 200 else html
 
     @expose('/product-evolution-data')
