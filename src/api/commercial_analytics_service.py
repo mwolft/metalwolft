@@ -5,7 +5,7 @@ from datetime import date, datetime, time, timedelta, timezone
 from decimal import Decimal, ROUND_HALF_UP
 from zoneinfo import ZoneInfo
 
-from sqlalchemy import func, select
+from sqlalchemy import and_, case, func, select
 
 from api.models import OrderDetails, Orders
 
@@ -89,3 +89,29 @@ def commercial_indicators(session, period):
     amount = Decimal(str(recorded or 0)).quantize(CENT, rounding=ROUND_HALF_UP)
     ticket = (amount / count).quantize(CENT, rounding=ROUND_HALF_UP) if count else Decimal("0.00")
     return {"orders": count, "amount": amount, "ticket": ticket, "physical_units": int(units)}
+
+
+def monthly_order_activity(session, year, *, now=None):
+    """Aggregate UTC-naive order timestamps by Madrid commercial month."""
+    now_local = (now or datetime.now(timezone.utc)).astimezone(MADRID)
+    boundaries = [_utc_naive(datetime(year, month, 1, tzinfo=MADRID)) for month in range(1, 13)]
+    boundaries.append(_utc_naive(datetime(year + 1, 1, 1, tzinfo=MADRID)))
+    month_expr = case(*(
+        (and_(Orders.order_date >= boundaries[index],
+              Orders.order_date < boundaries[index + 1]), index + 1)
+        for index in range(12)
+    ))
+    rows = session.execute(
+        select(month_expr.label("month"), func.count(Orders.id), func.sum(Orders.total_amount))
+        .where(Orders.order_date >= boundaries[0], Orders.order_date < boundaries[-1])
+        .group_by(month_expr)
+    ).all()
+    amounts = [0.0] * 12
+    counts = [0] * 12
+    for month, count, amount in rows:
+        counts[month - 1] = count
+        amounts[month - 1] = float(Decimal(str(amount or 0)).quantize(CENT, rounding=ROUND_HALF_UP))
+    future = [year > now_local.year or (year == now_local.year and month > now_local.month)
+              for month in range(1, 13)]
+    return {"amounts": amounts, "counts": counts, "future": future,
+            "current_month": now_local.month if year == now_local.year else None}

@@ -91,7 +91,7 @@ class GoogleAdsMonthlySpendTest(unittest.TestCase):
         self.assertIsNotNone(parser.attributes)
         return {
             key: json.loads(parser.attributes[f"data-{key}"])
-            for key in ("labels", "values", "ads-values")
+            for key in ("labels", "amounts", "orders", "future")
         }
 
     def test_database_constraints_allow_zero_and_reject_duplicate_month_invalid_month_and_negative_amount(self):
@@ -114,7 +114,7 @@ class GoogleAdsMonthlySpendTest(unittest.TestCase):
                     db.session.rollback()
             self.assertEqual(GoogleAdsMonthlySpend.query.count(), 1)
 
-    def test_dashboard_keeps_sales_and_distinguishes_missing_month_from_zero(self):
+    def test_dashboard_sales_chart_excludes_google_ads(self):
         with self.app.app_context():
             db.session.add_all(
                 [
@@ -130,12 +130,13 @@ class GoogleAdsMonthlySpendTest(unittest.TestCase):
 
         current = self._canvas_data(2026)
         self.assertEqual(len(current["labels"]), 12)
-        self.assertEqual(current["values"], [100.0, 250.0] + [0] * 10)
-        self.assertEqual(current["ads-values"], [0.0, None, 120.5] + [None] * 9)
+        self.assertEqual(current["amounts"], [100.0, 250.0] + [0] * 10)
+        self.assertEqual(current["orders"], [1, 1] + [0] * 10)
+        self.assertNotIn("ads-values", current)
 
         previous = self._canvas_data(2025)
-        self.assertEqual(previous["values"], [40.0] + [0] * 11)
-        self.assertEqual(previous["ads-values"], [35.25] + [None] * 11)
+        self.assertEqual(previous["amounts"], [40.0] + [0] * 11)
+        self.assertEqual(previous["orders"], [1] + [0] * 11)
 
     def test_admin_view_is_protected_and_can_create_edit_and_delete(self):
         url = "/admin/googleadsmonthlyspend/"

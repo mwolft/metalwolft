@@ -14,7 +14,7 @@ from openpyxl import load_workbook
 from sqlalchemy import event
 
 from api import admin as admin_module
-from api.commercial_analytics_service import commercial_indicators, resolve_commercial_period
+from api.commercial_analytics_service import commercial_indicators, monthly_order_activity, resolve_commercial_period
 from api.commercial_orders_export_service import build_workbook
 from api.models import Categories, OrderDetails, Orders, Products, db
 
@@ -47,6 +47,52 @@ class CommercialPeriodTest(unittest.TestCase):
         ):
             with self.subTest(kind=kind, start=start, end=end), self.assertRaises(ValueError):
                 resolve_commercial_period(kind, start, end)
+
+
+class MonthlyOrderActivityTest(unittest.TestCase):
+    def test_madrid_month_and_year_boundaries_and_empty_months(self):
+        app = Flask(__name__)
+        app.config.update(SQLALCHEMY_DATABASE_URI="sqlite:///:memory:",
+                          SQLALCHEMY_TRACK_MODIFICATIONS=False)
+        db.init_app(app)
+        with app.app_context():
+            db.create_all()
+            db.session.add_all([
+                Orders(locator="MONTH001", order_date=datetime(2025, 12, 31, 22, 59), total_amount=10),
+                Orders(locator="MONTH002", order_date=datetime(2025, 12, 31, 23), total_amount=20),
+                Orders(locator="MONTH003", order_date=datetime(2026, 1, 31, 22, 59), total_amount=30),
+                Orders(locator="MONTH004", order_date=datetime(2026, 1, 31, 23), total_amount=40),
+            ])
+            db.session.commit()
+            now = datetime(2026, 2, 10, tzinfo=timezone.utc)
+            result = monthly_order_activity(db.session, 2026, now=now)
+            self.assertEqual(result["amounts"][:3], [50.0, 40.0, 0.0])
+            self.assertEqual(result["counts"][:3], [2, 1, 0])
+            self.assertEqual(result["future"][:3], [False, False, True])
+            self.assertEqual(result["current_month"], 2)
+            previous = monthly_order_activity(db.session, 2025, now=now)
+            self.assertEqual(previous["amounts"][11], 10.0)
+            self.assertIsNone(previous["current_month"])
+            db.session.remove()
+            db.drop_all()
+
+    def test_new_year_in_madrid_begins_before_utc_midnight(self):
+        app = Flask(__name__)
+        app.config.update(SQLALCHEMY_DATABASE_URI="sqlite:///:memory:",
+                          SQLALCHEMY_TRACK_MODIFICATIONS=False)
+        db.init_app(app)
+        with app.app_context():
+            db.create_all()
+            db.session.add(Orders(locator="NEWYEAR1", order_date=datetime(2025, 12, 31, 23), total_amount=12))
+            db.session.commit()
+            result = monthly_order_activity(
+                db.session, 2026, now=datetime(2025, 12, 31, 23, 30, tzinfo=timezone.utc),
+            )
+            self.assertEqual(result["counts"][0], 1)
+            self.assertEqual(result["current_month"], 1)
+            self.assertTrue(all(result["future"][1:]))
+            db.session.remove()
+            db.drop_all()
 
 
 class CommercialAnalyticsHttpTest(unittest.TestCase):

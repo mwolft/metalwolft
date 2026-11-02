@@ -21,6 +21,10 @@
     .admin-dashboard__link-title { display: block; font-weight: 700; line-height: 1.3; }
     .admin-dashboard__link-description { color: #526174; display: block; font-size: 12px; font-weight: 400; line-height: 1.4; margin-top: 4px; }
     .admin-dashboard__chart { height: 260px; position: relative; }
+    .admin-dashboard__chart-controls { align-items: end; display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 14px; }
+    .admin-dashboard__chart-controls label { color: #526174; display: grid; font-size: 12px; gap: 4px; margin: 0; }
+    .admin-dashboard__chart-controls select { min-width: 145px; }
+    .admin-dashboard__chart-note { color: #526174; font-size: 12px; margin: 12px 0 0; }
     .admin-dashboard__table td, .admin-dashboard__table th { vertical-align: middle !important; }
     .admin-dashboard__table td:last-child { font-weight: 600; white-space: nowrap; }
     .admin-dashboard__total { background: #f5f7f9; padding: 12px 16px; }
@@ -97,25 +101,6 @@
 {% include 'admin/_commercial_analytics_styles.html' %}
 <div class="container-fluid admin-dashboard" style="margin-top:10px;">
     <h3 style="margin-bottom:15px;"><b>Resumen de gestión</b></h3>
-    <form method="get" data-pjax="false" style="margin-bottom:15px;">
-        <input type="hidden" name="period" value="{{ period_kind }}">
-        {% if period_kind == 'custom' %}
-        <input type="hidden" name="date_from" value="{{ date_from or '' }}">
-        <input type="hidden" name="date_to" value="{{ date_to or '' }}">
-        {% endif %}
-        <select name="year">
-            <option value="{{ current_year }}" {% if selected_year==current_year %}selected{% endif %}>
-                {{ current_year }}
-            </option>
-            <option value="2025" {% if selected_year==2025 %}selected{% endif %}>
-                2025
-            </option>
-        </select>
-
-        <button type="submit" class="btn btn-light btn-sm" style="margin-left:5px;">
-            Ver
-        </button>
-    </form>
     <div class="panel panel-primary admin-production-queue" style="margin-bottom:15px;">
         <div class="panel-heading">
             <strong>PENDIENTES DE FABRICAR</strong>
@@ -175,21 +160,41 @@
             </div>
         </div>
     </nav>
-    <h4 class="admin-dashboard__section">Evolución comercial <small>Importe de pedidos registrados e inversión de Google Ads; no indica cobros ni atribución.</small></h4>
+    <h4 class="admin-dashboard__section">Evolución comercial</h4>
     <div class="row">
         <div class="col-md-12">
             <div class="panel panel-primary">
-                <div class="panel-heading">
-                    Pedidos registrados e inversión Google Ads {{ selected_year }}
-                </div>
+                <div class="panel-heading">Actividad mensual {{ selected_year }}</div>
                 <div class="panel-body">
+                    <form class="admin-dashboard__chart-controls" method="get" data-pjax="false">
+                        <input type="hidden" name="period" value="{{ period_kind }}">
+                        {% if period_kind == 'custom' %}
+                        <input type="hidden" name="date_from" value="{{ date_from or '' }}">
+                        <input type="hidden" name="date_to" value="{{ date_to or '' }}">
+                        {% endif %}
+                        <label for="sales-year">Año
+                            <select id="sales-year" name="year" class="form-control">
+                                {% for year in available_years %}<option value="{{ year }}" {% if year == selected_year %}selected{% endif %}>{{ year }}</option>{% endfor %}
+                            </select>
+                        </label>
+                        <button type="submit" class="btn btn-default">Ver año</button>
+                        <label for="sales-metric">Métrica
+                            <select id="sales-metric" class="form-control">
+                                <option value="amount">Importe registrado (€)</option>
+                                <option value="orders">Pedidos registrados</option>
+                            </select>
+                        </label>
+                    </form>
                     <div class="admin-dashboard__chart">
-                    <canvas id="salesChart-{{ selected_year }}" role="img" aria-label="Importe mensual de pedidos registrados e inversión Google Ads en {{ selected_year }}"
+                    <canvas id="salesChart-{{ selected_year }}" role="img" aria-label="Importe mensual registrado en {{ selected_year }}"
                         data-labels='{{ monthly_sales_labels | tojson }}'
-                        data-values='{{ monthly_sales_values | tojson }}'
-                        data-ads-values='{{ monthly_google_ads_values | tojson }}'>
+                        data-amounts='{{ monthly_activity.amounts | tojson }}'
+                        data-orders='{{ monthly_activity.counts | tojson }}'
+                        data-future='{{ monthly_activity.future | tojson }}'
+                        data-current-month='{{ monthly_activity.current_month or "" }}'>
                     </canvas>
                     </div>
+                    <p class="admin-dashboard__chart-note">Incluye todos los estados operativos. Los importes son pedidos registrados, no cobros confirmados. Mes actual: periodo incompleto; meses futuros: sin datos.</p>
                 </div>
             </div>
         </div>

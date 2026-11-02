@@ -41,7 +41,7 @@ from api.accounting_excel_service import (
     export_sales_accounting_entries,
 )
 from api.commercial_orders_export_service import build_workbook, iter_orders
-from api.commercial_analytics_service import commercial_indicators, resolve_commercial_period
+from api.commercial_analytics_service import commercial_indicators, monthly_order_activity, resolve_commercial_period
 from api.aeat_sales_ledger_service import (
     AeatSalesLedgerError,
     export_aeat_sales_ledger,
@@ -332,33 +332,25 @@ class SecureAdminIndexView(AdminIndexView):
             db.select(func.count(Orders.id))
         ) or 0
 
-        current_year = datetime.now(timezone.utc).year
+        from zoneinfo import ZoneInfo
+
+        current_year = datetime.now(ZoneInfo('Europe/Madrid')).year
         selected_year = _dashboard_year(request.args.get("year"), current_year)
-
-
-        rows = db.session.execute(
-            db.select(
-                extract('month', Orders.order_date).label('month'),
-                func.sum(Orders.total_amount).label('total')
-            )
-            .where(Orders.order_date.isnot(None))
-            .where(extract('year', Orders.order_date) == selected_year)
-            .group_by('month')
-            .order_by('month')
-        ).all()
-
-        monthly_sales = {m: 0 for m in range(1, 13)}
-        for r in rows:
-            monthly_sales[int(r.month)] = float(r.total or 0)
-
-        monthly_sales_current = [monthly_sales[m] for m in range(1, 13)]
-
-        ads_rows = db.session.execute(
-            db.select(GoogleAdsMonthlySpend.month, GoogleAdsMonthlySpend.amount)
-            .where(GoogleAdsMonthlySpend.year == selected_year)
-        ).all()
-        monthly_google_ads = {int(row.month): float(row.amount) for row in ads_rows}
-        monthly_google_ads_values = [monthly_google_ads.get(month) for month in range(1, 13)]
+        earliest, latest = db.session.execute(
+            db.select(func.min(Orders.order_date), func.max(Orders.order_date))
+        ).one()
+        if earliest and latest:
+            first_year = earliest.replace(tzinfo=timezone.utc).astimezone(ZoneInfo('Europe/Madrid')).year
+            last_year = latest.replace(tzinfo=timezone.utc).astimezone(ZoneInfo('Europe/Madrid')).year
+            available_years = list(range(last_year, first_year - 1, -1))
+        else:
+            available_years = []
+        if current_year not in available_years:
+            available_years.insert(0, current_year)
+        if selected_year not in available_years:
+            available_years.append(selected_year)
+            available_years.sort(reverse=True)
+        monthly_activity = monthly_order_activity(db.session, selected_year)
 
         rows_users = db.session.execute(
             db.select(
@@ -411,8 +403,8 @@ class SecureAdminIndexView(AdminIndexView):
             recent_orders=recent_orders,
             recent_invoices=recent_invoices,
             monthly_sales_labels=monthly_sales_labels,
-            monthly_sales_values=monthly_sales_current,
-            monthly_google_ads_values=monthly_google_ads_values,
+            monthly_activity=monthly_activity,
+            available_years=available_years,
             users_monthly_values=users_monthly_values,
             current_year=current_year,
             selected_year=selected_year,
