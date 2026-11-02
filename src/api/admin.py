@@ -374,14 +374,20 @@ class SecureAdminIndexView(AdminIndexView):
             configurations = None
             config_error = str(exc)
         ads_period_choice = request.args.get('ads_period', 'all')
-        ads_years = db.session.scalars(db.select(GoogleAdsImportedMonthlyCost.year).distinct()).all()
-        ads_available_years = sorted(set(available_years) | set(ads_years), reverse=True)
-        try:
-            ads_data = ads_dashboard_data(db.session, ads_period_choice, ads_available_years)
-            ads_error = None
-        except ValueError as exc:
+        ads_unavailable = not inspect(db.engine).has_table(GoogleAdsImportedMonthlyCost.__tablename__)
+        if ads_unavailable:
+            ads_available_years = available_years
             ads_data = None
-            ads_error = str(exc)
+            ads_error = 'La analítica de Google Ads estará disponible cuando se aplique su migración.'
+        else:
+            ads_years = db.session.scalars(db.select(GoogleAdsImportedMonthlyCost.year).distinct()).all()
+            ads_available_years = sorted(set(available_years) | set(ads_years), reverse=True)
+            try:
+                ads_data = ads_dashboard_data(db.session, ads_period_choice, ads_available_years)
+                ads_error = None
+            except ValueError as exc:
+                ads_data = None
+                ads_error = str(exc)
 
         rows_users = db.session.execute(
             db.select(
@@ -448,6 +454,7 @@ class SecureAdminIndexView(AdminIndexView):
             ads_available_years=ads_available_years,
             ads_data=ads_data,
             ads_error=ads_error,
+            ads_unavailable=ads_unavailable,
             ads_import_url=self.get_url('.import_google_ads_csv'),
             users_monthly_values=users_monthly_values,
             current_year=current_year,
@@ -457,10 +464,12 @@ class SecureAdminIndexView(AdminIndexView):
             manual_orders_url=url_for('manualorderdraft.index_view'),
             pending_manufacturing=pending_manufacturing,
         )
-        return (html, 400) if analytics_error or rank_error or config_error or ads_error else html
+        return (html, 400) if analytics_error or rank_error or config_error or (ads_error and not ads_unavailable) else html
 
     @expose('/ads-import', methods=['GET', 'POST'])
     def import_google_ads_csv(self):
+        if not inspect(db.engine).has_table(GoogleAdsImportedMonthlyCost.__tablename__):
+            return Response('La importación requiere aplicar primero la migración de Google Ads.', status=503)
         csrf_key = 'google_ads_csv_csrf'
         token = session.get(csrf_key)
         if not token:

@@ -147,6 +147,18 @@ class GoogleAdsCsvImportTest(unittest.TestCase):
         self.assertLess(dashboard.index('Publicidad · Google Ads'), dashboard.index('Actividad reciente'))
         self.assertEqual(self.client.get('/admin/?ads_period=invalid', headers=self.auth).status_code, 400)
 
+    def test_dashboard_is_available_before_ads_migration(self):
+        with self.app.app_context():
+            GoogleAdsImportedMonthlyCost.__table__.drop(db.engine)
+        response = self.client.get('/admin/', headers=self.auth)
+        self.assertEqual(response.status_code, 200)
+        html = response.get_data(as_text=True)
+        self.assertIn('estará disponible cuando se aplique su migración', html)
+        self.assertNotIn('>Importar CSV</a>', html)
+        self.assertEqual(self.client.get('/admin/ads-import', headers=self.auth).status_code, 503)
+        self.assertEqual(self.client.post('/admin/ads-import', headers=self.auth,
+            data={'cost_csv': (io.BytesIO(csv_data(JULY)), 'cost.csv')}).status_code, 503)
+
     def test_migration_constraints_on_isolated_database(self):
         script = ScriptDirectory(str(ROOT / 'src' / 'migrations'))
         self.assertEqual(script.get_heads(), ['a6f2c9e4d1b8'])

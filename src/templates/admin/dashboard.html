@@ -417,9 +417,9 @@
                     </select>
                 </label>
                 <button type="submit" class="btn btn-default">Ver periodo</button>
-                <a class="btn btn-default" href="{{ ads_import_url }}">Importar CSV</a>
+                {% if not ads_unavailable %}<a class="btn btn-default" href="{{ ads_import_url }}">Importar CSV</a>{% endif %}
             </form>
-            {% if ads_error %}<div class="alert alert-danger" role="alert">{{ ads_error }}</div>{% endif %}
+            {% if ads_error %}<div class="alert {{ 'alert-warning' if ads_unavailable else 'alert-danger' }}" role="alert">{{ ads_error }}</div>{% endif %}
             {% if ads_data %}
                 {% if ads_data.coverage %}
                 <p class="text-muted">Cobertura registrada: {{ ads_data.coverage[0] }} a {{ ads_data.coverage[1] }}.{% if ads_data.missing %} {{ ads_data.missing }} meses sin información de gasto en la serie; no equivalen a 0 €.{% endif %}{% if true in ads_data.partial %} Hay meses con cobertura parcial.{% endif %}</p>
