@@ -84,11 +84,8 @@ class CommercialAnalyticsHttpTest(unittest.TestCase):
         self.assertIn("No hay pedidos registrados", html)
         self.assertIn('<option value="all" selected>Histórico completo</option>', html)
         menu = self.client.get("/admin/", headers=self.auth).get_data(as_text=True)
-        self.assertIn(self.url, menu)
-        summary_menu = self.app.extensions["admin"][0].get_category_menu_item("Resumen")
-        with self.app.test_request_context("/admin/", headers=self.auth):
-            self.assertEqual([item.name for item in summary_menu.get_children()],
-                             ["Resumen", "Analítica comercial"])
+        self.assertNotIn(self.url, menu)
+        self.assertIsNone(self.app.extensions["admin"][0].get_category_menu_item("Resumen"))
         self.assertEqual(self.client.get(self.url + "?period=custom&date_from=2026-03-20&date_to=2026-03-01",
                                          headers=self.auth).status_code, 400)
         self.assertEqual(self.client.get(self.url + "?period=invalid", headers=self.auth).status_code, 400)

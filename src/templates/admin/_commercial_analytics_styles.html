@@ -1,0 +1,28 @@
+<style>
+  .mw-analytics { --mw-navy: #183b60; --mw-red: #b52538; max-width: 1200px; margin: 20px auto 48px; }
+  .mw-analytics h1 { color: var(--mw-navy); font-size: 28px; font-weight: 700; margin: 0 0 8px; }
+  .mw-analytics__intro { color: #526174; margin-bottom: 20px; }
+  .mw-analytics__filters { background: #f5f7f9; border: 1px solid #dce3e9; border-radius: 6px; display: grid; gap: 12px; grid-template-columns: minmax(180px, 2fr) repeat(2, minmax(140px, 1fr)) auto; padding: 16px; align-items: end; }
+  .mw-analytics__filters label { color: var(--mw-navy); display: block; font-weight: 600; margin-bottom: 5px; }
+  .mw-analytics__filters .form-control { width: 100%; }
+  .mw-analytics__filters .btn { min-height: 34px; }
+  .mw-analytics__note { color: #526174; font-size: 13px; margin: 10px 0 20px; }
+  .mw-analytics__grid { display: grid; gap: 14px; grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .mw-analytics__card { background: #fff; border: 1px solid #dce3e9; border-top: 3px solid var(--mw-navy); border-radius: 6px; min-width: 0; padding: 18px; }
+  .mw-analytics__card:first-child { border-top-color: var(--mw-red); }
+  .mw-analytics__label { color: var(--mw-navy); display: block; font-weight: 600; }
+  .mw-analytics__value { color: #172d44; display: block; font-size: clamp(22px, 2vw, 30px); font-weight: 700; margin: 10px 0; overflow-wrap: anywhere; }
+  .mw-analytics__help { color: #526174; display: block; font-size: 13px; line-height: 1.45; }
+  .mw-analytics__empty { background: #f5f7f9; border-radius: 6px; color: #526174; margin-top: 18px; padding: 18px; }
+  .mw-analytics--dashboard { max-width: none; margin: 22px 0 18px; }
+  @media (max-width: 991px) {
+    .mw-analytics__filters { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .mw-analytics__grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  }
+  @media (max-width: 600px) {
+    .mw-analytics { margin: 16px 0 32px; }
+    .mw-analytics h1 { font-size: 24px; }
+    .mw-analytics__filters, .mw-analytics__grid { grid-template-columns: minmax(0, 1fr); }
+    .mw-analytics__card { padding: 15px; }
+  }
+</style>

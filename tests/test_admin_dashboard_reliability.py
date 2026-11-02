@@ -2,6 +2,7 @@ import base64
 import sys
 import unittest
 from datetime import datetime, timezone
+from zoneinfo import ZoneInfo
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -63,8 +64,8 @@ class DashboardReliabilityTest(unittest.TestCase):
                 response = self.client.get(f"/admin/?year={year}", headers=self.auth())
                 self.assertEqual(response.status_code, 200)
                 html = response.get_data(as_text=True)
-                self.assertIn("Importe de pedidos del mes", html)
-                self.assertIn("Importes registrados, no necesariamente cobrados.", html)
+                self.assertIn("Importe registrado", html)
+                self.assertIn("No representa cobros ni facturación fiscal", html)
                 self.assertIn("PENDIENTES DE FABRICAR", html)
                 self.assertNotIn("Facturación vs Punto Muerto", html)
 
@@ -82,7 +83,7 @@ class DashboardReliabilityTest(unittest.TestCase):
         self.assertEqual(admin_module._format_madrid_time(datetime(2026, 1, 10, 12)), "10/01 13:00")
         self.assertEqual(admin_module._format_madrid_time(datetime(2026, 7, 10, 12)), "10/07 14:00")
 
-    def test_commercial_kpis_and_quick_links_use_current_month(self):
+    def test_commercial_kpis_default_to_history_and_filter_without_changing_queue(self):
         today = datetime.now(timezone.utc).replace(tzinfo=None)
         with self.app.app_context():
             db.session.add_all([
@@ -94,9 +95,34 @@ class DashboardReliabilityTest(unittest.TestCase):
         response = self.client.get("/admin/", headers=self.auth())
         self.assertEqual(response.status_code, 200)
         html = response.get_data(as_text=True)
-        self.assertIn("300.00 €", html)
-        self.assertIn("150.00 €", html)
-        self.assertIn("Pedidos registrados</span>\n            <strong class=\"admin-dashboard__value\">2</strong>", html)
+        self.assertIn("1200.00 €", html)
+        self.assertIn("400.00 €", html)
+        self.assertIn('class="mw-analytics__value">3</strong>', html)
+        self.assertIn('<option value="all" selected>Histórico completo</option>', html)
+        day = datetime.now(ZoneInfo("Europe/Madrid")).date().isoformat()
+        filtered = self.client.get(f"/admin/?period=custom&date_from={day}&date_to={day}",
+                                   headers=self.auth())
+        self.assertEqual(filtered.status_code, 200)
+        filtered_html = filtered.get_data(as_text=True)
+        self.assertIn("300.00 €", filtered_html)
+        self.assertIn("150.00 €", filtered_html)
+        self.assertIn('class="mw-analytics__value">2</strong>', filtered_html)
+        queue_start = '<div class="panel panel-primary admin-production-queue"'
+        queue_end = '<section class="mw-analytics'
+        self.assertEqual(html.split(queue_start, 1)[1].split(queue_end, 1)[0],
+                         filtered_html.split(queue_start, 1)[1].split(queue_end, 1)[0])
+        invalid = self.client.get("/admin/?period=custom&date_from=2026-03-20&date_to=2026-03-01",
+                                  headers=self.auth())
+        self.assertEqual(invalid.status_code, 400)
+        self.assertIn("PENDIENTES DE FABRICAR", invalid.get_data(as_text=True))
+        combined = self.client.get(
+            f"/admin/?year=2025&period=custom&date_from={day}&date_to={day}", headers=self.auth())
+        combined_html = combined.get_data(as_text=True)
+        self.assertEqual(combined.status_code, 200)
+        self.assertIn('name="year" value="2025"', combined_html)
+        self.assertIn('name="period" value="custom"', combined_html)
+        self.assertIn('id="salesChart-2025"', combined_html)
+        self.assertIn("300.00 €", combined_html)
         self.assertIn('href="/admin/manualorderdraft/"', html)
         self.assertIn('href="/admin/libro-aeat"', html)
         self.assertIn('href="/admin/supplierinvoice/upload-and-process/"', html)

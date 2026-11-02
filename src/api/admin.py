@@ -300,9 +300,21 @@ class SecureAdminIndexView(AdminIndexView):
     def index(self=None, **kwargs):
         self = self or kwargs.get('cls')
 
-
         from datetime import datetime, timezone
         from sqlalchemy import func, extract
+
+        analytics_period_kind = request.args.get('period', 'all')
+        analytics_date_from = request.args.get('date_from')
+        analytics_date_to = request.args.get('date_to')
+        try:
+            analytics_period = resolve_commercial_period(
+                analytics_period_kind, analytics_date_from, analytics_date_to,
+            )
+            analytics_indicators = commercial_indicators(db.session, analytics_period)
+            analytics_error = None
+        except ValueError as exc:
+            analytics_indicators = None
+            analytics_error = str(exc)
 
         products_count = db.session.scalar(
             db.select(func.count(Products.id))
@@ -320,54 +332,8 @@ class SecureAdminIndexView(AdminIndexView):
             db.select(func.count(Orders.id))
         ) or 0
 
-        now = datetime.now(timezone.utc).replace(tzinfo=None)
-        current_year = now.year
+        current_year = datetime.now(timezone.utc).year
         selected_year = _dashboard_year(request.args.get("year"), current_year)
-        
-
-        inicio_mes_actual, _, inicio_mes_anterior, fin_mes_anterior = _dashboard_month_windows(now)
-
-
-        ingresos_mes_actual = db.session.scalar(
-            db.select(func.sum(Orders.total_amount))
-            .where(Orders.order_date.isnot(None))
-            .where(Orders.order_date >= inicio_mes_actual)
-            .where(Orders.order_date <= now)
-        ) or 0
-
-        period_order_count, period_avg_ticket = db.session.execute(
-            db.select(func.count(Orders.id), func.avg(Orders.total_amount))
-            .where(Orders.order_date >= inicio_mes_actual)
-            .where(Orders.order_date <= now)
-        ).one()
-
-
-        ingresos_mes_anterior = db.session.scalar(
-            db.select(func.sum(Orders.total_amount))
-            .where(Orders.order_date.isnot(None))
-            .where(Orders.order_date >= inicio_mes_anterior)
-            .where(Orders.order_date <= fin_mes_anterior)
-        ) or 0
-
-
-        if ingresos_mes_anterior > 0:
-            variacion_porcentual = (
-                (ingresos_mes_actual - ingresos_mes_anterior) / ingresos_mes_anterior
-            ) * 100
-            variacion_label = f"{variacion_porcentual:.2f}%"
-            variacion_up = variacion_porcentual >= 0
-            variacion_es_nueva = False
-        else:
-            if ingresos_mes_actual > 0:
-                variacion_porcentual = None
-                variacion_label = "nuevo"
-                variacion_up = True
-                variacion_es_nueva = True
-            else:
-                variacion_porcentual = 0.0
-                variacion_label = "0.00%"
-                variacion_up = False
-                variacion_es_nueva = False
 
 
         rows = db.session.execute(
@@ -427,7 +393,7 @@ class SecureAdminIndexView(AdminIndexView):
             db.select(Invoices).order_by(Invoices.id.desc()).limit(10)
         ).scalars().all()
 
-        return self.render(
+        html = self.render(
             'admin/dashboard.html',
             admin_view=self,
             metrics={
@@ -435,14 +401,13 @@ class SecureAdminIndexView(AdminIndexView):
                 'orders_count': orders_count,
                 'invoices_count': invoices_count,
                 'users_count': users_count,
-                'period_order_count': period_order_count,
-                'period_avg_ticket': period_avg_ticket or 0,
-                'ingresos_mes_actual': ingresos_mes_actual,
-                'variacion_porcentual': variacion_porcentual,
-                'variacion_label': variacion_label,
-                'variacion_up': variacion_up,
-                'variacion_es_nueva': variacion_es_nueva,
             },
+            period_kind=analytics_period_kind,
+            date_from=analytics_date_from,
+            date_to=analytics_date_to,
+            indicators=analytics_indicators,
+            error=analytics_error,
+            analytics_action_url=self.get_url('.index'),
             recent_orders=recent_orders,
             recent_invoices=recent_invoices,
             monthly_sales_labels=monthly_sales_labels,
@@ -456,6 +421,7 @@ class SecureAdminIndexView(AdminIndexView):
             manual_orders_url=url_for('manualorderdraft.index_view'),
             pending_manufacturing=pending_manufacturing,
         )
+        return (html, 400) if analytics_error else html
 
     @expose('/libro-aeat', methods=['GET', 'POST'])
     def unified_aeat_ledger(self):
@@ -534,6 +500,9 @@ class SecureModelView(ModelView):
 
 
 class CommercialAnalyticsView(BaseView):
+    def is_visible(self):
+        return False
+
     def is_accessible(self):
         return _admin_credentials_valid(request.authorization or {})
 
@@ -551,12 +520,13 @@ class CommercialAnalyticsView(BaseView):
             return self.render(
                 'admin/commercial_analytics.html', period_kind=period_kind,
                 date_from=date_from, date_to=date_to, indicators=None,
-                error=str(exc),
+                error=str(exc), analytics_action_url=self.get_url('.index'),
             ), 400
         return self.render(
             'admin/commercial_analytics.html', period_kind=period_kind,
             date_from=date_from, date_to=date_to,
             indicators=commercial_indicators(db.session, period), error=None,
+            analytics_action_url=self.get_url('.index'),
         )
 
 
@@ -5592,7 +5562,7 @@ def setup_admin(app):
     admin = Admin(
         app,
         name='MetalWolft Administración',
-        index_view=SecureAdminIndexView(name='Resumen', category='Resumen'),
+        index_view=SecureAdminIndexView(name='Resumen'),
         template_mode='bootstrap3',
         url='/admin'
     )
@@ -5604,7 +5574,7 @@ def setup_admin(app):
     admin.add_view(SafeModelView(ProductImages, db.session, name="Imágenes de producto", category="Catálogo"))
 
     admin.add_view(OrderAdminView(Orders, db.session, name="Pedidos", category="Ventas"))
-    admin.add_view(CommercialAnalyticsView(name="Analítica comercial", endpoint="commercialanalytics", category="Resumen"))
+    admin.add_view(CommercialAnalyticsView(name="Analítica comercial", endpoint="commercialanalytics"))
     admin.add_view(CustomerPhotoRequestAdminView(
         CustomerPhotoRequest, db.session, name="Fotografías de clientes", category="Ventas",
     ))

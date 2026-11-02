@@ -1,0 +1,27 @@
+<form class="mw-analytics__filters" method="get" action="{{ analytics_action_url }}" data-pjax="false">
+  {% if selected_year is defined %}<input type="hidden" name="year" value="{{ selected_year }}">{% endif %}
+  <div>
+    <label for="period">Periodo</label>
+    <select id="period" name="period" class="form-control">
+      <option value="month" {% if period_kind == 'month' %}selected{% endif %}>Mes actual</option>
+      <option value="year" {% if period_kind == 'year' %}selected{% endif %}>Año actual</option>
+      <option value="previous_year" {% if period_kind == 'previous_year' %}selected{% endif %}>Año anterior</option>
+      <option value="all" {% if period_kind == 'all' %}selected{% endif %}>Histórico completo</option>
+      <option value="custom" {% if period_kind == 'custom' %}selected{% endif %}>Intervalo personalizado</option>
+    </select>
+  </div>
+  <div><label for="date_from">Desde (personalizado)</label><input id="date_from" name="date_from" type="date" class="form-control" value="{{ date_from or '' }}"></div>
+  <div><label for="date_to">Hasta (personalizado)</label><input id="date_to" name="date_to" type="date" class="form-control" value="{{ date_to or '' }}"></div>
+  <button type="submit" class="btn btn-primary">Consultar</button>
+</form>
+<p class="mw-analytics__note">Los límites del periodo se interpretan en horario de Madrid. Las fechas personalizadas se aplican solo a «Intervalo personalizado».</p>
+{% if error %}<div class="alert alert-danger" role="alert">{{ error }}</div>{% endif %}
+{% if indicators %}
+<div class="mw-analytics__grid">
+  <div class="mw-analytics__card"><span class="mw-analytics__label">Pedidos registrados</span><strong class="mw-analytics__value">{{ indicators.orders }}</strong><span class="mw-analytics__help">Todos los estados operativos; no equivale a pedidos pagados.</span></div>
+  <div class="mw-analytics__card"><span class="mw-analytics__label">Importe registrado</span><strong class="mw-analytics__value">{{ '%.2f'|format(indicators.amount) }} €</strong><span class="mw-analytics__help">Suma de totales guardados en los pedidos, no de cobros ni de facturas.</span></div>
+  <div class="mw-analytics__card"><span class="mw-analytics__label">Ticket medio</span><strong class="mw-analytics__value">{{ '%.2f'|format(indicators.ticket) }} €</strong><span class="mw-analytics__help">Importe registrado dividido entre pedidos del periodo.</span></div>
+  <div class="mw-analytics__card"><span class="mw-analytics__label">Rejas vendidas</span><strong class="mw-analytics__value">{{ indicators.physical_units }}</strong><span class="mw-analytics__help">Suma de cantidades de líneas físicas; no confirma cobro.</span></div>
+</div>
+{% if indicators.orders == 0 %}<p class="mw-analytics__empty">No hay pedidos registrados en este periodo.</p>{% endif %}
+{% endif %}
