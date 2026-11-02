@@ -301,6 +301,11 @@ app.register_blueprint(seo_bp)
 
 @app.before_request
 def handle_legacy_public_urls():
+    if request.path == "/" and request.method in {"GET", "HEAD"} and current_app.config["APP_ENV"] == "development":
+        response = redirect("/admin/", code=302)
+        response.headers["Cache-Control"] = "no-store"
+        return response
+
     if request.path in REDIRECT_MAP:
         destination = REDIRECT_MAP[request.path]
         if request.method in {"GET", "HEAD"}:

@@ -336,7 +336,7 @@ class PublicProductRouteStatusTest(unittest.TestCase):
             "/cookies-esenciales": "/politica-cookies",
             "/informacion-recogida": "/politica-privacidad",
         }
-        with patch.object(
+        with patch.dict(APP_MODULE.app.config, {"APP_ENV": "production"}), patch.object(
             APP_MODULE,
             "resolve_publicly_accessible_product_by_slugs",
             side_effect=RuntimeError("catalog unavailable"),
@@ -357,6 +357,22 @@ class PublicProductRouteStatusTest(unittest.TestCase):
         self.assertTrue(all(response.status_code == 200 for response in retained))
         resolve_product.assert_not_called()
         self.assertEqual(send_shell.call_count, len(retained))
+
+    def test_root_redirects_to_admin_only_in_development(self):
+        for method in ("get", "head"):
+            with self.subTest(method=method), patch.dict(APP_MODULE.app.config, {"APP_ENV": "development"}):
+                response = getattr(self.client, method)("/")
+                self.assertEqual(response.status_code, 302)
+                self.assertEqual(response.headers["Location"], "/admin/")
+                self.assertEqual(response.headers["Cache-Control"], "no-store")
+                self.assertEqual(self.client.get("/admin/").status_code, 401)
+
+            with self.subTest(method=method, environment="production"), patch.dict(
+                APP_MODULE.app.config, {"APP_ENV": "production"}
+            ):
+                response = getattr(self.client, method)("/")
+                self.assertEqual(response.status_code, 301)
+                self.assertEqual(response.headers["Location"], "https://www.metalwolft.com/")
 
     def test_legacy_shell_is_retained_for_account_cart_and_transactional_paths(self):
         self.assertEqual(
