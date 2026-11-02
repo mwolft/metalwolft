@@ -6,7 +6,7 @@ from collections.abc import Mapping
 from decimal import Decimal, InvalidOperation
 from io import BytesIO
 
-from flask import request, Response, current_app, send_file, flash, redirect, session, url_for, render_template
+from flask import request, Response, current_app, send_file, flash, redirect, session, url_for, render_template, jsonify
 from flask_admin import Admin, AdminIndexView, BaseView, expose
 from flask_admin.actions import action
 from markupsafe import Markup, escape
@@ -42,7 +42,8 @@ from api.accounting_excel_service import (
 )
 from api.commercial_orders_export_service import build_workbook, iter_orders
 from api.commercial_analytics_service import (
-    annual_comparison, commercial_indicators, configuration_distributions, ranked_physical_models,
+    annual_comparison, commercial_indicators, configuration_distributions, product_evolution,
+    ranked_physical_models,
     resolve_commercial_period, resolve_ranking_period,
 )
 from api.aeat_sales_ledger_service import (
@@ -432,6 +433,7 @@ class SecureAdminIndexView(AdminIndexView):
             config_period_choice=config_period_choice,
             configurations=configurations,
             config_error=config_error,
+            product_evolution_url=self.get_url('.product_evolution_data'),
             users_monthly_values=users_monthly_values,
             current_year=current_year,
             selected_year=selected_year,
@@ -441,6 +443,16 @@ class SecureAdminIndexView(AdminIndexView):
             pending_manufacturing=pending_manufacturing,
         )
         return (html, 400) if analytics_error or rank_error or config_error else html
+
+    @expose('/product-evolution-data')
+    def product_evolution_data(self):
+        try:
+            year = int(request.args['year'])
+            raw_ids = request.args.getlist('product_id')
+            product_ids = [int(value) for value in raw_ids] if raw_ids else None
+            return jsonify(product_evolution(db.session, year, product_ids))
+        except (KeyError, ValueError):
+            return jsonify({'error': 'Selecciona un año y hasta cinco productos válidos.'}), 400
 
     @expose('/libro-aeat', methods=['GET', 'POST'])
     def unified_aeat_ledger(self):

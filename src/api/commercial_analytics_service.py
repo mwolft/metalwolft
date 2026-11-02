@@ -205,6 +205,56 @@ def configuration_distributions(session, period):
     return result
 
 
+def product_evolution(session, year, product_ids=None, *, now=None):
+    """Return bounded monthly physical-line series, using the ranking's price rule."""
+    now_local = (now or datetime.now(timezone.utc)).astimezone(MADRID)
+    if not 1900 <= year <= now_local.year:
+        raise ValueError("Selecciona un año válido.")
+    if product_ids is not None and (len(product_ids) > 5 or len(set(product_ids)) != len(product_ids)
+                                    or any(product_id <= 0 for product_id in product_ids)):
+        raise ValueError("Selecciona hasta cinco productos válidos.")
+    boundaries = [_utc_naive(datetime(year, month, 1, tzinfo=MADRID)) for month in range(1, 13)]
+    boundaries.append(_utc_naive(datetime(year + 1, 1, 1, tzinfo=MADRID)))
+    end_utc = min(boundaries[-1], _utc_naive(now_local)) if year == now_local.year else boundaries[-1]
+    physical = (select(OrderDetails.product_id).select_from(OrderDetails)
+                .join(Orders, OrderDetails.order_id == Orders.id)
+                .where(OrderDetails.line_type == "physical", Orders.order_date >= boundaries[0],
+                       Orders.order_date < end_utc))
+    units = func.sum(OrderDetails.quantity)
+    options_query = (physical.with_only_columns(OrderDetails.product_id, Products.nombre, units)
+                     .outerjoin(Products, OrderDetails.product_id == Products.id)
+                     .group_by(OrderDetails.product_id, Products.nombre)
+                     .order_by(units.desc(), OrderDetails.product_id)
+                     .limit(200))
+    options = [{"id": product_id, "name": name or f"Producto ID {product_id}"}
+               for product_id, name, _ in session.execute(options_query)]
+    selected = [item["id"] for item in options[:3]] if product_ids is None else product_ids
+    months = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"]
+    future = [year == now_local.year and month > now_local.month for month in range(1, 13)]
+    current_month = now_local.month if year == now_local.year else None
+    series = {product_id: {"units": [None if future[index] else 0 for index in range(12)],
+                           "orders": [None if future[index] else 0 for index in range(12)],
+                           "amount": [None if future[index] else 0.0 for index in range(12)]}
+              for product_id in selected}
+    if selected:
+        month_expr = case(*((and_(Orders.order_date >= boundaries[index],
+                                  Orders.order_date < boundaries[index + 1]), index + 1)
+                            for index in range(12)))
+        unit_price = func.round(cast(OrderDetails.precio_total, Numeric(18, 6)), 2)
+        query = (physical.with_only_columns(OrderDetails.product_id, month_expr, units,
+                                            func.count(func.distinct(OrderDetails.order_id)),
+                                            func.sum(unit_price * OrderDetails.quantity))
+                 .where(OrderDetails.product_id.in_(selected))
+                 .group_by(OrderDetails.product_id, month_expr))
+        for product_id, month, quantity, orders, amount in session.execute(query):
+            data = series[product_id]
+            data["units"][month - 1] = int(quantity)
+            data["orders"][month - 1] = int(orders)
+            data["amount"][month - 1] = float(Decimal(str(amount or 0)).quantize(CENT, rounding=ROUND_HALF_UP))
+    return {"year": year, "months": months, "future": future, "current_month": current_month,
+            "options": options, "selected": selected, "series": series}
+
+
 def monthly_order_activity(session, year, *, now=None, cutoff=None):
     """Aggregate UTC-naive order timestamps by Madrid commercial month."""
     now_local = (now or datetime.now(timezone.utc)).astimezone(MADRID)

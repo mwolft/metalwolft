@@ -57,6 +57,12 @@
     .admin-dashboard__config-track { background: #edf1f4; border-radius: 4px; height: 6px; margin-top: 5px; overflow: hidden; }
     .admin-dashboard__config-fill { background: #416987; height: 100%; }
     .admin-dashboard__config-measures[hidden] { display: none; }
+    .admin-dashboard__product-controls { align-items: end; display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 14px; }
+    .admin-dashboard__product-controls label { color: #526174; display: grid; font-size: 12px; gap: 4px; margin: 0; }
+    .admin-dashboard__product-options { display: flex; flex-wrap: wrap; gap: 6px 14px; margin: 0 0 12px; max-height: 120px; overflow-y: auto; }
+    .admin-dashboard__product-options label { font-weight: 400; margin: 0; }
+    .admin-dashboard__product-chart { height: 270px; position: relative; }
+    .admin-dashboard__product-chart[hidden] { display: none; }
     .admin-dashboard__chart[hidden], .admin-dashboard__real-charts[hidden], .admin-dashboard__real-chart[hidden], .admin-dashboard__chart-empty[hidden] { display: none; }
     .admin-dashboard__table td, .admin-dashboard__table th { vertical-align: middle !important; }
     .admin-dashboard__table td:last-child { font-weight: 600; white-space: nowrap; }
@@ -360,6 +366,27 @@
             {% endif %}
         </div>
     </div>
+    <h4 class="admin-dashboard__section">Evolución por producto</h4>
+    <div class="panel panel-default">
+        <div class="panel-body" id="product-evolution" data-url="{{ product_evolution_url }}">
+            <div class="admin-dashboard__product-controls">
+                <label for="product-year">Año
+                    <select id="product-year" class="form-control">
+                        {% for year in available_years %}<option value="{{ year }}" {% if year == selected_year %}selected{% endif %}>{{ year }}</option>{% endfor %}
+                    </select>
+                </label>
+                <label for="product-metric">Indicador
+                    <select id="product-metric" class="form-control">
+                        <option value="units">Unidades</option><option value="amount">Importe de productos (€)</option><option value="orders">Pedidos</option>
+                    </select>
+                </label>
+            </div>
+            <p class="text-muted" style="margin:0 0 8px;">Selecciona hasta cinco productos. Los meses futuros no representan ventas cero. Importes de líneas antes de descuentos generales y transporte; no equivalen a cobros confirmados.</p>
+            <div id="product-options" class="admin-dashboard__product-options" role="group" aria-label="Productos"></div>
+            <p id="product-message" class="text-muted" role="status">Cargando ventas por producto…</p>
+            <div id="product-chart" class="admin-dashboard__product-chart" hidden><canvas role="img" aria-label="Evolución mensual por producto"></canvas></div>
+        </div>
+    </div>
     <h4 class="admin-dashboard__section">Actividad reciente</h4>
     <div class="row">
         <div class="col-md-6 col-sm-12">
@@ -451,5 +478,6 @@
 <script src="{{ url_for('static', filename='js/admin_sales_chart.js') }}"></script>
 <script src="{{ url_for('static', filename='js/admin_users_chart.js') }}"></script>
 <script src="{{ url_for('static', filename='js/admin_configurations.js') }}"></script>
+<script src="{{ url_for('static', filename='js/admin_product_evolution.js') }}"></script>
 
 {% endblock %}
