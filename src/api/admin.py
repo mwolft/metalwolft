@@ -42,7 +42,7 @@ from api.accounting_excel_service import (
 )
 from api.commercial_orders_export_service import build_workbook, iter_orders
 from api.commercial_analytics_service import (
-    annual_comparison, commercial_indicators, ranked_physical_models,
+    annual_comparison, commercial_indicators, configuration_distributions, ranked_physical_models,
     resolve_commercial_period, resolve_ranking_period,
 )
 from api.aeat_sales_ledger_service import (
@@ -363,6 +363,14 @@ class SecureAdminIndexView(AdminIndexView):
         except ValueError as exc:
             ranking = None
             rank_error = str(exc)
+        config_period_choice = request.args.get('config_period', 'all')
+        try:
+            config_period = resolve_ranking_period(config_period_choice, available_years)
+            configurations = configuration_distributions(db.session, config_period)
+            config_error = None
+        except ValueError as exc:
+            configurations = None
+            config_error = str(exc)
 
         rows_users = db.session.execute(
             db.select(
@@ -421,6 +429,9 @@ class SecureAdminIndexView(AdminIndexView):
             rank_sort=rank_sort,
             ranking=ranking,
             rank_error=rank_error,
+            config_period_choice=config_period_choice,
+            configurations=configurations,
+            config_error=config_error,
             users_monthly_values=users_monthly_values,
             current_year=current_year,
             selected_year=selected_year,
@@ -429,7 +440,7 @@ class SecureAdminIndexView(AdminIndexView):
             manual_orders_url=url_for('manualorderdraft.index_view'),
             pending_manufacturing=pending_manufacturing,
         )
-        return (html, 400) if analytics_error or rank_error else html
+        return (html, 400) if analytics_error or rank_error or config_error else html
 
     @expose('/libro-aeat', methods=['GET', 'POST'])
     def unified_aeat_ledger(self):

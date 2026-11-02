@@ -6,7 +6,7 @@ import calendar
 from decimal import Decimal, ROUND_HALF_UP
 from zoneinfo import ZoneInfo
 
-from sqlalchemy import Numeric, and_, case, cast, func, select
+from sqlalchemy import Numeric, String, and_, case, cast, func, or_, select
 
 from api.models import OrderDetails, Orders, Products
 
@@ -136,6 +136,73 @@ def ranked_physical_models(session, period, sort_by="units", limit=10):
                  for product_id, name, quantity, order_count, recorded in rows],
         "total_units": int(total_units),
     }
+
+
+COLOR_LABELS = {
+    "blanco": "Blanco", "gris": "Gris", "negro": "Negro", "marrón": "Marrón",
+    "satinado_blanco": "Satinado blanco", "satinado_gris": "Satinado gris",
+    "satinado_negro": "Satinado negro", "satinado_verde": "Satinado verde",
+    "forja_gris": "Forja gris", "forja_marron": "Forja marrón",
+    "forja_negro": "Forja negro", "forja_verde": "Forja verde",
+}
+DIMENSION_LABELS = ("Sin dato o anómalo", "Menos de 60 cm", "60 a menos de 100 cm",
+                    "100 a menos de 150 cm", "150 a menos de 200 cm", "200 cm o más")
+AREA_LABELS = ("Sin dato o anómalo", "Menos de 1 m²", "1 a menos de 2 m²",
+               "2 a menos de 3 m²", "3 m² o más")
+
+
+def _invalid_measure(column):
+    return or_(column.is_(None), column <= 0,
+               func.lower(cast(column, String)).in_(("nan", "infinity", "-infinity", "inf", "-inf")))
+
+
+def _measure_bucket(value, invalid, boundaries):
+    return case((invalid, 0), *((value < boundary, index)
+                                for index, boundary in enumerate(boundaries, 1)),
+                else_=len(boundaries) + 1)
+
+
+def configuration_distributions(session, period):
+    """Aggregate physical units without rebuilding historical options from the catalog."""
+    base = (select(OrderDetails.quantity).select_from(OrderDetails)
+            .join(Orders, OrderDetails.order_id == Orders.id)
+            .where(OrderDetails.line_type == "physical"))
+    total = int(session.scalar(_within_period(
+        base.with_only_columns(func.sum(OrderDetails.quantity)), period)) or 0)
+
+    def grouped(expression):
+        query = _within_period(
+            base.with_only_columns(expression, func.sum(OrderDetails.quantity))
+            .group_by(expression), period)
+        return [(key, int(units)) for key, units in session.execute(query)]
+
+    def rows(pairs, label_for):
+        return [{"label": label_for(key), "units": units,
+                 "percent": float((Decimal(units) * 100 / total).quantize(Decimal("0.1"), rounding=ROUND_HALF_UP))
+                 if total else 0.0} for key, units in sorted(pairs, key=lambda pair: (-pair[1], str(pair[0])))]
+
+    def text_bucket(column):
+        return case((or_(column.is_(None), func.trim(column) == ""), None), else_=column)
+
+    height, width = OrderDetails.alto, OrderDetails.ancho
+    area = height * width / 10000.0
+    invalid_area = or_(_invalid_measure(height), _invalid_measure(width), _invalid_measure(area))
+    measures = {
+        "height": (_measure_bucket(height, _invalid_measure(height), (60, 100, 150, 200)), DIMENSION_LABELS),
+        "width": (_measure_bucket(width, _invalid_measure(width), (60, 100, 150, 200)), DIMENSION_LABELS),
+        "area": (_measure_bucket(area, invalid_area, (1, 2, 3)), AREA_LABELS),
+    }
+    result = {"total_units": total}
+    result["colors"] = rows(grouped(text_bucket(OrderDetails.color)),
+                            lambda raw: "Sin dato" if raw is None else
+                            f"{COLOR_LABELS[raw]} ({raw})" if raw in COLOR_LABELS else raw)
+    result["anchorages"] = rows(grouped(text_bucket(OrderDetails.anclaje)),
+                                lambda raw: "Sin dato" if raw is None else raw)
+    for key, (bucket, labels) in measures.items():
+        counts = dict(grouped(bucket))
+        result[key] = rows([(index, counts.get(index, 0)) for index in range(len(labels))],
+                           lambda index: labels[index])
+    return result
 
 
 def monthly_order_activity(session, year, *, now=None, cutoff=None):

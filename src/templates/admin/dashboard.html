@@ -43,6 +43,20 @@
     .admin-dashboard__ranking-table th:nth-child(n+2), .admin-dashboard__ranking-table td:nth-child(n+2) { text-align: right; white-space: nowrap; }
     .admin-dashboard__ranking-model { color: #172d44; font-weight: 600; }
     .admin-dashboard__ranking-meta { color: #64748b; display: block; font-size: 11px; font-weight: 400; }
+    .admin-dashboard__config-controls { align-items: end; display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 14px; }
+    .admin-dashboard__config-controls label, .admin-dashboard__config-measure-label { color: #526174; display: grid; font-size: 12px; gap: 4px; margin: 0; }
+    .admin-dashboard__config-grid { display: grid; gap: 16px; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .admin-dashboard__config-panel { border: 1px solid #dce3e9; border-radius: 6px; min-width: 0; padding: 14px; }
+    .admin-dashboard__config-panel h5 { color: var(--mw-admin-blue); font-size: 14px; font-weight: 700; margin: 0 0 12px; }
+    .admin-dashboard__config-measure-label { margin-bottom: 12px; }
+    .admin-dashboard__config-row { margin: 0 0 11px; }
+    .admin-dashboard__config-row:last-child { margin-bottom: 0; }
+    .admin-dashboard__config-row-head { color: #172d44; display: flex; gap: 8px; justify-content: space-between; line-height: 1.35; }
+    .admin-dashboard__config-row-head span:first-child { min-width: 0; overflow-wrap: anywhere; }
+    .admin-dashboard__config-row-head span:last-child { flex-shrink: 0; white-space: nowrap; }
+    .admin-dashboard__config-track { background: #edf1f4; border-radius: 4px; height: 6px; margin-top: 5px; overflow: hidden; }
+    .admin-dashboard__config-fill { background: #416987; height: 100%; }
+    .admin-dashboard__config-measures[hidden] { display: none; }
     .admin-dashboard__chart[hidden], .admin-dashboard__real-charts[hidden], .admin-dashboard__real-chart[hidden], .admin-dashboard__chart-empty[hidden] { display: none; }
     .admin-dashboard__table td, .admin-dashboard__table th { vertical-align: middle !important; }
     .admin-dashboard__table td:last-child { font-weight: 600; white-space: nowrap; }
@@ -90,6 +104,7 @@
     .admin-production-queue__countdown { margin-top: 2px; }
 
     @media (max-width: 767px) {
+        .admin-dashboard__config-grid { grid-template-columns: minmax(0, 1fr); }
         .admin-dashboard__real-charts { grid-template-columns: minmax(0, 1fr); }
         .admin-dashboard__quick-access { grid-template-columns: minmax(0, 1fr); }
         .admin-dashboard__links { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -110,6 +125,7 @@
         .admin-production-queue__action { justify-self: start; }
     }
     @media (max-width: 420px) {
+        .admin-dashboard__config-row-head { font-size: 12px; }
         .admin-dashboard__links { grid-template-columns: 1fr; }
         .admin-dashboard__card { padding: 13px; }
     }
@@ -119,6 +135,14 @@
     }
 </style>
 {% include 'admin/_commercial_analytics_styles.html' %}
+{% macro config_rows(rows) %}
+    {% for row in rows %}
+    <div class="admin-dashboard__config-row">
+        <div class="admin-dashboard__config-row-head"><span>{{ row.label }}</span><span>{{ row.units }} · {{ '%.1f'|format(row.percent) }} %</span></div>
+        <div class="admin-dashboard__config-track" aria-hidden="true"><div class="admin-dashboard__config-fill" style="width: {{ row.percent }}%"></div></div>
+    </div>
+    {% endfor %}
+{% endmacro %}
 <div class="container-fluid admin-dashboard" style="margin-top:10px;">
     <h3 style="margin-bottom:15px;"><b>Resumen de gestión</b></h3>
     <div class="panel panel-primary admin-production-queue" style="margin-bottom:15px;">
@@ -190,6 +214,7 @@
                         <input type="hidden" name="period" value="{{ period_kind }}">
                         <input type="hidden" name="rank_period" value="{{ rank_period_choice }}">
                         <input type="hidden" name="rank_sort" value="{{ rank_sort }}">
+                        <input type="hidden" name="config_period" value="{{ config_period_choice }}">
                         {% if period_kind == 'custom' %}
                         <input type="hidden" name="date_from" value="{{ date_from or '' }}">
                         <input type="hidden" name="date_to" value="{{ date_to or '' }}">
@@ -240,6 +265,7 @@
             <form class="admin-dashboard__ranking-controls" method="get" data-pjax="false">
                 <input type="hidden" name="year" value="{{ selected_year }}">
                 <input type="hidden" name="period" value="{{ period_kind }}">
+                <input type="hidden" name="config_period" value="{{ config_period_choice }}">
                 {% if period_kind == 'custom' %}
                 <input type="hidden" name="date_from" value="{{ date_from or '' }}">
                 <input type="hidden" name="date_to" value="{{ date_to or '' }}">
@@ -279,6 +305,57 @@
                     </table>
                 </div>
                 <p class="text-muted" style="margin:8px 0 0;">Diez productos principales. Total del periodo: {{ ranking.total_units }} rejas físicas. Importes de líneas antes de descuentos generales y transporte; no equivalen a cobros confirmados.</p>
+                {% else %}<p class="text-muted" style="margin:0;">No hay rejas físicas registradas en este periodo.</p>{% endif %}
+            {% endif %}
+        </div>
+    </div>
+    <h4 class="admin-dashboard__section">Configuraciones vendidas</h4>
+    <div class="panel panel-default">
+        <div class="panel-body">
+            <form class="admin-dashboard__config-controls" method="get" data-pjax="false">
+                <input type="hidden" name="year" value="{{ selected_year }}">
+                <input type="hidden" name="period" value="{{ period_kind }}">
+                <input type="hidden" name="rank_period" value="{{ rank_period_choice }}">
+                <input type="hidden" name="rank_sort" value="{{ rank_sort }}">
+                {% if period_kind == 'custom' %}
+                <input type="hidden" name="date_from" value="{{ date_from or '' }}">
+                <input type="hidden" name="date_to" value="{{ date_to or '' }}">
+                {% endif %}
+                <label for="config-period">Periodo
+                    <select id="config-period" name="config_period" class="form-control">
+                        <option value="all" {% if config_period_choice == 'all' %}selected{% endif %}>Histórico completo</option>
+                        <option value="year" {% if config_period_choice == 'year' %}selected{% endif %}>Año actual</option>
+                        <option value="previous_year" {% if config_period_choice == 'previous_year' %}selected{% endif %}>Año anterior</option>
+                        {% for year in available_years if year not in (current_year, current_year - 1) %}
+                        <option value="year:{{ year }}" {% if config_period_choice == 'year:' ~ year %}selected{% endif %}>{{ year }}</option>
+                        {% endfor %}
+                    </select>
+                </label>
+                <button type="submit" class="btn btn-default">Ver configuraciones</button>
+            </form>
+            {% if config_error %}<div class="alert alert-danger" role="alert">{{ config_error }}</div>{% endif %}
+            {% if configurations %}
+                {% if configurations.total_units %}
+                <p class="text-muted">{{ configurations.total_units }} rejas físicas en el periodo. Los porcentajes se calculan sobre este total.</p>
+                <div class="admin-dashboard__config-grid">
+                    <section class="admin-dashboard__config-panel" aria-label="Colores y acabados">
+                        <h5>Colores y acabados</h5>{{ config_rows(configurations.colors) }}
+                    </section>
+                    <section class="admin-dashboard__config-panel" aria-label="Tipos de anclaje">
+                        <h5>Tipos de anclaje</h5>{{ config_rows(configurations.anchorages) }}
+                    </section>
+                    <section class="admin-dashboard__config-panel" aria-label="Medidas solicitadas">
+                        <h5>Medidas solicitadas</h5>
+                        <label class="admin-dashboard__config-measure-label" for="config-measure">Distribución
+                            <select id="config-measure" class="form-control">
+                                <option value="height">Alto</option><option value="width">Ancho</option><option value="area">Superficie unitaria</option>
+                            </select>
+                        </label>
+                        <div class="admin-dashboard__config-measures" data-measure="height">{{ config_rows(configurations.height) }}</div>
+                        <div class="admin-dashboard__config-measures" data-measure="width" hidden>{{ config_rows(configurations.width) }}</div>
+                        <div class="admin-dashboard__config-measures" data-measure="area" hidden>{{ config_rows(configurations.area) }}</div>
+                    </section>
+                </div>
                 {% else %}<p class="text-muted" style="margin:0;">No hay rejas físicas registradas en este periodo.</p>{% endif %}
             {% endif %}
         </div>
@@ -373,5 +450,6 @@
 <script src="{{ url_for('static', filename='js/chart.min.js') }}"></script>
 <script src="{{ url_for('static', filename='js/admin_sales_chart.js') }}"></script>
 <script src="{{ url_for('static', filename='js/admin_users_chart.js') }}"></script>
+<script src="{{ url_for('static', filename='js/admin_configurations.js') }}"></script>
 
 {% endblock %}
