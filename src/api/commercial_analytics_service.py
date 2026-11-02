@@ -2,6 +2,7 @@
 
 from dataclasses import dataclass
 from datetime import date, datetime, time, timedelta, timezone
+import calendar
 from decimal import Decimal, ROUND_HALF_UP
 from zoneinfo import ZoneInfo
 
@@ -91,7 +92,7 @@ def commercial_indicators(session, period):
     return {"orders": count, "amount": amount, "ticket": ticket, "physical_units": int(units)}
 
 
-def monthly_order_activity(session, year, *, now=None):
+def monthly_order_activity(session, year, *, now=None, cutoff=None):
     """Aggregate UTC-naive order timestamps by Madrid commercial month."""
     now_local = (now or datetime.now(timezone.utc)).astimezone(MADRID)
     boundaries = [_utc_naive(datetime(year, month, 1, tzinfo=MADRID)) for month in range(1, 13)]
@@ -101,9 +102,10 @@ def monthly_order_activity(session, year, *, now=None):
               Orders.order_date < boundaries[index + 1]), index + 1)
         for index in range(12)
     ))
+    end_utc = min(boundaries[-1], _utc_naive(cutoff)) if cutoff else boundaries[-1]
     rows = session.execute(
         select(month_expr.label("month"), func.count(Orders.id), func.sum(Orders.total_amount))
-        .where(Orders.order_date >= boundaries[0], Orders.order_date < boundaries[-1])
+        .where(Orders.order_date >= boundaries[0], Orders.order_date < end_utc)
         .group_by(month_expr)
     ).all()
     amounts = [0.0] * 12
@@ -111,7 +113,57 @@ def monthly_order_activity(session, year, *, now=None):
     for month, count, amount in rows:
         counts[month - 1] = count
         amounts[month - 1] = float(Decimal(str(amount or 0)).quantize(CENT, rounding=ROUND_HALF_UP))
+    unit_rows = session.execute(
+        select(month_expr.label("month"), func.sum(OrderDetails.quantity))
+        .select_from(OrderDetails)
+        .join(Orders, OrderDetails.order_id == Orders.id)
+        .where(OrderDetails.line_type == "physical",
+               Orders.order_date >= boundaries[0], Orders.order_date < end_utc)
+        .group_by(month_expr)
+    ).all()
+    units = [0] * 12
+    for month, quantity in unit_rows:
+        units[month - 1] = int(quantity or 0)
+    tickets = [float((Decimal(str(amount)) / count).quantize(CENT, rounding=ROUND_HALF_UP))
+               if count else 0.0 for amount, count in zip(amounts, counts)]
     future = [year > now_local.year or (year == now_local.year and month > now_local.month)
               for month in range(1, 13)]
-    return {"amounts": amounts, "counts": counts, "future": future,
+    if cutoff:
+        cutoff_month = cutoff.astimezone(MADRID).month
+        future = [month > cutoff_month for month in range(1, 13)]
+    return {"amounts": amounts, "counts": counts, "units": units, "tickets": tickets,
+            "future": future,
             "current_month": now_local.month if year == now_local.year else None}
+
+
+def annual_comparison(session, year, *, now=None):
+    now_local = (now or datetime.now(timezone.utc)).astimezone(MADRID)
+    current_cutoff = now_local if year == now_local.year else None
+    previous_cutoff = None
+    if current_cutoff:
+        day = min(now_local.day, calendar.monthrange(year - 1, now_local.month)[1])
+        previous_cutoff = now_local.replace(year=year - 1, day=day)
+    selected = monthly_order_activity(session, year, now=now_local, cutoff=current_cutoff)
+    previous = monthly_order_activity(session, year - 1, now=now_local, cutoff=previous_cutoff)
+    summaries = {}
+    for key in ("amounts", "counts", "units"):
+        current_value = sum(Decimal(str(value)) for value in selected[key])
+        previous_value = sum(Decimal(str(value)) for value in previous[key])
+        summaries[key] = _comparison_values(current_value, previous_value)
+    current_orders = sum(selected["counts"])
+    previous_orders = sum(previous["counts"])
+    current_amount = Decimal(str(summaries["amounts"]["current"]))
+    previous_amount = Decimal(str(summaries["amounts"]["previous"]))
+    summaries["tickets"] = _comparison_values(
+        (current_amount / current_orders).quantize(CENT, rounding=ROUND_HALF_UP) if current_orders else Decimal(0),
+        (previous_amount / previous_orders).quantize(CENT, rounding=ROUND_HALF_UP) if previous_orders else Decimal(0),
+    )
+    return {"selected": selected, "previous": previous, "summaries": summaries,
+            "partial": bool(current_cutoff)}
+
+
+def _comparison_values(current, previous):
+    delta = current - previous
+    percent = ((delta / previous) * 100).quantize(CENT, rounding=ROUND_HALF_UP) if previous else None
+    return {"current": float(current), "previous": float(previous),
+            "delta": float(delta), "percent": float(percent) if percent is not None else None}

@@ -90,8 +90,8 @@ class GoogleAdsMonthlySpendTest(unittest.TestCase):
         parser.feed(response.get_data(as_text=True))
         self.assertIsNotNone(parser.attributes)
         return {
-            key: json.loads(parser.attributes[f"data-{key}"])
-            for key in ("labels", "amounts", "orders", "future")
+            "labels": json.loads(parser.attributes["data-labels"]),
+            "selected": json.loads(parser.attributes["data-selected"]),
         }
 
     def test_database_constraints_allow_zero_and_reject_duplicate_month_invalid_month_and_negative_amount(self):
@@ -130,13 +130,13 @@ class GoogleAdsMonthlySpendTest(unittest.TestCase):
 
         current = self._canvas_data(2026)
         self.assertEqual(len(current["labels"]), 12)
-        self.assertEqual(current["amounts"], [100.0, 250.0] + [0] * 10)
-        self.assertEqual(current["orders"], [1, 1] + [0] * 10)
+        self.assertEqual(current["selected"]["amounts"], [100.0, 250.0] + [0] * 10)
+        self.assertEqual(current["selected"]["counts"], [1, 1] + [0] * 10)
         self.assertNotIn("ads-values", current)
 
         previous = self._canvas_data(2025)
-        self.assertEqual(previous["amounts"], [40.0] + [0] * 11)
-        self.assertEqual(previous["orders"], [1] + [0] * 11)
+        self.assertEqual(previous["selected"]["amounts"], [40.0] + [0] * 11)
+        self.assertEqual(previous["selected"]["counts"], [1] + [0] * 11)
 
     def test_admin_view_is_protected_and_can_create_edit_and_delete(self):
         url = "/admin/googleadsmonthlyspend/"

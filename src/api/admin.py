@@ -41,7 +41,7 @@ from api.accounting_excel_service import (
     export_sales_accounting_entries,
 )
 from api.commercial_orders_export_service import build_workbook, iter_orders
-from api.commercial_analytics_service import commercial_indicators, monthly_order_activity, resolve_commercial_period
+from api.commercial_analytics_service import annual_comparison, commercial_indicators, resolve_commercial_period
 from api.aeat_sales_ledger_service import (
     AeatSalesLedgerError,
     export_aeat_sales_ledger,
@@ -350,7 +350,7 @@ class SecureAdminIndexView(AdminIndexView):
         if selected_year not in available_years:
             available_years.append(selected_year)
             available_years.sort(reverse=True)
-        monthly_activity = monthly_order_activity(db.session, selected_year)
+        monthly_comparison = annual_comparison(db.session, selected_year)
 
         rows_users = db.session.execute(
             db.select(
@@ -403,7 +403,7 @@ class SecureAdminIndexView(AdminIndexView):
             recent_orders=recent_orders,
             recent_invoices=recent_invoices,
             monthly_sales_labels=monthly_sales_labels,
-            monthly_activity=monthly_activity,
+            monthly_comparison=monthly_comparison,
             available_years=available_years,
             users_monthly_values=users_monthly_values,
             current_year=current_year,

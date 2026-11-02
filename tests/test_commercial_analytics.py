@@ -14,7 +14,7 @@ from openpyxl import load_workbook
 from sqlalchemy import event
 
 from api import admin as admin_module
-from api.commercial_analytics_service import commercial_indicators, monthly_order_activity, resolve_commercial_period
+from api.commercial_analytics_service import annual_comparison, commercial_indicators, monthly_order_activity, resolve_commercial_period
 from api.commercial_orders_export_service import build_workbook
 from api.models import Categories, OrderDetails, Orders, Products, db
 
@@ -50,6 +50,65 @@ class CommercialPeriodTest(unittest.TestCase):
 
 
 class MonthlyOrderActivityTest(unittest.TestCase):
+    def test_partial_year_uses_same_madrid_calendar_cutoff(self):
+        app = Flask(__name__)
+        app.config.update(SQLALCHEMY_DATABASE_URI="sqlite:///:memory:",
+                          SQLALCHEMY_TRACK_MODIFICATIONS=False)
+        db.init_app(app)
+        with app.app_context():
+            db.create_all()
+            db.session.add_all([
+                Orders(locator="COMPARE01", order_date=datetime(2026, 3, 10, 10), total_amount=30),
+                Orders(locator="COMPARE02", order_date=datetime(2026, 3, 10, 12), total_amount=90),
+                Orders(locator="COMPARE03", order_date=datetime(2025, 3, 10, 10), total_amount=20),
+                Orders(locator="COMPARE04", order_date=datetime(2025, 3, 10, 12), total_amount=80),
+            ])
+            db.session.commit()
+            now = datetime(2026, 3, 10, 11, tzinfo=timezone.utc)
+            partial = annual_comparison(db.session, 2026, now=now)
+            self.assertTrue(partial["partial"])
+            self.assertEqual(partial["summaries"]["amounts"],
+                             {"current": 30.0, "previous": 20.0, "delta": 10.0, "percent": 50.0})
+            self.assertTrue(all(partial["selected"]["future"][3:]))
+            full = annual_comparison(db.session, 2025, now=now)
+            self.assertFalse(full["partial"])
+            self.assertEqual(full["summaries"]["amounts"]["current"], 100.0)
+            db.session.remove()
+            db.drop_all()
+
+    def test_physical_units_and_ticket_do_not_duplicate_order_amount(self):
+        app = Flask(__name__)
+        app.config.update(SQLALCHEMY_DATABASE_URI="sqlite:///:memory:",
+                          SQLALCHEMY_TRACK_MODIFICATIONS=False)
+        db.init_app(app)
+        with app.app_context():
+            db.create_all()
+            category = Categories(nombre="Prueba", slug="prueba-comparativa")
+            db.session.add(category)
+            db.session.flush()
+            product = Products(slug="test-comparativa", nombre="Test", descripcion="Prueba",
+                               precio=1, categoria_id=category.id)
+            db.session.add(product)
+            db.session.flush()
+            order = Orders(locator="MULTILINE", order_date=datetime(2025, 1, 15), total_amount=120)
+            db.session.add(order)
+            db.session.flush()
+            db.session.add_all([
+                OrderDetails(order_id=order.id, product_id=product.id, quantity=2, precio_total=1, line_type="physical"),
+                OrderDetails(order_id=order.id, product_id=product.id, quantity=3, precio_total=1, line_type="physical"),
+                OrderDetails(order_id=order.id, product_id=product.id, quantity=1, precio_total=1, line_type="design_service"),
+            ])
+            db.session.commit()
+            result = annual_comparison(db.session, 2025, now=datetime(2026, 2, 1, tzinfo=timezone.utc))
+            self.assertEqual(result["selected"]["amounts"][0], 120.0)
+            self.assertEqual(result["selected"]["counts"][0], 1)
+            self.assertEqual(result["selected"]["units"][0], 5)
+            self.assertEqual(result["selected"]["tickets"][0], 120.0)
+            self.assertIsNone(result["summaries"]["amounts"]["percent"])
+            self.assertFalse(result["partial"])
+            db.session.remove()
+            db.drop_all()
+
     def test_madrid_month_and_year_boundaries_and_empty_months(self):
         app = Flask(__name__)
         app.config.update(SQLALCHEMY_DATABASE_URI="sqlite:///:memory:",
