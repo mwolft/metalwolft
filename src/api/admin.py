@@ -542,7 +542,7 @@ class CommercialAnalyticsView(BaseView):
 
     @expose('/')
     def index(self):
-        period_kind = request.args.get('period', 'month')
+        period_kind = request.args.get('period', 'all')
         date_from = request.args.get('date_from')
         date_to = request.args.get('date_to')
         try:
@@ -5592,7 +5592,7 @@ def setup_admin(app):
     admin = Admin(
         app,
         name='MetalWolft Administración',
-        index_view=SecureAdminIndexView(name='Resumen'),
+        index_view=SecureAdminIndexView(name='Resumen', category='Resumen'),
         template_mode='bootstrap3',
         url='/admin'
     )
@@ -5604,7 +5604,7 @@ def setup_admin(app):
     admin.add_view(SafeModelView(ProductImages, db.session, name="Imágenes de producto", category="Catálogo"))
 
     admin.add_view(OrderAdminView(Orders, db.session, name="Pedidos", category="Ventas"))
-    admin.add_view(CommercialAnalyticsView(name="Analítica comercial", endpoint="commercialanalytics", category="Ventas"))
+    admin.add_view(CommercialAnalyticsView(name="Analítica comercial", endpoint="commercialanalytics", category="Resumen"))
     admin.add_view(CustomerPhotoRequestAdminView(
         CustomerPhotoRequest, db.session, name="Fotografías de clientes", category="Ventas",
     ))

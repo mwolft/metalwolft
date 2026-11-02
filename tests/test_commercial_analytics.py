@@ -79,9 +79,16 @@ class CommercialAnalyticsHttpTest(unittest.TestCase):
         self.assertEqual(self.client.get(self.url, headers={"Authorization": "Basic YmFkOmJhZA=="}).status_code, 401)
         response = self.client.get(self.url, headers=self.auth)
         self.assertEqual(response.status_code, 200)
-        self.assertIn("Analítica comercial", response.get_data(as_text=True))
-        self.assertIn("No hay pedidos registrados", response.get_data(as_text=True))
-        self.assertIn(self.url, self.client.get("/admin/", headers=self.auth).get_data(as_text=True))
+        html = response.get_data(as_text=True)
+        self.assertIn("Analítica comercial", html)
+        self.assertIn("No hay pedidos registrados", html)
+        self.assertIn('<option value="all" selected>Histórico completo</option>', html)
+        menu = self.client.get("/admin/", headers=self.auth).get_data(as_text=True)
+        self.assertIn(self.url, menu)
+        summary_menu = self.app.extensions["admin"][0].get_category_menu_item("Resumen")
+        with self.app.test_request_context("/admin/", headers=self.auth):
+            self.assertEqual([item.name for item in summary_menu.get_children()],
+                             ["Resumen", "Analítica comercial"])
         self.assertEqual(self.client.get(self.url + "?period=custom&date_from=2026-03-20&date_to=2026-03-01",
                                          headers=self.auth).status_code, 400)
         self.assertEqual(self.client.get(self.url + "?period=invalid", headers=self.auth).status_code, 400)
@@ -142,6 +149,9 @@ class CommercialAnalyticsHttpTest(unittest.TestCase):
         self.assertIn("150.00 €", html)
         self.assertIn("75.00 €", html)
         self.assertIn('class="mw-analytics__value">6</strong>', html)
+        historical = self.client.get(self.url, headers=self.auth)
+        self.assertEqual(historical.status_code, 200)
+        self.assertIn("1050.00 €", historical.get_data(as_text=True))
 
 
 if __name__ == "__main__":

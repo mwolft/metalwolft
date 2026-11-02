@@ -59,7 +59,7 @@ def registered_views():
 
 class FlaskAdminNavigationTest(unittest.TestCase):
     def test_index_is_named_resumen_without_changing_its_route(self):
-        self.assertIn("index_view=SecureAdminIndexView(name='Resumen')", source())
+        self.assertIn("index_view=SecureAdminIndexView(name='Resumen', category='Resumen')", source())
         self.assertIn("url='/admin'", source())
 
     def test_views_follow_the_expected_native_category_order(self):
@@ -71,7 +71,7 @@ class FlaskAdminNavigationTest(unittest.TestCase):
                 ("Catálogo", "Productos"),
                 ("Catálogo", "Imágenes de producto"),
                 ("Ventas", "Pedidos"),
-                ("Ventas", "Analítica comercial"),
+                ("Resumen", "Analítica comercial"),
                 ("Ventas", "Fotografías de clientes"),
                 ("Ventas", "Pedidos manuales"),
                 ("Ventas", "Líneas de pedido"),
@@ -120,7 +120,7 @@ class FlaskAdminNavigationTest(unittest.TestCase):
         actual = registered_views()
         analytics = next(item for item in actual if item["view"] == "CommercialAnalyticsView")
         self.assertEqual((analytics["model"], analytics["endpoint"], analytics["category"]),
-                         (None, "commercialanalytics", "Ventas"))
+                         (None, "commercialanalytics", "Resumen"))
         actual = [item for item in actual if item["model"] is not None]
         self.assertEqual(
             [(item["view"], item["model"], item["model"].lower()) for item in actual],
