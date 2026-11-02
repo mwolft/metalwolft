@@ -29,7 +29,7 @@ from .models import (
     Categories, Subcategories, Cart,
     Orders, OrderDetails, Favorites,
     Posts, Comments, Invoices, VeriFactuRecord, DeliveryEstimateConfig,
-    GoogleAdsMonthlySpend, DesignServiceConfig, DesignServicePriceTier, DesignRequest,
+    GoogleAdsMonthlySpend, GoogleAdsImportedMonthlyCost, DesignServiceConfig, DesignServicePriceTier, DesignRequest,
     AccountingEntry, SupplierInvoice, SupplierInvoiceDocument, SupplierInvoiceExtraction,
     SupplierInvoiceTaxBreakdown,
     ManualInvoiceDraft, ManualInvoiceDraftLine, ManualOrderDraft, ManualOrderDraftLine,
@@ -46,6 +46,7 @@ from api.commercial_analytics_service import (
     ranked_physical_models,
     resolve_commercial_period, resolve_ranking_period,
 )
+from api.google_ads_csv_service import MAX_BYTES, ads_dashboard_data, import_monthly_costs, parse_monthly_cost_csv
 from api.aeat_sales_ledger_service import (
     AeatSalesLedgerError,
     export_aeat_sales_ledger,
@@ -372,6 +373,15 @@ class SecureAdminIndexView(AdminIndexView):
         except ValueError as exc:
             configurations = None
             config_error = str(exc)
+        ads_period_choice = request.args.get('ads_period', 'all')
+        ads_years = db.session.scalars(db.select(GoogleAdsImportedMonthlyCost.year).distinct()).all()
+        ads_available_years = sorted(set(available_years) | set(ads_years), reverse=True)
+        try:
+            ads_data = ads_dashboard_data(db.session, ads_period_choice, ads_available_years)
+            ads_error = None
+        except ValueError as exc:
+            ads_data = None
+            ads_error = str(exc)
 
         rows_users = db.session.execute(
             db.select(
@@ -434,6 +444,11 @@ class SecureAdminIndexView(AdminIndexView):
             configurations=configurations,
             config_error=config_error,
             product_evolution_url=self.get_url('.product_evolution_data'),
+            ads_period_choice=ads_period_choice,
+            ads_available_years=ads_available_years,
+            ads_data=ads_data,
+            ads_error=ads_error,
+            ads_import_url=self.get_url('.import_google_ads_csv'),
             users_monthly_values=users_monthly_values,
             current_year=current_year,
             selected_year=selected_year,
@@ -442,7 +457,39 @@ class SecureAdminIndexView(AdminIndexView):
             manual_orders_url=url_for('manualorderdraft.index_view'),
             pending_manufacturing=pending_manufacturing,
         )
-        return (html, 400) if analytics_error or rank_error or config_error else html
+        return (html, 400) if analytics_error or rank_error or config_error or ads_error else html
+
+    @expose('/ads-import', methods=['GET', 'POST'])
+    def import_google_ads_csv(self):
+        csrf_key = 'google_ads_csv_csrf'
+        token = session.get(csrf_key)
+        if not token:
+            token = secrets.token_urlsafe(32)
+            session[csrf_key] = token
+        error = result = None
+        status = 200
+        if request.method == 'POST':
+            if not request.form.get('csrf_token') or not hmac.compare_digest(
+                    str(token), str(request.form.get('csrf_token'))):
+                error, status = 'Formulario caducado. Vuelve a cargar la página.', 400
+            else:
+                uploaded = request.files.get('cost_csv')
+                try:
+                    if not uploaded or not uploaded.filename or not uploaded.filename.lower().endswith('.csv'):
+                        raise ValueError('Selecciona un archivo CSV.')
+                    rows = parse_monthly_cost_csv(uploaded.read(MAX_BYTES + 1))
+                    result = import_monthly_costs(db.session, rows, uploaded.filename,
+                        replace_existing=request.form.get('replace_existing') == 'yes')
+                except ValueError as exc:
+                    db.session.rollback()
+                    error, status = str(exc), 400
+                except Exception:
+                    db.session.rollback()
+                    current_app.logger.error('Google Ads CSV import failed')
+                    error, status = 'No se pudo importar el CSV.', 500
+        html = self.render('admin/google_ads_csv_import.html', csrf_token=token,
+                           error=error, result=result, dashboard_url=self.get_url('.index'))
+        return (html, status) if status != 200 else html
 
     @expose('/product-evolution-data')
     def product_evolution_data(self):

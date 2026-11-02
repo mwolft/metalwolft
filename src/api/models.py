@@ -68,6 +68,36 @@ class GoogleAdsMonthlySpend(db.Model):
     )
 
 
+class GoogleAdsImportedMonthlyCost(db.Model):
+    """Source-backed monthly Google Ads cost, separate from manual estimates."""
+
+    __tablename__ = "google_ads_imported_monthly_cost"
+    __table_args__ = (
+        db.UniqueConstraint("year", "month", name="uq_ads_import_year_month"),
+        db.CheckConstraint("year BETWEEN 1900 AND 9998", name="ck_ads_import_year"),
+        db.CheckConstraint("month BETWEEN 1 AND 12", name="ck_ads_import_month"),
+        db.CheckConstraint("source_days BETWEEN 1 AND 31", name="ck_ads_import_days"),
+        db.CheckConstraint("cost_eur >= 0 AND cost_product_eur >= 0 AND cost_without_product_eur >= 0",
+                           name="ck_ads_import_cost_nonnegative"),
+        db.CheckConstraint("ROUND(cost_eur - cost_product_eur - cost_without_product_eur, 2) = 0",
+                           name="ck_ads_import_cost_components"),
+    )
+
+    id = db.Column(db.Integer, primary_key=True)
+    source = db.Column(db.String(255), nullable=False)
+    year = db.Column(db.Integer, nullable=False)
+    month = db.Column(db.Integer, nullable=False)
+    source_start = db.Column(db.Date, nullable=False)
+    source_end = db.Column(db.Date, nullable=False)
+    source_days = db.Column(db.Integer, nullable=False)
+    cost_eur = db.Column(db.Numeric(12, 2), nullable=False)
+    cost_product_eur = db.Column(db.Numeric(12, 2), nullable=False)
+    cost_without_product_eur = db.Column(db.Numeric(12, 2), nullable=False)
+    status = db.Column(db.String(100), nullable=False)
+    import_filename = db.Column(db.String(255), nullable=False)
+    imported_at = db.Column(db.DateTime, nullable=False, server_default=db.func.now())
+
+
 class DesignServiceConfig(db.Model):
     """Single persisted configuration for the paid design-preview service."""
 

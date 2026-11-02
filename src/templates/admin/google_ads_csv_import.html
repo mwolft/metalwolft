@@ -1,0 +1,19 @@
+{% extends 'admin/master.html' %}
+{% block body %}
+<div class="container-fluid" style="max-width:760px;margin-top:20px;">
+    <h3>Importar coste mensual de Google Ads</h3>
+    <p>CSV derivado con una fila por mes. La tabla de importes manuales permanece separada.</p>
+    {% if error %}<div class="alert alert-danger" role="alert">{{ error }}</div>{% endif %}
+    {% if result %}<div class="alert alert-success" role="status">Importación completada: {{ result.inserted }} meses nuevos, {{ result.updated }} sustituidos y {{ result.unchanged }} sin cambios.</div>{% endif %}
+    <form method="post" enctype="multipart/form-data" data-pjax="false">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <div class="form-group">
+            <label for="cost-csv">Archivo CSV</label>
+            <input id="cost-csv" type="file" name="cost_csv" accept=".csv,text/csv" required class="form-control">
+        </div>
+        <div class="checkbox"><label><input type="checkbox" name="replace_existing" value="yes"> Confirmo que deseo sustituir meses existentes de la misma fuente si el CSV contiene importes o cobertura diferentes. No se acumularán importes.</label></div>
+        <button class="btn btn-primary" type="submit">Validar e importar</button>
+        <a class="btn btn-default" href="{{ dashboard_url }}">Volver al dashboard</a>
+    </form>
+</div>
+{% endblock %}
