@@ -27,8 +27,17 @@
     .admin-dashboard__chart-note { color: #526174; font-size: 12px; margin: 12px 0 0; }
     .admin-dashboard__chart-summary { background: #f5f7f9; border-radius: 6px; color: #172d44; display: flex; flex-wrap: wrap; gap: 8px 18px; margin-top: 12px; padding: 12px; }
     .admin-dashboard__chart-summary[hidden] { display: none; }
-    .admin-dashboard__chart-summary span { white-space: nowrap; }
+    .admin-dashboard__chart-summary span { overflow-wrap: anywhere; }
     .admin-dashboard__chart-controls .admin-dashboard__compare { align-items: center; display: flex; gap: 6px; min-height: 34px; }
+    .admin-dashboard__metric-options { border: 0; display: flex; flex-wrap: wrap; gap: 5px 14px; margin: 0; padding: 0; }
+    .admin-dashboard__metric-options legend { color: #526174; font-size: 12px; font-weight: 600; margin: 0; }
+    .admin-dashboard__chart-controls .admin-dashboard__metric-option { align-items: center; display: flex; gap: 5px; min-height: 26px; white-space: nowrap; }
+    .admin-dashboard__real-charts { display: grid; gap: 12px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .admin-dashboard__real-chart { border: 1px solid #dce3e9; border-radius: 6px; min-width: 0; padding: 10px; }
+    .admin-dashboard__real-chart h5 { color: var(--mw-admin-blue); font-size: 13px; font-weight: 600; margin: 0 0 8px; }
+    .admin-dashboard__real-chart-canvas { height: 190px; position: relative; }
+    .admin-dashboard__chart-empty { color: #526174; margin: 12px 0; }
+    .admin-dashboard__chart[hidden], .admin-dashboard__real-charts[hidden], .admin-dashboard__real-chart[hidden], .admin-dashboard__chart-empty[hidden] { display: none; }
     .admin-dashboard__table td, .admin-dashboard__table th { vertical-align: middle !important; }
     .admin-dashboard__table td:last-child { font-weight: 600; white-space: nowrap; }
     .admin-dashboard__total { background: #f5f7f9; padding: 12px 16px; }
@@ -75,6 +84,7 @@
     .admin-production-queue__countdown { margin-top: 2px; }
 
     @media (max-width: 767px) {
+        .admin-dashboard__real-charts { grid-template-columns: minmax(0, 1fr); }
         .admin-dashboard__quick-access { grid-template-columns: minmax(0, 1fr); }
         .admin-dashboard__links { grid-template-columns: repeat(2, minmax(0, 1fr)); }
         .admin-dashboard__totals { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -182,13 +192,14 @@
                             </select>
                         </label>
                         <button type="submit" class="btn btn-default">Ver año</button>
-                        <label for="sales-metric">Métrica
-                            <select id="sales-metric" class="form-control">
-                                <option value="amount">Importe registrado (€)</option>
-                                <option value="orders">Pedidos registrados</option>
-                                <option value="units">Rejas vendidas</option>
-                                <option value="tickets">Ticket medio (€)</option>
-                            </select>
+                        <fieldset class="admin-dashboard__metric-options" id="sales-metrics"><legend>Indicadores</legend>
+                            <label class="admin-dashboard__metric-option"><input type="checkbox" value="amount" checked> Importe registrado (€)</label>
+                            <label class="admin-dashboard__metric-option"><input type="checkbox" value="orders"> Pedidos registrados</label>
+                            <label class="admin-dashboard__metric-option"><input type="checkbox" value="units" checked> Rejas vendidas</label>
+                            <label class="admin-dashboard__metric-option"><input type="checkbox" value="tickets"> Ticket medio (€)</label>
+                        </fieldset>
+                        <label for="sales-mode">Visualización
+                            <select id="sales-mode" class="form-control"><option value="trend">Comparar tendencias</option><option value="real">Valores reales</option></select>
                         </label>
                         <label for="sales-compare" class="admin-dashboard__compare"><input id="sales-compare" type="checkbox"> Comparar con año anterior</label>
                     </form>
@@ -202,8 +213,15 @@
                         data-partial='{{ "true" if monthly_comparison.partial else "false" }}'>
                     </canvas>
                     </div>
+                    <div id="sales-real-charts" class="admin-dashboard__real-charts" hidden>
+                        <div class="admin-dashboard__real-chart" data-metric="amount"><h5>Importe registrado (€)</h5><div class="admin-dashboard__real-chart-canvas"><canvas role="img" aria-label="Importe registrado por mes"></canvas></div></div>
+                        <div class="admin-dashboard__real-chart" data-metric="orders"><h5>Pedidos registrados</h5><div class="admin-dashboard__real-chart-canvas"><canvas role="img" aria-label="Pedidos registrados por mes"></canvas></div></div>
+                        <div class="admin-dashboard__real-chart" data-metric="units"><h5>Rejas vendidas</h5><div class="admin-dashboard__real-chart-canvas"><canvas role="img" aria-label="Rejas vendidas por mes"></canvas></div></div>
+                        <div class="admin-dashboard__real-chart" data-metric="tickets"><h5>Ticket medio (€)</h5><div class="admin-dashboard__real-chart-canvas"><canvas role="img" aria-label="Ticket medio por mes"></canvas></div></div>
+                    </div>
+                    <p id="sales-empty" class="admin-dashboard__chart-empty" hidden>Selecciona al menos un indicador para ver la evolución.</p>
                     <div id="sales-summary" class="admin-dashboard__chart-summary" aria-live="polite" hidden></div>
-                    <p class="admin-dashboard__chart-note">Incluye todos los estados operativos. Los importes son pedidos registrados, no cobros confirmados. El mes actual está incompleto; los meses futuros no se representan. La comparación del año actual utiliza el mismo intervalo calendario de Madrid en ambos años.</p>
+                    <p class="admin-dashboard__chart-note">Tendencias: cada indicador usa como base 100 la magnitud absoluta de su primer mes distinto de cero en el año seleccionado (o, si no lo hay, en el anterior). Los meses sin pedidos permanecen en cero; sin base, no se traza la línea. Las curvas no comparan cantidades entre indicadores; el tooltip muestra los valores reales. Incluye todos los estados operativos. Los importes no son cobros confirmados. El mes actual está incompleto; los meses futuros no se representan. La comparación del año actual utiliza el mismo intervalo calendario de Madrid en ambos años.</p>
                 </div>
             </div>
         </div>
