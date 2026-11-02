@@ -41,7 +41,10 @@ from api.accounting_excel_service import (
     export_sales_accounting_entries,
 )
 from api.commercial_orders_export_service import build_workbook, iter_orders
-from api.commercial_analytics_service import annual_comparison, commercial_indicators, resolve_commercial_period
+from api.commercial_analytics_service import (
+    annual_comparison, commercial_indicators, ranked_physical_models,
+    resolve_commercial_period, resolve_ranking_period,
+)
 from api.aeat_sales_ledger_service import (
     AeatSalesLedgerError,
     export_aeat_sales_ledger,
@@ -351,6 +354,15 @@ class SecureAdminIndexView(AdminIndexView):
             available_years.append(selected_year)
             available_years.sort(reverse=True)
         monthly_comparison = annual_comparison(db.session, selected_year)
+        rank_period_choice = request.args.get('rank_period', 'all')
+        rank_sort = request.args.get('rank_sort', 'units')
+        try:
+            rank_period = resolve_ranking_period(rank_period_choice, available_years)
+            ranking = ranked_physical_models(db.session, rank_period, rank_sort)
+            rank_error = None
+        except ValueError as exc:
+            ranking = None
+            rank_error = str(exc)
 
         rows_users = db.session.execute(
             db.select(
@@ -405,6 +417,10 @@ class SecureAdminIndexView(AdminIndexView):
             monthly_sales_labels=monthly_sales_labels,
             monthly_comparison=monthly_comparison,
             available_years=available_years,
+            rank_period_choice=rank_period_choice,
+            rank_sort=rank_sort,
+            ranking=ranking,
+            rank_error=rank_error,
             users_monthly_values=users_monthly_values,
             current_year=current_year,
             selected_year=selected_year,
@@ -413,7 +429,7 @@ class SecureAdminIndexView(AdminIndexView):
             manual_orders_url=url_for('manualorderdraft.index_view'),
             pending_manufacturing=pending_manufacturing,
         )
-        return (html, 400) if analytics_error else html
+        return (html, 400) if analytics_error or rank_error else html
 
     @expose('/libro-aeat', methods=['GET', 'POST'])
     def unified_aeat_ledger(self):

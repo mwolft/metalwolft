@@ -6,9 +6,9 @@ import calendar
 from decimal import Decimal, ROUND_HALF_UP
 from zoneinfo import ZoneInfo
 
-from sqlalchemy import and_, case, func, select
+from sqlalchemy import Numeric, and_, case, cast, func, select
 
-from api.models import OrderDetails, Orders
+from api.models import OrderDetails, Orders, Products
 
 
 MADRID = ZoneInfo("Europe/Madrid")
@@ -68,6 +68,19 @@ def resolve_commercial_period(kind, date_from=None, date_to=None, *, now=None):
     return CommercialPeriod(kind, _utc_naive(start), _utc_naive(end))
 
 
+def resolve_ranking_period(choice, available_years, *, now=None):
+    if choice == "all":
+        return resolve_commercial_period("all", now=now)
+    if choice in {"year", "previous_year"}:
+        return resolve_commercial_period(choice, now=now)
+    if not choice.startswith("year:") or not choice[5:].isdigit():
+        raise ValueError("Selecciona un periodo válido para el ranking.")
+    year = int(choice[5:])
+    if year not in available_years or not 1900 <= year <= 9998:
+        raise ValueError("Selecciona un año disponible para el ranking.")
+    return resolve_commercial_period("custom", f"{year}-01-01", f"{year}-12-31", now=now)
+
+
 def _within_period(query, period):
     if period.start_utc is not None:
         query = query.where(Orders.order_date >= period.start_utc)
@@ -90,6 +103,39 @@ def commercial_indicators(session, period):
     amount = Decimal(str(recorded or 0)).quantize(CENT, rounding=ROUND_HALF_UP)
     ticket = (amount / count).quantize(CENT, rounding=ROUND_HALF_UP) if count else Decimal("0.00")
     return {"orders": count, "amount": amount, "ticket": ticket, "physical_units": int(units)}
+
+
+def ranked_physical_models(session, period, sort_by="units", limit=10):
+    if sort_by not in {"units", "amount"}:
+        raise ValueError("Selecciona una ordenación válida.")
+    physical = (OrderDetails.line_type == "physical")
+    units = func.sum(OrderDetails.quantity)
+    unit_price = func.round(cast(OrderDetails.precio_total, Numeric(18, 6)), 2)
+    amount = func.sum(unit_price * OrderDetails.quantity)
+    query = _within_period(
+        select(OrderDetails.product_id, Products.nombre, units.label("units"),
+               func.count(func.distinct(OrderDetails.order_id)).label("orders"), amount.label("amount"))
+        .select_from(OrderDetails)
+        .join(Orders, OrderDetails.order_id == Orders.id)
+        .outerjoin(Products, OrderDetails.product_id == Products.id)
+        .where(physical)
+        .group_by(OrderDetails.product_id, Products.nombre), period,
+    )
+    ordering = units if sort_by == "units" else amount
+    rows = session.execute(query.order_by(ordering.desc(), OrderDetails.product_id).limit(limit)).all()
+    total_units = session.scalar(_within_period(
+        select(func.sum(OrderDetails.quantity))
+        .select_from(OrderDetails)
+        .join(Orders, OrderDetails.order_id == Orders.id)
+        .where(physical), period,
+    )) or 0
+    return {
+        "rows": [{"product_id": product_id, "current_name": name,
+                  "units": int(quantity), "orders": order_count,
+                  "amount": Decimal(str(recorded or 0)).quantize(CENT, rounding=ROUND_HALF_UP)}
+                 for product_id, name, quantity, order_count, recorded in rows],
+        "total_units": int(total_units),
+    }
 
 
 def monthly_order_activity(session, year, *, now=None, cutoff=None):

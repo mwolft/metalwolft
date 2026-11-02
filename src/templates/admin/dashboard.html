@@ -37,6 +37,12 @@
     .admin-dashboard__real-chart h5 { color: var(--mw-admin-blue); font-size: 13px; font-weight: 600; margin: 0 0 8px; }
     .admin-dashboard__real-chart-canvas { height: 190px; position: relative; }
     .admin-dashboard__chart-empty { color: #526174; margin: 12px 0; }
+    .admin-dashboard__ranking-controls { align-items: end; display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 12px; }
+    .admin-dashboard__ranking-controls label { color: #526174; display: grid; font-size: 12px; gap: 4px; margin: 0; }
+    .admin-dashboard__ranking-table { margin-bottom: 0; }
+    .admin-dashboard__ranking-table th:nth-child(n+2), .admin-dashboard__ranking-table td:nth-child(n+2) { text-align: right; white-space: nowrap; }
+    .admin-dashboard__ranking-model { color: #172d44; font-weight: 600; }
+    .admin-dashboard__ranking-meta { color: #64748b; display: block; font-size: 11px; font-weight: 400; }
     .admin-dashboard__chart[hidden], .admin-dashboard__real-charts[hidden], .admin-dashboard__real-chart[hidden], .admin-dashboard__chart-empty[hidden] { display: none; }
     .admin-dashboard__table td, .admin-dashboard__table th { vertical-align: middle !important; }
     .admin-dashboard__table td:last-child { font-weight: 600; white-space: nowrap; }
@@ -182,6 +188,8 @@
                 <div class="panel-body">
                     <form class="admin-dashboard__chart-controls" method="get" data-pjax="false">
                         <input type="hidden" name="period" value="{{ period_kind }}">
+                        <input type="hidden" name="rank_period" value="{{ rank_period_choice }}">
+                        <input type="hidden" name="rank_sort" value="{{ rank_sort }}">
                         {% if period_kind == 'custom' %}
                         <input type="hidden" name="date_from" value="{{ date_from or '' }}">
                         <input type="hidden" name="date_to" value="{{ date_to or '' }}">
@@ -224,6 +232,55 @@
                     <p class="admin-dashboard__chart-note">Tendencias: cada indicador usa como base 100 la magnitud absoluta de su primer mes distinto de cero en el año seleccionado (o, si no lo hay, en el anterior). Los meses sin pedidos permanecen en cero; sin base, no se traza la línea. Las curvas no comparan cantidades entre indicadores; el tooltip muestra los valores reales. Incluye todos los estados operativos. Los importes no son cobros confirmados. El mes actual está incompleto; los meses futuros no se representan. La comparación del año actual utiliza el mismo intervalo calendario de Madrid en ambos años.</p>
                 </div>
             </div>
+        </div>
+    </div>
+    <h4 class="admin-dashboard__section">Modelos más vendidos</h4>
+    <div class="panel panel-default">
+        <div class="panel-body">
+            <form class="admin-dashboard__ranking-controls" method="get" data-pjax="false">
+                <input type="hidden" name="year" value="{{ selected_year }}">
+                <input type="hidden" name="period" value="{{ period_kind }}">
+                {% if period_kind == 'custom' %}
+                <input type="hidden" name="date_from" value="{{ date_from or '' }}">
+                <input type="hidden" name="date_to" value="{{ date_to or '' }}">
+                {% endif %}
+                <label for="rank-period">Periodo
+                    <select id="rank-period" name="rank_period" class="form-control">
+                        <option value="all" {% if rank_period_choice == 'all' %}selected{% endif %}>Histórico completo</option>
+                        <option value="year" {% if rank_period_choice == 'year' %}selected{% endif %}>Año actual</option>
+                        <option value="previous_year" {% if rank_period_choice == 'previous_year' %}selected{% endif %}>Año anterior</option>
+                        {% for year in available_years if year not in (current_year, current_year - 1) %}
+                        <option value="year:{{ year }}" {% if rank_period_choice == 'year:' ~ year %}selected{% endif %}>{{ year }}</option>
+                        {% endfor %}
+                    </select>
+                </label>
+                <label for="rank-sort">Ordenar por
+                    <select id="rank-sort" name="rank_sort" class="form-control">
+                        <option value="units" {% if rank_sort == 'units' %}selected{% endif %}>Unidades</option>
+                        <option value="amount" {% if rank_sort == 'amount' %}selected{% endif %}>Importe</option>
+                    </select>
+                </label>
+                <button type="submit" class="btn btn-default">Ver ranking</button>
+            </form>
+            {% if rank_error %}<div class="alert alert-danger" role="alert">{{ rank_error }}</div>{% endif %}
+            {% if ranking %}
+                {% if ranking.rows %}
+                <div class="table-responsive">
+                    <table class="table table-striped admin-dashboard__ranking-table">
+                        <thead><tr><th scope="col">Modelo</th><th scope="col">Unidades</th><th scope="col">Pedidos</th><th scope="col">Importe de productos</th></tr></thead>
+                        <tbody>
+                        {% for row in ranking.rows %}
+                        <tr>
+                            <td><span class="admin-dashboard__ranking-model">{{ row.current_name or 'Producto sin nombre actual' }}</span><span class="admin-dashboard__ranking-meta">ID {{ row.product_id }}{% if row.current_name %} · nombre actual del catálogo{% endif %}</span></td>
+                            <td>{{ row.units }}</td><td>{{ row.orders }}</td><td>{{ '%.2f'|format(row.amount) }} €</td>
+                        </tr>
+                        {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                <p class="text-muted" style="margin:8px 0 0;">Diez productos principales. Total del periodo: {{ ranking.total_units }} rejas físicas. Importes de líneas antes de descuentos generales y transporte; no equivalen a cobros confirmados.</p>
+                {% else %}<p class="text-muted" style="margin:0;">No hay rejas físicas registradas en este periodo.</p>{% endif %}
+            {% endif %}
         </div>
     </div>
     <h4 class="admin-dashboard__section">Actividad reciente</h4>
