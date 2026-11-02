@@ -5,12 +5,21 @@
     .admin-dashboard { --mw-admin-blue: #183b60; --mw-admin-red: #b52538; }
     .admin-dashboard__section { margin: 22px 0 12px; color: var(--mw-admin-blue); font-size: 18px; font-weight: 700; }
     .admin-dashboard__section small { color: #566579; display: block; font-size: 12px; font-weight: 400; margin-top: 4px; }
-    .admin-dashboard__links, .admin-dashboard__totals { display: grid; gap: 12px; }
-    .admin-dashboard__links, .admin-dashboard__totals { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+    .admin-dashboard__totals { display: grid; gap: 12px; grid-template-columns: repeat(4, minmax(0, 1fr)); }
     .admin-dashboard__card { background: #fff; border: 1px solid #dce3e9; border-radius: 6px; min-width: 0; padding: 16px; }
-    .admin-dashboard__link { align-items: center; color: var(--mw-admin-blue); display: flex; font-weight: 600; min-height: 54px; text-decoration: none; }
-    .admin-dashboard__link:hover { color: var(--mw-admin-red); text-decoration: underline; }
+    .admin-dashboard__quick-access { display: grid; gap: 18px; grid-template-columns: minmax(0, 1fr) minmax(0, 3fr); }
+    .admin-dashboard__quick-group { min-width: 0; }
+    .admin-dashboard__quick-heading { color: #64748b; font-size: 11px; font-weight: 700; letter-spacing: .08em; margin: 0 0 8px; text-transform: uppercase; }
+    .admin-dashboard__links { display: grid; gap: 12px; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .admin-dashboard__quick-group:first-child .admin-dashboard__links { grid-template-columns: minmax(0, 1fr); }
+    .admin-dashboard__link { align-items: flex-start; color: var(--mw-admin-blue); display: flex; gap: 11px; min-height: 82px; padding: 13px; text-decoration: none; transition: border-color .15s ease, box-shadow .15s ease, transform .15s ease; }
+    .admin-dashboard__link:hover { border-color: #b8c6d4; box-shadow: 0 4px 12px rgba(24, 59, 96, .08); color: var(--mw-admin-blue); text-decoration: none; transform: translateY(-2px); }
     .admin-dashboard__link:focus-visible { outline: 3px solid var(--mw-admin-red); outline-offset: 2px; }
+    .admin-dashboard__link-icon { color: var(--mw-admin-blue); flex: 0 0 18px; font-size: 18px; line-height: 1.2; position: relative; }
+    .admin-dashboard__link-icon--add::after { background: #fff; content: '+'; font-size: 12px; font-weight: 700; line-height: 1; position: absolute; right: -4px; top: 9px; }
+    .admin-dashboard__link-copy { display: block; min-width: 0; }
+    .admin-dashboard__link-title { display: block; font-weight: 700; line-height: 1.3; }
+    .admin-dashboard__link-description { color: #526174; display: block; font-size: 12px; font-weight: 400; line-height: 1.4; margin-top: 4px; }
     .admin-dashboard__chart { height: 260px; position: relative; }
     .admin-dashboard__table td, .admin-dashboard__table th { vertical-align: middle !important; }
     .admin-dashboard__table td:last-child { font-weight: 600; white-space: nowrap; }
@@ -58,7 +67,9 @@
     .admin-production-queue__countdown { margin-top: 2px; }
 
     @media (max-width: 767px) {
-        .admin-dashboard__links, .admin-dashboard__totals { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        .admin-dashboard__quick-access { grid-template-columns: minmax(0, 1fr); }
+        .admin-dashboard__links { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        .admin-dashboard__totals { grid-template-columns: repeat(2, minmax(0, 1fr)); }
         .admin-dashboard__chart { height: 220px; }
         .admin-production-queue__item {
             align-items: flex-start;
@@ -77,6 +88,10 @@
     @media (max-width: 420px) {
         .admin-dashboard__links { grid-template-columns: 1fr; }
         .admin-dashboard__card { padding: 13px; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+        .admin-dashboard__link { transition: none; }
+        .admin-dashboard__link:hover { transform: none; }
     }
 </style>
 {% include 'admin/_commercial_analytics_styles.html' %}
@@ -144,11 +159,21 @@
         {% include 'admin/_commercial_analytics_content.html' %}
     </section>
     <h4 class="admin-dashboard__section">Accesos rápidos</h4>
-    <nav class="admin-dashboard__links" aria-label="Accesos rápidos del administrador">
-        <a class="admin-dashboard__card admin-dashboard__link" href="{{ manual_orders_url }}">Pedidos manuales</a>
-        <a class="admin-dashboard__card admin-dashboard__link" href="{{ aeat_unified_url }}">Libro AEAT conjunto</a>
-        <a class="admin-dashboard__card admin-dashboard__link" href="{{ url_for('supplierinvoice.upload_and_process') }}">Nueva factura recibida</a>
-        <a class="admin-dashboard__card admin-dashboard__link" href="{{ url_for('manualinvoicedraft.create_view') }}">Factura manual</a>
+    <nav class="admin-dashboard__quick-access" aria-label="Accesos rápidos del administrador">
+        <div class="admin-dashboard__quick-group">
+            <h5 class="admin-dashboard__quick-heading">Ventas</h5>
+            <div class="admin-dashboard__links">
+                <a class="admin-dashboard__card admin-dashboard__link" href="{{ manual_orders_url }}"><span class="glyphicon glyphicon-shopping-cart admin-dashboard__link-icon" aria-hidden="true"></span><span class="admin-dashboard__link-copy"><span class="admin-dashboard__link-title">Pedidos manuales</span><span class="admin-dashboard__link-description">Crear un pedido desde administración.</span></span></a>
+            </div>
+        </div>
+        <div class="admin-dashboard__quick-group">
+            <h5 class="admin-dashboard__quick-heading">Facturación y contabilidad</h5>
+            <div class="admin-dashboard__links">
+                <a class="admin-dashboard__card admin-dashboard__link" href="{{ aeat_unified_url }}"><span class="glyphicon glyphicon-book admin-dashboard__link-icon" aria-hidden="true"></span><span class="admin-dashboard__link-copy"><span class="admin-dashboard__link-title">Libro AEAT</span><span class="admin-dashboard__link-description">Consultar el libro fiscal conjunto.</span></span></a>
+                <a class="admin-dashboard__card admin-dashboard__link" href="{{ url_for('supplierinvoice.upload_and_process') }}"><span class="glyphicon glyphicon-file admin-dashboard__link-icon admin-dashboard__link-icon--add" aria-hidden="true"></span><span class="admin-dashboard__link-copy"><span class="admin-dashboard__link-title">Factura recibida</span><span class="admin-dashboard__link-description">Subir y procesar una factura recibida.</span></span></a>
+                <a class="admin-dashboard__card admin-dashboard__link" href="{{ url_for('manualinvoicedraft.create_view') }}"><span class="glyphicon glyphicon-file admin-dashboard__link-icon" aria-hidden="true"></span><span class="admin-dashboard__link-copy"><span class="admin-dashboard__link-title">Factura manual</span><span class="admin-dashboard__link-description">Crear un borrador de factura manual.</span></span></a>
+            </div>
+        </div>
     </nav>
     <h4 class="admin-dashboard__section">Evolución comercial <small>Importe de pedidos registrados e inversión de Google Ads; no indica cobros ni atribución.</small></h4>
     <div class="row">

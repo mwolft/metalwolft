@@ -127,6 +127,13 @@ class DashboardReliabilityTest(unittest.TestCase):
         self.assertIn('href="/admin/libro-aeat"', html)
         self.assertIn('href="/admin/supplierinvoice/upload-and-process/"', html)
         self.assertIn('href="/admin/manualinvoicedraft/new/"', html)
+        self.assertIn('class="admin-dashboard__quick-heading">Ventas</h5>', html)
+        self.assertIn('class="admin-dashboard__quick-heading">Facturación y contabilidad</h5>', html)
+        for title in ("Pedidos manuales", "Libro AEAT", "Factura recibida", "Factura manual"):
+            self.assertIn(f'class="admin-dashboard__link-title">{title}</span>', html)
+        self.assertEqual(html.count('class="admin-dashboard__card admin-dashboard__link"'), 4)
+        self.assertNotIn("Libro AEAT conjunto", html)
+        self.assertNotIn("Nueva factura recibida", html)
         self.assertLess(html.index("PENDIENTES DE FABRICAR"), html.index("Actividad comercial"))
         self.assertLess(html.index("Actividad comercial"), html.index("Accesos rápidos"))
         self.assertLess(html.index("Actividad reciente"), html.index("Información general"))
