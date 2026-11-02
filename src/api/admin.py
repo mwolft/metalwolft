@@ -237,15 +237,56 @@ ADMIN_USER = os.getenv('ADMIN_USER')
 ADMIN_PW   = os.getenv('ADMIN_PW')
 
 
+def _admin_credentials_valid(auth):
+    if not ADMIN_USER or not ADMIN_PW:
+        return False
+    username = auth.get('username')
+    password = auth.get('password')
+    return bool(
+        isinstance(username, str) and isinstance(password, str)
+        and hmac.compare_digest(username.encode('utf-8'), ADMIN_USER.encode('utf-8'))
+        and hmac.compare_digest(password.encode('utf-8'), ADMIN_PW.encode('utf-8'))
+    )
+
+
+def _dashboard_month_windows(now):
+    """Compare UTC month-to-date with the same clock time in the prior month."""
+    import calendar
+    from datetime import timedelta
+
+    current_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    previous_last_day = current_start - timedelta(days=1)
+    previous_start = previous_last_day.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    comparable_day = min(now.day, calendar.monthrange(previous_start.year, previous_start.month)[1])
+    previous_end = now.replace(year=previous_start.year, month=previous_start.month, day=comparable_day)
+    return current_start, now, previous_start, previous_end
+
+
+def _dashboard_year(raw, current_year):
+    try:
+        year = int(raw)
+    except (TypeError, ValueError):
+        return current_year
+    return year if 2000 <= year <= current_year + 1 else current_year
+
+
+def _format_madrid_time(value):
+    from datetime import timezone
+    from zoneinfo import ZoneInfo
+
+    if not value:
+        return ''
+    # orders.order_date is timestamp without time zone; existing reporting treats it as UTC.
+    utc_value = value.replace(tzinfo=timezone.utc) if value.tzinfo is None else value
+    return utc_value.astimezone(ZoneInfo('Europe/Madrid')).strftime('%d/%m %H:%M')
+
+
 # ========================== VISTA PRINCIPAL PROTEGIDA (ÚNICA) ==========================
 class SecureAdminIndexView(AdminIndexView):
 
     def is_accessible(self):
         auth = request.authorization or {}
-        return (
-            auth.get('username') == ADMIN_USER and
-            auth.get('password') == ADMIN_PW
-        )
+        return _admin_credentials_valid(auth)
 
     def inaccessible_callback(self, name, **kwargs):
         return Response(
@@ -259,7 +300,7 @@ class SecureAdminIndexView(AdminIndexView):
         self = self or kwargs.get('cls')
 
 
-        from datetime import datetime, timezone, timedelta
+        from datetime import datetime, timezone
         from sqlalchemy import func, extract
 
         products_count = db.session.scalar(
@@ -283,19 +324,12 @@ class SecureAdminIndexView(AdminIndexView):
             .where(Orders.total_amount.isnot(None))
         ) or 0
 
-        now = datetime.now(timezone.utc)
+        now = datetime.now(timezone.utc).replace(tzinfo=None)
         current_year = now.year
-        selected_year = int(request.args.get("year", current_year))
+        selected_year = _dashboard_year(request.args.get("year"), current_year)
         
 
-        inicio_mes_actual = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
-        
-        if inicio_mes_actual.month == 1:
-            inicio_mes_anterior = inicio_mes_actual.replace(year=inicio_mes_actual.year - 1, month=12)
-        else:
-            inicio_mes_anterior = inicio_mes_actual.replace(month=inicio_mes_actual.month - 1)
-
-        fin_mes_anterior = inicio_mes_actual
+        inicio_mes_actual, _, inicio_mes_anterior, fin_mes_anterior = _dashboard_month_windows(now)
 
 
         ingresos_mes_actual = db.session.scalar(
@@ -306,41 +340,11 @@ class SecureAdminIndexView(AdminIndexView):
         ) or 0
 
 
-        # ===== KPI PUNTO MUERTO =====
-        fixed_costs_monthly = 496.70
-        target_salary_monthly = 1200
-        average_margin_percent = 0.509
-        break_even_override = 3300  # usa None si no quieres forzar
-
-        if break_even_override:
-            break_even = break_even_override
-        else:
-            break_even = (fixed_costs_monthly + target_salary_monthly) / average_margin_percent
-
-        coverage_ratio = ingresos_mes_actual / break_even if break_even else 0
-        difference = ingresos_mes_actual - break_even
-
-
-        if coverage_ratio < 0.7:
-            status = "FRENAR"
-        elif coverage_ratio < 1.0:
-            status = "MANTENER"
-        else:
-            status = "APRETAR"
-
-        break_even_kpi = {
-            "revenue_current_month": round(ingresos_mes_actual, 2),
-            "break_even_monthly": round(break_even, 2),
-            "coverage_ratio": round(coverage_ratio, 2),
-            "status": status,
-            "difference": round(difference, 2)
-        }
-
         ingresos_mes_anterior = db.session.scalar(
             db.select(func.sum(Orders.total_amount))
             .where(Orders.order_date.isnot(None))
             .where(Orders.order_date >= inicio_mes_anterior)
-            .where(Orders.order_date < fin_mes_anterior)
+            .where(Orders.order_date <= fin_mes_anterior)
         ) or 0
 
 
@@ -421,11 +425,6 @@ class SecureAdminIndexView(AdminIndexView):
             db.select(Invoices).order_by(Invoices.id.desc()).limit(10)
         ).scalars().all()
 
-        def tz_es(dt):
-            if not dt:
-                return ""
-            return (dt + timedelta(hours=2)).strftime("%d/%m %H:%M")
-
         return self.render(
             'admin/dashboard.html',
             admin_view=self,
@@ -449,8 +448,7 @@ class SecureAdminIndexView(AdminIndexView):
             users_monthly_values=users_monthly_values,
             current_year=current_year,
             selected_year=selected_year,
-            tz_es=tz_es,
-            break_even_kpi=break_even_kpi,
+            tz_es=_format_madrid_time,
             aeat_unified_url=self.get_url('.unified_aeat_ledger'),
             pending_manufacturing=pending_manufacturing,
         )
@@ -525,7 +523,7 @@ class SecureAdminIndexView(AdminIndexView):
 class SecureModelView(ModelView):
     def is_accessible(self):
         auth = request.authorization or {}
-        return auth.get('username') == ADMIN_USER and auth.get('password') == ADMIN_PW
+        return _admin_credentials_valid(auth)
 
     def inaccessible_callback(self, name, **kwargs):
         return Response('Login required', 401, {'WWW-Authenticate': 'Basic realm="Login Required"'})

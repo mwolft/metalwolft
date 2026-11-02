@@ -173,7 +173,7 @@
     <div class="row">
         <div class="col-md-12 col-sm-12">
             <div class="panel panel-success">
-                <div class="panel-heading">Ingresos mes en curso</div>
+                <div class="panel-heading">Importe de pedidos del mes</div>
                 <div class="panel-body">
                     <h3 style="display:inline-block; margin:0;">
                         <b><b>{{ "%.2f"|format(metrics.ingresos_mes_actual) }}€</b></b>
@@ -188,54 +188,11 @@
                         {% else %}
                         <span style="color:red;">▼ {{ metrics.variacion_label }}</span>
                         {% endif %}
-                        respecto al mes anterior
+                        respecto al periodo equivalente del mes anterior
                         {% endif %}
 
                     </small>
-                </div>
-            </div>
-        </div>
-    </div>
-    <div class="row">
-        <div class="col-md-12">
-            <div class="panel panel-success">
-                <div class="panel-heading">
-                    <b>Facturación vs Punto Muerto</b>
-                </div>
-                <div class="panel-body">
-
-                    <h4 style="margin-top:0;">
-                        {{ "%.2f"|format(break_even_kpi.revenue_current_month) }} €
-                        <small class="text-muted">/ {{ "%.2f"|format(break_even_kpi.break_even_monthly) }} €</small>
-                    </h4>
-
-                    {% if break_even_kpi.status == "FRENAR" %}
-                    <span class="label label-danger">FRENAR</span>
-                    <p class="text-muted" style="margin-top:8px;">
-                        Estás muy por debajo del punto muerto.
-                        Prioriza liquidez, reduce gasto y no escales.
-                    </p>
-
-                    {% elif break_even_kpi.status == "MANTENER" %}
-                    <span class="label label-warning">MANTENER</span>
-                    <p class="text-muted" style="margin-top:8px;">
-                        Cerca del equilibrio. Mantén el ritmo y optimiza conversión.
-                    </p>
-
-                    {% else %}
-                    <span class="label label-success">APRETAR</span>
-                    <p class="text-muted" style="margin-top:8px;">
-                        Cubres costes. Buen momento para invertir o empujar ventas.
-                    </p>
-                    {% endif %}
-
-                    <p style="margin-top:10px;">
-                        Diferencia:
-                        <b>
-                            {{ "%.2f"|format(break_even_kpi.difference) }} €
-                        </b>
-                    </p>
-
+                    <p class="text-muted" style="margin:8px 0 0;">Importes registrados, no necesariamente cobrados.</p>
                 </div>
             </div>
         </div>
