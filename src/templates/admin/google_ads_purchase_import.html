@@ -1,0 +1,19 @@
+{% extends 'admin/master.html' %}
+{% block body %}
+<div class="container-fluid" style="max-width:760px;margin-top:20px;">
+    <h3>Importar compras atribuidas por Google Ads</h3>
+    <p>Se admiten únicamente filas de la campaña «2 Merchant» y la acción «Compra (Evento de Google Analytics purchase)». Las acciones locales se excluyen. Los meses ausentes no equivalen a cero.</p>
+    {% if error %}<div class="alert alert-danger" role="alert">{{ error }}</div>{% endif %}
+    {% if result %}<div class="alert alert-success" role="status">{{ result.inserted }} meses nuevos, {{ result.updated }} sustituidos y {{ result.unchanged }} sin cambios.</div>{% endif %}
+    <form method="post" enctype="multipart/form-data" data-pjax="false">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <div class="form-group">
+            <label for="purchase-csv">Informe CSV de Google Ads</label>
+            <input id="purchase-csv" type="file" name="purchase_csv" accept=".csv,text/csv" required class="form-control">
+        </div>
+        <div class="checkbox"><label><input type="checkbox" name="replace_existing" value="yes"> Confirmo la sustitución de meses importados con cifras o cobertura diferentes. Las correcciones manuales se conservarán.</label></div>
+        <button class="btn btn-primary" type="submit">Validar e importar</button>
+        <a class="btn btn-default" href="{{ dashboard_url }}">Volver al dashboard</a>
+    </form>
+</div>
+{% endblock %}

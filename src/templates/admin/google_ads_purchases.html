@@ -1,0 +1,38 @@
+{% extends 'admin/master.html' %}
+{% block body %}
+<div class="container-fluid" style="max-width:960px;margin-top:20px;">
+    <h3>Compras atribuidas · Google Ads</h3>
+    <p>Campaña «2 Merchant», acción «purchase». Estas conversiones no son pedidos confirmados del ecommerce.</p>
+    {% if error %}<div class="alert alert-danger" role="alert">{{ error }}</div>{% endif %}
+    <div class="panel panel-default"><div class="panel-heading">{{ 'Editar' if current else 'Añadir' }} mes</div><div class="panel-body">
+        <form method="post" class="form-inline" data-pjax="false">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <input type="hidden" name="action" value="{{ 'edit' if current else 'add' }}">
+            <div class="form-group"><label for="purchase-month">Mes</label>
+                <input id="purchase-month" name="month" type="month" class="form-control" required
+                       value="{{ '%04d-%02d'|format(current.year, current.month) if current else '' }}" {% if current %}readonly{% endif %}></div>
+            <div class="form-group"><label for="purchase-count">Todas las conversiones de compra</label>
+                <input id="purchase-count" name="conversions" type="text" inputmode="decimal" class="form-control" required
+                       pattern="[0-9]+([.,][0-9]{1,2})?" value="{{ '%.2f'|format(current.manual_conversions if current.manual_conversions is not none else current.conversions) if current and (current.manual_conversions is not none or current.conversions is not none) else '' }}"></div>
+            <div class="form-group"><label for="purchase-value">Valor atribuido (€)</label>
+                <input id="purchase-value" name="value_eur" type="text" inputmode="decimal" class="form-control" required
+                       pattern="[0-9]+([.,][0-9]{1,2})?" value="{{ '%.2f'|format(current.manual_value_eur if current.manual_value_eur is not none else current.value_eur) if current and (current.manual_value_eur is not none or current.value_eur is not none) else '' }}"></div>
+            <button type="submit" class="btn btn-primary">Guardar</button>
+            {% if current %}<a class="btn btn-default" href="{{ url_for('.manage_ads_purchases') }}">Cancelar</a>{% endif %}
+        </form>
+        {% if current and current.import_filename %}<p class="text-muted">Referencia CSV: {{ current.conversions }} conversiones · {{ current.value_eur }} €. La corrección manual prevalece sin borrar el CSV.</p>{% endif %}
+    </div></div>
+    <div class="table-responsive"><table class="table table-striped table-condensed">
+        <thead><tr><th>Mes</th><th>Compras atribuidas</th><th>Valor atribuido</th><th>Cobertura</th><th>Origen</th><th></th></tr></thead>
+        <tbody>{% for row in months %}
+            <tr><td>{{ '%04d-%02d'|format(row.year, row.month) }}</td>
+                <td>{{ '%.2f'|format(row.manual_conversions if row.manual_conversions is not none else row.conversions) }}</td>
+                <td>{{ '%.2f'|format(row.manual_value_eur if row.manual_value_eur is not none else row.value_eur) }} €</td>
+                <td>{{ row.source_start }} a {{ row.source_end }}</td>
+                <td>{{ 'Manual' if row.manual_conversions is not none else 'CSV' }}</td>
+                <td><a href="{{ url_for('.manage_ads_purchases', edit='%04d-%02d'|format(row.year, row.month)) }}">Editar</a></td></tr>
+        {% else %}<tr><td colspan="6">No hay meses registrados. La ausencia de datos no equivale a cero compras.</td></tr>{% endfor %}</tbody>
+    </table></div>
+    <p><a class="btn btn-default" href="{{ import_url }}">Importar CSV</a> <a class="btn btn-default" href="{{ dashboard_url }}">Volver al dashboard</a></p>
+</div>
+{% endblock %}

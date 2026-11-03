@@ -246,7 +246,8 @@ class GoogleAdsCsvImportTest(unittest.TestCase):
 
     def test_migration_constraints_on_isolated_database(self):
         script = ScriptDirectory(str(ROOT / 'src' / 'migrations'))
-        self.assertEqual(script.get_heads(), ['b7d3e9f1a2c4'])
+        self.assertEqual(script.get_heads(), ['c8e4f0a2b6d9'])
+        self.assertEqual(script.get_revision('c8e4f0a2b6d9').down_revision, 'b7d3e9f1a2c4')
         migration = script.get_revision('a6f2c9e4d1b8').module
         engine = create_engine('sqlite:///:memory:')
         with engine.begin() as connection:

@@ -111,6 +111,31 @@ class GoogleAdsImportedMonthlyCost(db.Model):
     imported_at = db.Column(db.DateTime, nullable=False, server_default=db.func.now())
 
 
+class GoogleAdsPurchaseMonthly(db.Model):
+    """Purchase attribution from one Ads campaign, never an ecommerce order."""
+
+    __tablename__ = "google_ads_purchase_monthly"
+    __table_args__ = (
+        db.UniqueConstraint("year", "month", name="uq_ads_purchase_year_month"),
+        db.CheckConstraint("month BETWEEN 1 AND 12", name="ck_ads_purchase_month"),
+        db.CheckConstraint("conversions >= 0 AND value_eur >= 0", name="ck_ads_purchase_values"),
+        db.CheckConstraint("manual_conversions >= 0 AND manual_value_eur >= 0", name="ck_ads_purchase_manual_values"),
+    )
+
+    id = db.Column(db.Integer, primary_key=True)
+    year = db.Column(db.Integer, nullable=False)
+    month = db.Column(db.Integer, nullable=False)
+    conversions = db.Column(db.Numeric(12, 2), nullable=True)
+    value_eur = db.Column(db.Numeric(12, 2), nullable=True)
+    source_start = db.Column(db.Date, nullable=True)
+    source_end = db.Column(db.Date, nullable=True)
+    import_filename = db.Column(db.String(255), nullable=True)
+    imported_at = db.Column(db.DateTime, nullable=True)
+    manual_conversions = db.Column(db.Numeric(12, 2), nullable=True)
+    manual_value_eur = db.Column(db.Numeric(12, 2), nullable=True)
+    manual_updated_at = db.Column(db.DateTime, nullable=True)
+
+
 class DesignServiceConfig(db.Model):
     """Single persisted configuration for the paid design-preview service."""
 

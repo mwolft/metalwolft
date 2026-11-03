@@ -31,7 +31,7 @@ from .models import (
     Categories, Subcategories, Cart,
     Orders, OrderDetails, Favorites,
     Posts, Comments, Invoices, VeriFactuRecord, DeliveryEstimateConfig,
-    GoogleAdsMonthlySpend, GoogleAdsMonthlySpendChange, GoogleAdsImportedMonthlyCost, DesignServiceConfig, DesignServicePriceTier, DesignRequest,
+    GoogleAdsMonthlySpend, GoogleAdsMonthlySpendChange, GoogleAdsImportedMonthlyCost, GoogleAdsPurchaseMonthly, DesignServiceConfig, DesignServicePriceTier, DesignRequest,
     AccountingEntry, SupplierInvoice, SupplierInvoiceDocument, SupplierInvoiceExtraction,
     SupplierInvoiceTaxBreakdown,
     ManualInvoiceDraft, ManualInvoiceDraftLine, ManualOrderDraft, ManualOrderDraftLine,
@@ -50,6 +50,10 @@ from api.commercial_analytics_service import (
 )
 from api.google_ads_csv_service import MAX_BYTES, ads_dashboard_data, import_monthly_costs, parse_monthly_cost_csv
 from api.google_ads_manual_service import effective_monthly_costs, save_manual_cost, unconfirmed_manual_costs
+from api.google_ads_purchase_service import (
+    MAX_BYTES as PURCHASE_MAX_BYTES, import_purchase_months, parse_purchase_csv,
+    purchase_dashboard_data, save_manual_purchase,
+)
 from api.aeat_sales_ledger_service import (
     AeatSalesLedgerError,
     export_aeat_sales_ledger,
@@ -379,6 +383,7 @@ class SecureAdminIndexView(AdminIndexView):
         ads_period_choice = request.args.get('ads_period', 'all')
         ads_unavailable = not inspect(db.engine).has_table(GoogleAdsImportedMonthlyCost.__tablename__)
         ads_manual_available = inspect(db.engine).has_table(GoogleAdsMonthlySpendChange.__tablename__)
+        ads_purchase_available = inspect(db.engine).has_table(GoogleAdsPurchaseMonthly.__tablename__)
         if ads_unavailable:
             ads_available_years = available_years
             ads_data = None
@@ -390,10 +395,14 @@ class SecureAdminIndexView(AdminIndexView):
             try:
                 ads_data = ads_dashboard_data(db.session, ads_period_choice, ads_available_years,
                                               include_manual=ads_manual_available)
+                purchase_data = purchase_dashboard_data(db.session, ads_data) if ads_purchase_available else None
                 ads_error = None
             except ValueError as exc:
                 ads_data = None
+                purchase_data = None
                 ads_error = str(exc)
+        if ads_unavailable:
+            purchase_data = None
 
         rows_users = db.session.execute(
             db.select(
@@ -459,6 +468,10 @@ class SecureAdminIndexView(AdminIndexView):
             ads_period_choice=ads_period_choice,
             ads_available_years=ads_available_years,
             ads_data=ads_data,
+            purchase_data=purchase_data,
+            ads_purchase_available=ads_purchase_available,
+            ads_purchase_url=self.get_url('.manage_ads_purchases') if ads_purchase_available else None,
+            ads_purchase_import_url=self.get_url('.import_ads_purchases') if ads_purchase_available else None,
             ads_error=ads_error,
             ads_unavailable=ads_unavailable,
             ads_import_url=self.get_url('.import_google_ads_csv'),
@@ -560,6 +573,83 @@ class SecureAdminIndexView(AdminIndexView):
                            months=months, legacy=legacy, current=current, changes=changes,
                            dashboard_url=self.get_url('.index'),
                            import_url=self.get_url('.import_google_ads_csv'))
+        return (html, status) if status != 200 else html
+
+    @expose('/ads-purchases-import', methods=['GET', 'POST'])
+    def import_ads_purchases(self):
+        if not inspect(db.engine).has_table(GoogleAdsPurchaseMonthly.__tablename__):
+            return Response('La importación de compras requiere su migración.', status=503)
+        key = 'google_ads_purchase_csv_csrf'
+        token = session.get(key)
+        if not token:
+            token = secrets.token_urlsafe(32)
+            session[key] = token
+        error = result = None
+        status = 200
+        if request.method == 'POST':
+            if not request.form.get('csrf_token') or not hmac.compare_digest(
+                    str(token), str(request.form.get('csrf_token'))):
+                error, status = 'Formulario caducado. Vuelve a cargar la página.', 400
+            else:
+                uploaded = request.files.get('purchase_csv')
+                try:
+                    if not uploaded or not uploaded.filename or not uploaded.filename.lower().endswith('.csv'):
+                        raise ValueError('Selecciona un archivo CSV.')
+                    rows = parse_purchase_csv(uploaded.read(PURCHASE_MAX_BYTES + 1))
+                    result = import_purchase_months(db.session, rows, uploaded.filename,
+                        replace_existing=request.form.get('replace_existing') == 'yes')
+                except ValueError as exc:
+                    db.session.rollback()
+                    error, status = str(exc), 400
+                except Exception:
+                    db.session.rollback()
+                    current_app.logger.error('Google Ads purchase CSV import failed')
+                    error, status = 'No se pudo importar el CSV.', 500
+        html = self.render('admin/google_ads_purchase_import.html', csrf_token=token,
+                           error=error, result=result, dashboard_url=self.get_url('.index'))
+        return (html, status) if status != 200 else html
+
+    @expose('/ads-purchases', methods=['GET', 'POST'])
+    def manage_ads_purchases(self):
+        if not inspect(db.engine).has_table(GoogleAdsPurchaseMonthly.__tablename__):
+            return Response('La gestión de compras requiere su migración.', status=503)
+        key = 'google_ads_purchase_manual_csrf'
+        token = session.get(key)
+        if not token:
+            token = secrets.token_urlsafe(32)
+            session[key] = token
+        error = None
+        status = 200
+        if request.method == 'POST':
+            if not request.form.get('csrf_token') or not hmac.compare_digest(
+                    str(token), str(request.form.get('csrf_token'))):
+                error, status = 'Formulario caducado. Vuelve a cargar la página.', 400
+            else:
+                try:
+                    if request.form.get('action') not in ('add', 'edit'):
+                        raise ValueError('Acción no válida.')
+                    save_manual_purchase(db.session, request.form.get('month'),
+                        request.form.get('conversions'), request.form.get('value_eur'),
+                        editing=request.form.get('action') == 'edit')
+                    return redirect(self.get_url('.manage_ads_purchases'))
+                except ValueError as exc:
+                    db.session.rollback()
+                    error, status = str(exc), 400
+                except Exception:
+                    db.session.rollback()
+                    current_app.logger.error('Google Ads purchase manual save failed')
+                    error, status = 'No se pudo guardar el mes.', 500
+        months = db.session.execute(db.select(GoogleAdsPurchaseMonthly).order_by(
+            GoogleAdsPurchaseMonthly.year.desc(), GoogleAdsPurchaseMonthly.month.desc())).scalars().all()
+        selected = request.args.get('edit')
+        if selected and not re.fullmatch(r'\d{4}-(0[1-9]|1[0-2])', selected):
+            return Response('Mes no válido.', status=400)
+        current = next((row for row in months if f'{row.year:04d}-{row.month:02d}' == selected), None)
+        if selected and current is None:
+            return Response('El mes no existe.', status=404)
+        html = self.render('admin/google_ads_purchases.html', csrf_token=token, error=error,
+                           months=months, current=current, dashboard_url=self.get_url('.index'),
+                           import_url=self.get_url('.import_ads_purchases'))
         return (html, status) if status != 200 else html
 
     @expose('/product-evolution-data')

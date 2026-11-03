@@ -419,6 +419,8 @@
                 <button type="submit" class="btn btn-default">Ver periodo</button>
                 {% if ads_monthly_url and not ads_unavailable %}<a class="btn btn-default" href="{{ ads_monthly_url }}">Gestionar gastos</a>{% endif %}
                 {% if not ads_unavailable %}<a class="btn btn-default" href="{{ ads_import_url }}">Importar CSV</a>{% endif %}
+                {% if ads_purchase_available %}<a class="btn btn-default" href="{{ ads_purchase_url }}">Gestionar compras atribuidas</a>
+                <a class="btn btn-default" href="{{ ads_purchase_import_url }}">Importar compras CSV</a>{% endif %}
             </form>
             {% if ads_error %}<div class="alert {{ 'alert-warning' if ads_unavailable else 'alert-danger' }}" role="alert">{{ ads_error }}</div>{% endif %}
             {% if ads_data %}
@@ -442,7 +444,28 @@
                     data-future='{{ ads_data.future|tojson }}'
                     data-partial='{{ ads_data.partial|tojson }}'></canvas></div></div>
                 {% endif %}
-                <p class="text-muted" style="margin:10px 0 0;">{% if ads_manual_available %}El importe manual confirmado prevalece sobre el CSV del mismo mes, sin sumarse. Los importes manuales no tienen desglose de producto. {% endif %}El CSV es derivado, no una exportación mensual nativa. Los pedidos se agrupan por mes completo incluso donde la cobertura de Ads es parcial. Sus importes son registros comerciales, no ventas atribuidas a Google Ads ni cobros confirmados. No se calculan ROAS, CPA ni beneficio.</p>
+                {% if purchase_data %}
+                <h5>Compras atribuidas · 2 Merchant · purchase</h5>
+                <div class="admin-dashboard__ads-totals">
+                    <div class="admin-dashboard__ads-total"><span>Compras atribuidas registradas</span><strong>{{ '%.2f'|format(purchase_data.count) }}</strong></div>
+                    <div class="admin-dashboard__ads-total"><span>Valor atribuido registrado</span><strong>{{ '%.2f'|format(purchase_data.value) }} €</strong></div>
+                    <div class="admin-dashboard__ads-total"><span>ROAS comparable</span><strong>{{ '%.2f'|format(purchase_data.roas) if purchase_data.roas is not none else 'Sin datos comparables' }}</strong></div>
+                    <div class="admin-dashboard__ads-total"><span>Coste por compra atribuida</span><strong>{{ ('%.2f €'|format(purchase_data.cost_per_purchase)) if purchase_data.cost_per_purchase is not none else 'Sin datos comparables' }}</strong></div>
+                </div>
+                <p class="text-muted">Las compras y el valor suman solo meses con datos completos; los meses omitidos o parciales no se interpretan como cero. ROAS y coste por compra requieren cobertura comparable de gasto y conversiones en todo el periodo seleccionado. No son pedidos ni cobros del ecommerce.</p>
+                {% if purchase_data.conversions %}<div class="table-responsive"><table class="table table-condensed">
+                    <thead><tr><th>Mes</th><th>Compras atribuidas</th><th>Valor atribuido</th><th>Gasto</th><th>ROAS</th><th>Coste por compra</th></tr></thead>
+                    <tbody>{% for month in ads_data.labels %}{% set index = loop.index0 %}
+                    {% if not ads_data.future[index] %}<tr><td>{{ month }}{% if purchase_data.incomplete[index] or ads_data.partial[index] %} (parcial){% endif %}</td>
+                        <td>{{ '%.2f'|format(purchase_data.conversions[index]) if purchase_data.conversions[index] is not none else 'Sin dato' }}</td>
+                        <td>{{ ('%.2f €'|format(purchase_data['values'][index])) if purchase_data['values'][index] is not none else 'Sin dato' }}</td>
+                        <td>{{ ('%.2f €'|format(ads_data.costs[index])) if ads_data.costs[index] is not none else 'Sin dato' }}</td>
+                        <td>{{ '%.2f'|format(purchase_data.monthly_roas[index]) if purchase_data.monthly_roas[index] is not none else '—' }}</td>
+                        <td>{{ ('%.2f €'|format(purchase_data.monthly_cpa[index])) if purchase_data.monthly_cpa[index] is not none else '—' }}</td>
+                    </tr>{% endif %}{% endfor %}</tbody>
+                </table></div>{% endif %}
+                {% endif %}
+                <p class="text-muted" style="margin:10px 0 0;">{% if ads_manual_available %}El importe manual confirmado prevalece sobre el CSV del mismo mes, sin sumarse. Los importes manuales no tienen desglose de producto. {% endif %}El CSV de gasto es derivado, no una exportación mensual nativa. Los pedidos se agrupan por mes completo incluso donde la cobertura de Ads es parcial. Sus importes son registros comerciales, no ventas atribuidas a Google Ads ni cobros confirmados. No se calcula beneficio.</p>
             {% endif %}
         </div>
     </div>
