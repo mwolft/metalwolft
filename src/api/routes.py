@@ -3547,7 +3547,7 @@ def get_products_by_category(slug):
         .all()
     )
     return jsonify([
-        {**product.serialize(), "images": [image.serialize() for image in product.images]}
+        {**product.serialize(), "images": [image.serialize() for image in product.ordered_additional_images()]}
         for product in products
     ]), 200
 
@@ -3761,18 +3761,19 @@ def handle_product(product_id):
             product.descripcion = data.get('descripcion', product.descripcion)
             product.precio = data.get('precio', product.precio)
             product.categoria_id = data.get('categoria_id', product.categoria_id)
+            previous_primary = product.imagen
             product.imagen = data.get('imagen', product.imagen)
             if 'images' in data:
-                images_urls = data.get('images', [])
-                ProductImages.query.filter_by(product_id=product_id).delete()
-                for image_url in images_urls:
-                    new_image = ProductImages(product_id=product_id, image_url=image_url)
-                    db.session.add(new_image)
+                from api.product_image_order_service import replace_additional_images
+                replace_additional_images(db.session, product, data['images'], previous_primary)
             db.session.commit()
             response = jsonify(product.serialize_with_images())
             response.headers['Access-Control-Allow-Origin'] = '*'
             response.headers['Access-Control-Expose-Headers'] = 'Authorization'
             return response, 200
+        except ValueError as e:
+            db.session.rollback()
+            return jsonify({"message": str(e)}), 400
         except SQLAlchemyError as e:
             db.session.rollback()
             logger.exception("An error occurred while updating the product.")

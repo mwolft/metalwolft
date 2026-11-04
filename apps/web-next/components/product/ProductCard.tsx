@@ -173,7 +173,7 @@ export function ProductCard({
           {hasCarousel ? (
             <ProductCardCarousel images={cardImages} productName={productName} />
           ) : (
-            <ProductCardImage alt={productName} src={product.imagen} />
+            <ProductCardImage alt={productName} src={cardImages[0]?.src ?? null} />
           )}
           {badges.length > 0 ? (
             <div className="mw-product-card__badges">

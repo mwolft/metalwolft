@@ -1,0 +1,34 @@
+{% extends 'admin/master.html' %}
+
+{% block body %}
+<div class="mw-image-order">
+  <p><a href="{{ edit_url }}">Volver al producto</a></p>
+  <h1>Ordenar imágenes · {{ product.nombre }}</h1>
+  <p>Arrastra las fotografías. Las posiciones 1 a 4 aparecerán en las tarjetas; la primera será la imagen principal.</p>
+  {% if images %}
+  <form method="post" data-pjax="false">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <ol class="mw-image-order__list" id="product-image-order">
+      {% for image in images %}
+      <li class="mw-image-order__item" draggable="true" data-image-key="{{ image.key }}">
+        <span class="mw-image-order__position" aria-label="Posición">{{ loop.index }}</span>
+        <img src="{{ image.url }}" alt="Fotografía {{ loop.index }} de {{ product.nombre }}" loading="lazy">
+        <span class="mw-image-order__label">{{ 'Imagen principal' if loop.first else 'Imagen adicional' }}</span>
+        <span class="mw-image-order__card">{{ 'ProductCard' if loop.index <= 4 else 'Solo ficha' }}</span>
+        <span class="mw-image-order__controls">
+          <button type="button" data-move="up" aria-label="Subir imagen {{ loop.index }}">↑</button>
+          <button type="button" data-move="down" aria-label="Bajar imagen {{ loop.index }}">↓</button>
+        </span>
+        <input type="hidden" name="image_order" value="{{ image.key }}">
+      </li>
+      {% endfor %}
+    </ol>
+    <button class="btn btn-primary" type="submit">Guardar orden</button>
+  </form>
+  {% else %}
+  <p>No hay imágenes que ordenar.</p>
+  {% endif %}
+</div>
+<link rel="stylesheet" href="{{ url_for('static', filename='admin/product_image_order.css') }}">
+<script defer src="{{ url_for('static', filename='admin/product_image_order.js') }}"></script>
+{% endblock %}

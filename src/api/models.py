@@ -442,7 +442,10 @@ class Products(db.Model):
     )
     has_abatible = db.Column(db.Boolean, default=False)
     has_door_model = db.Column(db.Boolean, default=False)
-    images = db.relationship('ProductImages', backref='product', lazy=True)
+    images = db.relationship(
+        'ProductImages', backref='product', lazy=True,
+        order_by=lambda: (db.func.coalesce(ProductImages.position, 2147483647), ProductImages.id),
+    )
     categoria = db.relationship('Categories', backref='products', lazy=True)
     subcategoria = db.relationship('Subcategories', backref='products', lazy=True)
 
@@ -488,10 +491,20 @@ class Products(db.Model):
     def serialize_with_images(self):
         return {
             **self.serialize(),
-            "images": [image.serialize() for image in self.images],
+            "images": [image.serialize() for image in self.ordered_additional_images()],
             "categoria_nombre": self.categoria.nombre,
             "subcategoria_nombre": self.subcategoria.nombre if self.subcategoria else None,
         }
+
+    def ordered_additional_images(self):
+        seen = {(self.imagen or "").strip()}
+        result = []
+        for image in self.images:
+            url = image.image_url.strip()
+            if url and url not in seen:
+                seen.add(url)
+                result.append(image)
+        return result
 
 
 class ProductImages(db.Model):
@@ -499,6 +512,7 @@ class ProductImages(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     product_id = db.Column(db.Integer, db.ForeignKey('products.id'), nullable=False)
     image_url = db.Column(db.String(255), nullable=False)
+    position = db.Column(db.Integer, nullable=True)
 
     def __repr__(self):
         return f'<ProductImage {self.id}: {self.image_url}>'
@@ -508,6 +522,7 @@ class ProductImages(db.Model):
             "id": self.id,
             "product_id": self.product_id,
             "image_url": self.image_url,
+            "position": self.position,
         }
 
 

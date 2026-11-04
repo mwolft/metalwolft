@@ -15,6 +15,7 @@ from markupsafe import Markup, escape
 from flask_admin.contrib.sqla import ModelView
 from flask_admin.contrib.sqla.form import InlineModelConverter, InlineModelFormList
 from flask_admin.form import RenderTemplateWidget
+from flask_admin.model.template import EndpointLinkRowAction
 from wtforms import Form, validators
 from wtforms.fields import (
     BooleanField,
@@ -43,6 +44,9 @@ from api.accounting_excel_service import (
     export_sales_accounting_entries,
 )
 from api.commercial_orders_export_service import build_workbook, iter_orders
+from api.product_image_order_service import (
+    ProductImageOrderError, image_order_entries, save_product_image_order,
+)
 from api.commercial_analytics_service import (
     annual_comparison, commercial_indicators, configuration_distributions, product_evolution,
     ranked_physical_models,
@@ -871,6 +875,42 @@ class UsersAdminView(SafeModelView):
 
 class ProductAdminView(SafeModelView):
     column_sortable_list = ('id', 'sort_order', 'nombre', 'precio', 'precio_rebajado', 'categoria_id')  # 👈 AÑADIDO
+    column_extra_row_actions = [
+        EndpointLinkRowAction('glyphicon glyphicon-sort', '.order_images',
+                              title='Ordenar imágenes', id_arg='product_id'),
+    ]
+
+    @expose('/order-images/<int:product_id>', methods=['GET', 'POST'])
+    def order_images(self, product_id):
+        product = Products.query.get_or_404(product_id)
+        if request.method == 'POST':
+            expected = session.get('product_image_order_csrf')
+            supplied = request.form.get('csrf_token')
+            if not isinstance(expected, str) or not isinstance(supplied, str) or not hmac.compare_digest(expected, supplied):
+                return Response('Invalid CSRF token', 400)
+            try:
+                save_product_image_order(db.session, product_id, request.form.getlist('image_order'))
+            except ProductImageOrderError as exc:
+                db.session.rollback()
+                flash(str(exc), 'error')
+            except Exception:
+                db.session.rollback()
+                current_app.logger.exception('Product image ordering failed for product_id=%s', product_id)
+                flash('No se pudo guardar el orden de las imágenes.', 'error')
+            else:
+                flash('Orden de imágenes guardado.', 'success')
+            return redirect(self.get_url('.order_images', product_id=product_id))
+
+        csrf_token = session.get('product_image_order_csrf')
+        if not csrf_token:
+            csrf_token = secrets.token_urlsafe(32)
+            session['product_image_order_csrf'] = csrf_token
+        return self.render(
+            'admin/product_image_order.html', product=product,
+            images=image_order_entries(product), csrf_token=csrf_token,
+            edit_url=self.get_url('.edit_view', id=product_id),
+        )
+
 
     column_searchable_list = ('nombre',)
     column_filters = ('categoria_id', 'published', 'available_for_sale')

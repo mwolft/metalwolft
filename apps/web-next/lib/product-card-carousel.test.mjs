@@ -31,7 +31,7 @@ const filters = readFileSync(new URL("../components/catalog/CatalogTypeNavigatio
 
 assert.match(card, /const hasCarousel = cardImages\.length > 1/);
 assert.match(card, /hasCarousel \? \(\s*<ProductCardCarousel images=\{cardImages\} productName=\{productName\} \/>/);
-assert.match(card, /<ProductCardImage alt=\{productName\} src=\{product\.imagen\} \/>/);
+assert.match(card, /<ProductCardImage alt=\{productName\} src=\{cardImages\[0\]\?\.src \?\? null\} \/>/);
 assert.match(card, /<Link className="mw-product-card__link" href=\{href\}/);
 assert.equal((carousel.match(/<Image\b/g) || []).length, 1);
 assert.match(carousel, /src=\{selectedImage\.src\}/);
