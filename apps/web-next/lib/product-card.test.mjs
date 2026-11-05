@@ -16,7 +16,7 @@ const sources = Object.fromEntries(
 );
 
 assert.match(sources.card, /import { ProductCardImage }/);
-assert.match(sources.card, /<ProductCardImage alt={productName} src={product\.imagen} \/>/);
+assert.match(sources.card, /<ProductCardImage alt={productName} src={cardImages\[0\]\?\.src \?\? null} \/>/);
 assert.match(sources.card, /product\.h1_seo \|\| product\.nombre/);
 assert.match(sources.card, /product\.descripcion_seo\?\.trim\(\)/);
 assert.match(sources.card, /const cardDescription = editorialDescription\?\.trim\(\)/);
@@ -101,7 +101,7 @@ assert.match(
   /\.mw-product-grid\s*{[^}]*grid-template-columns:\s*repeat\(auto-fill, minmax\(min\(100%, 280px\), 1fr\)\)/s
 );
 assert.match(sources.styles, /\.mw-product-card__media\s*{[^}]*aspect-ratio:\s*9 \/ 10/s);
-assert.match(sources.styles, /\.mw-product-card__media img\s*{[^}]*object-fit:\s*contain/s);
+assert.match(sources.styles, /\.mw-product-card__media img\s*{[^}]*object-fit:\s*cover;[^}]*object-position:\s*center/s);
 assert.match(sources.styles, /\.mw-product-card \.mw-product-card__title\s*{[^}]*margin:\s*0;[^}]*-webkit-line-clamp:\s*2/s);
 assert.match(sources.styles, /\.mw-product-card__description\s*{[^}]*-webkit-line-clamp:\s*1/s);
 assert.match(sources.styles, /\.mw-product-card__description--microcopy\s*{[^}]*-webkit-line-clamp:\s*2/s);
