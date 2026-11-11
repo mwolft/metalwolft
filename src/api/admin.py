@@ -1411,6 +1411,12 @@ def _valid_work_order_csrf_token(token):
 
 
 _PRODUCTION_QUEUE_STATUSES = frozenset({"pendiente", "fabricacion", "pintura", "embalaje"})
+_PRODUCTION_QUEUE_STATUS_LABELS = {
+    "pendiente": "Recibido",
+    "fabricacion": "En fabricación",
+    "pintura": "En pintura",
+    "embalaje": "En embalaje",
+}
 
 
 def _pending_manufacturing_queue(db_session):
@@ -1484,6 +1490,8 @@ def _pending_manufacturing_item(order, *, today=None):
 
     return {
         "locator": order.locator or f"Pedido {order.id}",
+        "status_code": order.order_status if order.order_status in _PRODUCTION_QUEUE_STATUS_LABELS else "unknown",
+        "status_label": _PRODUCTION_QUEUE_STATUS_LABELS.get(order.order_status, "Estado no disponible"),
         "customer_name": customer_name or "Cliente no identificado",
         "summary": summary,
         "configurations": configurations,

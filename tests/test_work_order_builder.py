@@ -1103,6 +1103,7 @@ class WorkOrderBuilderTest(unittest.TestCase):
 
             with self.app.test_request_context("/admin/"):
                 item = admin_module._pending_manufacturing_item(order, today=date(2026, 9, 9))
+                self.assertEqual((item["status_code"], item["status_label"]), ("pendiente", "Recibido"))
                 self.assertEqual(item["entry_date"], "09/09/2026")
                 self.assertEqual(item["delivery_countdown"], "Faltan 7 días")
                 self.assertEqual(item["configurations"], ({
@@ -1180,6 +1181,36 @@ class WorkOrderBuilderTest(unittest.TestCase):
                 [(line["height"], line["width"]) for line in multiple_item["configurations"]],
                 [("109", "198"), ("80.5", "100")],
             )
+
+    def test_production_queue_status_badge_uses_one_order_status_for_multiple_lines(self):
+        labels = {
+            "pendiente": "Recibido",
+            "fabricacion": "En fabricación",
+            "pintura": "En pintura",
+            "embalaje": "En embalaje",
+        }
+        with self.app.app_context():
+            order = db.session.get(Orders, self.order_id)
+            with self.app.test_request_context("/admin/"):
+                for status, label in labels.items():
+                    with self.subTest(status=status):
+                        order.order_status = status
+                        item = admin_module._pending_manufacturing_item(order)
+                        self.assertEqual((item["status_code"], item["status_label"]), (status, label))
+                order.order_status = "unexpected"
+                item = admin_module._pending_manufacturing_item(order)
+                self.assertEqual((item["status_code"], item["status_label"]), ("unknown", "Estado no disponible"))
+
+                multiple_order = self._create_physical_order(include_second_line=True)
+                multiple_order.order_status = "pintura"
+                multiple_item = admin_module._pending_manufacturing_item(multiple_order)
+                self.assertEqual(len(multiple_item["configurations"]), 2)
+                self.assertEqual((multiple_item["status_code"], multiple_item["status_label"]), ("pintura", "En pintura"))
+
+        template = (SRC_DIR / "templates" / "admin" / "dashboard.html").read_text(encoding="utf-8")
+        self.assertEqual(template.count('admin-production-queue__status--{{ item.status_code }}'), 1)
+        self.assertLess(template.index('{{ item.locator }}'), template.index('{{ item.status_label }}'))
+        self.assertLess(template.index('{{ item.status_label }}'), template.index('{{ item.customer_name }}'))
 
     def test_order_detail_action_is_only_available_for_physical_orders(self):
         physical_response = self.client.get(self._detail_url(), headers=self._auth_header())

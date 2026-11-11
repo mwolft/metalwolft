@@ -103,6 +103,10 @@
     .admin-production-queue__schedule { grid-area: schedule; min-width: 0; }
     .admin-production-queue__action { grid-area: action; justify-self: end; white-space: nowrap; }
     .admin-production-queue__locator { display: block; font-weight: 700; }
+    .admin-production-queue__status { background: #f1f3f5; border-radius: 999px; box-sizing: border-box; color: #46505b; display: inline-block; font-size: 11px; font-weight: 600; line-height: 1.35; margin: 4px 0; max-width: 100%; overflow-wrap: anywhere; padding: 2px 8px; }
+    .admin-production-queue__status--fabricacion { background: #e8f1f8; color: #205577; }
+    .admin-production-queue__status--pintura { background: #fff1d9; color: #805308; }
+    .admin-production-queue__status--embalaje { background: #e8f3e9; color: #28623a; }
     .admin-production-queue__customer { display: block; }
     .admin-production-queue__configuration-line,
     .admin-production-queue__dimension-line,
@@ -167,6 +171,7 @@
             <div class="admin-production-queue__item">
                 <div class="admin-production-queue__identity">
                     <span class="admin-production-queue__locator">{{ item.locator }}</span>
+                    <span class="admin-production-queue__status admin-production-queue__status--{{ item.status_code }}">{{ item.status_label }}</span>
                     <span class="admin-production-queue__customer">{{ item.customer_name }}</span>
                 </div>
                 <div class="admin-production-queue__configuration">
