@@ -117,6 +117,7 @@
     .admin-production-queue__entry,
     .admin-production-queue__countdown { color: #64748b; font-size: 12px; }
     .admin-production-queue__countdown { margin-top: 2px; }
+    .admin-production-queue__entry { overflow-wrap: anywhere; }
 
     @media (max-width: 767px) {
         .admin-dashboard__ads-totals { grid-template-columns: minmax(0, 1fr); }
@@ -185,7 +186,7 @@
                     {% endfor %}
                 </div>
                 <div class="admin-production-queue__schedule">
-                    <span class="admin-production-queue__entry">Entrada {{ item.entry_date }}</span>
+                    <span class="admin-production-queue__entry">Previsión: {{ item.forecast_date }}</span>
                     {% if item.delivery_countdown %}
                     <span class="admin-production-queue__countdown">{{ item.delivery_countdown }}</span>
                     {% endif %}

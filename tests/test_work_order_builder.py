@@ -1104,7 +1104,7 @@ class WorkOrderBuilderTest(unittest.TestCase):
             with self.app.test_request_context("/admin/"):
                 item = admin_module._pending_manufacturing_item(order, today=date(2026, 9, 9))
                 self.assertEqual((item["status_code"], item["status_label"]), ("pendiente", "Recibido"))
-                self.assertEqual(item["entry_date"], "09/09/2026")
+                self.assertEqual(item["forecast_date"], "16/09/2026 · miércoles")
                 self.assertEqual(item["delivery_countdown"], "Faltan 7 días")
                 self.assertEqual(item["configurations"], ({
                     "model_name": "Reja fija Essex congelada",
@@ -1115,6 +1115,10 @@ class WorkOrderBuilderTest(unittest.TestCase):
                 },))
 
                 order.estimated_delivery_at = date(2026, 9, 10)
+                self.assertEqual(
+                    admin_module._pending_manufacturing_item(order, today=date(2026, 9, 9))["forecast_date"],
+                    "10/09/2026 · jueves",
+                )
                 self.assertEqual(
                     admin_module._pending_manufacturing_item(order, today=date(2026, 9, 9))["delivery_countdown"],
                     "Falta 1 día",
@@ -1130,6 +1134,10 @@ class WorkOrderBuilderTest(unittest.TestCase):
                     "Retraso: 2 días",
                 )
                 order.estimated_delivery_at = None
+                self.assertEqual(
+                    admin_module._pending_manufacturing_item(order, today=date(2026, 9, 9))["forecast_date"],
+                    "No consta",
+                )
                 self.assertIsNone(
                     admin_module._pending_manufacturing_item(order, today=date(2026, 9, 9))["delivery_countdown"]
                 )
@@ -1211,6 +1219,21 @@ class WorkOrderBuilderTest(unittest.TestCase):
         self.assertEqual(template.count('admin-production-queue__status--{{ item.status_code }}'), 1)
         self.assertLess(template.index('{{ item.locator }}'), template.index('{{ item.status_label }}'))
         self.assertLess(template.index('{{ item.status_label }}'), template.index('{{ item.customer_name }}'))
+
+    def test_production_queue_forecast_weekdays_and_template(self):
+        weekdays = ("lunes", "martes", "miércoles", "jueves", "viernes", "sábado", "domingo")
+        for day, weekday in enumerate(weekdays, 7):
+            with self.subTest(weekday=weekday):
+                self.assertEqual(
+                    admin_module._queue_forecast_date(date(2026, 9, day)),
+                    f"{day:02d}/09/2026 · {weekday}",
+                )
+        self.assertEqual(admin_module._queue_forecast_date(None), "No consta")
+        template = (SRC_DIR / "templates" / "admin" / "dashboard.html").read_text(encoding="utf-8")
+        self.assertIn("Previsión: {{ item.forecast_date }}", template)
+        self.assertIn("{{ item.delivery_countdown }}", template)
+        self.assertIn("{{ item.status_label }}", template)
+        self.assertIn("{{ item.work_order_url }}", template)
 
     def test_order_detail_action_is_only_available_for_physical_orders(self):
         physical_response = self.client.get(self._detail_url(), headers=self._auth_header())

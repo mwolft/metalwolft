@@ -1495,7 +1495,7 @@ def _pending_manufacturing_item(order, *, today=None):
         "customer_name": customer_name or "Cliente no identificado",
         "summary": summary,
         "configurations": configurations,
-        "entry_date": _queue_entry_date(getattr(order, "order_date", None)),
+        "forecast_date": _queue_forecast_date(getattr(order, "estimated_delivery_at", None)),
         "delivery_countdown": _queue_delivery_countdown(
             getattr(order, "estimated_delivery_at", None),
             today=today,
@@ -1549,8 +1549,11 @@ def _queue_dimension(value):
     return f"{value:g}" if isinstance(value, (float, int)) else str(value)
 
 
-def _queue_entry_date(value):
-    return value.strftime("%d/%m/%Y") if hasattr(value, "strftime") else "No consta"
+def _queue_forecast_date(value):
+    if not isinstance(value, date):
+        return "No consta"
+    weekdays = ("lunes", "martes", "miércoles", "jueves", "viernes", "sábado", "domingo")
+    return f"{value:%d/%m/%Y} · {weekdays[value.weekday()]}"
 
 
 def _queue_delivery_countdown(estimated_delivery_at, *, today=None):
