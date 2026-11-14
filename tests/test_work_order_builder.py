@@ -1283,6 +1283,48 @@ class WorkOrderBuilderTest(unittest.TestCase):
         self.assertIn("{{ item.status_label }}", template)
         self.assertIn("{{ item.work_order_url }}", template)
 
+    def test_production_queue_destination_uses_shipping_city_only(self):
+        with self.app.app_context():
+            order = self._create_physical_order(include_second_line=True)
+            first, second = order.order_details
+            first.shipping_city = "Madrid"
+            second.shipping_city = "Barcelona"
+            order.checkout_session.customer_snapshot = {
+                "shipping_city": "Sevilla", "billing_city": "Valencia",
+            }
+            with self.app.test_request_context("/admin/"):
+                item = admin_module._pending_manufacturing_item(order)
+                self.assertEqual(item["destination_city"], "Madrid")
+                self.assertEqual(len(item["configurations"]), 2)
+
+                first.shipping_city = None
+                self.assertIsNone(admin_module._pending_manufacturing_item(order)["destination_city"])
+
+                first.shipping_address = first.shipping_postal_code = None
+                self.assertEqual(
+                    admin_module._pending_manufacturing_item(order)["destination_city"], "Sevilla",
+                )
+
+                order.checkout_session.customer_snapshot = {"billing_city": "Valencia"}
+                self.assertIsNone(admin_module._pending_manufacturing_item(order)["destination_city"])
+
+    def test_production_queue_destination_template_escapes_and_omits_missing_city(self):
+        template = (SRC_DIR / "templates" / "admin" / "dashboard.html").read_text(encoding="utf-8")
+        match = re.search(
+            r'({% if item.destination_city %}<span class="admin-production-queue__destination">.*?{% endif %})',
+            template,
+        )
+        self.assertIsNotNone(match)
+        self.assertLess(template.index("{{ item.customer_name }}"), template.index("{{ item.destination_city }}"))
+        self.assertLess(template.index("{{ item.destination_city }}"), template.index("{{ configuration.model_name }}"))
+        with self.app.app_context():
+            self.assertEqual(render_template_string(match.group(1), item={"destination_city": None}), "")
+            html = render_template_string(
+                match.group(1), item={"destination_city": '<script>alert("x")</script>'},
+            )
+        self.assertIn("Destino: &lt;script&gt;", html)
+        self.assertNotIn("<script>", html)
+
     def test_order_detail_action_is_only_available_for_physical_orders(self):
         physical_response = self.client.get(self._detail_url(), headers=self._auth_header())
         self.assertEqual(physical_response.status_code, 200)

@@ -108,6 +108,7 @@
     .admin-production-queue__status--pintura { background: #fff1d9; color: #805308; }
     .admin-production-queue__status--embalaje { background: #e8f3e9; color: #28623a; }
     .admin-production-queue__customer { display: block; }
+    .admin-production-queue__destination { color: #64748b; display: block; font-size: 12px; overflow-wrap: anywhere; }
     .admin-production-queue__configuration-line,
     .admin-production-queue__dimension-line,
     .admin-production-queue__entry,
@@ -178,6 +179,7 @@
                     <span class="admin-production-queue__locator">{{ item.locator }}</span>
                     <span class="admin-production-queue__status admin-production-queue__status--{{ item.status_code }}">{{ item.status_label }}</span>
                     <span class="admin-production-queue__customer">{{ item.customer_name }}</span>
+                    {% if item.destination_city %}<span class="admin-production-queue__destination">Destino: {{ item.destination_city }}</span>{% endif %}
                 </div>
                 <div class="admin-production-queue__configuration">
                     {% for configuration in item.configurations %}

@@ -1469,6 +1469,7 @@ def _pending_manufacturing_item(order, *, today=None):
     details = tuple(order.order_details or ())
     customer_snapshot = get_order_customer_snapshot(order)
     quote_snapshot = get_order_quote_snapshot(order)
+    destination_city = _pending_manufacturing_destination_city(details, customer_snapshot)
     customer_name = " ".join(
         part
         for part in (
@@ -1507,6 +1508,7 @@ def _pending_manufacturing_item(order, *, today=None):
         "status_code": order.order_status if order.order_status in _PRODUCTION_QUEUE_STATUS_LABELS else "unknown",
         "status_label": _PRODUCTION_QUEUE_STATUS_LABELS.get(order.order_status, "Estado no disponible"),
         "customer_name": customer_name or "Cliente no identificado",
+        "destination_city": destination_city,
         "summary": summary,
         "configurations": configurations,
         "forecast_date": _queue_forecast_date(getattr(order, "estimated_delivery_at", None)),
@@ -1516,6 +1518,15 @@ def _pending_manufacturing_item(order, *, today=None):
         ),
         "work_order_url": url_for("orders.work_order_view", order_id=order.id),
     }
+
+
+def _pending_manufacturing_destination_city(details, customer_snapshot):
+    first_detail = details[0] if details else None
+    if first_detail is not None:
+        shipping_fields = ("shipping_address", "shipping_postal_code", "shipping_city")
+        if any(str(getattr(first_detail, field, None) or "").strip() for field in shipping_fields):
+            return str(getattr(first_detail, "shipping_city", None) or "").strip() or None
+    return str(customer_snapshot.get("shipping_city") or "").strip() or None
 
 
 def _pending_manufacturing_configuration(quote_snapshot, detail):
