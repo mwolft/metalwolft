@@ -1418,6 +1418,20 @@ _PRODUCTION_QUEUE_STATUS_LABELS = {
     "embalaje": "En embalaje",
 }
 
+# Match the established swatches in the Next.js configurator; unknown historical codes get text only.
+_PRODUCTION_QUEUE_COLOR_SWATCHES = {
+    "satinado_blanco": "#ffffff",
+    "satinado_negro": "#000000",
+    "satinado_gris": "#494949",
+    "satinado_verde": "#183022",
+    "forja_negro": "#1a1a1a",
+    "forja_gris": "#7a7d80",
+    "forja_marron": "#5a3a2a",
+    "forja_azul": "#2e4579",
+    "forja_verde": "#506c39",
+    "forja_dorado": "#947d30",
+}
+
 
 def _pending_manufacturing_queue(db_session):
     """Return paid physical orders without creating manufacturing work orders."""
@@ -1506,10 +1520,15 @@ def _pending_manufacturing_item(order, *, today=None):
 
 def _pending_manufacturing_configuration(quote_snapshot, detail):
     quantity = _queue_quantity(getattr(detail, "quantity", None))
+    color_code = str(getattr(detail, "color", None) or "").strip()
+    color_rule = CONFIGURATOR_COLORS.get(color_code)
     return {
         "model_name": _queue_product_name(quote_snapshot, detail),
         "quantity": quantity,
         "quantity_label": f"{quantity} {'ud.' if quantity == 1 else 'uds.'}",
+        "color_label": color_rule["label"] if color_rule else color_code or "Color no consta",
+        "color_swatch": _PRODUCTION_QUEUE_COLOR_SWATCHES.get(color_code) if color_rule else None,
+        "color_forja": bool(color_rule and color_code.startswith("forja_")),
         "height": _queue_dimension(getattr(detail, "alto", None)),
         "width": _queue_dimension(getattr(detail, "ancho", None)),
     }

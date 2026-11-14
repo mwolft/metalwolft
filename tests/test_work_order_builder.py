@@ -34,7 +34,7 @@ HAS_DEPS = all(
 
 
 if HAS_DEPS:
-    from flask import Flask
+    from flask import Flask, render_template_string
     from flask_admin import Admin
     from PIL import Image
     from pypdf import PdfReader
@@ -1110,6 +1110,9 @@ class WorkOrderBuilderTest(unittest.TestCase):
                     "model_name": "Reja fija Essex congelada",
                     "quantity": 2,
                     "quantity_label": "2 uds.",
+                    "color_label": "Blanco liso",
+                    "color_swatch": "#ffffff",
+                    "color_forja": False,
                     "height": "109",
                     "width": "198",
                 },))
@@ -1189,6 +1192,51 @@ class WorkOrderBuilderTest(unittest.TestCase):
                 [(line["height"], line["width"]) for line in multiple_item["configurations"]],
                 [("109", "198"), ("80.5", "100")],
             )
+
+    def test_production_queue_colors_stay_with_their_order_lines(self):
+        with self.app.app_context():
+            order = self._create_physical_order(include_second_line=True)
+            first, second = order.order_details
+            with self.app.test_request_context("/admin/"):
+                second.color = "satinado_blanco"
+                same = admin_module._pending_manufacturing_item(order)["configurations"]
+                self.assertEqual([line["color_label"] for line in same], ["Blanco liso", "Blanco liso"])
+
+                second.color = "forja_negro"
+                different = admin_module._pending_manufacturing_item(order)["configurations"]
+                self.assertEqual([line["color_label"] for line in different], ["Blanco liso", "Negro forja"])
+                self.assertEqual([line["color_swatch"] for line in different], ["#ffffff", "#1a1a1a"])
+                self.assertEqual([line["color_forja"] for line in different], [False, True])
+
+                first.color = "gris"
+                second.color = "RAL 9005"
+                historical = admin_module._pending_manufacturing_item(order)["configurations"]
+                self.assertEqual([line["color_label"] for line in historical], ["gris", "RAL 9005"])
+                self.assertEqual([line["color_swatch"] for line in historical], [None, None])
+
+                second.color = None
+                self.assertEqual(
+                    admin_module._pending_manufacturing_item(order)["configurations"][1]["color_label"],
+                    "Color no consta",
+                )
+
+    def test_production_queue_color_template_escapes_historical_values(self):
+        template = (SRC_DIR / "templates" / "admin" / "dashboard.html").read_text(encoding="utf-8")
+        match = re.search(
+            r'(<div class="admin-production-queue__configuration">.*?{% endfor %}\s*</div>)',
+            template,
+            re.DOTALL,
+        )
+        self.assertIsNotNone(match)
+        with self.app.app_context():
+            html = render_template_string(match.group(1), item={"configurations": [{
+                "model_name": "Reja de prueba", "quantity_label": "1 ud.",
+                "color_label": '<script>alert("x")</script>', "color_swatch": None,
+                "color_forja": False,
+            }]})
+        self.assertNotIn("<script>", html)
+        self.assertIn("&lt;script&gt;", html)
+        self.assertEqual(html.count("admin-production-queue__color-text"), 1)
 
     def test_production_queue_status_badge_uses_one_order_status_for_multiple_lines(self):
         labels = {

@@ -113,6 +113,10 @@
     .admin-production-queue__entry,
     .admin-production-queue__countdown { display: block; }
     .admin-production-queue__configuration-line { font-weight: 600; }
+    .admin-production-queue__color { align-items: center; color: #64748b; display: flex; font-size: 12px; gap: 6px; line-height: 1.35; margin-top: 3px; min-width: 0; overflow-wrap: anywhere; }
+    .admin-production-queue__swatch { background-color: #fff; border: 1px solid #aab3bd; border-radius: 50%; box-sizing: border-box; display: inline-block; flex: 0 0 13px; height: 13px; }
+    .admin-production-queue__swatch--forja { background-image: linear-gradient(135deg, rgba(255, 255, 255, .08), rgba(17, 24, 39, .4)), radial-gradient(circle at 25% 25%, rgba(255, 255, 255, .22), transparent 18%); }
+    .admin-production-queue__color-text { min-width: 0; overflow-wrap: anywhere; }
     .admin-production-queue__dimension-line,
     .admin-production-queue__entry,
     .admin-production-queue__countdown { color: #64748b; font-size: 12px; }
@@ -177,7 +181,13 @@
                 </div>
                 <div class="admin-production-queue__configuration">
                     {% for configuration in item.configurations %}
-                    <span class="admin-production-queue__configuration-line">{{ configuration.model_name }} · {{ configuration.quantity_label }}</span>
+                    <div class="admin-production-queue__configuration-item">
+                        <span class="admin-production-queue__configuration-line">{{ configuration.model_name }} · {{ configuration.quantity_label }}</span>
+                        <span class="admin-production-queue__color">
+                            {% if configuration.color_swatch %}<span class="admin-production-queue__swatch{% if configuration.color_forja %} admin-production-queue__swatch--forja{% endif %}" style="background-color: {{ configuration.color_swatch }}" aria-hidden="true"></span>{% endif %}
+                            <span class="admin-production-queue__color-text">{{ configuration.color_label }}</span>
+                        </span>
+                    </div>
                     {% endfor %}
                 </div>
                 <div class="admin-production-queue__dimensions">
