@@ -1,0 +1,49 @@
+{% extends 'admin/master.html' %}
+
+{% block body %}
+<div class="container-fluid">
+  <h1>Entregables del diseño previo {{ design_request.reference }}</h1>
+  <p class="text-muted">Los archivos quedan privados. Cada diseño necesita al menos un archivo para completar la entrega.</p>
+  <form method="post" action="{{ action_url }}" enctype="multipart/form-data">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <input type="hidden" name="submission_token" value="{{ submission_token }}">
+    {% for item in design_request.items %}
+    <section class="panel panel-default">
+      <div class="panel-heading"><strong>{{ item.product_name }}</strong> · Alto {{ item.height_cm }} cm × Ancho {{ item.width_cm }} cm</div>
+      <div class="panel-body">
+        <div class="form-group">
+          <label for="glb_{{ item.id }}">Modelo 3D GLB (uno activo)</label>
+          <input class="form-control" id="glb_{{ item.id }}" name="glb_{{ item.id }}" type="file" accept=".glb,model/gltf-binary">
+        </div>
+        <div class="form-group">
+          <label for="images_{{ item.id }}">Imágenes JPEG/PNG</label>
+          <input class="form-control" id="images_{{ item.id }}" name="images_{{ item.id }}" type="file" accept=".jpg,.jpeg,.png,image/jpeg,image/png" multiple>
+        </div>
+        <div class="form-group">
+          <label for="pdfs_{{ item.id }}">Documentos PDF</label>
+          <input class="form-control" id="pdfs_{{ item.id }}" name="pdfs_{{ item.id }}" type="file" accept=".pdf,application/pdf" multiple>
+        </div>
+        {% if item.deliverables %}
+        <p><strong>Archivos existentes</strong> (marca para retirar; el objeto privado se conserva para auditoría):</p>
+        <ul class="list-unstyled">
+          {% for file in item.deliverables if file.active %}
+          <li><label><input type="checkbox" name="retire_ids" value="{{ file.id }}"> Retirar {{ file.kind|upper }} · {{ file.filename }}</label></li>
+          {% endfor %}
+        </ul>
+        {% endif %}
+      </div>
+    </section>
+    {% endfor %}
+    {% if design_request.result_storage_key %}
+    <p class="text-muted">El resultado anterior permanece disponible y no se modificará.</p>
+    {% endif %}
+    <div class="form-group">
+      <label for="customer_message">Mensaje personalizado al cliente (opcional, máximo 2000 caracteres)</label>
+      <textarea class="form-control" id="customer_message" name="customer_message" maxlength="2000" rows="4">{{ design_request.customer_message or '' }}</textarea>
+    </div>
+    <div class="checkbox"><label><input type="checkbox" name="notify" value="yes" checked> Avisar al cliente por correo al confirmar esta entrega</label></div>
+    <button type="submit" class="btn btn-primary">SUBIR Y ENTREGAR</button>
+    <a class="btn btn-default" href="{{ cancel_url }}">CANCELAR</a>
+  </form>
+</div>
+{% endblock %}

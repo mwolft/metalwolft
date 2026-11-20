@@ -87,11 +87,12 @@ def has_complete_result_metadata(design_request):
 
 
 def is_design_result_available(design_request):
-    return bool(
-        design_request
-        and getattr(design_request, "status", None) == DesignRequest.STATUS_DELIVERED
-        and has_complete_result_metadata(design_request)
-    )
+    if not design_request or getattr(design_request, "status", None) != DesignRequest.STATUS_DELIVERED:
+        return False
+    if has_complete_result_metadata(design_request):
+        return True
+    from api.design_delivery_service import has_complete_delivery
+    return has_complete_delivery(design_request)
 
 
 def design_result_download_filename(design_request):

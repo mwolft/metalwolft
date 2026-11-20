@@ -232,6 +232,7 @@ class DesignRequest(db.Model):
     result_mime = db.Column(db.String(100), nullable=True)
     result_size = db.Column(db.Integer, nullable=True)
     result_sha256 = db.Column(db.String(64), nullable=True)
+    customer_message = db.Column(db.Text, nullable=True)
 
     user = db.relationship("Users", backref="design_requests", lazy=True)
     order = db.relationship("Orders", backref=db.backref("design_request", uselist=False), lazy=True)
@@ -273,9 +274,36 @@ class DesignRequestItem(db.Model):
 
     product = db.relationship("Products", backref="design_request_items", lazy=True)
     order_detail = db.relationship("OrderDetails", foreign_keys=[order_detail_id], lazy=True)
+    deliverables = db.relationship(
+        "DesignDeliverable", backref="item", lazy=True,
+        order_by="DesignDeliverable.id.asc()",
+    )
 
     def __repr__(self):
         return f"<DesignRequestItem {self.design_request_id} {self.product_id}>"
+
+
+class DesignDeliverable(db.Model):
+    __tablename__ = "design_deliverables"
+    __table_args__ = (
+        db.CheckConstraint("kind IN ('glb', 'image', 'pdf')", name="ck_design_deliverables_kind"),
+        db.CheckConstraint("size_bytes > 0", name="ck_design_deliverables_size"),
+        db.Index("ix_design_deliverables_item_active", "design_request_item_id", "active"),
+    )
+
+    id = db.Column(db.Integer, primary_key=True)
+    design_request_item_id = db.Column(
+        db.Integer, db.ForeignKey("design_request_items.id"), nullable=False
+    )
+    kind = db.Column(db.String(8), nullable=False)
+    storage_key = db.Column(db.String(500), nullable=False, unique=True)
+    filename = db.Column(db.String(255), nullable=False)
+    mime_type = db.Column(db.String(100), nullable=False)
+    size_bytes = db.Column(db.Integer, nullable=False)
+    sha256 = db.Column(db.String(64), nullable=False)
+    active = db.Column(db.Boolean, nullable=False, default=True, server_default="true")
+    created_at = db.Column(db.DateTime, nullable=False, server_default=db.func.now())
+    retired_at = db.Column(db.DateTime, nullable=True)
 
 
 class Users(db.Model):

@@ -240,7 +240,9 @@ def transition_design_request_status(*, design_request, new_status):
     if normalized_status not in allowed.get(design_request.status, set()):
         raise DesignServiceValidationError("La transición de estado de la solicitud no está permitida.")
     if normalized_status == DesignRequest.STATUS_DELIVERED and not design_request.result_storage_key:
-        raise DesignServiceValidationError("No se puede marcar como entregada una solicitud sin resultado asociado.")
+        from api.design_delivery_service import has_complete_delivery
+        if not has_complete_delivery(design_request):
+            raise DesignServiceValidationError("No se puede marcar como entregada una solicitud sin resultado asociado.")
 
     now = datetime.now(timezone.utc)
     design_request.status = normalized_status

@@ -17,6 +17,8 @@ from datetime import datetime, timezone, date
 import os
 import tempfile
 from io import BytesIO
+from zipfile import ZipFile, ZIP_DEFLATED
+from werkzeug.utils import secure_filename
 from reportlab.pdfgen import canvas
 from reportlab.platypus import Table, TableStyle, Paragraph, Frame
 from reportlab.lib.pagesizes import A4
@@ -3964,9 +3966,34 @@ def download_customer_order_design_result(order_id):
             return jsonify({"message": "Design result not found"}), 404
 
         try:
-            content = get_private_object_storage(current_app).get_object(
-                storage_key=design_request.result_storage_key,
-            )
+            storage = get_private_object_storage(current_app)
+            from api.design_delivery_service import active_deliverables
+            deliverables = active_deliverables(design_request)
+            if deliverables or design_request.customer_message:
+                archive = BytesIO()
+                with ZipFile(archive, "w", ZIP_DEFLATED) as bundle:
+                    if design_request.customer_message:
+                        bundle.writestr("mensaje.txt", design_request.customer_message.encode("utf-8"))
+                    for item in design_request.items:
+                        for file in item.deliverables:
+                            if file.active:
+                                safe_name = secure_filename(file.filename) or f"archivo-{file.id}"
+                                bundle.writestr(
+                                    f"diseno-{item.id}/{file.id}-{safe_name}",
+                                    storage.get_object(storage_key=file.storage_key),
+                                )
+                    if design_request.result_storage_key:
+                        bundle.writestr(
+                            f"resultado-anterior/{secure_filename(design_result_download_filename(design_request))}",
+                            storage.get_object(storage_key=design_request.result_storage_key),
+                        )
+                content = archive.getvalue()
+                mime_type = "application/zip"
+                filename = f"diseno-previo-{design_request.reference}.zip"
+            else:
+                content = storage.get_object(storage_key=design_request.result_storage_key)
+                mime_type = design_request.result_mime
+                filename = design_result_download_filename(design_request)
         except (
             PrivateObjectStorageConfigurationError,
             PrivateObjectStorageOperationError,
@@ -3979,9 +4006,9 @@ def download_customer_order_design_result(order_id):
 
         response = send_file(
             BytesIO(content),
-            mimetype=design_request.result_mime,
+            mimetype=mime_type,
             as_attachment=True,
-            download_name=design_result_download_filename(design_request),
+            download_name=filename,
             max_age=0,
         )
         response.headers["Cache-Control"] = "no-store"

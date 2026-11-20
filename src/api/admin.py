@@ -190,6 +190,7 @@ from api.design_service import (
     transition_design_request_status,
 )
 from api.design_result_email_service import send_design_result_ready_email
+from api.design_delivery_service import DesignDeliveryError, apply_delivery_changes, has_complete_delivery
 from api.design_result_service import (
     DesignResultError,
     DesignResultPersistenceError,
@@ -1188,15 +1189,15 @@ def _format_design_request_result(view, context, model, name):
             "<span class='text-danger'>AVISO: metadatos de resultado incompletos. Requiere revisión.</span>"
         )
 
-    if model.status == DesignRequest.STATUS_DELIVERED and metadata_state != "complete":
+    if model.status == DesignRequest.STATUS_DELIVERED and metadata_state != "complete" and not has_complete_delivery(model):
         return Markup(
             "<span class='text-danger'>AVISO: solicitud entregada sin resultado privado válido.</span>"
         )
 
-    if model.status == DesignRequest.STATUS_IN_PROGRESS and metadata_state == "empty":
-        upload_url = view.get_url(".upload_result", design_request_id=model.id)
+    if model.status in {DesignRequest.STATUS_IN_PROGRESS, DesignRequest.STATUS_DELIVERED}:
+        upload_url = view.get_url(".manage_deliverables", design_request_id=model.id)
         return Markup(
-            '<a class="btn btn-primary btn-sm" href="{upload_url}">SUBIR RESULTADO</a>'
+            '<a class="btn btn-primary btn-sm" href="{upload_url}">GESTIONAR ENTREGA</a>'
         ).format(upload_url=escape(upload_url))
 
     if metadata_state == "complete":
@@ -1298,6 +1299,83 @@ class DesignRequestAdminView(SafeModelView):
             except DesignServiceValidationError as exc:
                 raise ValueError(str(exc)) from exc
         return super().on_model_change(form, model, is_created)
+
+    @expose("/<int:design_request_id>/entregables/", methods=["GET", "POST"])
+    def manage_deliverables(self, design_request_id):
+        design_request = self.session.get(DesignRequest, design_request_id)
+        if design_request is None:
+            flash("Solicitud de diseño no encontrada.", "error")
+            return redirect(self.get_url(".index_view"))
+        detail_url = self.get_url(".details_view", id=design_request.id)
+        if design_request.status not in {DesignRequest.STATUS_IN_PROGRESS, DesignRequest.STATUS_DELIVERED}:
+            flash("La solicitud debe estar en curso o entregada.", "error")
+            return redirect(detail_url)
+        if request.method == "GET":
+            return self.render(
+                "admin/design_request_deliverables.html",
+                design_request=design_request,
+                csrf_token=_issue_design_result_upload_csrf_token(),
+                submission_token=_issue_design_result_upload_submission_token(),
+                action_url=self.get_url(".manage_deliverables", design_request_id=design_request.id),
+                cancel_url=detail_url,
+            )
+        if not _valid_design_result_upload_csrf_token(request.form.get("csrf_token")):
+            flash("La sesión del formulario ha caducado. Vuelve a intentarlo.", "error")
+            return redirect(request.url)
+        if not _consume_design_result_upload_submission_token(request.form.get("submission_token")):
+            flash("Esta entrega ya se ha procesado o el formulario ha caducado.", "error")
+            return redirect(detail_url)
+        additions = []
+        for item in design_request.items:
+            for kind, field in (("glb", "glb"), ("image", "images"), ("pdf", "pdfs")):
+                additions.extend(
+                    (item.id, kind, file) for file in request.files.getlist(f"{field}_{item.id}")
+                    if file and file.filename
+                )
+        try:
+            retire_ids = [int(value) for value in request.form.getlist("retire_ids")]
+        except ValueError:
+            flash("La selección de archivos para retirar no es válida.", "error")
+            return redirect(request.url)
+        result = None
+        storage = None
+        try:
+            storage = get_private_object_storage(current_app)
+            result = apply_delivery_changes(
+                db_session=self.session, request_id=design_request.id,
+                additions=additions, retire_ids=retire_ids,
+                message=request.form.get("customer_message", ""),
+                deliver=True, storage=storage,
+            )
+            if not result.changed and design_request.status == DesignRequest.STATUS_DELIVERED:
+                raise DesignDeliveryError("No hay cambios que entregar.")
+            self.session.commit()
+        except (DesignDeliveryError, PrivateObjectStorageConfigurationError, PrivateObjectStorageOperationError) as exc:
+            self.session.rollback()
+            flash(str(exc), "error")
+            return redirect(request.url)
+        except Exception:
+            self.session.rollback()
+            if result and storage:
+                for key in result.uploaded_keys:
+                    try:
+                        storage.delete_object(storage_key=key)
+                    except Exception:
+                        current_app.logger.exception("Could not compensate design deliverable upload")
+            current_app.logger.exception("Design deliverable update failed request_id=%s", design_request.id)
+            flash("No se ha podido guardar la entrega.", "error")
+            return redirect(request.url)
+        if request.form.get("notify") == "yes":
+            sent = send_design_result_ready_email(
+                design_request=result.design_request,
+                frontend_url=current_app.config.get("FRONTEND_URL"),
+                mail_username=current_app.config.get("MAIL_USERNAME"),
+                logger=current_app.logger,
+            )
+            if not sent:
+                flash("Entrega guardada, pero el correo no se ha enviado. Contacta al cliente.", "warning")
+        flash("Entregables privados guardados y accesibles desde Mi Cuenta.", "success")
+        return redirect(detail_url)
 
     @expose("/<int:design_request_id>/subir-resultado/", methods=["GET", "POST"])
     def upload_result(self, design_request_id):

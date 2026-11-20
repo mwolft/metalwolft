@@ -1,5 +1,7 @@
 import base64
+import json
 import re
+import struct
 import sys
 import unittest
 from io import BytesIO
@@ -10,7 +12,9 @@ from unittest.mock import Mock, patch
 from flask import Flask
 from flask_admin import Admin
 from pypdf import PdfWriter
+from PIL import Image
 from sqlalchemy.orm import configure_mappers
+from werkzeug.datastructures import FileStorage
 
 
 ROOT_DIR = Path(__file__).resolve().parents[1]
@@ -23,24 +27,33 @@ from api.models import (  # noqa: E402
     Categories,
     DesignRequest,
     DesignRequestItem,
+    DesignDeliverable,
     OrderDetails,
     Orders,
     Products,
     Users,
     db,
 )
+from api.design_delivery_service import validate_glb, DesignDeliveryError  # noqa: E402
+from api.private_object_storage import PrivateObjectStorageOperationError  # noqa: E402
 
 
 class _Storage:
     def __init__(self):
         self.puts = []
         self.deleted = []
+        self.objects = {}
 
     def put_object(self, *, storage_key, content, mime_type):
         self.puts.append((storage_key, content, mime_type))
+        self.objects[storage_key] = content
 
     def delete_object(self, *, storage_key):
         self.deleted.append(storage_key)
+        self.objects.pop(storage_key, None)
+
+    def get_object(self, *, storage_key):
+        return self.objects[storage_key]
 
 
 class FlaskAdminDesignResultTest(unittest.TestCase):
@@ -165,6 +178,203 @@ class FlaskAdminDesignResultTest(unittest.TestCase):
             if rule.endpoint.endswith(".upload_result"):
                 return rule.rule.replace("<int:design_request_id>", str(self.request_id))
         raise AssertionError("The design result upload route was not registered.")
+
+    def _v2_url(self):
+        for rule in self.app.url_map.iter_rules():
+            if rule.endpoint.endswith(".manage_deliverables"):
+                return rule.rule.replace("<int:design_request_id>", str(self.request_id))
+        raise AssertionError("The design deliverables route was not registered.")
+
+    def _v2_form(self):
+        response = self.client.get(self._v2_url(), headers=self._auth_header())
+        self.assertEqual(response.status_code, 200)
+        return self._csrf_and_submission(response.data.decode("utf-8"))
+
+    @staticmethod
+    def _glb_bytes(external=False):
+        scene = {"asset": {"version": "2.0"}, "scenes": [{}]}
+        if external:
+            scene["buffers"] = [{"uri": "https://example.test/model.bin"}]
+        payload = json.dumps(scene).encode("utf-8")
+        payload += b" " * (-len(payload) % 4)
+        return struct.pack("<4sII", b"glTF", 2, 20 + len(payload)) + struct.pack("<II", len(payload), 0x4E4F534A) + payload
+
+    @staticmethod
+    def _png_bytes():
+        output = BytesIO()
+        Image.new("RGB", (2, 2), "white").save(output, format="PNG")
+        return output.getvalue()
+
+    def test_v2_glb_rejects_external_dependencies(self):
+        with self.assertRaisesRegex(DesignDeliveryError, "recursos externos"):
+            validate_glb(FileStorage(stream=BytesIO(self._glb_bytes(True)), filename="private.glb"))
+        with self.assertRaises(DesignDeliveryError):
+            validate_glb(FileStorage(stream=BytesIO(b"not a glb"), filename="invalid.glb"))
+        self.assertEqual(validate_glb(FileStorage(stream=BytesIO(self._glb_bytes()), filename="private.glb")), self._glb_bytes())
+
+    def test_v2_admin_requires_authentication(self):
+        self.assertEqual(self.client.get(self._v2_url()).status_code, 401)
+
+    def test_v2_admin_delivers_multiple_files_once_and_updates(self):
+        with self.app.app_context():
+            request_model = db.session.get(DesignRequest, self.request_id)
+            second = DesignRequestItem(
+                design_request_id=request_model.id, product_id=request_model.items[0].product_id,
+                product_name="Reja Maryland", width_cm=180, height_cm=100,
+            )
+            db.session.add(second)
+            db.session.commit()
+            first_id, second_id = [item.id for item in request_model.items]
+        csrf, submission = self._v2_form()
+        storage = _Storage()
+        send_email = Mock(return_value=True)
+        with (
+            patch("api.admin.get_private_object_storage", return_value=storage),
+            patch("api.admin.send_design_result_ready_email", send_email),
+        ):
+            response = self.client.post(
+                self._v2_url(),
+                data={
+                    "csrf_token": csrf, "submission_token": submission,
+                    "customer_message": "Diseños preparados", "notify": "yes",
+                    f"glb_{first_id}": (BytesIO(self._glb_bytes()), "modelo.glb", "model/gltf-binary"),
+                    f"images_{first_id}": [
+                        (BytesIO(self._png_bytes()), "vista.png", "image/png"),
+                        (BytesIO(self._png_bytes()), "detalle.png", "image/png"),
+                    ],
+                    f"pdfs_{second_id}": [
+                        (BytesIO(self._pdf_bytes()), "plano.pdf", "application/pdf"),
+                        (BytesIO(self._pdf_bytes()), "instrucciones.pdf", "application/pdf"),
+                    ],
+                },
+                headers=self._auth_header(), follow_redirects=False,
+            )
+        self.assertEqual(response.status_code, 302)
+        with self.client.session_transaction() as session:
+            self.assertNotIn("error", [category for category, _message in session.get("_flashes", [])], session.get("_flashes"))
+        send_email.assert_called_once()
+        with self.app.app_context():
+            request_model = db.session.get(DesignRequest, self.request_id)
+            self.assertEqual(request_model.status, DesignRequest.STATUS_DELIVERED)
+            self.assertEqual(request_model.customer_message, "Diseños preparados")
+            self.assertEqual(len([file for item in request_model.items for file in item.deliverables if file.active]), 5)
+            old_glb = next(file for file in request_model.items[0].deliverables if file.kind == "glb")
+            old_glb_id = old_glb.id
+        csrf, submission = self._v2_form()
+        with (
+            patch("api.admin.get_private_object_storage", return_value=storage),
+            patch("api.admin.send_design_result_ready_email", send_email),
+        ):
+            response = self.client.post(
+                self._v2_url(),
+                data={
+                    "csrf_token": csrf, "submission_token": submission,
+                    "customer_message": "Diseños preparados", "retire_ids": str(old_glb_id),
+                    f"glb_{first_id}": (BytesIO(self._glb_bytes()), "modelo-v2.glb", "model/gltf-binary"),
+                },
+                headers=self._auth_header(), follow_redirects=False,
+            )
+        self.assertEqual(response.status_code, 302)
+        send_email.assert_called_once()
+        with self.app.app_context():
+            self.assertFalse(db.session.get(DesignDeliverable, old_glb_id).active)
+            self.assertEqual(len([file for file in db.session.get(DesignRequestItem, first_id).deliverables if file.kind == "glb" and file.active]), 1)
+        self.assertEqual(len(storage.puts), 6)
+
+    def test_v2_rejects_incomplete_delivery_without_changing_status(self):
+        csrf, submission = self._v2_form()
+        storage = _Storage()
+        with patch("api.admin.get_private_object_storage", return_value=storage):
+            response = self.client.post(
+                self._v2_url(),
+                data={"csrf_token": csrf, "submission_token": submission, "customer_message": "Listo"},
+                headers=self._auth_header(),
+            )
+        self.assertEqual(response.status_code, 302)
+        with self.app.app_context():
+            request_model = db.session.get(DesignRequest, self.request_id)
+            self.assertEqual(request_model.status, DesignRequest.STATUS_IN_PROGRESS)
+            self.assertIsNone(request_model.customer_message)
+
+    def test_v2_email_failure_does_not_lose_delivery(self):
+        with self.app.app_context():
+            item_id = db.session.get(DesignRequest, self.request_id).items[0].id
+        csrf, submission = self._v2_form()
+        storage = _Storage()
+        with (
+            patch("api.admin.get_private_object_storage", return_value=storage),
+            patch("api.admin.send_design_result_ready_email", return_value=False) as send_email,
+        ):
+            response = self.client.post(
+                self._v2_url(),
+                data={
+                    "csrf_token": csrf, "submission_token": submission,
+                    "customer_message": "Listo", "notify": "yes",
+                    f"pdfs_{item_id}": (BytesIO(self._pdf_bytes()), "plano.pdf", "application/pdf"),
+                },
+                headers=self._auth_header(),
+            )
+        self.assertEqual(response.status_code, 302)
+        send_email.assert_called_once()
+        with self.client.session_transaction() as session:
+            self.assertIn("warning", [category for category, _ in session.get("_flashes", [])])
+        with self.app.app_context():
+            self.assertEqual(db.session.get(DesignRequest, self.request_id).status, DesignRequest.STATUS_DELIVERED)
+
+    def test_v2_storage_failure_compensates_and_rolls_back(self):
+        class FailingStorage(_Storage):
+            def put_object(self, *, storage_key, content, mime_type):
+                if self.puts:
+                    raise PrivateObjectStorageOperationError("synthetic failure")
+                super().put_object(storage_key=storage_key, content=content, mime_type=mime_type)
+
+        with self.app.app_context():
+            item_id = db.session.get(DesignRequest, self.request_id).items[0].id
+        csrf, submission = self._v2_form()
+        storage = FailingStorage()
+        with patch("api.admin.get_private_object_storage", return_value=storage):
+            response = self.client.post(
+                self._v2_url(),
+                data={
+                    "csrf_token": csrf, "submission_token": submission,
+                    f"images_{item_id}": [
+                        (BytesIO(self._png_bytes()), "uno.png", "image/png"),
+                        (BytesIO(self._png_bytes()), "dos.png", "image/png"),
+                    ],
+                },
+                headers=self._auth_header(),
+            )
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(len(storage.deleted), 2)
+        self.assertFalse(storage.objects)
+        with self.app.app_context():
+            self.assertEqual(db.session.get(DesignRequest, self.request_id).status, DesignRequest.STATUS_IN_PROGRESS)
+            self.assertEqual(db.session.query(DesignDeliverable).count(), 0)
+
+    def test_v2_cannot_retire_last_file_of_delivered_design(self):
+        with self.app.app_context():
+            request_model = db.session.get(DesignRequest, self.request_id)
+            request_model.status = DesignRequest.STATUS_DELIVERED
+            file = DesignDeliverable(
+                design_request_item_id=request_model.items[0].id,
+                kind="pdf", storage_key="design-results/test-last.pdf",
+                filename="last.pdf", mime_type="application/pdf", size_bytes=8,
+                sha256="a" * 64,
+            )
+            db.session.add(file)
+            db.session.commit()
+            file_id = file.id
+        csrf, submission = self._v2_form()
+        with patch("api.admin.get_private_object_storage", return_value=_Storage()):
+            response = self.client.post(
+                self._v2_url(),
+                data={"csrf_token": csrf, "submission_token": submission, "retire_ids": str(file_id)},
+                headers=self._auth_header(),
+            )
+        self.assertEqual(response.status_code, 302)
+        with self.app.app_context():
+            self.assertTrue(db.session.get(DesignDeliverable, file_id).active)
+            self.assertEqual(db.session.get(DesignRequest, self.request_id).status, DesignRequest.STATUS_DELIVERED)
 
     def _edit_status(self, initial_status, submitted_status):
         with self.app.app_context():

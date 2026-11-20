@@ -3,6 +3,8 @@ import os
 import sys
 import tempfile
 import unittest
+from io import BytesIO
+from zipfile import ZipFile
 from datetime import date, datetime
 from pathlib import Path
 from unittest.mock import patch
@@ -38,7 +40,7 @@ if HAS_ENDPOINT_DEPS:
     from flask_jwt_extended import JWTManager, create_access_token  # noqa: E402
 
     from api.models import (  # noqa: E402
-        Categories, DesignRequest, DesignRequestItem, Invoices, OrderDetails,
+        Categories, DesignDeliverable, DesignRequest, DesignRequestItem, Invoices, OrderDetails,
         Orders, Products, Users, db,
     )
     from api.private_object_storage import PrivateObjectStorageOperationError  # noqa: E402
@@ -779,6 +781,37 @@ class CustomerOrdersEndpointTest(unittest.TestCase):
         get_storage.return_value.get_object.assert_called_once_with(
             storage_key="design-results/2026/09/opaque-result.pdf",
         )
+
+    def test_v2_result_bundle_is_private_and_keeps_design_boundaries(self):
+        with self.app.app_context():
+            order = self._create_design_order()
+            order_id = order.id
+            design_request = order.design_request
+            design_request.status = DesignRequest.STATUS_DELIVERED
+            design_request.customer_message = "Tu diseño está listo"
+            item = design_request.items[0]
+            deliverable = DesignDeliverable(
+                design_request_item_id=item.id, kind="pdf", storage_key="design-results/private-test.pdf",
+                filename="plano.pdf", mime_type="application/pdf", size_bytes=8,
+                sha256="a" * 64,
+            )
+            db.session.add(deliverable)
+            db.session.commit()
+            item_id = item.id
+            deliverable_id = deliverable.id
+
+        path = f"/api/customer/orders/{order_id}/design-result"
+        self.assertEqual(self.client.get(path).status_code, 401)
+        self.assertEqual(self.client.get(path, headers=self._auth(self.user_b_token)).status_code, 404)
+        with patch("api.routes.get_private_object_storage") as get_storage:
+            get_storage.return_value.get_object.return_value = b"%PDF-v2"
+            response = self.client.get(path, headers=self._auth(self.user_a_token))
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.mimetype, "application/zip")
+        self.assertEqual(response.headers.get("Cache-Control"), "no-store")
+        with ZipFile(BytesIO(response.data)) as archive:
+            self.assertEqual(archive.read("mensaje.txt").decode("utf-8"), "Tu diseño está listo")
+            self.assertEqual(archive.read(f"diseno-{item_id}/{deliverable_id}-plano.pdf"), b"%PDF-v2")
 
     def test_design_result_download_hides_foreign_pending_and_missing_private_objects(self):
         with self.app.app_context():
