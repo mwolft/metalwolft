@@ -1,6 +1,23 @@
-"""Prepare and serve a synthetic Design V2 demo in Codespaces only.
+"""Prepare and serve a Design V2 demo in Codespaces only.
 
 The database and object store are local. This script never reads project .env files.
+Run ``prepare`` first. Optional V1 import requires a dedicated SELECT-only Neon
+role, independent connection details copied from that branch's Connect panel,
+and the original owner's email for filtering. Set V1_READONLY_DATABASE_URL,
+V1_EXPECTED_HOST, V1_EXPECTED_PORT, V1_EXPECTED_DATABASE, V1_EXPECTED_USER,
+and V1_SOURCE_CUSTOMER_EMAIL only in the import process environment. Never use
+DATABASE_URL or a production owner role for the source.
+
+For each delivered V1 request, download its existing result through the owner's
+authenticated download flow and place the file in
+~/.local/share/metalwolft-design-v2-demo/import-inputs/ (private mode). Its
+size and SHA-256 must match the source metadata. Then run, for example:
+
+  python scripts/design_v2_demo.py import-v1 --reference DP-EXAMPLE \
+    --result DP-EXAMPLE=legacy-result.pdf
+
+Omit --result for a paid request not yet delivered. Repeat --reference and
+--result for more requests (up to ten). Import is never part of ``prepare``.
 """
 
 from __future__ import annotations
@@ -247,8 +264,15 @@ class LocalDemoStorage:
     def put_object(self, *, storage_key, content, mime_type):
         path = self._path(storage_key)
         path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
-        with path.open("xb") as handle:
-            handle.write(content)
+        created = False
+        try:
+            with path.open("xb") as handle:
+                created = True
+                handle.write(content)
+        except Exception:
+            if created:
+                path.unlink(missing_ok=True)
+            raise
 
     def get_object(self, *, storage_key):
         return self._path(storage_key).read_bytes()
@@ -274,10 +298,18 @@ def serve(app):
 
 
 def main():
+    if str(ROOT) not in sys.path:
+        sys.path.insert(0, str(ROOT))
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("action", choices=("prepare", "serve", "access"))
+    parser.add_argument("action", choices=("prepare", "serve", "access", "import-v1"))
+    parser.add_argument("--reference", action="append", default=[], help="Exact DP reference to import (repeatable).")
+    parser.add_argument("--result", action="append", default=[], help="DP reference and local result filename: DP-...=file.pdf")
     args = parser.parse_args()
     url = safe_target()
+    if args.action == "import-v1":
+        from scripts.design_v1_demo_import import normalize_references, source_configuration
+        references = normalize_references(args.reference)
+        source_url, owner_email = source_configuration(os.environ)
     if args.action == "access":
         access = load_or_create_access(create=False)
         print(f"Admin: {access['admin_user']} / {access['admin_password']}")
@@ -292,6 +324,15 @@ def main():
     ensure_schema(app, db, create=args.action == "prepare")
     if args.action == "prepare":
         seed_demo(app, db, access)
+    elif args.action == "import-v1":
+        from scripts.design_v1_demo_import import (
+            import_into_demo, read_source, resolve_input_files, validate_source_rows,
+        )
+        files = resolve_input_files(references, args.result, STATE_DIR / "import-inputs")
+        requests, items = read_source(source_url, owner_email, references)
+        validate_source_rows(requests, items, files)
+        imported = import_into_demo(app, db, access, requests, items, files, LocalDemoStorage())
+        print(f"PASS: {imported} V1 requests imported; {len(references) - imported} already present.")
     else:
         serve(app)
 
