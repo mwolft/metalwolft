@@ -177,16 +177,48 @@ def ensure_schema(app, db, *, create):
     config.set_main_option("script_location", str(ROOT / "src" / "migrations"))
     head = ScriptDirectory.from_config(config).get_current_head()
     with app.app_context():
-        tables = set(inspect(db.engine).get_table_names())
-        if not tables and create:
-            db.create_all()
-            stamp(directory=str(ROOT / "src" / "migrations"), revision=head)
+        inspector = inspect(db.engine)
+        tables = set(inspector.get_table_names())
+        expected = set(db.metadata.tables)
+        if tables - expected - {"alembic_version"}:
+            raise RuntimeError("Demo database contains unexpected tables; refusing to modify it.")
+        if "alembic_version" in tables:
+            revision = db.session.execute(text("SELECT version_num FROM alembic_version")).scalar_one_or_none()
+            db.session.rollback()
+            if revision is not None and revision != head:
+                raise RuntimeError("Demo schema revision differs from the single repository head.")
+            if revision == head and not expected.issubset(tables):
+                raise RuntimeError("Stamped demo schema is incomplete; refusing automatic repair.")
+        else:
+            revision = None
+        if revision is None and create:
+            # A failed create_all can leave an unstamped subset. Repair only an empty,
+            # structurally recognizable schema in the dedicated local database.
+            for name in tables - {"alembic_version"}:
+                model_columns = {column.name for column in db.metadata.tables[name].columns}
+                actual_columns = {column["name"] for column in inspector.get_columns(name)}
+                if actual_columns != model_columns:
+                    raise RuntimeError("Partial demo schema differs from current models; refusing repair.")
+                quoted = db.engine.dialect.identifier_preparer.quote(name)
+                if db.session.execute(text(f"SELECT 1 FROM {quoted} LIMIT 1")).first():
+                    raise RuntimeError("Unstamped demo database contains data; refusing repair.")
+            db.session.rollback()
+            constraint = next(c for c in db.metadata.tables["supplier_invoices"].constraints
+                              if c.name == "ck_supplier_invoices_legacy_expense_classification_audit_complete")
+            original_name = constraint.name
+            try:
+                constraint.name = "ck_supplier_invoices_legacy_expense_audit_complete"
+                db.create_all()
+            finally:
+                constraint.name = original_name
             tables = set(inspect(db.engine).get_table_names())
-        if "alembic_version" not in tables or "design_deliverables" not in tables:
-            raise RuntimeError("Existing demo schema is incomplete; no automatic repair was attempted.")
-        revision = db.session.execute(text("SELECT version_num FROM alembic_version")).scalar_one()
-        if revision != head:
-            raise RuntimeError("Demo schema revision differs from the single repository head.")
+            if not expected.issubset(tables):
+                raise RuntimeError("Synthetic schema creation was incomplete; refusing to stamp.")
+            stamp(directory=str(ROOT / "src" / "migrations"), revision=head)
+        elif revision is None:
+            raise RuntimeError("Existing demo schema is incomplete; run prepare first.")
+        if "design_deliverables" not in set(inspect(db.engine).get_table_names()):
+            raise RuntimeError("Demo schema lacks design deliverables.")
     print("PASS: local synthetic schema matches the Alembic head.")
 
 

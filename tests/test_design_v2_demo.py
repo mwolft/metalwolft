@@ -52,6 +52,56 @@ class DesignV2DemoSafetyTest(unittest.TestCase):
                 storage.delete_object(storage_key="design-results/demo/file.glb")
                 self.assertFalse((Path(directory) / "objects/design-results/demo/file.glb").exists())
 
+    def test_prepare_recovers_empty_partial_schema_and_is_repeatable(self):
+        from flask import Flask
+        from flask_migrate import Migrate
+        from api.models import db
+        from sqlalchemy import inspect
+
+        with tempfile.TemporaryDirectory() as directory:
+            app = Flask(__name__)
+            app.config.update(
+                SQLALCHEMY_DATABASE_URI="sqlite:///" + str(Path(directory) / "demo.sqlite").replace("\\", "/"),
+                SQLALCHEMY_TRACK_MODIFICATIONS=False,
+            )
+            db.init_app(app)
+            Migrate(app, db)
+            with app.app_context():
+                db.engine.dialect.max_identifier_length = 63
+                db.metadata.tables["users"].create(db.engine)
+                self.assertEqual(set(inspect(db.engine).get_table_names()), {"users"})
+            design_v2_demo.ensure_schema(app, db, create=True)
+            design_v2_demo.ensure_schema(app, db, create=True)
+            access = {"customer_email": "demo@example.test", "customer_password": "synthetic-pass"}
+            design_v2_demo.seed_demo(app, db, access)
+            design_v2_demo.seed_demo(app, db, access)
+            design_v2_demo.ensure_schema(app, db, create=True)
+            with app.app_context():
+                self.assertIn("design_deliverables", inspect(db.engine).get_table_names())
+
+    def test_prepare_refuses_unstamped_partial_schema_with_data(self):
+        from flask import Flask
+        from flask_migrate import Migrate
+        from api.models import db, Users
+        from sqlalchemy import inspect
+
+        with tempfile.TemporaryDirectory() as directory:
+            app = Flask(__name__)
+            app.config.update(
+                SQLALCHEMY_DATABASE_URI="sqlite:///" + str(Path(directory) / "partial.sqlite").replace("\\", "/"),
+                SQLALCHEMY_TRACK_MODIFICATIONS=False,
+            )
+            db.init_app(app)
+            Migrate(app, db)
+            with app.app_context():
+                db.metadata.tables["users"].create(db.engine)
+                db.session.add(Users(email="synthetic@example.test", password="synthetic"))
+                db.session.commit()
+            with self.assertRaisesRegex(RuntimeError, "contains data"):
+                design_v2_demo.ensure_schema(app, db, create=True)
+            with app.app_context():
+                self.assertEqual(set(inspect(db.engine).get_table_names()), {"users"})
+
 
 if __name__ == "__main__":
     unittest.main()
