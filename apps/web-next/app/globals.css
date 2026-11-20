@@ -6695,3 +6695,30 @@ a.mw-product-version-nav__option:focus-visible {
     width: 100%;
   }
 }
+.mw-design-purchase {
+  display: grid;
+  gap: 0.65rem;
+  margin-top: 1.25rem;
+  padding: 1.25rem;
+  border-radius: 1rem;
+  background: #fff4f5;
+}
+
+.mw-design-purchase h5,
+.mw-design-purchase p {
+  margin: 0;
+}
+
+.mw-design-purchase .mw-button {
+  justify-self: start;
+}
+
+.mw-design-purchase small {
+  color: #64616a;
+}
+
+@media (max-width: 600px) {
+  .mw-design-purchase .mw-button {
+    width: 100%;
+  }
+}

@@ -817,6 +817,10 @@ class CustomerOrdersEndpointTest(unittest.TestCase):
             f"/api/customer/orders/{order_id}", headers=self._auth(self.user_a_token)
         ).get_json()["order"]
         self.assertEqual(detail["design_delivery"]["message"], "Tu diseño está listo")
+        purchase = detail["design_purchase_items"][0]
+        self.assertEqual((purchase["height_cm"], purchase["width_cm"]), ("122", "105"))
+        self.assertTrue(purchase["product"]["available_for_sale"])
+        self.assertNotIn("storage_key", purchase)
         files = detail["design_delivery"]["items"][0]["files"]
         self.assertEqual(files[0]["id"], deliverable_id)
         self.assertNotIn("storage_key", files[0])
@@ -842,6 +846,48 @@ class CustomerOrdersEndpointTest(unittest.TestCase):
         self.assertEqual(
             self.client.get(file_path, headers=self._auth(self.user_a_token)).status_code, 404
         )
+
+    def test_design_purchase_only_for_delivered_request_and_available_product(self):
+        with self.app.app_context():
+            order = self._create_design_order()
+            order_id = order.id
+        path = f"/api/customer/orders/{order_id}"
+        pending = self.client.get(path, headers=self._auth(self.user_a_token)).get_json()["order"]
+        self.assertNotIn("design_purchase_items", pending)
+        with self.app.app_context():
+            request = db.session.get(Orders, order_id).design_request
+            request.status = DesignRequest.STATUS_DELIVERED
+            db.session.commit()
+        delivered = self.client.get(path, headers=self._auth(self.user_a_token)).get_json()["order"]
+        self.assertEqual(len(delivered["design_purchase_items"]), 1)
+        self.assertNotIn("design_delivery", delivered)
+        with self.app.app_context():
+            product = db.session.get(Products, self.product_id)
+            product.available_for_sale = False
+            db.session.commit()
+        unavailable = self.client.get(path, headers=self._auth(self.user_a_token)).get_json()["order"]
+        self.assertFalse(unavailable["design_purchase_items"][0]["product"]["available_for_sale"])
+
+    def test_two_delivered_designs_keep_distinct_dimensions(self):
+        with self.app.app_context():
+            order = self._create_design_order()
+            order_id = order.id
+            request = order.design_request
+            request.status = DesignRequest.STATUS_DELIVERED
+            product = db.session.get(Products, self.product_id)
+            db.session.add(DesignRequestItem(
+                design_request_id=request.id,
+                product_id=product.id,
+                product_name=product.nombre,
+                width_cm=160,
+                height_cm=90,
+            ))
+            db.session.commit()
+        detail = self.client.get(
+            f"/api/customer/orders/{order_id}", headers=self._auth(self.user_a_token)
+        ).get_json()["order"]
+        dimensions = {(item["height_cm"], item["width_cm"]) for item in detail["design_purchase_items"]}
+        self.assertEqual(dimensions, {("122", "105"), ("90", "160")})
 
     def test_design_result_download_hides_foreign_pending_and_missing_private_objects(self):
         with self.app.app_context():

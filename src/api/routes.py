@@ -3871,6 +3871,7 @@ def get_customer_order_detail(order_id):
         .options(
             joinedload(Orders.order_details).joinedload(OrderDetails.product),
             joinedload(Orders.design_request).selectinload(DesignRequest.items).selectinload(DesignRequestItem.deliverables),
+            joinedload(Orders.design_request).selectinload(DesignRequest.items).joinedload(DesignRequestItem.product).joinedload(Products.categoria),
         )
         .filter(Orders.id == order_id, Orders.user_id == customer_id)
         .first()

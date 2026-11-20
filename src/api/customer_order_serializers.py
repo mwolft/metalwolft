@@ -89,7 +89,25 @@ def serialize_customer_order_detail(order, invoice=None, *, invoice_pdf_availabl
     is_design_service_only = _order_line_type(order) == DESIGN_SERVICE_LINE_TYPE
     design_request = getattr(order, "design_request", None) if is_design_service_only else None
     delivery = None
+    purchase_items = None
     if design_request and design_request.status == design_request.STATUS_DELIVERED:
+        purchase_items = [
+            {
+                "id": item.id,
+                "product_name": item.product_name,
+                "height_cm": _format_optional_number(item.height_cm),
+                "width_cm": _format_optional_number(item.width_cm),
+                "product": (
+                    {
+                        "category_slug": item.product.categoria.slug,
+                        "slug": item.product.slug,
+                        "available_for_sale": bool(item.product.published and item.product.available_for_sale),
+                    }
+                    if item.product and item.product.categoria else None
+                ),
+            }
+            for item in design_request.items
+        ]
         items = [
             {
                 "id": item.id,
@@ -114,6 +132,7 @@ def serialize_customer_order_detail(order, invoice=None, *, invoice_pdf_availabl
         **serialize_customer_order_summary(order),
         "shipping_address": None if is_design_service_only else _serialize_shipping_address(order.order_details),
         **({"design_delivery": delivery} if delivery is not None else {}),
+        **({"design_purchase_items": purchase_items} if purchase_items is not None else {}),
         "lines": [
             _serialize_customer_order_line(detail)
             for detail in sorted(order.order_details, key=lambda item: item.id or 0)

@@ -43,6 +43,18 @@ export type CustomerDesignDelivery = {
   }[];
 };
 
+export type CustomerDesignPurchaseItem = {
+  id: number;
+  product_name: string;
+  height_cm: string | null;
+  width_cm: string | null;
+  product: {
+    category_slug: string;
+    slug: string;
+    available_for_sale: boolean;
+  } | null;
+};
+
 export type CustomerPhysicalOrderSummary = CustomerOrderCommon & {
   order_type: "physical";
   design_service: null;
@@ -122,6 +134,7 @@ export type CustomerDesignServiceOrderDetail = CustomerDesignServiceOrderSummary
   lines: CustomerDesignServiceOrderLine[];
   invoice: CustomerOrderInvoice;
   design_delivery?: CustomerDesignDelivery | null;
+  design_purchase_items?: CustomerDesignPurchaseItem[];
 };
 
 export type CustomerOrderDetail = CustomerPhysicalOrderDetail | CustomerDesignServiceOrderDetail;
@@ -303,8 +316,19 @@ function isCustomerOrderDetail(value: unknown): value is CustomerOrderDetail {
   return (
     fields.shipping_address === null &&
     lines.every(isCustomerDesignServiceOrderLine) &&
-    (fields.design_delivery === undefined || fields.design_delivery === null || isCustomerDesignDelivery(fields.design_delivery))
+    (fields.design_delivery === undefined || fields.design_delivery === null || isCustomerDesignDelivery(fields.design_delivery)) &&
+    (fields.design_purchase_items === undefined || (
+      Array.isArray(fields.design_purchase_items) && fields.design_purchase_items.every(isCustomerDesignPurchaseItem)
+    ))
   );
+}
+
+function isCustomerDesignPurchaseItem(value: unknown): value is CustomerDesignPurchaseItem {
+  if (!isRecord(value) || typeof value.id !== "number" || typeof value.product_name !== "string" ||
+      !isNullableString(value.height_cm) || !isNullableString(value.width_cm)) return false;
+  return value.product === null || (isRecord(value.product) &&
+    typeof value.product.category_slug === "string" && typeof value.product.slug === "string" &&
+    typeof value.product.available_for_sale === "boolean");
 }
 
 function isCustomerDesignDelivery(value: unknown): value is CustomerDesignDelivery {

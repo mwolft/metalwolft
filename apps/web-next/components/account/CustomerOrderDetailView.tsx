@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { useAuthSession } from "@/hooks/useAuthSession";
 import { DesignDeliveryView } from "@/components/account/DesignDeliveryView";
+import { DesignPurchaseCard } from "@/components/account/DesignPurchaseCard";
 import { clearSession, getToken } from "@/lib/auth-client";
 import {
   CustomerOrdersClientError,
@@ -308,6 +309,7 @@ export function CustomerOrderDetailView({ orderId }: { orderId: number }) {
   const shippingAddress = order.order_type === "physical" ? order.shipping_address : null;
   const designService = order.order_type === "design_service" ? order.design_service : null;
   const designDelivery = order.order_type === "design_service" ? order.design_delivery : null;
+  const designPurchaseItems = order.order_type === "design_service" ? order.design_purchase_items ?? [] : [];
   const hasShippingAddress = shippingAddress !== null && (
     hasText(shippingAddress.recipient) ||
     hasText(shippingAddress.address) ||
@@ -473,7 +475,12 @@ export function CustomerOrderDetailView({ orderId }: { orderId: number }) {
         </section>
       ) : null}
 
-      {designDelivery ? <DesignDeliveryView orderId={orderId} delivery={designDelivery} onSessionExpired={redirectToLogin} /> : null}
+      {designDelivery ? <DesignDeliveryView orderId={orderId} delivery={designDelivery} purchaseItems={designPurchaseItems} onSessionExpired={redirectToLogin} /> : null}
+      {isDesignService && !designDelivery && designPurchaseItems.length ? (
+        <section className="mw-account-card" aria-label="Continuar con tu diseño">
+          {designPurchaseItems.map((item) => <div key={item.id}><h3>{item.product_name}</h3><DesignPurchaseCard item={item} /></div>)}
+        </section>
+      ) : null}
 
       <section className="mw-account-card" aria-labelledby="customer-order-invoice-title">
         <div className="mw-account-section-heading">

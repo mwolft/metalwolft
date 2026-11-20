@@ -61,6 +61,7 @@ import {
   type DesignServiceQuote
 } from "@/lib/design-service-client";
 import { buildDesignServiceSeedHref } from "@/lib/design-service-seed";
+import { consumeDesignPurchaseSeed } from "@/lib/design-purchase-seed";
 import { pushGtmEvent } from "@/lib/analytics";
 
 type ProductConfiguratorProps = {
@@ -566,6 +567,17 @@ export function ProductConfigurator({
   ]);
 
   useEffect(() => {
+    if (new URLSearchParams(window.location.search).get("desde_diseno") === "1") {
+      const seed = consumeDesignPurchaseSeed(categorySlug, productSlug);
+      if (seed) {
+        setHeight(seed.heightCm);
+        setWidth(seed.widthCm);
+        setCalculatedQuote(null);
+        setNeedsRecalculation(true);
+        setCartFeedback("Medidas de tu diseño cargadas. Elige el acabado y revisa el precio actual.");
+      }
+      return;
+    }
     const pendingConfig = readPendingProductConfig(productId, categorySlug, productSlug);
     if (!pendingConfig) {
       return;

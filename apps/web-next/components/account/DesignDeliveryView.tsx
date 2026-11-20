@@ -2,19 +2,23 @@
 
 import { useEffect, useState } from "react";
 import { ModernGrilleViewerLoader } from "@/components/visualization/ModernGrilleViewerLoader";
+import { DesignPurchaseCard } from "@/components/account/DesignPurchaseCard";
 import { getToken } from "@/lib/auth-client";
 import {
   fetchCustomerDesignFile,
   isCustomerOrdersSessionError,
   type CustomerDesignDelivery,
-  type CustomerDesignFile
+  type CustomerDesignFile,
+  type CustomerDesignPurchaseItem
 } from "@/lib/customer-orders-client";
 
 type Props = {
   orderId: number;
   delivery: CustomerDesignDelivery;
+  purchaseItems: CustomerDesignPurchaseItem[];
   onSessionExpired: () => void;
 };
+type FileProps = Pick<Props, "orderId" | "onSessionExpired">;
 
 function usePrivateFile(orderId: number, file: CustomerDesignFile, onSessionExpired: () => void) {
   const [url, setUrl] = useState<string | null>(null);
@@ -46,14 +50,14 @@ function usePrivateFile(orderId: number, file: CustomerDesignFile, onSessionExpi
   return { url, error };
 }
 
-function PrivateModel({ orderId, file, label, onSessionExpired }: Props & { file: CustomerDesignFile; label: string }) {
+function PrivateModel({ orderId, file, label, onSessionExpired }: FileProps & { file: CustomerDesignFile; label: string }) {
   const { url, error } = usePrivateFile(orderId, file, onSessionExpired);
   if (error) return <p role="alert">No se pudo cargar el modelo 3D. Puedes descargar los archivos.</p>;
   if (!url) return <p role="status">Preparando el modelo 3D…</p>;
   return <ModernGrilleViewerLoader key={url} modelUrl={url} label={label} />;
 }
 
-function PrivateImage({ orderId, file, onSessionExpired, onEnlarge, onDownload }: Props & {
+function PrivateImage({ orderId, file, onSessionExpired, onEnlarge, onDownload }: FileProps & {
   file: CustomerDesignFile;
   onEnlarge: (url: string, label: string) => void;
   onDownload: (file: CustomerDesignFile) => void;
@@ -72,7 +76,7 @@ function PrivateImage({ orderId, file, onSessionExpired, onEnlarge, onDownload }
   );
 }
 
-export function DesignDeliveryView({ orderId, delivery, onSessionExpired }: Props) {
+export function DesignDeliveryView({ orderId, delivery, purchaseItems, onSessionExpired }: Props) {
   const [activeModelId, setActiveModelId] = useState<number | null>(null);
   const [preview, setPreview] = useState<{ url: string; label: string } | null>(null);
   const [downloadError, setDownloadError] = useState<string | null>(null);
@@ -122,6 +126,7 @@ export function DesignDeliveryView({ orderId, delivery, onSessionExpired }: Prop
         const model = item.files.find((file) => file.kind === "glb");
         const images = item.files.filter((file) => file.kind === "image");
         const documents = item.files.filter((file) => file.kind === "pdf");
+        const purchaseItem = purchaseItems.find((candidate) => candidate.id === item.id);
         return (
           <article className="mw-design-delivery__item" key={item.id}>
             <h4>{item.product_name}</h4>
@@ -131,14 +136,14 @@ export function DesignDeliveryView({ orderId, delivery, onSessionExpired }: Prop
                 <button className="mw-button mw-button--secondary" type="button" onClick={() => setActiveModelId(activeModelId === model.id ? null : model.id)}>
                   {activeModelId === model.id ? "Cerrar vista 3D" : "Ver diseño en 3D"}
                 </button>
-                {activeModelId === model.id ? <PrivateModel orderId={orderId} delivery={delivery} file={model} label={`Modelo 3D de ${item.product_name}`} onSessionExpired={onSessionExpired} /> : null}
+                {activeModelId === model.id ? <PrivateModel orderId={orderId} file={model} label={`Modelo 3D de ${item.product_name}`} onSessionExpired={onSessionExpired} /> : null}
               </div>
             ) : null}
             {images.length ? (
               <div className="mw-design-delivery__media">
                 <h5>Imágenes</h5>
                 <div className="mw-design-delivery__gallery">
-                  {images.map((file) => <PrivateImage key={file.id} orderId={orderId} delivery={delivery} file={file} onSessionExpired={onSessionExpired} onEnlarge={(url, label) => setPreview({ url, label })} onDownload={download} />)}
+                  {images.map((file) => <PrivateImage key={file.id} orderId={orderId} file={file} onSessionExpired={onSessionExpired} onEnlarge={(url, label) => setPreview({ url, label })} onDownload={download} />)}
                 </div>
               </div>
             ) : null}
@@ -150,6 +155,7 @@ export function DesignDeliveryView({ orderId, delivery, onSessionExpired }: Prop
                 </ul>
               </div>
             ) : null}
+            {purchaseItem ? <DesignPurchaseCard item={purchaseItem} /> : null}
           </article>
         );
       })}
