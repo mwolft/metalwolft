@@ -23,6 +23,8 @@ Omit --result for a paid request not yet delivered. Repeat --reference and
 from __future__ import annotations
 
 import argparse
+import base64
+import hmac
 import ipaddress
 import json
 import os
@@ -30,6 +32,7 @@ import secrets
 import socket
 import subprocess
 import sys
+import time
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -325,8 +328,84 @@ def serve(app):
     for module in (admin_module, result_module, routes_module):
         module.get_private_object_storage = lambda _app: storage
     email_module.send_email = lambda **_kwargs: False
+    enable_demo_admin_browser_login(app, load_or_create_access(create=False))
     print("PASS: private files use local demo storage; email delivery is suppressed.")
     app.run(host="0.0.0.0", port=3001, debug=False, use_reloader=False)
+
+
+def enable_demo_admin_browser_login(app, access):
+    """Bridge browser sessions to existing Basic Auth only in the demo server."""
+    from datetime import timedelta
+    from flask import make_response, redirect, render_template_string, request, session
+
+    app.config.update(
+        SESSION_COOKIE_SECURE=True,
+        SESSION_COOKIE_HTTPONLY=True,
+        SESSION_COOKIE_SAMESITE="Lax",
+        PERMANENT_SESSION_LIFETIME=timedelta(hours=1),
+    )
+    browser_token = secrets.token_urlsafe(32)
+    failed_attempts = []
+    login_form = """<!doctype html><html lang="es"><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Acceso a la demo</title><body style="font:16px sans-serif;max-width:25rem;margin:4rem auto;padding:1rem">
+<h1>Administrador de demostración</h1><p>{{ message }}</p>
+<form method="post" action="/demo-admin-login">
+<input type="hidden" name="csrf" value="{{ csrf }}">
+<label>Usuario <input name="username" required autocomplete="username"></label><br><br>
+<label>Contraseña <input type="password" name="password" required autocomplete="current-password"></label><br><br>
+<button type="submit">Acceder</button></form></body></html>"""
+
+    def authenticated():
+        token = session.get("demo_admin_session")
+        return isinstance(token, str) and hmac.compare_digest(token, browser_token)
+
+    @app.route("/demo-admin-login", methods=["GET", "POST"])
+    def demo_admin_login():
+        now = time.monotonic()
+        failed_attempts[:] = [attempt for attempt in failed_attempts if now - attempt < 900]
+        message = "Introduce las credenciales creadas por la demo."
+        status = 200
+        if request.method == "POST":
+            csrf = session.get("demo_admin_csrf")
+            if not isinstance(csrf, str) or not hmac.compare_digest(request.form.get("csrf", ""), csrf):
+                status, message = 403, "Formulario caducado; vuelve a intentarlo."
+            elif len(failed_attempts) >= 5:
+                status, message = 429, "Demasiados intentos. Espera 15 minutos."
+            else:
+                username = request.form.get("username", "")
+                password = request.form.get("password", "")
+                if (hmac.compare_digest(username.encode("utf-8"), access["admin_user"].encode("utf-8"))
+                        and hmac.compare_digest(password.encode("utf-8"), access["admin_password"].encode("utf-8"))):
+                    session.clear()
+                    session.permanent = True
+                    session["demo_admin_session"] = browser_token
+                    response = redirect("/admin/", code=303)
+                    response.headers["Cache-Control"] = "no-store"
+                    return response
+                failed_attempts.append(now)
+                status, message = 401, "Credenciales incorrectas."
+        if not session.get("demo_admin_csrf"):
+            session["demo_admin_csrf"] = secrets.token_urlsafe(32)
+        response = make_response(render_template_string(login_form, csrf=session["demo_admin_csrf"], message=message), status)
+        response.headers["Cache-Control"] = "no-store"
+        response.headers["Referrer-Policy"] = "no-referrer"
+        return response
+
+    @app.before_request
+    def demo_admin_auth_bridge():
+        if not request.path.startswith("/admin/"):
+            return None
+        if authenticated():
+            credentials = f"{access['admin_user']}:{access['admin_password']}".encode("utf-8")
+            request.environ["HTTP_AUTHORIZATION"] = "Basic " + base64.b64encode(credentials).decode("ascii")
+            return None
+        basic_auth = request.authorization
+        if (basic_auth and basic_auth.type.lower() == "basic"
+                and hmac.compare_digest((basic_auth.username or "").encode("utf-8"), access["admin_user"].encode("utf-8"))
+                and hmac.compare_digest((basic_auth.password or "").encode("utf-8"), access["admin_password"].encode("utf-8"))):
+            return None
+        return redirect("/demo-admin-login")
 
 
 def main():

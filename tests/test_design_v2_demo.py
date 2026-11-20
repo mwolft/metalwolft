@@ -1,4 +1,5 @@
 import os
+import re
 import tempfile
 import unittest
 from pathlib import Path
@@ -101,6 +102,56 @@ class DesignV2DemoSafetyTest(unittest.TestCase):
                 design_v2_demo.ensure_schema(app, db, create=True)
             with app.app_context():
                 self.assertEqual(set(inspect(db.engine).get_table_names()), {"users"})
+
+    def test_demo_browser_login_preserves_admin_authentication(self):
+        from flask import Flask, request
+
+        app = Flask(__name__)
+        app.secret_key = "test-only-demo-secret"
+        access = {"admin_user": "demo-admin", "admin_password": "synthetic-password"}
+        design_v2_demo.enable_demo_admin_browser_login(app, access)
+
+        @app.get("/admin/")
+        def admin_index():
+            auth = request.authorization
+            return ("admin", 200) if auth and auth.username == access["admin_user"] and auth.password == access["admin_password"] else ("denied", 401)
+
+        @app.get("/api/demo-check")
+        def ordinary_api():
+            return "auth" if request.authorization else "no-auth"
+
+        client = app.test_client()
+        self.assertEqual(client.get("/admin/", base_url="https://demo.example.test").status_code, 302)
+        page = client.get("/demo-admin-login", base_url="https://demo.example.test")
+        self.assertEqual(page.status_code, 200)
+        csrf = re.search(rb'name="csrf" value="([^"]+)"', page.data).group(1).decode("ascii")
+        self.assertEqual(client.post("/demo-admin-login", data={"username": "demo-admin", "password": "synthetic-password"}, base_url="https://demo.example.test").status_code, 403)
+        wrong = client.post("/demo-admin-login", data={"csrf": csrf, "username": "demo-admin", "password": "wrong"}, base_url="https://demo.example.test")
+        self.assertEqual(wrong.status_code, 401)
+        self.assertEqual(client.get("/admin/", base_url="https://demo.example.test").status_code, 302)
+        valid = client.post("/demo-admin-login", data={"csrf": csrf, **{"username": access["admin_user"], "password": access["admin_password"]}}, base_url="https://demo.example.test")
+        self.assertEqual((valid.status_code, valid.location), (303, "/admin/"))
+        self.assertEqual(client.get("/admin/", base_url="https://demo.example.test").status_code, 200)
+        self.assertEqual(client.get("/api/demo-check", base_url="https://demo.example.test").data, b"no-auth")
+        other_client = app.test_client()
+        self.assertEqual(other_client.get("/admin/", headers={"Authorization": "Basic ZGVtby1hZG1pbjpzeW50aGV0aWMtcGFzc3dvcmQ="}, base_url="https://demo.example.test").status_code, 200)
+        self.assertEqual(other_client.get("/admin/", headers={"Authorization": "Basic aW52YWxpZDppbnZhbGlk"}, base_url="https://demo.example.test").status_code, 302)
+
+    def test_demo_browser_login_limits_failed_attempts(self):
+        from flask import Flask
+
+        app = Flask(__name__)
+        app.secret_key = "test-only-demo-secret"
+        design_v2_demo.enable_demo_admin_browser_login(
+            app, {"admin_user": "demo-admin", "admin_password": "synthetic-password"}
+        )
+        client = app.test_client()
+        page = client.get("/demo-admin-login", base_url="https://demo.example.test")
+        csrf = re.search(rb'name="csrf" value="([^"]+)"', page.data).group(1).decode("ascii")
+        data = {"csrf": csrf, "username": "demo-admin", "password": "wrong"}
+        for _ in range(5):
+            self.assertEqual(client.post("/demo-admin-login", data=data, base_url="https://demo.example.test").status_code, 401)
+        self.assertEqual(client.post("/demo-admin-login", data=data, base_url="https://demo.example.test").status_code, 429)
 
 
 if __name__ == "__main__":
