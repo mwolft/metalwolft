@@ -14,7 +14,7 @@ const sitemap = fs.readFileSync(path.join(root, "app/sitemap.ts"), "utf8");
 assert.match(page, /path: "\/diseno-previo"/);
 assert.match(page, /parseDesignServiceSeed/);
 assert.match(page, /resumeDraftAfterAuth/);
-assert.match(page, /Visualiza tu reja antes de encargarla/);
+assert.match(page, /Mira las proporciones de tu reja antes de encargarla/);
 assert.match(page, /parseDesignServiceOrigin/);
 assert.match(page, /resolveDesignServiceReturnNavigation/);
 assert.match(page, /explicitOrigin,/);

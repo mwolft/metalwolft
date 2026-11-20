@@ -15,7 +15,7 @@ const designServiceBlock = home.slice(designServiceIndex, howItWorksIndex);
 assert.ok(featuredModelsIndex >= 0 && designServiceIndex > featuredModelsIndex);
 assert.ok(howItWorksIndex > designServiceIndex);
 assert.match(designServiceBlock, /Diseño previo a medida/);
-assert.match(designServiceBlock, /Visualiza tu reja antes de encargarla/);
+assert.match(designServiceBlock, /Mira las proporciones de tu reja antes de encargarla/);
 assert.match(designServiceBlock, /Preparar mi diseño/);
 assert.match(designServiceBlock, /href="\/diseno-previo"/);
 assert.match(designServiceBlock, /No es un plano técnico ni una simulación exacta de la instalación\./);

@@ -13,7 +13,7 @@ assert.match(cartView, /product_slug: item\.slug/);
 assert.match(cartView, /width_cm: item\.ancho/);
 assert.match(cartView, /height_cm: item\.alto/);
 assert.match(cartView, /\}, "cart"\);/);
-assert.match(cartView, /¿Quieres verla antes de encargarla\?/);
+assert.match(cartView, /¿Quieres ver sus proporciones antes de encargarla\?/);
 assert.match(cartView, /Diseño previo \{designPreviewDimensions\}/);
 assert.match(cartView, /Preparar diseño previo/);
 assert.match(cartView, /mw-cart-design-preview__separator/);

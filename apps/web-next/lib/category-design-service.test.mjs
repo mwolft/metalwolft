@@ -8,17 +8,17 @@ const [category, styles, marketing, productCard] = await Promise.all([
   readFile(new URL("../components/product/ProductCard.tsx", import.meta.url), "utf8")
 ]);
 
-const catalogStart = category.indexOf('<div className="mw-product-grid">');
-const catalogEnd = category.indexOf("</section>", catalogStart);
+const catalogStart = category.indexOf("<CatalogTypeFilter>");
+const catalogEnd = category.indexOf("</CatalogTypeFilter>", catalogStart);
 const catalogBlock = category.slice(catalogStart, catalogEnd);
 
 assert.ok(catalogStart >= 0 && catalogEnd > catalogStart);
 assert.match(catalogBlock, /data\.products\.map\(\(product, index\)/);
 assert.match(catalogBlock, /index === 5/);
 assert.equal((catalogBlock.match(/className="mw-category-design-service"/g) || []).length, 1);
-assert.match(catalogBlock, /Comparar con diseño previo/);
+assert.match(catalogBlock, /Preparar diseño previo/);
 assert.match(catalogBlock, /href="\/diseno-previo"/);
-assert.match(catalogBlock, /¿Dudas entre varios modelos\?/);
+assert.match(catalogBlock, /Te mostramos cómo se repartirán los barrotes y espacios/);
 assert.match(catalogBlock, /Descuento al añadir varios diseños/);
 assert.doesNotMatch(catalogBlock, /producto=|ancho=|alto=|anclaje|color|torniller[ií]a|price=/i);
 assert.match(category, /DESIGN_SERVICE_MARKETING/);
