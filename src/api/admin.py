@@ -1293,6 +1293,7 @@ class DesignRequestAdminView(SafeModelView):
                     "La entrega se cierra exclusivamente desde SUBIR RESULTADO."
                 )
             try:
+                model.status = previous_status
                 transition_design_request_status(design_request=model, new_status=new_status)
             except DesignServiceValidationError as exc:
                 raise ValueError(str(exc)) from exc

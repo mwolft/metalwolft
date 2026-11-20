@@ -166,6 +166,48 @@ class FlaskAdminDesignResultTest(unittest.TestCase):
                 return rule.rule.replace("<int:design_request_id>", str(self.request_id))
         raise AssertionError("The design result upload route was not registered.")
 
+    def _edit_status(self, initial_status, submitted_status):
+        with self.app.app_context():
+            design_request = db.session.get(DesignRequest, self.request_id)
+            design_request.status = initial_status
+            db.session.commit()
+        with self.app.test_request_context():
+            edit_url = self.view.get_url(f"{self.view.endpoint}.edit_view", id=self.request_id)
+        response = self.client.post(
+            edit_url,
+            data={"status": submitted_status},
+            headers=self._auth_header(),
+            follow_redirects=True,
+        )
+        with self.app.app_context():
+            db.session.expire_all()
+            persisted_status = db.session.get(DesignRequest, self.request_id).status
+        return response, persisted_status
+
+    def test_admin_edit_starts_pending_request(self):
+        response, status = self._edit_status(DesignRequest.STATUS_PENDING, DesignRequest.STATUS_IN_PROGRESS)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(status, DesignRequest.STATUS_IN_PROGRESS)
+        self.assertNotIn(b"Failed to update record", response.data)
+
+    def test_admin_edit_rejects_unpaid_request_without_persisting(self):
+        response, status = self._edit_status(DesignRequest.STATUS_PENDING_PAYMENT, DesignRequest.STATUS_IN_PROGRESS)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(status, DesignRequest.STATUS_PENDING_PAYMENT)
+        self.assertIn(b"Failed to update record", response.data)
+
+    def test_admin_edit_allows_unchanged_status(self):
+        response, status = self._edit_status(DesignRequest.STATUS_PENDING, DesignRequest.STATUS_PENDING)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(status, DesignRequest.STATUS_PENDING)
+        self.assertNotIn(b"Failed to update record", response.data)
+
+    def test_admin_edit_cannot_deliver_without_upload(self):
+        response, status = self._edit_status(DesignRequest.STATUS_IN_PROGRESS, DesignRequest.STATUS_DELIVERED)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(status, DesignRequest.STATUS_IN_PROGRESS)
+        self.assertIn(b"SUBIR RESULTADO", response.data)
+
     def _upload_form(self):
         response = self.client.get(self._upload_url(), headers=self._auth_header())
         self.assertEqual(response.status_code, 200)
