@@ -1,6 +1,6 @@
 from flask import request, jsonify, Blueprint, send_file, send_from_directory, current_app, abort, Response
 from flask_jwt_extended import jwt_required
-from api.models import db, Users, ExternalIdentity, Products, ProductImages, Categories, Subcategories, Orders, CheckoutSessions, OrderDetails, Favorites, Cart, Posts, Comments, Invoices, DeliveryEstimateConfig, AccountingEntry, DesignRequest
+from api.models import db, Users, ExternalIdentity, Products, ProductImages, Categories, Subcategories, Orders, CheckoutSessions, OrderDetails, Favorites, Cart, Posts, Comments, Invoices, DeliveryEstimateConfig, AccountingEntry, DesignRequest, DesignRequestItem, DesignDeliverable
 from api.utils import (
     DEFAULT_CONFIGURATOR_SCREW_OPTION,
     build_configured_reja_quote,
@@ -3870,7 +3870,7 @@ def get_customer_order_detail(order_id):
         Orders.query
         .options(
             joinedload(Orders.order_details).joinedload(OrderDetails.product),
-            joinedload(Orders.design_request),
+            joinedload(Orders.design_request).selectinload(DesignRequest.items).selectinload(DesignRequestItem.deliverables),
         )
         .filter(Orders.id == order_id, Orders.user_id == customer_id)
         .first()
@@ -3935,6 +3935,43 @@ def download_customer_order_invoice(order_id):
             order_id,
         )
         return jsonify({"message": "No se ha podido descargar la factura."}), 500
+
+
+@api.route('/customer/orders/<int:order_id>/design-files/<int:file_id>', methods=['GET'])
+@jwt_required()
+def download_customer_design_file(order_id, file_id):
+    customer_id = _get_authenticated_customer_id()
+    if customer_id is None:
+        return jsonify({"message": "Invalid customer session"}), 401
+    file = (
+        db.session.query(DesignDeliverable)
+        .join(DesignRequestItem, DesignDeliverable.design_request_item_id == DesignRequestItem.id)
+        .join(DesignRequest, DesignRequestItem.design_request_id == DesignRequest.id)
+        .join(Orders, DesignRequest.order_id == Orders.id)
+        .filter(
+            DesignDeliverable.id == file_id,
+            DesignDeliverable.active.is_(True),
+            DesignRequest.status == DesignRequest.STATUS_DELIVERED,
+            Orders.id == order_id,
+            Orders.user_id == customer_id,
+            DesignRequest.user_id == customer_id,
+        )
+        .one_or_none()
+    )
+    if file is None:
+        return jsonify({"message": "Design file not found"}), 404
+    try:
+        content = get_private_object_storage(current_app).get_object(storage_key=file.storage_key)
+    except (PrivateObjectStorageConfigurationError, PrivateObjectStorageOperationError):
+        current_app.logger.warning("Private design file unavailable file_id=%s", file_id)
+        return jsonify({"message": "Design file not found"}), 404
+    response = send_file(
+        BytesIO(content), mimetype=file.mime_type, as_attachment=True,
+        download_name=file.filename, max_age=0,
+    )
+    response.headers["Cache-Control"] = "no-store"
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    return response
 
 
 @api.route('/customer/orders/<int:order_id>/design-result', methods=['GET'])

@@ -25,6 +25,24 @@ export type CustomerOrderDesignService = {
   result_available: boolean;
 };
 
+export type CustomerDesignFile = {
+  id: number;
+  kind: "glb" | "image" | "pdf";
+  filename: string;
+  mime_type: string;
+};
+
+export type CustomerDesignDelivery = {
+  message: string | null;
+  items: {
+    id: number;
+    product_name: string;
+    height_cm: string | null;
+    width_cm: string | null;
+    files: CustomerDesignFile[];
+  }[];
+};
+
 export type CustomerPhysicalOrderSummary = CustomerOrderCommon & {
   order_type: "physical";
   design_service: null;
@@ -103,6 +121,7 @@ export type CustomerDesignServiceOrderDetail = CustomerDesignServiceOrderSummary
   shipping_address: null;
   lines: CustomerDesignServiceOrderLine[];
   invoice: CustomerOrderInvoice;
+  design_delivery?: CustomerDesignDelivery | null;
 };
 
 export type CustomerOrderDetail = CustomerPhysicalOrderDetail | CustomerDesignServiceOrderDetail;
@@ -281,7 +300,21 @@ function isCustomerOrderDetail(value: unknown): value is CustomerOrderDetail {
     );
   }
 
-  return fields.shipping_address === null && lines.every(isCustomerDesignServiceOrderLine);
+  return (
+    fields.shipping_address === null &&
+    lines.every(isCustomerDesignServiceOrderLine) &&
+    (fields.design_delivery === undefined || fields.design_delivery === null || isCustomerDesignDelivery(fields.design_delivery))
+  );
+}
+
+function isCustomerDesignDelivery(value: unknown): value is CustomerDesignDelivery {
+  return isRecord(value) && isNullableString(value.message) && Array.isArray(value.items) &&
+    value.items.every((item: unknown) => isRecord(item) &&
+      typeof item.id === "number" && typeof item.product_name === "string" &&
+      isNullableString(item.height_cm) && isNullableString(item.width_cm) &&
+      Array.isArray(item.files) && item.files.every((file: unknown) => isRecord(file) &&
+        typeof file.id === "number" && ["glb", "image", "pdf"].includes(String(file.kind)) &&
+        typeof file.filename === "string" && typeof file.mime_type === "string"));
 }
 
 function parseCustomerOrdersResponse(payload: unknown): CustomerOrdersResponse {
@@ -476,7 +509,7 @@ export async function fetchCustomerOrderDesignResult(
 
   const response = await fetch(customerOrdersApiUrl(`/api/customer/orders/${orderId}/design-result`), {
     headers: {
-      Accept: "application/pdf,image/jpeg,image/png",
+      Accept: "application/pdf,image/jpeg,image/png,application/zip",
       Authorization: `Bearer ${token}`
     }
   }).catch(() => {
@@ -500,7 +533,34 @@ export async function fetchCustomerOrderDesignResult(
     filename: safeDownloadFilename(
       filenameFromContentDisposition(response.headers.get("Content-Disposition")),
       `diseno_previo_${orderId}.pdf`,
-      [".pdf", ".jpg", ".jpeg", ".png"]
+      [".pdf", ".jpg", ".jpeg", ".png", ".zip"]
+    )
+  };
+}
+
+export async function fetchCustomerDesignFile(token: string, orderId: number, file: CustomerDesignFile) {
+  if (!token) {
+    throw new CustomerOrdersClientError("Necesitas iniciar sesión para abrir el diseño.", 401);
+  }
+  const response = await fetch(customerOrdersApiUrl(`/api/customer/orders/${orderId}/design-files/${file.id}`), {
+    headers: { Authorization: `Bearer ${token}` }
+  }).catch(() => {
+    throw new CustomerOrdersClientError("No se pudo conectar con la API de pedidos.", 0);
+  });
+  if (!response.ok) {
+    throw new CustomerOrdersClientError(
+      response.status === 401 || response.status === 422
+        ? "Tu sesión ha caducado. Vuelve a iniciar sesión."
+        : "No se pudo abrir el archivo. Inténtalo de nuevo.",
+      response.status
+    );
+  }
+  return {
+    blob: await response.blob(),
+    filename: safeDownloadFilename(
+      filenameFromContentDisposition(response.headers.get("Content-Disposition")),
+      `diseno-${file.id}${file.kind === "glb" ? ".glb" : file.kind === "pdf" ? ".pdf" : ".png"}`,
+      file.kind === "glb" ? [".glb"] : file.kind === "pdf" ? [".pdf"] : [".jpg", ".jpeg", ".png"]
     )
   };
 }

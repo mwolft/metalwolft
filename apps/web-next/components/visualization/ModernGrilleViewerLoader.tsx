@@ -49,7 +49,7 @@ function ViewerFallback({ label }: { label: string }) {
   );
 }
 
-export function ModernGrilleViewerLoader() {
+export function ModernGrilleViewerLoader({ modelUrl, label }: { modelUrl?: string; label?: string } = {}) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [shouldLoad, setShouldLoad] = useState(false);
   const [isNearViewport, setIsNearViewport] = useState(false);
@@ -83,7 +83,7 @@ export function ModernGrilleViewerLoader() {
     <div ref={containerRef} className="mw-modern-grille-viewer">
       {shouldLoad ? (
         <ViewerErrorBoundary>
-          <ModernGrilleViewer isActive={isNearViewport} />
+          <ModernGrilleViewer isActive={isNearViewport} modelUrl={modelUrl} label={label} />
         </ViewerErrorBoundary>
       ) : (
         <ViewerFallback label="La vista 3D se cargará al acercarte a esta sección." />

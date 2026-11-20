@@ -1,10 +1,11 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 
-const [client, list, detail] = await Promise.all([
+const [client, list, detail, delivery] = await Promise.all([
   readFile(new URL("./customer-orders-client.ts", import.meta.url), "utf8"),
   readFile(new URL("../components/account/CustomerOrdersList.tsx", import.meta.url), "utf8"),
-  readFile(new URL("../components/account/CustomerOrderDetailView.tsx", import.meta.url), "utf8")
+  readFile(new URL("../components/account/CustomerOrderDetailView.tsx", import.meta.url), "utf8"),
+  readFile(new URL("../components/account/DesignDeliveryView.tsx", import.meta.url), "utf8")
 ]);
 
 assert.match(client, /order_type: "physical"/);
@@ -24,6 +25,13 @@ assert.match(detail, /Entrega: te avisaremos cuando esté listo\./);
 assert.match(detail, /Plazo estimado:/);
 assert.match(detail, /designService\?\.result_available/);
 assert.match(detail, /Descargar diseño/);
+assert.match(client, /design_delivery\?: CustomerDesignDelivery/);
+assert.match(client, /fetchCustomerDesignFile/);
+assert.match(detail, /<DesignDeliveryView/);
+assert.match(delivery, /ModernGrilleViewerLoader/);
+assert.match(delivery, /activeModelId === model\.id/);
+assert.match(delivery, /URL\.revokeObjectURL/);
+assert.match(delivery, /Descargar todos los archivos|Descargar imagen/);
 assert.match(detail, /\{!isDesignService \? <section className="mw-customer-order-guides"/);
 
-console.log("18 design-service customer order assertions passed");
+console.log("25 design-service customer order assertions passed");

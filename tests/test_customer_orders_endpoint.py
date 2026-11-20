@@ -813,6 +813,36 @@ class CustomerOrdersEndpointTest(unittest.TestCase):
             self.assertEqual(archive.read("mensaje.txt").decode("utf-8"), "Tu diseño está listo")
             self.assertEqual(archive.read(f"diseno-{item_id}/{deliverable_id}-plano.pdf"), b"%PDF-v2")
 
+        detail = self.client.get(
+            f"/api/customer/orders/{order_id}", headers=self._auth(self.user_a_token)
+        ).get_json()["order"]
+        self.assertEqual(detail["design_delivery"]["message"], "Tu diseño está listo")
+        files = detail["design_delivery"]["items"][0]["files"]
+        self.assertEqual(files[0]["id"], deliverable_id)
+        self.assertNotIn("storage_key", files[0])
+        self.assertNotIn("sha256", files[0])
+
+        file_path = f"/api/customer/orders/{order_id}/design-files/{deliverable_id}"
+        self.assertEqual(self.client.get(file_path).status_code, 401)
+        self.assertEqual(
+            self.client.get(file_path, headers=self._auth(self.user_b_token)).status_code, 404
+        )
+        with patch("api.routes.get_private_object_storage") as get_storage:
+            get_storage.return_value.get_object.return_value = b"%PDF-v2"
+            file_response = self.client.get(file_path, headers=self._auth(self.user_a_token))
+        self.assertEqual(file_response.status_code, 200)
+        self.assertEqual(file_response.data, b"%PDF-v2")
+        self.assertEqual(file_response.headers.get("Cache-Control"), "no-store")
+        self.assertIn("attachment", file_response.headers.get("Content-Disposition", ""))
+
+        with self.app.app_context():
+            design_request = db.session.get(Orders, order_id).design_request
+            design_request.status = DesignRequest.STATUS_IN_PROGRESS
+            db.session.commit()
+        self.assertEqual(
+            self.client.get(file_path, headers=self._auth(self.user_a_token)).status_code, 404
+        )
+
     def test_design_result_download_hides_foreign_pending_and_missing_private_objects(self):
         with self.app.app_context():
             order = self._create_design_order()

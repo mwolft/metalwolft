@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { useAuthSession } from "@/hooks/useAuthSession";
+import { DesignDeliveryView } from "@/components/account/DesignDeliveryView";
 import { clearSession, getToken } from "@/lib/auth-client";
 import {
   CustomerOrdersClientError,
@@ -306,6 +307,7 @@ export function CustomerOrderDetailView({ orderId }: { orderId: number }) {
   const isDesignService = order.order_type === "design_service";
   const shippingAddress = order.order_type === "physical" ? order.shipping_address : null;
   const designService = order.order_type === "design_service" ? order.design_service : null;
+  const designDelivery = order.order_type === "design_service" ? order.design_delivery : null;
   const hasShippingAddress = shippingAddress !== null && (
     hasText(shippingAddress.recipient) ||
     hasText(shippingAddress.address) ||
@@ -459,7 +461,7 @@ export function CustomerOrderDetailView({ orderId }: { orderId: number }) {
               type="button"
               onClick={handleDownloadDesignResult}
             >
-              {isDownloadingDesignResult ? "Descargando..." : "Descargar diseño"}
+              {isDownloadingDesignResult ? "Descargando..." : designDelivery ? "Descargar todos los archivos" : "Descargar diseño"}
             </button>
 
             {designResultDownloadError ? (
@@ -470,6 +472,8 @@ export function CustomerOrderDetailView({ orderId }: { orderId: number }) {
           </div>
         </section>
       ) : null}
+
+      {designDelivery ? <DesignDeliveryView orderId={orderId} delivery={designDelivery} onSessionExpired={redirectToLogin} /> : null}
 
       <section className="mw-account-card" aria-labelledby="customer-order-invoice-title">
         <div className="mw-account-section-heading">

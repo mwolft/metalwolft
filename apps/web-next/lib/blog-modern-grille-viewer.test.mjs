@@ -36,7 +36,7 @@ assert.match(loader, /dynamic\(/);
 assert.match(loader, /ssr: false/);
 assert.match(loader, /IntersectionObserver/);
 assert.match(loader, /rootMargin: "240px 0px"/);
-assert.match(loader, /<ModernGrilleViewer isActive=\{isNearViewport\} \/>/);
+assert.match(loader, /<ModernGrilleViewer isActive=\{isNearViewport\} modelUrl=\{modelUrl\} label=\{label\} \/>/);
 assert.match(loader, /La vista 3D no está disponible en este dispositivo\./);
 
 assert.match(
@@ -44,6 +44,7 @@ assert.match(
   /https:\/\/res\.cloudinary\.com\/dewanllxn\/image\/upload\/v1735066362\/tj5xfmx7b0dqpvqdsxaf\.glb/
 );
 assert.match(viewer, /scene\.clone\(true\)/);
+assert.match(viewer, /modelUrl = ALBANY_MODEL_URL/);
 assert.match(viewer, /new Box3\(\)\.setFromObject\(clonedScene\)/);
 assert.doesNotMatch(viewer, /scene\.position/);
 assert.match(viewer, /useFrame\(\(_, delta\)/);
