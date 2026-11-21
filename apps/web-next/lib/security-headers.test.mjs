@@ -14,6 +14,8 @@ try {
   const csp = headers["Content-Security-Policy"];
   const reportOnlyCsp = headers["Content-Security-Policy-Report-Only"];
   const reportOnlyScriptSrc = reportOnlyCsp.split("; ").find((directive) => directive.startsWith("script-src "));
+  const enforcedConnectSrc = csp.split("; ").find((directive) => directive.startsWith("connect-src "));
+  const reportOnlyConnectSrc = reportOnlyCsp.split("; ").find((directive) => directive.startsWith("connect-src "));
   const enforcedImgSrc = csp.split("; ").find((directive) => directive.startsWith("img-src "));
   const reportOnlyImgSrc = reportOnlyCsp.split("; ").find((directive) => directive.startsWith("img-src "));
 
@@ -29,7 +31,8 @@ try {
   ]);
   assert.match(csp, /default-src 'self'/);
   assert.match(csp, /frame-ancestors 'self'/);
-  assert.match(csp, /connect-src 'self' https:\/\/api\.metalwolft\.com/);
+  assert.match(enforcedConnectSrc, /^connect-src 'self' blob: https:\/\/api\.metalwolft\.com(?:\s|$)/);
+  assert.match(reportOnlyConnectSrc, /^connect-src 'self' blob: https:\/\/api\.metalwolft\.com(?:\s|$)/);
   assert.match(csp, /https:\/\/res\.cloudinary\.com/);
   assert.match(csp, /https:\/\/www\.googletagmanager\.com/);
   assert.match(csp, /https:\/\/www\.google-analytics\.com/);
