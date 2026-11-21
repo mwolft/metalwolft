@@ -17,6 +17,11 @@ type Props = {
   delivery: CustomerDesignDelivery;
   purchaseItems: CustomerDesignPurchaseItem[];
   onSessionExpired: () => void;
+  downloadAll: {
+    onClick: () => void;
+    isDownloading: boolean;
+    error: string | null;
+  } | null;
 };
 type FileProps = Pick<Props, "orderId" | "onSessionExpired">;
 
@@ -112,7 +117,7 @@ function PrivateImage({ orderId, file, onSessionExpired, onEnlarge }: FileProps 
   );
 }
 
-export function DesignDeliveryView({ orderId, delivery, purchaseItems, onSessionExpired }: Props) {
+export function DesignDeliveryView({ orderId, delivery, purchaseItems, onSessionExpired, downloadAll }: Props) {
   const [preview, setPreview] = useState<{ url: string; file: CustomerDesignFile } | null>(null);
   const [downloadError, setDownloadError] = useState<string | null>(null);
   const [downloadingId, setDownloadingId] = useState<number | null>(null);
@@ -152,10 +157,19 @@ export function DesignDeliveryView({ orderId, delivery, purchaseItems, onSession
 
   return (
     <section className="mw-account-card mw-design-delivery" aria-labelledby="design-delivery-title">
-      <div className="mw-account-section-heading">
-        <p className="mw-note">Tu diseño previo</p>
-        <h3 id="design-delivery-title">Diseños preparados</h3>
+      <div className="mw-account-section-heading mw-design-delivery__heading">
+        <div>
+          <p className="mw-note">Tu diseño previo</p>
+          <h3 id="design-delivery-title">Diseños preparados</h3>
+        </div>
+        {downloadAll ? <button
+          className="mw-button mw-button--primary mw-customer-order-invoice__button"
+          type="button"
+          onClick={downloadAll.onClick}
+          disabled={downloadAll.isDownloading}
+        >{downloadAll.isDownloading ? "Descargando..." : "Descargar todos los archivos"}</button> : null}
       </div>
+      {downloadAll?.error ? <p className="mw-customer-order-invoice__error" role="alert">{downloadAll.error}</p> : null}
       {delivery.message ? <p className="mw-design-delivery__message">{delivery.message}</p> : null}
       {delivery.items.map((item) => {
         const model = item.files.find((file) => file.kind === "glb");

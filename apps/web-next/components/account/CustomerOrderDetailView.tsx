@@ -449,7 +449,7 @@ export function CustomerOrderDetailView({ orderId }: { orderId: number }) {
         </nav>
       </section> : null}
 
-      {isDesignService && designService?.result_available ? (
+      {isDesignService && designService?.result_available && !designDelivery ? (
         <section className="mw-account-card" aria-labelledby="customer-order-design-result-title">
           <div className="mw-account-section-heading">
             <p className="mw-note">Diseño previo</p>
@@ -463,7 +463,7 @@ export function CustomerOrderDetailView({ orderId }: { orderId: number }) {
               type="button"
               onClick={handleDownloadDesignResult}
             >
-              {isDownloadingDesignResult ? "Descargando..." : designDelivery ? "Descargar todos los archivos" : "Descargar diseño"}
+              {isDownloadingDesignResult ? "Descargando..." : "Descargar diseño"}
             </button>
 
             {designResultDownloadError ? (
@@ -475,7 +475,11 @@ export function CustomerOrderDetailView({ orderId }: { orderId: number }) {
         </section>
       ) : null}
 
-      {designDelivery ? <DesignDeliveryView orderId={orderId} delivery={designDelivery} purchaseItems={designPurchaseItems} onSessionExpired={redirectToLogin} /> : null}
+      {designDelivery ? <DesignDeliveryView orderId={orderId} delivery={designDelivery} purchaseItems={designPurchaseItems} onSessionExpired={redirectToLogin} downloadAll={designService?.result_available ? {
+        onClick: handleDownloadDesignResult,
+        isDownloading: isDownloadingDesignResult,
+        error: designResultDownloadError
+      } : null} /> : null}
       {isDesignService && !designDelivery && designPurchaseItems.length ? (
         <section className="mw-account-card" aria-label="Continuar con tu diseño">
           {designPurchaseItems.map((item) => <div key={item.id}><h3>{item.product_name}</h3><DesignPurchaseCard item={item} /></div>)}
