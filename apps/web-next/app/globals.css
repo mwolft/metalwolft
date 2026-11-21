@@ -5219,6 +5219,18 @@ a.mw-product-version-nav__option:focus-visible {
   border-radius: 22px;
 }
 
+.mw-customer-order-card__open {
+  width: 13.5rem;
+  max-width: 100%;
+  gap: 0.45rem;
+  white-space: nowrap;
+}
+
+.mw-customer-order-card__open[aria-disabled="true"] {
+  cursor: wait;
+  transform: none;
+}
+
 .mw-customer-order-card__reference {
   margin: 0;
   color: var(--mw-text);

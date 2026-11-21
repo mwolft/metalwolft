@@ -2,8 +2,9 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useRef, useState, type MouseEvent, type ReactNode } from "react";
 import { useAuthSession } from "@/hooks/useAuthSession";
+import { MetalSpinner } from "@/components/ui/MetalSpinner";
 import { clearSession, getToken } from "@/lib/auth-client";
 import {
   CustomerOrdersClientError,
@@ -77,6 +78,35 @@ export function CustomerOrdersList() {
   const [orders, setOrders] = useState<CustomerOrderSummary[]>([]);
   const [status, setStatus] = useState<OrdersStatus>("loading");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [openingOrderId, setOpeningOrderId] = useState<number | null>(null);
+  const openingOrderIdRef = useRef<number | null>(null);
+  const openingTimeoutRef = useRef<number | null>(null);
+
+  const resetOpening = useCallback(() => {
+    if (openingTimeoutRef.current) window.clearTimeout(openingTimeoutRef.current);
+    openingTimeoutRef.current = null;
+    openingOrderIdRef.current = null;
+    setOpeningOrderId(null);
+  }, []);
+
+  useEffect(() => {
+    window.addEventListener("pageshow", resetOpening);
+    return () => {
+      window.removeEventListener("pageshow", resetOpening);
+      if (openingTimeoutRef.current) window.clearTimeout(openingTimeoutRef.current);
+    };
+  }, [resetOpening]);
+
+  function handleOpenOrder(event: MouseEvent<HTMLAnchorElement>, orderId: number) {
+    if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+    if (openingOrderIdRef.current !== null) {
+      event.preventDefault();
+      return;
+    }
+    openingOrderIdRef.current = orderId;
+    setOpeningOrderId(orderId);
+    openingTimeoutRef.current = window.setTimeout(resetOpening, 15_000);
+  }
 
   const redirectToLogin = useCallback(() => {
     clearSession();
@@ -221,10 +251,13 @@ export function CustomerOrdersList() {
               </div>
 
               <Link
-                className="mw-button mw-button--secondary"
+                className="mw-button mw-button--secondary mw-customer-order-card__open"
                 href={`/mi-cuenta/pedidos/${order.id}`}
+                onClick={(event) => handleOpenOrder(event, order.id)}
+                aria-disabled={openingOrderId !== null}
+                aria-busy={openingOrderId === order.id}
               >
-                Ver pedido
+                {openingOrderId === order.id ? <><MetalSpinner label="Abriendo pedido" />Abriendo pedido…</> : "Ver pedido"}
               </Link>
             </article>
           );
