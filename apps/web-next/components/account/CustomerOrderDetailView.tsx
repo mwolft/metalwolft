@@ -336,8 +336,8 @@ export function CustomerOrderDetailView({ orderId }: { orderId: number }) {
           {isDesignService ? (
             <div className="mw-customer-order-service-detail">
               <p>Referencia: {designService?.reference}</p>
-              <p>Entrega: te avisaremos cuando esté listo.</p>
-              <p>Plazo estimado: {designService?.lead_time_hours} h.</p>
+              <p>{designService?.status.code === "delivered" ? "Entrega: diseño disponible en esta página." : "Entrega: te avisaremos cuando esté listo."}</p>
+              {designService?.status.code === "delivered" ? null : <p>Plazo estimado: {designService?.lead_time_hours} h.</p>}
             </div>
           ) : null}
           {estimatedDeliveryDate ? (

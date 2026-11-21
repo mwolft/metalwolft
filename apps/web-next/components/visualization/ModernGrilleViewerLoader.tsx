@@ -16,6 +16,7 @@ const ModernGrilleViewer = dynamic(
 
 type ViewerErrorBoundaryProps = {
   children: ReactNode;
+  fallback?: ReactNode;
 };
 
 type ViewerErrorBoundaryState = {
@@ -34,7 +35,7 @@ class ViewerErrorBoundary extends Component<
 
   render() {
     if (this.state.hasError) {
-      return <ViewerFallback label="La vista 3D no está disponible en este dispositivo." />;
+      return this.props.fallback ?? <ViewerFallback label="La vista 3D no está disponible en este dispositivo." />;
     }
 
     return this.props.children;
@@ -49,7 +50,7 @@ function ViewerFallback({ label }: { label: string }) {
   );
 }
 
-export function ModernGrilleViewerLoader({ modelUrl, label }: { modelUrl?: string; label?: string } = {}) {
+export function ModernGrilleViewerLoader({ modelUrl, label, fallback }: { modelUrl?: string; label?: string; fallback?: ReactNode } = {}) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [shouldLoad, setShouldLoad] = useState(false);
   const [isNearViewport, setIsNearViewport] = useState(false);
@@ -82,7 +83,7 @@ export function ModernGrilleViewerLoader({ modelUrl, label }: { modelUrl?: strin
   return (
     <div ref={containerRef} className="mw-modern-grille-viewer">
       {shouldLoad ? (
-        <ViewerErrorBoundary>
+        <ViewerErrorBoundary fallback={fallback}>
           <ModernGrilleViewer isActive={isNearViewport} modelUrl={modelUrl} label={label} />
         </ViewerErrorBoundary>
       ) : (

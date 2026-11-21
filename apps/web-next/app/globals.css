@@ -6612,10 +6612,33 @@ a.mw-product-version-nav__option:focus-visible {
   justify-self: start;
 }
 
+.mw-design-delivery__model {
+  min-height: 3rem;
+}
+
+.mw-design-delivery__model-fallback {
+  display: grid;
+  gap: 0.6rem;
+  grid-template-rows: minmax(0, 1fr) auto;
+  height: 100%;
+  padding: 0.5rem;
+  text-align: center;
+  background: var(--mw-surface);
+}
+
+.mw-design-delivery__model-fallback img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  max-height: 24rem;
+  object-fit: contain;
+  border-radius: 14px;
+}
+
 .mw-design-delivery__gallery {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(min(100%, 160px), 1fr));
-  gap: 0.8rem;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 230px), 1fr));
+  gap: 1rem;
 }
 
 .mw-design-delivery__image {
@@ -6637,6 +6660,7 @@ a.mw-product-version-nav__option:focus-visible {
   width: 100%;
   aspect-ratio: 4 / 3;
   object-fit: contain;
+  display: block;
 }
 
 .mw-design-delivery__documents {
@@ -6671,8 +6695,13 @@ a.mw-product-version-nav__option:focus-visible {
   background: rgba(12, 20, 30, 0.9);
 }
 
-.mw-design-delivery__lightbox button {
+.mw-design-delivery__lightbox-actions {
+  display: flex;
   justify-self: end;
+  gap: 0.5rem;
+}
+
+.mw-design-delivery__lightbox-actions button {
   color: #fff;
   border: 1px solid #fff;
   background: transparent;
