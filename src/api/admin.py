@@ -2339,6 +2339,17 @@ class OrderAdminView(SafeModelView):
 
 
 
+def _format_cart_added_at(view, context, model, name):
+    from datetime import timezone
+    from zoneinfo import ZoneInfo
+
+    value = model.added_at
+    if value is None:
+        return ''
+    utc_value = value.replace(tzinfo=timezone.utc) if value.tzinfo is None else value
+    return utc_value.astimezone(ZoneInfo('Europe/Madrid')).strftime('%d/%m/%Y %H:%M')
+
+
 class CartAdminView(SafeModelView):
     column_list = ('usuario_email', 'product_display', 'alto', 'ancho', 'anclaje', 'color', 'quantity', 'precio_total', 'added_at', 'cart_reminder')
 
@@ -2360,7 +2371,7 @@ class CartAdminView(SafeModelView):
         'usuario_email': lambda v, c, m, p: m.user.email if m.user else 'Sin usuario',
         'precio_total': lambda v, c, m, p: f"{(m.precio_total * m.quantity):.2f}€" if m.precio_total and m.quantity else '0.00 €',
         'product_display': lambda v, c, m, p: m.product.nombre if m.product else f'ID {m.producto_id}',
-        'added_at': lambda v, c, m, p: m.added_at.strftime("%d/%m/%Y %H:%M") if m.added_at else '',
+        'added_at': _format_cart_added_at,
         'cart_reminder': _format_cart_reminder,
     }
 
