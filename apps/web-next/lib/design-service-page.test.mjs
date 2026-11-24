@@ -15,6 +15,7 @@ assert.match(page, /path: "\/diseno-previo"/);
 assert.match(page, /parseDesignServiceSeed/);
 assert.match(page, /resumeDraftAfterAuth/);
 assert.match(page, /Mira las proporciones de tu reja antes de encargarla/);
+assert.match(page, /El diseño previo es\s+un servicio opcional, especialmente útil si tienes dudas sobre la estética o las proporciones de\s+tu reja con las medidas elegidas\./);
 assert.match(page, /parseDesignServiceOrigin/);
 assert.match(page, /resolveDesignServiceReturnNavigation/);
 assert.match(page, /explicitOrigin,/);
@@ -35,6 +36,9 @@ assert.match(builder, /\/diseno-previo\?resume=auth/);
 assert.match(builder, /saveDesignServiceDraft\(validItems\)/);
 assert.match(builder, /clearDesignServiceDraft\(\)/);
 assert.match(builder, /Este diseño ya está incluido en tu solicitud/);
+assert.match(builder, /Añade diseños diferentes y obtén un mejor precio por diseño\./);
+assert.match(builder, /Si necesitas varias rejas del mismo modelo y medidas, basta con solicitar un único diseño\./);
+assert.match(builder, /Un único diseño te sirve para todas las rejas del mismo modelo y medidas\./);
 assert.match(builder, /disabled/);
 assert.doesNotMatch(builder, /anclaje|torniller[ií]a|color|env[ií]o/i);
 

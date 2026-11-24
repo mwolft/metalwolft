@@ -17,6 +17,7 @@ assert.match(configurator, /<aside className="mw-configurator-design-preview"/);
 assert.match(configurator, /designPreviewHref \? \(/);
 assert.match(configurator, /Ver diseño previo/);
 assert.match(configurator, /Conocer el diseño previo/);
+assert.match(configurator, /Puedes comprar tu reja directamente, sin solicitar un diseño previo\./);
 assert.match(configurator, /Introduce alto y ancho para ver cómo se repartirán los barrotes y espacios según tus medidas\./);
 assert.match(configurator, /href=\{designPreviewHref \?\? "\/diseno-previo"\}/);
 assert.match(configurator, /¿Quieres ver las proporciones de esta reja con tus medidas\?/);

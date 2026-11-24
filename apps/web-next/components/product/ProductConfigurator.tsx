@@ -981,6 +981,7 @@ export function ProductConfigurator({
             </div>
             <div className="mw-configurator-design-preview__copy">
               <p className="mw-configurator-design-preview__title">¿Quieres ver las proporciones de esta reja con tus medidas?</p>
+              <p>Puedes comprar tu reja directamente, sin solicitar un diseño previo.</p>
               {designPreviewHref ? (
                 <>
                   <p>Te mostramos cómo se repartirán los barrotes y espacios en</p>

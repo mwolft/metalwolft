@@ -458,6 +458,7 @@ export default async function HomePage() {
               <h2 id="diseno-previo-title">Mira las proporciones de tu reja antes de encargarla</h2>
               <p>
                 Te mostramos cómo se repartirán los barrotes y espacios según el alto y ancho que necesitas.
+                {" "}Servicio opcional para visualizar tu reja antes de comprarla.
               </p>
               <div className="mw-actions">
                 <Link className="mw-button mw-button--secondary" href="/diseno-previo">

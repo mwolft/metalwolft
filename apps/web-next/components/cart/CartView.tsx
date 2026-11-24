@@ -567,6 +567,7 @@ export function CartView({ deliveryEstimate }: { deliveryEstimate?: ReactNode })
                       <p className="mw-cart-design-preview__detail">
                         Diseño previo {designPreviewDimensions} · {DESIGN_SERVICE_MARKETING.startingPrice.replace(" IVA incluido", "")}
                       </p>
+                      <p className="mw-cart-design-preview__detail">Servicio opcional, no necesario para finalizar tu compra.</p>
                     </div>
                   </aside>
                 ) : null}

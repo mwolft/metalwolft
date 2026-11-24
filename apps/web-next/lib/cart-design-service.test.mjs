@@ -16,6 +16,7 @@ assert.match(cartView, /\}, "cart"\);/);
 assert.match(cartView, /¿Quieres ver sus proporciones antes de encargarla\?/);
 assert.match(cartView, /Diseño previo \{designPreviewDimensions\}/);
 assert.match(cartView, /Preparar diseño previo/);
+assert.match(cartView, /Servicio opcional, no necesario para finalizar tu compra\./);
 assert.match(cartView, /mw-cart-design-preview__separator/);
 assert.match(cartView, /DESIGN_SERVICE_MARKETING\.startingPrice\.replace/);
 assert.doesNotMatch(cartView, /Descuento al añadir varios/);

@@ -17,6 +17,7 @@ assert.ok(howItWorksIndex > designServiceIndex);
 assert.match(designServiceBlock, /Diseño previo a medida/);
 assert.match(designServiceBlock, /Mira las proporciones de tu reja antes de encargarla/);
 assert.match(designServiceBlock, /Preparar mi diseño/);
+assert.match(designServiceBlock, /Servicio opcional para visualizar tu reja antes de comprarla\./);
 assert.match(designServiceBlock, /href="\/diseno-previo"/);
 assert.match(designServiceBlock, /No es un plano técnico ni una simulación exacta de la instalación\./);
 assert.match(designServiceBlock, /src="\/icons\/diseno-previo-rejas\.webp"/);

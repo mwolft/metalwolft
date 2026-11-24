@@ -228,7 +228,8 @@ export function DesignServiceBuilder({
           </p>
         </div>
         <p className="mw-design-builder__multi-note">
-          ¿Quieres comprobar las proporciones de varias rejas? Añade más diseños y obtén mejor precio por unidad.
+          ¿Quieres comprobar las proporciones de varias rejas? Añade diseños diferentes y obtén un mejor precio por diseño.
+          {" "}Si necesitas varias rejas del mismo modelo y medidas, basta con solicitar un único diseño.
         </p>
       </div>
 
@@ -289,7 +290,7 @@ export function DesignServiceBuilder({
                 </div>
                 {duplicate ? (
                   <p className="mw-field-error" id={`${design.id}-duplicate`} role="status">
-                    Este diseño ya está incluido en tu solicitud.
+                    Este diseño ya está incluido en tu solicitud. Un único diseño te sirve para todas las rejas del mismo modelo y medidas.
                   </p>
                 ) : null}
                 {designs.length > 1 ? (

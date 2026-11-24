@@ -19,7 +19,8 @@ assert.equal((catalogBlock.match(/className="mw-category-design-service"/g) || [
 assert.match(catalogBlock, /Preparar diseño previo/);
 assert.match(catalogBlock, /href="\/diseno-previo"/);
 assert.match(catalogBlock, /Te mostramos cómo se repartirán los barrotes y espacios/);
-assert.match(catalogBlock, /Descuento al añadir varios diseños/);
+assert.match(catalogBlock, /Es un servicio opcional\./);
+assert.match(catalogBlock, /Descuento al solicitar varios diseños diferentes\./);
 assert.doesNotMatch(catalogBlock, /producto=|ancho=|alto=|anclaje|color|torniller[ií]a|price=/i);
 assert.match(category, /DESIGN_SERVICE_MARKETING/);
 assert.match(marketing, /startingPrice: "Desde 24,95 € IVA incluido"/);

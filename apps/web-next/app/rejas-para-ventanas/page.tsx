@@ -265,12 +265,13 @@ export default async function RejasParaVentanasPage() {
                             <h3>¿Quieres ver cómo se adapta este diseño a tus medidas?</h3>
                             <p>
                               Te mostramos cómo se repartirán los barrotes y espacios según el alto y ancho de tu reja.
+                              {" "}Es un servicio opcional.
                             </p>
                           </div>
                         </div>
                         <div className="mw-category-design-service__action">
                           <p><strong>{DESIGN_SERVICE_MARKETING.startingPrice}</strong></p>
-                          <p>Descuento al añadir varios diseños</p>
+                          <p>Descuento al solicitar varios diseños diferentes.</p>
                           <p>{DESIGN_SERVICE_MARKETING.leadTime}</p>
                           <Link className="mw-button mw-button--secondary" href="/diseno-previo">
                             Preparar diseño previo

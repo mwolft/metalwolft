@@ -97,7 +97,9 @@ export default async function DesignServicePage({ searchParams }: DesignServiceP
             <h1 className="mw-title mw-title--compact">Mira las proporciones de tu reja antes de encargarla</h1>
             <p className="mw-lead">
               Te mostramos cómo se repartirán los barrotes y espacios del modelo según el alto y ancho que
-              necesitas, para que puedas valorar sus proporciones antes de hacer el pedido.
+              necesitas, para que puedas valorar sus proporciones antes de hacer el pedido. El diseño previo es
+              un servicio opcional, especialmente útil si tienes dudas sobre la estética o las proporciones de
+              tu reja con las medidas elegidas.
             </p>
           </div>
           <div className="mw-design-hero__facts" aria-label="Información del servicio">
